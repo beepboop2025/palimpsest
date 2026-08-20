@@ -33,7 +33,7 @@ METHOD = (
     "(official-first-seen, public-deletion-ledgers, news-wire-live, undertext, "
     "and archive-news-context). Named-key interconnection peers from supplied "
     "peer-warehouse readings attach only on an exact host, URL path, extracted "
-    "term, or ASN plus a UTC calendar-day ±24h window. A peer without an exact "
+    "term, or ASN plus a UTC ±24h window from event.published_at. A peer without an exact "
     "key, a silent warehouse, or a warming_up warehouse is skipped. GreatFire, "
     "OONI, and CDT counts keep separate denominators and dates. Collector, "
     "live-family, and interconnection joins remain topic-surface-only: no "

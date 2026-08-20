@@ -14,8 +14,8 @@ Hard boundaries (do not weaken):
 * A whisper-only / anonymous-only name never becomes a person package.
 * A person-level Palimpsest *finding* that someone is missing, detained, or
   dead is prohibited. Matched strings remain topic surfaces.
-* Any row that names a person has ``automatic_publication=false`` and requires
-  human review before a named package may be published.
+* Every row has ``automatic_publication=false``. A row that names a person
+  also requires human review before a named package may be published.
 * No motive or intent. No generative-model prose as reporting.
 * Telegram handles are the in-tree public set only: DragonDenWhispers,
   DragonDenCyber, DragonDenBorderlands.
@@ -99,6 +99,7 @@ DISPOSITIONS = frozenset(
 )
 INPUT_STATES = frozenset({"present", "missing", "abstain"})
 PUBLICATION_POLICY = {
+    "automatic_publication": False,
     "human_review_required": True,
     "named_person_packages_auto_published": False,
     "named_person_findings_included": False,
@@ -919,7 +920,7 @@ def _news_story(
         "headline": "Public-board terms now circulating",
         "dek": DISCLAIMER,
         "body": body,
-        "automatic_publication": True,
+        "automatic_publication": False,
         "relation": RELATION,
         "disclaimer": DISCLAIMER,
     }
@@ -1038,7 +1039,7 @@ def build_social_spread(
                 },
                 "matches": matches,
                 "names_a_person": names,
-                "automatic_publication": not names,
+                "automatic_publication": False,
                 "human_review_required": names,
             }
         )
@@ -1243,9 +1244,9 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             raise SocialSpreadError(f"{path}.automatic_publication must be boolean")
         if type(row["human_review_required"]) is not bool:
             raise SocialSpreadError(f"{path}.human_review_required must be boolean")
+        if row["automatic_publication"] is not False:
+            raise SocialSpreadError("social-spread rows cannot auto-publish")
         if row["names_a_person"]:
-            if row["automatic_publication"] is not False:
-                raise SocialSpreadError("person-name packages cannot auto-publish")
             if row["human_review_required"] is not True:
                 raise SocialSpreadError("person-name packages require human review")
         if row["disposition"] == "matched-to-wire" and not matches["wire_event_ids"]:
@@ -1279,8 +1280,8 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             raise SocialSpreadError("news story body must include the disclaimer")
         if item["relation"] != RELATION:
             raise SocialSpreadError("news story relation must remain topic-surface-only")
-        if item["automatic_publication"] is not True:
-            raise SocialSpreadError("news story is only emitted for topic-only rows")
+        if item["automatic_publication"] is not False:
+            raise SocialSpreadError("news story cannot auto-publish")
         if any(row["names_a_person"] for row in rows):
             # A mixed document may still carry a topic-only story, but never a
             # person-name headline.
@@ -1320,7 +1321,7 @@ SAMPLE_ROW = {
         "ledger_hits": [],
     },
     "names_a_person": False,
-    "automatic_publication": True,
+    "automatic_publication": False,
     "human_review_required": False,
 }
 

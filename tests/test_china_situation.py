@@ -110,6 +110,9 @@ def test_every_in_scope_event_gets_one_situation_without_strengthening(
     assert "events_with_osint_context" in situation["coverage"]
     assert "osint_context_rows" in situation["coverage"]
     assert all("osint_context" in row for row in situation["situations"])
+    assert all("interconnection" in row for row in situation["situations"])
+    assert "events_with_interconnection" in situation["coverage"]
+    assert "interconnection_joined_rows" in situation["coverage"]
 
     events = {event["event_id"]: event for event in wire["events"]}
     for row in situation["situations"]:
@@ -497,3 +500,40 @@ def test_generic_or_person_status_titles_do_not_become_situation_findings(inputs
     assert document["coverage"]["social_observations"] == 2
     assert document["coverage"]["social_observations_linked"] == 0
     assert all(not row["social_context"] for row in document["situations"])
+
+
+def test_situation_copies_named_key_interconnection_without_mixing_peer_sentences(
+    inputs,
+):
+    from tests.test_event_interconnection import _warehouses, _load_fixture
+
+    wire, feed, _analyses = inputs
+    official = _load_fixture("official-first-seen-warehouse.json")
+    greatfire = _load_fixture("greatfire-warehouse.json")
+    analyses = event_analysis.build_event_analyses(
+        wire,
+        feed,
+        peer_warehouses=_warehouses(
+            **{"official-first-seen": official, "greatfire": greatfire}
+        ),
+    )
+    document = china_situation.build_china_situation(wire, analyses)
+    joined_rows = [
+        row
+        for row in document["situations"]
+        if row["interconnection"]["joined_count"]
+    ]
+    assert document["coverage"]["interconnection_joined_rows"] == sum(
+        row["interconnection"]["joined_count"] for row in document["situations"]
+    )
+    assert document["coverage"]["events_with_interconnection"] == len(joined_rows)
+    if joined_rows:
+        row = joined_rows[0]
+        assert row["peer_context"] == [] or all(
+            item["relation"] == "peer-context-not-palimpsest-capture"
+            for item in row["peer_context"]
+        )
+        assert row["interconnection"]["relation"] == "topic-surface-only"
+        assert row["interconnection"]["meets_quality_bar"] is (
+            row["interconnection"]["independent_source_groups"] >= 2
+        )

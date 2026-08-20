@@ -359,7 +359,9 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
     assert 'cron: "17,47 * * * *"' in workflow
     assert "workflow_dispatch" in workflow
-    assert "group: newswire-refresh" in workflow
+    # Same derived graph as the OSINT hourly roll-up. One group serializes both
+    # publishers so a push race cannot interleave two official rebuilds.
+    assert "group: derived-graph-publish" in workflow
     assert "cancel-in-progress: false" in workflow
     assert workflow.count("python -m scripts.newswire_pull") == 3
 

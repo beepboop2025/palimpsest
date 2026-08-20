@@ -27,8 +27,8 @@ from processors.reading_analysis import (
 
 
 UTC = timezone.utc
-SCHEMA = "palimpsest-peer-context/v1"
-JOB = "peer-context"
+SCHEMA = "palimpsest-peer-context-rank/v1"
+JOB = "peer-context-rank"
 FEATURE_SCHEMA = "palimpsest-peer-context-features/v1"
 EXCERPT_CHARS = 280
 WEIBOSCOPE_CITATION = (
@@ -465,6 +465,8 @@ def join_score_from_features(
 ) -> float | None:
     """Order a belonging row. Fail closed: no exact key pair, no score."""
 
+    if features.get("state") == "warming_up":
+        return None
     if not features.get("belong"):
         return None
     groups = 1 + int(bool(features.get("host_day_exact") and features.get("term_day_exact")))
@@ -518,6 +520,7 @@ def rank_joins(
     ranked = []
     for row in peer_rows:
         features = exact_join_features(object_keys, _peer_keys(row, cdt_items))
+        features = {**features, "state": row.get("state")}
         join_score = join_score_from_features(
             features,
             unusualness=row.get("unusualness") if isinstance(row.get("unusualness"), (int, float)) else None,

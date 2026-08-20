@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: newswire-refresh
+  group: derived-graph-publish
   cancel-in-progress: false
 
 jobs:
@@ -180,7 +180,7 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
           else
-            git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip pytest]"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -310,7 +310,7 @@ jobs:
             if git diff --cached --quiet origin/main; then
               echo "no change after synchronization"
             else
-              git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip ci]"
+              git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip pytest]"
             fi
           else
             git commit --amend --no-edit
@@ -441,7 +441,7 @@ jobs:
             if git diff --cached --quiet; then
               echo "no change after push race"
             else
-              git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip ci]"
+              git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip pytest]"
             fi
           else
             git commit --amend --no-edit

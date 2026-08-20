@@ -115,6 +115,12 @@ CONTRACT = {
     "peer-context": _d(
         "generated_at", ["source", "method", "scope"], "n_hosts"
     ),
+    "peer-context-rank": _d(
+        "generated_at", ["source", "method", "scope"],
+        reason="per-peer unusualness plus fail-closed joins: "
+               "n_peer_series and n_joins are distinct populations "
+               "and must not be collapsed into one rate.",
+    ),
     "ooni-peer-context": _d(
         "generated_at", ["source", "method", "scope", "attribution"], "n_hits"
     ),
@@ -347,6 +353,7 @@ SCHEDULED_PUBLICATIONS = {
     "china-situation",
     "archive-news-context",
     "reading-analysis",
+    "peer-context-rank",
 }
 
 
@@ -596,6 +603,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         assert f'"/readings/{name}-latest.json"' in worker
     assert '"/readings/reading-analysis-latest.json"' in worker
     assert '"/readings/peer-context-latest.json"' in worker
+    assert '"/readings/peer-context-rank-latest.json"' in worker
     evidence_branch = worker[
         worker.index("if (LIVE_EVIDENCE_READINGS.has(url.pathname))"):
     ]

@@ -94,6 +94,7 @@ def load_inputs(
         archive_context=event_analysis.load_optional_archive_context(readings_dir),
         corroboration=event_analysis.load_optional_corroboration(readings_dir),
         peer=peer,
+        peer_warehouses=event_analysis.load_optional_peer_warehouses(readings_dir),
     )
     social = _strict_document(social_path) if social_path.is_file() else None
     reviewed_telegram = (
@@ -370,6 +371,24 @@ def _measurement_layer(row: Mapping[str, Any]) -> str:
 </section>"""
 
 
+def _interconnection_layer(row: Mapping[str, Any]) -> str:
+    block = row.get("interconnection") if isinstance(row.get("interconnection"), dict) else {}
+    peers = [item for item in (block.get("peers") or []) if isinstance(item, dict)]
+    joined = [item for item in peers if item.get("status") == "joined"]
+    if joined:
+        body = "<ul>" + "".join(
+            f"""<li><strong>{_h(item.get('citation') or item.get('peer_name'))}</strong><span>{_h(item.get('why_joined') or '')}</span><small>{_h(', '.join(item.get('join_keys') or []))} · {_h(item.get('relation'))}</small></li>"""
+            for item in joined
+        ) + "</ul>"
+    else:
+        body = """<div class="situation-empty"><strong>No interconnection peer met an exact join key.</strong><p>Named warehouse slots stay listed as silent, warming_up, window_missed, or no_key. Absence is a coverage gap, not a Palimpsest verdict.</p></div>"""
+    return f"""<section class="situation-layer situation-layer--interconnection" aria-labelledby="interconnect-{_h(row['situation_id'])}">
+  <header><span>06</span><div><p>Named-key interconnection</p><h3 id="interconnect-{_h(row['situation_id'])}">{len(joined)} joined peer{'s' if len(joined) != 1 else ''} · {_h(str(block.get('joined_count', 0)))} counted</h3></div></header>
+  {body}
+  <p class="situation-relation">topic-surface-only · not wire corroboration</p>
+</section>"""
+
+
 def _peer_layer(row: Mapping[str, Any]) -> str:
     peers = row.get("peer_context") or []
     if not peers:
@@ -399,7 +418,7 @@ def _situation_card(row: Mapping[str, Any], *, expanded: bool) -> str:
     return f"""<article class="situation-card" id="{_h(row['situation_id'])}" data-desk="{_h(row['desk'])}" data-posture="{_h(row['posture'])}" data-search="{_h(search)}">
   <header class="situation-card__head"><div><p class="situation-kicker">{_h(row['desk'])} · {_h(row['posture'].replace('-', ' '))}</p><h2>{_h(row['headline'])}</h2><p>{_h(row['dek'])}</p></div><div class="situation-card__meta"><time datetime="{_h(row['updated_at'])}">{_h(_human(row['updated_at']))}</time><span>{topics}</span><a href="/news/wire/{_h(row['event_id'])}/">Open dossier</a></div></header>
   <details{' open' if expanded else ''}><summary><span>Open the complete three-layer view</span><strong>{_h(row['reporting']['evidence_strength'])}</strong></summary>
-    <div class="situation-layers">{_reporting_layer(row)}{_social_layer(row)}{_measurement_layer(row)}{_osint_layer(row)}{_peer_layer(row)}</div>
+    <div class="situation-layers">{_reporting_layer(row)}{_social_layer(row)}{_measurement_layer(row)}{_osint_layer(row)}{_peer_layer(row)}{_interconnection_layer(row)}</div>
     <section class="situation-synthesis"><div><p class="situation-kicker">Bounded synthesis</p><h3>What the combined view says</h3><p>{_h(row['synthesis']['summary'])}</p></div><div><h4>Next checks</h4><ol>{checks}</ol></div><details><summary>Known unknowns</summary><ul>{unknowns}</ul></details></section>
     <p class="situation-receipt">{_h(row['situation_id'])} · {_h(row['version_id'])} · {_h(row['analysis_id'])}</p>
   </details>

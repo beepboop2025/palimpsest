@@ -523,6 +523,8 @@ def situation_osint_row(observation: Mapping[str, Any]) -> dict[str, Any]:
         if len(hits) >= 8:
             break
     url = public_text(observation.get("url") or observation.get("source_url"), limit=2048)
+    if url.startswith("https://"):
+        url = url.split("#", 1)[0]
     links = observation.get("cross_links") if isinstance(observation.get("cross_links"), dict) else {}
     compact: dict[str, Any] = {}
     for key in (

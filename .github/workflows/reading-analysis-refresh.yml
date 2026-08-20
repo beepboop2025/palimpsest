@@ -6,7 +6,7 @@ name: Refresh reading analysis
 
 on:
   schedule:
-    - cron: "59 */6 * * *"     # every 6 hours, after board-alarm at :53
+    - cron: "57 */6 * * *"     # every 6 hours, after board-alarm at :53
   workflow_dispatch: {}
 
 permissions:
@@ -28,8 +28,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install the hash-pinned contract environment
+        run: pip install --quiet --require-hashes -r .github/osint-china-ci-requirements.txt
+
       - name: Fit each public instrument against its own history
         run: python -m scripts.reading_analysis_pull
+
+      - name: Validate the published reading
+        run: python -m pytest -q tests/test_reading_analysis.py tests/test_publication_contract.py
 
       - name: Read the public surface before pushing it
         env:
@@ -47,7 +53,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "no change"
           else
-            git commit -m "data: reading analysis refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git commit -m "data: reading analysis refresh ($(date -u +%FT%TZ)) [skip pytest]"
             python scripts/push_data_commit.py \
               --rebuild-module scripts.reading_analysis_pull \
               --stage readings/reading-analysis-latest.json \

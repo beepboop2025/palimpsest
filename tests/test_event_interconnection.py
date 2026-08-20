@@ -44,8 +44,8 @@ def test_same_host_official_and_greatfire_join() -> None:
     assert joined["greatfire"]["denominator_label"] == "GreatFire probe set"
     assert joined["official-first-seen"]["count"] == 1
     assert joined["greatfire"]["denominator_value"] != joined["official-first-seen"]["denominator_value"]
-    assert block["meets_quality_bar"] is True
-    assert block["independent_source_groups"] >= 2
+    assert block["meets_quality_bar"] is False
+    assert block["independent_source_groups"] == 1
     assert "exact host" in joined["greatfire"]["why_joined"]
 
 
@@ -114,8 +114,8 @@ def test_same_host_outside_the_24h_window_is_not_a_story() -> None:
 
     greatfire = next(row for row in block["peers"] if row["peer_id"] == "greatfire")
     assert greatfire["status"] == "skipped"
-    assert greatfire["skip_reason"] == "no_key"
-    assert "window missed" in greatfire["why_skipped"]
+    assert greatfire["skip_reason"] == "window_missed"
+    assert "window" in greatfire["why_skipped"]
     assert "cross-day" in greatfire["why_skipped"]
     assert block["joined_count"] == 0
 
@@ -215,13 +215,84 @@ def test_asn_joins_only_when_both_sides_carry_the_same_asn() -> None:
     assert "AS4808" in joined["why_joined"]
 
 
-def test_loader_leaves_missing_slots_silent(tmp_path: Path) -> None:
+def test_url_path_join_is_exact() -> None:
+    official = event_interconnection.warehouse_fixture(
+        "official-first-seen",
+        records=[
+            event_interconnection.peer_record(
+                "official-path",
+                hosts=["stats.gov.cn"],
+                url_paths=["/sj/zxfb/202608/t20260820_1.html"],
+                observed_at="2026-08-20T02:00:00Z",
+                count=1,
+                count_label="official pages first seen",
+                denominator_label="official-first-seen watchlist",
+                denominator_value=1,
+            )
+        ],
+    )
+    block = event_interconnection.build_interconnection(
+        _event(), _warehouses(**{"official-first-seen": official})
+    )
+    joined = next(row for row in block["peers"] if row["peer_id"] == "official-first-seen")
+    assert joined["status"] == "joined"
+    assert "url_path" in joined["join_keys"]
+
+
+def test_live_ooni_projection_exposes_hosts_without_inventing_a_join(
+    tmp_path: Path,
+) -> None:
+    from core import peer_warehouse_live
+
+    (tmp_path / "ooni-gfw-latest.json").write_text(
+        json.dumps(
+            {
+                "generated_at": "2026-08-20T07:12:09Z",
+                "top_blocked": [
+                    {
+                        "domain": "www.hrw.org",
+                        "anomaly_count": 38,
+                        "measurement_count": 44,
+                        "completed_measurement_count": 38,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    projected = peer_warehouse_live.project_live_warehouses(tmp_path)
+    assert projected["ooni"]["status"] == "live"
+    assert projected["ooni"]["peers"][0]["hosts"] == ["hrw.org"]
     loaded = event_interconnection.load_optional_peer_warehouses(tmp_path)
+    event = _event()
+    block = event_interconnection.build_interconnection(event, loaded)
+    ooni = next(row for row in block["peers"] if row["peer_id"] == "ooni")
+    assert ooni["status"] == "skipped"
+    assert ooni["skip_reason"] == "no_key"
+
+
+def test_wrong_schema_file_in_warehouse_name_stays_silent(tmp_path: Path) -> None:
+    (tmp_path / "greatfire-warehouse.json").write_text(
+        json.dumps({"schema_version": "palimpsest-peer-context.v1", "hosts": []}),
+        encoding="utf-8",
+    )
+    loaded = event_interconnection.load_optional_peer_warehouses(
+        tmp_path, project_live=False
+    )
+    assert loaded["greatfire"] is None
+
+
+def test_loader_leaves_missing_slots_silent(tmp_path: Path) -> None:
+    loaded = event_interconnection.load_optional_peer_warehouses(
+        tmp_path, project_live=False
+    )
     assert set(loaded) == set(event_interconnection.SLOT_IDS)
     assert all(value is None for value in loaded.values())
     (tmp_path / "greatfire-warehouse.json").write_text(
         (FIXTURES / "greatfire-warehouse.json").read_text(), encoding="utf-8"
     )
-    loaded = event_interconnection.load_optional_peer_warehouses(tmp_path)
+    loaded = event_interconnection.load_optional_peer_warehouses(
+        tmp_path, project_live=False
+    )
     assert loaded["greatfire"]["warehouse_id"] == "greatfire"
     assert loaded["ooni"] is None

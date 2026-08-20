@@ -212,7 +212,7 @@ def test_wire_and_hotsearch_match_emits_matched_or_circulating_row():
     assert row["relation"] == RELATION
     assert row["disclaimer"] == DISCLAIMER
     assert row["names_a_person"] is False
-    assert row["automatic_publication"] is True
+    assert row["automatic_publication"] is False
     assert row["spreading"]["source_ids"] == ["weibo-hotsearch"]
     assert row["spreading"]["n_surfaces"] == 1
     assert row["join_keys"]["term"] == "杭州暴雨"
@@ -235,7 +235,7 @@ def test_official_page_title_match_and_person_name_stays_review_gated():
     row = next(item for item in document["rows"] if item["term"] == "青年失业率")
     assert row["disposition"] == "matched-to-official-page"
     assert row["matches"]["official_page_last_alive"]
-    assert row["automatic_publication"] is True
+    assert row["automatic_publication"] is False
 
 
 def test_missing_collectors_abstain():
@@ -377,7 +377,7 @@ def test_sense_gated_ordinary_shilian_accident_is_not_a_person_package():
         item for item in document["rows"] if item["term"] == "重庆彭水发现失联中巴车残骸"
     )
     assert row["names_a_person"] is False
-    assert row["automatic_publication"] is True
+    assert row["automatic_publication"] is False
     assert row["disposition"] == "circulating-unverified"
     assert not any(item["names_a_person"] for item in document["rows"])
 

@@ -250,8 +250,13 @@ def publish(
     if _capture(repo, "status", "--porcelain=v1", "--untracked-files=all"):
         raise PublishError("candidate checkout is not clean")
     subject = _capture(repo, "show", "-s", "--format=%s", "HEAD")
-    if "[skip ci]" not in subject:
-        raise PublishError("candidate commit is missing the required [skip ci] marker")
+    lowered = subject.casefold()
+    if any(token in lowered for token in ("[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]")):
+        raise PublishError(
+            "candidate commit uses a GitHub-native skip token; use [skip pytest] so contract still runs"
+        )
+    if "[skip pytest]" not in subject:
+        raise PublishError("candidate commit is missing the required [skip pytest] marker")
 
     guarded_inputs = tuple(_validate_relative_path(path) for path in input_paths)
     if len(guarded_inputs) != len(set(guarded_inputs)):

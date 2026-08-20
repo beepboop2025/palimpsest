@@ -371,7 +371,6 @@ def match_cdt_items(
         if isinstance(ref, Mapping)
     }
     hosts = set(_event_hosts(event))
-    haystack = _event_haystack(event, wire_items or {})
     matched: list[dict[str, Any]] = []
     for item in cdt_items:
         url = str(item.get("url") or "")
@@ -379,10 +378,21 @@ def match_cdt_items(
         title = str(item.get("title") or "")
         url_hit = url in urls
         host_hit = bool(host and host in hosts)
-        title_hit = any(
-            len(token) >= 4 and token in haystack
-            for token in title.casefold().replace(":", " ").split()
-        )
+        title_key = " ".join(title.strip().casefold().split())
+        exact_titles = {
+            " ".join(part.strip().casefold().split())
+            for part in (
+                event.get("headline"),
+                event.get("dek"),
+                *(
+                    ref.get("title")
+                    for ref in event.get("evidence_refs") or []
+                    if isinstance(ref, Mapping)
+                ),
+            )
+            if part
+        }
+        title_hit = bool(title_key) and title_key in exact_titles
         if not url_hit and not host_hit and not title_hit:
             continue
         matched.append(dict(item))

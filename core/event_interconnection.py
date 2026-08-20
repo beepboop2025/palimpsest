@@ -1,8 +1,9 @@
 """Fail-closed named-key interconnection for one Palimpsest wire event.
 
 The fat object is the product: every peer that belongs on the event is attached
-with a named exact key and a recorded miss. Matches are never invented. A later
-PR fills GreatFire / OONI / CDT warehouse slots; missing files stay silent.
+with a named exact key and a recorded miss. Matches are never invented. Live
+``*-latest.json`` readings are projected into warehouse slots when a warehouse
+file is absent. Missing or unreadable sources stay silent.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ QUALITY_BAR = "two-independent-source-groups"
 RELATION = "topic-surface-only"
 WINDOW_HOURS = 24
 EXACT_KEYS = ("host", "url_path", "term", "asn")
-SKIP_REASONS = frozenset({"no_key", "silent", "warming_up"})
+SKIP_REASONS = frozenset({"no_key", "silent", "warming_up", "window_missed"})
 PEER_STATUSES = frozenset({"joined", "skipped"})
 
 SLOT_IDS = (
@@ -474,11 +475,14 @@ def _normalize_warehouse(slot: str, raw: Mapping[str, Any] | None) -> dict[str, 
 
 def load_optional_peer_warehouses(
     readings_dir: Path | str | None = None,
+    *,
+    project_live: bool = True,
 ) -> dict[str, dict[str, Any] | None]:
-    """Load warehouse-shaped files when present. Missing or aggregate files stay silent."""
+    """Load warehouse-shaped files when present. Missing slots may project live readings."""
 
     loaded: dict[str, dict[str, Any] | None] = {slot: None for slot in SLOT_IDS}
-    for root in live_paths.readings_search_dirs(preferred=readings_dir):
+    search_dirs = live_paths.readings_search_dirs(preferred=readings_dir)
+    for root in search_dirs:
         for slot, names in WAREHOUSE_FILENAMES.items():
             if loaded[slot] is not None:
                 continue
@@ -490,6 +494,14 @@ def load_optional_peer_warehouses(
                 if value.get("schema_version") != WAREHOUSE_SCHEMA:
                     continue
                 loaded[slot] = _normalize_warehouse(slot, value)
+    if project_live:
+        from core import peer_warehouse_live
+
+        for root in search_dirs:
+            projected = peer_warehouse_live.project_live_warehouses(root)
+            for slot, warehouse in projected.items():
+                if loaded[slot] is None and warehouse is not None:
+                    loaded[slot] = _normalize_warehouse(slot, warehouse)
     return loaded
 
 
@@ -587,32 +599,6 @@ def build_interconnection(
                 continue
             if not _within_window(event_clock, peer_clock):
                 window_misses += 1
-                skipped.append(
-                    {
-                        **_empty_slot(
-                            slot,
-                            skip_reason="no_key",
-                            why_skipped=(
-                                "exact key overlapped but the UTC ±24h calendar-day "
-                                "window missed; no cross-day story is invented"
-                            ),
-                            reading_url=warehouse.get("reading_url"),
-                            input_sha256=warehouse.get("input_sha256"),
-                            independence_group=warehouse["independence_group"],
-                            peer_name=warehouse["peer_name"],
-                        ),
-                        "record_id": record.get("record_id"),
-                        "join_keys": join_keys,
-                        "observed_at": record.get("observed_at")
-                        if type(record.get("observed_at")) is str
-                        else None,
-                        "peer_date": _calendar_day(record.get("observed_at")),
-                        "count": _finite_or_none(record.get("count")),
-                        "count_label": record.get("count_label"),
-                        "denominator_label": record.get("denominator_label"),
-                        "denominator_value": _finite_or_none(record.get("denominator_value")),
-                    }
-                )
                 continue
             row = _joined_row(
                 warehouse,
@@ -623,74 +609,40 @@ def build_interconnection(
             joined.append(row)
             slot_joined += 1
             working_keys = _merge_keys(working_keys, peer_keys)
-        if slot_joined == 0 and window_misses == 0:
-            skipped.append(
-                _empty_slot(
-                    slot,
-                    skip_reason="no_key",
-                    why_skipped="no exact host, url_path, term, or ASN is shared with this event",
-                    reading_url=warehouse.get("reading_url"),
-                    input_sha256=warehouse.get("input_sha256"),
-                    independence_group=warehouse["independence_group"],
-                    peer_name=warehouse["peer_name"],
-                )
-            )
-
-    # Second pass: peers that share a key with an already-joined peer, still
-    # anchored to the event clock so the object does not grow across days.
-    if in_scope and joined:
-        joined_ids = {(row["peer_id"], row["record_id"]) for row in joined}
-        extra: list[dict[str, Any]] = []
-        remaining_skips: list[dict[str, Any]] = []
-        for row in skipped:
-            if row["skip_reason"] != "no_key" or row["record_id"] is None:
-                remaining_skips.append(row)
-                continue
-            raw = supplied.get(row["peer_id"])
-            warehouse = _normalize_warehouse(row["peer_id"], raw) if raw is not None else None
-            record = None
-            if warehouse is not None:
-                record = next(
-                    (
-                        item
-                        for item in warehouse.get("peers") or []
-                        if type(item) is dict and item.get("record_id") == row["record_id"]
-                    ),
-                    None,
-                )
-            if warehouse is None or record is None:
-                remaining_skips.append(row)
-                continue
-            peer_keys = _record_keys(record)
-            join_keys = _shared_exact_keys(working_keys, peer_keys)
-            peer_clock = _parse_time(record.get("observed_at"))
-            identity = (row["peer_id"], row["record_id"])
-            if (
-                join_keys
-                and _within_window(event_clock, peer_clock)
-                and identity not in joined_ids
-            ):
-                extra.append(
-                    _joined_row(
-                        warehouse,
-                        record,
-                        join_keys=join_keys,
-                        why_joined=_why_joined(join_keys, working_keys, peer_keys),
+        if slot_joined == 0:
+            if window_misses:
+                skipped.append(
+                    _empty_slot(
+                        slot,
+                        skip_reason="window_missed",
+                        why_skipped=(
+                            "exact key overlapped but the UTC ±24h window from "
+                            "event.published_at missed; no cross-day story is invented"
+                        ),
+                        reading_url=warehouse.get("reading_url"),
+                        input_sha256=warehouse.get("input_sha256"),
+                        independence_group=warehouse["independence_group"],
+                        peer_name=warehouse["peer_name"],
                     )
                 )
-                joined_ids.add(identity)
-                working_keys = _merge_keys(working_keys, peer_keys)
             else:
-                remaining_skips.append(row)
-        joined.extend(extra)
-        skipped = remaining_skips
+                skipped.append(
+                    _empty_slot(
+                        slot,
+                        skip_reason="no_key",
+                        why_skipped="no exact host, url_path, term, or ASN is shared with this event",
+                        reading_url=warehouse.get("reading_url"),
+                        input_sha256=warehouse.get("input_sha256"),
+                        independence_group=warehouse["independence_group"],
+                        peer_name=warehouse["peer_name"],
+                    )
+                )
 
     groups = {
         group.get("group_id")
         for group in (event.get("evidence_groups") or [])
         if type(group) is dict and type(group.get("group_id")) is str and group["group_id"]
     }
-    groups.update(row["independence_group"] for row in joined)
     group_count = len(groups)
     peers = [*joined, *skipped]
     block = {

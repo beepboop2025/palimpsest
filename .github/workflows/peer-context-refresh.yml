@@ -1,8 +1,8 @@
 name: Refresh peer context
 
-# Per-peer unusualness (GreatFire / OONI / CDT) and fail-closed joins onto
-# Palimpsest objects. Cached warehouse files plus on-disk ooni-gfw / DDTI
-# titles. No catalog crawl, no Weiboscope dump, no generative model.
+# Attributed GreatFire / OONI / CDT / Weiboscope warehouse. Host joins only.
+# The review ranker is peer-context-rank-refresh.yml. No catalog crawl, no
+# Weiboscope dump, no generative model.
 
 on:
   schedule:
@@ -28,8 +28,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Fit each peer series against its own history
+      - name: Install the hash-pinned contract environment
+        run: pip install --quiet --require-hashes -r .github/osint-china-ci-requirements.txt
+
+      - name: Assemble the attributed peer-context warehouse
         run: python -m scripts.peer_context_pull
+
+      - name: Validate the published reading
+        run: python -m pytest -q tests/test_peer_context.py tests/test_publication_contract.py
 
       - name: Read the public surface before pushing it
         env:
@@ -47,7 +53,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "no change"
           else
-            git commit -m "data: peer context refresh ($(date -u +%FT%TZ)) [skip ci]"
+            git commit -m "data: peer context refresh ($(date -u +%FT%TZ)) [skip pytest]"
             python scripts/push_data_commit.py \
               --rebuild-module scripts.peer_context_pull \
               --stage readings/peer-context-latest.json \

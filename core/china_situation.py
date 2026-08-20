@@ -22,6 +22,7 @@ from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
 
 from core import event_analysis as event_analysis_model
+from core import event_interconnection as event_interconnection_model
 from core import newswire as newswire_model
 from core import peer_context as peer_context_model
 
@@ -32,13 +33,15 @@ RELATION_POLICY = (
     "Publisher reports, exact-link social observations, title-surface social "
     "observations, reviewed source-free Telegram signals, declared Observatory "
     "measurements, public OSINT observations joined by exact publisher URL "
-    "or topic/term overlap, and attributed peer_context rows from GreatFire, "
-    "OONI, CDT, or Weiboscope are shown together without converting social "
-    "circulation, reviewed context, topic-level measurement context, OSINT "
-    "topic overlap, or a peer's dated verdict into claim verification, "
-    "causation, Palimpsest capture, or an additional independent source group. "
-    "Title-surface social joins are topic-title-context-not-corroboration and "
-    "are not a second independent group for structural corroboration."
+    "or topic/term overlap, attributed peer_context rows from GreatFire, "
+    "OONI, CDT, or Weiboscope, and named-key interconnection peers joined on "
+    "exact host, URL path, term, or ASN are shown together without converting "
+    "social circulation, reviewed context, topic-level measurement context, "
+    "OSINT topic overlap, a peer's dated verdict, or an interconnection join "
+    "into claim verification, causation, Palimpsest capture, or an additional "
+    "independent source group. Title-surface social joins are "
+    "topic-title-context-not-corroboration and are not a second independent "
+    "group for structural corroboration."
 )
 SOCIAL_URL_RELATION = "publisher-link-context-not-corroboration"
 SOCIAL_TITLE_RELATION = "topic-title-context-not-corroboration"
@@ -138,6 +141,8 @@ _COVERAGE_FIELDS = frozenset(
         "osint_context_rows",
         "events_with_peer_context",
         "peer_context_rows",
+        "events_with_interconnection",
+        "interconnection_joined_rows",
     }
 )
 _SITUATION_FIELDS = frozenset(
@@ -161,6 +166,7 @@ _SITUATION_FIELDS = frozenset(
         "measurement_context",
         "osint_context",
         "peer_context",
+        "interconnection",
         "synthesis",
     }
 )
@@ -505,6 +511,7 @@ def _summary(
     peer_count: int | None = None,
     official_page: str = "none-reviewed",
     peers: int = 0,
+    interconnection_joined: int = 0,
 ) -> str:
     layers = [f"{reports} attributed publisher report{'s' if reports != 1 else ''}"]
     if social:
@@ -519,6 +526,12 @@ def _summary(
     if peers:
         layers.append(
             f"{peers} attributed peer sentence{'s' if peers != 1 else ''}"
+        )
+    if interconnection_joined:
+        layers.append(
+            f"{interconnection_joined} interconnection peer"
+            f"{'s' if interconnection_joined != 1 else ''} "
+            "(topic-surface-only; not wire corroboration)"
         )
     if archive_state == "warming_up":
         archive_clause = "archive-news-context anomaly_state is warming_up"
@@ -648,7 +661,12 @@ def _link_osint_observations(
         terms = [str(t) for t in obs.get("terms") or [] if t]
         url_hit = bool(url) and url in urls
         term_hit = any(term in topics for term in terms if term)
-        headline_hit = any(len(term) >= 4 and term in headline for term in terms)
+        headline_key = " ".join(headline.strip().casefold().split())
+        headline_hit = any(
+            " ".join(term.strip().casefold().split()) == headline_key
+            for term in terms
+            if term and headline_key
+        )
         if not url_hit and not term_hit and not headline_hit:
             continue
         row = situation_osint_row(obs)
@@ -747,11 +765,13 @@ def build_china_situation(
     measurement_rows_total = 0
     osint_rows_total = 0
     peer_rows_total = 0
+    interconnection_joined_total = 0
     all_groups: set[str] = set()
     publisher_reports = 0
     with_measurements = 0
     with_osint = 0
     with_peers = 0
+    with_interconnection = 0
     with_three_layers = 0
     for event in wire["events"]:
         analysis = analyses[event["event_id"]]
@@ -824,6 +844,20 @@ def build_china_situation(
         peer_rows_total += len(peer_rows)
         if peer_rows:
             with_peers += 1
+        interconnection = analysis.get("interconnection")
+        if type(interconnection) is not dict:
+            interconnection = event_interconnection_model.build_interconnection(
+                event,
+                scope_status=str(analysis.get("scope_status") or "in-scope"),
+            )
+        else:
+            interconnection = dict(interconnection)
+        event_interconnection_model.validate_interconnection(interconnection, event=event)
+        joined_peers = interconnection.get("joined_count")
+        joined_count = joined_peers if type(joined_peers) is int else 0
+        interconnection_joined_total += joined_count
+        if joined_count:
+            with_interconnection += 1
 
         reporting_sources = [
             {
@@ -873,6 +907,7 @@ def build_china_situation(
             "measurement_context": measurement_context,
             "osint_context": osint_context,
             "peer_context": peer_rows,
+            "interconnection": interconnection,
             "synthesis": {
                 "summary": _summary(
                     groups=len(event_groups),
@@ -895,6 +930,7 @@ def build_china_situation(
                         else "none-reviewed"
                     ),
                     peers=len(peer_rows),
+                    interconnection_joined=joined_count,
                 ),
                 "known_unknowns": list(analysis["limitations"]),
                 "next_checks": _next_checks(event, analysis, social_context),
@@ -973,6 +1009,8 @@ def build_china_situation(
             "osint_context_rows": osint_rows_total,
             "events_with_peer_context": with_peers,
             "peer_context_rows": peer_rows_total,
+            "events_with_interconnection": with_interconnection,
+            "interconnection_joined_rows": interconnection_joined_total,
         },
         "reviewed_telegram": telegram_rows,
         "situations": situations,
@@ -1119,6 +1157,8 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
     osint_events = 0
     total_peers = 0
     peer_events = 0
+    total_interconnection = 0
+    interconnection_events = 0
     three_layers = 0
     groups: set[str] = set()
     for index, value in enumerate(rows):
@@ -1399,6 +1439,13 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
                 )
         total_peers += len(peer_rows)
         peer_events += bool(peer_rows)
+        interconnection = row["interconnection"]
+        event_interconnection_model.validate_interconnection(interconnection)
+        joined_count = interconnection["joined_count"]
+        if type(joined_count) is not int or joined_count < 0:
+            raise ChinaSituationError(f"{path}.interconnection.joined_count is invalid")
+        total_interconnection += joined_count
+        interconnection_events += bool(joined_count)
         synthesis = _exact(row["synthesis"], _SYNTHESIS_FIELDS, f"{path}.synthesis")
         _text(synthesis["summary"], f"{path}.synthesis.summary", maximum=2_000)
         for field in ("known_unknowns", "next_checks"):
@@ -1441,6 +1488,10 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
         raise ChinaSituationError("peer-event coverage is inconsistent")
     if total_peers != coverage["peer_context_rows"]:
         raise ChinaSituationError("peer-row coverage is inconsistent")
+    if interconnection_events != coverage["events_with_interconnection"]:
+        raise ChinaSituationError("interconnection-event coverage is inconsistent")
+    if total_interconnection != coverage["interconnection_joined_rows"]:
+        raise ChinaSituationError("interconnection-row coverage is inconsistent")
     canonical_json_bytes(document)
 
 

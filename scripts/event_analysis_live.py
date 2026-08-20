@@ -15,6 +15,7 @@ from pathlib import Path
 from core import event_analysis
 from core import live_paths
 from core import newswire as newswire_model
+from core import peer_context as peer_context_model
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -73,6 +74,8 @@ def main(argv: list[str] | None = None) -> int:
     newswire_model.validate_newswire_document(wire)
     readings = live_paths.resolve_readings_dir(preferred=args.readings)
     feed = _load_feed(args.feed or (readings / "newsroom-latest.json"))
+    peer_path = readings / "peer-context-latest.json"
+    peer = peer_context_model.load_peer_document(peer_path) if peer_path.is_file() else None
     analyses = event_analysis.build_event_analyses(
         wire,
         feed,
@@ -80,6 +83,7 @@ def main(argv: list[str] | None = None) -> int:
         archive_context=event_analysis.load_optional_archive_context(readings),
         corroboration=event_analysis.load_optional_corroboration(readings),
         peer_warehouses=event_analysis.load_optional_peer_warehouses(readings),
+        peer=peer,
         allow_missing_collectors=feed is None,
         archive_refresh_status=live_paths.load_archive_refresh_status(),
     )
