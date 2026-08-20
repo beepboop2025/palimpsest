@@ -108,6 +108,9 @@ SNAPSHOT_OUTPUTS = {
     "erasure-observatory": "readings/erasure-observatory-latest.json",
     "undertext": "readings/undertext-latest.json",
     "public-deletion-ledgers": "readings/public-deletion-ledgers-latest.json",
+    "official-first-seen": "readings/official-first-seen-latest.json",
+    "news-wire-live": "readings/news-wire-live-latest.json",
+    "wikipedia-gazetteer-rc": "readings/wikipedia-gazetteer-rc-latest.json",
 }
 
 
@@ -157,6 +160,9 @@ _STANDARD = {
     "erasure-observatory": Cadence(19, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "undertext": Cadence(44, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "public-deletion-ledgers": Cadence(8, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "official-first-seen": Cadence(11, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "news-wire-live": Cadence(21, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "wikipedia-gazetteer-rc": Cadence(27, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -171,7 +177,7 @@ _VIGOROUS = {
     "app-storefront": Cadence(33, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
     "china-econ": Cadence(41, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "in-path-interference": Cadence(53, "*/2", expires_s=90 * 60, interval_s=2 * 3600),
-    "gdelt": Cadence(59, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "gdelt": Cadence("2,17,32,47", expires_s=12 * 60, interval_s=15 * 60),
     "github-refuge": Cadence(14, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "wayback": Cadence(22, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "net4people": Cadence(30, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
@@ -211,6 +217,9 @@ _VIGOROUS = {
     "erasure-observatory": Cadence(19, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "undertext": Cadence(44, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "public-deletion-ledgers": Cadence(8, "*", expires_s=45 * 60, interval_s=3600),
+    "official-first-seen": Cadence(11, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "news-wire-live": Cadence(21, "*", expires_s=45 * 60, interval_s=3600),
+    "wikipedia-gazetteer-rc": Cadence(27, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
 }
 
 
@@ -390,6 +399,9 @@ _COUNT_PATHS = {
     "erasure-observatory": ("erasure_index",),
     "undertext": ("n_observations",),
     "public-deletion-ledgers": ("n_observations",),
+    "official-first-seen": ("n_observations",),
+    "news-wire-live": ("n_observations",),
+    "wikipedia-gazetteer-rc": ("n_observations",),
 }
 
 
@@ -486,6 +498,9 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         from scripts.in_path_interference_pull import main
         main()
     elif name == "gdelt":
+        if collection_profile() == "vigorous":
+            os.environ.setdefault("PALIMPSEST_GDELT_TIMESPAN", "15min")
+            os.environ.setdefault("PALIMPSEST_GDELT_TERM_CAP", "8")
         from scripts.gdelt_cross_pull import main
         main()
     elif name == "github-refuge":
@@ -556,6 +571,15 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         main()
     elif name == "public-deletion-ledgers":
         from scripts.public_deletion_ledgers_pull import main
+        main()
+    elif name == "official-first-seen":
+        from scripts.official_first_seen_pull import main
+        main()
+    elif name == "news-wire-live":
+        from scripts.news_wire_live_pull import main
+        main()
+    elif name == "wikipedia-gazetteer-rc":
+        from scripts.wikipedia_gazetteer_rc_pull import main
         main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")

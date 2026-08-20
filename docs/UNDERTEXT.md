@@ -128,12 +128,14 @@ Palimpsest already ships. See `tests/test_undertext.py` for the end-to-end proof
 UNDERTEXT deletion scores in the DDTI index.
 
 The scheduled 24/7 runner is `scripts/undertext_pull.py`. Its default is **offline
-fusion** of already-published Wayback reconstructions and Weibo
-`suppressed_invisible` joins into the shared
-[`core/china_observation.py`](../core/china_observation.py) schema. Optional
-Wikipedia-only live surfaces require `UNDERTEXT_LIVE_SURFACES=1` and record
-presence as last-confirmed-alive, not a deletion. Live Weibo, Baidu, and Baike
-stay disabled. See [CHINA-CAPTURE.md](CHINA-CAPTURE.md).
+fusion** of already-published Wayback reconstructions, Weibo
+`suppressed_invisible` joins, DDTI samples, and — when those readings exist —
+public deletion ledgers, official first-seen polls, news-wire live projections,
+and Wikipedia gazetteer recent-changes. The clock is the newest input
+`generated_at`. Optional Wikipedia-only live surfaces require
+`UNDERTEXT_LIVE_SURFACES=1` and record presence as last-confirmed-alive, not a
+deletion. Live Weibo, Baidu, and Baike stay disabled. See
+[CHINA-CAPTURE.md](CHINA-CAPTURE.md).
 
 ## 9. The one decision that defines behavior
 

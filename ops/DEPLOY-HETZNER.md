@@ -332,8 +332,12 @@ the OSINT bundle does not wait for a GitHub-only refresh:
 | `silence-index` | `readings/silence-index-latest.json` | every 3h |
 | `vantage-fusion` | `readings/vantage-fusion-latest.json` | every 3h |
 | `erasure-observatory` | `readings/erasure-observatory-latest.json` | every 3h |
-| `undertext` | `readings/undertext-latest.json` | every 3h (offline fusion; Wikipedia live surfaces stay gated) |
+| `undertext` | `readings/undertext-latest.json` | every 3h (offline fusion of Wayback / Weibo board / DDTI / ledgers / official first-seen / news-wire / Wikipedia RC when those files exist; Wikipedia live surfaces stay gated) |
 | `public-deletion-ledgers` | `readings/public-deletion-ledgers-latest.json` | hourly when a public ledger answers; abstains if every feed is silent |
+| `official-first-seen` | `readings/official-first-seen-latest.json` | every 3h; official landing pages only; no Baike; abstains if every page is silent and there is no prior state |
+| `news-wire-live` | `readings/news-wire-live-latest.json` | hourly; projects the public `news_sources.json` RSS/Atom registry; abstains on no-fresh-sources |
+| `wikipedia-gazetteer-rc` | `readings/wikipedia-gazetteer-rc-latest.json` | every 3h; zh/en titles and revision ids only; abstains if both MediaWiki APIs are silent |
+| `gdelt` | `readings/gdelt-latest.json` | every 15 min on vigorous (`PALIMPSEST_GDELT_TIMESPAN=15min`, 8-term cap, setdefault only — not in Compose `.env`); abstains if GDELT returns no volume |
 
 Baike stays disabled. GitHub-refuge `active_watchlist` stays empty until an
 activation review. Bleedthrough is **not** a Celery job — it is the host

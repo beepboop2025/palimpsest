@@ -39,7 +39,14 @@ def main() -> None:
         print("no readings/ddti-latest.json — run the DDTI signal first; skipping")
         return
     ddti = json.load(open(DDTI_LATEST, encoding="utf-8"))
-    ranked = ddti.get("ranked", [])[:25]
+    timespan = os.getenv("PALIMPSEST_GDELT_TIMESPAN", "1w").strip() or "1w"
+    try:
+        cap = int(os.getenv("PALIMPSEST_GDELT_TERM_CAP", "25") or "25")
+    except ValueError:
+        cap = 25
+    if cap < 1:
+        cap = 1
+    ranked = ddti.get("ranked", [])[:cap]
     if not ranked:
         print("DDTI ranking empty — skipping")
         return
@@ -48,7 +55,7 @@ def main() -> None:
         {"term": r["term"], "attention": r.get("attention", 1.0), "recent_count": r.get("recent_count", 1)}
         for r in ranked
     ]
-    rows = enrich_terms(terms)  # hits GDELT; fails soft per-term (abstains on error)
+    rows = enrich_terms(terms, timespan=timespan)
 
     # Honesty guard: if GDELT returned no global volume for ANY term (unreachable
     # or rate-limited), abstain rather than publish a hollow all-unknown signal.
@@ -64,6 +71,7 @@ def main() -> None:
         "source": "GDELT DOC 2.0 API x Palimpsest DDTI terms",
         "scope": "cross-signal: domestic censorship attention vs global coverage volume",
         "ddti_generated_at": ddti.get("generated_at"),
+        "timespan": timespan,
         "n_terms": len(rows),
         "n_with_global_data": sum(1 for r in rows if r.get("global_norm") is not None),
         "n_containment": sum(1 for r in rows if str(r.get("label", "")).lower() == "containment"),

@@ -61,6 +61,17 @@ _FUSION_INPUTS = (
     "gdelt-latest.json",
     "ooni-gfw-latest.json",
     "bleedthrough-latest.json",
+    "public-deletion-ledgers-latest.json",
+    "official-first-seen-latest.json",
+    "news-wire-live-latest.json",
+    "wikipedia-gazetteer-rc-latest.json",
+)
+
+_OBSERVATION_FUSION = (
+    ("public-deletion-ledgers-latest.json", "public-deletion-ledgers"),
+    ("official-first-seen-latest.json", "official-first-seen"),
+    ("news-wire-live-latest.json", "news-wire-live"),
+    ("wikipedia-gazetteer-rc-latest.json", "wikipedia-gazetteer-rc"),
 )
 
 # Public encyclopedia search only. Not Weibo, not Baidu, not Baike.
@@ -410,6 +421,26 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
     if not ddti.get("observation_records"):
         out.extend(_fuse_ddti_ranked(ddti))
 
+    for filename, tag in _OBSERVATION_FUSION:
+        payload = _load_json(filename)
+        for rec in payload.get("observations") or []:
+            if not isinstance(rec, dict):
+                continue
+            if not rec.get("text") and not rec.get("title") and not rec.get("url"):
+                continue
+            out.append(enrich_observation(
+                rec,
+                text=rec.get("text") or rec.get("title"),
+                source_url=rec.get("url") or rec.get("source_url"),
+                provenance=rec.get("provenance") if isinstance(rec.get("provenance"), dict) else {
+                    "collector": "undertext",
+                    "method": f"fusion of committed {tag} observations",
+                    "vantage": "outside-china-public-source",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            ))
+
     clustered = cluster_by_url(out)
     gdelt = gdelt_index(_load_json("gdelt-latest.json"))
     weibo_links = weibo_index(weibo)
@@ -536,9 +567,11 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
         "method_version": METHOD_VERSION,
         "source": (
             "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI "
-            "clustered by public URL, with GDELT/OONI/Bleedthrough joins and a "
-            "read-only Common Crawl lake join when a sanitized receipt or "
-            "existing sqlite is already present"
+            "+ public deletion ledgers + official first-seen + news-wire-live "
+            "+ Wikipedia gazetteer RC when those readings exist, clustered by "
+            "public URL, with GDELT/OONI/Bleedthrough joins and a read-only "
+            "Common Crawl lake join when a sanitized receipt or existing sqlite "
+            "is already present"
         ),
         "scope": (
             "Fat public-evidence objects reconstructed from already-public "

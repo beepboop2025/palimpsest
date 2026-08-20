@@ -196,6 +196,29 @@ def test_pull_abstains_when_fusion_is_empty(tmp_path, monkeypatch):
     assert not (tmp_path / "undertext-latest.json").exists()
 
 
+def test_fusion_skips_missing_live_families_and_fuses_them_when_present(tmp_path, monkeypatch):
+    readings = tmp_path
+    (readings / "wayback-latest.json").write_text("{}", encoding="utf-8")
+    (readings / "weibo-hotsearch-latest.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(pull, "READINGS", readings)
+    assert pull.fuse_existing_readings() == []
+
+    (readings / "official-first-seen-latest.json").write_text(json.dumps({
+        "generated_at": "2026-08-20T06:00:00Z",
+        "observations": [{
+            "title": "[official:first_seen] 新华网",
+            "text": "Official landing text",
+            "url": "https://www.news.cn/",
+            "source": "official_first_seen",
+            "first_seen": "2026-08-20T06:00:00Z",
+        }],
+    }), encoding="utf-8")
+    rows = pull.fuse_existing_readings()
+    assert any(row.get("url") == "https://www.news.cn/" for row in rows)
+    assert pull.fusion_clock() is not None
+    assert pull.fusion_clock().strftime("%Y-%m-%dT%H:%M:%SZ") == "2026-08-20T06:00:00Z"
+
+
 def test_fusion_abstains_from_common_crawl_when_lake_is_absent(tmp_path, monkeypatch):
     from collectors import common_crawl_lake as lake
 

@@ -126,6 +126,9 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "social-observations-latest.json",
         "erasure-trail-latest.json",
         "common-crawl-china-joins-latest.json",
+        "official-first-seen-latest.json",
+        "news-wire-live-latest.json",
+        "wikipedia-gazetteer-rc-latest.json",
     }
 
 

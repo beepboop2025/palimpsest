@@ -49,6 +49,18 @@ The gazetteer (`config/zh_censorship_gazetteer.json`) contains only public, wide
 documented euphemisms and deletion-trigger phrases. It identifies the *vocabulary of
 censorship*, not any person.
 
+Public extras that stay keyless under these rules:
+
+- **Wikipedia zh/en recent-changes** for gazetteer terms: article titles and revision
+  ids only. MediaWiki `rcprop` never includes `user`. No editor profiling.
+- **GreatFire** public RSS / blocked-site listings already covered by the deletion-ledger
+  feeds. No login.
+- **Official landing pages** (Xinhua, People's Daily, gov.cn, ministries, NBS index,
+  China Judgements Online *landing page only*). No person pages. No Baike scrape.
+- **Baidu hot-search** is not collected. There is no keyless public board archive of the
+  same class as the existing Weibo hot-search GitHub archive, and live `top.baidu.com`
+  is a JavaScript board, not that class.
+
 ## Isolation of the velocity leg
 
 The CensorWatch deletion-detection package is feature flagged (`CENSORWATCH_ENABLED`) and

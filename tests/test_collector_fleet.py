@@ -96,6 +96,7 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
     assert {
         "silence-index", "vantage-fusion", "erasure-observatory",
         "undertext", "public-deletion-ledgers",
+        "official-first-seen", "news-wire-live", "wikipedia-gazetteer-rc",
     } <= names
 
 
@@ -201,7 +202,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 28  # feed head + index processor + 26 passive snapshots
+    assert len(specs) == 31  # feed head + index processor + 29 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -224,6 +225,12 @@ def test_vigorous_profile_really_samples_fast_sources_more_often():
     assert "*/6" in str(standard["collect-snapshot-weibo-hotsearch"]["schedule"])
     assert "5,35" in str(vigorous["collect-ddti-feed-head"]["schedule"])
     assert "*/3" in str(standard["collect-ddti-feed-head"]["schedule"])
+    assert "2,17,32,47" in str(vigorous["collect-snapshot-gdelt"]["schedule"])
+    assert "*/6" in str(standard["collect-snapshot-gdelt"]["schedule"])
+    assert "* *" in str(vigorous["collect-snapshot-news-wire-live"]["schedule"])
+    assert "*/6" in str(standard["collect-snapshot-news-wire-live"]["schedule"])
+    assert "*/3" in str(vigorous["collect-snapshot-official-first-seen"]["schedule"])
+    assert "*/12" in str(standard["collect-snapshot-official-first-seen"]["schedule"])
 
 
 def test_ddti_head_is_one_honestly_identified_request_not_a_repeat_archive_sweep():
@@ -394,6 +401,61 @@ def test_inside_view_refresh_also_builds_the_scoped_round_ledger(
             "--output",
             str(tmp_path / "readings" / "network-rounds-latest.json"),
         ],
+    ]
+
+
+def test_china_live_jobs_have_conservative_standard_and_faster_vigorous_cadences(monkeypatch):
+    monkeypatch.delenv("PALIMPSEST_ACTIVE_PROBES_ENABLED", raising=False)
+    monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
+
+    def spec(profile: str, name: str) -> dict:
+        return next(row for row in expected_collector_specs(profile) if row["source"] == name)
+
+    assert spec("standard", "official-first-seen")["cadence_seconds"] == 12 * 3600
+    assert spec("vigorous", "official-first-seen")["cadence_seconds"] == 3 * 3600
+    assert spec("standard", "news-wire-live")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "news-wire-live")["cadence_seconds"] == 3600
+    assert spec("standard", "wikipedia-gazetteer-rc")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "wikipedia-gazetteer-rc")["cadence_seconds"] == 3 * 3600
+    assert spec("standard", "gdelt")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "gdelt")["cadence_seconds"] == 15 * 60
+    assert spec("standard", "public-deletion-ledgers")["cadence_seconds"] == 3 * 3600
+    assert spec("vigorous", "public-deletion-ledgers")["cadence_seconds"] == 3600
+    assert spec("standard", "undertext")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "undertext")["cadence_seconds"] == 3 * 3600
+
+
+def test_vigorous_gdelt_sets_the_fifteen_minute_window_without_compose_flags(
+    monkeypatch, tmp_path,
+):
+    seen = {}
+    import scripts.gdelt_cross_pull as gdelt
+
+    monkeypatch.setenv("PALIMPSEST_COLLECTION_PROFILE", "vigorous")
+    monkeypatch.delenv("PALIMPSEST_GDELT_TIMESPAN", raising=False)
+    monkeypatch.delenv("PALIMPSEST_GDELT_TERM_CAP", raising=False)
+    monkeypatch.setattr(gdelt, "main", lambda: seen.update({
+        "timespan": __import__("os").environ.get("PALIMPSEST_GDELT_TIMESPAN"),
+        "cap": __import__("os").environ.get("PALIMPSEST_GDELT_TERM_CAP"),
+    }))
+    _invoke_snapshot("gdelt", tmp_path)
+    assert seen == {"timespan": "15min", "cap": "8"}
+
+
+def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path):
+    seen = []
+    import scripts.news_wire_live_pull as news
+    import scripts.official_first_seen_pull as official
+    import scripts.wikipedia_gazetteer_rc_pull as wiki
+
+    monkeypatch.setattr(official, "main", lambda: seen.append("official-first-seen"))
+    monkeypatch.setattr(news, "main", lambda: seen.append("news-wire-live"))
+    monkeypatch.setattr(wiki, "main", lambda: seen.append("wikipedia-gazetteer-rc"))
+    _invoke_snapshot("official-first-seen", tmp_path)
+    _invoke_snapshot("news-wire-live", tmp_path)
+    _invoke_snapshot("wikipedia-gazetteer-rc", tmp_path)
+    assert seen == [
+        "official-first-seen", "news-wire-live", "wikipedia-gazetteer-rc",
     ]
 
 

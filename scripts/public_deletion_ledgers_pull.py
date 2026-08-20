@@ -14,6 +14,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from collectors.archive_capture import attach_new_url_captures, previous_urls_from_reading
 from collectors.public_deletion_ledgers import DEFAULT_FEEDS, collect_ledgers
 from core.china_observation import iso_z, serialize_observation
 from core.governance import KillSwitch, RateCeiling
@@ -56,6 +57,17 @@ def _http_fetch(url: str) -> tuple[int, str]:
         raise OSError(message) from exc
 
 
+def _save_text(url: str) -> str:
+    proxy = os.getenv("PALIMPSEST_PROXY", "").strip() or None
+    return safe_fetch(
+        url,
+        max_bytes=512 * 1024,
+        timeout=_TIMEOUT,
+        headers={"User-Agent": USER_AGENT},
+        proxy=proxy,
+    )
+
+
 def main(*, fetch=None, now: datetime | None = None) -> dict | None:
     kill = KillSwitch()
     if kill.is_halted():
@@ -78,7 +90,12 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
         return None
 
     generated = iso_z(result["generated_at"]) or iso_z(datetime.now(timezone.utc))
-    observations = [serialize_observation(obs) for obs in result["observations"]]
+    observations = attach_new_url_captures(
+        [serialize_observation(obs) for obs in result["observations"]],
+        previous_urls=previous_urls_from_reading(OUT),
+        fetch=_save_text if fetch is None else None,
+        limit=8,
+    )
     out = {
         "generated_at": generated,
         "method_version": METHOD_VERSION,
