@@ -100,6 +100,18 @@ def test_environment_records_fixed_box_consent_kill_switch_and_durable_paths():
         assert f"{variable}=/var/lib/palimpsest/" in env
 
 
+def test_hetzner_guide_documents_live_bleedthrough_as_a_testable_step():
+    guide = (ROOT / "ops/DEPLOY-HETZNER.md").read_text(encoding="utf-8")
+    runbook = RUNBOOK.read_text(encoding="utf-8")
+
+    assert "### 5e. Enable live BLEEDTHROUGH" in guide
+    assert "python3 -m scripts.bleedthrough_preflight" in guide
+    assert "BLEEDTHROUGH_LIVE=1" in guide
+    assert "BLEEDTHROUGH_ALLOW_BOX=1" in guide
+    assert "systemctl enable --now palimpsest-bleedthrough.timer" in guide
+    assert "ops/DEPLOY-HETZNER.md` §5e" in runbook or "DEPLOY-HETZNER.md §5e" in runbook
+
+
 def test_install_preflights_and_preserves_access_for_the_shared_identity():
     runbook = RUNBOOK.read_text(encoding="utf-8")
 

@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "purpose": "Verified public Telegram channels already named in this repository. Polled via keyless t.me/s/ HTML preview.",
+    "safety": "Public channels only. No private groups, DMs, bots, user profiles, phones, or IOCs on the public site. Warehouse may keep full public post text; whispers / telegram-watch stay review-gated.",
+    "invented_handles": "none",
+    "not_included": [
+      "DragonDenWhispersBot — bot entry point, not a public channel preview",
+      "CDT / GreatFire — no public t.me handle in-tree; those desks stay on RSS deletion ledgers",
+      "cgtnofficial_bj — already on the social-observations excerpt lane (rights_policy metadata-bounded-excerpt-link-only)",
+      "product bots (Scamshield_2_bot, palimpsest_watch_bot, NarcoScopeEvidenceBot)",
+      "test-only handles (china_watch, fixture_public, cgtn)"
+    ]
+  },
+  "channels": [
+    {
+      "handle": "DragonDenWhispers",
+      "preview_url": "https://t.me/s/DragonDenWhispers",
+      "permalink_base": "https://t.me/DragonDenWhispers",
+      "kind": "public_channel",
+      "desk": "dragon-den",
+      "why": "In-tree Dragon Den catch-all. scripts/build_newsroom.py DRAGON_DEN_TELEGRAM_CHANNELS."
+    },
+    {
+      "handle": "DragonDenCyber",
+      "preview_url": "https://t.me/s/DragonDenCyber",
+      "permalink_base": "https://t.me/DragonDenCyber",
+      "kind": "public_channel",
+      "desk": "dragon-den",
+      "why": "In-tree Dragon Den cyber/technology public channel."
+    },
+    {
+      "handle": "DragonDenBorderlands",
+      "preview_url": "https://t.me/s/DragonDenBorderlands",
+      "permalink_base": "https://t.me/DragonDenBorderlands",
+      "kind": "public_channel",
+      "desk": "dragon-den",
+      "why": "In-tree Dragon Den regional/borderlands public channel."
+    }
+  ]
+}

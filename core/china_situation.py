@@ -26,10 +26,11 @@ SCHEMA_VERSION = "palimpsest-china-situation.v1"
 SITE = "https://palimpsest.info"
 RELATION_POLICY = (
     "Publisher reports, exact-link social observations, reviewed source-free "
-    "Telegram signals, and declared Observatory measurements are shown together "
-    "without converting social circulation, reviewed context, or topic-level "
-    "measurement context into claim verification, causation, or an additional "
-    "independent source group."
+    "Telegram signals, declared Observatory measurements, and public OSINT "
+    "observations joined by exact publisher URL or topic/term overlap are shown "
+    "together without converting social circulation, reviewed context, "
+    "topic-level measurement context, or OSINT topic overlap into claim "
+    "verification, causation, or an additional independent source group."
 )
 MAX_SITUATIONS = 8_192
 MAX_SOCIAL_PER_SITUATION = 128
@@ -94,6 +95,8 @@ _COVERAGE_FIELDS = frozenset(
         "social_observations_ambiguous",
         "situations_with_three_layers",
         "reviewed_telegram_signals",
+        "events_with_osint_context",
+        "osint_context_rows",
     }
 )
 _SITUATION_FIELDS = frozenset(
@@ -115,6 +118,7 @@ _SITUATION_FIELDS = frozenset(
         "reporting",
         "social_context",
         "measurement_context",
+        "osint_context",
         "synthesis",
     }
 )
@@ -167,6 +171,45 @@ _MEASUREMENT_FIELDS = frozenset(
     }
 )
 _SYNTHESIS_FIELDS = frozenset({"summary", "known_unknowns", "next_checks"})
+_OSINT_FIELDS = frozenset(
+    {
+        "observation_key",
+        "source",
+        "title",
+        "url",
+        "text",
+        "language",
+        "uncertainty",
+        "deletion_signal",
+        "confirmation_count",
+        "first_seen",
+        "last_seen",
+        "last_confirmed_alive",
+        "content_sha256",
+        "gazetteer_hits",
+        "archive",
+        "cross_links",
+        "common_crawl_match_kind",
+        "common_crawl_host",
+        "common_crawl_capture_at",
+        "relation",
+    }
+)
+_OSINT_LANGUAGES = frozenset({"zh", "en", "mixed", "unknown"})
+_OSINT_LINK_KEYS = frozenset(
+    {
+        "cdt",
+        "gdelt",
+        "ooni",
+        "greatfire",
+        "weibo",
+        "undertext",
+        "bleedthrough",
+        "common_crawl",
+    }
+)
+_OSINT_CC_MATCH_KINDS = frozenset({"url", "host", "digest"})
+MAX_OSINT_PER_SITUATION = 12
 _REVIEWED_TELEGRAM_FIELDS = frozenset(
     {
         "whisper_id",
@@ -460,12 +503,47 @@ def _next_checks(
     return checks[:4]
 
 
+def _link_osint_observations(
+    event: Mapping[str, Any],
+    observations: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Join public OSINT observations by exact URL or exact topic/term overlap."""
+
+    from core.china_observation import situation_osint_row
+
+    urls = {ref["url"] for ref in event.get("evidence_refs", []) if ref.get("url")}
+    topics = {str(t) for t in event.get("topics") or []}
+    headline = str(event.get("headline") or "")
+    linked: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for obs in observations:
+        if not isinstance(obs, Mapping):
+            continue
+        url = str(obs.get("url") or obs.get("source_url") or "")
+        terms = [str(t) for t in obs.get("terms") or [] if t]
+        url_hit = bool(url) and url in urls
+        term_hit = any(term in topics for term in terms if term)
+        headline_hit = any(len(term) >= 4 and term in headline for term in terms)
+        if not url_hit and not term_hit and not headline_hit:
+            continue
+        row = situation_osint_row(obs)
+        key = row["observation_key"]
+        if key in seen:
+            continue
+        seen.add(key)
+        linked.append(row)
+        if len(linked) >= MAX_OSINT_PER_SITUATION:
+            break
+    return linked
+
+
 def build_china_situation(
     wire: Mapping[str, Any],
     analyses: Mapping[str, Mapping[str, Any]],
     *,
     social: Mapping[str, Any] | None = None,
     reviewed_telegram: Mapping[str, Any] | None = None,
+    osint_observations: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic three-layer situation index from validated inputs."""
 
@@ -525,9 +603,11 @@ def build_china_situation(
 
     situations: list[dict[str, Any]] = []
     measurement_rows_total = 0
+    osint_rows_total = 0
     all_groups: set[str] = set()
     publisher_reports = 0
     with_measurements = 0
+    with_osint = 0
     with_three_layers = 0
     for event in wire["events"]:
         analysis = analyses[event["event_id"]]
@@ -592,6 +672,10 @@ def build_china_situation(
             with_measurements += 1
         if social_context and measurement_context:
             with_three_layers += 1
+        osint_context = _link_osint_observations(event, osint_observations or [])
+        osint_rows_total += len(osint_context)
+        if osint_context:
+            with_osint += 1
 
         reporting_sources = [
             {
@@ -639,6 +723,7 @@ def build_china_situation(
             },
             "social_context": social_context,
             "measurement_context": measurement_context,
+            "osint_context": osint_context,
             "synthesis": {
                 "summary": _summary(
                     groups=len(event_groups),
@@ -688,8 +773,9 @@ def build_china_situation(
         "url": f"{SITE}/news/china/situation/",
         "scope": (
             "Every in-scope current-window Evidence Wire event, its predeclared "
-            "Observatory context, and social observations joined by exact allowlisted "
-            "publisher article URL, plus a separate briefing of human-reviewed, "
+            "Observatory context, social observations joined by exact allowlisted "
+            "publisher article URL, public OSINT observations joined by exact URL or "
+            "topic/term overlap, plus a separate briefing of human-reviewed, "
             "source-free Telegram signals. Coverage is bounded by declared registries, "
             "review receipts, and APIs."
         ),
@@ -718,6 +804,8 @@ def build_china_situation(
             "social_observations_ambiguous": ambiguous,
             "situations_with_three_layers": with_three_layers,
             "reviewed_telegram_signals": len(telegram_rows),
+            "events_with_osint_context": with_osint,
+            "osint_context_rows": osint_rows_total,
         },
         "reviewed_telegram": telegram_rows,
         "situations": situations,
@@ -860,6 +948,8 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
     total_reports = 0
     total_measurements = 0
     measured_events = 0
+    total_osint = 0
+    osint_events = 0
     three_layers = 0
     groups: set[str] = set()
     for index, value in enumerate(rows):
@@ -1048,6 +1138,73 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
         if row["posture"] != expected_posture:
             raise ChinaSituationError(f"{path}.posture is inconsistent")
         three_layers += bool(social_context and measurements)
+        osint_rows = row["osint_context"]
+        if type(osint_rows) is not list or len(osint_rows) > MAX_OSINT_PER_SITUATION:
+            raise ChinaSituationError(f"{path}.osint_context must be bounded")
+        for osint_index, osint_value in enumerate(osint_rows):
+            osint_path = f"{path}.osint_context[{osint_index}]"
+            osint_row = _exact(osint_value, _OSINT_FIELDS, osint_path)
+            _text(osint_row["observation_key"], f"{osint_path}.observation_key", maximum=64)
+            _text(osint_row["source"], f"{osint_path}.source", maximum=80)
+            _text(osint_row["title"], f"{osint_path}.title", maximum=240)
+            if osint_row["url"]:
+                _https(osint_row["url"], f"{osint_path}.url")
+            if osint_row["relation"] != "topic-or-url-context-not-corroboration":
+                raise ChinaSituationError(f"{osint_path}.relation is invalid")
+            for stamp in ("first_seen", "last_seen", "last_confirmed_alive"):
+                _timestamp(osint_row[stamp], f"{osint_path}.{stamp}", nullable=True)
+            if osint_row["content_sha256"] is not None and (
+                type(osint_row["content_sha256"]) is not str
+                or _SHA256_RE.fullmatch(osint_row["content_sha256"]) is None
+            ):
+                raise ChinaSituationError(f"{osint_path}.content_sha256 is invalid")
+            _text(osint_row["text"], f"{osint_path}.text", maximum=2_000, empty=True)
+            if osint_row["language"] not in _OSINT_LANGUAGES:
+                raise ChinaSituationError(f"{osint_path}.language is invalid")
+            _text(
+                osint_row["deletion_signal"],
+                f"{osint_path}.deletion_signal",
+                maximum=80,
+                empty=True,
+            )
+            if (
+                type(osint_row["confirmation_count"]) is not int
+                or osint_row["confirmation_count"] < 0
+                or osint_row["confirmation_count"] > 12
+            ):
+                raise ChinaSituationError(f"{osint_path}.confirmation_count is invalid")
+            notes = osint_row["uncertainty"]
+            if type(notes) is not list or len(notes) > 8:
+                raise ChinaSituationError(f"{osint_path}.uncertainty must be bounded")
+            for note in notes:
+                _text(note, f"{osint_path}.uncertainty", maximum=240)
+            links = _exact(osint_row["cross_links"], _OSINT_LINK_KEYS, f"{osint_path}.cross_links")
+            for link_key, link in links.items():
+                if link is None:
+                    continue
+                if type(link) is not dict:
+                    raise ChinaSituationError(f"{osint_path}.cross_links.{link_key} is invalid")
+                extra_link = set(link) - {"id", "url", "note"}
+                if extra_link:
+                    raise ChinaSituationError(
+                        f"{osint_path}.cross_links.{link_key} has unexpected keys"
+                    )
+                if link_key == "common_crawl" and link.get("url"):
+                    raise ChinaSituationError(
+                        f"{osint_path}.cross_links.common_crawl must not publish a lake URL"
+                    )
+            cc_kind = osint_row["common_crawl_match_kind"]
+            if cc_kind is not None and cc_kind not in _OSINT_CC_MATCH_KINDS:
+                raise ChinaSituationError(f"{osint_path}.common_crawl_match_kind is invalid")
+            if osint_row["common_crawl_host"] is not None:
+                _text(osint_row["common_crawl_host"], f"{osint_path}.common_crawl_host", maximum=253)
+            _timestamp(
+                osint_row["common_crawl_capture_at"],
+                f"{osint_path}.common_crawl_capture_at",
+                nullable=True,
+            )
+        total_osint += len(osint_rows)
+        osint_events += bool(osint_rows)
         synthesis = _exact(row["synthesis"], _SYNTHESIS_FIELDS, f"{path}.synthesis")
         _text(synthesis["summary"], f"{path}.synthesis.summary", maximum=2_000)
         for field in ("known_unknowns", "next_checks"):
@@ -1082,6 +1239,10 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
         raise ChinaSituationError("linked-social coverage is inconsistent")
     if three_layers != coverage["situations_with_three_layers"]:
         raise ChinaSituationError("three-layer coverage is inconsistent")
+    if osint_events != coverage["events_with_osint_context"]:
+        raise ChinaSituationError("osint-event coverage is inconsistent")
+    if total_osint != coverage["osint_context_rows"]:
+        raise ChinaSituationError("osint-row coverage is inconsistent")
     canonical_json_bytes(document)
 
 

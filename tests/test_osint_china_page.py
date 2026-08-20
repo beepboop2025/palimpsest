@@ -201,6 +201,9 @@ def test_route_is_present_on_every_discovery_surface():
     assert "https://palimpsest.info/osint-china.html" in _text("sitemap.xml")
     assert "https://palimpsest.info/osint-china.html" in _text("llms.txt")
     assert '"/osint-china.html"' in _text("sw.js")
+    assert 'href="/news/china/erasure/"' in _text("osint-china.html")
+    assert "Find a deleted post and its evidence trail" in _text("osint-china.html")
+    assert "not private WeChat" in _text("osint-china.html")
 
 
 def test_filter_controls_have_keyboard_native_semantics_and_touch_size():

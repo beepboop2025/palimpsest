@@ -216,7 +216,7 @@ def compute_selectivity_novelty(
     def _slot(term):
         return agg.setdefault(term, {
             "attention": 0.0, "recent_count": 0, "hist_count": 0,
-            "first_seen": None, "samples": [],
+            "first_seen": None, "last_seen": None, "samples": [],
         })
 
     n_used = 0
@@ -233,11 +233,13 @@ def compute_selectivity_novelty(
             s = _slot(term)
             if s["first_seen"] is None or ts < s["first_seen"]:
                 s["first_seen"] = ts
+            if s["last_seen"] is None or ts > s["last_seen"]:
+                s["last_seen"] = ts
             if in_current:
                 s["attention"] += decay
                 s["recent_count"] += 1
-                if len(s["samples"]) < 3 and obs.get("title"):
-                    s["samples"].append({"title": obs["title"][:140], "url": obs.get("url", "")})
+                if len(s["samples"]) < 12 and obs.get("title"):
+                    s["samples"].append({"title": obs["title"][:1000], "url": obs.get("url", "")})
             else:
                 s["hist_count"] += 1
 
@@ -277,6 +279,7 @@ def compute_selectivity_novelty(
             "recent_count": s["recent_count"],
             "hist_count": s["hist_count"],
             "first_seen": s["first_seen"].isoformat() if s["first_seen"] else None,
+            "last_seen": s["last_seen"].isoformat() if s["last_seen"] else None,
             "samples": s["samples"],
         })
 

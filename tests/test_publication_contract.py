@@ -76,6 +76,29 @@ CONTRACT = {
     ),
     "blocklist":            _d("generated_at", ["source", "attribution"], "n_versions"),
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
+    "undertext":            _d("generated_at", ["source", "method", "scope"], "n_observations"),
+    "erasure-trail":        _d("generated_at", ["source", "method", "scope"], "n_rows"),
+    "public-deletion-ledgers": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "official-first-seen": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "news-wire-live": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "wikipedia-gazetteer-rc": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "baike-public-snapshot": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "public-hot-boards": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "telegram-public-channels": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
                                "n_items"),
@@ -240,7 +263,15 @@ def test_every_published_reading_is_registered():
 # before its first reading lands. Keeping these here means the first live round cannot break
 # the build, and — more usefully — means the three questions were answered while the code was
 # being written rather than retrofitted once a number was already on the board.
-PENDING = set()
+PENDING = {
+    "public-deletion-ledgers",
+    "official-first-seen",
+    "news-wire-live",
+    "wikipedia-gazetteer-rc",
+    "baike-public-snapshot",
+    "public-hot-boards",
+    "telegram-public-channels",
+}
 
 # External public products whose contract is agreed here but whose presence is deliberately
 # deployment-dependent. Unlike PENDING, these do not "graduate": Nemesis remains optional so a

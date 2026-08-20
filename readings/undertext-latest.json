@@ -1,0 +1,1581 @@
+{
+  "generated_at": "2026-08-20T03:58:30Z",
+  "method_version": 1,
+  "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI clustered by public URL, with GDELT/OONI/Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present",
+  "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
+  "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
+  "n_observations": 18,
+  "live_surfaces_enabled": false,
+  "live_round_ran": false,
+  "observations": [
+    {
+      "terms": [
+        "青年失业率"
+      ],
+      "detected_at": "2026-08-20T01:56:45Z",
+      "title": "[undertext:no_baseline] 青年失业率",
+      "text": "no_baseline",
+      "url": "",
+      "source": "undertext:fusion:wayback",
+      "deletion_signal": "no_baseline",
+      "severity": null,
+      "text_zh": "[undertext:no_baseline] 青年失业率",
+      "text_en": "no_baseline",
+      "language": "mixed",
+      "source_url": "",
+      "mirror_urls": [],
+      "content_sha256": "eafe3d13a343f75972500faa6e0323d8c70fec40998c5dfc5601b7ad2b842c0f",
+      "gazetteer_hits": [
+        {
+          "zh": "青年失业率",
+          "en": "youth unemployment rate",
+          "category": "economic_distress",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-08-20T01:56:45Z",
+      "last_seen": "2026-08-20T01:56:45Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [
+        {
+          "status": "no_baseline",
+          "observed_at": "2026-08-20T01:56:45Z",
+          "source": "wayback",
+          "note": "no_baseline"
+        }
+      ],
+      "archive": {
+        "wayback_lookup": null,
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": null,
+        "ghostarchive_lookup": null,
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of committed Wayback reconstructions",
+        "vantage": "internet-archive-cdx",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1,
+        "event": "no_baseline"
+      },
+      "uncertainty": [
+        "no public source URL on this row",
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "广场"
+      ],
+      "detected_at": "2026-08-20T02:06:13Z",
+      "title": "商务局回应胖东来生活广场涨租闭店",
+      "text": "商务局回应胖东来生活广场涨租闭店\n广场",
+      "url": "",
+      "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+      "deletion_signal": "permitted_attention",
+      "text_zh": "商务局回应胖东来生活广场涨租闭店\n商务局回应胖东来生活广场涨租闭店\n广场",
+      "text_en": "",
+      "language": "zh",
+      "source_url": "",
+      "mirror_urls": [],
+      "content_sha256": "aa52978f1272cd8d364c9a798b10bfd8670a6b2f82cbc980e9eb68c3fef43ed8",
+      "gazetteer_hits": [
+        {
+          "zh": "广场",
+          "en": "the Square (Tiananmen)",
+          "category": "june4_tiananmen",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-08-20T02:06:13Z",
+      "last_seen": "2026-08-20T02:06:13Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": null,
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": null,
+        "ghostarchive_lookup": null,
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": {
+          "id": "weibo:广场",
+          "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "title": "商务局回应胖东来生活广场涨租闭店",
+          "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim."
+        },
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+        "vantage": "weibo-board-archive",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no public source URL on this row",
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "天安门"
+      ],
+      "detected_at": "2026-08-20T02:06:13Z",
+      "title": "天安门下半旗悼念朱镕基同志",
+      "text": "天安门下半旗悼念朱镕基同志\n天安门",
+      "url": "",
+      "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+      "deletion_signal": "permitted_attention",
+      "text_zh": "天安门下半旗悼念朱镕基同志\n天安门下半旗悼念朱镕基同志\n天安门",
+      "text_en": "",
+      "language": "zh",
+      "source_url": "",
+      "mirror_urls": [],
+      "content_sha256": "dc16200f00706003267ee64f5aedd181dd64cf791cb5a39f2fe58d34fcb0da9a",
+      "gazetteer_hits": [
+        {
+          "zh": "天安门",
+          "en": "Tiananmen Square",
+          "category": "june4_tiananmen",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-08-20T02:06:13Z",
+      "last_seen": "2026-08-20T02:06:13Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": null,
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": null,
+        "ghostarchive_lookup": null,
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": {
+          "id": "weibo:天安门",
+          "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "title": "天安门下半旗悼念朱镕基同志",
+          "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim."
+        },
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+        "vantage": "weibo-board-archive",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no public source URL on this row",
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "散步"
+      ],
+      "detected_at": "2026-08-20T02:06:13Z",
+      "title": "张家界偶遇汪涵沈梦辰散步",
+      "text": "张家界偶遇汪涵沈梦辰散步\n散步",
+      "url": "",
+      "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+      "deletion_signal": "permitted_attention",
+      "text_zh": "张家界偶遇汪涵沈梦辰散步\n张家界偶遇汪涵沈梦辰散步\n散步",
+      "text_en": "",
+      "language": "zh",
+      "source_url": "",
+      "mirror_urls": [],
+      "content_sha256": "ae466d1b82ca8b1eb73d77d9a67aa77b006f548db71aaa2f792d0576c822f536",
+      "gazetteer_hits": [
+        {
+          "zh": "散步",
+          "en": "taking a walk = protest evasion",
+          "category": "protest_dissent",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-08-20T02:06:13Z",
+      "last_seen": "2026-08-20T02:06:13Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": null,
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": null,
+        "ghostarchive_lookup": null,
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": {
+          "id": "weibo:散步",
+          "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "title": "张家界偶遇汪涵沈梦辰散步",
+          "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim."
+        },
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+        "vantage": "weibo-board-archive",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no public source URL on this row",
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "失联"
+      ],
+      "detected_at": "2026-08-20T02:06:13Z",
+      "title": "25岁小伙见网恋女友失联近两年",
+      "text": "25岁小伙见网恋女友失联近两年\n失联",
+      "url": "",
+      "source": "undertext:fusion:weibo-hotsearch-breakthrough",
+      "deletion_signal": "permitted_attention",
+      "text_zh": "25岁小伙见网恋女友失联近两年\n25岁小伙见网恋女友失联近两年\n失联",
+      "text_en": "",
+      "language": "zh",
+      "source_url": "",
+      "mirror_urls": [],
+      "content_sha256": "3dc5e358f06d9a04eba834b40fa102bde6091b59f605eae289bbf17e5877f755",
+      "gazetteer_hits": [
+        {
+          "zh": "失联",
+          "en": "lost contact = disappeared",
+          "category": "repression_triggers",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-08-20T02:06:13Z",
+      "last_seen": "2026-08-20T02:06:13Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": null,
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": null,
+        "ghostarchive_lookup": null,
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": {
+          "id": "weibo:失联",
+          "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "title": "25岁小伙见网恋女友失联近两年",
+          "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim."
+        },
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+        "vantage": "weibo-board-archive",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no public source URL on this row",
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "天安门"
+      ],
+      "detected_at": "2026-08-20T02:06:13Z",
+      "title": "天安门下半旗悼念朱镕基同志",
+      "text": "天安门下半旗悼念朱镕基同志",
+      "url": "",
+      "source": "undertext:fusion:weibo-hotsearch-withdrawal",
+      "deletion_signal": "withdrawal_watch",
+      "text_zh": "天安门下半旗悼念朱镕基同志\n天安门下半旗悼念朱镕基同志",
+      "text_en": "",
+      "language": "zh",
+      "source_url": "",
+      "mirror_urls": [],
+      "content_sha256": "1f25c99a99b95afd7c1a5feed2da011ccf142d449d8cbef7616d30fefc8054c8",
+      "gazetteer_hits": [
+        {
+          "zh": "天安门",
+          "en": "Tiananmen Square",
+          "category": "june4_tiananmen",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-08-20T02:06:13Z",
+      "last_seen": "2026-08-20T02:06:13Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": null,
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": null,
+        "ghostarchive_lookup": null,
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": {
+          "id": "weibo:天安门",
+          "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "title": "天安门下半旗悼念朱镕基同志",
+          "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-20T02:06:13Z. Not a deletion claim."
+        },
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of Weibo withdrawal-watch candidates (pooled persist-rate, not a takedown proof)",
+        "vantage": "weibo-board-archive",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no public source URL on this row",
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "烂尾楼"
+      ],
+      "detected_at": "2020-10-14T05:28:15Z",
+      "title": "[undertext:no_baseline] 烂尾楼",
+      "text": "no_baseline",
+      "url": "https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+      "source": "undertext:fusion:wayback",
+      "deletion_signal": "no_baseline",
+      "severity": null,
+      "text_zh": "[undertext:no_baseline] 烂尾楼",
+      "text_en": "no_baseline",
+      "language": "mixed",
+      "source_url": "https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+      "mirror_urls": [],
+      "content_sha256": "e435cce5dd6535bd943401d33ef5b72cf25a560e63ab4dbae2ed27aa41b30aaa",
+      "gazetteer_hits": [
+        {
+          "zh": "烂尾楼",
+          "en": "unfinished/abandoned buildings",
+          "category": "economic_distress",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2020-10-14T05:28:15Z",
+      "last_seen": "2020-10-14T05:28:15Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [
+        {
+          "status": "no_baseline",
+          "observed_at": "2020-10-14T05:28:15Z",
+          "source": "wayback",
+          "note": "no_baseline"
+        }
+      ],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://baike.baidu.com/item/%25E7%2583%2582%25E5%25B0%25BE%25E6%25A5%25BC",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://baike.baidu.com/item/%25E7%2583%2582%25E5%25B0%25BE%25E6%25A5%25BC",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://baike.baidu.com/item/%25E7%2583%2582%25E5%25B0%25BE%25E6%25A5%25BC",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of committed Wayback reconstructions",
+        "vantage": "internet-archive-cdx",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1,
+        "event": "no_baseline"
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "白纸运动"
+      ],
+      "detected_at": "2026-08-20T01:56:45Z",
+      "title": "[undertext:unreachable] 白纸运动",
+      "text": "unreachable",
+      "url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+      "source": "undertext:fusion:wayback",
+      "deletion_signal": "unreachable",
+      "severity": null,
+      "text_zh": "[undertext:unreachable] 白纸运动",
+      "text_en": "unreachable",
+      "language": "mixed",
+      "source_url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+      "mirror_urls": [],
+      "content_sha256": "682068d60c3243aa7fc2e927989f09b28d67d7cde50c6624101d5aed9c72d769",
+      "gazetteer_hits": [
+        {
+          "zh": "白纸",
+          "en": "blank paper (A4 protest)",
+          "category": "protest_dissent",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-08-20T01:56:45Z",
+      "last_seen": "2026-08-20T01:56:45Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [
+        {
+          "status": "unreachable",
+          "observed_at": "2026-08-20T01:56:45Z",
+          "source": "wayback",
+          "note": "unreachable"
+        }
+      ],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://baike.baidu.com/item/%25E7%2599%25BD%25E7%25BA%25B8%25E8%25BF%2590%25E5%258A%25A8",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://baike.baidu.com/item/%25E7%2599%25BD%25E7%25BA%25B8%25E8%25BF%2590%25E5%258A%25A8",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://baike.baidu.com/item/%25E7%2599%25BD%25E7%25BA%25B8%25E8%25BF%2590%25E5%258A%25A8",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of committed Wayback reconstructions",
+        "vantage": "internet-archive-cdx",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1,
+        "event": "unreachable"
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "国家统计局 最新发布"
+      ],
+      "detected_at": "2026-08-20T01:56:45Z",
+      "title": "[undertext:unreachable] 国家统计局 最新发布",
+      "text": "unreachable",
+      "url": "https://www.stats.gov.cn/sj/zxfb/",
+      "source": "undertext:fusion:wayback",
+      "deletion_signal": "unreachable",
+      "severity": null,
+      "text_zh": "[undertext:unreachable] 国家统计局 最新发布",
+      "text_en": "unreachable",
+      "language": "mixed",
+      "source_url": "https://www.stats.gov.cn/sj/zxfb/",
+      "mirror_urls": [],
+      "content_sha256": "446a219b3d41337bace4ef9be331510c5844a91ffdf1a972ef573b594ec4f669",
+      "gazetteer_hits": [],
+      "first_seen": "2026-08-20T01:56:45Z",
+      "last_seen": "2026-08-20T01:56:45Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [
+        {
+          "status": "unreachable",
+          "observed_at": "2026-08-20T01:56:45Z",
+          "source": "wayback",
+          "note": "unreachable"
+        }
+      ],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://www.stats.gov.cn/sj/zxfb/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://www.stats.gov.cn/sj/zxfb/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://www.stats.gov.cn/sj/zxfb/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": null,
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of committed Wayback reconstructions",
+        "vantage": "internet-archive-cdx",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1,
+        "event": "unreachable"
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "last-confirmed-alive is unknown",
+        "no China Digital Times ledger join",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "subway",
+        "Extreme Security",
+        "Shanghai",
+        "airport security",
+        "beijing subway",
+        "tourist sites",
+        "Tiananmen Square",
+        "fraud",
+        "tourism",
+        "WeChat",
+        "social media censorship",
+        "Tiananmen",
+        "travel",
+        "Internet censorship",
+        "online censorship",
+        "Beijing"
+      ],
+      "detected_at": "2026-07-27T20:03:29Z",
+      "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+      "text": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nDDTI terms: subway, Extreme Security, Shanghai, airport security, beijing subway, tourist sites, Tiananmen Square, fraud, tourism, WeChat, social media censorship, Tiananmen, travel, Internet censorship, online censorship, Beijing",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+      "source": "undertext:fusion:ddti",
+      "domain": "OTHER",
+      "text_zh": "",
+      "text_en": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nTranslation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat\nDDTI terms: subway, Extreme Security, Shanghai, airport security, beijing subway, tourist sites, Tiananmen Square, fraud, tourism, WeChat, social media censorship, Tiananmen, travel, Internet censorship, online censorship, Beijing",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+      "mirror_urls": [],
+      "content_sha256": "19346fd521785d0e937a39c5a7625ec823fea4995142de20165e5b22fc6e2d44",
+      "gazetteer_hits": [],
+      "first_seen": "2026-02-21T04:06:58Z",
+      "last_seen": "2026-08-19T05:20:06Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
+          "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": {
+          "id": "gdelt:subway",
+          "url": "https://palimpsest.info/readings/gdelt-latest.json",
+          "title": "subway",
+          "note": "GDELT DOC 2.0 overlap on committed term 'subway'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim."
+        },
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "subway"
+      ],
+      "detected_at": "2026-07-27T20:03:29Z",
+      "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "text": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On\nDDTI terms: subway",
+      "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "source": "undertext:fusion:ddti",
+      "domain": "OTHER",
+      "text_zh": "",
+      "text_en": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On\nTranslations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On\nDDTI terms: subway",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "mirror_urls": [],
+      "content_sha256": "f637d9513b238437cb9195ecb5906a31a9045331857546a57e537282c3397975",
+      "gazetteer_hits": [],
+      "first_seen": "2026-07-27T20:03:29Z",
+      "last_seen": "2026-07-27T20:03:29Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+          "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": {
+          "id": "gdelt:subway",
+          "url": "https://palimpsest.info/readings/gdelt-latest.json",
+          "title": "subway",
+          "note": "GDELT DOC 2.0 overlap on committed term 'subway'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim."
+        },
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "WeChat"
+      ],
+      "detected_at": "2026-02-21T04:06:58Z",
+      "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+      "text": "Photo: CHINA – PINGYAO, by Pierre Doyen\nDDTI terms: WeChat",
+      "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+      "source": "undertext:fusion:ddti",
+      "domain": "TECHNOLOGY",
+      "text_zh": "",
+      "text_en": "Photo: CHINA – PINGYAO, by Pierre Doyen\nPhoto: CHINA – PINGYAO, by Pierre Doyen\nDDTI terms: WeChat",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+      "mirror_urls": [],
+      "content_sha256": "6ca36b216ca49662370a80fa3f7500aa5803bee022f83531db8348242755f826",
+      "gazetteer_hits": [],
+      "first_seen": "2026-02-21T04:06:58Z",
+      "last_seen": "2026-02-21T04:06:58Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/",
+          "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": {
+          "id": "gdelt:WeChat",
+          "url": "https://palimpsest.info/readings/gdelt-latest.json",
+          "title": "WeChat",
+          "note": "GDELT DOC 2.0 overlap on committed term 'WeChat'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim."
+        },
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "WeChat",
+        "social media censorship",
+        "Internet censorship",
+        "online censorship",
+        "social media",
+        "Cannot Speak Openly"
+      ],
+      "detected_at": "2026-02-21T04:06:58Z",
+      "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "text": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nDDTI terms: WeChat, social media censorship, Internet censorship, online censorship, social media, Cannot Speak Openly",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "source": "undertext:fusion:ddti",
+      "domain": "TECHNOLOGY",
+      "text_zh": "",
+      "text_en": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nTranslation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”\nDDTI terms: WeChat, social media censorship, Internet censorship, online censorship, social media, Cannot Speak Openly",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "mirror_urls": [],
+      "content_sha256": "598211262bb9682eb3b2ae59cecc620d75d0696dfe372d1276d856aa0c6e23eb",
+      "gazetteer_hits": [],
+      "first_seen": "2026-02-21T04:06:58Z",
+      "last_seen": "2026-08-14T00:51:23Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+          "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": {
+          "id": "gdelt:WeChat",
+          "url": "https://palimpsest.info/readings/gdelt-latest.json",
+          "title": "WeChat",
+          "note": "GDELT DOC 2.0 overlap on committed term 'WeChat'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim."
+        },
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "social media censorship",
+        "Internet censorship",
+        "online censorship",
+        "nationalism"
+      ],
+      "detected_at": "2026-02-23T02:11:05Z",
+      "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+      "text": "CDT’s “404 Deleted Content Archive” Summary for June 2026\nDDTI terms: social media censorship, Internet censorship, online censorship, nationalism",
+      "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+      "source": "undertext:fusion:ddti",
+      "domain": "INFORMATION",
+      "text_zh": "",
+      "text_en": "CDT’s “404 Deleted Content Archive” Summary for June 2026\nCDT’s “404 Deleted Content Archive” Summary for June 2026\nDDTI terms: social media censorship, Internet censorship, online censorship, nationalism",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+      "mirror_urls": [],
+      "content_sha256": "288583a8626bb6ceaeaac34c9c0de889525278f80e66f7350ffd3734346b2f4f",
+      "gazetteer_hits": [
+        {
+          "zh": "404",
+          "en": "deleted / not found",
+          "category": "censorship_meta",
+          "first_seen": ""
+        }
+      ],
+      "first_seen": "2026-02-23T02:11:05Z",
+      "last_seen": "2026-03-04T22:42:51Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/",
+          "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": {
+          "id": "gdelt:social media censorship",
+          "url": "https://palimpsest.info/readings/gdelt-latest.json",
+          "title": "social media censorship",
+          "note": "GDELT DOC 2.0 overlap on committed term 'social media censorship'; label=unknown; global_norm=None; clock 2026-08-20T02:12:09Z. Not a deletion claim."
+        },
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "Discouraged",
+        "France",
+        "Peking University",
+        "U.S. universities",
+        "academics",
+        "foreign universities",
+        "mathematics",
+        "overseas Chinese",
+        "science education",
+        "nationalism",
+        "United States",
+        "Academia"
+      ],
+      "detected_at": "2026-08-14T23:04:56Z",
+      "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "text": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nDDTI terms: Discouraged, France, Peking University, U.S. universities, academics, foreign universities, mathematics, overseas Chinese, science education, nationalism, United States, Academia",
+      "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "source": "undertext:fusion:ddti",
+      "domain": "OTHER",
+      "text_zh": "",
+      "text_en": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nMathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”\nDDTI terms: Discouraged, France, Peking University, U.S. universities, academics, foreign universities, mathematics, overseas Chinese, science education, nationalism, United States, Academia",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "mirror_urls": [],
+      "content_sha256": "65eca18d1e56002b5a3d8f5fe8bb2cfd0cc3d75e6879cfc0d8824707b158ba9f",
+      "gazetteer_hits": [],
+      "first_seen": "2026-03-04T22:42:51Z",
+      "last_seen": "2026-08-14T23:04:56Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+          "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": {
+          "id": "gdelt:Discouraged",
+          "url": "https://palimpsest.info/readings/gdelt-latest.json",
+          "title": "Discouraged",
+          "note": "GDELT DOC 2.0 overlap on committed term 'Discouraged'; label=containment; global_norm=0.0277; clock 2026-08-20T02:12:09Z. Not a deletion claim."
+        },
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "United States"
+      ],
+      "detected_at": "2026-03-09T23:19:55Z",
+      "title": "Translation: “How Do These Comments Break the Rules?”",
+      "text": "Translation: “How Do These Comments Break the Rules?”\nDDTI terms: United States",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+      "source": "undertext:fusion:ddti",
+      "domain": "OTHER",
+      "text_zh": "",
+      "text_en": "Translation: “How Do These Comments Break the Rules?”\nTranslation: “How Do These Comments Break the Rules?”\nDDTI terms: United States",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+      "mirror_urls": [],
+      "content_sha256": "7f5a7e56aa15aa2c5f0e2d58bcfcdef8bb44c92a4519fd6825edf54b7c9debe7",
+      "gazetteer_hits": [],
+      "first_seen": "2026-03-09T23:19:55Z",
+      "last_seen": "2026-03-09T23:19:55Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
+          "title": "Translation: “How Do These Comments Break the Rules?”",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "public text is title/term only; article body was not captured",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "social media"
+      ],
+      "detected_at": "2026-03-04T07:21:40Z",
+      "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "text": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints\nDDTI terms: social media",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "source": "undertext:fusion:ddti",
+      "domain": "OTHER",
+      "text_zh": "",
+      "text_en": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints\nTranslation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints\nDDTI terms: social media",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "mirror_urls": [],
+      "content_sha256": "ade291f8b46273d2ad58ccbfb5d3bcda988585842132666d1620b8e215684293",
+      "gazetteer_hits": [],
+      "first_seen": "2026-03-04T07:21:40Z",
+      "last_seen": "2026-03-04T07:21:40Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+          "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    },
+    {
+      "terms": [
+        "social media"
+      ],
+      "detected_at": "2026-03-04T07:21:40Z",
+      "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+      "text": "Minitrue: 718 Leaked Directives from Video Platform LeTV\nDDTI terms: social media",
+      "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+      "source": "undertext:fusion:ddti",
+      "domain": "OTHER",
+      "text_zh": "",
+      "text_en": "Minitrue: 718 Leaked Directives from Video Platform LeTV\nMinitrue: 718 Leaked Directives from Video Platform LeTV\nDDTI terms: social media",
+      "language": "en",
+      "source_url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+      "mirror_urls": [],
+      "content_sha256": "d8139588fbffe7d6dd490bae10585c05078951eb8029284308a30b9ec40fa57d",
+      "gazetteer_hits": [],
+      "first_seen": "2026-03-04T07:21:40Z",
+      "last_seen": "2026-03-04T07:21:40Z",
+      "last_confirmed_alive": null,
+      "deletion_confirmation": [],
+      "archive": {
+        "wayback_lookup": "https://web.archive.org/web/*/https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+        "wayback_snapshot": null,
+        "wayback_raw": null,
+        "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+        "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+        "post_event_snapshot": null,
+        "timestamp_bracket": {
+          "last_live": null,
+          "post_event": null
+        }
+      },
+      "cross_links": {
+        "cdt": {
+          "id": "cdt-public-article",
+          "url": "https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/",
+          "title": "Minitrue: 718 Leaked Directives from Video Platform LeTV",
+          "note": "China Digital Times public article URL already on this record; not a private feed"
+        },
+        "gdelt": null,
+        "ooni": {
+          "id": "ooni-gfw",
+          "url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
+          "title": "OONI GFW index 59.3",
+          "note": "instrument-context-not-url-corroboration; GFW anomaly index 59.3 from 2026-08-20T01:55:29Z; not a claim about this URL"
+        },
+        "greatfire": null,
+        "weibo": null,
+        "undertext": {
+          "id": "undertext-fusion",
+          "url": "https://palimpsest.info/readings/undertext-latest.json",
+          "title": "UNDERTEXT public-archive fusion",
+          "note": "This record is the Palimpsest reconstruction itself"
+        },
+        "bleedthrough": {
+          "id": "bleedthrough",
+          "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+          "title": "Bleedthrough injector floor, 6 distinct pools",
+          "note": "instrument-context-not-url-corroboration; last reading 2026-08-17T00:57:15Z; forged-IP pool rotations, not a deletion of this post"
+        },
+        "common_crawl": null
+      },
+      "provenance": {
+        "collector": "undertext",
+        "method": "fusion of every committed DDTI ranked term and every public sample title/URL (no observation_records on this snapshot)",
+        "vantage": "cdt-public-rss",
+        "schema_version": "palimpsest-china-observation.v1",
+        "method_version": 1
+      },
+      "uncertainty": [
+        "no witnessed Wayback snapshot; lookup is an address to try",
+        "no deletion-confirmation trail on this row",
+        "last-confirmed-alive is unknown",
+        "OONI/Bleedthrough join is instrument-level, not URL corroboration"
+      ],
+      "common_crawl": null
+    }
+  ]
+}

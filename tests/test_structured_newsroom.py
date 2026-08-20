@@ -49,10 +49,10 @@ def test_all_current_signals_have_curated_templates_and_exactly_one_story(
     config_ids = {signal["id"] for signal in config["signals"]}
     story_ids = {story["signal_id"] for story in feed["stories"]}
 
-    assert len(source_ids) == len(source["signals"]) == 33
+    assert len(source_ids) == len(source["signals"]) == 36
     assert source_ids == config_ids == story_ids
     assert feed["schema_version"] == "palimpsest-news.v1"
-    assert feed["n_stories"] == len(feed["stories"]) == 33
+    assert feed["n_stories"] == len(feed["stories"]) == 36
     assert all(signal["headline_template"].strip() for signal in config["signals"])
     assert all(signal["claim_template"].strip() for signal in config["signals"])
     assert all(signal["limitations"] for signal in config["signals"])
@@ -110,8 +110,8 @@ def test_transform_is_byte_deterministic_with_stable_ids_slugs_and_order(
     assert [story["id"] for story in first["stories"]] == [
         f"palimpsest-news:{story['signal_id']}" for story in first["stories"]
     ]
-    assert len({story["id"] for story in first["stories"]}) == 33
-    assert len({story["slug"] for story in first["stories"]}) == 33
+    assert len({story["id"] for story in first["stories"]}) == 36
+    assert len({story["slug"] for story in first["stories"]}) == 36
     assert all(
         story["url"] == f"https://palimpsest.info/news/{story['slug']}/"
         for story in first["stories"]

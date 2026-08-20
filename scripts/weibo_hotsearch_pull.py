@@ -74,6 +74,75 @@ def _load_gazetteer_terms() -> list[dict]:
     return out
 
 
+def _observation_records(now, joined, breakthroughs, days, withdrawals=None) -> list[dict]:
+    """Project join/breakthrough/withdrawal rows onto the shared China observation schema."""
+
+    from core.china_observation import enrich_observation, serialize_observation
+
+    records = []
+    for row in list(joined) + list(breakthroughs):
+        term = row.get("term") or ""
+        if not term:
+            continue
+        regime = row.get("regime") or (
+            "gazetteer_breakthrough" if row.get("appearances") else "unclassified"
+        )
+        titles = []
+        for sample in row.get("samples") or []:
+            if isinstance(sample, dict) and sample.get("title"):
+                titles.append(str(sample["title"]))
+        text = "\n".join(titles + [term]) if titles else term
+        raw = {
+            "terms": [term],
+            "title": titles[0] if titles else f"[weibo-hotsearch:{regime}] {term}",
+            "text": text,
+            "url": "",
+            "source": "weibo-hotsearch",
+            "regime": regime,
+        }
+        records.append(serialize_observation(enrich_observation(
+            raw,
+            text=text,
+            provenance={
+                "collector": "weibo-hotsearch",
+                "method": "justjavac weibo-trending-hot-search archive join",
+                "vantage": "outside-china-public-archive",
+                "schema_version": "palimpsest-china-observation.v1",
+                "method_version": METHOD_VERSION,
+                "board_days": len(days),
+            },
+        )))
+    for row in withdrawals or []:
+        if not isinstance(row, dict):
+            continue
+        title = row.get("title") or ""
+        terms = [str(t) for t in (row.get("matched_terms") or []) if t]
+        if not title and not terms:
+            continue
+        text = title or "; ".join(terms)
+        raw = {
+            "terms": terms,
+            "title": title or f"[weibo-hotsearch:withdrawal_watch] {terms[0]}",
+            "text": text,
+            "url": "",
+            "source": "weibo-hotsearch",
+            "regime": "withdrawal_watch",
+        }
+        records.append(serialize_observation(enrich_observation(
+            raw,
+            text=text,
+            provenance={
+                "collector": "weibo-hotsearch",
+                "method": "justjavac weibo-trending-hot-search withdrawal watch",
+                "vantage": "outside-china-public-archive",
+                "schema_version": "palimpsest-china-observation.v1",
+                "method_version": METHOD_VERSION,
+                "board_days": len(days),
+            },
+        )))
+    return records[:256]
+
+
 def main() -> None:
     now = datetime.now(timezone.utc)
     dates = [(now - timedelta(days=i)).strftime("%Y-%m-%d")
@@ -101,6 +170,11 @@ def main() -> None:
         if pres["appearances"]:
             breakthroughs.append({**pres, "category": g["category"]})
     breakthroughs.sort(key=lambda b: b["appearances"], reverse=True)
+    withdrawal_watch = withdrawal_candidates(
+        days,
+        sensitive_terms={g["term"] for g in _load_gazetteer_terms()}
+        | {t["term"] for t in ddti_terms},
+    )
 
     latest = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -117,10 +191,11 @@ def main() -> None:
         },
         "join": joined,
         "gazetteer_breakthroughs": breakthroughs,
-        "withdrawal_watch": withdrawal_candidates(
-            days,
-            sensitive_terms={g["term"] for g in _load_gazetteer_terms()}
-            | {t["term"] for t in ddti_terms}),
+        "withdrawal_watch": withdrawal_watch,
+        "observation_records": _observation_records(
+            now, joined, breakthroughs, days,
+            withdrawals=withdrawal_watch.get("candidates"),
+        ),
         "pinned_headlines": pinned_series(days),
         "method_note": (
             "The hot-search board is itself a censored surface (curated top "

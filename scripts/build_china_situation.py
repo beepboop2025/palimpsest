@@ -32,6 +32,14 @@ NEWSROOM_PATH = ROOT / "readings" / "newsroom-latest.json"
 SOCIAL_PATH = ROOT / "readings" / "social-observations-latest.json"
 DRAGON_WHISPERS_PATH = ROOT / "readings" / "dragon-whispers-latest.json"
 OUTPUT_PATH = ROOT / "readings" / "china-situation-latest.json"
+OSINT_INPUTS = (
+    ROOT / "readings" / "ddti-latest.json",
+    ROOT / "readings" / "undertext-latest.json",
+    ROOT / "readings" / "wayback-latest.json",
+    ROOT / "readings" / "weibo-hotsearch-latest.json",
+    ROOT / "readings" / "public-deletion-ledgers-latest.json",
+    ROOT / "readings" / "github-refuge-latest.json",
+)
 PAGE_PATH = ROOT / "news" / "china" / "situation" / "index.html"
 JSON_FEED_PATH = ROOT / "news" / "china" / "situation" / "feed.json"
 RSS_FEED_PATH = ROOT / "news" / "china" / "situation" / "feed.xml"
@@ -73,6 +81,26 @@ def load_inputs(
         _strict_document(dragon_whispers_path) if dragon_whispers_path.is_file() else None
     )
     return wire, analyses, social, reviewed_telegram
+
+
+def load_osint_observations(paths: Sequence[Path] = OSINT_INPUTS) -> list[dict[str, Any]]:
+    """Collect already-published observation records. Missing files stay missing."""
+
+    rows: list[dict[str, Any]] = []
+    for path in paths:
+        if not path.is_file():
+            continue
+        try:
+            doc = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
+        except Exception:
+            continue
+        if type(doc) is not dict:
+            continue
+        for key in ("observation_records", "observations", "ddti_observations"):
+            block = doc.get(key)
+            if type(block) is list:
+                rows.extend(item for item in block if type(item) is dict)
+    return rows
 
 
 def _metric_text(metric: Mapping[str, Any]) -> str:
@@ -157,6 +185,74 @@ def _social_layer(row: Mapping[str, Any]) -> str:
 </section>"""
 
 
+def _osint_evidence(item: Mapping[str, Any]) -> str:
+    """Show the citeable trail already on the OSINT row. Never invent a snapshot."""
+
+    parts: list[str] = []
+    url = item.get("url") or ""
+    if isinstance(url, str) and url.startswith("https://"):
+        parts.append(f'<a href="{_h(url)}">source URL</a>')
+    digest = item.get("content_sha256")
+    if isinstance(digest, str) and digest:
+        parts.append(f"SHA-256 {_h(digest)}")
+    archive = item.get("archive") if isinstance(item.get("archive"), dict) else {}
+    snapshot = archive.get("wayback_snapshot")
+    lookup = archive.get("wayback_lookup")
+    if isinstance(snapshot, str) and snapshot.startswith("https://"):
+        parts.append(f'<a href="{_h(snapshot)}">Wayback snapshot</a>')
+    elif isinstance(lookup, str) and lookup.startswith("https://"):
+        parts.append(f'<a href="{_h(lookup)}">Wayback lookup</a>')
+    ghost = archive.get("ghostarchive_lookup")
+    if isinstance(ghost, str) and ghost.startswith("https://"):
+        parts.append(f'<a href="{_h(ghost)}">Ghostarchive lookup</a>')
+    language = item.get("language")
+    if isinstance(language, str) and language:
+        parts.append(f"language {_h(language)}")
+    signal = item.get("deletion_signal")
+    if isinstance(signal, str) and signal:
+        parts.append(f"signal {_h(signal)}")
+    count = item.get("confirmation_count")
+    if isinstance(count, int) and count:
+        parts.append(f"{count} confirmation{'s' if count != 1 else ''}")
+    cc_kind = item.get("common_crawl_match_kind")
+    if isinstance(cc_kind, str) and cc_kind:
+        label = f"Common Crawl lake {cc_kind}"
+        cc_host = item.get("common_crawl_host")
+        if isinstance(cc_host, str) and cc_host:
+            label += f" host {_h(cc_host)}"
+        cc_at = item.get("common_crawl_capture_at")
+        if isinstance(cc_at, str) and cc_at:
+            label += f" captured {_h(cc_at)}"
+        parts.append(label)
+    return " · ".join(parts) if parts else "no public URL or snapshot on this row"
+
+
+def _osint_layer(row: Mapping[str, Any]) -> str:
+    observations = row.get("osint_context") or []
+    if not observations:
+        body = """<div class="situation-empty"><strong>No linked public OSINT observation.</strong><p>Join is exact publisher URL or an exact gazetteer/topic term. Absence is a coverage gap, not a finding.</p></div>"""
+    else:
+        items = []
+        for item in observations:
+            text = item.get("text") or ""
+            notes = item.get("uncertainty") or []
+            note_html = ""
+            if isinstance(notes, list) and notes:
+                note_html = "<small>uncertainty: " + " · ".join(
+                    _h(note) for note in notes if isinstance(note, str) and note
+                ) + "</small>"
+            text_html = f"<p>{_h(text)}</p>" if isinstance(text, str) and text else ""
+            items.append(
+                f"""<li><strong>{_h(item['source'])}</strong><span>{_h(item['title'])}</span>{text_html}<small>first {_h(item.get('first_seen') or 'unknown')} · last {_h(item.get('last_seen') or 'unknown')} · {_osint_evidence(item)} · {_h(item['relation'])}</small>{note_html}</li>"""
+            )
+        body = "<ul>" + "".join(items) + "</ul>"
+    return f"""<section class="situation-layer situation-layer--osint" aria-labelledby="osint-{_h(row['situation_id'])}">
+  <header><span>04</span><div><p>Public OSINT context</p><h3 id="osint-{_h(row['situation_id'])}">{len(observations)} linked observation{'s' if len(observations) != 1 else ''}</h3></div></header>
+  {body}
+  <p class="situation-relation">topic-or-url-context-not-corroboration</p>
+</section>"""
+
+
 def _measurement_layer(row: Mapping[str, Any]) -> str:
     measurements = row["measurement_context"]
     if not measurements:
@@ -186,7 +282,7 @@ def _situation_card(row: Mapping[str, Any], *, expanded: bool) -> str:
     return f"""<article class="situation-card" id="{_h(row['situation_id'])}" data-desk="{_h(row['desk'])}" data-posture="{_h(row['posture'])}" data-search="{_h(search)}">
   <header class="situation-card__head"><div><p class="situation-kicker">{_h(row['desk'])} · {_h(row['posture'].replace('-', ' '))}</p><h2>{_h(row['headline'])}</h2><p>{_h(row['dek'])}</p></div><div class="situation-card__meta"><time datetime="{_h(row['updated_at'])}">{_h(_human(row['updated_at']))}</time><span>{topics}</span><a href="/news/wire/{_h(row['event_id'])}/">Open dossier</a></div></header>
   <details{' open' if expanded else ''}><summary><span>Open the complete three-layer view</span><strong>{_h(row['reporting']['evidence_strength'])}</strong></summary>
-    <div class="situation-layers">{_reporting_layer(row)}{_social_layer(row)}{_measurement_layer(row)}</div>
+    <div class="situation-layers">{_reporting_layer(row)}{_social_layer(row)}{_measurement_layer(row)}{_osint_layer(row)}</div>
     <section class="situation-synthesis"><div><p class="situation-kicker">Bounded synthesis</p><h3>What the combined view says</h3><p>{_h(row['synthesis']['summary'])}</p></div><div><h4>Next checks</h4><ol>{checks}</ol></div><details><summary>Known unknowns</summary><ul>{unknowns}</ul></details></section>
     <p class="situation-receipt">{_h(row['situation_id'])} · {_h(row['version_id'])} · {_h(row['analysis_id'])}</p>
   </details>
@@ -249,8 +345,8 @@ def render_page(document: Mapping[str, Any], *, page: int = 1) -> str:
     body = f"""<body class="ps newsroom-page situation-page">
 {site_nav.render('/news/')}
 <main id="main">
-  <header class="situation-hero"><div><p class="situation-kicker">Palimpsest / China situation desk{' / archive ' + str(page) if page > 1 else ''}</p><h1>Reports.<br><em>Social context.</em><br>Measurements.</h1></div><div><p class="situation-hero__dek">One evidence-bound view of what publishers report, how reviewed social sources carry it, and what Palimpsest can independently measure. The layers meet here; their limits do not disappear.</p><nav><a href="/news/china/">Publisher stream</a><a href="/news/">Observatory desk</a><a href="/readings/china-situation-latest.json">Structured situation index</a><a href="/news/china/situation/feed.xml">RSS</a><a href="/news/china/situation/feed.json">JSON Feed</a></nav></div></header>
-  <section class="situation-stats" aria-label="Current situation coverage"><span><strong>{coverage['in_scope_events']}</strong> situations</span><span><strong>{coverage['publisher_reports']}</strong> publisher reports</span><span><strong>{coverage['measurement_context_rows']}</strong> measurement links</span><span><strong>{coverage['social_observations_linked']}</strong> exact-link social observations</span><span><strong>{coverage['reviewed_telegram_signals']}</strong> reviewed Telegram signals</span><span><strong>{_h(_human(document['generated_at']))}</strong> rebuilt</span></section>
+  <header class="situation-hero"><div><p class="situation-kicker">Palimpsest / China situation desk{' / archive ' + str(page) if page > 1 else ''}</p><h1>Reports.<br><em>Social context.</em><br>Measurements.</h1></div><div><p class="situation-hero__dek">One evidence-bound view of what publishers report, how reviewed social sources carry it, and what Palimpsest can independently measure. The layers meet here; their limits do not disappear. This desk captures public posts, deletions, archives and GFW injector telemetry. It does not capture private WeChat, classified systems, or in-country accounts.</p><nav><a href="/news/china/erasure/">Find a deleted post</a><a href="/news/china/">Publisher stream</a><a href="/news/">Observatory desk</a><a href="/readings/china-situation-latest.json">Structured situation index</a><a href="/news/china/situation/feed.xml">RSS</a><a href="/news/china/situation/feed.json">JSON Feed</a></nav></div></header>
+  <section class="situation-stats" aria-label="Current situation coverage"><span><strong>{coverage['in_scope_events']}</strong> situations</span><span><strong>{coverage['publisher_reports']}</strong> publisher reports</span><span><strong>{coverage['measurement_context_rows']}</strong> measurement links</span><span><strong>{coverage['social_observations_linked']}</strong> exact-link social observations</span><span><strong>{coverage.get('osint_context_rows', 0)}</strong> public OSINT links</span><span><strong>{coverage['reviewed_telegram_signals']}</strong> reviewed Telegram signals</span><span><strong>{_h(_human(document['generated_at']))}</strong> rebuilt</span></section>
   <div class="situation-shell">
     {_status_panel(document)}
     {_telegram_briefing(document)}
@@ -383,6 +479,7 @@ def build_outputs(
         analyses,
         social=social,
         reviewed_telegram=reviewed_telegram,
+        osint_observations=load_osint_observations(),
     )
     document = situation_model.bind_situation_page_urls(document, page_size=PAGE_SIZE)
     outputs: dict[Path, bytes] = {

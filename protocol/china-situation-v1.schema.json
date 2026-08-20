@@ -70,7 +70,9 @@
         "social_observations_unmatched",
         "social_observations_ambiguous",
         "situations_with_three_layers",
-        "reviewed_telegram_signals"
+        "reviewed_telegram_signals",
+        "events_with_osint_context",
+        "osint_context_rows"
       ],
       "properties": {
         "wire_events": {"$ref": "#/$defs/count"},
@@ -84,7 +86,9 @@
         "social_observations_unmatched": {"$ref": "#/$defs/count"},
         "social_observations_ambiguous": {"$ref": "#/$defs/count"},
         "situations_with_three_layers": {"$ref": "#/$defs/count"},
-        "reviewed_telegram_signals": {"$ref": "#/$defs/count"}
+        "reviewed_telegram_signals": {"$ref": "#/$defs/count"},
+        "events_with_osint_context": {"$ref": "#/$defs/count"},
+        "osint_context_rows": {"$ref": "#/$defs/count"}
       }
     },
     "reviewed_telegram": {
@@ -111,6 +115,16 @@
       "minLength": 9,
       "maxLength": 2048,
       "pattern": "^https://"
+    },
+    "osintRelatedLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "url", "note"],
+      "properties": {
+        "id": {"type": ["string", "null"], "maxLength": 80},
+        "url": {"type": ["string", "null"], "maxLength": 2048},
+        "note": {"type": ["string", "null"], "maxLength": 240}
+      }
     },
     "metric": {
       "type": "object",
@@ -240,6 +254,128 @@
         "relation": {"const": "human-reviewed-source-free-context-not-evidence"}
       }
     },
+    "osintContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_key",
+        "source",
+        "title",
+        "url",
+        "text",
+        "language",
+        "uncertainty",
+        "deletion_signal",
+        "confirmation_count",
+        "first_seen",
+        "last_seen",
+        "last_confirmed_alive",
+        "content_sha256",
+        "gazetteer_hits",
+        "archive",
+        "cross_links",
+        "common_crawl_match_kind",
+        "common_crawl_host",
+        "common_crawl_capture_at",
+        "relation"
+      ],
+      "properties": {
+        "observation_key": {"type": "string", "minLength": 1, "maxLength": 64},
+        "source": {"type": "string", "minLength": 1, "maxLength": 80},
+        "title": {"type": "string", "minLength": 1, "maxLength": 240},
+        "url": {"type": "string", "maxLength": 2048},
+        "text": {"type": "string", "maxLength": 2000},
+        "language": {"enum": ["zh", "en", "mixed", "unknown"]},
+        "uncertainty": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"type": "string", "minLength": 1, "maxLength": 240}
+        },
+        "deletion_signal": {"type": "string", "maxLength": 80},
+        "confirmation_count": {"type": "integer", "minimum": 0, "maximum": 12},
+        "cross_links": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cdt",
+            "gdelt",
+            "ooni",
+            "greatfire",
+            "weibo",
+            "undertext",
+            "bleedthrough",
+            "common_crawl"
+          ],
+          "properties": {
+            "cdt": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "gdelt": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "ooni": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "greatfire": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "weibo": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "undertext": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "bleedthrough": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]},
+            "common_crawl": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/osintRelatedLink"}]}
+          }
+        },
+        "common_crawl_match_kind": {
+          "oneOf": [{"type": "null"}, {"enum": ["url", "host", "digest"]}]
+        },
+        "common_crawl_host": {
+          "oneOf": [{"type": "null"}, {"type": "string", "minLength": 1, "maxLength": 253}]
+        },
+        "common_crawl_capture_at": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "first_seen": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "last_seen": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "last_confirmed_alive": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "content_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "gazetteer_hits": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["zh", "en"],
+            "properties": {
+              "zh": {"type": "string", "minLength": 1, "maxLength": 80},
+              "en": {"type": "string", "maxLength": 160}
+            }
+          }
+        },
+        "archive": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "wayback_lookup",
+            "wayback_snapshot",
+            "archive_today_lookup",
+            "ghostarchive_lookup",
+            "post_event_snapshot",
+            "bracket_before",
+            "bracket_after"
+          ],
+          "properties": {
+            "wayback_lookup": {"type": ["string", "null"], "maxLength": 2048},
+            "wayback_snapshot": {"type": ["string", "null"], "maxLength": 2048},
+            "archive_today_lookup": {"type": ["string", "null"], "maxLength": 2048},
+            "ghostarchive_lookup": {"type": ["string", "null"], "maxLength": 2048},
+            "post_event_snapshot": {"type": ["string", "null"], "maxLength": 2048},
+            "bracket_before": {"type": ["string", "null"], "maxLength": 80},
+            "bracket_after": {"type": ["string", "null"], "maxLength": 80}
+          }
+        },
+        "relation": {"const": "topic-or-url-context-not-corroboration"}
+      }
+    },
     "measurementContext": {
       "type": "object",
       "additionalProperties": false,
@@ -289,6 +425,7 @@
         "reporting",
         "social_context",
         "measurement_context",
+        "osint_context",
         "synthesis"
       ],
       "properties": {
@@ -351,6 +488,11 @@
         "measurement_context": {
           "type": "array",
           "items": {"$ref": "#/$defs/measurementContext"}
+        },
+        "osint_context": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {"$ref": "#/$defs/osintContext"}
         },
         "synthesis": {
           "type": "object",

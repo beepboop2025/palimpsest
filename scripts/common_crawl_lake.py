@@ -20,7 +20,7 @@ from collectors.common_crawl_lake import (
     write_feature_export,
     write_summary,
 )
-from processors.archive_context import write_archive_context
+from processors.archive_context import write_archive_context, write_china_lake_joins
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -51,6 +51,7 @@ def _paths(warehouse: Path | str | None) -> dict[str, Path]:
         "summary": derived / "common-crawl-summary.json",
         "context": derived / "archive-news-context.json",
         "training": derived / "story-ranking-features.jsonl",
+        "china_joins": derived / "china-observation-lake-joins.json",
     }
 
 
@@ -90,9 +91,20 @@ def build_parser() -> argparse.ArgumentParser:
     context.add_argument("--training-output", type=Path, default=None)
     context.add_argument("--now", type=_now, default=None)
 
+    china = subparsers.add_parser(
+        "china-join",
+        help="join China observations to the existing lake (read-only, no scrape)",
+    )
+    china.add_argument("--newswire", type=Path, default=DEFAULT_NEWSWIRE)
+    china.add_argument("--osint", type=Path, default=DEFAULT_OSINT)
+    china.add_argument("--readings", type=Path, default=ROOT / "readings")
+    china.add_argument("--output", type=Path, default=None)
+    china.add_argument("--now", type=_now, default=None)
+
     refresh = subparsers.add_parser("refresh", help="rebuild features, summary, and newsroom context")
     refresh.add_argument("--newswire", type=Path, default=DEFAULT_NEWSWIRE)
     refresh.add_argument("--osint", type=Path, default=DEFAULT_OSINT)
+    refresh.add_argument("--readings", type=Path, default=ROOT / "readings")
     refresh.add_argument("--now", type=_now, default=None)
 
     sql = subparsers.add_parser("sql", help="render the local DuckDB URL Index export query")
@@ -123,9 +135,20 @@ def _exports(inbox: Path) -> list[Path]:
     return sorted(files, key=lambda path: path.name)
 
 
+def _china_joins(args, paths: dict[str, Path], *, output: Path | None = None) -> dict:
+    return write_china_lake_joins(
+        osint_path=args.osint,
+        readings_dir=getattr(args, "readings", None) or ROOT / "readings",
+        warehouse=paths["root"],
+        output_path=output or paths["china_joins"],
+        config_path=args.config,
+        now=args.now,
+    )
+
+
 def _context(args, paths: dict[str, Path]) -> dict:
     feature_path = getattr(args, "features", None) or paths["features"]
-    return write_archive_context(
+    context = write_archive_context(
         newswire_path=args.newswire,
         osint_path=args.osint,
         features_path=feature_path,
@@ -134,6 +157,7 @@ def _context(args, paths: dict[str, Path]) -> dict:
         config_path=args.config,
         now=args.now,
     )
+    return {**context, "china_joins": _china_joins(args, paths)}
 
 
 def run(args: argparse.Namespace) -> dict | str:
@@ -176,6 +200,8 @@ def run(args: argparse.Namespace) -> dict | str:
         )
     if args.command == "context":
         return _context(args, paths)
+    if args.command == "china-join":
+        return _china_joins(args, paths, output=args.output)
     if args.command == "refresh":
         features = write_feature_export(
             paths["database"], paths["features"], config_path=args.config

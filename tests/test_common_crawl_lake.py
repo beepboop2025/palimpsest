@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -58,7 +59,7 @@ def _row(
     return {
         "crawl": crawl,
         "url": url,
-        "url_host_name": "www.pbc.gov.cn",
+        "url_host_name": urlsplit(url).hostname,
         "fetch_time": capture,
         "fetch_status": status,
         "content_digest": digest,
@@ -1325,3 +1326,214 @@ def test_local_filter_service_has_cgroup_network_and_manual_only_guards():
     assert "FILTER_RECEIPT_SCHEMA" in runner
     assert "[Timer]" not in unit and "OnCalendar=" not in unit
     assert not (FILTER_UNIT.parent / "palimpsest-common-crawl-filter@.timer").exists()
+
+
+def _leak_keys(payload):
+    blob = json.dumps(payload, default=str)
+    return [
+        key
+        for key in (
+            "warc_filename",
+            "warc_record_offset",
+            "warc_record_length",
+            "canonical_url",
+        )
+        if key in blob
+    ]
+
+
+def test_open_existing_database_does_not_create_a_warehouse(tmp_path):
+    missing = tmp_path / "absent"
+    assert lake.existing_database_path(missing) is None
+    assert lake.open_existing_database(missing) is None
+    assert not missing.exists()
+    assert lake.open_existing_database(tmp_path / "no.sqlite3") is None
+
+
+def test_china_lake_url_match_is_sanitized(tmp_path):
+    warehouse = tmp_path / "warehouse"
+    lake.ingest_export(
+        _jsonl(
+            tmp_path / "nbs.jsonl",
+            [_row(url="https://www.stats.gov.cn/sj/zxfb/")],
+        ),
+        config_path=CONFIG,
+        warehouse=warehouse,
+        kill_switch=KillSwitch(path=tmp_path / "halt"),
+        now=datetime(2026, 8, 12, tzinfo=UTC),
+    )
+    connection = lake.open_existing_database(warehouse)
+    assert connection is not None
+    try:
+        match = lake.match_observation(
+            connection,
+            {"url": "https://www.stats.gov.cn/sj/zxfb/"},
+        )
+    finally:
+        connection.close()
+    assert match is not None
+    assert match["match_kind"] == "url"
+    assert match["host"] == "www.stats.gov.cn"
+    assert match["target_id"] == "nbs"
+    assert match["content_digest"] == DIGEST_A
+    assert match["locator_sha256"]
+    assert match["relation"] == "archive-coverage-not-deletion"
+    assert _leak_keys(match) == []
+    assert set(match) == set(lake.SANITIZED_MATCH_KEYS)
+
+
+def test_china_lake_host_match_is_not_url_corroboration(tmp_path):
+    warehouse = tmp_path / "warehouse"
+    lake.ingest_export(
+        _jsonl(tmp_path / "pbc.jsonl", [_row()]),
+        config_path=CONFIG,
+        warehouse=warehouse,
+        kill_switch=KillSwitch(path=tmp_path / "halt"),
+        now=datetime(2026, 8, 12, tzinfo=UTC),
+    )
+    connection = lake.open_existing_database(warehouse)
+    try:
+        match = lake.match_observation(
+            connection,
+            {"url": "https://www.pbc.gov.cn/other/page.html"},
+        )
+    finally:
+        connection.close()
+    assert match is not None
+    assert match["match_kind"] == "host"
+    assert match["host"] == "www.pbc.gov.cn"
+    assert match["content_digest"] is None
+    assert match["locator_sha256"] is None
+    assert match["mime_type"] is None
+    assert "not-url-corroboration" in match["relation"]
+    assert _leak_keys(match) == []
+
+
+def test_china_lake_digest_match_uses_existing_sha1(tmp_path):
+    warehouse = tmp_path / "warehouse"
+    lake.ingest_export(
+        _jsonl(tmp_path / "pbc.jsonl", [_row()]),
+        config_path=CONFIG,
+        warehouse=warehouse,
+        kill_switch=KillSwitch(path=tmp_path / "halt"),
+        now=datetime(2026, 8, 12, tzinfo=UTC),
+    )
+    connection = lake.open_existing_database(warehouse)
+    try:
+        match = lake.match_observation(
+            connection,
+            {"content_digest": DIGEST_A},
+        )
+    finally:
+        connection.close()
+    assert match is not None
+    assert match["match_kind"] == "digest"
+    assert match["content_digest"] == DIGEST_A
+    assert _leak_keys(match) == []
+
+
+def test_unallowlisted_china_hosts_do_not_host_match(tmp_path):
+    warehouse = tmp_path / "warehouse"
+    lake.ingest_export(
+        _jsonl(tmp_path / "pbc.jsonl", [_row()]),
+        config_path=CONFIG,
+        warehouse=warehouse,
+        kill_switch=KillSwitch(path=tmp_path / "halt"),
+        now=datetime(2026, 8, 12, tzinfo=UTC),
+    )
+    connection = lake.open_existing_database(warehouse)
+    try:
+        match = lake.match_observation(
+            connection,
+            {"url": "https://chinadigitaltimes.net/2026/08/example/"},
+        )
+    finally:
+        connection.close()
+    assert match is None
+
+
+def test_empty_or_absent_lake_china_join_is_no_data_not_a_census(tmp_path):
+    missing = tmp_path / "no-warehouse"
+    result = archive_context.write_china_lake_joins(
+        osint_path=tmp_path / "osint.json",
+        readings_dir=tmp_path,
+        warehouse=missing,
+        now=datetime(2026, 8, 20, tzinfo=UTC),
+    )
+    assert result == {"status": "no_data", "matches": 0, "path": None}
+    assert not missing.exists()
+
+    warehouse = tmp_path / "empty"
+    warehouse.mkdir()
+    connection = lake._connect(warehouse / lake.DEFAULT_DATABASE_NAME)
+    lake.initialize_database(connection)
+    connection.close()
+    (tmp_path / "undertext-latest.json").write_text(
+        json.dumps({
+            "generated_at": "2026-08-20T03:58:30Z",
+            "observations": [{
+                "source": "undertext:fusion:wayback",
+                "title": "stats",
+                "url": "https://www.stats.gov.cn/sj/zxfb/",
+            }],
+        }),
+        encoding="utf-8",
+    )
+    result = archive_context.write_china_lake_joins(
+        osint_path=tmp_path / "osint.json",
+        readings_dir=tmp_path,
+        warehouse=warehouse,
+        now=datetime(2026, 8, 20, tzinfo=UTC),
+    )
+    assert result["status"] == "no_data"
+    receipt = json.loads((warehouse / "derived" / lake.CHINA_JOINS_FILENAME).read_text())
+    assert receipt["status"] == "no_data"
+    assert receipt["matches"] == []
+    assert "n_matches" not in receipt
+    assert "observations" not in receipt
+    assert _leak_keys(receipt) == []
+
+
+def test_china_lake_joins_receipt_is_sanitized_and_private(tmp_path):
+    warehouse = tmp_path / "warehouse"
+    lake.ingest_export(
+        _jsonl(
+            tmp_path / "nbs.jsonl",
+            [_row(url="https://www.stats.gov.cn/sj/zxfb/")],
+        ),
+        config_path=CONFIG,
+        warehouse=warehouse,
+        kill_switch=KillSwitch(path=tmp_path / "halt"),
+        now=datetime(2026, 8, 12, tzinfo=UTC),
+    )
+    (tmp_path / "undertext-latest.json").write_text(
+        json.dumps({
+            "generated_at": "2026-08-20T03:58:30Z",
+            "observations": [{
+                "source": "undertext:fusion:wayback",
+                "title": "NBS release",
+                "url": "https://www.stats.gov.cn/sj/zxfb/",
+            }],
+        }),
+        encoding="utf-8",
+    )
+    result = archive_context.write_china_lake_joins(
+        osint_path=tmp_path / "osint.json",
+        readings_dir=tmp_path,
+        warehouse=warehouse,
+        now=datetime(2026, 8, 20, tzinfo=UTC),
+    )
+    assert result["status"] == "ok"
+    assert result["matches"] == 1
+    receipt_path = Path(result["path"])
+    assert receipt_path.name == lake.CHINA_JOINS_FILENAME
+    assert oct(receipt_path.stat().st_mode & 0o777) == "0o600"
+    receipt = json.loads(receipt_path.read_text())
+    assert receipt["status"] == "ok"
+    assert receipt["n_matches"] == 1
+    match = receipt["matches"][0]
+    assert match["match_kind"] == "url"
+    assert match["observation_key"]
+    assert match["url_sha256"]
+    assert _leak_keys(receipt) == []
+    assert "https://www.stats.gov.cn" not in receipt_path.read_text()

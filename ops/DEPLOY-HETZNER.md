@@ -320,8 +320,34 @@ The vigorous profile does two different kinds of work:
   PostgreSQL; conflict-safe upserts prevent a repeated feed item becoming a
   duplicate;
 - the full DDTI archive sweep remains every three hours, while fast-moving
-  aggregate signals (Weibo-board archive, OONI, IODA, app storefront) are sampled
-  more often than the public workflow. Daily upstreams remain daily.
+  aggregate signals (Weibo-board archive, OONI, IODA, app storefront, public
+  deletion ledgers) are sampled more often than the public workflow. Daily
+  upstreams remain daily.
+
+The same fleet now also keeps the China fusion jobs on the always-on queue so
+the OSINT bundle does not wait for a GitHub-only refresh:
+
+| Job | What it writes | Cadence (vigorous) |
+| --- | --- | --- |
+| `silence-index` | `readings/silence-index-latest.json` | every 3h |
+| `vantage-fusion` | `readings/vantage-fusion-latest.json` | every 3h |
+| `erasure-observatory` | `readings/erasure-observatory-latest.json` | every 3h |
+| `undertext` | `readings/undertext-latest.json` | every 3h (offline fusion of Wayback / Weibo board / DDTI / ledgers / official first-seen / news-wire / Wikipedia RC / public Telegram channels when those files exist; Wikipedia live surfaces stay gated) |
+| `public-deletion-ledgers` | `readings/public-deletion-ledgers-latest.json` | hourly when a public ledger answers; abstains if every feed is silent |
+| `official-first-seen` | `readings/official-first-seen-latest.json` | hourly; official landings including NPC / MOE / NHC; no Baike; abstains if every page is silent and there is no prior state |
+| `news-wire-live` | `readings/news-wire-live-latest.json` | hourly; projects the public `news_sources.json` RSS/Atom registry; abstains on no-fresh-sources |
+| `wikipedia-gazetteer-rc` | `readings/wikipedia-gazetteer-rc-latest.json` | every 3h; zh/en titles and revision ids only; abstains if both MediaWiki APIs are silent |
+| `gdelt` | `readings/gdelt-latest.json` | every 15 min on vigorous (`PALIMPSEST_GDELT_TIMESPAN=15min`, 8-term cap, setdefault only — not in Compose `.env`); abstains if GDELT returns no volume |
+| `baike-public-snapshot` | `readings/baike-public-snapshot-latest.json` | hourly; public Baike article HTML + CDX; abstains if every article is silent/walled |
+| `public-hot-boards` | `readings/public-hot-boards-latest.json` | hourly; Baidu / Toutiao / Douyin aggregate JSON; abstains if every board is silent |
+| `telegram-public-channels` | `readings/telegram-public-channels-latest.json` | hourly; public Dragon Den `t.me/s/` HTML + ScamShield inbox drain; abstains if every preview is silent/walled. Does not write `telegram-watch-latest.json` |
+| `censored-planet` | `readings/censored-planet-latest.json` | every 6h on vigorous (standard stays daily) |
+| `ooni-gfw` / `ioda-outages` | existing readings | every 2h on vigorous |
+
+The Wikipedia-fork `baike-redaction` runner stays disabled. GitHub-refuge
+`active_watchlist` stays empty until an activation review. Bleedthrough is
+**not** a Celery job — it is the host systemd unit in §5e. Do not set
+`BLEEDTHROUGH_LIVE` or `PALIMPSEST_LIVE` in Compose `.env`.
 
 All jobs use the dedicated `collectors` queue, carry queue expiries (so an outage
 does not replay stale requests), take a Redis non-overlap lease, and check the
@@ -602,6 +628,84 @@ broker rechecks the immutable image ID and constructs the networkless command,
 mounts, entrypoint, and arguments. Its root-owned run-directory parent also
 prevents a checked bind-mount path from being replaced between validation and
 launch. The mutable Git checkout is visible to neither unit.
+
+### 5e. Enable live BLEEDTHROUGH (testable install step)
+
+Bleedthrough is an active, dark-IP-only DNS-injection measurement. It is
+**not** started by Compose and is **not** a Celery collector. The Common Crawl
+installer owns the revision-bound network-lane bundle, tmpfiles ACL, and the
+`palimpsest-bleedthrough.{service,timer}` units. Do not copy those unit files
+by hand from the checkout.
+
+The live path is triple-gated: `BLEEDTHROUGH_LIVE=1`, the kill switch released,
+and a **curated** target file (the shipped RFC 5737 example is refused). The
+known Hetzner address is refused unless `BLEEDTHROUGH_ALLOW_BOX=1`. A round
+that sees no injection abstains and leaves the previous reading byte-for-byte
+intact. Demo generation (`scripts/bleedthrough_demo.py`) is offline-only and
+cannot pass the public importer.
+
+Install and prove the pipeline **without guessing tribal flags**:
+
+```bash
+# 1. Host environment. Review before enabling — starting the service probes.
+sudo install -d -o root -g root -m 0755 /etc/palimpsest
+sudo install -o root -g palimpsest -m 0640 \
+  /home/palimpsest/palimpsest/ops/bleedthrough/bleedthrough.env.example \
+  /etc/palimpsest/bleedthrough.env
+# Confirm both consent flags and the DE coarse vantage are present:
+sudo grep -E '^(BLEEDTHROUGH_LIVE|BLEEDTHROUGH_ALLOW_BOX|BLEEDTHROUGH_VANTAGE_COUNTRY)=' \
+  /etc/palimpsest/bleedthrough.env
+# Expected:
+#   BLEEDTHROUGH_LIVE=1
+#   BLEEDTHROUGH_ALLOW_BOX=1
+#   BLEEDTHROUGH_VANTAGE_COUNTRY=DE
+
+# 2. Kill switch must be absent. Creating it is the immediate stop.
+sudo test ! -e /var/lib/palimpsest/readings/state/STOP
+
+# 3. Offline preflight (no China query). Refuses placeholder targets.
+sudo -u palimpsest --preserve-env=BLEEDTHROUGH_LIVE,BLEEDTHROUGH_ALLOW_BOX \
+  env $(sudo grep -v '^#' /etc/palimpsest/bleedthrough.env | xargs) \
+  python3 -m scripts.bleedthrough_preflight \
+    --env-file /etc/palimpsest/bleedthrough.env
+# Exit 2 = gate/placeholder refuse. Exit 3 = missing prefixes/targets.
+# On a fresh box, fetch + curate once (benign control DNS only) so the
+# target file is not the shipped example:
+#   sudo -u palimpsest bash /usr/local/libexec/palimpsest-network-lane/current/ops/bleedthrough_prober.sh
+# The prober itself is prefix-fetch → curate → pull. The timer repeats that.
+
+# 4. Common Crawl installer owns BLEED units. It must succeed first.
+sudo bash /home/palimpsest/palimpsest/ops/common-crawl/install-host-bundle.sh \
+  --warehouse-source \
+  /mnt/HC_Volume_<volume-id>/palimpsest/warehouse/common-crawl
+
+# 5. Enable the six-hour timer and run one oneshot proof.
+sudo systemctl enable --now palimpsest-bleedthrough.timer
+sudo systemctl start palimpsest-bleedthrough.service
+systemctl is-enabled palimpsest-bleedthrough.timer
+systemctl list-timers palimpsest-bleedthrough.timer --no-pager
+journalctl -u palimpsest-bleedthrough.service -n 80 --no-pager
+
+# 6. Honest artifact check. A no-injection round is a successful abstain
+#    (exit 0 or 75) that does *not* write a hollow live board.
+if sudo test -f /var/lib/palimpsest/readings/bleedthrough-latest.json; then
+  sudo -u palimpsest python3 -c \
+    'import json,sys; d=json.load(open(sys.argv[1])); assert "demo" not in d and d.get("signal")=="bleedthrough"' \
+    /var/lib/palimpsest/readings/bleedthrough-latest.json
+else
+  echo "no latest file yet — either the round is still running or it abstained"
+fi
+```
+
+Install `ops/caddy/palimpsest-bleedthrough.caddy` as a top-level Caddy import
+and `import palimpsest_bleedthrough` inside the `api.seiche.info` site, then
+`sudo caddy validate` and reload. The full operator runbook, including the
+immediate kill-file stop, is [`ops/bleedthrough/README.md`](bleedthrough/README.md).
+The method and honesty rules are [`docs/BLEEDTHROUGH.md`](../docs/BLEEDTHROUGH.md).
+
+Do not set `BLEEDTHROUGH_LIVE` inside `ops/docker/.env`. Compose never runs the
+prober. The freshness watchdog and `palimpsest-public-osint-sync.timer` remain
+the publication relay; they import a sealed latest file and never a demo.
 
 ---
 

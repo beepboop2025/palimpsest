@@ -216,6 +216,7 @@
             <p class="ps-flyout__head">Inspect the record</p>
             <a href="/china/sources/"><b>Source ledger</b><span>Check access, rights, readiness and limits</span></a>
             <a href="/china/releases/"><b>Release monitors</b><span>Check publication clocks and revisions</span></a>
+            <a href="/news/china/erasure/"><b>Find a deleted post<span class="ps-tag">new</span></b><span>Open the evidence trail, export and cite</span></a>
             <a href="/dashboards/ddti_dashboard.html"><b>Live deletion monitor</b><span>Open the deletion tracker</span></a>
           </div>
         </div>
@@ -271,6 +272,7 @@
   <p class="ps-lede">Palimpsest is a free public-good observatory for researching the Great Firewall, documented deletion and AI-model refusal behavior. It keeps network, content and model evidence separate, publishes source files and limitations beside every reading, and watches the censor—never the censored.</p>
 
   <div class="btn-row">
+    <a class="ps-btn" href="/news/china/erasure/">Find a deleted post</a>
     <a class="ps-btn" href="/osint-china.html">Open OSINT China</a>
     <a class="ps-btn ps-btn--ghost" href="/dashboards/ddti_observatory.html">Open the observatory</a>
     <a class="ps-btn ps-btn--ghost" href="/readings/">Browse all data</a>
@@ -279,6 +281,29 @@
   </div>
 
   </header>
+
+  <section class="ps-defer" id="for-journalists">
+  <h2 class="ps-section-head">For journalists: find, trail, export, cite</h2>
+  <p>A reporter who is not the operator should be able to find a public deletion, see the evidence trail, download it, and cite it. The <a href="/news/china/erasure/">erasure desk</a> is that path. It is not buried in a JSON blob.</p>
+  <div class="answer-grid ps-stagger">
+    <article class="ps-p1 ps-reveal">
+      <h3>Find a deleted post</h3>
+      <p>Open the <a href="/news/china/erasure/">journalist evidence trail</a>. Each row is an already-public post, ledger item, or Wayback reconstruction. Search the table by title, term, or source URL. Absence is a coverage gap, not a claim that nothing was deleted.</p>
+    </article>
+    <article class="ps-p1 ps-reveal">
+      <h3>See the trail</h3>
+      <p>Every row shows first-seen, last-seen, last-confirmed-alive when known, the source URL, a Wayback snapshot or lookup, and a SHA-256 of the public excerpt. The Situation desk repeats those fields on linked OSINT rows. A lookup URL is an address to try, not a claimed capture, unless a snapshot is attached.</p>
+    </article>
+    <article class="ps-p1 ps-reveal">
+      <h3>Export and cite</h3>
+      <p>Download the <a href="/readings/erasure-trail.csv">CSV</a> or <a href="/readings/erasure-trail-latest.json">JSON</a>. Copy the citation line on the row. Cite Palimpsest as the observatory that recorded a public disappearance — not as a witness inside China and not as proof of motive. Method: <a href="/docs/FOR-JOURNALISTS.md">journalist guide</a>.</p>
+    </article>
+  </div>
+  <article class="ps-p1 ps-reveal">
+    <h3>What is captured, and what is not</h3>
+    <p><strong>Captured:</strong> public posts, public deletion ledgers, Wayback reconstructions, and GFW injector telemetry from separate instruments. <strong>Not captured:</strong> private WeChat, classified systems, in-country accounts, follower graphs, comments, locations, or media binaries. Palimpsest never fabricates a live reading when a collector is silent.</p>
+  </article>
+  </section>
 
   <section class="ps-defer" id="plain-answers">
   <h2 class="ps-section-head">Plain answers for researchers</h2>

@@ -160,6 +160,23 @@ SIGNALS: tuple[SignalSpec, ...] = (
     _s("net4people", "Community blocking log", "attention", "net4people-latest.json", 12, 26,
        "Tracks qualitative China blocking and circumvention reports from the net4people community log.",
        "recent events", ("n_recent",), "count"),
+    _s("public-deletion-ledgers", "Public deletion ledgers", "attention",
+       "public-deletion-ledgers-latest.json", 3, 7,
+       "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style) with reachability explicit.",
+       "ledger observations", ("n_observations",), "count",
+       "feeds answering", ("n_feeds_ok",), optional=True,
+       source_fallback="Public CDT / GreatFire / FreeWeibo-style feeds when reachable",
+       method_fallback=(
+           "Keyless RSS/Atom ingest; unreachable ledgers are reported and never "
+           "published as a zero")),
+    _s("undertext", "UNDERTEXT differential fusion", "attention",
+       "undertext-latest.json", 6, 14,
+       "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated.",
+       "observations", ("n_observations",), "count"),
+    _s("research-corpus", "Research-corpus metadata", "attention",
+       "research-corpus-latest.json", 12, 26,
+       "Metadata-only Git ref advertisements for five allowlisted public research corpora; blobs and keywords stay unpublished.",
+       "sources", ("n_sources",), "count"),
 
     # Independent network and circumvention vantages.
     _s("ooni-gfw", "OONI Great Firewall index", "network", "ooni-gfw-latest.json", 6, 14,
@@ -283,10 +300,11 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # evidence wire, article stream, primary archive, corroboration, network-round normalization
 # and editorial gates are parallel/derived publication planes (including them would recurse
 # or double count); the compact China index, forecast audit and observation manifest are derived
-# publication/query heads over economic evidence already represented here; the research
-# corpus is mixed-scope; the social ledger is attributed publisher context rather than a
-# measurement; the Situation index consumes this roll-up and therefore cannot be fed back
-# into it; and the remaining files are generic model evaluation surfaces.
+# publication/query heads over economic evidence already represented here; the social
+# ledger is attributed publisher context rather than a measurement; the Situation index
+# consumes this roll-up and therefore cannot be fed back into it; and the remaining
+# files are generic model evaluation surfaces. Research-corpus metadata is a first-party
+# China-adjacent input and is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset({
     "china-article-stream-latest.json",
     "china-censorship-analysis-latest.json",
@@ -310,10 +328,17 @@ EXCLUDED_LATEST_FILES = frozenset({
     "newswire-latest.json",
     "newsroom-latest.json",
     "primary-documents-latest.json",
-    "research-corpus-latest.json",
     "refusal-drift-latest.json",
     "source-workflow-latest.json",
     "social-observations-latest.json",
+    "erasure-trail-latest.json",
+    "common-crawl-china-joins-latest.json",
+    "official-first-seen-latest.json",
+    "news-wire-live-latest.json",
+    "wikipedia-gazetteer-rc-latest.json",
+    "baike-public-snapshot-latest.json",
+    "public-hot-boards-latest.json",
+    "telegram-public-channels-latest.json",
 })
 
 

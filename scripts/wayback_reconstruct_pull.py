@@ -101,10 +101,17 @@ def main() -> None:
             reachable += 1
         rows.append(_reconstruction_row(rec))
         for d in rec.divergences:
+            from core.china_observation import enrich_observation, serialize_observation
+
             obs = divergence_to_observation(d)
-            obs["detected_at"] = obs["detected_at"].isoformat() if hasattr(
-                obs["detected_at"], "isoformat") else obs["detected_at"]
-            ddti_observations.append(obs)
+            obs = enrich_observation(
+                obs,
+                text=obs.get("text") or rec.term,
+                source_url=rec.url,
+                last_live_snapshot=rec.primary.a.raw_excerpt if rec.primary is not None else None,
+                post_event_snapshot=rec.primary.b.raw_excerpt if rec.primary is not None else None,
+            )
+            ddti_observations.append(serialize_observation(obs))
 
     # Honesty guard: if the Archive was unreachable for EVERY URL, abstain — do not publish a
     # signal that is all-unknown (it would read as "nothing is being deleted", a false zero).

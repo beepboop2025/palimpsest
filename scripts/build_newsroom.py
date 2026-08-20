@@ -4211,6 +4211,9 @@ def build_sitemap(
         urls.append(
             f"  <url><loc>{SITE}/news/china/situation/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.95</priority></url>"
         )
+        urls.append(
+            f"  <url><loc>{SITE}/news/china/erasure/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.9</priority></url>"
+        )
     if china_analysis is not None:
         news_markup = f"""<news:news><news:publication><news:name>Palimpsest China Desk</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(china_analysis['published_at'])}</news:publication_date><news:title>{xml_escape(china_analysis['title'])}</news:title></news:news>"""
         urls.append(

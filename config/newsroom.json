@@ -245,6 +245,57 @@
       "related_signal_ids": ["ooni-gfw", "circumvention-demand", "vantage-fusion"]
     },
     {
+      "id": "public-deletion-ledgers",
+      "name": "Public deletion ledgers",
+      "slug": "public-deletion-ledgers",
+      "section": "attention",
+      "order": 7,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "observation",
+      "headline_template": "Public deletion ledgers carry {value} observations from reachable feeds",
+      "dek_template": "CDT, GreatFire and FreeWeibo-style RSS/Atom ledgers are ingested only when a feed answers; unreachable ledgers stay named rather than becoming a zero.",
+      "claim_template": "The current ledger ingest published {value} public observations.",
+      "limitations": [
+        "A missing ledger file is an abstention, not proof that nothing was deleted. Reachability of a public RSS feed is not a census of Chinese-language deletions."
+      ],
+      "related_signal_ids": ["ddti", "undertext", "wayback"]
+    },
+    {
+      "id": "undertext",
+      "name": "UNDERTEXT differential fusion",
+      "slug": "undertext-differential-fusion",
+      "section": "attention",
+      "order": 8,
+      "type": "analysis",
+      "priority": "high",
+      "claim_type": "finding",
+      "headline_template": "UNDERTEXT fuses {value} public observations across archive and board readings",
+      "dek_template": "The fusion remaps already-published Wayback, Weibo-board and DDTI records onto one observation schema without inventing a live deletion round.",
+      "claim_template": "The current fusion contains {value} observations reconstructed from committed public readings.",
+      "limitations": [
+        "Fusion inherits the limits of its inputs; archive-status rows are not relabelled as deletions, and optional Wikipedia live surfaces stay gated."
+      ],
+      "related_signal_ids": ["wayback", "weibo-hotsearch", "ddti"]
+    },
+    {
+      "id": "research-corpus",
+      "name": "Research-corpus metadata",
+      "slug": "research-corpus-metadata",
+      "section": "attention",
+      "order": 9,
+      "type": "measurement",
+      "priority": "standard",
+      "claim_type": "finding",
+      "headline_template": "The research-corpus ledger tracks {value} allowlisted public repositories",
+      "dek_template": "Only Git ref advertisements and default-branch cursors are published; notice bodies, keyword lists and routing rules stay unpublished.",
+      "claim_template": "The current metadata-only ledger covers {value} allowlisted research repositories.",
+      "limitations": [
+        "A commit cursor change is not a claim about why the repository moved, and unpublished notice bodies cannot be inferred from the metadata."
+      ],
+      "related_signal_ids": ["github-refuge", "wayback"]
+    },
+    {
       "id": "ooni-gfw",
       "name": "OONI Great Firewall index",
       "slug": "ooni-great-firewall-index",

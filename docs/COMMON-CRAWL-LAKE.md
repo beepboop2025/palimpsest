@@ -130,6 +130,25 @@ The context document contains no generated headline or article body. Its model
 features describe review priority, not truth. Automatic publication is
 prohibited, and causal language remains prohibited without a declared design.
 
+## China observation joins
+
+The same private warehouse already holds URL-index captures for allowlisted
+institutional hosts. The China observation path **joins that existing lake**. It
+does not start a new crawl, does not call publisher hosts, and does not copy
+`inbox/`, SQLite, or WARC objects into git.
+
+`refresh` and `china-join` write a private receipt at
+`derived/china-observation-lake-joins.json` (mode `0600`). Each match is
+sanitized to `match_kind` (`url` / `host` / `digest`), allowlisted `host`,
+`target_id`, `crawl`, `capture_at`, MIME, language, content digest, and
+`locator_sha256`. Lake URLs, WARC filenames, offsets, lengths, and bodies stay
+off the public record.
+
+UNDERTEXT attaches that receipt, or a read-only sqlite lookup, when the file
+already exists. If the warehouse is missing or empty, the join is `null` and the
+live site abstains. CI uses fixtures. Do not invent row counts. Do not add a
+Common Crawl file to the OSINT signal ratchet.
+
 The configured editorial policy intentionally favors distinctive, defensible
 leads. Up to 40 points come from point-in-time archive context and declared
 archive-anomaly magnitude and breadth, 35 from evidence strength and independent

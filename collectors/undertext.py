@@ -592,10 +592,14 @@ def divergence_to_observation(div: Divergence) -> dict:
     is also surfaced as recovered text, so a divergence on an unknown coinage becomes a
     candidate for the human-ratified gazetteer.
     """
+    from core.china_observation import enrich_observation
+
     term = div.probe.query
-    return {
+    detected = _aware(div.b.observed_at)
+    last_live = _aware(div.a.observed_at) if div.a.present else None
+    raw = {
         "terms": [term] if term else [],
-        "detected_at": _aware(div.b.observed_at),
+        "detected_at": detected,
         "title": f"[undertext:{div.kind}] {term}",
         "text": term,
         "url": "",
@@ -603,6 +607,29 @@ def divergence_to_observation(div: Divergence) -> dict:
         "deletion_signal": div.kind,
         "severity": div.severity(),
     }
+    return enrich_observation(
+        raw,
+        text=div.b.raw_excerpt or term,
+        first_seen=last_live or detected,
+        last_seen=detected,
+        last_confirmed_alive=last_live,
+        last_live_snapshot=div.a.raw_excerpt if (div.a.raw_excerpt or "").startswith("https://") else None,
+        post_event_snapshot=div.b.raw_excerpt if (div.b.raw_excerpt or "").startswith("https://") else None,
+        confirmations=[{
+            "status": div.kind,
+            "observed_at": detected,
+            "source": raw["source"],
+            "note": div.detail or "",
+        }],
+        provenance={
+            "collector": "undertext",
+            "method": "differential vantage tomography",
+            "vantage": div.b.vantage.tag(),
+            "schema_version": "palimpsest-china-observation.v1",
+            "method_version": 1,
+            "content_fp": div.b.content_fp or "",
+        },
+    )
 
 
 def _aware(epoch: float):
