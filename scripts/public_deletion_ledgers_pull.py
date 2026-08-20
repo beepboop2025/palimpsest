@@ -11,14 +11,13 @@ from __future__ import annotations
 
 import json
 import os
-import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
 from collectors.public_deletion_ledgers import DEFAULT_FEEDS, collect_ledgers
 from core.china_observation import iso_z, serialize_observation
 from core.governance import KillSwitch, RateCeiling
+from core.safe_fetch import FetchError, safe_fetch
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -36,13 +35,25 @@ _TIMEOUT = 25
 
 
 def _http_fetch(url: str) -> tuple[int, str]:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    """Hardened GET of a public ledger URL. Transport failures raise OSError."""
+
+    proxy = os.getenv("PALIMPSEST_PROXY", "").strip() or None
     try:
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-            body = resp.read(2 * 1024 * 1024).decode("utf-8", "replace")
-            return int(resp.status), body
-    except urllib.error.HTTPError as exc:
-        return int(exc.code), ""
+        body = safe_fetch(
+            url,
+            max_bytes=2 * 1024 * 1024,
+            timeout=_TIMEOUT,
+            headers={"User-Agent": USER_AGENT},
+            proxy=proxy,
+        )
+        return 200, body
+    except FetchError as exc:
+        message = str(exc)
+        if message.startswith("http status "):
+            token = message.rsplit(" ", 1)[-1]
+            if token.isdigit():
+                return int(token), ""
+        raise OSError(message) from exc
 
 
 def main(*, fetch=None, now: datetime | None = None) -> dict | None:
@@ -78,8 +89,9 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
             "no in-country vantage, no fabricated live readings."
         ),
         "method": (
-            "Keyless RSS/Atom ingest through collectors.ddti_probe.parse_feed_items; "
-            "each feed is a candidate and reports its own reachability."
+            "Keyless RSS/Atom ingest through collectors.feed_parse.parse_feed_items "
+            "and core.safe_fetch; each feed is a candidate and reports its own "
+            "reachability."
         ),
         "n_feeds": result["n_feeds"],
         "n_feeds_ok": result["n_feeds_ok"],
