@@ -18,6 +18,7 @@ from xml.sax.saxutils import escape as xml_escape
 from collectors import fourchan_catalog
 from core import live_event as live_event_model
 from core import rumour_board as rumour_model
+from core import vantage_join as join_model
 from core.place_gazetteer import load_place_gazetteer
 from scripts import build_newsroom as newsroom_builder
 from scripts import site_nav
@@ -51,7 +52,8 @@ def build_documents(
     generated_at: str | None = None,
     catalogs: Mapping[str, Any] | None = None,
     vantage: str = "box-local",
-) -> tuple[dict[str, Any], dict[str, Any]]:
+    readings_dir: Path | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     generated = generated_at or _now()
     taps = live_event_model.load_tap_registry(TAP_REGISTRY)
     gazetteer = load_place_gazetteer(GAZETTEER)
@@ -91,7 +93,11 @@ def build_documents(
                 row["error_code"] = None
         live_event_model.validate_live_watch(watch)
     rumour = rumour_model.project_events(receipt["events"], generated_at=generated)
-    return watch, rumour
+    join = join_model.project_join(
+        join_model.load_warehouse_readings(readings_dir or (ROOT / "readings")),
+        generated_at=generated,
+    )
+    return watch, rumour, join
 
 
 def _tap_table(watch: Mapping[str, Any] | None) -> str:
@@ -116,9 +122,123 @@ def _tap_table(watch: Mapping[str, Any] | None) -> str:
 </section>"""
 
 
+def _cards(rows: list[str], *, section_id: str, label: str) -> str:
+    return f'<section class="rb-ledger" id="{section_id}" aria-label="{label}">{"".join(rows)}</section>'
+
+
+def _join_section(join: Mapping[str, Any] | None) -> str:
+    if join is None or join.get("status") != "WAREHOUSE_JOIN":
+        return ""
+    blocks: list[str] = [
+        """<section class="rb-methods" aria-labelledby="join-title" id="join">
+  <p class="rb-stamp">The join</p>
+  <h2 id="join-title">Sit on warehouses incrementally. Then join what you already sealed.</h2>
+  <p>These rows are projections of readings Palimpsest already published. They are not a new scrape. A shared host is not an exact URL join. Official text alone is the censor's story.</p>
+</section>"""
+    ]
+    pulse_cards = [
+        (
+            f'<article class="rb-card rb-pulse" id="{newsroom_builder._h(row["pulse_id"])}">'
+            f'<p class="rb-kicker">{newsroom_builder._h(row["warehouse"])} · '
+            f'{newsroom_builder._h(_human(row["observed_at"]))}</p>'
+            f'<h3>{newsroom_builder._h(row["title"])}</h3>'
+            f'<p>{newsroom_builder._h(row["note"])}</p>'
+            f'<p class="rb-relation">{newsroom_builder._h(row["relation"])}</p>'
+            "</article>"
+        )
+        for row in join["pulses"]
+    ]
+    if pulse_cards:
+        blocks.append(_cards(pulse_cards, section_id="pulses", label="Warehouse pulses"))
+    host_cards = [
+        (
+            f'<article class="rb-card" id="{newsroom_builder._h(row["row_id"])}">'
+            f'<p class="rb-kicker">{newsroom_builder._h(row["wire_source"])} · '
+            f'{newsroom_builder._h(row["host"])} · '
+            f'{newsroom_builder._h(_human(row["observed_at"]))}</p>'
+            f'<h3><a href="{newsroom_builder._h(row["url"])}">{newsroom_builder._h(row["headline"])}</a></h3>'
+            f'<p>{newsroom_builder._h(row["ooni_note"])}</p>'
+            f'<p class="rb-relation">{newsroom_builder._h(row["relation"])}</p>'
+            "<small>Host overlap only. Not an exact URL join. Not corroboration.</small>"
+            "</article>"
+        )
+        for row in join["host_joins"]
+    ]
+    if host_cards:
+        blocks.append(
+            '<section class="rb-methods"><p class="rb-stamp">Host-surface joins</p>'
+            "<h2>Wire headline, same host blocked in OONI.</h2>"
+            "<p>This is the closest sealed pair today. It is still not the four-leg tuple.</p>"
+            f"</section>{_cards(host_cards, section_id='host-joins', label='Host-surface joins')}"
+        )
+    demand_cards = [
+        (
+            f'<article class="rb-card" id="{newsroom_builder._h(row["row_id"])}">'
+            f'<p class="rb-kicker">{newsroom_builder._h(row["surface"])} · rank '
+            f'{int(row["rank"])} · {newsroom_builder._h(_human(row["observed_at"]))}</p>'
+            f'<h3>{newsroom_builder._h(row["title"])}</h3>'
+            f'<p class="rb-relation">{newsroom_builder._h(row["relation"])}</p>'
+            "<small>Title and rank only. Public archive. Not a logged-in Weibo session.</small>"
+            "</article>"
+        )
+        for row in join["demand"]
+    ]
+    if demand_cards:
+        blocks.append(
+            '<section class="rb-methods"><p class="rb-stamp">Captured demand</p>'
+            "<h2>Query demand, not posts. Titles Palimpsest already captured.</h2></section>"
+            + _cards(demand_cards, section_id="demand", label="Demand ranks")
+        )
+    archive_cards = [
+        (
+            f'<article class="rb-card" id="{newsroom_builder._h(row["row_id"])}">'
+            f'<p class="rb-kicker">wayback · {newsroom_builder._h(row["status"])} · '
+            f'{int(row["n_captures"])} captures</p>'
+            f'<h3>{newsroom_builder._h(row["term"])}</h3>'
+            + (
+                f'<p><a href="{newsroom_builder._h(row["url"])}">{newsroom_builder._h(row["url"])}</a></p>'
+                if row["url"]
+                else "<p>No sealed URL on this watch row.</p>"
+            )
+            + f'<p class="rb-relation">{newsroom_builder._h(row["relation"])}</p></article>'
+        )
+        for row in join["archive"]
+    ]
+    if archive_cards:
+        blocks.append(
+            '<section class="rb-methods"><p class="rb-stamp">Archive watch</p>'
+            "<h2>Still in Wayback, or not yet witnessed.</h2></section>"
+            + _cards(archive_cards, section_id="archive", label="Wayback watchlist")
+        )
+    blocked_cards = [
+        (
+            f'<article class="rb-card" id="{newsroom_builder._h(row["row_id"])}">'
+            f'<p class="rb-kicker">ooni-gfw · {int(row["anomaly_pct"])}% · '
+            f'{int(row["measurements"])} measurements</p>'
+            f'<h3>{newsroom_builder._h(row["host"])}</h3>'
+            f'<p>{newsroom_builder._h(row["title"])}</p>'
+            f'<p class="rb-relation">{newsroom_builder._h(row["relation"])}</p></article>'
+        )
+        for row in join["blocked"]
+    ]
+    if blocked_cards:
+        blocks.append(
+            '<section class="rb-methods"><p class="rb-stamp">OONI host anomalies</p>'
+            "<h2>Blocked in OONI, at host grain.</h2></section>"
+            + _cards(blocked_cards, section_id="blocked", label="OONI blocked hosts")
+        )
+    tuple_note = (
+        f'<aside class="rb-limit"><p>{int(join["n_tuples"])} exact four-leg tuples '
+        "cleared the join gate. Host overlap is not that product row.</p></aside>"
+    )
+    blocks.append(tuple_note)
+    return "".join(blocks)
+
+
 def render_page(
     document: Mapping[str, Any],
     watch: Mapping[str, Any] | None = None,
+    join: Mapping[str, Any] | None = None,
 ) -> str:
     entries = document["entries"]
     if not entries:
@@ -150,6 +270,15 @@ def render_page(
         ledger = f'<section class="rb-ledger" id="rumour" aria-label="Rumour board rows">{cards}</section>'
     stamp = watch["generated_at"] if watch is not None else document["generated_at"]
     tap_count = watch["n_taps"] if watch is not None else 0
+    join_status = join["status"] if join is not None else "COVERAGE_ONLY"
+    pulse_count = join["n_pulses"] if join is not None else 0
+    demand_count = join["n_demand"] if join is not None else 0
+    host_count = join["n_host_joins"] if join is not None else 0
+    stamp_line = (
+        f"{join_status} · {_human(stamp)} · {pulse_count} warehouse pulses · "
+        f"{demand_count} demand ranks · {host_count} host joins · "
+        f"{tap_count} taps · {document['n_entries']} rumour rows"
+    )
     body = f"""<body class="ps newsroom-page rumour-board-page">
 {site_nav.render("/news/")}
 <main id="main">
@@ -157,10 +286,11 @@ def render_page(
     <p class="rb-kicker">Palimpsest / Public vantages</p>
     <h1>More public vantages, continuously, then join them.</h1>
     <p>The way to get more grey data is more public vantages, continuously, then join them. One headline on Xinhua, gone from Baidu hot, blocked in OONI, still in Wayback: that tuple is the product. Official text alone is the censor's story.</p>
-    <p class="rb-stamp">{newsroom_builder._h(document["status"])} · {newsroom_builder._h(_human(stamp))} · {tap_count} taps · {document["n_entries"]} rumour rows</p>
+    <p class="rb-stamp">{newsroom_builder._h(stamp_line)}</p>
   </header>
   <div class="rb-shell">
     <nav class="rb-nav" aria-label="China intelligence tabs"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/">Article stream</a><a href="/news/china/whispers/">Whispers</a><a aria-current="page" href="/news/china/rumour/">Public vantages</a></nav>
+    {_join_section(join)}
     <section class="rb-methods" aria-labelledby="volume-title">
       <p class="rb-stamp">Four methods that change the volume</p>
       <h2 id="volume-title">Drink firehoses. Watch a URL list. Sit on warehouses. Never keep the HTML.</h2>
@@ -219,38 +349,84 @@ def render_page(
     ) + body
 
 
-def render_json_feed(document: Mapping[str, Any]) -> dict[str, Any]:
+def _feed_items(
+    document: Mapping[str, Any],
+    join: Mapping[str, Any] | None = None,
+) -> list[dict[str, str]]:
+    items = [
+        {
+            "id": row["entry_id"],
+            "url": f"{SITE}/news/china/rumour/#{row['entry_id']}",
+            "title": row["title"],
+            "date_published": row["observed_at"],
+            "content_text": row["relation"],
+        }
+        for row in document["entries"][:80]
+    ]
+    if join is None:
+        return items
+    for row in join.get("host_joins") or []:
+        items.append(
+            {
+                "id": row["row_id"],
+                "url": f"{SITE}/news/china/rumour/#{row['row_id']}",
+                "title": row["headline"],
+                "date_published": row["observed_at"],
+                "content_text": row["relation"],
+            }
+        )
+    for row in join.get("demand") or []:
+        items.append(
+            {
+                "id": row["row_id"],
+                "url": f"{SITE}/news/china/rumour/#{row['row_id']}",
+                "title": row["title"],
+                "date_published": row["observed_at"],
+                "content_text": row["relation"],
+            }
+        )
+    for row in join.get("pulses") or []:
+        items.append(
+            {
+                "id": row["pulse_id"],
+                "url": f"{SITE}/news/china/rumour/#{row['pulse_id']}",
+                "title": row["title"],
+                "date_published": row["observed_at"],
+                "content_text": row["relation"],
+            }
+        )
+    return items[:200]
+
+
+def render_json_feed(
+    document: Mapping[str, Any],
+    join: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "version": "https://jsonfeed.org/version/1.1",
         "title": "Palimpsest public vantages",
         "home_page_url": f"{SITE}/news/china/rumour/",
         "feed_url": f"{SITE}/news/china/rumour/feed.json",
         "description": document["scope"],
-        "items": [
-            {
-                "id": row["entry_id"],
-                "url": f"{SITE}/news/china/rumour/#{row['entry_id']}",
-                "title": row["title"],
-                "date_published": row["observed_at"],
-                "content_text": row["relation"],
-            }
-            for row in document["entries"][:200]
-        ],
+        "items": _feed_items(document, join),
     }
 
 
-def render_rss(document: Mapping[str, Any]) -> str:
+def render_rss(
+    document: Mapping[str, Any],
+    join: Mapping[str, Any] | None = None,
+) -> str:
     items = "".join(
         (
             "<item>"
             f"<title>{xml_escape(row['title'])}</title>"
-            f"<link>{SITE}/news/china/rumour/#{row['entry_id']}</link>"
-            f"<guid isPermaLink=\"false\">{xml_escape(row['entry_id'])}</guid>"
-            f"<pubDate>{xml_escape(row['observed_at'])}</pubDate>"
-            f"<description>{xml_escape(row['relation'])}</description>"
+            f"<link>{xml_escape(row['url'])}</link>"
+            f"<guid isPermaLink=\"false\">{xml_escape(row['id'])}</guid>"
+            f"<pubDate>{xml_escape(row['date_published'])}</pubDate>"
+            f"<description>{xml_escape(row['content_text'])}</description>"
             "</item>"
         )
-        for row in document["entries"][:200]
+        for row in _feed_items(document, join)
     )
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -265,13 +441,17 @@ def render_rss(document: Mapping[str, Any]) -> str:
     )
 
 
-def write_outputs(watch: Mapping[str, Any], rumour: Mapping[str, Any]) -> dict[Path, bytes]:
+def write_outputs(
+    watch: Mapping[str, Any],
+    rumour: Mapping[str, Any],
+    join: Mapping[str, Any] | None = None,
+) -> dict[Path, bytes]:
     outputs = {
         WATCH_PATH: newsroom_builder._pretty_json(watch),
         RUMOUR_PATH: newsroom_builder._pretty_json(rumour),
-        PAGE_PATH: render_page(rumour, watch).encode("utf-8"),
-        JSON_FEED_PATH: newsroom_builder._pretty_json(render_json_feed(rumour)),
-        RSS_FEED_PATH: render_rss(rumour).encode("utf-8"),
+        PAGE_PATH: render_page(rumour, watch, join).encode("utf-8"),
+        JSON_FEED_PATH: newsroom_builder._pretty_json(render_json_feed(rumour, join)),
+        RSS_FEED_PATH: render_rss(rumour, join).encode("utf-8"),
     }
     for path, payload in outputs.items():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -295,6 +475,12 @@ def check_outputs() -> None:
         raise RumourBoardBuildError("page lost the public-vantage product line")
     if "Never keep the HTML" not in page:
         raise RumourBoardBuildError("page lost the NDJSON storage rule")
+    if "Sit on warehouses incrementally" not in page:
+        raise RumourBoardBuildError("page lost the warehouse-join section")
+    if "Host overlap only" not in page and "warehouse pulses" not in page:
+        raise RumourBoardBuildError("page lost the sealed warehouse projection")
+    if "do not add an independent source group" not in page:
+        raise RumourBoardBuildError("page lost the independence lock")
 
 
 def _parse_now(value: str) -> str:
@@ -323,10 +509,15 @@ def main(argv: list[str] | None = None) -> int:
             check_outputs()
             return 0
         generated_at = _parse_now(args.now) if args.now else None
-        watch, rumour = build_documents(generated_at=generated_at)
-        write_outputs(watch, rumour)
+        watch, rumour, join = build_documents(generated_at=generated_at)
+        write_outputs(watch, rumour, join)
         return 0
-    except (RumourBoardBuildError, live_event_model.LiveEventError, rumour_model.RumourBoardError) as exc:
+    except (
+        RumourBoardBuildError,
+        live_event_model.LiveEventError,
+        rumour_model.RumourBoardError,
+        join_model.VantageJoinError,
+    ) as exc:
         print(json.dumps({"status": "failed", "error": str(exc)}), file=sys.stderr)
         return 1
 

@@ -107,6 +107,8 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "china-index-latest.json",
         "china-situation-latest.json",
         "dragon-whispers-latest.json",
+        "live-watch-latest.json",
+        "rumour-board-latest.json",
         "corroboration-latest.json",
         "editorial-readiness-latest.json",
         "evidence-mesh-latest.json",
