@@ -1,0 +1,28 @@
+{
+  "schema": "palimpsest-common-crawl-index-plan/v1",
+  "mode": "index_only",
+  "purpose": "Plan prior-month Common Crawl CDX/index queries against the existing host allowlist. Does not download WARCs or raw bodies.",
+  "allowlist_source": "config/common_crawl_targets.json",
+  "index_collinfo_url": "https://index.commoncrawl.org/collinfo.json",
+  "planned_crawls": [
+    "CC-MAIN-2026-25",
+    "CC-MAIN-2026-21",
+    "CC-MAIN-2026-17",
+    "CC-MAIN-2026-12",
+    "CC-MAIN-2026-08"
+  ],
+  "current_in_lake": "CC-MAIN-2026-30",
+  "minimum_prior_crawls_for_scores": 6,
+  "rights": {
+    "training_use": "derived_only",
+    "raw_text_policy": "excluded",
+    "url_list_policy": "do_not_publish"
+  },
+  "forbidden": [
+    "download_warc",
+    "second_mirror",
+    "commit_url_dumps",
+    "publish_url_list",
+    "train_on_raw_bodies"
+  ]
+}

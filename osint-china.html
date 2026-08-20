@@ -121,6 +121,7 @@
 .oc-chip[data-tone="warning"]{border-color:var(--tk-warning-line);background:var(--tk-warning-bg);color:var(--tk-warning)}
 .oc-chip[data-tone="critical"]{border-color:var(--tk-critical-line);background:var(--tk-critical-bg);color:var(--tk-critical)}
 .oc-signal__summary{font-size:12.5px;line-height:1.55;color:var(--tk-text-2);margin:0;overflow-wrap:anywhere}
+.oc-signal__analysis{font-size:12px;line-height:1.5;color:var(--tk-text-3);margin:0;overflow-wrap:anywhere}
 .oc-signal__metric{font:650 18px/1.25 var(--tk-font-mono);color:var(--tk-text-1);margin:0;overflow-wrap:anywhere}
 .oc-signal__meta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font:400 10.5px/1.4 var(--tk-font-mono);color:var(--tk-text-4)}
 .oc-signal__links{display:flex;gap:12px;flex-wrap:wrap;margin-top:auto;padding-top:2px}
@@ -377,6 +378,7 @@
 (function () {
   "use strict";
   var FEED = "/readings/osint-china-latest.json";
+  var ANALYSIS_FEED = "/readings/reading-analysis-latest.json";
   var COMMONS_FEED = "/integrations/intelligence-commons/manifest-v1.json";
   var SCAMSHIELD_PACK = "/integrations/scamshield/intelligence-pack-v1.json";
   var NARCOSCOPE_SNAPSHOT = "/integrations/intelligence-commons/narcoscope-palimpsest-v1.json";
@@ -389,6 +391,7 @@
   var currentLayerTitles = {};
   var currentLayerOrder = [];
   var currentDocument = null;
+  var analysisById = {};
   var commonsLoaded = false;
   var requestInFlight = false;
   var lastFetchFailed = false;
@@ -679,6 +682,10 @@
     var chip = node("span", "oc-chip", status); chip.setAttribute("data-tone", tone); top.appendChild(chip); card.appendChild(top);
     var mt = metricText(signal); if (mt) card.appendChild(node("p", "oc-signal__metric", status === "fresh" ? mt : "last reported: " + mt));
     card.appendChild(node("p", "oc-signal__summary", text(signal.summary || signal.headline, "No plain-language summary was published for this source.")));
+    var analysis = analysisById[idOf(signal)];
+    if (analysis && analysis.public_copy) {
+      card.appendChild(node("p", "oc-signal__analysis", analysis.public_copy));
+    }
     var meta = node("div", "oc-signal__meta");
     var measuredAt = signal.generated_at || signal.source_timestamp;
     meta.appendChild(node("span", null, measuredAt ? "measured " + ago(measuredAt) : "no measurement timestamp"));
@@ -987,6 +994,19 @@
     input.value = ""; query = ""; renderLayers(); input.focus();
   });
 
+  function indexAnalysis(doc) {
+    analysisById = {};
+    if (!doc || !Array.isArray(doc.instruments)) return;
+    doc.instruments.forEach(function (row) {
+      if (row && typeof row.instrument_id === "string") analysisById[row.instrument_id] = row;
+    });
+  }
+  function loadAnalysis() {
+    return optionalJson(ANALYSIS_FEED).then(function (result) {
+      if (result.ok) indexAnalysis(result.value);
+      else analysisById = {};
+    });
+  }
   function start() {
     if (requestInFlight) return;
     requestInFlight = true;
@@ -994,7 +1014,10 @@
     var request;
     if (loader) request = loader(FEED, function (d) { render(d, true); }, fail);
     else request = fetch(FEED, {cache:"no-store"}).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(function (d) { render(d, true); }).catch(fail);
-    Promise.resolve(request).then(function () { requestInFlight = false; }, function () { requestInFlight = false; });
+    Promise.all([Promise.resolve(request), loadAnalysis()]).then(function () {
+      requestInFlight = false;
+      if (currentDocument) renderLayers();
+    }, function () { requestInFlight = false; });
   }
   function refreshView() {
     if (!currentDocument) return;

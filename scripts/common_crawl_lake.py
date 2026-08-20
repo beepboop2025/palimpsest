@@ -11,8 +11,10 @@ from pathlib import Path
 
 from collectors.common_crawl_lake import (
     DEFAULT_CONFIG,
+    DEFAULT_INDEX_PLAN,
     CommonCrawlLakeError,
     ingest_export,
+    plan_index_ingest,
     probe_exact_url,
     render_duckdb_export_sql,
     retrieve_warc_record,
@@ -124,6 +126,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     fetch = subparsers.add_parser("fetch-record", help="retain one selected WARC byte range")
     fetch.add_argument("locator_sha256")
+
+    plan = subparsers.add_parser(
+        "plan-index-ingest",
+        help="print an index-only plan for prior public crawls (no WARC download)",
+    )
+    plan.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="required: emit the plan only; never download WARCs or URL dumps",
+    )
+    plan.add_argument("--plan", type=Path, default=DEFAULT_INDEX_PLAN)
     return parser
 
 
@@ -241,6 +254,12 @@ def run(args: argparse.Namespace) -> dict | str:
             args.locator_sha256,
             config_path=args.config,
             warehouse=paths["root"],
+        )
+    if args.command == "plan-index-ingest":
+        return plan_index_ingest(
+            config_path=args.config,
+            plan_path=getattr(args, "plan", None) or DEFAULT_INDEX_PLAN,
+            dry_run=bool(args.dry_run),
         )
     raise AssertionError(f"unhandled command: {args.command}")
 

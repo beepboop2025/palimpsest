@@ -9,10 +9,10 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 62,
+    "datasets": 63,
     "states": {
       "disabled": 1,
-      "fresh": 41,
+      "fresh": 42,
       "gated": 6,
       "private-node": 1,
       "stale": 10,
@@ -20,7 +20,7 @@
     },
     "layers": {
       "content": 11,
-      "cross-layer": 17,
+      "cross-layer": 18,
       "economy": 4,
       "integrity": 1,
       "model": 7,
@@ -29,8 +29,8 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 13747146,
-    "history_rows": 6533
+    "published_bytes": 14497522,
+    "history_rows": 6541
   },
   "datasets": [
     {
@@ -62,15 +62,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T03:58:30.255716Z",
+        "observed_at": "2026-08-20T07:06:05.431547Z",
         "age_seconds": 0,
         "counts": {
           "n_observations": 82,
-          "n_terms": 204
+          "n_terms": 211
         },
-        "latest_bytes": 24987,
-        "history_bytes": 55161,
-        "history_rows": 321,
+        "latest_bytes": 167709,
+        "history_bytes": 55376,
+        "history_rows": 322,
         "latest_available": true,
         "history_available": true
       },
@@ -110,15 +110,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T01:55:29.658653Z",
-        "age_seconds": 7381,
+        "observed_at": "2026-08-20T07:12:09.355483Z",
+        "age_seconds": 0,
         "counts": {
-          "n_measurements": 272575,
+          "n_measurements": 273449,
           "n_tests_with_data": 6
         },
         "latest_bytes": 7921,
-        "history_bytes": 27797,
-        "history_rows": 170,
+        "history_bytes": 27985,
+        "history_rows": 171,
         "latest_available": true,
         "history_available": true
       },
@@ -362,12 +362,12 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T01:56:46.823123Z",
-        "age_seconds": 7304,
+        "observed_at": "2026-08-20T07:14:29.232398Z",
+        "age_seconds": 0,
         "counts": {},
-        "latest_bytes": 4264,
-        "history_bytes": 9878,
-        "history_rows": 75,
+        "latest_bytes": 4263,
+        "history_bytes": 10009,
+        "history_rows": 76,
         "latest_available": true,
         "history_available": true
       },
@@ -407,15 +407,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-19T06:00:00.280611Z",
-        "age_seconds": 79110,
+        "observed_at": "2026-08-20T06:00:18.004639Z",
+        "age_seconds": 0,
         "counts": {
           "series_points": 70,
           "n_events": 0
         },
-        "latest_bytes": 3374,
-        "history_bytes": 2855,
-        "history_rows": 28,
+        "latest_bytes": 3372,
+        "history_bytes": 2957,
+        "history_rows": 29,
         "latest_available": true,
         "history_available": true
       },
@@ -452,12 +452,12 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T01:57:02Z",
-        "age_seconds": 7289,
+        "observed_at": "2026-08-20T07:16:01Z",
+        "age_seconds": 0,
         "counts": {},
         "latest_bytes": 668,
-        "history_bytes": 18034,
-        "history_rows": 127,
+        "history_bytes": 18176,
+        "history_rows": 128,
         "latest_available": true,
         "history_available": true
       },
@@ -546,14 +546,14 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-19T05:45:54Z",
-        "age_seconds": 79957,
+        "observed_at": "2026-08-20T05:45:24Z",
+        "age_seconds": 0,
         "counts": {
-          "history_days": 415
+          "history_days": 416
         },
         "latest_bytes": 1077,
-        "history_bytes": 119343,
-        "history_rows": 415,
+        "history_bytes": 119641,
+        "history_rows": 416,
         "latest_available": true,
         "history_available": true
       },
@@ -1093,14 +1093,14 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-19T05:59:54.732335Z",
-        "age_seconds": 79116,
+        "observed_at": "2026-08-20T06:00:10.337526Z",
+        "age_seconds": 0,
         "counts": {
-          "country.total_tested": 109541
+          "country.total_tested": 109652
         },
         "latest_bytes": 1909,
-        "history_bytes": 6754,
-        "history_rows": 22,
+        "history_bytes": 7061,
+        "history_rows": 23,
         "latest_available": true,
         "history_available": true
       },
@@ -3055,6 +3055,59 @@
         "latest": "https://palimpsest.info/readings/eval-articles-latest.json",
         "landing_page": "https://palimpsest.info/journal/",
         "method": "https://palimpsest.info/docs/EVAL-FINDINGS.md"
+      }
+    },
+    {
+      "id": "reading-analysis",
+      "name": "Reading analysis and review rank",
+      "description": "Per-instrument unusualness versus that instrument's own history, plus unlabeled editorial review ranks for live news rows. This is analysis context, not a motive sentence, not a cross-instrument censorship rate, and not automatic publication permission.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Palimpsest signal histories",
+        "Palimpsest newswire",
+        "Palimpsest newsroom"
+      ],
+      "latest": "readings/reading-analysis-latest.json",
+      "history": "readings/reading-analysis-history.jsonl",
+      "landing_page": "osint-china.html",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": [
+        "n_instruments_scored",
+        "n_instruments_warming_up",
+        "n_story_ranks"
+      ],
+      "license": {
+        "name": "MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:30:00Z",
+        "age_seconds": 0,
+        "counts": {
+          "n_instruments_scored": 24,
+          "n_instruments_warming_up": 11,
+          "n_story_ranks": 560
+        },
+        "latest_bytes": 605974,
+        "history_bytes": 300,
+        "history_rows": 1,
+        "latest_available": true,
+        "history_available": true
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/reading-analysis-latest.json",
+        "history": "https://palimpsest.info/readings/reading-analysis-history.jsonl",
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/NEW-METHODS.md"
       }
     },
     {

@@ -1094,6 +1094,24 @@
       "license": {"name": "MIT for Palimpsest text, method and structured records; model-output provider terms remain applicable to cited transcripts", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "reading-analysis",
+      "name": "Reading analysis and review rank",
+      "description": "Per-instrument unusualness versus that instrument's own history, plus unlabeled editorial review ranks for live news rows. This is analysis context, not a motive sentence, not a cross-instrument censorship rate, and not automatic publication permission.",
+      "layer": "cross-layer",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": ["CN", "GLOBAL"],
+      "sources": ["Palimpsest signal histories", "Palimpsest newswire", "Palimpsest newsroom"],
+      "latest": "readings/reading-analysis-latest.json",
+      "history": "readings/reading-analysis-history.jsonl",
+      "landing_page": "osint-china.html",
+      "method": "docs/NEW-METHODS.md",
+      "count_fields": ["n_instruments_scored", "n_instruments_warming_up", "n_story_ranks"],
+      "license": {"name": "MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "anchors",
       "name": "External integrity anchors",
       "description": "Deposits ledger roots outside Palimpsest's infrastructure and reports verification problems without hiding partial failure.",

@@ -233,6 +233,11 @@ CONTRACT = {
         reason="unavailable_pct is computed against the same catalogue measured in peer "
                "storefronts; the comparison set is enumerated in the country container "
                "rather than drawn as a sample."),
+    "reading-analysis": _d(
+        "generated_at", ["source", "method", "scope"],
+        reason="per-instrument unusualness plus unlabeled story review ranks: "
+               "n_instruments_considered and n_story_ranks are distinct populations "
+               "and must not be collapsed into one rate."),
 }
 
 
@@ -306,6 +311,7 @@ SCHEDULED_PUBLICATIONS = {
     "research-corpus",
     "social-observations",
     "china-situation",
+    "reading-analysis",
 }
 
 
@@ -493,7 +499,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v16"' in worker
+    assert 'const CACHE = "palimpsest-v17"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert '"/readings/gfi-transcripts-latest.json"' in worker
     for endpoint in (
@@ -542,6 +548,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "editorial-readiness",
     ):
         assert f'"/readings/{name}-latest.json"' in worker
+    assert '"/readings/reading-analysis-latest.json"' in worker
     evidence_branch = worker[
         worker.index("if (LIVE_EVIDENCE_READINGS.has(url.pathname))"):
     ]

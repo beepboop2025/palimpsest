@@ -22,7 +22,7 @@
         "CN"
       ],
       "temporalResolution": "PT3H",
-      "dateModified": "2026-08-20T03:58:30.255716Z",
+      "dateModified": "2026-08-20T07:06:05.431547Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -50,7 +50,7 @@
         "CN"
       ],
       "temporalResolution": "PT2H",
-      "dateModified": "2026-08-20T01:55:29.658653Z",
+      "dateModified": "2026-08-20T07:12:09.355483Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -177,7 +177,7 @@
         "CN"
       ],
       "temporalResolution": "PT2H",
-      "dateModified": "2026-08-20T01:56:46.823123Z",
+      "dateModified": "2026-08-20T07:14:29.232398Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -205,7 +205,7 @@
         "CN"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-19T06:00:00.280611Z",
+      "dateModified": "2026-08-20T06:00:18.004639Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -233,7 +233,7 @@
         "CN"
       ],
       "temporalResolution": "PT2H",
-      "dateModified": "2026-08-20T01:57:02Z",
+      "dateModified": "2026-08-20T07:16:01Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -289,7 +289,7 @@
         "CN"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-19T05:45:54Z",
+      "dateModified": "2026-08-20T05:45:24Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -593,7 +593,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-19T05:59:54.732335Z",
+      "dateModified": "2026-08-20T06:00:10.337526Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1617,6 +1617,35 @@
           "name": "Live Eval Findings — latest",
           "encodingFormat": "application/json",
           "contentUrl": "https://palimpsest.info/readings/eval-articles-latest.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "reading-analysis",
+      "name": "Reading analysis and review rank",
+      "description": "Per-instrument unusualness versus that instrument's own history, plus unlabeled editorial review ranks for live news rows. This is analysis context, not a motive sentence, not a cross-instrument censorship rate, and not automatic publication permission.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-20T07:30:00Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Reading analysis and review rank — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/reading-analysis-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Reading analysis and review rank — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/reading-analysis-history.jsonl"
         }
       ]
     },
