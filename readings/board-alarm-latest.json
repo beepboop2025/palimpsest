@@ -1,27 +1,26 @@
 {
-  "generated_at": "2026-08-20T07:29:31.553194+00:00",
-  "board_e_value": 243.327,
+  "generated_at": "2026-08-20T13:35:46.241008+00:00",
+  "board_e_value": 195.153,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
-      "censored_planet",
-      "ddti_novelty"
+      "censored_planet"
     ],
     "alpha": 0.1,
-    "k": 2,
-    "n_tested": 10,
-    "threshold": 50.0
+    "k": 1,
+    "n_tested": 9,
+    "threshold": 90.0
   },
   "layers": {
     "network": {
-      "e": 426.65,
+      "e": 426.539,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 1699.519,
         "ioda_outages": 1.0,
-        "ooni_gfw": 3.038,
+        "ooni_gfw": 2.594,
         "tor_bridge_cn": 3.044
       },
       "recent_alarms": [
@@ -29,19 +28,20 @@
       ]
     },
     "content": {
-      "e": 121.112,
-      "n_signals": 6,
+      "e": 10.043,
+      "n_signals": 5,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "data_darkness": 31.062,
-        "ddti_novelty": 675.227,
-        "ddti_threat": 14.407,
-        "gdelt_containment": 2.011,
-        "github_refuge": 2.965,
+        "ddti_threat": 13.0,
+        "gdelt_containment": 2.999,
+        "github_refuge": 2.156,
         "weibo_suppression": 1.0
       },
-      "recent_alarms": []
+      "recent_alarms": [
+        "ddti_novelty"
+      ]
     },
     "model": {
       "e": null,
@@ -58,40 +58,41 @@
   ],
   "layer_coincidence": 2,
   "recently_fired": [
-    "censored_planet"
+    "censored_planet",
+    "ddti_novelty"
   ],
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 3.0376,
-      "n": 171,
+      "e": 2.5935,
+      "n": 172,
       "direction": "flat",
       "robust_z": 0.0,
       "driver_side": "up",
-      "readings_since_alarm": 24,
+      "readings_since_alarm": 25,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 14.4071,
-      "n": 322,
-      "direction": "up",
-      "robust_z": 0.09,
+      "e": 12.9996,
+      "n": 324,
+      "direction": "down",
+      "robust_z": -0.06,
       "driver_side": "up",
-      "readings_since_alarm": 83,
+      "readings_since_alarm": 85,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
-      "state": "watch",
-      "e": 675.2271,
-      "n": 322,
+      "state": "warming_up",
+      "e": 0.0,
+      "n": 324,
       "direction": "up",
       "robust_z": 59.36,
-      "driver_side": "up",
-      "readings_since_alarm": 64,
-      "n_alarms_in_history": 2,
+      "driver_side": null,
+      "readings_since_alarm": 1,
+      "n_alarms_in_history": 3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
@@ -107,21 +108,21 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 2.011,
-      "n": 177,
-      "direction": "up",
-      "robust_z": 0.34,
-      "driver_side": "up",
+      "e": 2.9993,
+      "n": 178,
+      "direction": "down",
+      "robust_z": -1.01,
+      "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
       "state": "calm",
-      "e": 2.9646,
-      "n": 88,
-      "direction": "up",
-      "robust_z": 0.67,
+      "e": 2.1562,
+      "n": 89,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -137,9 +138,9 @@
       "state": "stale",
       "n": 1,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
-      "age_hours": 173.1,
+      "age_hours": 179.2,
       "bound_hours": 168.0,
-      "reason": "newest row is 173.1h old, past the 168h bound"
+      "reason": "newest row is 179.2h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "warming_up",
@@ -177,7 +178,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 128,
+      "n": 129,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -248,7 +249,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 5.7,
+      "age_hours": 11.8,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 9 of 21 adjacent-run pairs"
