@@ -315,9 +315,10 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # or double count); the compact China index, forecast audit and observation manifest are derived
 # publication/query heads over economic evidence already represented here; the social
 # ledger is attributed publisher context rather than a measurement; the Situation index
-# consumes this roll-up and therefore cannot be fed back into it; and the remaining
-# files are generic model evaluation surfaces. Research-corpus metadata is a first-party
-# China-adjacent input and is listed in SIGNALS.
+# consumes this roll-up and therefore cannot be fed back into it; live-watch and
+# rumour-board are public-vantage coverage receipts, not OSINT China measurements;
+# and the remaining files are generic model evaluation surfaces. Research-corpus
+# metadata is a first-party China-adjacent input and is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset({
     "china-article-stream-latest.json",
     "china-censorship-analysis-latest.json",
@@ -327,6 +328,8 @@ EXCLUDED_LATEST_FILES = frozenset({
     "china-index-latest.json",
     "china-situation-latest.json",
     "dragon-whispers-latest.json",
+    "live-watch-latest.json",
+    "rumour-board-latest.json",
     "corroboration-latest.json",
     "editorial-readiness-latest.json",
     "evidence-mesh-latest.json",
