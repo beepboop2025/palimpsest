@@ -250,6 +250,7 @@ _TOP_V2_EXTRA = frozenset(
         "corroboration",
         "archive_news_context",
         "interconnection",
+        "peer_context",
     }
 )
 

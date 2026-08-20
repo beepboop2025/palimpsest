@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-20T08:27:14.887142Z",
+  "dateModified": "2026-08-20T08:38:08Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -570,6 +570,85 @@
     },
     {
       "@type": "Dataset",
+      "identifier": "greatfire-context",
+      "name": "GreatFire attributed verdicts",
+      "description": "Caches GreatFire Analyzer 90-day URL verdicts (CC BY 4.0) for hosts Palimpsest already holds. Palimpsest is not the origin of these measurements and does not crawl the 700k catalog.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT12H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "peer-context",
+      "name": "Attributed peer-context warehouse",
+      "description": "Joins GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. Peer rows never become Palimpsest capture.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "ooni-peer-context",
+      "name": "OONI peer-context host join",
+      "description": "Host/ASN feature rows joined from already-held ooni-gfw-latest or warehouse/ooni-bulk. Does not re-download the 33G archive. Silent or miss joins fail closed.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "cdt-context",
+      "name": "CDT peer editorial context",
+      "description": "Titles, links, bounded excerpts, and gazetteer terms from public CDT RSS. Full articles are not republished. A silent feed fails closed.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "weiboscope-context",
+      "name": "Weiboscope documented abstention",
+      "description": "Citation pointer only (doi:10.25442/hku.16674565). The 2012 226M-message dump is not downloaded or stored.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://doi.org/10.25442/hku.16674565",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
       "identifier": "app-storefront",
       "name": "App Storefront panel",
       "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
@@ -1089,7 +1168,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T07:34:19Z",
+      "dateModified": "2026-08-20T08:36:49Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1217,7 +1296,7 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T03:58:30Z",
+      "dateModified": "2026-08-20T07:06:05Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1240,7 +1319,7 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T07:34:19Z",
+      "dateModified": "2026-08-20T08:36:49Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1286,7 +1365,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T07:34:19Z",
+      "dateModified": "2026-08-20T08:36:49Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1309,7 +1388,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T07:34:21Z",
+      "dateModified": "2026-08-20T08:37:12Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1332,7 +1411,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T07:34:21Z",
+      "dateModified": "2026-08-20T08:37:12Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1662,35 +1741,6 @@
           "name": "Reading analysis and review rank — history",
           "encodingFormat": "application/x-ndjson",
           "contentUrl": "https://palimpsest.info/readings/reading-analysis-history.jsonl"
-        }
-      ]
-    },
-    {
-      "@type": "Dataset",
-      "identifier": "peer-context",
-      "name": "Peer-context review rank",
-      "description": "Orders GreatFire, OONI, and CDT peer rows against each peer's own history and a fail-closed Palimpsest join. This is a review rank, not a generative brief, not a causal attribution, and not automatic publication permission. Weiboscope is a citation only; the 2012 dump is not loaded.",
-      "url": "https://palimpsest.info/osint-china.html",
-      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
-      "spatialCoverage": [
-        "CN",
-        "GLOBAL"
-      ],
-      "temporalResolution": "PT6H",
-      "dateModified": "2026-08-20T08:00:00Z",
-      "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Peer-context review rank — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/peer-context-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "Peer-context review rank — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/peer-context-history.jsonl"
         }
       ]
     },

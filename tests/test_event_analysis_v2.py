@@ -11,6 +11,20 @@ from core import event_analysis, event_brief
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _protocol_validator(schema_path: Path):
+    jsonschema = pytest.importorskip("jsonschema")
+    referencing = pytest.importorskip("referencing")
+    resources = []
+    for path in (ROOT / "protocol").glob("*.schema.json"):
+        document = json.loads(path.read_text())
+        schema_id = document.get("$id")
+        if schema_id:
+            resources.append((schema_id, referencing.Resource.from_contents(document)))
+    registry = referencing.Registry().with_resources(resources)
+    schema = json.loads(schema_path.read_text())
+    return jsonschema.Draft202012Validator(schema, registry=registry)
 EVENT_ID = "event-" + "aa" * 12
 ITEM_ID = "item-" + "cc" * 12
 OFFICIAL_URL = "https://www.stats.gov.cn/sj/zxfb/202608/t20260820_1.html"
@@ -394,20 +408,22 @@ def test_pipe_context_stays_undeclared_without_those_signal_ids() -> None:
 
 
 def test_v1_documents_still_validate() -> None:
-    path = ROOT / "news/wire/event-08f6cb378e35cb5da762e260/analysis.json"
+    path = ROOT / "tests/fixtures/event_analysis/event-08f6cb378e35cb5da762e260-v1.json"
     document = json.loads(path.read_text(encoding="utf-8"))
     assert document["schema_version"] == "palimpsest-event-analysis.v1"
     event_analysis.validate_event_analysis(document)
+    published = json.loads(
+        (ROOT / "news/wire/event-08f6cb378e35cb5da762e260/analysis.json").read_text()
+    )
+    event_analysis.validate_event_analysis(published)
 
 
 def test_generated_v2_conforms_to_public_schema() -> None:
-    jsonschema = pytest.importorskip("jsonschema")
-    schema = json.loads((ROOT / "protocol/event-analysis-v2.schema.json").read_text())
     analysis = _build(
         live_families=_all_families(),
         archive_context=_archive_context(),
     )
-    jsonschema.Draft202012Validator(schema).validate(analysis)
+    _protocol_validator(ROOT / "protocol/event-analysis-v2.schema.json").validate(analysis)
 
 
 def test_no_fake_live_latest_files_were_committed() -> None:

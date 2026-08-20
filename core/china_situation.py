@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 
 from core import event_analysis as event_analysis_model
 from core import newswire as newswire_model
+from core import peer_context as peer_context_model
 
 
 SCHEMA_VERSION = "palimpsest-china-situation.v1"
@@ -30,13 +31,14 @@ SITE = "https://palimpsest.info"
 RELATION_POLICY = (
     "Publisher reports, exact-link social observations, title-surface social "
     "observations, reviewed source-free Telegram signals, declared Observatory "
-    "measurements, and public OSINT observations joined by exact publisher URL "
-    "or topic/term overlap are shown together without converting social "
-    "circulation, reviewed context, topic-level measurement context, or OSINT "
-    "topic overlap into claim verification, causation, or an additional "
-    "independent source group. Title-surface social joins are "
-    "topic-title-context-not-corroboration and are not a second independent "
-    "group for structural corroboration."
+    "measurements, public OSINT observations joined by exact publisher URL "
+    "or topic/term overlap, and attributed peer_context rows from GreatFire, "
+    "OONI, CDT, or Weiboscope are shown together without converting social "
+    "circulation, reviewed context, topic-level measurement context, OSINT "
+    "topic overlap, or a peer's dated verdict into claim verification, "
+    "causation, Palimpsest capture, or an additional independent source group. "
+    "Title-surface social joins are topic-title-context-not-corroboration and "
+    "are not a second independent group for structural corroboration."
 )
 SOCIAL_URL_RELATION = "publisher-link-context-not-corroboration"
 SOCIAL_TITLE_RELATION = "topic-title-context-not-corroboration"
@@ -134,6 +136,8 @@ _COVERAGE_FIELDS = frozenset(
         "reviewed_telegram_signals",
         "events_with_osint_context",
         "osint_context_rows",
+        "events_with_peer_context",
+        "peer_context_rows",
     }
 )
 _SITUATION_FIELDS = frozenset(
@@ -156,6 +160,7 @@ _SITUATION_FIELDS = frozenset(
         "social_context",
         "measurement_context",
         "osint_context",
+        "peer_context",
         "synthesis",
     }
 )
@@ -499,6 +504,7 @@ def _summary(
     archive_state: str | None = None,
     peer_count: int | None = None,
     official_page: str = "none-reviewed",
+    peers: int = 0,
 ) -> str:
     layers = [f"{reports} attributed publisher report{'s' if reports != 1 else ''}"]
     if social:
@@ -509,6 +515,10 @@ def _summary(
     if measurements:
         layers.append(
             f"{measurements} declared Observatory surface{'s' if measurements != 1 else ''}"
+        )
+    if peers:
+        layers.append(
+            f"{peers} attributed peer sentence{'s' if peers != 1 else ''}"
         )
     if archive_state == "warming_up":
         archive_clause = "archive-news-context anomaly_state is warming_up"
@@ -522,11 +532,18 @@ def _summary(
         peer_clause = (
             f"{peer_count} same-window event{'s' if peer_count != 1 else ''} share a topic"
         )
+    extra = (
+        " Attributed peer sentences name GreatFire, OONI, CDT, or Weiboscope "
+        "and do not increase that count."
+        if peers
+        else ""
+    )
     return (
         f"This dossier places {', '.join(layers)} in one view. The reporting represents "
         f"{groups} independent publisher group{'s' if groups != 1 else ''}; social and "
         "measurement rows remain context-only and do not increase that count. "
         f"{archive_clause}; official-page coverage is {official_page}; {peer_clause}."
+        + extra
     )
 
 
@@ -729,10 +746,12 @@ def build_china_situation(
     situations: list[dict[str, Any]] = []
     measurement_rows_total = 0
     osint_rows_total = 0
+    peer_rows_total = 0
     all_groups: set[str] = set()
     publisher_reports = 0
     with_measurements = 0
     with_osint = 0
+    with_peers = 0
     with_three_layers = 0
     for event in wire["events"]:
         analysis = analyses[event["event_id"]]
@@ -801,6 +820,10 @@ def build_china_situation(
         osint_rows_total += len(osint_context)
         if osint_context:
             with_osint += 1
+        peer_rows = [dict(row) for row in analysis.get("peer_context") or []]
+        peer_rows_total += len(peer_rows)
+        if peer_rows:
+            with_peers += 1
 
         reporting_sources = [
             {
@@ -849,6 +872,7 @@ def build_china_situation(
             "social_context": social_context,
             "measurement_context": measurement_context,
             "osint_context": osint_context,
+            "peer_context": peer_rows,
             "synthesis": {
                 "summary": _summary(
                     groups=len(event_groups),
@@ -870,6 +894,7 @@ def build_china_situation(
                         if type(analysis.get("corroboration")) is dict
                         else "none-reviewed"
                     ),
+                    peers=len(peer_rows),
                 ),
                 "known_unknowns": list(analysis["limitations"]),
                 "next_checks": _next_checks(event, analysis, social_context),
@@ -946,6 +971,8 @@ def build_china_situation(
             "reviewed_telegram_signals": len(telegram_rows),
             "events_with_osint_context": with_osint,
             "osint_context_rows": osint_rows_total,
+            "events_with_peer_context": with_peers,
+            "peer_context_rows": peer_rows_total,
         },
         "reviewed_telegram": telegram_rows,
         "situations": situations,
@@ -1090,6 +1117,8 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
     measured_events = 0
     total_osint = 0
     osint_events = 0
+    total_peers = 0
+    peer_events = 0
     three_layers = 0
     groups: set[str] = set()
     for index, value in enumerate(rows):
@@ -1345,6 +1374,31 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
             )
         total_osint += len(osint_rows)
         osint_events += bool(osint_rows)
+        peer_rows = row["peer_context"]
+        if type(peer_rows) is not list or len(peer_rows) > peer_context_model.MAX_PEERS_PER_EVENT:
+            raise ChinaSituationError(f"{path}.peer_context must be bounded")
+        for peer_index, peer_value in enumerate(peer_rows):
+            peer_path = f"{path}.peer_context[{peer_index}]"
+            peer_row = _exact(peer_value, peer_context_model.PEER_FIELDS, peer_path)
+            if peer_row["peer"] not in peer_context_model.PEERS:
+                raise ChinaSituationError(f"{peer_path}.peer is invalid")
+            if peer_row["status"] not in peer_context_model.STATUSES:
+                raise ChinaSituationError(f"{peer_path}.status is invalid")
+            _text(peer_row["sentence"], f"{peer_path}.sentence", maximum=600)
+            if peer_row["relation"] != peer_context_model.RELATION:
+                raise ChinaSituationError(f"{peer_path}.relation is invalid")
+            _timestamp(peer_row["as_of"], f"{peer_path}.as_of", nullable=True)
+            if peer_row["peer_url"]:
+                _https(peer_row["peer_url"], f"{peer_path}.peer_url")
+            if peer_row["excerpt"] is not None:
+                _text(
+                    peer_row["excerpt"],
+                    f"{peer_path}.excerpt",
+                    maximum=peer_context_model.CDT_EXCERPT_LIMIT,
+                    empty=True,
+                )
+        total_peers += len(peer_rows)
+        peer_events += bool(peer_rows)
         synthesis = _exact(row["synthesis"], _SYNTHESIS_FIELDS, f"{path}.synthesis")
         _text(synthesis["summary"], f"{path}.synthesis.summary", maximum=2_000)
         for field in ("known_unknowns", "next_checks"):
@@ -1383,6 +1437,10 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
         raise ChinaSituationError("osint-event coverage is inconsistent")
     if total_osint != coverage["osint_context_rows"]:
         raise ChinaSituationError("osint-row coverage is inconsistent")
+    if peer_events != coverage["events_with_peer_context"]:
+        raise ChinaSituationError("peer-event coverage is inconsistent")
+    if total_peers != coverage["peer_context_rows"]:
+        raise ChinaSituationError("peer-row coverage is inconsistent")
     canonical_json_bytes(document)
 
 

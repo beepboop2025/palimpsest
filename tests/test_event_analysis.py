@@ -15,6 +15,20 @@ from core import event_analysis
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def _protocol_validator(schema_path: Path):
+    jsonschema = pytest.importorskip("jsonschema")
+    referencing = pytest.importorskip("referencing")
+    resources = []
+    for path in (ROOT / "protocol").glob("*.schema.json"):
+        document = json.loads(path.read_text())
+        schema_id = document.get("$id")
+        if schema_id:
+            resources.append((schema_id, referencing.Resource.from_contents(document)))
+    registry = referencing.Registry().with_resources(resources)
+    schema = json.loads(schema_path.read_text())
+    return jsonschema.Draft202012Validator(schema, registry=registry)
+
+
 @pytest.fixture(scope="module")
 def inputs():
     wire = json.loads((ROOT / "readings/newswire-latest.json").read_text())
@@ -179,11 +193,7 @@ def test_runtime_validator_rejects_unknown_fields_and_editorial_state_tampering(
 
 
 def test_generated_analysis_conforms_to_the_public_json_schema(analyses) -> None:
-    jsonschema = pytest.importorskip("jsonschema")
-    schema = json.loads(
-        (ROOT / "protocol/event-analysis-v2.schema.json").read_text()
-    )
-    validator = jsonschema.Draft202012Validator(schema)
+    validator = _protocol_validator(ROOT / "protocol/event-analysis-v2.schema.json")
 
     for analysis in analyses.values():
         validator.validate(analysis)

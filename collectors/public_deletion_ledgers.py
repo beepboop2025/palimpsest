@@ -137,7 +137,9 @@ def collect_ledgers(
             if detected is None:
                 continue
             title = public_text(item.get("title"), limit=1000)
-            text = public_text(item.get("text"), limit=8000)
+            # CDT full articles are not republished. Keep a bounded RSS excerpt.
+            text_limit = 400 if kind == "cdt" else 8000
+            text = public_text(item.get("text"), limit=text_limit)
             item_url = public_text(item.get("url"), limit=2048)
             terms = extract_terms(title, text, item.get("tags") or [], lexicon)
             if not terms:

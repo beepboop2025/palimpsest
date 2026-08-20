@@ -103,6 +103,8 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
         "social-spread",
         "weibo-hotsearch-terms",
         "public-board-terms",
+        "greatfire-context",
+        "peer-context",
     } <= names
 
 
@@ -208,7 +210,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 40  # feed head + index processor + 38 passive snapshots
+    assert len(specs) == 41  # feed head + index processor + 39 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(

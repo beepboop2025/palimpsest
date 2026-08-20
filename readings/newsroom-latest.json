@@ -2,16 +2,16 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 36 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 1 missing.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-20T07:34:19Z",
-  "n_stories": 36,
+  "generated_at": "2026-08-20T08:36:49Z",
+  "n_stories": 38,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "03402d16724c5d87f1b9babc0ecb8f93e8ad2dc9",
+  "source_commit": "c89ed6dcf80f8401b5e76be12a002a20c7f32e10",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
-    "total": 36,
+    "total": 38,
     "reporting": 35,
     "live": 27,
     "status": "degraded",
@@ -19,7 +19,7 @@
       "live": 27,
       "degraded": 3,
       "stale": 5,
-      "missing": 1,
+      "missing": 3,
       "corrupt": 0
     }
   },
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-20T07:29:31Z",
       "modified_at": "2026-08-20T07:29:31Z",
-      "claim_fingerprint": "sha256:c79ad234beae3d6b644818c122a1dc1e7e5de8334de048e81af92215f226ee51",
+      "claim_fingerprint": "sha256:1db70cdc98198720af2469552c236c07edf4c560cda8f6b4fa1a7c86f0f8d303",
       "metric": {
         "label": "board e-value",
         "value": 243.327,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 36 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 1 missing. The board-wide e-value is 243.327; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing. The board-wide e-value is 243.327; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -656,8 +656,8 @@
       "type": "measurement",
       "priority": "standard",
       "status": "missing",
-      "published_at": "2026-08-20T07:34:19Z",
-      "modified_at": "2026-08-20T07:34:19Z",
+      "published_at": "2026-08-20T08:36:49Z",
+      "modified_at": "2026-08-20T08:36:49Z",
       "claim_fingerprint": "sha256:8117bd542245247c54b0f3a90b31e932666384cb9c8a30673094b27839bcb6df",
       "metric": {
         "label": null,
@@ -798,6 +798,59 @@
       "related_signal_ids": [
         "github-refuge",
         "wayback"
+      ]
+    },
+    {
+      "id": "palimpsest-news:peer-context",
+      "slug": "attributed-peer-context",
+      "url": "https://palimpsest.info/news/attributed-peer-context/",
+      "signal_id": "peer-context",
+      "headline": "Attributed peer-context warehouse: no current finding",
+      "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "section": "attention",
+      "order": 10,
+      "type": "analysis",
+      "priority": "background",
+      "status": "missing",
+      "published_at": "2026-08-20T08:36:49Z",
+      "modified_at": "2026-08-20T08:36:49Z",
+      "claim_fingerprint": "sha256:c93a0a183ade1fd5320f4b2266cec5630c86b7ffae4ee142c1c3ab016c2a5362",
+      "metric": {
+        "label": null,
+        "value": null,
+        "unit": null,
+        "denominator": {
+          "label": null,
+          "value": null
+        }
+      },
+      "claims": [
+        {
+          "type": "availability",
+          "statement": "No current finding is published for Attributed peer-context warehouse because the source status is missing."
+        }
+      ],
+      "evidence": {
+        "url": "https://palimpsest.info/readings/peer-context-latest.json",
+        "input": {
+          "filename": "peer-context-latest.json",
+          "sha256": null,
+          "bytes": null
+        },
+        "source_timestamp": null
+      },
+      "method": {
+        "summary": "Offline host join; no catalog crawl; no 2012 Weiboscope dump",
+        "version": null
+      },
+      "limitations": [
+        "Current finding withheld: source file is missing",
+        "Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator."
+      ],
+      "related_signal_ids": [
+        "greatfire-context",
+        "ooni-gfw",
+        "public-deletion-ledgers"
       ]
     },
     {
@@ -1216,6 +1269,59 @@
       "related_signal_ids": [
         "in-path-interference",
         "vantage-fusion"
+      ]
+    },
+    {
+      "id": "palimpsest-news:greatfire-context",
+      "slug": "greatfire-attributed-verdicts",
+      "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
+      "signal_id": "greatfire-context",
+      "headline": "GreatFire attributed verdicts: no current finding",
+      "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "section": "network",
+      "order": 9,
+      "type": "measurement",
+      "priority": "background",
+      "status": "missing",
+      "published_at": "2026-08-20T08:36:49Z",
+      "modified_at": "2026-08-20T08:36:49Z",
+      "claim_fingerprint": "sha256:6ddc8e5dc67c681b51e2f36eca577b761b69107a888b025e369f40b7370aed10",
+      "metric": {
+        "label": null,
+        "value": null,
+        "unit": null,
+        "denominator": {
+          "label": null,
+          "value": null
+        }
+      },
+      "claims": [
+        {
+          "type": "availability",
+          "statement": "No current finding is published for GreatFire attributed verdicts because the source status is missing."
+        }
+      ],
+      "evidence": {
+        "url": "https://palimpsest.info/readings/greatfire-context-latest.json",
+        "input": {
+          "filename": "greatfire-context-latest.json",
+          "sha256": null,
+          "bytes": null
+        },
+        "source_timestamp": null
+      },
+      "method": {
+        "summary": "Keyless /api/url/ and /api/verdict lookups; silent API abstains",
+        "version": null
+      },
+      "limitations": [
+        "Current finding withheld: source file is missing",
+        "A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive."
+      ],
+      "related_signal_ids": [
+        "ooni-gfw",
+        "peer-context",
+        "public-deletion-ledgers"
       ]
     },
     {

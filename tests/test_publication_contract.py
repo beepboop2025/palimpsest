@@ -109,6 +109,22 @@ CONTRACT = {
     "social-spread": _d(
         "generated_at", ["source", "method", "scope"], "n_rows"
     ),
+    "greatfire-context": _d(
+        "generated_at", ["source", "method", "scope", "attribution"], "n_urls_queried"
+    ),
+    "peer-context": _d(
+        "generated_at", ["source", "method", "scope"], "n_hosts"
+    ),
+    "ooni-peer-context": _d(
+        "generated_at", ["source", "method", "scope", "attribution"], "n_hits"
+    ),
+    "cdt-context": _d(
+        "generated_at", ["source", "method", "scope", "attribution"], "n_items"
+    ),
+    "weiboscope-context": _d(
+        "generated_at", ["source", "method", "scope", "attribution"],
+        reason="Weiboscope is a documented abstention plus DOI citation; there is no on-node message count to use as a denominator.",
+    ),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
                                "n_items"),
@@ -248,10 +264,6 @@ CONTRACT = {
         reason="per-instrument unusualness plus unlabeled story review ranks: "
                "n_instruments_considered and n_story_ranks are distinct populations "
                "and must not be collapsed into one rate."),
-    "peer-context": _d(
-        "generated_at", ["source", "method", "scope"],
-        reason="per-peer unusualness and fail-closed joins are distinct populations: "
-               "n_peer_series and n_joins must not be collapsed into one rate."),
 }
 
 
@@ -293,6 +305,11 @@ PENDING = {
     "social-spread",
     "weibo-hotsearch-terms",
     "public-board-terms",
+    "greatfire-context",
+    "peer-context",
+    "ooni-peer-context",
+    "cdt-context",
+    "weiboscope-context",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately
@@ -330,7 +347,6 @@ SCHEDULED_PUBLICATIONS = {
     "china-situation",
     "archive-news-context",
     "reading-analysis",
-    "peer-context",
 }
 
 

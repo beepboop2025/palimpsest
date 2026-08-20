@@ -23,6 +23,7 @@ from core import china_situation as situation_model
 from core import event_analysis
 from core import instrument_analysis
 from core import newswire as newswire_model
+from core import peer_context as peer_context_model
 from core.live_paths import resolve_newswire_path, resolve_readings_dir
 from core.social_spread import DISCLAIMER as SOCIAL_SPREAD_DISCLAIMER, RELATION as SOCIAL_SPREAD_RELATION
 from scripts import build_newsroom as newsroom_builder
@@ -36,6 +37,7 @@ SOCIAL_PATH = ROOT / "readings" / "social-observations-latest.json"
 SPREAD_PATH = ROOT / "readings" / "social-spread-latest.json"
 DRAGON_WHISPERS_PATH = ROOT / "readings" / "dragon-whispers-latest.json"
 OUTPUT_PATH = ROOT / "readings" / "china-situation-latest.json"
+PEER_CONTEXT_PATH = ROOT / "readings" / "peer-context-latest.json"
 OSINT_INPUTS = (
     ROOT / "readings" / "ddti-latest.json",
     ROOT / "readings" / "undertext-latest.json",
@@ -80,12 +82,18 @@ def load_inputs(
     wire = _strict_document(wire_path)
     feed = _strict_document(newsroom_path)
     readings_dir = resolve_readings_dir(preferred=ROOT / "readings")
+    peer = (
+        peer_context_model.load_peer_document(PEER_CONTEXT_PATH)
+        if PEER_CONTEXT_PATH.is_file()
+        else None
+    )
     analyses = event_analysis.build_event_analyses(
         wire,
         feed,
         live_families=event_analysis.load_optional_live_families(readings_dir),
         archive_context=event_analysis.load_optional_archive_context(readings_dir),
         corroboration=event_analysis.load_optional_corroboration(readings_dir),
+        peer=peer,
     )
     social = _strict_document(social_path) if social_path.is_file() else None
     reviewed_telegram = (
@@ -362,6 +370,22 @@ def _measurement_layer(row: Mapping[str, Any]) -> str:
 </section>"""
 
 
+def _peer_layer(row: Mapping[str, Any]) -> str:
+    peers = row.get("peer_context") or []
+    if not peers:
+        body = """<div class="situation-empty"><strong>No attributed peer sentence on this dossier.</strong><p>GreatFire, OONI, CDT, and Weiboscope remain named peers. Absence is a coverage gap, not a Palimpsest verdict.</p></div>"""
+    else:
+        body = "<ul>" + "".join(
+            f"""<li><strong>{_h(item['peer'])}</strong><span>{_h(item['sentence'])}</span><small>{_h(item['attribution'])} · {_h(item['relation'])}</small></li>"""
+            for item in peers
+        ) + "</ul>"
+    return f"""<section class="situation-layer situation-layer--peers" aria-labelledby="peers-{_h(row['situation_id'])}">
+  <header><span>05</span><div><p>Attributed peer context</p><h3 id="peers-{_h(row['situation_id'])}">{len(peers)} peer sentence{'s' if len(peers) != 1 else ''}</h3></div></header>
+  {body}
+  <p class="situation-relation">peer-context-not-palimpsest-capture</p>
+</section>"""
+
+
 def _situation_card(row: Mapping[str, Any], *, expanded: bool) -> str:
     topics = "".join(f"<span>{_h(topic)}</span>" for topic in row["topics"])
     checks = "".join(f"<li>{_h(item)}</li>" for item in row["synthesis"]["next_checks"])
@@ -375,7 +399,7 @@ def _situation_card(row: Mapping[str, Any], *, expanded: bool) -> str:
     return f"""<article class="situation-card" id="{_h(row['situation_id'])}" data-desk="{_h(row['desk'])}" data-posture="{_h(row['posture'])}" data-search="{_h(search)}">
   <header class="situation-card__head"><div><p class="situation-kicker">{_h(row['desk'])} · {_h(row['posture'].replace('-', ' '))}</p><h2>{_h(row['headline'])}</h2><p>{_h(row['dek'])}</p></div><div class="situation-card__meta"><time datetime="{_h(row['updated_at'])}">{_h(_human(row['updated_at']))}</time><span>{topics}</span><a href="/news/wire/{_h(row['event_id'])}/">Open dossier</a></div></header>
   <details{' open' if expanded else ''}><summary><span>Open the complete three-layer view</span><strong>{_h(row['reporting']['evidence_strength'])}</strong></summary>
-    <div class="situation-layers">{_reporting_layer(row)}{_social_layer(row)}{_measurement_layer(row)}{_osint_layer(row)}</div>
+    <div class="situation-layers">{_reporting_layer(row)}{_social_layer(row)}{_measurement_layer(row)}{_osint_layer(row)}{_peer_layer(row)}</div>
     <section class="situation-synthesis"><div><p class="situation-kicker">Bounded synthesis</p><h3>What the combined view says</h3><p>{_h(row['synthesis']['summary'])}</p></div><div><h4>Next checks</h4><ol>{checks}</ol></div><details><summary>Known unknowns</summary><ul>{unknowns}</ul></details></section>
     <p class="situation-receipt">{_h(row['situation_id'])} · {_h(row['version_id'])} · {_h(row['analysis_id'])}</p>
   </details>
