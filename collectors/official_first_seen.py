@@ -29,6 +29,7 @@ from core.china_observation import (
     public_text,
 )
 from core.governance import KillSwitch, RateCeiling
+from core.visibility_event import stamp_visibility_event
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -168,7 +169,7 @@ def poll_pages(
         if event == "unreachable" and not prior_digest:
             continue
         title = page.get("term") or url
-        observations.append(enrich_observation(
+        observations.append(stamp_visibility_event(enrich_observation(
             {
                 "terms": [page["term"]] if page.get("term") else [],
                 "detected_at": generated,
@@ -193,7 +194,7 @@ def poll_pages(
                 "schema_version": "palimpsest-china-observation.v1",
                 "method_version": 1,
             },
-        ))
+        )))
 
     return {
         "generated_at": generated,

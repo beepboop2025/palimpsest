@@ -27,6 +27,7 @@ from core.china_observation import (
     public_text,
 )
 from core.governance import KillSwitch, RateCeiling
+from core.visibility_event import classify_http, stamp_visibility_event
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -305,6 +306,7 @@ def collect_channels(
         prior_posts = dict(previous["posts"])
     index = list(join_index or [])
     observations: list[dict[str, Any]] = []
+    visibility_events: list[dict[str, Any]] = []
     channel_rows: list[dict[str, Any]] = []
     states: dict[str, Any] = dict(prior_posts)
     n_ok = 0
@@ -342,6 +344,29 @@ def collect_channels(
             "status": state,
         })
         if state != "ok":
+            vis = "login_wall" if state == "login_walled" else classify_http(status, body)
+            visibility_events.append(stamp_visibility_event(
+                {
+                    "source": f"telegram-public-channels:{handle}",
+                    "url": url,
+                    "provenance": {
+                        "collector": "telegram_public_channels",
+                        "method": "keyless t.me/s/ HTML preview; public channels only",
+                        "vantage": "outside-china-public-source",
+                        "http_status": status,
+                        "channel": handle,
+                    },
+                },
+                observer_class="public-channel",
+                surface="telegram-public-preview",
+                locator=url,
+                http_status=status,
+                visibility_state=vis if vis in {
+                    "login_wall", "captcha", "rate_limit", "outage", "unavailable", "unknown",
+                } else "unknown",
+                visibility_label="login_wall" if state == "login_walled" else None,
+                missingness=None if state == "login_walled" else "coverage_gap",
+            ))
             continue
         for post in posts:
             permalink = post["permalink"]
@@ -375,7 +400,7 @@ def collect_channels(
                 "handle": handle,
                 "family": family,
             }
-            observations.append(enrich_observation(
+            observations.append(stamp_visibility_event(enrich_observation(
                 {
                     "terms": [handle],
                     "detected_at": post.get("published_at") or generated,
@@ -410,7 +435,7 @@ def collect_channels(
                     "schema_version": "palimpsest-china-observation.v1",
                     "method_version": 1,
                 },
-            ))
+            )))
 
     return {
         "generated_at": generated,
@@ -421,4 +446,5 @@ def collect_channels(
         "channels": channel_rows,
         "posts": states,
         "observations": observations,
+        "visibility_events": visibility_events,
     }

@@ -61,6 +61,10 @@ def test_collect_records_a_silent_board_and_keeps_a_live_one():
     assert statuses["toutiao_hot_board"] == "login_walled"
     assert result["n_boards_ok"] == 1
     assert result["n_observations"] == 2
+    assert any(
+        ev.get("visibility_label") == "login_wall"
+        for ev in result["visibility_events"]
+    )
     assert all("user" not in (obs.get("provenance") or {}) for obs in result["observations"])
 
 

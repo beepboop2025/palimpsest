@@ -13,6 +13,7 @@ from typing import Any, Callable, Mapping
 
 from core.china_observation import enrich_observation, iso_z, public_text
 from core.governance import KillSwitch, RateCeiling
+from core.visibility_event import classify_http, stamp_visibility_event
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -137,6 +138,7 @@ def collect_boards(
     kill = kill_switch or KillSwitch()
     watch = list(boards) if boards is not None else load_boards()
     observations: list[dict[str, Any]] = []
+    visibility_events: list[dict[str, Any]] = []
     board_rows: list[dict[str, Any]] = []
     n_ok = 0
 
@@ -168,6 +170,35 @@ def collect_boards(
             state = "ok" if items else "empty-feed"
         if state == "ok":
             n_ok += 1
+        else:
+            state_vis = "login_wall" if state == "login_walled" else classify_http(status, body)
+            visibility_events.append(stamp_visibility_event(
+                {
+                    "source": f"public-hot-boards:{kind}",
+                    "url": url,
+                    "board_status": state,
+                    "provenance": {
+                        "collector": "public_hot_boards",
+                        "method": "keyless public aggregate-board JSON; silent boards are visibility events, not zero titles",
+                        "vantage": "outside-china-public-source",
+                        "http_status": status,
+                        "board": board["name"],
+                    },
+                },
+                observer_class="public-board",
+                surface="public-hot-board",
+                locator=url,
+                http_status=status,
+                visibility_state=state_vis if state_vis in {
+                    "login_wall", "captcha", "rate_limit", "outage", "unavailable", "unknown",
+                } else "unknown",
+                visibility_label="login_wall" if state == "login_walled" else (
+                    "rate_limit" if state_vis == "rate_limit" else (
+                        "outage" if state_vis == "outage" else None
+                    )
+                ),
+                missingness=None if state == "login_walled" else "coverage_gap",
+            ))
         board_rows.append({
             "name": board["name"],
             "kind": kind,
@@ -180,7 +211,7 @@ def collect_boards(
         for item in items:
             title = item["title"]
             text = f"{kind} hot board #{item['rank']}: {title}"
-            observations.append(enrich_observation(
+            observations.append(stamp_visibility_event(enrich_observation(
                 {
                     "terms": [],
                     "detected_at": generated,
@@ -204,7 +235,7 @@ def collect_boards(
                     "schema_version": "palimpsest-china-observation.v1",
                     "method_version": 1,
                 },
-            ))
+            )))
 
     return {
         "generated_at": generated,
@@ -213,4 +244,5 @@ def collect_boards(
         "n_observations": len(observations),
         "boards": board_rows,
         "observations": observations,
+        "visibility_events": visibility_events,
     }

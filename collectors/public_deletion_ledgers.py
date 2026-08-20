@@ -21,6 +21,7 @@ from typing import Any, Callable, Iterable, Mapping
 
 from core.china_observation import enrich_observation, public_text
 from core.governance import KillSwitch, RateCeiling
+from core.visibility_event import stamp_visibility_event
 
 
 logger = logging.getLogger(__name__)
@@ -154,7 +155,7 @@ def collect_ledgers(
                 "ledger_kind": kind,
                 "tags": list(item.get("tags") or []),
             }
-            ledger_obs.append(enrich_observation(
+            ledger_obs.append(stamp_visibility_event(enrich_observation(
                 raw,
                 text=text,
                 source_url=item_url,
@@ -177,7 +178,7 @@ def collect_ledgers(
                     "schema_version": "palimpsest-china-observation.v1",
                     "method_version": 1,
                 },
-            ))
+            )))
         observations.extend(ledger_obs)
         ledgers.append({
             "name": name,

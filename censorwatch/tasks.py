@@ -122,3 +122,20 @@ def cw_signal(self):
     except Exception as e:
         logger.error("[censorwatch] cw_signal failed: %s", e)
         return {"task": "cw_signal", "status": "error", "error": str(e)}
+
+
+@app.task(bind=True, name="censorwatch.tasks.cw_outside_observer")
+def cw_outside_observer(self, payload: dict | None = None):
+    """Outside-China donation / observer ingest. Inert unless CENSORWATCH_ENABLED.
+
+    Not an in-country sensor. Rejects China-as-sensor payloads. No egress helper.
+    """
+    settings = get_settings()
+    if not settings.enabled:
+        return _disabled_result("cw_outside_observer")
+    try:
+        from censorwatch.outside_observer import ingest_outside_donation
+        return ingest_outside_donation(payload or {})
+    except Exception as e:
+        logger.error("[censorwatch] cw_outside_observer failed: %s", e)
+        return {"task": "cw_outside_observer", "status": "error", "error": str(e)}

@@ -33,6 +33,7 @@ from celery.schedules import crontab
 
 from core.active_probe_owner import ActiveProbeOwnerError, active_probe_owner
 from core.governance import KillSwitch
+from core.greyball_flag import greyball_enabled as _greyball_flag
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -122,6 +123,11 @@ SNAPSHOT_OUTPUTS = {
     "greatfire-context": "readings/greatfire-context-latest.json",
     "peer-context": "readings/peer-context-latest.json",
     "peer-context-rank": "readings/peer-context-rank-latest.json",
+    "greyball-search-differential": "readings/greyball-search-differential-latest.json",
+    "greyball-public-endpoints": "readings/greyball-public-endpoints-latest.json",
+    "greyball-donation": "readings/greyball-donation-latest.json",
+    "greyball-multi-node": "readings/greyball-multi-node-latest.json",
+    "greyball-calibration": "readings/greyball-calibration-latest.json",
 }
 
 
@@ -185,6 +191,11 @@ _STANDARD = {
     "greatfire-context": Cadence(33, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
     "peer-context": Cadence(48, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "peer-context-rank": Cadence(51, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-search-differential": Cadence(19, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "greyball-public-endpoints": Cadence(21, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "greyball-donation": Cadence(23, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "greyball-multi-node": Cadence(25, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "greyball-calibration": Cadence(27, 3, expires_s=12 * 3600),
 }
 
 
@@ -253,6 +264,11 @@ _VIGOROUS = {
     "greatfire-context": Cadence(33, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "peer-context": Cadence(48, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "peer-context-rank": Cadence(51, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "greyball-search-differential": Cadence(19, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-public-endpoints": Cadence(21, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-donation": Cadence(23, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-multi-node": Cadence(25, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greyball-calibration": Cadence(27, 3, expires_s=12 * 3600),
 }
 
 
@@ -296,6 +312,12 @@ def cloudflare_radar_enabled() -> bool:
 
     enabled = os.getenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", "").strip().lower()
     return enabled in _TRUTHY
+
+
+def greyball_enabled() -> bool:
+    """Greyball / OTF-friend methods stay inert unless explicitly opted in."""
+
+    return _greyball_flag()
 
 
 def collection_profile() -> str:
@@ -348,6 +370,15 @@ def _effective_cadences(profile: str) -> dict[str, Cadence]:
     cadences = dict(_VIGOROUS if profile == "vigorous" else _STANDARD)
     if not cloudflare_radar_enabled():
         cadences.pop("cloudflare-radar-tcp", None)
+    if not greyball_enabled():
+        for name in (
+            "greyball-search-differential",
+            "greyball-public-endpoints",
+            "greyball-donation",
+            "greyball-multi-node",
+            "greyball-calibration",
+        ):
+            cadences.pop(name, None)
     if active_probes_enabled():
         cadences["inside-view"] = _ACTIVE[profile]
     return cadences
@@ -446,6 +477,11 @@ _COUNT_PATHS = {
     "greatfire-context": ("n_verdicts",),
     "peer-context": ("n_hosts",),
     "peer-context-rank": ("n_peer_series",),
+    "greyball-search-differential": ("n_observations",),
+    "greyball-public-endpoints": ("n_fetched",),
+    "greyball-donation": ("n_accepted",),
+    "greyball-multi-node": ("n_accepted",),
+    "greyball-calibration": ("all_distinguished",),
 }
 
 
@@ -674,6 +710,21 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         code = main([])
         if code:
             raise RuntimeError("peer-context-rank collector failed")
+    elif name == "greyball-search-differential":
+        from scripts.greyball_search_differential_pull import main
+        main()
+    elif name == "greyball-public-endpoints":
+        from scripts.greyball_public_endpoints_pull import main
+        main()
+    elif name == "greyball-donation":
+        from scripts.greyball_donation_pull import main
+        main()
+    elif name == "greyball-multi-node":
+        from scripts.greyball_multi_node_pull import main
+        main()
+    elif name == "greyball-calibration":
+        from scripts.greyball_calibration_pull import main
+        main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
 

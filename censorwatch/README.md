@@ -9,7 +9,11 @@ already-published deletion list).
 
 > **Public data only.** Polite, rate-limited, randomized-delay collection of
 > public posts. Never deanonymizes contributors. Source safety is a hard
-> constraint (see PALIMPSEST notes).
+> constraint (see PALIMPSEST notes). **CensorWatch is not an in-country China
+> sensor.** The Greyball methods package (`docs/GREYBALL-METHODS.md`) is how
+> Palimpsest observes from outside the wall. Any extension of this package is
+> outside-China opt-in observers / donation ingest (`outside_observer.py`),
+> still behind `CENSORWATCH_ENABLED`, still inert by default.
 
 ## Status: Step 0 complete (scaffold + flag + tables, all inert)
 
@@ -63,7 +67,7 @@ never sent to a third-party model.
 | Var | Default | Meaning |
 |-----|---------|---------|
 | `CENSORWATCH_ENABLED` | _(unset)_ | Master switch |
-| `CENSORWATCH_PROXY_URL` | `HTTP(S)_PROXY` | Proxy (residential, in-China, for the detector) |
+| `CENSORWATCH_PROXY_URL` | `HTTP(S)_PROXY` | Optional proxy for public surfaces that 403 datacenter IPs. **Not an in-country China sensor.** Greyball observers are outside-China only; see `docs/GREYBALL-METHODS.md`. |
 | `CENSORWATCH_CONFIRMATIONS` | `3` | Consecutive GONE observations before marking deleted |
 | `CENSORWATCH_MIN_DELAY_S` / `_MAX_DELAY_S` | `2` / `6` | Randomized inter-request delay |
 | `CENSORWATCH_TIMEOUT_S` | `30` | Per-request timeout |

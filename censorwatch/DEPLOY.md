@@ -5,6 +5,11 @@ Censorwatch is the feature-flagged DDTI velocity leg. It runs as the
 by default** — nothing starts collecting until the `velocity` profile is enabled
 and `CENSORWATCH_ENABLED=1` is set.
 
+**CensorWatch is not an in-country China sensor.** This repository does not
+enable it in production and does not add an in-country egress path. Outside-China
+opt-in observers and donation ingest live in `censorwatch/outside_observer.py`
+(still gated) and in [docs/GREYBALL-METHODS.md](../docs/GREYBALL-METHODS.md).
+
 There are two tiers:
 - **Tier 1 — Eastmoney guba only.** Works from any host, no proxy. Live in ~10 min.
 - **Tier 2 — + Weibo & Xueqiu.** The rich censorship signal, but both are blocked
