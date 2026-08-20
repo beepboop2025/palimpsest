@@ -22,12 +22,13 @@ from xml.sax.saxutils import escape as xml_escape
 from core import china_situation as situation_model
 from core import event_analysis
 from core import newswire as newswire_model
+from core.live_paths import resolve_newswire_path, resolve_readings_dir
 from scripts import build_newsroom as newsroom_builder
 from scripts import site_nav
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WIRE_PATH = ROOT / "readings" / "newswire-latest.json"
+WIRE_PATH = resolve_newswire_path(preferred=ROOT / "readings" / "newswire-latest.json")
 NEWSROOM_PATH = ROOT / "readings" / "newsroom-latest.json"
 SOCIAL_PATH = ROOT / "readings" / "social-observations-latest.json"
 DRAGON_WHISPERS_PATH = ROOT / "readings" / "dragon-whispers-latest.json"
@@ -75,7 +76,14 @@ def load_inputs(
 ]:
     wire = _strict_document(wire_path)
     feed = _strict_document(newsroom_path)
-    analyses = event_analysis.build_event_analyses(wire, feed)
+    readings_dir = resolve_readings_dir(preferred=ROOT / "readings")
+    analyses = event_analysis.build_event_analyses(
+        wire,
+        feed,
+        live_families=event_analysis.load_optional_live_families(readings_dir),
+        archive_context=event_analysis.load_optional_archive_context(readings_dir),
+        corroboration=event_analysis.load_optional_corroboration(readings_dir),
+    )
     social = _strict_document(social_path) if social_path.is_file() else None
     reviewed_telegram = (
         _strict_document(dragon_whispers_path) if dragon_whispers_path.is_file() else None

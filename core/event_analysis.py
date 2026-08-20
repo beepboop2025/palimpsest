@@ -20,9 +20,11 @@ from urllib.parse import urlsplit
 
 from core import newswire as newswire_model
 from core import event_brief
+from core.claim_support import has_quorum
 
 load_optional_live_families = event_brief.load_optional_live_families
 load_optional_archive_context = event_brief.load_optional_archive_context
+load_optional_corroboration = event_brief.load_optional_corroboration
 
 
 SCHEMA_VERSION_V1 = "palimpsest-event-analysis.v1"
@@ -226,12 +228,31 @@ def _event_scope_status(
     )
 
 
-def _evidence_conclusion(independent_groups: int) -> str:
-    if independent_groups > 1:
+def structural_quorum(event: Mapping[str, Any]) -> bool:
+    """True only when claim_support.has_quorum sees ≥2 independence groups."""
+
+    refs = event.get("evidence_refs")
+    if not isinstance(refs, list):
+        return False
+    return has_quorum(
+        refs,
+        lambda item: item.get("independence_group") if isinstance(item, Mapping) else None,
+        minimum=2,
+    )
+
+
+def _evidence_conclusion(independent_groups: int, *, quorum: bool) -> str:
+    if quorum:
         return (
             f"The dossier contains {independent_groups} independent source groups. "
             "That is structural corroboration at the retained metadata level, not "
             "a truth score or verification of every underlying claim."
+        )
+    if independent_groups > 1:
+        return (
+            f"The dossier contains {independent_groups} independent source groups, "
+            "but claim_support.has_quorum is not met (2 independent groups required). "
+            "Palimpsest treats it as an attributed report, not independent corroboration."
         )
     return (
         "The dossier contains one independent source group. Palimpsest treats it "
@@ -287,12 +308,35 @@ def _collector_row(story: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _named_declared_receipts(
+    event: Mapping[str, Any],
+    collector_context: Sequence[Mapping[str, Any]],
+    live_surfaces: Sequence[Mapping[str, Any]],
+) -> list[str]:
+    """Name wayback/ddti/ledger metrics only when already declared or receipted."""
+
+    declared = set(event["declared_links"].get("scan_signal_ids") or [])
+    declared.update(event["declared_links"].get("economic_signal_ids") or [])
+    declared.update(row["signal_id"] for row in collector_context)
+    names: list[str] = []
+    for surface in ("wayback", "ddti"):
+        if surface in declared:
+            names.append(surface)
+    for row in live_surfaces:
+        if row.get("surface_id") == "public-deletion-ledgers" and row.get("status") == "live":
+            names.append("public-deletion-ledgers")
+    return list(dict.fromkeys(names))
+
+
 def _compose_position(
     *,
     disposition: str,
-    evidence_strength: str,
-    independent_groups: int,
-    collector_statuses: Sequence[str],
+    quorum: bool,
+    archive_state: str | None,
+    archive_matched: bool | None,
+    peer_count: int,
+    official_page: str,
+    named_receipts: Sequence[str],
 ) -> str:
     """Return Palimpsest's public editorial position for one event.
 
@@ -301,33 +345,117 @@ def _compose_position(
     that topic-linked collectors verified, refuted, or caused the article event.
     """
 
-    # TODO: Tune Palimpsest's editorial voice here. The conservative
-    # fallback will remain until the editorial wording is deliberately changed.
     if disposition == "outside-remit":
         return (
             "Palimpsest's view: this item falls outside the declared China "
             "evidence remit and should not be read as a Palimpsest finding."
         )
     if disposition == "collector-context":
-        return (
+        head = (
             "Palimpsest's view: current collectors add relevant measured "
             "context, but they do not independently verify or refute this article."
         )
-    if disposition == "collector-abstention":
-        return (
+    elif disposition == "collector-abstention":
+        head = (
             "Palimpsest withholds a collector-backed conclusion because one or "
             "more declared measurement surfaces are not current."
         )
-    if independent_groups > 1:
-        return (
+    elif quorum:
+        head = (
             "Palimpsest's view: the reporting is structurally corroborated by "
             "independent source groups, but the underlying claims remain bounded "
             "by the published source material."
         )
-    return (
-        "Palimpsest's view: this is a single attributed report, not an "
-        "independently established fact."
+    else:
+        head = (
+            "Palimpsest's view: this is a single attributed report, not an "
+            "independently established fact."
+        )
+    if archive_state == "warming_up":
+        archive_clause = (
+            "Archive-news-context anomaly_state is warming_up; no anomaly score is published."
+        )
+    elif archive_state:
+        archive_clause = f"Archive-news-context anomaly_state is {archive_state}."
+    elif archive_matched is False:
+        archive_clause = "No archive-news-context row matches this event_id."
+    else:
+        archive_clause = "Archive-news-context is absent."
+    peer_clause = (
+        f"{peer_count} same-window event{'s' if peer_count != 1 else ''} "
+        "share a declared topic."
     )
+    official_clause = f"Official-page corroboration coverage is {official_page}."
+    parts = [head, archive_clause, peer_clause, official_clause]
+    if named_receipts:
+        parts.append("Declared receipts: " + ", ".join(named_receipts) + ".")
+    return " ".join(parts)
+
+
+def window_peers_for(
+    event: Mapping[str, Any], wire_events: Sequence[Mapping[str, Any]]
+) -> dict[str, Any]:
+    """Count same-window events that share a topic. Counts and names only."""
+
+    topics = {topic for topic in (event.get("topics") or []) if type(topic) is str and topic}
+    shared_topics: list[str] = []
+    peer_source_ids: list[str] = []
+    peer_groups: list[str] = []
+    count = 0
+    for other in wire_events:
+        if type(other) is not dict or other.get("event_id") == event.get("event_id"):
+            continue
+        other_topics = {
+            topic for topic in (other.get("topics") or []) if type(topic) is str and topic
+        }
+        overlap = sorted(topics & other_topics)
+        if not overlap:
+            continue
+        count += 1
+        shared_topics.extend(overlap)
+        for ref in other.get("evidence_refs") or []:
+            if type(ref) is dict and type(ref.get("source_id")) is str and ref["source_id"]:
+                peer_source_ids.append(ref["source_id"])
+        for group in other.get("evidence_groups") or []:
+            if type(group) is dict and type(group.get("group_id")) is str and group["group_id"]:
+                peer_groups.append(group["group_id"])
+    return {
+        "same_window_peer_count": count,
+        "shared_topics": sorted(set(shared_topics))[:32],
+        "peer_source_ids": sorted(set(peer_source_ids))[:64],
+        "peer_independence_groups": sorted(set(peer_groups))[:64],
+        "relation": "topic-surface-only",
+    }
+
+
+def _missing_collector_row(signal_id: str) -> dict[str, Any]:
+    digest = hashlib.sha256(f"missing:{signal_id}".encode("utf-8")).hexdigest()
+    return {
+        "signal_id": signal_id,
+        "status": "missing",
+        "headline": f"{signal_id}: newsroom feed absent",
+        "finding": (
+            "No current newsroom collector story was supplied for this declared signal."
+        ),
+        "metric": {
+            "label": None,
+            "value": None,
+            "unit": None,
+            "denominator": {"label": None, "value": None},
+        },
+        "source_timestamp": None,
+        "story_url": f"https://palimpsest.info/news/{signal_id}/",
+        "evidence_url": f"https://palimpsest.info/readings/{signal_id}-latest.json",
+        "input_sha256": None,
+        "claim_fingerprint": f"sha256:{digest}",
+        "method_summary": "Declared collector link without a live newsroom story.",
+        "method_version": 1,
+        "relation": "topic-surface-only",
+        "interpretation": (
+            "Collector status is missing; retained values are not treated as a "
+            "current finding."
+        ),
+    }
 
 
 def build_event_analysis(
@@ -337,31 +465,43 @@ def build_event_analysis(
     feed: Mapping[str, Any],
     live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
     archive_context: Mapping[str, Any] | None = None,
+    corroboration: Mapping[str, Any] | None = None,
+    allow_missing_collectors: bool = False,
+    archive_refresh_status: str = "unknown",
 ) -> dict[str, Any]:
     """Build one content-addressed assessment without network or filesystem I/O."""
 
     items = {item["item_id"]: item for item in wire["items"]}
-    stories = {story["signal_id"]: story for story in feed["stories"]}
+    stories = {
+        story["signal_id"]: story
+        for story in feed.get("stories") or []
+        if isinstance(story, Mapping) and type(story.get("signal_id")) is str
+    }
     scope_status = _event_scope_status(event, items)
     linked_ids = sorted(
         set(event["declared_links"]["scan_signal_ids"])
         | set(event["declared_links"]["economic_signal_ids"])
     )
     unknown = sorted(set(linked_ids) - set(stories))
-    if unknown:
+    if unknown and not allow_missing_collectors:
         raise EventAnalysisError(
             f"event {event['event_id']} declares unknown collector signals: {unknown}"
         )
-    collector_context = [_collector_row(stories[signal_id]) for signal_id in linked_ids]
+    collector_context = [
+        _collector_row(stories[signal_id]) if signal_id in stories else _missing_collector_row(signal_id)
+        for signal_id in linked_ids
+    ]
     collector_statuses = [row["status"] for row in collector_context]
     independent_groups = len(event["evidence_groups"])
+    quorum = structural_quorum(event)
+    conclusion = _evidence_conclusion(independent_groups, quorum=quorum)
 
     if scope_status == "outside-remit":
         disposition = "outside-remit"
         collector_context = []
         collector_statuses = []
         rationale = [
-            _evidence_conclusion(independent_groups),
+            conclusion,
             (
                 "Neither an intrinsically China-scoped source, an explicit China "
                 "term, nor an intake-approved collector link places this item inside "
@@ -371,7 +511,7 @@ def build_event_analysis(
     elif not collector_context:
         disposition = "source-assessment"
         rationale = [
-            _evidence_conclusion(independent_groups),
+            conclusion,
             (
                 "No Palimpsest collector surface is declared for this event, so the "
                 "assessment stops at source structure and attribution."
@@ -380,7 +520,7 @@ def build_event_analysis(
     elif all(status == "live" for status in collector_statuses):
         disposition = "collector-context"
         rationale = [
-            _evidence_conclusion(independent_groups),
+            conclusion,
             (
                 f"All {len(collector_context)} declared collector surfaces are live. "
                 "Their normalized findings are published below as topical context, "
@@ -391,7 +531,7 @@ def build_event_analysis(
         disposition = "collector-abstention"
         nonlive = sum(status != "live" for status in collector_statuses)
         rationale = [
-            _evidence_conclusion(independent_groups),
+            conclusion,
             (
                 f"{nonlive} of {len(collector_context)} declared collector surfaces "
                 "are not live, so Palimpsest does not issue a collector-backed view."
@@ -436,6 +576,7 @@ def build_event_analysis(
     generated_candidates.extend(
         stories[row["signal_id"]]["modified_at"] for row in collector_context
     )
+    window_peers = window_peers_for(event, wire.get("events") or [])
     v2 = event_brief.build_v2_blocks(
         event,
         items=items,
@@ -443,6 +584,9 @@ def build_event_analysis(
         scope_status=scope_status,
         live_families=live_families,
         archive_context=archive_context,
+        corroboration=corroboration,
+        window_peers=window_peers,
+        archive_refresh_status=archive_refresh_status,
     )
     generated_candidates.extend(
         clock
@@ -450,6 +594,11 @@ def build_event_analysis(
         if type(clock) is str and _TIMESTAMP_RE.fullmatch(clock)
     )
     method = v2.pop("method")
+    named_receipts = _named_declared_receipts(
+        event, collector_context, v2.get("surface_context") or []
+    )
+    archive_block = v2.get("archive_news_context") or {}
+    corroboration_block = v2.get("corroboration") or {}
     core = {
         "schema_version": SCHEMA_VERSION,
         "event_id": event["event_id"],
@@ -461,16 +610,19 @@ def build_event_analysis(
         "scope_status": scope_status,
         "position": _compose_position(
             disposition=disposition,
-            evidence_strength=event["evidence_strength"],
-            independent_groups=independent_groups,
-            collector_statuses=collector_statuses,
+            quorum=quorum,
+            archive_state=archive_block.get("anomaly_state"),
+            archive_matched=archive_block.get("matched"),
+            peer_count=window_peers["same_window_peer_count"],
+            official_page=corroboration_block.get("official_page") or "none-reviewed",
+            named_receipts=named_receipts,
         ),
         "rationale": rationale,
         "evidence_assessment": {
             "strength": event["evidence_strength"],
             "independent_groups": independent_groups,
             "source_count": len(event["evidence_refs"]),
-            "conclusion": _evidence_conclusion(independent_groups),
+            "conclusion": conclusion,
         },
         "collector_context": collector_context,
         "limitations": limitations,
@@ -494,14 +646,21 @@ def build_event_analysis(
 
 def build_event_analyses(
     wire: Mapping[str, Any],
-    feed: Mapping[str, Any],
+    feed: Mapping[str, Any] | None,
     *,
     live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
     archive_context: Mapping[str, Any] | None = None,
+    corroboration: Mapping[str, Any] | None = None,
+    allow_missing_collectors: bool = False,
+    archive_refresh_status: str = "unknown",
 ) -> dict[str, dict[str, Any]]:
     """Return exactly one validated assessment for every validated wire event."""
 
     newswire_model.validate_newswire_document(wire)
+    if feed is None:
+        if not allow_missing_collectors:
+            raise EventAnalysisError("collector feed is not palimpsest-news.v1")
+        feed = {"schema_version": "palimpsest-news.v1", "stories": []}
     if type(feed) is not dict or feed.get("schema_version") != "palimpsest-news.v1":
         raise EventAnalysisError("collector feed is not palimpsest-news.v1")
     if type(feed.get("stories")) is not list:
@@ -516,6 +675,9 @@ def build_event_analyses(
             feed=feed,
             live_families=live_families,
             archive_context=archive_context,
+            corroboration=corroboration,
+            allow_missing_collectors=allow_missing_collectors,
+            archive_refresh_status=archive_refresh_status,
         )
         for event in wire["events"]
     }
@@ -646,7 +808,14 @@ def validate_event_analysis(
     for field in ("independent_groups", "source_count"):
         if type(evidence[field]) is not int or evidence[field] < 1:
             raise EventAnalysisError(f"analysis.evidence_assessment.{field} is invalid")
-    if evidence["conclusion"] != _evidence_conclusion(evidence["independent_groups"]):
+    quorum = (
+        structural_quorum(event)
+        if event is not None
+        else evidence["independent_groups"] > 1
+    )
+    if evidence["conclusion"] != _evidence_conclusion(
+        evidence["independent_groups"], quorum=quorum
+    ):
         raise EventAnalysisError("analysis evidence conclusion is not reproducible")
 
     context = document["collector_context"]
@@ -710,6 +879,9 @@ __all__ = [
     "build_event_analyses",
     "canonical_json_bytes",
     "load_optional_archive_context",
+    "load_optional_corroboration",
     "load_optional_live_families",
+    "structural_quorum",
     "validate_event_analysis",
+    "window_peers_for",
 ]

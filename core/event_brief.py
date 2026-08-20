@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
 
+from core import live_paths
+
 
 SCHEMA_VERSION = "palimpsest-event-analysis.v2"
 PUBLICATION_MODE = "deterministic-event-brief"
@@ -108,7 +110,49 @@ FORBIDDEN_CAUSAL = (
 )
 
 _LAYER_STATUSES = frozenset(
-    {"present", "abstained", "not-applicable", "not-declared"}
+    {"present", "abstained", "not-applicable", "not-declared", "none-reviewed"}
+)
+_ARCHIVE_RECEIPT_FIELDS = (
+    "target_id",
+    "host",
+    "crawl",
+    "last_capture_at",
+    "unique_urls",
+    "mutation_rate",
+    "archive_gap_rate",
+    "anomaly_state",
+    "absence_semantics",
+)
+_WINDOW_PEER_FIELDS = frozenset(
+    {
+        "same_window_peer_count",
+        "shared_topics",
+        "peer_source_ids",
+        "peer_independence_groups",
+        "relation",
+    }
+)
+_CORROBORATION_FIELDS = frozenset(
+    {
+        "accepted_edges",
+        "primary_docs",
+        "reviewed",
+        "official_page",
+        "status",
+        "relation",
+    }
+)
+_ARCHIVE_NEWS_CONTEXT_FIELDS = frozenset(
+    {
+        "matched",
+        "match_kind",
+        "event_id",
+        "anomaly_state",
+        "anomaly_score_published",
+        "relation",
+        "receipts",
+        "refresh_status",
+    }
 )
 _SURFACE_STATUSES = frozenset({"live", "missing", "unmatched", "not-applicable"})
 _EVIDENCE_RE = re.compile(r"^eventevidence-[0-9a-f]{20}$")
@@ -197,6 +241,9 @@ _TOP_V2_EXTRA = frozenset(
         "authorship",
         "disclosure",
         "declared_links",
+        "window_peers",
+        "corroboration",
+        "archive_news_context",
     }
 )
 
@@ -389,33 +436,105 @@ def load_optional_live_families(readings_dir: Path | str | None) -> dict[str, di
     """Load PR82 readings when present. Missing files abstain; nothing is invented."""
 
     families: dict[str, dict[str, Any] | None] = {family: None for family in LIVE_FAMILY_IDS}
-    if readings_dir is None:
-        return families
-    root = Path(readings_dir)
-    for family, filename in LIVE_FAMILY_FILES.items():
-        path = root / filename
-        if not path.is_file():
-            continue
-        try:
-            value = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError, TypeError):
-            continue
-        if type(value) is dict:
-            families[family] = value
+    for root in live_paths.readings_search_dirs(preferred=readings_dir):
+        for family, filename in LIVE_FAMILY_FILES.items():
+            if families[family] is not None:
+                continue
+            path = root / filename
+            if not path.is_file():
+                continue
+            value = live_paths.load_json_if_present(path)
+            if value is not None:
+                families[family] = value
     return families
 
 
 def load_optional_archive_context(readings_dir: Path | str | None) -> dict[str, Any] | None:
-    if readings_dir is None:
-        return None
-    path = Path(readings_dir) / "archive-news-context-latest.json"
-    if not path.is_file():
-        return None
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError, TypeError):
-        return None
-    return value if type(value) is dict else None
+    candidates: list[Path] = []
+    if readings_dir is not None:
+        candidates.append(Path(readings_dir) / "archive-news-context-latest.json")
+    candidates.extend(live_paths.LIVE_ARCHIVE_CONTEXT_PATHS)
+    seen: set[Path] = set()
+    for path in candidates:
+        if path in seen:
+            continue
+        seen.add(path)
+        value = live_paths.load_json_if_present(path)
+        if value is not None:
+            return value
+    return None
+
+
+def load_optional_corroboration(readings_dir: Path | str | None) -> dict[str, Any] | None:
+    for root in live_paths.readings_search_dirs(preferred=readings_dir):
+        value = live_paths.load_json_if_present(root / "corroboration-latest.json")
+        if value is not None:
+            return value
+    return None
+
+
+def corroboration_coverage(document: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Emit official_page: none-reviewed even when the corroboration file is empty."""
+
+    accepted = primary = reviewed = 0
+    if type(document) is dict:
+        accepted = document.get("n_accepted_edges") if type(document.get("n_accepted_edges")) is int else 0
+        primary = (
+            document.get("n_events_with_primary_documents")
+            if type(document.get("n_events_with_primary_documents")) is int
+            else 0
+        )
+        reviewed = document.get("n_reviewed_edges") if type(document.get("n_reviewed_edges")) is int else 0
+    official_page = "none-reviewed" if reviewed == 0 else "reviewed"
+    return {
+        "accepted_edges": accepted,
+        "primary_docs": primary,
+        "reviewed": reviewed,
+        "official_page": official_page,
+        "status": "empty" if reviewed == 0 and accepted == 0 and primary == 0 else "present",
+        "relation": "coverage-fact-only",
+    }
+
+
+def _public_archive_receipts(row: Mapping[str, Any] | None) -> list[dict[str, Any]]:
+    receipts = []
+    for item in _archive_receipts(row or {}):
+        public = {
+            field: item[field]
+            for field in _ARCHIVE_RECEIPT_FIELDS
+            if field in item
+        }
+        if public.get("anomaly_state") == "warming_up":
+            public.pop("anomaly_score", None)
+        receipts.append(public)
+    return receipts
+
+
+def archive_news_context_block(
+    event: Mapping[str, Any],
+    archive_context: Mapping[str, Any] | None,
+    *,
+    refresh_status: str = "unknown",
+) -> dict[str, Any]:
+    match_kind, row = _archive_event_row(archive_context, event)
+    receipts = _public_archive_receipts(row)
+    anomaly_state = receipts[0].get("anomaly_state") if receipts else None
+    anomaly_state = anomaly_state if type(anomaly_state) is str else None
+    score_published = bool(
+        receipts
+        and anomaly_state not in {None, "warming_up"}
+        and receipts[0].get("anomaly_state") != "warming_up"
+    )
+    return {
+        "matched": bool(receipts),
+        "match_kind": match_kind if receipts else None,
+        "event_id": event["event_id"],
+        "anomaly_state": anomaly_state,
+        "anomaly_score_published": score_published,
+        "relation": "topic-surface-only",
+        "receipts": receipts,
+        "refresh_status": refresh_status,
+    }
 
 
 def _evidence_row(
@@ -664,6 +783,9 @@ def build_v2_blocks(
     scope_status: str,
     live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
     archive_context: Mapping[str, Any] | None = None,
+    corroboration: Mapping[str, Any] | None = None,
+    window_peers: Mapping[str, Any] | None = None,
+    archive_refresh_status: str = "unknown",
 ) -> dict[str, Any]:
     """Return the v2 brief blocks. Callers attach them to the v1 core."""
 
@@ -672,6 +794,18 @@ def build_v2_blocks(
         for family in LIVE_FAMILY_IDS:
             payload = live_families.get(family)
             families[family] = payload if type(payload) is dict else None
+    coverage = corroboration_coverage(corroboration)
+    peers = (
+        dict(window_peers)
+        if type(window_peers) is dict
+        else {
+            "same_window_peer_count": 0,
+            "shared_topics": [],
+            "peer_source_ids": [],
+            "peer_independence_groups": [],
+            "relation": "topic-surface-only",
+        }
+    )
 
     in_scope = scope_status == "in-scope"
     live_family_ids = list(LIVE_FAMILY_IDS) if in_scope else []
@@ -717,6 +851,48 @@ def build_v2_blocks(
     evidence.append(source_evidence)
     eid["newswire"] = source_evidence["evidence_id"]
 
+    corr_timestamp = None
+    if type(corroboration) is dict and type(corroboration.get("generated_at")) is str:
+        corr_timestamp = corroboration["generated_at"]
+    corr_claim = (
+        f"Official-page corroboration coverage is {coverage['official_page']}: "
+        f"{coverage['accepted_edges']} accepted edges, "
+        f"{coverage['primary_docs']} primary documents, "
+        f"{coverage['reviewed']} reviewed."
+    )
+    corr_evidence = _evidence_row(
+        kind="corroboration",
+        surface_id="corroboration",
+        status="unmatched" if coverage["status"] == "empty" else "live",
+        headline="Primary-document corroboration coverage",
+        claim=corr_claim,
+        reading_url=READING_URLS.get("corroboration")
+        or "https://palimpsest.info/readings/corroboration-latest.json",
+        source_timestamp=corr_timestamp if corr_timestamp and _TIMESTAMP_RE.fullmatch(corr_timestamp) else None,
+        input_sha256=_sha256_bytes(corroboration) if type(corroboration) is dict else None,
+        interpretation_limit=(
+            "Coverage fact only. Empty review is not a deletion or official-movement finding."
+        ),
+    )
+    evidence.append(corr_evidence)
+    eid["corroboration"] = corr_evidence["evidence_id"]
+    surfaces.append(
+        _surface_row(
+            surface_id="corroboration",
+            status="unmatched" if coverage["status"] == "empty" else "live",
+            match_kind=None,
+            headline=corr_evidence["headline"],
+            finding=corr_claim,
+            source_timestamp=corr_evidence["source_timestamp"],
+            reading_url=corr_evidence["reading_url"],
+            input_sha256=corr_evidence["input_sha256"],
+            interpretation=(
+                "Human-reviewed primary-document coverage. "
+                "official_page none-reviewed is a coverage fact, not a takedown claim."
+            ),
+        )
+    )
+
     for row in collector_context:
         collector_evidence = _evidence_row(
             kind="newsroom-collector",
@@ -757,12 +933,13 @@ def build_v2_blocks(
         evidence.append(row)
         eid["official-first-seen"] = row["evidence_id"]
         official_layer = _layer(
-            "abstained",
+            "none-reviewed" if coverage["official_page"] == "none-reviewed" else "abstained",
             _sentence(row["claim"], row["evidence_id"]),
             _sentence(
                 "Official-page first-seen, last-alive, and hash values are withheld.",
                 row["evidence_id"],
             ),
+            _sentence(corr_claim, eid["corroboration"]),
         )
     elif not official_url_list:
         digest = _sha256_bytes(families["official-first-seen"])
@@ -803,7 +980,11 @@ def build_v2_blocks(
             surfaces.append(surface)
             evidence.append(row)
             eid["official-first-seen"] = row["evidence_id"]
-            official_layer = _layer("abstained", _sentence(row["claim"], row["evidence_id"]))
+            official_layer = _layer(
+                "none-reviewed" if coverage["official_page"] == "none-reviewed" else "abstained",
+                _sentence(row["claim"], row["evidence_id"]),
+                _sentence(corr_claim, eid["corroboration"]),
+            )
         else:
             first_seen = (official_state or {}).get("first_seen")
             last_alive = (official_state or {}).get("last_confirmed_alive")
@@ -857,6 +1038,7 @@ def build_v2_blocks(
                     "This is a fetch-trail record. It does not state why the page changed or who changed it.",
                     row["evidence_id"],
                 ),
+                _sentence(corr_claim, eid["corroboration"]),
             ]
             official_layer = _layer("present", *sentences)
 
@@ -1427,6 +1609,22 @@ def build_v2_blocks(
                     "citation_ids": [eid[ARCHIVE_SURFACE_ID]],
                 }
             )
+    key_numbers.append(
+        {
+            "value": str(peers["same_window_peer_count"]),
+            "label": "same-window events sharing a topic",
+            "note": "counts and names only; not verification",
+            "citation_ids": [eid["newswire"]],
+        }
+    )
+    key_numbers.append(
+        {
+            "value": str(coverage["reviewed"]),
+            "label": "reviewed corroboration edges",
+            "note": f"official_page {coverage['official_page']}",
+            "citation_ids": [eid["corroboration"]],
+        }
+    )
 
     brief = {
         "lead": lead,
@@ -1517,6 +1715,8 @@ def build_v2_blocks(
             extra_clocks.append(payload["generated_at"])
     if type(archive_context) is dict and type(archive_context.get("generated_at")) is str:
         extra_clocks.append(archive_context["generated_at"])
+    if type(corroboration) is dict and type(corroboration.get("generated_at")) is str:
+        extra_clocks.append(corroboration["generated_at"])
 
     return {
         "brief": brief,
@@ -1529,6 +1729,13 @@ def build_v2_blocks(
         "authorship": authorship,
         "disclosure": DISCLOSURE,
         "declared_links": declared_links,
+        "window_peers": peers,
+        "corroboration": coverage,
+        "archive_news_context": archive_news_context_block(
+            event,
+            archive_context,
+            refresh_status=archive_refresh_status,
+        ),
         "extra_clocks": extra_clocks,
         "method": METHOD,
     }
@@ -1687,6 +1894,51 @@ def validate_v2_blocks(
         ):
             raise EventAnalysisError(f"analysis.key_numbers[{index}] citations are invalid")
 
+    peers = _exact(analysis["window_peers"], _WINDOW_PEER_FIELDS, "analysis.window_peers")
+    if type(peers["same_window_peer_count"]) is not int or peers["same_window_peer_count"] < 0:
+        raise EventAnalysisError("analysis.window_peers.same_window_peer_count is invalid")
+    if peers["relation"] != "topic-surface-only":
+        raise EventAnalysisError("analysis.window_peers relation may not imply verification")
+    for field in ("shared_topics", "peer_source_ids", "peer_independence_groups"):
+        values = peers[field]
+        if type(values) is not list or any(type(item) is not str or not item for item in values):
+            raise EventAnalysisError(f"analysis.window_peers.{field} is invalid")
+
+    coverage = _exact(analysis["corroboration"], _CORROBORATION_FIELDS, "analysis.corroboration")
+    for field in ("accepted_edges", "primary_docs", "reviewed"):
+        if type(coverage[field]) is not int or coverage[field] < 0:
+            raise EventAnalysisError(f"analysis.corroboration.{field} is invalid")
+    if coverage["official_page"] not in {"none-reviewed", "reviewed"}:
+        raise EventAnalysisError("analysis.corroboration.official_page is invalid")
+    if coverage["status"] not in {"empty", "present"}:
+        raise EventAnalysisError("analysis.corroboration.status is invalid")
+    if coverage["relation"] != "coverage-fact-only":
+        raise EventAnalysisError("analysis.corroboration relation is invalid")
+    if coverage["reviewed"] == 0 and coverage["official_page"] != "none-reviewed":
+        raise EventAnalysisError("empty corroboration must emit official_page none-reviewed")
+
+    archive_block = _exact(
+        analysis["archive_news_context"],
+        _ARCHIVE_NEWS_CONTEXT_FIELDS,
+        "analysis.archive_news_context",
+    )
+    if type(archive_block["matched"]) is not bool:
+        raise EventAnalysisError("analysis.archive_news_context.matched is invalid")
+    if archive_block["match_kind"] not in {None, "event-id", "url"}:
+        raise EventAnalysisError("analysis.archive_news_context.match_kind is invalid")
+    if archive_block["event_id"] != analysis["event_id"]:
+        raise EventAnalysisError("analysis.archive_news_context.event_id drifted")
+    if archive_block["relation"] != "topic-surface-only":
+        raise EventAnalysisError("analysis.archive_news_context relation may not imply verification")
+    if archive_block["refresh_status"] not in {"unknown", "ok", "revision_pin_mismatch"}:
+        raise EventAnalysisError("analysis.archive_news_context.refresh_status is invalid")
+    if type(archive_block["anomaly_score_published"]) is not bool:
+        raise EventAnalysisError("analysis.archive_news_context.anomaly_score_published is invalid")
+    if archive_block["anomaly_state"] == "warming_up" and archive_block["anomaly_score_published"]:
+        raise EventAnalysisError("warming_up archive context may not publish an anomaly score")
+    if type(archive_block["receipts"]) is not list or len(archive_block["receipts"]) > 16:
+        raise EventAnalysisError("analysis.archive_news_context.receipts is invalid")
+
     links = _exact(analysis["declared_links"], _DECLARED_FIELDS, "analysis.declared_links")
     if links["relation"] != "topic-surface-only":
         raise EventAnalysisError("analysis.declared_links relation is invalid")
@@ -1783,7 +2035,10 @@ __all__ = [
     "causal_hits",
     "event_urls",
     "extra_limitations",
+    "archive_news_context_block",
+    "corroboration_coverage",
     "load_optional_archive_context",
+    "load_optional_corroboration",
     "load_optional_live_families",
     "official_urls",
     "validate_v2_blocks",

@@ -307,13 +307,25 @@ def test_thick_brief_when_all_surfaces_present() -> None:
     assert analysis["publication_receipt"]["automatic_publication"] is False
     assert analysis["publication_receipt"]["human_review_required"] is True
     assert analysis["authorship"]["freeform_model_generation"] == "none"
+    assert analysis["archive_news_context"]["matched"] is True
+    assert analysis["archive_news_context"]["match_kind"] == "event-id"
+    assert analysis["archive_news_context"]["anomaly_state"] == "warming_up"
+    assert analysis["archive_news_context"]["anomaly_score_published"] is False
+    assert analysis["corroboration"]["official_page"] == "none-reviewed"
+    assert analysis["window_peers"]["relation"] == "topic-surface-only"
+    assert "warming_up" in analysis["position"]
+    assert "none-reviewed" in analysis["position"]
+    assert "structurally corroborated" not in analysis["position"]
 
 
 def test_layers_abstain_when_lake_ledger_and_official_are_missing() -> None:
     analysis = _build(live_families=None, archive_context=None)
 
     event_analysis.validate_event_analysis(analysis, event=_event())
-    assert analysis["brief"]["official_page"]["status"] == "abstained"
+    assert analysis["brief"]["official_page"]["status"] == "none-reviewed"
+    assert analysis["corroboration"]["official_page"] == "none-reviewed"
+    assert analysis["corroboration"]["accepted_edges"] == 0
+    assert analysis["corroboration"]["reviewed"] == 0
     assert analysis["brief"]["deletion_ledger"]["status"] == "abstained"
     assert analysis["brief"]["archive_context"]["status"] == "abstained"
     assert analysis["brief"]["timeline"]["status"] == "abstained"
@@ -415,3 +427,136 @@ def test_no_fake_live_latest_files_were_committed() -> None:
         "readings/archive-news-context-latest.json",
     }
     assert forbidden.isdisjoint(tracked)
+    assert "readings/event-analysis-latest.json" not in tracked
+
+
+def test_single_independence_group_cannot_claim_structural_corroboration() -> None:
+    analysis = _build()
+    blob = " ".join(_cited_texts(analysis))
+    assert "structurally corroborated" not in blob
+    assert analysis["evidence_assessment"]["independent_groups"] == 1
+    assert event_analysis.structural_quorum(_event()) is False
+
+
+def test_two_independence_groups_may_use_structurally_corroborated() -> None:
+    event = _event()
+    other_id = "item-" + "ff" * 12
+    event["evidence_strength"] = "multi-source"
+    event["lead_reason"] = "multi-source"
+    event["evidence_refs"].append(
+        {
+            "item_id": other_id,
+            "version_id": "itemv-" + "11" * 12,
+            "source_id": "reuters",
+            "source_name": "Reuters",
+            "role": "media",
+            "independence_group": "reuters",
+            "title": "NBS releases July figures",
+            "url": "https://www.reuters.com/world/china/nbs-july/",
+            "published_at": "2026-08-20T01:05:00Z",
+        }
+    )
+    event["evidence_groups"].append(
+        {
+            "group_id": "reuters",
+            "source_ids": ["reuters"],
+            "roles": ["media"],
+        }
+    )
+    wire = _wire(event)
+    wire["items"].append(
+        {
+            "item_id": other_id,
+            "title": "NBS releases July figures",
+            "excerpt": "A second attributed report.",
+            "feed_sha256": "99" * 32,
+            "source_id": "reuters",
+        }
+    )
+    analysis = event_analysis.build_event_analysis(
+        event,
+        wire=wire,
+        feed=_feed(),
+        live_families=_all_families(),
+        archive_context=_archive_context(),
+    )
+    assert event_analysis.structural_quorum(event) is True
+    assert "structurally corroborated" in analysis["position"]
+    assert analysis["publication_receipt"]["automatic_publication"] is False
+
+
+def test_same_window_peers_are_counts_and_names_only() -> None:
+    event = _event()
+    peer = _event()
+    peer["event_id"] = "event-" + "bb" * 12
+    peer["version_id"] = "eventv-" + "cc" * 12
+    peer["url"] = f"https://palimpsest.info/news/wire/{peer['event_id']}/"
+    peer["topics"] = ["economy"]
+    peer["headline"] = "Peer economy note"
+    wire = _wire(event)
+    wire["events"].append(peer)
+    analysis = event_analysis.build_event_analysis(
+        event, wire=wire, feed=_feed()
+    )
+    peers = analysis["window_peers"]
+    assert peers["same_window_peer_count"] == 1
+    assert peers["shared_topics"] == ["economy"]
+    assert "china-digital-times" in peers["peer_source_ids"]
+    assert "cdt" in peers["peer_independence_groups"]
+    assert "1 same-window event" in analysis["position"]
+    blob = json.dumps(peers)
+    assert "http" not in blob
+    assert "deleted because" not in blob
+
+
+def test_missing_newsroom_feed_abstains_collectors_instead_of_inventing() -> None:
+    event = _event()
+    analysis = event_analysis.build_event_analysis(
+        event,
+        wire=_wire(event),
+        feed={"schema_version": "palimpsest-news.v1", "stories": []},
+        allow_missing_collectors=True,
+    )
+    assert analysis["disposition"] == "collector-abstention"
+    assert {row["status"] for row in analysis["collector_context"]} == {"missing"}
+    assert analysis["publication_receipt"]["automatic_publication"] is False
+
+
+def test_warming_up_archive_does_not_publish_a_mad_score() -> None:
+    analysis = _build(archive_context=_archive_context())
+    assert analysis["archive_news_context"]["anomaly_state"] == "warming_up"
+    assert analysis["archive_news_context"]["anomaly_score_published"] is False
+    blob = " ".join(_cited_texts(analysis)).casefold()
+    assert "prequential-robust-mad" in blob
+    assert "anomaly score is published" in blob
+    assert "anomaly_score=" not in blob
+
+
+def test_live_script_refuses_to_write_a_git_readings_latest_file() -> None:
+    from scripts import event_analysis_live
+
+    code = event_analysis_live.main(
+        [
+            "--wire",
+            str(ROOT / "readings" / "missing-wire.json"),
+            "--output",
+            str(ROOT / "readings" / "event-analysis-latest.json"),
+        ]
+    )
+    assert code == 3
+    assert not (ROOT / "readings" / "event-analysis-latest.json").exists()
+
+
+def test_live_script_abstains_when_the_wire_is_missing(tmp_path: Path) -> None:
+    from scripts import event_analysis_live
+
+    code = event_analysis_live.main(
+        [
+            "--wire",
+            str(tmp_path / "newswire-latest.json"),
+            "--output",
+            str(tmp_path / "event-analysis-latest.json"),
+        ]
+    )
+    assert code == 2
+    assert not (tmp_path / "event-analysis-latest.json").exists()

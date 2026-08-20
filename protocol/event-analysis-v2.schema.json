@@ -30,7 +30,10 @@
     "publication_receipt",
     "authorship",
     "disclosure",
-    "declared_links"
+    "declared_links",
+    "window_peers",
+    "corroboration",
+    "archive_news_context"
   ],
   "properties": {
     "schema_version": {"const": "palimpsest-event-analysis.v2"},
@@ -112,7 +115,10 @@
     "publication_receipt": {"$ref": "#/$defs/publicationReceipt"},
     "authorship": {"$ref": "#/$defs/authorship"},
     "disclosure": {"$ref": "#/$defs/longText"},
-    "declared_links": {"$ref": "#/$defs/declaredLinks"}
+    "declared_links": {"$ref": "#/$defs/declaredLinks"},
+    "window_peers": {"$ref": "#/$defs/windowPeers"},
+    "corroboration": {"$ref": "#/$defs/corroboration"},
+    "archive_news_context": {"$ref": "#/$defs/archiveNewsContext"}
   },
   "$defs": {
     "eventId": {
@@ -177,7 +183,7 @@
       "required": ["status", "sentences"],
       "properties": {
         "status": {
-          "enum": ["present", "abstained", "not-applicable", "not-declared"]
+          "enum": ["present", "abstained", "not-applicable", "not-declared", "none-reviewed"]
         },
         "sentences": {
           "type": "array",
@@ -371,6 +377,90 @@
         "mode": {"const": "deterministic-event-brief"},
         "human_interviews": {"const": "none"},
         "freeform_model_generation": {"const": "none"}
+      }
+    },
+    "windowPeers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "same_window_peer_count",
+        "shared_topics",
+        "peer_source_ids",
+        "peer_independence_groups",
+        "relation"
+      ],
+      "properties": {
+        "same_window_peer_count": {"type": "integer", "minimum": 0},
+        "shared_topics": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "peer_source_ids": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "peer_independence_groups": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "relation": {"const": "topic-surface-only"}
+      }
+    },
+    "corroboration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_edges",
+        "primary_docs",
+        "reviewed",
+        "official_page",
+        "status",
+        "relation"
+      ],
+      "properties": {
+        "accepted_edges": {"type": "integer", "minimum": 0},
+        "primary_docs": {"type": "integer", "minimum": 0},
+        "reviewed": {"type": "integer", "minimum": 0},
+        "official_page": {"enum": ["none-reviewed", "reviewed"]},
+        "status": {"enum": ["empty", "present"]},
+        "relation": {"const": "coverage-fact-only"}
+      }
+    },
+    "archiveNewsContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "matched",
+        "match_kind",
+        "event_id",
+        "anomaly_state",
+        "anomaly_score_published",
+        "relation",
+        "receipts",
+        "refresh_status"
+      ],
+      "properties": {
+        "matched": {"type": "boolean"},
+        "match_kind": {
+          "oneOf": [{"enum": ["event-id", "url"]}, {"type": "null"}]
+        },
+        "event_id": {"$ref": "#/$defs/eventId"},
+        "anomaly_state": {
+          "oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]
+        },
+        "anomaly_score_published": {"type": "boolean"},
+        "relation": {"const": "topic-surface-only"},
+        "receipts": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {"type": "object"}
+        },
+        "refresh_status": {
+          "enum": ["unknown", "ok", "revision_pin_mismatch"]
+        }
       }
     },
     "declaredLinks": {

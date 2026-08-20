@@ -6,6 +6,7 @@ After=network-online.target
 ConditionFileIsExecutable=/usr/bin/python3
 ConditionPathExists=/home/palimpsest/palimpsest/config/news_sources.json
 ConditionPathIsDirectory=/var/lib/palimpsest/newswire
+OnSuccess=palimpsest-event-analysis-live.service
 StartLimitIntervalSec=10m
 StartLimitBurst=3
 

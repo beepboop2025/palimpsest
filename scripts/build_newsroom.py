@@ -42,13 +42,20 @@ from core import machine_investigations as machine_investigations_model
 from core import newsroom
 from core import newswire as newswire_model
 from core import telegram_watch as telegram_watch_model
+from core.live_paths import (
+    load_archive_refresh_status,
+    resolve_newswire_path,
+    resolve_readings_dir,
+)
 from scripts import site_nav
 
 
 ROOT = Path(__file__).resolve().parent.parent
 NEWS = ROOT / "news"
 READING = ROOT / "readings" / "newsroom-latest.json"
-NEWSWIRE_READING = ROOT / "readings" / "newswire-latest.json"
+NEWSWIRE_READING = resolve_newswire_path(
+    preferred=ROOT / "readings" / "newswire-latest.json"
+)
 ECONOMIC_READING = ROOT / "readings" / "china-economic-pulse-latest.json"
 INVESTIGATIONS_READING = ROOT / "readings" / "investigations-latest.json"
 MACHINE_INVESTIGATIONS_READING = (
@@ -4584,7 +4591,7 @@ def build_outputs(
     china_stream: Mapping[str, Any] | None = None
     whispers_document: Mapping[str, Any] | None = None
     if wire is not None:
-        readings_dir = archive_root / "readings"
+        readings_dir = resolve_readings_dir(preferred=archive_root / "readings")
         event_analyses = event_analysis_model.build_event_analyses(
             wire,
             feed,
@@ -4592,6 +4599,8 @@ def build_outputs(
             archive_context=event_analysis_model.load_optional_archive_context(
                 readings_dir
             ),
+            corroboration=event_analysis_model.load_optional_corroboration(readings_dir),
+            archive_refresh_status=load_archive_refresh_status(),
         )
         china_stream = china_stream_model.build_china_article_stream(
             wire, event_analyses, telegram_watch=telegram_watch

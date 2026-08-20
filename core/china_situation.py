@@ -453,7 +453,16 @@ def _posture(*, has_social: bool, has_measurement: bool) -> str:
     return "report-only"
 
 
-def _summary(*, groups: int, reports: int, social: int, measurements: int) -> str:
+def _summary(
+    *,
+    groups: int,
+    reports: int,
+    social: int,
+    measurements: int,
+    archive_state: str | None = None,
+    peer_count: int | None = None,
+    official_page: str = "none-reviewed",
+) -> str:
     layers = [f"{reports} attributed publisher report{'s' if reports != 1 else ''}"]
     if social:
         layers.append(
@@ -463,10 +472,23 @@ def _summary(*, groups: int, reports: int, social: int, measurements: int) -> st
         layers.append(
             f"{measurements} declared Observatory surface{'s' if measurements != 1 else ''}"
         )
+    if archive_state == "warming_up":
+        archive_clause = "archive-news-context anomaly_state is warming_up"
+    elif archive_state:
+        archive_clause = f"archive-news-context anomaly_state is {archive_state}"
+    else:
+        archive_clause = "archive-news-context is unmatched or absent"
+    if peer_count is None:
+        peer_clause = "same-window topic peers are uncounted"
+    else:
+        peer_clause = (
+            f"{peer_count} same-window event{'s' if peer_count != 1 else ''} share a topic"
+        )
     return (
         f"This dossier places {', '.join(layers)} in one view. The reporting represents "
         f"{groups} independent publisher group{'s' if groups != 1 else ''}; social and "
-        "measurement rows remain context-only and do not increase that count."
+        "measurement rows remain context-only and do not increase that count. "
+        f"{archive_clause}; official-page coverage is {official_page}; {peer_clause}."
     )
 
 
@@ -730,6 +752,21 @@ def build_china_situation(
                     reports=len(reporting_sources),
                     social=len(social_context),
                     measurements=len(measurement_context),
+                    archive_state=(
+                        analysis.get("archive_news_context", {}).get("anomaly_state")
+                        if type(analysis.get("archive_news_context")) is dict
+                        else None
+                    ),
+                    peer_count=(
+                        analysis.get("window_peers", {}).get("same_window_peer_count")
+                        if type(analysis.get("window_peers")) is dict
+                        else None
+                    ),
+                    official_page=(
+                        analysis.get("corroboration", {}).get("official_page")
+                        if type(analysis.get("corroboration")) is dict
+                        else "none-reviewed"
+                    ),
                 ),
                 "known_unknowns": list(analysis["limitations"]),
                 "next_checks": _next_checks(event, analysis, social_context),

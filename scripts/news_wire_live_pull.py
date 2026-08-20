@@ -16,15 +16,20 @@ from collectors.archive_capture import attach_new_url_captures, previous_urls_fr
 from collectors.news_wire_live import load_wire_events, observations_from_events
 from core.china_observation import SCHEMA_VERSION, iso_z, serialize_observation
 from core.governance import KillSwitch
+from core.live_paths import (
+    LIVE_NEWSWIRE_PATH,
+    resolve_newswire_path,
+    resolve_readings_dir,
+)
 from core.safe_fetch import safe_fetch
 from processors.archive_context import attach_derived_archive_context
 from scripts.newswire_pull import main as newswire_main
 
 ROOT = Path(__file__).resolve().parent.parent
-READINGS = ROOT / "readings"
+READINGS = resolve_readings_dir(preferred=ROOT / "readings")
 OUT = READINGS / "news-wire-live-latest.json"
 HIST = READINGS / "news-wire-live-history.jsonl"
-WIRE = READINGS / "newswire-latest.json"
+WIRE = resolve_newswire_path(preferred=ROOT / "readings" / "newswire-latest.json")
 USER_AGENT = (
     "Palimpsest/0.2 (+https://palimpsest.info; open-source censorship "
     "research; public RSS metadata only)"
@@ -48,17 +53,22 @@ def main(*, events=None, skip_collect: bool = False, now: datetime | None = None
 
     live_collect = False
     if events is None and not skip_collect:
-        code = newswire_main()
-        if code == 2:
-            print("news-wire-live: newswire reported no fresh sources; abstaining")
-            return None
-        if code == 3:
-            print("news-wire-live: newswire abstained; not projecting a live family")
-            return None
-        if code != 0:
-            raise RuntimeError(f"newswire runner exited with status {code}")
-        events = load_wire_events(WIRE)
-        live_collect = True
+        if LIVE_NEWSWIRE_PATH.is_file():
+            events = load_wire_events(LIVE_NEWSWIRE_PATH)
+            live_collect = True
+            print(f"news-wire-live: projecting the live 30-minute wire at {LIVE_NEWSWIRE_PATH}")
+        else:
+            code = newswire_main()
+            if code == 2:
+                print("news-wire-live: newswire reported no fresh sources; abstaining")
+                return None
+            if code == 3:
+                print("news-wire-live: newswire abstained; not projecting a live family")
+                return None
+            if code != 0:
+                raise RuntimeError(f"newswire runner exited with status {code}")
+            events = load_wire_events(WIRE)
+            live_collect = True
     elif events is None:
         events = load_wire_events(WIRE)
 

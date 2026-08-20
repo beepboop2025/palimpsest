@@ -35,6 +35,18 @@ def test_node_newswire_is_bounded_unprivileged_and_state_separated() -> None:
     assert "RestartSec=2m" in unit
     assert "StartLimitIntervalSec=10m" in unit
     assert "StartLimitBurst=3" in unit
+    assert "OnSuccess=palimpsest-event-analysis-live.service" in unit
+
+
+def test_live_event_analysis_reads_the_same_timer_wire() -> None:
+    unit = (
+        ROOT / "ops/systemd/palimpsest-event-analysis-live.service"
+    ).read_text(encoding="utf-8")
+    assert "--wire /var/lib/palimpsest/newswire/newswire-latest.json" in unit
+    assert "--output /var/lib/palimpsest/newswire/event-analysis-latest.json" in unit
+    assert "ReadWritePaths=/var/lib/palimpsest/newswire" in unit
+    assert "IPAddressDeny=any" in unit
+    assert "CapabilityBoundingSet=\n" in unit
 
 
 def test_node_newswire_has_a_non_overlapping_half_hour_timer() -> None:

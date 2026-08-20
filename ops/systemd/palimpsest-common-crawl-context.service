@@ -17,6 +17,7 @@ User=10001
 Group=10001
 WorkingDirectory=/usr/local/libexec/palimpsest-common-crawl/current
 ExecStartPre=/bin/sh /usr/local/libexec/palimpsest-common-crawl/current/verify-host-bundle.sh
+ExecStartPre=/bin/sh -c 'd=/var/lib/palimpsest/common-crawl/derived; mkdir -p "$d"; if cmp -s /usr/local/libexec/palimpsest-common-crawl/current/REVISION /etc/palimpsest/deployed-commit; then pin=match; else pin=mismatch; fi; printf "{\"schema\":\"palimpsest-archive-context-refresh-attempt/v1\",\"revision_pin\":\"%s\",\"attempted_at\":\"%s\",\"note\":\"ExecStartPre cmp -s REVISION deployed-commit is fail-closed; a mismatch aborts before refresh can rewrite archive-news-context.json.\"}\n" "$pin" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$d/archive-news-context.last-attempt.json"'
 ExecStartPre=/usr/bin/cmp -s /usr/local/libexec/palimpsest-common-crawl/current/REVISION /etc/palimpsest/deployed-commit
 ExecStart=/usr/bin/python3 -m scripts.common_crawl_lake --warehouse /var/lib/palimpsest/common-crawl refresh --newswire /var/lib/palimpsest/newswire/newswire-latest.json --osint /var/lib/palimpsest/readings/osint-china-latest.json
 TimeoutStartSec=2h

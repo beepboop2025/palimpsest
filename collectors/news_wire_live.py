@@ -12,8 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from core.china_observation import enrich_observation, public_text
+from core.live_paths import resolve_newswire_path
 
-DEFAULT_WIRE = Path("readings/newswire-latest.json")
+DEFAULT_WIRE = resolve_newswire_path(preferred=Path("readings/newswire-latest.json"))
 
 
 def load_wire_events(path: Path | str = DEFAULT_WIRE) -> list[dict[str, Any]]:
