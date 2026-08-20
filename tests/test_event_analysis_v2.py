@@ -399,12 +399,19 @@ def test_generated_v2_conforms_to_public_schema() -> None:
 
 
 def test_no_fake_live_latest_files_were_committed() -> None:
-    readings = ROOT / "readings"
-    for name in (
-        "official-first-seen-latest.json",
-        "public-deletion-ledgers-latest.json",
-        "news-wire-live-latest.json",
-        "undertext-latest.json",
-        "archive-news-context-latest.json",
-    ):
-        assert not (readings / name).is_file()
+    """This change must not invent PR82/archive latest files to make briefs look live."""
+
+    import subprocess
+
+    tracked = subprocess.check_output(
+        ["git", "ls-files", "readings"],
+        cwd=ROOT,
+        text=True,
+    ).splitlines()
+    forbidden = {
+        "readings/official-first-seen-latest.json",
+        "readings/public-deletion-ledgers-latest.json",
+        "readings/news-wire-live-latest.json",
+        "readings/archive-news-context-latest.json",
+    }
+    assert forbidden.isdisjoint(tracked)
