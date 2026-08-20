@@ -29,6 +29,9 @@
       "EventAnalysis": {
         "$ref": "https://palimpsest.info/protocol/event-analysis-v2.schema.json"
       },
+      "InstrumentAnalysis": {
+        "$ref": "https://palimpsest.info/protocol/instrument-analysis.schema.json"
+      },
       "ChinaArticleStream": {
         "$ref": "https://palimpsest.info/protocol/china-article-stream-v1.schema.json"
       },
@@ -298,6 +301,10 @@
         "description": "Content-addressed Palimpsest assessment of one event using source structure and declared collector context",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EventAnalysis"}}}
       },
+      "InstrumentAnalysis": {
+        "description": "Deterministic companion brief for one newsroom instrument story and its public reading",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/InstrumentAnalysis"}}}
+      },
       "ChinaArticleStream": {
         "description": "Newest-first China publisher items with evidence-bound Palimpsest analysis and a separate reviewed Telegram context lane",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaArticleStream"}}}
@@ -430,6 +437,17 @@
         "schema": {"type": "string", "pattern": "^event-[0-9a-f]{24}$"}
       }],
       "responses": {"200": {"$ref": "#/components/responses/EventAnalysis"}}
+    }},
+    "/news/{slug}/analysis.json": {"get": {
+      "operationId": "getInstrumentAnalysis",
+      "summary": "Read the deterministic companion brief for one newsroom instrument story and its public reading",
+      "parameters": [{
+        "name": "slug",
+        "in": "path",
+        "required": true,
+        "schema": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"}
+      }],
+      "responses": {"200": {"$ref": "#/components/responses/InstrumentAnalysis"}}
     }},
     "/readings/china-index-latest.json": {"get": {
       "operationId": "getChinaObservatoryIndex",

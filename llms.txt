@@ -79,7 +79,12 @@ receipts, freshness, denominators and limitations. External publisher material r
 an attributed source index: the original publisher is the destination for the report,
 while Palimpsest adds source grouping, related measurement context when available,
 revision history, unknowns and next checks. A source record is not an independently
-verified Palimpsest finding.
+verified Palimpsest finding. Every public instrument story also publishes a
+deterministic companion at `{story}/analysis.json` and a sibling
+`readings/{signal}-analysis.json`: current number and denominator, live versus
+stale or missing, same-edition elevated layer and signal names, and what the
+reading does not show. Non-live instruments emit an availability brief. The
+cross-instrument article at `/news/china/analysis/` remains the daily quality bar.
 
 Agents can consume the complete strict feed at
 [newsroom-latest.json](https://palimpsest.info/readings/newsroom-latest.json), the

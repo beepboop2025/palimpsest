@@ -21,6 +21,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 from core import china_situation as situation_model
 from core import event_analysis
+from core import instrument_analysis
 from core import newswire as newswire_model
 from core.live_paths import resolve_newswire_path, resolve_readings_dir
 from scripts import build_newsroom as newsroom_builder
@@ -490,11 +491,18 @@ def build_outputs(
         osint_observations=load_osint_observations(),
     )
     document = situation_model.bind_situation_page_urls(document, page_size=PAGE_SIZE)
+    feed = _strict_document(newsroom_path)
+    instrument_analyses = instrument_analysis.build_instrument_analyses(feed)
     outputs: dict[Path, bytes] = {
         OUTPUT_PATH: _pretty_json(document),
         JSON_FEED_PATH: _pretty_json(build_json_feed(document)),
         RSS_FEED_PATH: build_rss(document),
     }
+    for story in feed["stories"]:
+        analysis = instrument_analyses[story["signal_id"]]
+        payload = instrument_analysis.pretty_json_bytes(analysis)
+        outputs[ROOT / instrument_analysis.reading_analysis_relpath(story)] = payload
+        outputs[ROOT / "news" / story["slug"] / "analysis.json"] = payload
     total_pages = max(1, (len(document["situations"]) + PAGE_SIZE - 1) // PAGE_SIZE)
     for page in range(1, total_pages + 1):
         outputs[_page_path(page)] = render_page(document, page=page).encode("utf-8")
@@ -538,10 +546,20 @@ def _remove_stale_archive_pages(expected: set[Path]) -> None:
             pass
 
 
+def _situation_owned(path: Path) -> bool:
+    resolved = path if path.is_absolute() else ROOT / path
+    return resolved in {OUTPUT_PATH, PAGE_PATH, JSON_FEED_PATH, RSS_FEED_PATH} or (
+        PAGE_PATH.parent in resolved.parents
+    )
+
+
 def run(*, check: bool = False) -> int:
     outputs, document = build_outputs()
     changed = [
-        path for path, payload in outputs.items() if not path.is_file() or path.read_bytes() != payload
+        path
+        for path, payload in outputs.items()
+        if _situation_owned(path)
+        and (not path.is_file() or path.read_bytes() != payload)
     ]
     expected_archive_pages = {
         path for path in outputs if path != PAGE_PATH and PAGE_PATH.parent in path.parents
@@ -550,7 +568,7 @@ def run(*, check: bool = False) -> int:
     if check:
         if changed or stale_archive_pages:
             for path in changed:
-                print(f"stale: {path.relative_to(ROOT)}")
+                print(f"stale: {path if not path.is_absolute() else path.relative_to(ROOT)}")
             for path in sorted(stale_archive_pages):
                 print(f"stale archive page: {path.relative_to(ROOT)}")
             return 1

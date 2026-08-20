@@ -100,7 +100,8 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
     assert len(spec["paths"]) >= 8
     for path, operations in spec["paths"].items():
         dynamic_event_analysis = path == "/news/wire/{event_id}/analysis.json"
-        assert dynamic_event_analysis or (
+        dynamic_instrument_analysis = path == "/news/{slug}/analysis.json"
+        assert dynamic_event_analysis or dynamic_instrument_analysis or (
             path.startswith("/readings/")
             and path.endswith((".json", ".jsonld", ".jsonl", ".csv"))
         ) or path == "/datapackage.json"
@@ -108,6 +109,9 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
         if dynamic_event_analysis:
             assert any((ROOT / "news/wire").glob("event-*/analysis.json"))
             assert operations["get"]["parameters"][0]["name"] == "event_id"
+        elif dynamic_instrument_analysis:
+            assert (ROOT / "protocol/instrument-analysis.schema.json").is_file()
+            assert operations["get"]["parameters"][0]["name"] == "slug"
         else:
             assert (ROOT / path.lstrip("/")).is_file(), path
         assert "200" in operations["get"]["responses"]
