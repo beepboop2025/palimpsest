@@ -19,6 +19,7 @@
     "rationale",
     "evidence_assessment",
     "collector_context",
+    "peer_context",
     "limitations",
     "method"
   ],
@@ -60,6 +61,11 @@
       "type": "array",
       "maxItems": 32,
       "items": {"$ref": "#/$defs/collectorContext"}
+    },
+    "peer_context": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/peerContext"}
     },
     "limitations": {
       "type": "array",
@@ -222,6 +228,52 @@
         },
         "relation": {"const": "topic-surface-only"},
         "interpretation": {"$ref": "#/$defs/longText"}
+      }
+    },
+    "peerContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "peer",
+        "status",
+        "sentence",
+        "as_of",
+        "peer_url",
+        "title",
+        "excerpt",
+        "host",
+        "measurement_count",
+        "anomaly_rate",
+        "verdict",
+        "window_days",
+        "attribution",
+        "relation"
+      ],
+      "properties": {
+        "peer": {"enum": ["greatfire", "ooni", "cdt", "weiboscope"]},
+        "status": {"enum": ["live", "miss", "silent", "abstain"]},
+        "sentence": {"$ref": "#/$defs/longText"},
+        "as_of": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "peer_url": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            {"type": "null"}
+          ]
+        },
+        "title": {"oneOf": [{"type": "string", "maxLength": 240}, {"type": "null"}]},
+        "excerpt": {"oneOf": [{"type": "string", "maxLength": 280}, {"type": "null"}]},
+        "host": {"oneOf": [{"type": "string", "maxLength": 253}, {"type": "null"}]},
+        "measurement_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "anomaly_rate": {"oneOf": [{"type": "number"}, {"type": "null"}]},
+        "verdict": {"oneOf": [{"type": "string", "maxLength": 64}, {"type": "null"}]},
+        "window_days": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 366}, {"type": "null"}]},
+        "attribution": {"$ref": "#/$defs/longText"},
+        "relation": {"const": "peer-context-not-palimpsest-capture"}
       }
     }
   }

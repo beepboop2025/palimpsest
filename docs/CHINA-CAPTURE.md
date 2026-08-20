@@ -44,6 +44,8 @@ the join `topic-or-url-context-not-corroboration`.
 | Public Baike article snapshot | `scripts/baike_public_snapshot_pull.py` | fleet `baike-public-snapshot` | Public HTML + Wayback CDX for topic/event articles only. Hash trail + last-confirmed-alive. No logged-in API. No person pages. The Wikipedia-fork `baike-redaction` runner stays `disabled_no_authorized_access`. |
 | Public hot boards | `scripts/public_hot_boards_pull.py` | fleet `public-hot-boards` | Baidu / Toutiao / Douyin aggregate JSON. Titles and ranks only. Each board is a candidate; login-walled or empty boards abstain. |
 | Public Telegram channels | `scripts/telegram_public_channels_pull.py` | fleet `telegram-public-channels` | Keyless `t.me/s/` HTML for the three in-tree Dragon Den public channels. Fat warehouse observations (full public text, hash, first-seen, outbound links, gazetteer, joins). `mainland_echo` when a post quotes/archives a deleted mainland item. ScamShield inbox drained through the existing sanitized feed. Public whispers / `telegram-watch` stay review-gated. CDT/GreatFire have no `t.me` in-tree. |
+| GreatFire attributed verdicts | `scripts.greatfire_context_pull` | fleet `greatfire-context` | Keyless GreatFire Analyzer JSON (`/api/url/`, `/api/verdict?path=`) for hosts Palimpsest already holds (official-first-seen, ledgers, newswire, Wayback, bleedthrough `probe_domain`). Caches 90-day verdict + last-test date. Discards `history`. Does **not** crawl the 700k catalog or store 101M measurement rows. `/feed.json?list=` is a candidate ledger (titles/paths/status only); a 500/silent feed abstains. Credit: GreatFire Analyzer, CC BY 4.0. A fully silent API **abstains** (no hollow latest file). |
+| Attributed peer-context join | `scripts.peer_context_pull` | fleet `peer-context` | **Offline** join of the GreatFire cache, existing OONI (`ooni-gfw-latest` + optional `warehouse/ooni-bulk` / `data/ooni-bulk` already on the box — never re-downloaded), bounded CDT RSS titles/links/excerpts, and a Weiboscope documented abstention (`doi:10.25442/hku.16674565`). Writes `readings/peer-context-latest.json` on the box only. Event analysis / China Situation consume `peer_context` in canned attributed voice. Never “GreatFire proves the Party did X.” Never collapse a peer denominator into ours. |
 
 `china/sources/` remains a static economic catalogue. It is not a collector.
 
@@ -79,7 +81,16 @@ the join `topic-or-url-context-not-corroboration`.
 - Use a logged-in Baike API or build Baike user profiles. Public article HTML
   and Wayback CDX on topic/event pages are in scope.
 - Invent live bleedthrough, GDELT, ledger, official, news-wire, Wikipedia RC,
-  or Telegram rows. A silent feed abstains. Archive snapshot URLs are attached
-  only when an archive API confirmed one.
+  Telegram, GreatFire, or peer-context rows. A silent feed abstains. Archive
+  snapshot URLs are attached only when an archive API confirmed one. Do not
+  commit `readings/greatfire-context-latest.json` or
+  `readings/peer-context-latest.json` as placeholders.
+- Republish full China Digital Times articles. Peer context keeps titles, links,
+  and bounded excerpts (≤280 characters) and says Palimpsest did not write the piece.
+- Download the HKU Weiboscope 2012 DataHub dump (226M messages,
+  `doi:10.25442/hku.16674565`). Analysis may only say historical Weiboscope
+  volume is not on this node. A login-walled or HTML-only homepage probe abstains.
+- Claim GreatFire / OONI / CDT / Weiboscope rows as Palimpsest capture, or treat
+  a peer 90-day verdict as proof of Party motive.
 - Auto-publish Dragon Whispers or `telegram-watch`. Those stay human-review-gated.
   Warehouse fat public-channel records do not write those files.

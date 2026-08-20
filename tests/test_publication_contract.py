@@ -99,6 +99,12 @@ CONTRACT = {
     "telegram-public-channels": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "greatfire-context": _d(
+        "generated_at", ["source", "method", "scope", "attribution"], "n_urls_queried"
+    ),
+    "peer-context": _d(
+        "generated_at", ["source", "method", "scope"], "n_hosts"
+    ),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
                                "n_items"),
@@ -271,6 +277,8 @@ PENDING = {
     "baike-public-snapshot",
     "public-hot-boards",
     "telegram-public-channels",
+    "greatfire-context",
+    "peer-context",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately

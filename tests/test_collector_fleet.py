@@ -99,6 +99,8 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
         "official-first-seen", "news-wire-live", "wikipedia-gazetteer-rc",
         "baike-public-snapshot", "public-hot-boards",
         "telegram-public-channels",
+        "greatfire-context",
+        "peer-context",
     } <= names
 
 

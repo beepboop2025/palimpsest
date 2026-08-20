@@ -72,7 +72,9 @@
         "situations_with_three_layers",
         "reviewed_telegram_signals",
         "events_with_osint_context",
-        "osint_context_rows"
+        "osint_context_rows",
+        "events_with_peer_context",
+        "peer_context_rows"
       ],
       "properties": {
         "wire_events": {"$ref": "#/$defs/count"},
@@ -88,7 +90,9 @@
         "situations_with_three_layers": {"$ref": "#/$defs/count"},
         "reviewed_telegram_signals": {"$ref": "#/$defs/count"},
         "events_with_osint_context": {"$ref": "#/$defs/count"},
-        "osint_context_rows": {"$ref": "#/$defs/count"}
+        "osint_context_rows": {"$ref": "#/$defs/count"},
+        "events_with_peer_context": {"$ref": "#/$defs/count"},
+        "peer_context_rows": {"$ref": "#/$defs/count"}
       }
     },
     "reviewed_telegram": {
@@ -404,6 +408,46 @@
         "interpretation": {"type": "string", "minLength": 1, "maxLength": 2000}
       }
     },
+    "peerContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "peer",
+        "status",
+        "sentence",
+        "as_of",
+        "peer_url",
+        "title",
+        "excerpt",
+        "host",
+        "measurement_count",
+        "anomaly_rate",
+        "verdict",
+        "window_days",
+        "attribution",
+        "relation"
+      ],
+      "properties": {
+        "peer": {"enum": ["greatfire", "ooni", "cdt", "weiboscope"]},
+        "status": {"enum": ["live", "miss", "silent", "abstain"]},
+        "sentence": {"type": "string", "minLength": 1, "maxLength": 600},
+        "as_of": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "peer_url": {
+          "oneOf": [{"$ref": "#/$defs/httpsUrl"}, {"type": "null"}]
+        },
+        "title": {"oneOf": [{"type": "string", "maxLength": 240}, {"type": "null"}]},
+        "excerpt": {"oneOf": [{"type": "string", "maxLength": 280}, {"type": "null"}]},
+        "host": {"oneOf": [{"type": "string", "maxLength": 253}, {"type": "null"}]},
+        "measurement_count": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "anomaly_rate": {"oneOf": [{"type": "number"}, {"type": "null"}]},
+        "verdict": {"oneOf": [{"type": "string", "maxLength": 64}, {"type": "null"}]},
+        "window_days": {"oneOf": [{"type": "integer", "minimum": 1, "maximum": 366}, {"type": "null"}]},
+        "attribution": {"type": "string", "minLength": 1, "maxLength": 400},
+        "relation": {"const": "peer-context-not-palimpsest-capture"}
+      }
+    },
     "situation": {
       "type": "object",
       "additionalProperties": false,
@@ -426,6 +470,7 @@
         "social_context",
         "measurement_context",
         "osint_context",
+        "peer_context",
         "synthesis"
       ],
       "properties": {
@@ -493,6 +538,11 @@
           "type": "array",
           "maxItems": 12,
           "items": {"$ref": "#/$defs/osintContext"}
+        },
+        "peer_context": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"$ref": "#/$defs/peerContext"}
         },
         "synthesis": {
           "type": "object",

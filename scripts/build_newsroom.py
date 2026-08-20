@@ -37,6 +37,7 @@ from core import dragon_whispers as dragon_whispers_model
 from core import economic_pulse as economic_pulse_model
 from core import event_analysis as event_analysis_model
 from core import evidence_mesh as evidence_mesh_model
+from core import peer_context as peer_context_model
 from core import investigations as investigations_model
 from core import machine_investigations as machine_investigations_model
 from core import newsroom
@@ -57,6 +58,7 @@ MACHINE_INVESTIGATIONS_READING = (
 EVIDENCE_MESH_READING = ROOT / "readings" / "evidence-mesh-latest.json"
 TELEGRAM_WATCH_READING = ROOT / "readings" / "telegram-watch-latest.json"
 DRAGON_WHISPERS_READING = ROOT / "readings" / "dragon-whispers-latest.json"
+PEER_CONTEXT_READING = ROOT / "readings" / "peer-context-latest.json"
 PUBLIC_DATA_CATALOG = ROOT / "config" / "public_data_catalog.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
@@ -2961,6 +2963,17 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
             "source structure.</p>"
         )
     )
+    peer_items = "".join(
+        f"<li><strong>{_h(row['peer'])}.</strong> {_h(row['sentence'])} "
+        f"<small>{_h(row['attribution'])}</small></li>"
+        for row in analysis.get("peer_context") or []
+    )
+    peer_context = (
+        f'<h3 class="nw-assessment__subhead">Attributed peer context</h3>'
+        f'<ul class="nw-assessment__rationale">{peer_items}</ul>'
+        if peer_items
+        else ""
+    )
     evidence = analysis["evidence_assessment"]
     if collector_cards:
         added_value = (
@@ -2984,6 +2997,7 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
   <ul class="nw-assessment__rationale">{rationale}</ul>
   <h3 class="nw-assessment__subhead">Collector findings used</h3>
   {collector_context}
+  {peer_context}
   <p class="nw-assessment__receipt">Analysis <code>{_h(analysis['analysis_id'])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis['analysis_id'])}.json">immutable revision</a></p>
 </section>"""
 
@@ -2996,8 +3010,13 @@ def render_event(
     analysis: Mapping[str, Any] | None = None,
 ) -> str:
     if analysis is None:
+        peer = (
+            peer_context_model.load_peer_document(PEER_CONTEXT_READING)
+            if PEER_CONTEXT_READING.is_file()
+            else None
+        )
         analysis = event_analysis_model.build_event_analysis(
-            event, wire=wire, feed=feed
+            event, wire=wire, feed=feed, peer=peer
         )
     event_analysis_model.validate_event_analysis(analysis, event=event)
     items = _wire_items(wire)
@@ -3411,6 +3430,16 @@ def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> 
         if collector_rows else
         '<p class="cs-analysis__abstention"><strong>Collector abstention:</strong> no current Palimpsest measurement is declared for this event.</p>'
     )
+    peer_rows = "".join(
+        f"""<li><strong>{_h(row['peer'])}.</strong> {_h(row['sentence'])}</li>"""
+        for row in analysis.get("peer_context") or []
+    )
+    peer = (
+        f'<div class="cs-analysis__collectors"><h4>Attributed peer context</h4><ul>'
+        f"{peer_rows}</ul></div>"
+        if peer_rows
+        else ""
+    )
     expanded_attr = " open" if expanded else ""
     search_text = " ".join(
         [entry["headline"], excerpt, publisher["name"], entry["desk"], *entry["topics"]]
@@ -3431,6 +3460,7 @@ def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> 
           <div><h3>Next verification moves</h3><ol>{checks}</ol></div>
         </div>
         {collector}
+        {peer}
         <details class="cs-analysis__limits"><summary>Known unknowns and method limits</summary><ul>{unknowns}</ul></details>
         <div class="cs-analysis__links"><a href="{_h(_site_path(dossier['url']))}">Open evidence dossier</a><a href="{_h(_site_path(analysis['url']))}">Structured analysis</a><a href="{_h(entry['original_url'])}" rel="external">Read at publisher ↗</a></div>
         <p class="cs-analysis__receipt">Analysis {_h(analysis['analysis_id'])} · item {_h(entry['entry_id'])} · feed receipt {_h(publisher['feed_sha256'][:16])}…</p>
@@ -4523,7 +4553,14 @@ def build_outputs(
     china_stream: Mapping[str, Any] | None = None
     whispers_document: Mapping[str, Any] | None = None
     if wire is not None:
-        event_analyses = event_analysis_model.build_event_analyses(wire, feed)
+        peer = (
+            peer_context_model.load_peer_document(PEER_CONTEXT_READING)
+            if PEER_CONTEXT_READING.is_file()
+            else None
+        )
+        event_analyses = event_analysis_model.build_event_analyses(
+            wire, feed, peer=peer
+        )
         china_stream = china_stream_model.build_china_article_stream(
             wire, event_analyses, telegram_watch=telegram_watch
         )

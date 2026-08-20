@@ -155,7 +155,7 @@
     "analysis": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["analysis_id", "url", "disposition", "scope_status", "position", "rationale", "evidence_assessment", "collector_context", "known_unknowns", "next_checks", "method"],
+      "required": ["analysis_id", "url", "disposition", "scope_status", "position", "rationale", "evidence_assessment", "collector_context", "peer_context", "known_unknowns", "next_checks", "method"],
       "properties": {
         "analysis_id": {"type": "string", "pattern": "^analysisv-[0-9a-f]{24}$"},
         "url": {"type": "string", "pattern": "^https://palimpsest\\.info/news/wire/event-[0-9a-f]{24}/analysis\\.json$"},
@@ -172,6 +172,24 @@
             "independent_groups": {"$ref": "#/$defs/count"},
             "source_count": {"$ref": "#/$defs/count"},
             "conclusion": {"$ref": "#/$defs/text"}
+          }
+        },
+        "peer_context": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["peer", "status", "sentence", "as_of", "peer_url", "attribution", "relation"],
+            "properties": {
+              "peer": {"enum": ["greatfire", "ooni", "cdt", "weiboscope"]},
+              "status": {"enum": ["live", "miss", "silent", "abstain"]},
+              "sentence": {"$ref": "#/$defs/text"},
+              "as_of": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+              "peer_url": {"type": ["string", "null"], "format": "uri"},
+              "attribution": {"$ref": "#/$defs/text"},
+              "relation": {"const": "peer-context-not-palimpsest-capture"}
+            }
           }
         },
         "collector_context": {

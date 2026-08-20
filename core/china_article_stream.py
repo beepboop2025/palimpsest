@@ -133,6 +133,18 @@ def _analysis_projection(
             }
             for row in analysis["collector_context"]
         ],
+        "peer_context": [
+            {
+                "peer": row["peer"],
+                "status": row["status"],
+                "sentence": row["sentence"],
+                "as_of": row["as_of"],
+                "peer_url": row["peer_url"],
+                "attribution": row["attribution"],
+                "relation": row["relation"],
+            }
+            for row in analysis.get("peer_context") or []
+        ],
         "known_unknowns": list(analysis["limitations"]),
         "next_checks": _next_checks(event, analysis),
         "method": analysis["method"],

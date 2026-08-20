@@ -19,6 +19,7 @@ from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
 
 from core import newswire as newswire_model
+from core import peer_context as peer_context_model
 
 
 SCHEMA_VERSION = "palimpsest-event-analysis.v1"
@@ -27,7 +28,10 @@ METHOD = (
     "independent-source structure and only the collector stories explicitly "
     "declared by that event. Collector joins remain topic-surface-only: no "
     "article body is fetched, no generative model is used, and no current "
-    "measurement is represented as article-specific verification or causation."
+    "measurement is represented as article-specific verification or causation. "
+    "Optional peer_context rows name GreatFire, OONI, CDT, or Weiboscope and "
+    "the date of that peer's verdict; they are attributed context, not "
+    "Palimpsest capture, and never share a denominator with Palimpsest."
 )
 
 _ANALYSIS_ID_RE = re.compile(r"^analysisv-[0-9a-f]{24}$")
@@ -58,6 +62,7 @@ _TOP_FIELDS = frozenset(
         "rationale",
         "evidence_assessment",
         "collector_context",
+        "peer_context",
         "limitations",
         "method",
     }
@@ -328,6 +333,7 @@ def build_event_analysis(
     *,
     wire: Mapping[str, Any],
     feed: Mapping[str, Any],
+    peer: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one content-addressed assessment without network or filesystem I/O."""
 
@@ -346,11 +352,17 @@ def build_event_analysis(
     collector_context = [_collector_row(stories[signal_id]) for signal_id in linked_ids]
     collector_statuses = [row["status"] for row in collector_context]
     independent_groups = len(event["evidence_groups"])
+    peer_rows = (
+        []
+        if scope_status == "outside-remit"
+        else peer_context_model.peer_context_for_event(event, peer, wire=wire)
+    )
 
     if scope_status == "outside-remit":
         disposition = "outside-remit"
         collector_context = []
         collector_statuses = []
+        peer_rows = []
         rationale = [
             _evidence_conclusion(independent_groups),
             (
@@ -416,11 +428,23 @@ def build_event_analysis(
         limitations.append(
             "No current Palimpsest measurement is used in this assessment."
         )
+    if peer_rows:
+        limitations.append(
+            "Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of "
+            "that peer's verdict. They are not Palimpsest capture and do not "
+            "share Palimpsest's denominator."
+        )
 
     generated_candidates = [event["updated_at"]]
     generated_candidates.extend(
         stories[row["signal_id"]]["modified_at"] for row in collector_context
     )
+    if isinstance(peer, Mapping) and peer.get("generated_at"):
+        from core.china_observation import iso_z
+
+        stamped = iso_z(peer["generated_at"])
+        if stamped:
+            generated_candidates.append(stamped)
     core = {
         "schema_version": SCHEMA_VERSION,
         "event_id": event["event_id"],
@@ -444,6 +468,7 @@ def build_event_analysis(
             "conclusion": _evidence_conclusion(independent_groups),
         },
         "collector_context": collector_context,
+        "peer_context": peer_rows,
         "limitations": limitations,
         "method": METHOD,
     }
@@ -463,7 +488,9 @@ def build_event_analysis(
 
 
 def build_event_analyses(
-    wire: Mapping[str, Any], feed: Mapping[str, Any]
+    wire: Mapping[str, Any],
+    feed: Mapping[str, Any],
+    peer: Mapping[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Return exactly one validated assessment for every validated wire event."""
 
@@ -476,7 +503,7 @@ def build_event_analyses(
     if len(signal_ids) != len(feed["stories"]) or len(signal_ids) != len(set(signal_ids)):
         raise EventAnalysisError("collector feed signal IDs are invalid or duplicated")
     analyses = {
-        event["event_id"]: build_event_analysis(event, wire=wire, feed=feed)
+        event["event_id"]: build_event_analysis(event, wire=wire, feed=feed, peer=peer)
         for event in wire["events"]
     }
     if set(analyses) != {event["event_id"] for event in wire["events"]}:
@@ -502,6 +529,59 @@ def _validate_metric(value: Any, path: str) -> None:
         item is not None for item in (label, unit, denominator_label, denominator_value)
     ):
         raise EventAnalysisError(f"{path} has labels or denominator without a value")
+
+
+_FORBIDDEN_PEER_CLAIMS = (
+    "proves the party",
+    "greatfire proves",
+    "ooni proves",
+    "palimpsest measured",
+    "our denominator",
+)
+
+
+def _validate_peer(value: Any, path: str) -> None:
+    row = _exact(value, peer_context_model.PEER_FIELDS, path)
+    if row["peer"] not in peer_context_model.PEERS:
+        raise EventAnalysisError(f"{path}.peer is invalid")
+    if row["status"] not in peer_context_model.STATUSES:
+        raise EventAnalysisError(f"{path}.status is invalid")
+    sentence = _text(row["sentence"], f"{path}.sentence", maximum=600)
+    lowered = sentence.casefold()
+    if any(token in lowered for token in _FORBIDDEN_PEER_CLAIMS):
+        raise EventAnalysisError(f"{path}.sentence collapses a peer verdict into Palimpsest capture")
+    if row["peer"] == "greatfire" and "greatfire" not in lowered:
+        raise EventAnalysisError(f"{path}.sentence must name GreatFire")
+    if row["peer"] == "ooni" and "ooni" not in lowered:
+        raise EventAnalysisError(f"{path}.sentence must name OONI")
+    if row["peer"] == "cdt" and "cdt" not in lowered:
+        raise EventAnalysisError(f"{path}.sentence must name CDT")
+    if row["peer"] == "weiboscope" and "weiboscope" not in lowered:
+        raise EventAnalysisError(f"{path}.sentence must name Weiboscope")
+    if row["peer"] == "cdt" and "palimpsest did not write" not in lowered:
+        raise EventAnalysisError(f"{path}.sentence must disclaim Palimpsest authorship")
+    if row["as_of"] is not None:
+        _timestamp(row["as_of"], f"{path}.as_of")
+    if row["peer_url"] is not None:
+        _https_url(row["peer_url"], f"{path}.peer_url")
+    _nullable_text(row["title"], f"{path}.title", maximum=240)
+    excerpt = row["excerpt"]
+    if excerpt is not None:
+        _text(excerpt, f"{path}.excerpt", maximum=peer_context_model.CDT_EXCERPT_LIMIT)
+    _nullable_text(row["host"], f"{path}.host", maximum=253)
+    if row["measurement_count"] is not None and (
+        type(row["measurement_count"]) is not int or row["measurement_count"] < 0
+    ):
+        raise EventAnalysisError(f"{path}.measurement_count is invalid")
+    _finite_number(row["anomaly_rate"], f"{path}.anomaly_rate")
+    _nullable_text(row["verdict"], f"{path}.verdict", maximum=64)
+    if row["window_days"] is not None and (
+        type(row["window_days"]) is not int or not 1 <= row["window_days"] <= 366
+    ):
+        raise EventAnalysisError(f"{path}.window_days is invalid")
+    _text(row["attribution"], f"{path}.attribution", maximum=400)
+    if row["relation"] != peer_context_model.RELATION:
+        raise EventAnalysisError(f"{path}.relation may not imply Palimpsest capture")
 
 
 def _validate_collector(value: Any, path: str) -> None:
@@ -606,6 +686,13 @@ def validate_event_analysis(
         raise EventAnalysisError("analysis.collector_context is invalid")
     for index, row in enumerate(context):
         _validate_collector(row, f"analysis.collector_context[{index}]")
+    peers = document["peer_context"]
+    if type(peers) is not list or len(peers) > peer_context_model.MAX_PEERS_PER_EVENT:
+        raise EventAnalysisError("analysis.peer_context is invalid")
+    for index, row in enumerate(peers):
+        _validate_peer(row, f"analysis.peer_context[{index}]")
+    if document["scope_status"] == "outside-remit" and peers:
+        raise EventAnalysisError("outside-remit analysis may not imply peer support")
     signal_ids = [row["signal_id"] for row in context]
     if signal_ids != sorted(set(signal_ids)):
         raise EventAnalysisError("analysis.collector_context is not unique and sorted")

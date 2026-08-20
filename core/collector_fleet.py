@@ -114,6 +114,8 @@ SNAPSHOT_OUTPUTS = {
     "baike-public-snapshot": "readings/baike-public-snapshot-latest.json",
     "public-hot-boards": "readings/public-hot-boards-latest.json",
     "telegram-public-channels": "readings/telegram-public-channels-latest.json",
+    "greatfire-context": "readings/greatfire-context-latest.json",
+    "peer-context": "readings/peer-context-latest.json",
 }
 
 
@@ -169,6 +171,8 @@ _STANDARD = {
     "baike-public-snapshot": Cadence(16, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "public-hot-boards": Cadence(36, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "telegram-public-channels": Cadence(18, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "greatfire-context": Cadence(33, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
+    "peer-context": Cadence(48, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -229,6 +233,8 @@ _VIGOROUS = {
     "baike-public-snapshot": Cadence(16, "*", expires_s=45 * 60, interval_s=3600),
     "public-hot-boards": Cadence(36, "*", expires_s=45 * 60, interval_s=3600),
     "telegram-public-channels": Cadence(18, "*", expires_s=45 * 60, interval_s=3600),
+    "greatfire-context": Cadence(33, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "peer-context": Cadence(48, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
 }
 
 
@@ -414,6 +420,8 @@ _COUNT_PATHS = {
     "baike-public-snapshot": ("n_observations",),
     "public-hot-boards": ("n_observations",),
     "telegram-public-channels": ("n_observations",),
+    "greatfire-context": ("n_verdicts",),
+    "peer-context": ("n_hosts",),
 }
 
 
@@ -601,6 +609,12 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         main()
     elif name == "telegram-public-channels":
         from scripts.telegram_public_channels_pull import main
+        main()
+    elif name == "greatfire-context":
+        from scripts.greatfire_context_pull import main
+        main()
+    elif name == "peer-context":
+        from scripts.peer_context_pull import main
         main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
