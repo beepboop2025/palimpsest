@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
 
-from core import live_paths
+from core import event_interconnection, live_paths
 
 
 SCHEMA_VERSION = "palimpsest-event-analysis.v2"
@@ -31,11 +31,16 @@ METHOD = (
     "independent-source structure, the collector stories explicitly declared by "
     "that event, and only the live-family readings supplied to this builder "
     "(official-first-seen, public-deletion-ledgers, news-wire-live, undertext, "
-    "and archive-news-context). Collector and live-family joins remain "
-    "topic-surface-only: no article body is fetched, no generative model is used, "
-    "and no current measurement is represented as article-specific verification, "
-    "causation, or motive. The v2 brief copies retained metadata into a closed "
-    "article shape with sentence-level citations. A missing surface abstains."
+    "and archive-news-context). Named-key interconnection peers from supplied "
+    "peer-warehouse readings attach only on an exact host, URL path, extracted "
+    "term, or ASN plus a UTC calendar-day ±24h window. A peer without an exact "
+    "key, a silent warehouse, or a warming_up warehouse is skipped. GreatFire, "
+    "OONI, and CDT counts keep separate denominators and dates. Collector, "
+    "live-family, and interconnection joins remain topic-surface-only: no "
+    "article body is fetched, no generative model is used, and no current "
+    "measurement is represented as article-specific verification, causation, "
+    "or motive. The v2 brief copies retained metadata into a closed article "
+    "shape with sentence-level citations. A missing surface abstains."
 )
 
 LIVE_FAMILY_IDS = (
@@ -244,6 +249,7 @@ _TOP_V2_EXTRA = frozenset(
         "window_peers",
         "corroboration",
         "archive_news_context",
+        "interconnection",
     }
 )
 
@@ -785,6 +791,7 @@ def build_v2_blocks(
     archive_context: Mapping[str, Any] | None = None,
     corroboration: Mapping[str, Any] | None = None,
     window_peers: Mapping[str, Any] | None = None,
+    peer_warehouses: Mapping[str, Mapping[str, Any] | None] | None = None,
     archive_refresh_status: str = "unknown",
 ) -> dict[str, Any]:
     """Return the v2 brief blocks. Callers attach them to the v1 core."""
@@ -850,6 +857,31 @@ def build_v2_blocks(
     )
     evidence.append(source_evidence)
     eid["newswire"] = source_evidence["evidence_id"]
+    interconnection = event_interconnection.build_interconnection(
+        event,
+        peer_warehouses,
+        scope_status=scope_status,
+    )
+    for row in interconnection["peers"]:
+        if row["status"] != "joined":
+            continue
+        peer_claim = event_interconnection.peer_brief_sentence(row)
+        peer_evidence = _evidence_row(
+            kind="interconnection-peer",
+            surface_id=row["peer_id"],
+            status="live",
+            headline=f"{row['peer_name']} interconnection peer",
+            claim=peer_claim,
+            reading_url=row["reading_url"],
+            source_timestamp=row["observed_at"],
+            input_sha256=row["input_sha256"],
+            interpretation_limit=(
+                "Named-key join only. This peer keeps its own count and date. "
+                "It is not a collapsed censorship rate or a cause."
+            ),
+        )
+        evidence.append(peer_evidence)
+        eid[f"interconnection:{row['peer_id']}:{row['record_id']}"] = peer_evidence["evidence_id"]
 
     corr_timestamp = None
     if type(corroboration) is dict and type(corroboration.get("generated_at")) is str:
@@ -1435,6 +1467,20 @@ def build_v2_blocks(
             ),
         ],
     }
+    for row in interconnection["peers"]:
+        if row["status"] != "joined":
+            continue
+        citation = eid[f"interconnection:{row['peer_id']}:{row['record_id']}"]
+        lead["sentences"].append(
+            _sentence(event_interconnection.peer_brief_sentence(row), citation)
+        )
+    if interconnection["joined_count"] == 0:
+        lead["sentences"].append(
+            _sentence(
+                "No interconnection peer met an exact host, URL path, term, or ASN key inside the UTC ±24h window.",
+                eid["newswire"],
+            )
+        )
 
     timeline_sentences: list[dict[str, Any]] = []
     timeline_missing = []
@@ -1652,7 +1698,7 @@ def build_v2_blocks(
     gates = [
         {
             "gate_id": "closed-source-set",
-            "label": "Every analytical input is the event, a declared collector story, or a supplied live-family reading",
+            "label": "Every analytical input is the event, a declared collector story, a supplied live-family reading, or a supplied peer warehouse",
             "passed": True,
             "detail": f"{len(evidence)} evidence receipts were projected from supplied inputs only.",
         },
@@ -1682,7 +1728,10 @@ def build_v2_blocks(
             "gate_id": "denominators-separated",
             "label": "Incompatible instruments are not collapsed into one censorship rate",
             "passed": True,
-            "detail": "Pipe, ledger, official-trail, and archive host rates keep separate denominators.",
+            "detail": (
+                "Pipe, ledger, official-trail, archive host rates, and interconnection "
+                "peers keep separate denominators. GreatFire is not collapsed into OONI."
+            ),
         },
         {
             "gate_id": "human-review-policy",
@@ -1717,6 +1766,9 @@ def build_v2_blocks(
         extra_clocks.append(archive_context["generated_at"])
     if type(corroboration) is dict and type(corroboration.get("generated_at")) is str:
         extra_clocks.append(corroboration["generated_at"])
+    for payload in (peer_warehouses or {}).values():
+        if type(payload) is dict and type(payload.get("generated_at")) is str:
+            extra_clocks.append(payload["generated_at"])
 
     return {
         "brief": brief,
@@ -1736,6 +1788,7 @@ def build_v2_blocks(
             archive_context,
             refresh_status=archive_refresh_status,
         ),
+        "interconnection": interconnection,
         "extra_clocks": extra_clocks,
         "method": METHOD,
     }
@@ -1744,6 +1797,7 @@ def build_v2_blocks(
 def extra_limitations(*, has_surfaces: bool, has_archive: bool) -> list[str]:
     extra = [
         "Live-family joins use exact URL or declared topic overlap only; absence of a reading is a coverage gap.",
+        "Interconnection peers attach only on a named exact key plus a UTC ±24h window; a miss is not a same-story guess.",
     ]
     if has_archive:
         extra.append(
@@ -1936,6 +1990,12 @@ def validate_v2_blocks(
         raise EventAnalysisError("analysis.archive_news_context.anomaly_score_published is invalid")
     if archive_block["anomaly_state"] == "warming_up" and archive_block["anomaly_score_published"]:
         raise EventAnalysisError("warming_up archive context may not publish an anomaly score")
+    try:
+        event_interconnection.validate_interconnection(
+            analysis["interconnection"], event=event
+        )
+    except event_interconnection.InterconnectionError as exc:
+        raise EventAnalysisError(str(exc)) from exc
     if type(archive_block["receipts"]) is not list or len(archive_block["receipts"]) > 16:
         raise EventAnalysisError("analysis.archive_news_context.receipts is invalid")
 

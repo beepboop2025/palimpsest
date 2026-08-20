@@ -33,7 +33,8 @@
     "declared_links",
     "window_peers",
     "corroboration",
-    "archive_news_context"
+    "archive_news_context",
+    "interconnection"
   ],
   "properties": {
     "schema_version": {"const": "palimpsest-event-analysis.v2"},
@@ -118,7 +119,10 @@
     "declared_links": {"$ref": "#/$defs/declaredLinks"},
     "window_peers": {"$ref": "#/$defs/windowPeers"},
     "corroboration": {"$ref": "#/$defs/corroboration"},
-    "archive_news_context": {"$ref": "#/$defs/archiveNewsContext"}
+    "archive_news_context": {"$ref": "#/$defs/archiveNewsContext"},
+    "interconnection": {
+      "$ref": "https://palimpsest.info/protocol/event-interconnection-v1.schema.json"
+    }
   },
   "$defs": {
     "eventId": {

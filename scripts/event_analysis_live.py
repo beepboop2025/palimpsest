@@ -79,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
         live_families=event_analysis.load_optional_live_families(readings),
         archive_context=event_analysis.load_optional_archive_context(readings),
         corroboration=event_analysis.load_optional_corroboration(readings),
+        peer_warehouses=event_analysis.load_optional_peer_warehouses(readings),
         allow_missing_collectors=feed is None,
         archive_refresh_status=live_paths.load_archive_refresh_status(),
     )

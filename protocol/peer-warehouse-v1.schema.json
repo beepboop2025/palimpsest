@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/peer-warehouse-v1.schema.json",
+  "title": "Palimpsest peer warehouse",
+  "description": "A fail-closed slot of named join keys for one independent source group (GreatFire, OONI, CDT, official-first-seen, and the other interconnection peers). A later collector fill writes this shape. Aggregate instrument readings without per-host or per-term rows stay silent. Each peer keeps its own count, denominator, and date.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "warehouse_id",
+    "peer_name",
+    "independence_group",
+    "generated_at",
+    "status",
+    "reading_url",
+    "peers"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-peer-warehouse.v1"},
+    "warehouse_id": {"$ref": "#/$defs/identifier"},
+    "peer_name": {"type": "string", "minLength": 1, "maxLength": 80},
+    "independence_group": {"$ref": "#/$defs/identifier"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "status": {"enum": ["live", "silent", "warming_up"]},
+    "reading_url": {"type": "string"},
+    "input_sha256": {
+      "oneOf": [
+        {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        {"type": "null"}
+      ]
+    },
+    "peers": {
+      "type": "array",
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/peerRecord"}
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,79}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "peerRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_id",
+        "hosts",
+        "url_paths",
+        "terms",
+        "asns",
+        "observed_at",
+        "count",
+        "count_label",
+        "denominator_label",
+        "denominator_value"
+      ],
+      "properties": {
+        "record_id": {"$ref": "#/$defs/identifier"},
+        "hosts": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {"type": "string", "minLength": 1, "maxLength": 253}
+        },
+        "url_paths": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {"type": "string", "minLength": 1, "maxLength": 2048}
+        },
+        "terms": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {"type": "string", "minLength": 1, "maxLength": 240}
+        },
+        "asns": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {"type": "integer", "minimum": 1}
+        },
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "count": {
+          "oneOf": [{"type": "number"}, {"type": "null"}]
+        },
+        "count_label": {"type": "string"},
+        "denominator_label": {"type": "string"},
+        "denominator_value": {
+          "oneOf": [{"type": "number"}, {"type": "null"}]
+        }
+      }
+    }
+  }
+}

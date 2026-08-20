@@ -20,11 +20,13 @@ from urllib.parse import urlsplit
 
 from core import newswire as newswire_model
 from core import event_brief
+from core import event_interconnection
 from core.claim_support import has_quorum
 
 load_optional_live_families = event_brief.load_optional_live_families
 load_optional_archive_context = event_brief.load_optional_archive_context
 load_optional_corroboration = event_brief.load_optional_corroboration
+load_optional_peer_warehouses = event_interconnection.load_optional_peer_warehouses
 
 
 SCHEMA_VERSION_V1 = "palimpsest-event-analysis.v1"
@@ -337,6 +339,7 @@ def _compose_position(
     peer_count: int,
     official_page: str,
     named_receipts: Sequence[str],
+    interconnection_clause: str | None = None,
 ) -> str:
     """Return Palimpsest's public editorial position for one event.
 
@@ -389,6 +392,8 @@ def _compose_position(
     parts = [head, archive_clause, peer_clause, official_clause]
     if named_receipts:
         parts.append("Declared receipts: " + ", ".join(named_receipts) + ".")
+    if interconnection_clause:
+        parts.append(interconnection_clause)
     return " ".join(parts)
 
 
@@ -466,6 +471,7 @@ def build_event_analysis(
     live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
     archive_context: Mapping[str, Any] | None = None,
     corroboration: Mapping[str, Any] | None = None,
+    peer_warehouses: Mapping[str, Mapping[str, Any] | None] | None = None,
     allow_missing_collectors: bool = False,
     archive_refresh_status: str = "unknown",
 ) -> dict[str, Any]:
@@ -588,6 +594,7 @@ def build_event_analysis(
         archive_context=archive_context,
         corroboration=corroboration,
         window_peers=window_peers,
+        peer_warehouses=peer_warehouses,
         archive_refresh_status=archive_refresh_status,
     )
     generated_candidates.extend(
@@ -618,6 +625,9 @@ def build_event_analysis(
             peer_count=window_peers["same_window_peer_count"],
             official_page=corroboration_block.get("official_page") or "none-reviewed",
             named_receipts=named_receipts,
+            interconnection_clause=event_interconnection.interconnection_position_clause(
+                v2.get("interconnection") or {}
+            ),
         ),
         "rationale": rationale,
         "evidence_assessment": {
@@ -653,6 +663,7 @@ def build_event_analyses(
     live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
     archive_context: Mapping[str, Any] | None = None,
     corroboration: Mapping[str, Any] | None = None,
+    peer_warehouses: Mapping[str, Mapping[str, Any] | None] | None = None,
     allow_missing_collectors: bool = False,
     archive_refresh_status: str = "unknown",
 ) -> dict[str, dict[str, Any]]:
@@ -678,6 +689,7 @@ def build_event_analyses(
             live_families=live_families,
             archive_context=archive_context,
             corroboration=corroboration,
+            peer_warehouses=peer_warehouses,
             allow_missing_collectors=allow_missing_collectors,
             archive_refresh_status=archive_refresh_status,
         )
@@ -883,6 +895,7 @@ __all__ = [
     "load_optional_archive_context",
     "load_optional_corroboration",
     "load_optional_live_families",
+    "load_optional_peer_warehouses",
     "structural_quorum",
     "validate_event_analysis",
     "window_peers_for",

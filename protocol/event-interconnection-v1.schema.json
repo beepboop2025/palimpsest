@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/event-interconnection-v1.schema.json",
+  "title": "Palimpsest event interconnection",
+  "description": "The fat-object join block on one wire event. Peers attach only on a named exact key (host / registrable domain, exact URL path, extracted term, or ASN) plus a UTC calendar-day ±24h window. No key, a silent warehouse, or warming_up abstains. Denominators are never collapsed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "relation",
+    "quality_bar",
+    "independent_source_groups",
+    "meets_quality_bar",
+    "joined_count",
+    "required_exact_keys",
+    "window",
+    "event_keys",
+    "peers"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-event-interconnection.v1"},
+    "relation": {"const": "topic-surface-only"},
+    "quality_bar": {"const": "two-independent-source-groups"},
+    "independent_source_groups": {"type": "integer", "minimum": 0},
+    "meets_quality_bar": {"type": "boolean"},
+    "joined_count": {"type": "integer", "minimum": 0},
+    "required_exact_keys": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"enum": ["host", "url_path", "term", "asn"]}
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit", "radius_hours", "anchor"],
+      "properties": {
+        "unit": {"const": "hours"},
+        "radius_hours": {"const": 24},
+        "anchor": {"const": "event.published_at"}
+      }
+    },
+    "event_keys": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hosts", "url_paths", "terms", "calendar_day", "asns"],
+      "properties": {
+        "hosts": {"type": "array", "items": {"type": "string"}},
+        "url_paths": {"type": "array", "items": {"type": "string"}},
+        "terms": {"type": "array", "items": {"type": "string"}},
+        "calendar_day": {
+          "oneOf": [
+            {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            {"type": "null"}
+          ]
+        },
+        "asns": {"type": "array", "items": {"type": "integer"}}
+      }
+    },
+    "peers": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/peerRow"}
+    }
+  },
+  "$defs": {
+    "peerRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "peer_id",
+        "record_id",
+        "peer_name",
+        "independence_group",
+        "status",
+        "join_keys",
+        "why_joined",
+        "why_skipped",
+        "skip_reason",
+        "peer_date",
+        "observed_at",
+        "count",
+        "count_label",
+        "denominator_label",
+        "denominator_value",
+        "citation",
+        "reading_url",
+        "input_sha256",
+        "relation"
+      ],
+      "properties": {
+        "peer_id": {"type": "string"},
+        "record_id": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        },
+        "peer_name": {"type": "string"},
+        "independence_group": {"type": "string"},
+        "status": {"enum": ["joined", "skipped"]},
+        "join_keys": {
+          "type": "array",
+          "items": {"enum": ["host", "url_path", "term", "asn"]}
+        },
+        "why_joined": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        },
+        "why_skipped": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        },
+        "skip_reason": {
+          "oneOf": [
+            {"enum": ["no_key", "silent", "warming_up"]},
+            {"type": "null"}
+          ]
+        },
+        "peer_date": {
+          "oneOf": [
+            {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+            {"type": "null"}
+          ]
+        },
+        "observed_at": {
+          "oneOf": [
+            {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"},
+            {"type": "null"}
+          ]
+        },
+        "count": {
+          "oneOf": [{"type": "number"}, {"type": "null"}]
+        },
+        "count_label": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        },
+        "denominator_label": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        },
+        "denominator_value": {
+          "oneOf": [{"type": "number"}, {"type": "null"}]
+        },
+        "citation": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        },
+        "reading_url": {
+          "oneOf": [{"type": "string"}, {"type": "null"}]
+        },
+        "input_sha256": {
+          "oneOf": [
+            {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+            {"type": "null"}
+          ]
+        },
+        "relation": {"const": "topic-surface-only"}
+      }
+    }
+  }
+}

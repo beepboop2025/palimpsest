@@ -4716,6 +4716,9 @@ def build_outputs(
                 readings_dir
             ),
             corroboration=event_analysis_model.load_optional_corroboration(readings_dir),
+            peer_warehouses=event_analysis_model.load_optional_peer_warehouses(
+                readings_dir
+            ),
             archive_refresh_status=load_archive_refresh_status(),
         )
         china_stream = china_stream_model.build_china_article_stream(
