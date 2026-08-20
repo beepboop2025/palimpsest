@@ -19,16 +19,22 @@ from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
 
 from core import newswire as newswire_model
+from core import event_brief
+
+load_optional_live_families = event_brief.load_optional_live_families
+load_optional_archive_context = event_brief.load_optional_archive_context
 
 
-SCHEMA_VERSION = "palimpsest-event-analysis.v1"
-METHOD = (
+SCHEMA_VERSION_V1 = "palimpsest-event-analysis.v1"
+SCHEMA_VERSION = "palimpsest-event-analysis.v2"
+METHOD_V1 = (
     "Deterministic assessment of one validated newswire event against its "
     "independent-source structure and only the collector stories explicitly "
     "declared by that event. Collector joins remain topic-surface-only: no "
     "article body is fetched, no generative model is used, and no current "
     "measurement is represented as article-specific verification or causation."
 )
+METHOD = event_brief.METHOD
 
 _ANALYSIS_ID_RE = re.compile(r"^analysisv-[0-9a-f]{24}$")
 _EVENT_ID_RE = re.compile(r"^event-[0-9a-f]{24}$")
@@ -43,7 +49,7 @@ _DISPOSITIONS = frozenset(
 )
 _SCOPE_STATUSES = frozenset({"in-scope", "outside-remit"})
 _COLLECTOR_STATUSES = frozenset({"live", "degraded", "stale", "missing", "corrupt"})
-_TOP_FIELDS = frozenset(
+_TOP_FIELDS_V1 = frozenset(
     {
         "schema_version",
         "analysis_id",
@@ -62,6 +68,7 @@ _TOP_FIELDS = frozenset(
         "method",
     }
 )
+_TOP_FIELDS = _TOP_FIELDS_V1 | event_brief._TOP_V2_EXTRA
 _EVIDENCE_FIELDS = frozenset(
     {"strength", "independent_groups", "source_count", "conclusion"}
 )
@@ -328,6 +335,8 @@ def build_event_analysis(
     *,
     wire: Mapping[str, Any],
     feed: Mapping[str, Any],
+    live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
+    archive_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build one content-addressed assessment without network or filesystem I/O."""
 
@@ -416,11 +425,31 @@ def build_event_analysis(
         limitations.append(
             "No current Palimpsest measurement is used in this assessment."
         )
+    limitations.extend(
+        event_brief.extra_limitations(
+            has_surfaces=scope_status == "in-scope",
+            has_archive=type(archive_context) is dict,
+        )
+    )
 
     generated_candidates = [event["updated_at"]]
     generated_candidates.extend(
         stories[row["signal_id"]]["modified_at"] for row in collector_context
     )
+    v2 = event_brief.build_v2_blocks(
+        event,
+        items=items,
+        collector_context=collector_context,
+        scope_status=scope_status,
+        live_families=live_families,
+        archive_context=archive_context,
+    )
+    generated_candidates.extend(
+        clock
+        for clock in v2.pop("extra_clocks")
+        if type(clock) is str and _TIMESTAMP_RE.fullmatch(clock)
+    )
+    method = v2.pop("method")
     core = {
         "schema_version": SCHEMA_VERSION,
         "event_id": event["event_id"],
@@ -445,7 +474,8 @@ def build_event_analysis(
         },
         "collector_context": collector_context,
         "limitations": limitations,
-        "method": METHOD,
+        "method": method,
+        **v2,
     }
     analysis = {
         **core,
@@ -463,7 +493,11 @@ def build_event_analysis(
 
 
 def build_event_analyses(
-    wire: Mapping[str, Any], feed: Mapping[str, Any]
+    wire: Mapping[str, Any],
+    feed: Mapping[str, Any],
+    *,
+    live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
+    archive_context: Mapping[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Return exactly one validated assessment for every validated wire event."""
 
@@ -476,7 +510,13 @@ def build_event_analyses(
     if len(signal_ids) != len(feed["stories"]) or len(signal_ids) != len(set(signal_ids)):
         raise EventAnalysisError("collector feed signal IDs are invalid or duplicated")
     analyses = {
-        event["event_id"]: build_event_analysis(event, wire=wire, feed=feed)
+        event["event_id"]: build_event_analysis(
+            event,
+            wire=wire,
+            feed=feed,
+            live_families=live_families,
+            archive_context=archive_context,
+        )
         for event in wire["events"]
     }
     if set(analyses) != {event["event_id"] for event in wire["events"]}:
@@ -553,8 +593,16 @@ def validate_event_analysis(
 ) -> None:
     """Fail closed on unknown fields, unsafe text, or editorial-state mismatch."""
 
-    document = _exact(analysis, _TOP_FIELDS, "analysis")
-    if document["schema_version"] != SCHEMA_VERSION:
+    if type(analysis) is not dict:
+        raise EventAnalysisError("analysis fields differ (missing=[], extra=[])")
+    version = analysis.get("schema_version")
+    if version == SCHEMA_VERSION_V1:
+        document = _exact(analysis, _TOP_FIELDS_V1, "analysis")
+    elif version == SCHEMA_VERSION:
+        document = _exact(analysis, _TOP_FIELDS, "analysis")
+    else:
+        raise EventAnalysisError("analysis.schema_version is unsupported")
+    if document["schema_version"] not in {SCHEMA_VERSION_V1, SCHEMA_VERSION}:
         raise EventAnalysisError("analysis.schema_version is unsupported")
     if (
         type(document["analysis_id"]) is not str
@@ -624,14 +672,17 @@ def validate_event_analysis(
     if document["scope_status"] == "outside-remit" and context:
         raise EventAnalysisError("outside-remit analysis may not imply collector support")
 
-    if type(document["limitations"]) is not list or not 1 <= len(document["limitations"]) <= 8:
-        raise EventAnalysisError("analysis.limitations must contain 1 to 8 statements")
+    if type(document["limitations"]) is not list or not 1 <= len(document["limitations"]) <= 10:
+        raise EventAnalysisError("analysis.limitations must contain 1 to 10 statements")
     if len(document["limitations"]) != len(set(document["limitations"])):
         raise EventAnalysisError("analysis.limitations contains duplicates")
     for index, limitation in enumerate(document["limitations"]):
         _text(limitation, f"analysis.limitations[{index}]", maximum=2_000)
-    if document["method"] != METHOD:
-        raise EventAnalysisError("analysis.method does not match the v1 method")
+    if document["schema_version"] == SCHEMA_VERSION_V1:
+        if document["method"] != METHOD_V1:
+            raise EventAnalysisError("analysis.method does not match the v1 method")
+    else:
+        event_brief.validate_v2_blocks(document, event=event)
 
     if event is not None:
         if (
@@ -652,9 +703,13 @@ def validate_event_analysis(
 __all__ = [
     "EventAnalysisError",
     "METHOD",
+    "METHOD_V1",
     "SCHEMA_VERSION",
+    "SCHEMA_VERSION_V1",
     "build_event_analysis",
     "build_event_analyses",
     "canonical_json_bytes",
+    "load_optional_archive_context",
+    "load_optional_live_families",
     "validate_event_analysis",
 ]

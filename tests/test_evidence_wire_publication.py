@@ -139,7 +139,7 @@ def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
         "$ref": "https://palimpsest.info/protocol/newswire-v1.schema.json"
     }
     assert schemas["EventAnalysis"] == {
-        "$ref": "https://palimpsest.info/protocol/event-analysis-v1.schema.json"
+        "$ref": "https://palimpsest.info/protocol/event-analysis-v2.schema.json"
     }
     assert schemas["ChinaEconomicPulse"] == {
         "$ref": "https://palimpsest.info/protocol/economic-pulse-v1.schema.json"
@@ -258,6 +258,7 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
         "https://palimpsest.info/config/news_sources.json",
         "https://palimpsest.info/config/primary_document_sources.json",
         "https://palimpsest.info/protocol/newswire-v1.schema.json",
+        "https://palimpsest.info/protocol/event-analysis-v2.schema.json",
         "https://palimpsest.info/protocol/event-analysis-v1.schema.json",
         "https://palimpsest.info/protocol/economic-pulse-v1.schema.json",
         "https://palimpsest.info/protocol/investigations-v1.schema.json",

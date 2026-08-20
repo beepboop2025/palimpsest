@@ -2922,6 +2922,66 @@ _ANALYSIS_DISPOSITION_LABELS = {
 }
 
 
+def _event_brief_html(analysis: Mapping[str, Any]) -> str:
+    """Render the v2 cited brief when present. v1 assessments stay unchanged."""
+
+    brief = analysis.get("brief")
+    if not isinstance(brief, Mapping):
+        return ""
+    receipt = analysis.get("publication_receipt") if isinstance(analysis.get("publication_receipt"), Mapping) else {}
+    sections: list[str] = []
+    headings = {
+        "lead": "Lead",
+        "timeline": "Timeline",
+        "official_page": "Official-page movement",
+        "deletion_ledger": "Deletion-ledger context",
+        "pipe_context": "Pipe context",
+        "archive_context": "Archive-derived context",
+    }
+    for key, heading in headings.items():
+        layer = brief.get(key)
+        if not isinstance(layer, Mapping):
+            continue
+        sentences = "".join(
+            f"<li>{_h(item['text'])}</li>"
+            for item in layer.get("sentences") or []
+            if isinstance(item, Mapping) and item.get("text")
+        )
+        status = layer.get("status") or "abstained"
+        sections.append(
+            f"<h4 class=\"nw-assessment__subhead\">{_h(heading)} · {_h(str(status))}</h4>"
+            f"<ul class=\"nw-assessment__rationale\">{sentences}</ul>"
+        )
+    counters = "".join(
+        f"<li>{_h(item['text'])}</li>"
+        for item in analysis.get("counterreadings") or []
+        if isinstance(item, Mapping) and item.get("text")
+    )
+    unknowns = "".join(
+        f"<li>{_h(item['text'])}</li>"
+        for item in analysis.get("unknowns") or []
+        if isinstance(item, Mapping) and item.get("text")
+    )
+    auto = receipt.get("automatic_publication")
+    coverage = receipt.get("citation_coverage")
+    footer = (
+        f"<p class=\"nw-method-note\">Cited brief · citation coverage {coverage} · "
+        f"automatic publication {'prohibited' if auto is False else 'not granted'} · "
+        "human review required.</p>"
+    )
+    return (
+        "<div class=\"nw-assessment__brief\">"
+        "<h3 class=\"nw-assessment__subhead\">Cited newsroom brief</h3>"
+        + "".join(sections)
+        + "<h4 class=\"nw-assessment__subhead\">Counterreadings</h4>"
+        + f"<ul class=\"nw-assessment__rationale\">{counters}</ul>"
+        + "<h4 class=\"nw-assessment__subhead\">What this brief does not know</h4>"
+        + f"<ul class=\"nw-assessment__rationale\">{unknowns}</ul>"
+        + footer
+        + "</div>"
+    )
+
+
 def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
     """Render the validated assessment without strengthening its claims."""
 
@@ -2982,6 +3042,7 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
   </div>
   <h3 class="nw-assessment__subhead">Why this is the bounded position</h3>
   <ul class="nw-assessment__rationale">{rationale}</ul>
+  {_event_brief_html(analysis)}
   <h3 class="nw-assessment__subhead">Collector findings used</h3>
   {collector_context}
   <p class="nw-assessment__receipt">Analysis <code>{_h(analysis['analysis_id'])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis['analysis_id'])}.json">immutable revision</a></p>
@@ -4523,7 +4584,15 @@ def build_outputs(
     china_stream: Mapping[str, Any] | None = None
     whispers_document: Mapping[str, Any] | None = None
     if wire is not None:
-        event_analyses = event_analysis_model.build_event_analyses(wire, feed)
+        readings_dir = archive_root / "readings"
+        event_analyses = event_analysis_model.build_event_analyses(
+            wire,
+            feed,
+            live_families=event_analysis_model.load_optional_live_families(readings_dir),
+            archive_context=event_analysis_model.load_optional_archive_context(
+                readings_dir
+            ),
+        )
         china_stream = china_stream_model.build_china_article_stream(
             wire, event_analyses, telegram_watch=telegram_watch
         )
