@@ -372,3 +372,126 @@ def test_osint_observations_join_by_exact_url_or_topic_and_stay_non_corroboratio
     )
     assert document["coverage"]["osint_context_rows"] >= 1
     assert document["coverage"]["events_with_osint_context"] >= 1
+
+
+def _title_matchable_event(wire, analyses):
+    for event in wire["events"]:
+        if analyses[event["event_id"]]["scope_status"] != "in-scope":
+            continue
+        if not china_situation._span_is_substantial(event["headline"]):
+            continue
+        if china_situation._PERSON_STATUS_RE.search(event["headline"] + event["dek"]):
+            continue
+        for reference in event["evidence_refs"]:
+            if reference["source_id"] in _SOCIAL_SOURCE_BY_WIRE_SOURCE:
+                return event, reference
+    raise AssertionError("fixture has no title-matchable in-scope social event")
+
+
+def test_title_surface_match_is_not_corroboration_and_does_not_add_a_group(inputs):
+    wire, _feed, analyses = inputs
+    event, reference = _title_matchable_event(wire, analyses)
+    baseline = china_situation.build_china_situation(wire, analyses)
+    baseline_row = next(
+        item for item in baseline["situations"] if item["event_id"] == event["event_id"]
+    )
+    registry = social_observations.load_source_registry()
+    record = _social_record(
+        reference, observed_at="2026-08-16T18:00:00Z", title=event["headline"]
+    )
+    record["related_urls"] = []
+    social, _ledger = social_observations.build_latest(
+        [record],
+        registry=registry,
+        generated_at="2026-08-16T18:00:00Z",
+        collection_receipts=_social_receipts(registry, record["source_id"]),
+    )
+
+    document = china_situation.build_china_situation(wire, analyses, social=social)
+    row = next(
+        item for item in document["situations"] if item["event_id"] == event["event_id"]
+    )
+    assert document["coverage"]["social_observations_linked"] == 1
+    assert row["social_context"][0]["relation"] == (
+        "topic-title-context-not-corroboration"
+    )
+    assert row["social_context"][0]["matched_article_url"].startswith("https://")
+    assert row["reporting"]["independent_groups"] == baseline_row["reporting"][
+        "independent_groups"
+    ]
+    assert row["reporting"]["evidence_strength"] == baseline_row["reporting"][
+        "evidence_strength"
+    ]
+    assert "do not increase that count" in row["synthesis"]["summary"]
+
+
+def test_exact_publisher_url_wins_over_a_title_surface_on_another_event(inputs):
+    wire, _feed, analyses = inputs
+    event_a, reference_a = _event_and_social_reference(wire, analyses, "in-scope")
+    event_b = next(
+        row
+        for row in wire["events"]
+        if row["event_id"] != event_a["event_id"]
+        and analyses[row["event_id"]]["scope_status"] == "in-scope"
+        and row["headline"] != event_a["headline"]
+    )
+    registry = social_observations.load_source_registry()
+    record = _social_record(
+        reference_a,
+        observed_at="2026-08-16T18:00:00Z",
+        title=event_b["headline"],
+    )
+    social, _ledger = social_observations.build_latest(
+        [record],
+        registry=registry,
+        generated_at="2026-08-16T18:00:00Z",
+        collection_receipts=_social_receipts(registry, record["source_id"]),
+    )
+
+    document = china_situation.build_china_situation(wire, analyses, social=social)
+    row = next(
+        item for item in document["situations"] if item["event_id"] == event_a["event_id"]
+    )
+    assert row["social_context"][0]["relation"] == (
+        "publisher-link-context-not-corroboration"
+    )
+    linked_ids = {
+        item["event_id"] for item in document["situations"] if item["social_context"]
+    }
+    assert linked_ids == {event_a["event_id"]}
+    assert document["coverage"]["social_observations_linked"] == 1
+
+
+def test_generic_or_person_status_titles_do_not_become_situation_findings(inputs):
+    wire, _feed, analyses = inputs
+    _event, reference = _event_and_social_reference(wire, analyses, "in-scope")
+    registry = social_observations.load_source_registry()
+    generic = _social_record(
+        reference, observed_at="2026-08-16T18:00:00Z", title="China news"
+    )
+    generic["related_urls"] = []
+    generic["native_id"] = "fixture-generic-title"
+    missing = _social_record(
+        reference,
+        observed_at="2026-08-16T18:05:00Z",
+        title="A Chinese official is reported missing",
+    )
+    missing["related_urls"] = []
+    missing["native_id"] = "fixture-person-status"
+    if generic["source_id"] == "cgtn-telegram":
+        generic["permalink"] = "https://t.me/fixture_public/11/"
+        missing["permalink"] = "https://t.me/fixture_public/12/"
+    else:
+        generic["permalink"] = "https://www.instagram.com/p/SITUATION_TEST_GENERIC/"
+        missing["permalink"] = "https://www.instagram.com/p/SITUATION_TEST_MISSING/"
+    social, _ledger = social_observations.build_latest(
+        [generic, missing],
+        registry=registry,
+        generated_at="2026-08-16T18:05:00Z",
+        collection_receipts=_social_receipts(registry, generic["source_id"]),
+    )
+
+    document = china_situation.build_china_situation(wire, analyses, social=social)
+    assert document["coverage"]["social_observations"] == 2
+    assert document["coverage"]["social_observations_linked"] == 0
+    assert all(not row["social_context"] for row in document["situations"])

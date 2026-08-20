@@ -35,6 +35,9 @@
       "SocialObservations": {
         "$ref": "https://palimpsest.info/protocol/social-observations-v1.schema.json"
       },
+      "SocialSpread": {
+        "$ref": "https://palimpsest.info/protocol/social-spread-v1.schema.json"
+      },
       "ChinaSituation": {
         "$ref": "https://palimpsest.info/protocol/china-situation-v1.schema.json"
       },
@@ -306,6 +309,10 @@
         "description": "Closed-registry institutional Telegram and Instagram metadata with per-source coverage and append-only revision identities; never corroboration",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SocialObservations"}}}
       },
+      "SocialSpread": {
+        "description": "Public-board spreading terms matched only to already-captured Palimpsest records; topic surface only, never a missing-person finding",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SocialSpread"}}}
+      },
       "ChinaSituation": {
         "description": "Evidence-bound synthesis of publisher reports, exact-link social observations, reviewed source-free Telegram context and declared Observatory measurements",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaSituation"}}}
@@ -414,6 +421,11 @@
       "operationId": "getSocialObservations",
       "summary": "Read bounded institutional social observations with source coverage and non-corroboration labels",
       "responses": {"200": {"$ref": "#/components/responses/SocialObservations"}}
+    }},
+    "/readings/social-spread-latest.json": {"get": {
+      "operationId": "getSocialSpread",
+      "summary": "Read public-board spreading terms matched to already-captured Palimpsest records",
+      "responses": {"200": {"$ref": "#/components/responses/SocialSpread"}}
     }},
     "/readings/china-situation-latest.json": {"get": {
       "operationId": "getChinaSituation",

@@ -22,6 +22,7 @@ from xml.sax.saxutils import escape as xml_escape
 from core import china_situation as situation_model
 from core import event_analysis
 from core import newswire as newswire_model
+from core.social_spread import DISCLAIMER as SOCIAL_SPREAD_DISCLAIMER, RELATION as SOCIAL_SPREAD_RELATION
 from scripts import build_newsroom as newsroom_builder
 from scripts import site_nav
 
@@ -30,6 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WIRE_PATH = ROOT / "readings" / "newswire-latest.json"
 NEWSROOM_PATH = ROOT / "readings" / "newsroom-latest.json"
 SOCIAL_PATH = ROOT / "readings" / "social-observations-latest.json"
+SPREAD_PATH = ROOT / "readings" / "social-spread-latest.json"
 DRAGON_WHISPERS_PATH = ROOT / "readings" / "dragon-whispers-latest.json"
 OUTPUT_PATH = ROOT / "readings" / "china-situation-latest.json"
 OSINT_INPUTS = (
@@ -103,6 +105,73 @@ def load_osint_observations(paths: Sequence[Path] = OSINT_INPUTS) -> list[dict[s
     return rows
 
 
+def load_social_spread(path: Path = SPREAD_PATH) -> dict[str, Any] | None:
+    """Optional public social-spread join. Missing or invalid files abstain."""
+
+    if not path.is_file():
+        return None
+    try:
+        document = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
+    except Exception:
+        return None
+    return document if type(document) is dict else None
+
+
+def _spread_panel(spread: Mapping[str, Any] | None) -> str:
+    """Render the public spread+match layer without inventing a latest file."""
+
+    if spread is None:
+        heading = "Public social-spread join is pending."
+        detail = (
+            "The desk extracts spreading terms from already-collected public "
+            "boards and matches them only to stored capture. No fake latest "
+            "file is published while collectors are missing."
+        )
+        rows_html = (
+            '<div class="situation-empty"><strong>No social-spread reading yet.</strong>'
+            f"<p>{_h(SOCIAL_SPREAD_DISCLAIMER)}</p></div>"
+        )
+        state = "is-pending"
+        status = "pending"
+    else:
+        status = str(spread.get("status") or "abstain")
+        rows = [row for row in spread.get("rows") or [] if isinstance(row, Mapping)]
+        heading = (
+            "Public-board terms now circulating."
+            if status == "live" and rows
+            else "Public social-spread join abstained."
+        )
+        detail = str(spread.get("method") or "")
+        if rows:
+            items = []
+            for row in rows[:24]:
+                spreading = row.get("spreading") if isinstance(row.get("spreading"), Mapping) else {}
+                sources = spreading.get("source_ids") if isinstance(spreading.get("source_ids"), list) else []
+                matches = row.get("matches") if isinstance(row.get("matches"), Mapping) else {}
+                wire_ids = matches.get("wire_event_ids") if isinstance(matches.get("wire_event_ids"), list) else []
+                items.append(
+                    "<li><strong>"
+                    f"{_h(row.get('term') or row.get('topic') or '')}</strong>"
+                    f"<span>{_h(row.get('disposition') or 'abstain')}</span>"
+                    f"<small>surfaces {_h(', '.join(str(item) for item in sources))} · "
+                    f"wire {len(wire_ids)} · {_h(row.get('relation') or SOCIAL_SPREAD_RELATION)}</small></li>"
+                )
+            rows_html = "<ul>" + "".join(items) + "</ul>"
+        else:
+            rows_html = (
+                '<div class="situation-empty"><strong>No publishable spreading term.</strong>'
+                f"<p>{_h(SOCIAL_SPREAD_DISCLAIMER)}</p></div>"
+            )
+        state = "is-live" if status == "live" and rows else "is-pending"
+    return f"""<aside class="situation-spread-state {state}" aria-labelledby="social-spread-title">
+  <div><p class="situation-kicker">Public social-spread · {_h(status)}</p><h2 id="social-spread-title">{_h(heading)}</h2></div>
+  <p>{_h(detail)}</p>
+  {rows_html}
+  <p class="situation-relation">{_h(SOCIAL_SPREAD_RELATION)} · attributed-source-report-not-corroboration</p>
+  <p>{_h(SOCIAL_SPREAD_DISCLAIMER)}</p>
+</aside>"""
+
+
 def _metric_text(metric: Mapping[str, Any]) -> str:
     value = metric["value"]
     if value is None:
@@ -125,7 +194,8 @@ def _status_panel(document: Mapping[str, Any]) -> str:
     )
     detail = (
         f"{coverage['social_observations']} sanitized observations are present; "
-        f"{coverage['social_observations_linked']} join an exact publisher article URL."
+        f"{coverage['social_observations_linked']} join an exact publisher article URL "
+        "or a title-surface span (not corroboration)."
         if configured
         else (
             "The public desk is already combining publisher reports with Observatory "
@@ -172,16 +242,21 @@ def _reporting_layer(row: Mapping[str, Any]) -> str:
 def _social_layer(row: Mapping[str, Any]) -> str:
     observations = row["social_context"]
     if not observations:
-        body = """<div class="situation-empty"><strong>No exact-link social observation.</strong><p>This can mean the connector is inactive, the publisher did not post a link, or the post is outside the bounded API window. It is not evidence of silence.</p></div>"""
+        body = """<div class="situation-empty"><strong>No exact-link or title-surface social observation.</strong><p>This can mean the connector is inactive, the publisher did not post a link, no substantial title span matches a wire headline, or the post is outside the bounded API window. It is not evidence of silence.</p></div>"""
     else:
         body = "<ul>" + "".join(
-            f"""<li><a href="{_h(item['permalink'])}" rel="external"><strong>{_h(item['source_name'])} · {_h(item['platform'])}</strong><span>{_h(item['title'])}</span></a><small>{_h(_human(item['published_at']))} · {_h(item['state'])} · {'same publisher lineage' if item['same_publisher_lineage'] else 'separate attributed source'}</small></li>"""
+            f"""<li><a href="{_h(item['permalink'])}" rel="external"><strong>{_h(item['source_name'])} · {_h(item['platform'])}</strong><span>{_h(item['title'])}</span></a><small>{_h(_human(item['published_at']))} · {_h(item['state'])} · {'same publisher lineage' if item['same_publisher_lineage'] else 'separate attributed source'} · {_h(item['relation'])}</small></li>"""
             for item in observations
         ) + "</ul>"
+    count_label = (
+        f"{len(observations)} social observation{'s' if len(observations) != 1 else ''}"
+        if observations
+        else "0 social observations"
+    )
     return f"""<section class="situation-layer situation-layer--social" aria-labelledby="social-{_h(row['situation_id'])}">
-  <header><span>02</span><div><p>Social observation</p><h3 id="social-{_h(row['situation_id'])}">{len(observations)} exact publisher-link observation{'s' if len(observations) != 1 else ''}</h3></div></header>
+  <header><span>02</span><div><p>Social observation</p><h3 id="social-{_h(row['situation_id'])}">{count_label}</h3></div></header>
   {body}
-  <p class="situation-relation">publisher-link-context-not-corroboration</p>
+  <p class="situation-relation">publisher-link-context-not-corroboration · topic-title-context-not-corroboration · not corroboration</p>
 </section>"""
 
 
@@ -321,7 +396,12 @@ def _pagination(*, page: int, total_pages: int, total_rows: int) -> str:
     )
 
 
-def render_page(document: Mapping[str, Any], *, page: int = 1) -> str:
+def render_page(
+    document: Mapping[str, Any],
+    *,
+    page: int = 1,
+    social_spread: Mapping[str, Any] | None = None,
+) -> str:
     situation_model.validate_china_situation(document)
     coverage = document["coverage"]
     all_rows = document["situations"]
@@ -349,6 +429,7 @@ def render_page(document: Mapping[str, Any], *, page: int = 1) -> str:
   <section class="situation-stats" aria-label="Current situation coverage"><span><strong>{coverage['in_scope_events']}</strong> situations</span><span><strong>{coverage['publisher_reports']}</strong> publisher reports</span><span><strong>{coverage['measurement_context_rows']}</strong> measurement links</span><span><strong>{coverage['social_observations_linked']}</strong> exact-link social observations</span><span><strong>{coverage.get('osint_context_rows', 0)}</strong> public OSINT links</span><span><strong>{coverage['reviewed_telegram_signals']}</strong> reviewed Telegram signals</span><span><strong>{_h(_human(document['generated_at']))}</strong> rebuilt</span></section>
   <div class="situation-shell">
     {_status_panel(document)}
+    {_spread_panel(social_spread)}
     {_telegram_briefing(document)}
     <section class="situation-method"><p class="situation-kicker">How to read the synthesis</p><h2>More context does not automatically mean more proof.</h2><p>{_h(document['relation_policy'])}</p><div><span>Publisher wire → attributed reporting</span><span>Social → circulation and revision context</span><span>Observatory → topic-level measured context</span></div></section>
     {pager}
@@ -488,8 +569,11 @@ def build_outputs(
         RSS_FEED_PATH: build_rss(document),
     }
     total_pages = max(1, (len(document["situations"]) + PAGE_SIZE - 1) // PAGE_SIZE)
+    social_spread = load_social_spread()
     for page in range(1, total_pages + 1):
-        outputs[_page_path(page)] = render_page(document, page=page).encode("utf-8")
+        outputs[_page_path(page)] = render_page(
+            document, page=page, social_spread=social_spread
+        ).encode("utf-8")
     return outputs, document
 
 

@@ -3,9 +3,12 @@
 This module performs no network access and no semantic inference.  It projects
 already-validated Evidence Wire events, event analyses, an optional social
 observation ledger, and reviewed Dragon Whispers into one navigable China situation
-index. Social records join an event only through an exact canonical publisher URL;
-reviewed source-free Telegram context stays in a separate briefing; measurement
-records remain the event analysis's predeclared ``topic-surface-only`` context.
+index. Social records join an event through an exact canonical publisher URL, or,
+when no URL matches, through a substantial exact title/headline span. Title
+joins stay a separate ``topic-title-context-not-corroboration`` relation and
+never add an independent source group. Reviewed source-free Telegram context
+stays in a separate briefing; measurement records remain the event analysis's
+predeclared ``topic-surface-only`` context.
 """
 
 from __future__ import annotations
@@ -25,12 +28,46 @@ from core import newswire as newswire_model
 SCHEMA_VERSION = "palimpsest-china-situation.v1"
 SITE = "https://palimpsest.info"
 RELATION_POLICY = (
-    "Publisher reports, exact-link social observations, reviewed source-free "
-    "Telegram signals, declared Observatory measurements, and public OSINT "
-    "observations joined by exact publisher URL or topic/term overlap are shown "
-    "together without converting social circulation, reviewed context, "
-    "topic-level measurement context, or OSINT topic overlap into claim "
-    "verification, causation, or an additional independent source group."
+    "Publisher reports, exact-link social observations, title-surface social "
+    "observations, reviewed source-free Telegram signals, declared Observatory "
+    "measurements, and public OSINT observations joined by exact publisher URL "
+    "or topic/term overlap are shown together without converting social "
+    "circulation, reviewed context, topic-level measurement context, or OSINT "
+    "topic overlap into claim verification, causation, or an additional "
+    "independent source group. Title-surface social joins are "
+    "topic-title-context-not-corroboration and are not a second independent "
+    "group for structural corroboration."
+)
+SOCIAL_URL_RELATION = "publisher-link-context-not-corroboration"
+SOCIAL_TITLE_RELATION = "topic-title-context-not-corroboration"
+ALLOWED_SOCIAL_RELATIONS = frozenset({SOCIAL_URL_RELATION, SOCIAL_TITLE_RELATION})
+_SOCIAL_GENERIC_SPANS = frozenset(
+    {
+        "china",
+        "chinese",
+        "中国",
+        "中國",
+        "北京",
+        "beijing",
+        "news",
+        "新闻",
+        "politics",
+        "economy",
+        "sports",
+        "technology",
+        "culture",
+        "政治",
+        "经济",
+        "体育",
+        "科技",
+        "weibo",
+        "微博",
+    }
+)
+_CJK_RE = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+_PERSON_STATUS_RE = re.compile(
+    r"失踪|失联|被捕|逮捕|拘留|去世|死亡|身亡|被抓|missing|detained|arrested|\bdead\b|\bdied\b",
+    re.IGNORECASE,
 )
 MAX_SITUATIONS = 8_192
 MAX_SOCIAL_PER_SITUATION = 128
@@ -457,7 +494,8 @@ def _summary(*, groups: int, reports: int, social: int, measurements: int) -> st
     layers = [f"{reports} attributed publisher report{'s' if reports != 1 else ''}"]
     if social:
         layers.append(
-            f"{social} exact-link social observation{'s' if social != 1 else ''}"
+            f"{social} social observation{'s' if social != 1 else ''} "
+            "(publisher-link or title-surface, not corroboration)"
         )
     if measurements:
         layers.append(
@@ -501,6 +539,69 @@ def _next_checks(
         "Test the specific claim against a dated primary document or claim-specific measurement; topic co-occurrence is not verification."
     )
     return checks[:4]
+
+
+def _normalize_span(value: str) -> str:
+    return unicodedata.normalize("NFC", " ".join((value or "").split()))
+
+
+def _span_is_substantial(span: str) -> bool:
+    text = _normalize_span(span)
+    if not text or text.casefold() in _SOCIAL_GENERIC_SPANS:
+        return False
+    if _PERSON_STATUS_RE.search(text):
+        return False
+    if _CJK_RE.search(text):
+        return len(_CJK_RE.findall(text)) >= 4
+    compact = re.sub(r"[^A-Za-z0-9]+", "", text)
+    return len(compact) >= 12
+
+
+def _longest_common_substring(left: str, right: str) -> str:
+    a = _normalize_span(left)[:240]
+    b = _normalize_span(right)[:240]
+    if not a or not b:
+        return ""
+    best = ""
+    lengths = [0] * (len(b) + 1)
+    for i, char_a in enumerate(a):
+        next_lengths = [0] * (len(b) + 1)
+        for j, char_b in enumerate(b, start=1):
+            if char_a != char_b:
+                continue
+            next_lengths[j] = lengths[j - 1] + 1
+            if next_lengths[j] > len(best):
+                best = a[i - next_lengths[j] + 1 : i + 1]
+        lengths = next_lengths
+    return _normalize_span(best)
+
+
+def _title_overlaps_event(title: str, headline: str, dek: str) -> bool:
+    """True when a substantial exact span is shared with headline or dek.
+
+    Generic taxonomy words and person-status language never count. Event
+    topics are ignored so ``politics`` cannot become a join key.
+    """
+
+    title = _normalize_span(title)
+    haystack = _normalize_span(f"{headline}\n{dek}")
+    if not title or not haystack:
+        return False
+    if _PERSON_STATUS_RE.search(title):
+        return False
+    if _span_is_substantial(title) and title in haystack:
+        return True
+    if _span_is_substantial(headline) and headline in title:
+        return True
+    return _span_is_substantial(_longest_common_substring(title, haystack))
+
+
+def _first_https_url(event: Mapping[str, Any]) -> str | None:
+    for reference in event.get("evidence_refs") or []:
+        url = reference.get("url")
+        if isinstance(url, str) and url.startswith("https://"):
+            return url
+    return None
 
 
 def _link_osint_observations(
@@ -578,7 +679,16 @@ def build_china_situation(
                     event["event_id"]
                 )
 
-    linked: dict[str, list[tuple[Mapping[str, Any], str]]] = {}
+    title_events: list[tuple[str, Mapping[str, Any], str]] = []
+    for event in wire["events"]:
+        if analyses[event["event_id"]]["scope_status"] != "in-scope":
+            continue
+        first_url = _first_https_url(event)
+        if first_url is None:
+            continue
+        title_events.append((event["event_id"], event, first_url))
+
+    linked: dict[str, list[tuple[Mapping[str, Any], str, str]]] = {}
     unmatched = 0
     ambiguous = 0
     social_rows = list(social.get("observations", [])) if social is not None else []
@@ -588,18 +698,26 @@ def build_china_situation(
         if observation_id in seen_social_ids:
             raise ChinaSituationError(f"duplicate social observation: {observation_id}")
         seen_social_ids.add(observation_id)
-        matches: dict[str, str] = {}
+        matches: dict[str, tuple[str, str]] = {}
         for related_url in observation["related_urls"]:
             for event_id in url_to_event_ids.get(related_url, set()):
-                matches[event_id] = related_url
+                matches[event_id] = (related_url, SOCIAL_URL_RELATION)
+        if not matches:
+            for event_id, event, first_url in title_events:
+                if _title_overlaps_event(
+                    str(observation.get("title") or ""),
+                    str(event.get("headline") or ""),
+                    str(event.get("dek") or ""),
+                ):
+                    matches[event_id] = (first_url, SOCIAL_TITLE_RELATION)
         if not matches:
             unmatched += 1
             continue
         if len(matches) != 1:
             ambiguous += 1
             continue
-        event_id, matched_url = next(iter(matches.items()))
-        linked.setdefault(event_id, []).append((observation, matched_url))
+        event_id, (matched_url, relation) = next(iter(matches.items()))
+        linked.setdefault(event_id, []).append((observation, matched_url, relation))
 
     situations: list[dict[str, Any]] = []
     measurement_rows_total = 0
@@ -640,9 +758,9 @@ def build_china_situation(
                 "matched_article_url": matched_url,
                 "same_publisher_lineage": observation["independence_group"]
                 in event_groups,
-                "relation": "publisher-link-context-not-corroboration",
+                "relation": relation,
             }
-            for observation, matched_url in event_social
+            for observation, matched_url, relation in event_social
         ]
         measurement_context = [
             {
@@ -694,7 +812,7 @@ def build_china_situation(
         updated_candidates = [event["updated_at"], analysis["generated_at"]]
         updated_candidates.extend(
             observation["first_observed_at"]
-            for observation, _matched_url in event_social
+            for observation, _matched_url, _relation in event_social
         )
         situation_id = _stable_id("situation", {"event_id": event["event_id"]})
         core = {
@@ -1089,7 +1207,7 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
                 raise ChinaSituationError(
                     f"{social_path}.same_publisher_lineage must be boolean"
                 )
-            if social_row["relation"] != "publisher-link-context-not-corroboration":
+            if social_row["relation"] not in ALLOWED_SOCIAL_RELATIONS:
                 raise ChinaSituationError(f"{social_path}.relation is invalid")
 
         measurements = row["measurement_context"]

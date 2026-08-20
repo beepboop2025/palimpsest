@@ -114,6 +114,7 @@ SNAPSHOT_OUTPUTS = {
     "baike-public-snapshot": "readings/baike-public-snapshot-latest.json",
     "public-hot-boards": "readings/public-hot-boards-latest.json",
     "telegram-public-channels": "readings/telegram-public-channels-latest.json",
+    "social-spread": "readings/social-spread-latest.json",
 }
 
 
@@ -169,6 +170,7 @@ _STANDARD = {
     "baike-public-snapshot": Cadence(16, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "public-hot-boards": Cadence(36, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "telegram-public-channels": Cadence(18, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "social-spread": Cadence(39, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -229,6 +231,7 @@ _VIGOROUS = {
     "baike-public-snapshot": Cadence(16, "*", expires_s=45 * 60, interval_s=3600),
     "public-hot-boards": Cadence(36, "*", expires_s=45 * 60, interval_s=3600),
     "telegram-public-channels": Cadence(18, "*", expires_s=45 * 60, interval_s=3600),
+    "social-spread": Cadence(39, "*", expires_s=45 * 60, interval_s=3600),
 }
 
 
@@ -414,6 +417,7 @@ _COUNT_PATHS = {
     "baike-public-snapshot": ("n_observations",),
     "public-hot-boards": ("n_observations",),
     "telegram-public-channels": ("n_observations",),
+    "social-spread": ("n_rows",),
 }
 
 
@@ -601,6 +605,9 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         main()
     elif name == "telegram-public-channels":
         from scripts.telegram_public_channels_pull import main
+        main()
+    elif name == "social-spread":
+        from scripts.social_spread_pull import main
         main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
