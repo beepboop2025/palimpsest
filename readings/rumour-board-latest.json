@@ -1,0 +1,22 @@
+{
+  "schema_version": "palimpsest-rumour-board.v1",
+  "generated_at": "2026-08-20T09:50:33Z",
+  "source": "Reviewed rumour-board taps. Telegram volume still enters through ScamShield pins and social_sources.json.",
+  "method": "Project metadata-only live events whose relation is rumour-board context. Drop media, bodies, and any post the safety filter cannot clear.",
+  "scope": "Taken from rumour boards. This desk is circulation context. It does not add an independent source group and does not corroborate a wire event.",
+  "status": "COVERAGE_ONLY",
+  "relation": "rumour-board-context-not-corroboration",
+  "n_entries": 0,
+  "entries": [],
+  "publication_policy": {
+    "counts_as_corroboration": false,
+    "media_included": false,
+    "raw_messages_included": false,
+    "increments_independent_groups": false
+  },
+  "limitations": [
+    "An empty ledger is a coverage gap, not evidence that rumour stopped.",
+    "Rumour-board rows cannot increment independent publisher groups.",
+    "t.me/s/ preview scraping remains unauthorized by the social-observation contract."
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": "palimpsest-live-taps.v1",
+  "purpose": "Reviewed public vantages that may write metadata-only NDJSON on the node. Git receives sealed summaries only. A row here is a coverage receipt, not a live scrape.",
+  "taps": [
+    {
+      "tap_id": "cninfo-titles",
+      "relation": "official-list-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Sit on what the law forces out. 巨潮 titles, times, PDF links only. Not a filing archive. Rights review before live."
+    },
+    {
+      "tap_id": "gov-info-lists",
+      "relation": "official-list-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "政府信息公开 list pages. Provinces and prefectures. Titles and links only. Reviewed registry required."
+    },
+    {
+      "tap_id": "wikimedia-eventstreams",
+      "relation": "stream-seismograph-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "zhwiki SSE. Keep deletes, revdels, sudden protection. Drop ordinary typo edits. Gazetteer titles only."
+    },
+    {
+      "tap_id": "zhwiki-pageviews",
+      "relation": "stream-seismograph-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Hourly pageviews dump paired with EventStreams. A spike then a shortening is the event."
+    },
+    {
+      "tap_id": "baidu-hot",
+      "relation": "demand-rank-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Titles and ranks only. Cookie wall or interstitial means abstain."
+    },
+    {
+      "tap_id": "toutiao-hot",
+      "relation": "demand-rank-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Titles and ranks only. Cookie wall or interstitial means abstain."
+    },
+    {
+      "tap_id": "douyin-hot",
+      "relation": "demand-rank-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Titles and ranks only. Cookie wall or interstitial means abstain."
+    },
+    {
+      "tap_id": "bilibili-hot",
+      "relation": "demand-rank-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Hotword and ranking. Titles and ranks only. No signed search APIs. No danmaku."
+    },
+    {
+      "tap_id": "opensky-china",
+      "relation": "physical-pulse-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Aircraft in a China bounding box. Not an article."
+    },
+    {
+      "tap_id": "osm-china-diffs",
+      "relation": "physical-pulse-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "OpenStreetMap minute diffs clipped to the China bbox. Edits, deletions, name changes."
+    },
+    {
+      "tap_id": "aqicn-stations",
+      "relation": "physical-pulse-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "AQICN and CNEMC-style station series. A live physical pulse, not a story."
+    },
+    {
+      "tap_id": "telegram-named",
+      "relation": "rumour-board-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Grow named Telegram first through social_sources.json and ScamShield pins. t.me/s/ is not authorized."
+    },
+    {
+      "tap_id": "fourchan-catalog",
+      "relation": "rumour-board-context-not-corroboration",
+      "enabled_flag": "PALIMPSEST_FOURCHAN_ENABLED",
+      "default_status": "not-attempted",
+      "note": "Weak China live source. /news and /int only. No images. Drop minors. Drop if unsure. Never corroboration."
+    },
+    {
+      "tap_id": "ptt-public",
+      "relation": "rumour-board-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Chinese that lives outside the GFW. Named public surfaces. Never corroboration by itself."
+    },
+    {
+      "tap_id": "hk-public-boards",
+      "relation": "rumour-board-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Public HK boards. Echo chamber for deletions. Same rumour relation."
+    },
+    {
+      "tap_id": "bluesky-jetstream",
+      "relation": "rumour-board-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Public firehose. Filter China and gazetteer terms. Not a Weibo login."
+    },
+    {
+      "tap_id": "youtube-official-titles",
+      "relation": "rumour-board-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Official CGTN and Xinhua YouTube titles. Metadata only."
+    },
+    {
+      "tap_id": "cert-transparency-cn",
+      "relation": "name-lifecycle-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "New .cn and Chinese O-names. Pair later with GreatFire and OONI. A new host today on a block list tomorrow is one pair."
+    },
+    {
+      "tap_id": "url-hash-watch",
+      "relation": "official-list-context-not-corroboration",
+      "default_status": "not-attempted",
+      "note": "Reviewed public URLs. HEAD or a tiny GET. Store status and a hash. Bodies stay out. This is how deletion research scales."
+    }
+  ]
+}

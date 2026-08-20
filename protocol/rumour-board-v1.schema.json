@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/rumour-board-v1.schema.json",
+  "title": "Palimpsest rumour-board v1",
+  "description": "Taken from rumour boards. One labeled slice of the public-vantage stack. Never corroboration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "source",
+    "method",
+    "scope",
+    "status",
+    "relation",
+    "n_entries",
+    "entries",
+    "publication_policy",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-rumour-board.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "source": {"type": "string", "minLength": 1, "maxLength": 500},
+    "method": {"type": "string", "minLength": 1, "maxLength": 1200},
+    "scope": {"type": "string", "minLength": 1, "maxLength": 1200},
+    "status": {"enum": ["COVERAGE_ONLY", "RUMOUR_CONTEXT"]},
+    "relation": {"const": "rumour-board-context-not-corroboration"},
+    "n_entries": {"type": "integer", "minimum": 0, "maximum": 10000},
+    "entries": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "entry_id",
+          "observed_at",
+          "tap_id",
+          "surface",
+          "title",
+          "relation",
+          "gazetteer_hits"
+        ],
+        "properties": {
+          "entry_id": {"type": "string", "pattern": "^rumour-[0-9a-f]{24}$"},
+          "observed_at": {"$ref": "#/$defs/timestamp"},
+          "tap_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$"},
+          "surface": {"type": "string", "minLength": 1, "maxLength": 64},
+          "title": {"type": "string", "minLength": 1, "maxLength": 180},
+          "relation": {"const": "rumour-board-context-not-corroboration"},
+          "gazetteer_hits": {
+            "type": "array",
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$"}
+          }
+        }
+      }
+    },
+    "publication_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "counts_as_corroboration",
+        "media_included",
+        "raw_messages_included",
+        "increments_independent_groups"
+      ],
+      "properties": {
+        "counts_as_corroboration": {"const": false},
+        "media_included": {"const": false},
+        "raw_messages_included": {"const": false},
+        "increments_independent_groups": {"const": false}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {"type": "string", "minLength": 1, "maxLength": 500}
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    }
+  }
+}

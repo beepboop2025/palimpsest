@@ -157,6 +157,12 @@ CONTRACT = {
         "generated_at", ["input_provenance", "method", "scope", "publication_policy"],
         "n_entries",
     ),
+    "live-watch": _d(
+        "generated_at", ["source", "method", "scope"], "n_events"
+    ),
+    "rumour-board": _d(
+        "generated_at", ["source", "method", "scope"], "n_entries"
+    ),
     "china-economic-pulse": _d("generated_at", ["source", "method", "scope"],
                                "n_metrics"),
     "china-econ-observations": _d(
@@ -342,6 +348,8 @@ SCHEDULED_PUBLICATIONS = {
     "newswire",
     "newsroom",
     "dragon-whispers",
+    "live-watch",
+    "rumour-board",
     "primary-documents",
     "corroboration",
     "network-rounds",

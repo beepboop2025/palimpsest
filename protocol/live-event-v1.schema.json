@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/live-event-v1.schema.json",
+  "title": "Palimpsest live-event v1",
+  "description": "One metadata-only observation line for the box NDJSON lane. Bodies, media, cookies, and raw messages are forbidden.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "tap_id",
+    "source_id",
+    "url",
+    "title",
+    "content_sha256",
+    "observed_at",
+    "vantage",
+    "relation",
+    "gazetteer_hits",
+    "rights_class",
+    "review_status"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-live-event.v1"},
+    "event_id": {"type": "string", "pattern": "^live-[0-9a-f]{24}$"},
+    "tap_id": {"$ref": "#/$defs/identifier"},
+    "source_id": {"$ref": "#/$defs/identifier"},
+    "url": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "pattern": "^https://[A-Za-z0-9._~:/?#\\[\\]@!$&'()*+,;=%-]+$"
+    },
+    "title": {"type": "string", "minLength": 1, "maxLength": 180},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "vantage": {"$ref": "#/$defs/identifier"},
+    "relation": {
+      "enum": [
+        "rumour-board-context-not-corroboration",
+        "official-list-context-not-corroboration",
+        "stream-seismograph-context-not-corroboration",
+        "demand-rank-context-not-corroboration",
+        "physical-pulse-context-not-corroboration",
+        "name-lifecycle-context-not-corroboration"
+      ]
+    },
+    "gazetteer_hits": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "rights_class": {
+      "enum": ["public-metadata", "rumour-board"]
+    },
+    "review_status": {
+      "enum": ["machine-accepted", "not-attempted", "withheld"]
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,47}$"
+    }
+  }
+}

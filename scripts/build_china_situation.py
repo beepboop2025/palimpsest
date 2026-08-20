@@ -36,6 +36,7 @@ NEWSROOM_PATH = ROOT / "readings" / "newsroom-latest.json"
 SOCIAL_PATH = ROOT / "readings" / "social-observations-latest.json"
 SPREAD_PATH = ROOT / "readings" / "social-spread-latest.json"
 DRAGON_WHISPERS_PATH = ROOT / "readings" / "dragon-whispers-latest.json"
+RUMOUR_BOARD_PATH = ROOT / "readings" / "rumour-board-latest.json"
 OUTPUT_PATH = ROOT / "readings" / "china-situation-latest.json"
 PEER_CONTEXT_PATH = ROOT / "readings" / "peer-context-latest.json"
 OSINT_INPUTS = (
@@ -235,6 +236,45 @@ def _status_panel(document: Mapping[str, Any]) -> str:
   <p>{_h(detail)}</p>
   <a href="/docs/SOCIAL-OBSERVATION-PIPELINE.md">Inspect the collection and evidence boundary</a>
 </aside>"""
+
+
+def load_rumour_board(path: Path = RUMOUR_BOARD_PATH) -> dict[str, Any] | None:
+    """Optional rumour desk. Missing or invalid files abstain."""
+
+    if not path.is_file():
+        return None
+    try:
+        document = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
+    except Exception:
+        return None
+    return document if type(document) is dict else None
+
+
+def _rumour_briefing(rumour: Mapping[str, Any] | None) -> str:
+    if rumour is None:
+        heading = "Rumour-board context is not sealed yet."
+        detail = (
+            "The way to get more grey data is more public vantages, "
+            "continuously, then join them. Taken from rumour boards when a "
+            "reviewed tap writes a coverage receipt. Those rows stay beside "
+            "the event index and never add an independent source group."
+        )
+        status = "pending"
+        count = 0
+    else:
+        heading = "Taken from rumour boards."
+        detail = (
+            "The way to get more grey data is more public vantages, "
+            "continuously, then join them. "
+            + str(rumour.get("scope") or "")
+        )
+        status = str(rumour.get("status") or "COVERAGE_ONLY")
+        count = int(rumour.get("n_entries") or 0)
+    return f"""<section class="situation-telegram" aria-labelledby="rumour-briefing-title">
+  <div><p class="situation-kicker">Rumour boards · {_h(status)}</p><h2 id="rumour-briefing-title">{_h(heading)}</h2><p>{_h(detail)}</p></div>
+  <div class="situation-empty"><strong>{count} rumour-board row{'s' if count != 1 else ''} published.</strong><p>This is circulation context, not corroboration.</p></div>
+  <p><a href="/news/china/rumour/">Open the rumour-board desk</a></p>
+</section>"""
 
 
 def _telegram_briefing(document: Mapping[str, Any]) -> str:
@@ -462,6 +502,7 @@ def render_page(
     *,
     page: int = 1,
     social_spread: Mapping[str, Any] | None = None,
+    rumour_board: Mapping[str, Any] | None = None,
 ) -> str:
     situation_model.validate_china_situation(document)
     coverage = document["coverage"]
@@ -492,6 +533,7 @@ def render_page(
     {_status_panel(document)}
     {_spread_panel(social_spread)}
     {_telegram_briefing(document)}
+    {_rumour_briefing(rumour_board)}
     <section class="situation-method"><p class="situation-kicker">How to read the synthesis</p><h2>More context does not automatically mean more proof.</h2><p>{_h(document['relation_policy'])}</p><div><span>Publisher wire → attributed reporting</span><span>Social → circulation and revision context</span><span>Observatory → topic-level measured context</span></div></section>
     {pager}
     <section class="situation-controls" aria-label="Filter situations"><label><span>Search this archive page</span><input id="situation-search" type="search" placeholder="headline, publisher, topic…" autocomplete="off"></label><div><button class="is-active" type="button" data-situation-desk="all">All desks</button>{desks}</div><label><span>Layer coverage</span><select id="situation-posture"><option value="all">All layer combinations</option><option value="three-layer-context">All three layers</option><option value="report-plus-measurement-context">Reports + measurements</option><option value="report-plus-social-context">Reports + social</option><option value="report-only">Reports only</option></select></label><p id="situation-count" role="status" aria-live="polite">Showing {range_start}–{range_end} of {len(all_rows)} situations</p></section>
@@ -638,9 +680,13 @@ def build_outputs(
         outputs[ROOT / "news" / story["slug"] / "analysis.json"] = payload
     total_pages = max(1, (len(document["situations"]) + PAGE_SIZE - 1) // PAGE_SIZE)
     social_spread = load_social_spread()
+    rumour_board = load_rumour_board()
     for page in range(1, total_pages + 1):
         outputs[_page_path(page)] = render_page(
-            document, page=page, social_spread=social_spread
+            document,
+            page=page,
+            social_spread=social_spread,
+            rumour_board=rumour_board,
         ).encode("utf-8")
     return outputs, document
 
