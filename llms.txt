@@ -79,7 +79,12 @@ receipts, freshness, denominators and limitations. External publisher material r
 an attributed source index: the original publisher is the destination for the report,
 while Palimpsest adds source grouping, related measurement context when available,
 revision history, unknowns and next checks. A source record is not an independently
-verified Palimpsest finding.
+verified Palimpsest finding. Every public instrument story also publishes a
+deterministic companion at `{story}/analysis.json` and a sibling
+`readings/{signal}-analysis.json`: current number and denominator, live versus
+stale or missing, same-edition elevated layer and signal names, and what the
+reading does not show. Non-live instruments emit an availability brief. The
+cross-instrument article at `/news/china/analysis/` remains the daily quality bar.
 
 Agents can consume the complete strict feed at
 [newsroom-latest.json](https://palimpsest.info/readings/newsroom-latest.json), the
@@ -134,6 +139,11 @@ from structurally corroborated reporting, and includes exact normalized collecto
 findings only when the event declares those surfaces. Collector links remain topical
 context rather than article verification; stale or degraded inputs produce an explicit
 abstention. Each mutable analysis head links a content-addressed immutable revision.
+The fat object also carries named-key interconnection peers (host / registrable
+domain, exact URL path, extracted term, ASN) inside a UTC ±24h window. A miss is
+recorded as no key, silent, or warming_up. GreatFire, OONI and CDT keep their own
+counts and dates; two independent source groups on one object is the quality bar,
+not a collapsed censorship rate.
 
 The [China Economic Pulse](https://palimpsest.info/news/economy/) joins official releases,
 market prints and physical telemetry without flattening them into a fictional "true GDP."
@@ -183,7 +193,8 @@ Machine-readable contracts:
 - [Bounded news source registry](https://palimpsest.info/config/news_sources.json)
 - [Primary document source registry](https://palimpsest.info/config/primary_document_sources.json)
 - [Evidence Wire JSON Schema](https://palimpsest.info/protocol/newswire-v1.schema.json)
-- [Per-event Analysis JSON Schema](https://palimpsest.info/protocol/event-analysis-v1.schema.json)
+- [Per-event Analysis JSON Schema](https://palimpsest.info/protocol/event-analysis-v2.schema.json)
+- [Per-event Analysis JSON Schema v1](https://palimpsest.info/protocol/event-analysis-v1.schema.json)
 - [China Article Stream JSON Schema](https://palimpsest.info/protocol/china-article-stream-v1.schema.json)
 - [China Situation JSON Schema](https://palimpsest.info/protocol/china-situation-v1.schema.json)
 - [Bounded Social Observations JSON Schema](https://palimpsest.info/protocol/social-observations-v1.schema.json)

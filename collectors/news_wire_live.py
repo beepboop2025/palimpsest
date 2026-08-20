@@ -12,8 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from core.china_observation import enrich_observation, public_text
+from core.live_paths import resolve_newswire_path
 
-DEFAULT_WIRE = Path("readings/newswire-latest.json")
+DEFAULT_WIRE = resolve_newswire_path(preferred=Path("readings/newswire-latest.json"))
 
 
 def load_wire_events(path: Path | str = DEFAULT_WIRE) -> list[dict[str, Any]]:
@@ -57,17 +58,24 @@ def observation_from_event(event: dict[str, Any]) -> dict[str, Any] | None:
     if isinstance(refs, list) and refs and isinstance(refs[0], dict):
         source_id = public_text(refs[0].get("source_id"), limit=80)
     outlet = public_text(event.get("desk"), limit=80)
+    topics = [
+        topic for topic in (event.get("topics") or [])
+        if isinstance(topic, str) and topic
+    ]
+    seed: dict[str, Any] = {
+        "terms": [],
+        "detected_at": captured,
+        "title": title or None,
+        "text": text,
+        "url": url,
+        "source": "news-wire-live",
+        "rights_policy": "metadata-link-only",
+        "retention_class": "public-rss-metadata",
+    }
+    if topics:
+        seed["topics"] = topics
     return enrich_observation(
-        {
-            "terms": [],
-            "detected_at": captured,
-            "title": title or None,
-            "text": text,
-            "url": url,
-            "source": "news-wire-live",
-            "rights_policy": "metadata-link-only",
-            "retention_class": "public-rss-metadata",
-        },
+        seed,
         text=text,
         source_url=url,
         first_seen=captured,

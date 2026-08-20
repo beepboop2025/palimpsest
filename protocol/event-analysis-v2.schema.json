@@ -1,0 +1,611 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/event-analysis-v2.schema.json",
+  "title": "Palimpsest per-event analysis v2",
+  "description": "A journalist-grade, fail-closed brief for one newswire event. v1 source-structure and declared collector fields remain. v2 adds a cited brief, live-family surface context, and publication gates without treating topical joins as verification, causation, or motive.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "analysis_id",
+    "event_id",
+    "event_version_id",
+    "event_url",
+    "url",
+    "generated_at",
+    "disposition",
+    "scope_status",
+    "position",
+    "rationale",
+    "evidence_assessment",
+    "collector_context",
+    "limitations",
+    "method",
+    "brief",
+    "surface_context",
+    "evidence",
+    "counterreadings",
+    "unknowns",
+    "key_numbers",
+    "publication_receipt",
+    "authorship",
+    "disclosure",
+    "declared_links",
+    "window_peers",
+    "corroboration",
+    "archive_news_context",
+    "interconnection"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-event-analysis.v2"},
+    "analysis_id": {
+      "type": "string",
+      "pattern": "^analysisv-[0-9a-f]{24}$"
+    },
+    "event_id": {"$ref": "#/$defs/eventId"},
+    "event_version_id": {"$ref": "#/$defs/eventVersionId"},
+    "event_url": {
+      "type": "string",
+      "pattern": "^https://palimpsest\\.info/news/wire/event-[0-9a-f]{24}/$"
+    },
+    "url": {
+      "type": "string",
+      "pattern": "^https://palimpsest\\.info/news/wire/event-[0-9a-f]{24}/analysis\\.json$"
+    },
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "disposition": {
+      "enum": [
+        "outside-remit",
+        "source-assessment",
+        "collector-context",
+        "collector-abstention"
+      ]
+    },
+    "scope_status": {"enum": ["in-scope", "outside-remit"]},
+    "position": {"$ref": "#/$defs/longText"},
+    "rationale": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": {"$ref": "#/$defs/longText"}
+    },
+    "evidence_assessment": {"$ref": "#/$defs/evidenceAssessment"},
+    "collector_context": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {"$ref": "#/$defs/collectorContext"}
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/longText"}
+    },
+    "method": {"$ref": "#/$defs/longText"},
+    "brief": {"$ref": "#/$defs/brief"},
+    "surface_context": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {"$ref": "#/$defs/surfaceContext"}
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/evidenceRow"}
+    },
+    "counterreadings": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {"$ref": "#/$defs/citedRecord"}
+    },
+    "unknowns": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 12,
+      "items": {"$ref": "#/$defs/citedRecord"}
+    },
+    "key_numbers": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {"$ref": "#/$defs/keyNumber"}
+    },
+    "publication_receipt": {"$ref": "#/$defs/publicationReceipt"},
+    "authorship": {"$ref": "#/$defs/authorship"},
+    "disclosure": {"$ref": "#/$defs/longText"},
+    "declared_links": {"$ref": "#/$defs/declaredLinks"},
+    "window_peers": {"$ref": "#/$defs/windowPeers"},
+    "corroboration": {"$ref": "#/$defs/corroboration"},
+    "archive_news_context": {"$ref": "#/$defs/archiveNewsContext"},
+    "interconnection": {
+      "$ref": "https://palimpsest.info/protocol/event-interconnection-v1.schema.json"
+    }
+  },
+  "$defs": {
+    "eventId": {
+      "type": "string",
+      "pattern": "^event-[0-9a-f]{24}$"
+    },
+    "eventVersionId": {
+      "type": "string",
+      "pattern": "^eventv-[0-9a-f]{24}$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,79}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "longText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+    },
+    "nullableLabel": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]*$"
+        },
+        {"type": "null"}
+      ]
+    },
+    "citationIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^eventevidence-[0-9a-f]{20}$"
+      }
+    },
+    "citedRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "citation_ids"],
+      "properties": {
+        "text": {"$ref": "#/$defs/longText"},
+        "citation_ids": {"$ref": "#/$defs/citationIds"}
+      }
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "sentences"],
+      "properties": {
+        "status": {
+          "enum": ["present", "abstained", "not-applicable", "not-declared", "none-reviewed"]
+        },
+        "sentences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/citedRecord"}
+        }
+      }
+    },
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lead",
+        "timeline",
+        "official_page",
+        "deletion_ledger",
+        "pipe_context",
+        "archive_context"
+      ],
+      "properties": {
+        "lead": {"$ref": "#/$defs/layer"},
+        "timeline": {"$ref": "#/$defs/layer"},
+        "official_page": {"$ref": "#/$defs/layer"},
+        "deletion_ledger": {"$ref": "#/$defs/layer"},
+        "pipe_context": {"$ref": "#/$defs/layer"},
+        "archive_context": {"$ref": "#/$defs/layer"}
+      }
+    },
+    "surfaceContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "surface_id",
+        "status",
+        "match_kind",
+        "headline",
+        "finding",
+        "source_timestamp",
+        "reading_url",
+        "input_sha256",
+        "relation",
+        "interpretation"
+      ],
+      "properties": {
+        "surface_id": {"$ref": "#/$defs/identifier"},
+        "status": {
+          "enum": ["live", "missing", "unmatched", "not-applicable"]
+        },
+        "match_kind": {
+          "oneOf": [
+            {"enum": ["url", "topic", "event-id"]},
+            {"type": "null"}
+          ]
+        },
+        "headline": {"$ref": "#/$defs/longText"},
+        "finding": {"$ref": "#/$defs/longText"},
+        "source_timestamp": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "reading_url": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^https://palimpsest\\.info/readings/[a-z0-9][a-z0-9.-]{0,126}\\.json$"
+            },
+            {"type": "null"}
+          ]
+        },
+        "input_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "relation": {"const": "topic-surface-only"},
+        "interpretation": {"$ref": "#/$defs/longText"}
+      }
+    },
+    "evidenceRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "surface_id",
+        "status",
+        "headline",
+        "claim",
+        "reading_url",
+        "source_timestamp",
+        "input_sha256",
+        "interpretation_limit"
+      ],
+      "properties": {
+        "evidence_id": {
+          "type": "string",
+          "pattern": "^eventevidence-[0-9a-f]{20}$"
+        },
+        "kind": {"$ref": "#/$defs/identifier"},
+        "surface_id": {"$ref": "#/$defs/identifier"},
+        "status": {
+          "enum": [
+            "live",
+            "missing",
+            "unmatched",
+            "not-applicable",
+            "degraded",
+            "stale",
+            "corrupt"
+          ]
+        },
+        "headline": {"$ref": "#/$defs/longText"},
+        "claim": {"$ref": "#/$defs/longText"},
+        "reading_url": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^https://palimpsest\\.info/(news|readings)/.+"
+            },
+            {"type": "null"}
+          ]
+        },
+        "source_timestamp": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "input_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "interpretation_limit": {"$ref": "#/$defs/longText"}
+      }
+    },
+    "keyNumber": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "label", "note", "citation_ids"],
+      "properties": {
+        "value": {"$ref": "#/$defs/longText"},
+        "label": {"$ref": "#/$defs/longText"},
+        "note": {"$ref": "#/$defs/longText"},
+        "citation_ids": {"$ref": "#/$defs/citationIds"}
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "label", "passed", "detail"],
+      "properties": {
+        "gate_id": {"$ref": "#/$defs/identifier"},
+        "label": {"$ref": "#/$defs/longText"},
+        "passed": {"type": "boolean"},
+        "detail": {"$ref": "#/$defs/longText"}
+      }
+    },
+    "publicationReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "publishable",
+        "automatic_publication",
+        "citation_coverage",
+        "human_review_required",
+        "availability_warnings",
+        "gates"
+      ],
+      "properties": {
+        "status": {"enum": ["passed", "failed"]},
+        "publishable": {"type": "boolean"},
+        "automatic_publication": {"const": false},
+        "citation_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+        "human_review_required": {"const": true},
+        "availability_warnings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "gates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/gate"}
+        }
+      }
+    },
+    "authorship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "byline",
+        "mode",
+        "human_interviews",
+        "freeform_model_generation"
+      ],
+      "properties": {
+        "byline": {"const": "Palimpsest China Desk"},
+        "mode": {"const": "deterministic-event-brief"},
+        "human_interviews": {"const": "none"},
+        "freeform_model_generation": {"const": "none"}
+      }
+    },
+    "windowPeers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "same_window_peer_count",
+        "shared_topics",
+        "peer_source_ids",
+        "peer_independence_groups",
+        "relation"
+      ],
+      "properties": {
+        "same_window_peer_count": {"type": "integer", "minimum": 0},
+        "shared_topics": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "peer_source_ids": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "peer_independence_groups": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "relation": {"const": "topic-surface-only"}
+      }
+    },
+    "corroboration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accepted_edges",
+        "primary_docs",
+        "reviewed",
+        "official_page",
+        "status",
+        "relation"
+      ],
+      "properties": {
+        "accepted_edges": {"type": "integer", "minimum": 0},
+        "primary_docs": {"type": "integer", "minimum": 0},
+        "reviewed": {"type": "integer", "minimum": 0},
+        "official_page": {"enum": ["none-reviewed", "reviewed"]},
+        "status": {"enum": ["empty", "present"]},
+        "relation": {"const": "coverage-fact-only"}
+      }
+    },
+    "archiveNewsContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "matched",
+        "match_kind",
+        "event_id",
+        "anomaly_state",
+        "anomaly_score_published",
+        "relation",
+        "receipts",
+        "refresh_status"
+      ],
+      "properties": {
+        "matched": {"type": "boolean"},
+        "match_kind": {
+          "oneOf": [{"enum": ["event-id", "url"]}, {"type": "null"}]
+        },
+        "event_id": {"$ref": "#/$defs/eventId"},
+        "anomaly_state": {
+          "oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]
+        },
+        "anomaly_score_published": {"type": "boolean"},
+        "relation": {"const": "topic-surface-only"},
+        "receipts": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {"type": "object"}
+        },
+        "refresh_status": {
+          "enum": ["unknown", "ok", "revision_pin_mismatch"]
+        }
+      }
+    },
+    "declaredLinks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relation",
+        "scan_signal_ids",
+        "economic_signal_ids",
+        "live_family_ids"
+      ],
+      "properties": {
+        "relation": {"const": "topic-surface-only"},
+        "scan_signal_ids": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "economic_signal_ids": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "live_family_ids": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/identifier"}
+        }
+      }
+    },
+    "evidenceStrength": {
+      "enum": [
+        "measurement-corroborated",
+        "primary-corroborated",
+        "multi-source",
+        "single-measurement-source",
+        "single-primary-source",
+        "single-source"
+      ]
+    },
+    "evidenceAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strength",
+        "independent_groups",
+        "source_count",
+        "conclusion"
+      ],
+      "properties": {
+        "strength": {"$ref": "#/$defs/evidenceStrength"},
+        "independent_groups": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        },
+        "source_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4096
+        },
+        "conclusion": {"$ref": "#/$defs/longText"}
+      }
+    },
+    "denominator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value"],
+      "properties": {
+        "label": {"$ref": "#/$defs/nullableLabel"},
+        "value": {
+          "oneOf": [{"type": "number"}, {"type": "null"}]
+        }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "value", "unit", "denominator"],
+      "properties": {
+        "label": {"$ref": "#/$defs/nullableLabel"},
+        "value": {
+          "oneOf": [{"type": "number"}, {"type": "null"}]
+        },
+        "unit": {"$ref": "#/$defs/nullableLabel"},
+        "denominator": {"$ref": "#/$defs/denominator"}
+      }
+    },
+    "collectorContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signal_id",
+        "status",
+        "headline",
+        "finding",
+        "metric",
+        "source_timestamp",
+        "story_url",
+        "evidence_url",
+        "input_sha256",
+        "claim_fingerprint",
+        "method_summary",
+        "method_version",
+        "relation",
+        "interpretation"
+      ],
+      "properties": {
+        "signal_id": {"$ref": "#/$defs/identifier"},
+        "status": {
+          "enum": ["live", "degraded", "stale", "missing", "corrupt"]
+        },
+        "headline": {"$ref": "#/$defs/longText"},
+        "finding": {"$ref": "#/$defs/longText"},
+        "metric": {"$ref": "#/$defs/metric"},
+        "source_timestamp": {
+          "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+        },
+        "story_url": {
+          "type": "string",
+          "pattern": "^https://palimpsest\\.info/news/[a-z0-9]+(?:-[a-z0-9]+)*/$"
+        },
+        "evidence_url": {
+          "type": "string",
+          "pattern": "^https://palimpsest\\.info/readings/[a-z0-9][a-z0-9.-]{0,126}\\.json$"
+        },
+        "input_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "claim_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "method_summary": {"$ref": "#/$defs/longText"},
+        "method_version": {
+          "oneOf": [
+            {"type": "integer", "minimum": 1},
+            {"type": "string", "minLength": 1, "maxLength": 100},
+            {"type": "null"}
+          ]
+        },
+        "relation": {"const": "topic-surface-only"},
+        "interpretation": {"$ref": "#/$defs/longText"}
+      }
+    }
+  }
+}

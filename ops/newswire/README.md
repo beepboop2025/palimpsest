@@ -15,6 +15,21 @@ successful receipt records the fresh-source count and binds the run to the
 exact latest-document timestamp and SHA-256. This keeps “the collector ran”
 separate from “current evidence exists.”
 
+The live 30-minute file is `/var/lib/palimpsest/newswire/newswire-latest.json`.
+Fleet collectors and the site builder resolve that path before the repo
+`readings/newswire-latest.json` publish freeze. A successful wire refresh
+starts `palimpsest-event-analysis-live.service`, which writes
+`/var/lib/palimpsest/newswire/event-analysis-latest.json` from that same file.
+Missing official-first-seen, deletion-ledger, undertext, or newsroom readings
+cause those layers to abstain.
+
+The Common Crawl context timer can fire and still leave
+`archive-news-context.json` untouched: `ExecStartPre` `cmp -s REVISION
+/etc/palimpsest/deployed-commit` is fail-closed. The unit now stamps
+`archive-news-context.last-attempt.json` with `revision_pin` before that abort.
+Until `anomaly_state` leaves `warming_up`, live analysis publishes that state
+and no MAD score.
+
 The scheduled command holds an exclusive lease on the persistent mode-0600
 `newswire.lock` for the complete attempt, including the in-flight receipt and
 terminal publication. The node backup takes a shared lease on the same inode,

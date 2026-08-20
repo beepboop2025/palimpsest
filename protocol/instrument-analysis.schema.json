@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/instrument-analysis.schema.json",
+  "title": "Palimpsest per-instrument analysis",
+  "description": "A deterministic, fail-closed companion for one newsroom instrument story and its public reading. Non-live stories emit an availability brief and never republish a retained metric as current.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "analysis_id",
+    "signal_id",
+    "story_url",
+    "url",
+    "reading_url",
+    "reading_analysis_url",
+    "generated_at",
+    "disposition",
+    "status",
+    "position",
+    "key_numbers",
+    "brief",
+    "counterreadings",
+    "limitations",
+    "elevated_peers",
+    "review_rank",
+    "evidence",
+    "publication_receipt",
+    "authorship",
+    "disclosure",
+    "method"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-instrument-analysis.v1"},
+    "analysis_id": {"type": "string", "pattern": "^instrumentv-[0-9a-f]{24}$"},
+    "signal_id": {"$ref": "#/$defs/identifier"},
+    "story_url": {"type": "string"},
+    "url": {"type": "string"},
+    "reading_url": {"type": "string"},
+    "reading_analysis_url": {"type": "string"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "disposition": {"enum": ["live-reading", "availability-brief"]},
+    "status": {"enum": ["live", "degraded", "stale", "missing", "corrupt"]},
+    "position": {"type": "string", "minLength": 1},
+    "key_numbers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/keyNumber"}
+    },
+    "brief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current_number", "board_context", "does_not_show"],
+      "properties": {
+        "current_number": {"$ref": "#/$defs/layer"},
+        "board_context": {"$ref": "#/$defs/layer"},
+        "does_not_show": {"$ref": "#/$defs/layer"}
+      }
+    },
+    "counterreadings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/citedRecord"}
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/citedRecord"}
+    },
+    "elevated_peers": {
+      "type": "array",
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["signal_id", "section", "status", "priority"],
+        "properties": {
+          "signal_id": {"$ref": "#/$defs/identifier"},
+          "section": {"type": "string"},
+          "status": {"type": "string"},
+          "priority": {"type": "string"}
+        }
+      }
+    },
+    "review_rank": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "editorial_priority",
+        "editorial_priority_role",
+        "anomaly_state",
+        "anomaly_score_published"
+      ],
+      "properties": {
+        "editorial_priority": {
+          "oneOf": [{"type": "number"}, {"type": "null"}]
+        },
+        "editorial_priority_role": {"const": "review-rank-only"},
+        "anomaly_state": {
+          "oneOf": [{"const": "warming_up"}, {"type": "null"}]
+        },
+        "anomaly_score_published": {"const": false}
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {"type": "object"}
+    },
+    "publication_receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "publishable",
+        "automatic_publication",
+        "citation_coverage",
+        "human_review_required",
+        "availability_warnings",
+        "gates"
+      ],
+      "properties": {
+        "status": {"enum": ["passed", "failed"]},
+        "publishable": {"type": "boolean"},
+        "automatic_publication": {"const": false},
+        "citation_coverage": {"type": "number"},
+        "human_review_required": {"const": true},
+        "availability_warnings": {"type": "array", "items": {"type": "string"}},
+        "gates": {"type": "array"}
+      }
+    },
+    "authorship": {"type": "object"},
+    "disclosure": {"type": "string"},
+    "method": {"type": "string"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,79}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "citedRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "citation_ids"],
+      "properties": {
+        "text": {"type": "string"},
+        "citation_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "keyNumber": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "label", "note", "citation_ids"],
+      "properties": {
+        "value": {"type": "string"},
+        "label": {"type": "string"},
+        "note": {"type": "string"},
+        "citation_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "sentences"],
+      "properties": {
+        "status": {"enum": ["present", "abstained"]},
+        "sentences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/citedRecord"}
+        }
+      }
+    }
+  }
+}

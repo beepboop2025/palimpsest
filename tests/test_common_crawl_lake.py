@@ -813,6 +813,9 @@ def test_hetzner_services_are_unprivileged_local_only_and_state_separated():
         assert "verify-host-bundle.sh" in service
         assert "ExecStartPre=/usr/bin/cmp -s" in service
         assert "/etc/palimpsest/deployed-commit" in service
+        if service is context_service:
+            assert "archive-news-context.last-attempt.json" in service
+            assert "revision_pin" in service
         assert "RequiresMountsFor=/var/lib/palimpsest/common-crawl" in service
         assert "ProtectSystem=strict" in service
         assert "ProtectHome=true" in service

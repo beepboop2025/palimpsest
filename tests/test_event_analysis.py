@@ -181,7 +181,7 @@ def test_runtime_validator_rejects_unknown_fields_and_editorial_state_tampering(
 def test_generated_analysis_conforms_to_the_public_json_schema(analyses) -> None:
     jsonschema = pytest.importorskip("jsonschema")
     schema = json.loads(
-        (ROOT / "protocol/event-analysis-v1.schema.json").read_text()
+        (ROOT / "protocol/event-analysis-v2.schema.json").read_text()
     )
     validator = jsonschema.Draft202012Validator(schema)
 

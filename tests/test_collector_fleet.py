@@ -96,7 +96,8 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
     assert {
         "silence-index", "vantage-fusion", "erasure-observatory",
         "undertext", "public-deletion-ledgers",
-        "official-first-seen", "news-wire-live", "wikipedia-gazetteer-rc",
+        "official-first-seen", "news-wire-live", "archive-news-context",
+        "wikipedia-gazetteer-rc",
         "baike-public-snapshot", "public-hot-boards",
         "telegram-public-channels",
     } <= names
@@ -204,7 +205,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 34  # feed head + index processor + 32 passive snapshots
+    assert len(specs) == 35  # feed head + index processor + 33 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -231,6 +232,8 @@ def test_vigorous_profile_really_samples_fast_sources_more_often():
     assert "*/6" in str(standard["collect-snapshot-gdelt"]["schedule"])
     assert "* *" in str(vigorous["collect-snapshot-news-wire-live"]["schedule"])
     assert "*/6" in str(standard["collect-snapshot-news-wire-live"]["schedule"])
+    assert "* *" in str(vigorous["collect-snapshot-archive-news-context"]["schedule"])
+    assert "*/6" in str(standard["collect-snapshot-archive-news-context"]["schedule"])
     assert "* *" in str(vigorous["collect-snapshot-official-first-seen"]["schedule"])
     assert "*/12" in str(standard["collect-snapshot-official-first-seen"]["schedule"])
     assert "* *" in str(vigorous["collect-snapshot-telegram-public-channels"]["schedule"])
@@ -420,6 +423,8 @@ def test_china_live_jobs_have_conservative_standard_and_faster_vigorous_cadences
     assert spec("vigorous", "official-first-seen")["cadence_seconds"] == 3600
     assert spec("standard", "news-wire-live")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "news-wire-live")["cadence_seconds"] == 3600
+    assert spec("standard", "archive-news-context")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "archive-news-context")["cadence_seconds"] == 3600
     assert spec("standard", "baike-public-snapshot")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "baike-public-snapshot")["cadence_seconds"] == 3600
     assert spec("standard", "public-hot-boards")["cadence_seconds"] == 6 * 3600
@@ -457,6 +462,7 @@ def test_vigorous_gdelt_sets_the_fifteen_minute_window_without_compose_flags(
 
 def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path):
     seen = []
+    import scripts.archive_news_context_pull as archive
     import scripts.baike_public_snapshot_pull as baike
     import scripts.news_wire_live_pull as news
     import scripts.official_first_seen_pull as official
@@ -470,14 +476,21 @@ def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path
     monkeypatch.setattr(baike, "main", lambda: seen.append("baike-public-snapshot"))
     monkeypatch.setattr(boards, "main", lambda: seen.append("public-hot-boards"))
     monkeypatch.setattr(telegram, "main", lambda: seen.append("telegram-public-channels"))
+    monkeypatch.setattr(
+        archive, "main", lambda **kwargs: seen.append(("archive-news-context", kwargs.get("root")))
+    )
     _invoke_snapshot("official-first-seen", tmp_path)
     _invoke_snapshot("news-wire-live", tmp_path)
+    _invoke_snapshot("archive-news-context", tmp_path)
     _invoke_snapshot("wikipedia-gazetteer-rc", tmp_path)
     _invoke_snapshot("baike-public-snapshot", tmp_path)
     _invoke_snapshot("public-hot-boards", tmp_path)
     _invoke_snapshot("telegram-public-channels", tmp_path)
     assert seen == [
-        "official-first-seen", "news-wire-live", "wikipedia-gazetteer-rc",
+        "official-first-seen", ("archive-news-context", tmp_path),
+        "news-wire-live", ("archive-news-context", tmp_path),
+        ("archive-news-context", tmp_path),
+        "wikipedia-gazetteer-rc",
         "baike-public-snapshot", "public-hot-boards",
         "telegram-public-channels",
     ]

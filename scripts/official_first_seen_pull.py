@@ -18,6 +18,7 @@ from collectors.official_first_seen import load_pages, poll_pages
 from core.china_observation import iso_z, serialize_observation
 from core.governance import KillSwitch, RateCeiling
 from core.safe_fetch import FetchError, safe_fetch
+from processors.archive_context import attach_derived_archive_context
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -98,11 +99,13 @@ def main(*, fetch=None, now: datetime | None = None, state_path: Path | None = N
         url for url, row in (previous.get("pages") or {}).items()
         if isinstance(row, dict) and row.get("content_sha256")
     }
-    observations = attach_new_url_captures(
-        [serialize_observation(obs) for obs in result["observations"]],
-        previous_urls=prior_urls,
-        fetch=_save_text if fetch is None else None,
-        limit=6,
+    observations = attach_derived_archive_context(
+        attach_new_url_captures(
+            [serialize_observation(obs) for obs in result["observations"]],
+            previous_urls=prior_urls,
+            fetch=_save_text if fetch is None else None,
+            limit=6,
+        )
     )
     generated = iso_z(result["generated_at"]) or iso_z(datetime.now(timezone.utc))
     out = {

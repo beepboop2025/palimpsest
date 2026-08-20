@@ -36,19 +36,27 @@ from core import china_article_stream as china_stream_model
 from core import dragon_whispers as dragon_whispers_model
 from core import economic_pulse as economic_pulse_model
 from core import event_analysis as event_analysis_model
+from core import instrument_analysis as instrument_analysis_model
 from core import evidence_mesh as evidence_mesh_model
 from core import investigations as investigations_model
 from core import machine_investigations as machine_investigations_model
 from core import newsroom
 from core import newswire as newswire_model
 from core import telegram_watch as telegram_watch_model
+from core.live_paths import (
+    load_archive_refresh_status,
+    resolve_newswire_path,
+    resolve_readings_dir,
+)
 from scripts import site_nav
 
 
 ROOT = Path(__file__).resolve().parent.parent
 NEWS = ROOT / "news"
 READING = ROOT / "readings" / "newsroom-latest.json"
-NEWSWIRE_READING = ROOT / "readings" / "newswire-latest.json"
+NEWSWIRE_READING = resolve_newswire_path(
+    preferred=ROOT / "readings" / "newswire-latest.json"
+)
 ECONOMIC_READING = ROOT / "readings" / "china-economic-pulse-latest.json"
 INVESTIGATIONS_READING = ROOT / "readings" / "investigations-latest.json"
 MACHINE_INVESTIGATIONS_READING = (
@@ -2822,11 +2830,124 @@ def render_index(feed: Mapping[str, Any]) -> str:
     ) + "\n" + body
 
 
+def _site_path(url: str) -> str:
+    if url.startswith(SITE):
+        return url[len(SITE) :] or "/"
+    return url
+
+
+def render_instrument_analysis(
+    analysis: Mapping[str, Any], *, surface: str = "story"
+) -> str:
+    """Render the cited instrument companion without strengthening its claims."""
+
+    instrument_analysis_model.validate_instrument_analysis(analysis)
+    numbers = "".join(
+        f"<li><strong>{_h(row['value'])}</strong> {_h(row['label'])} · {_h(row['note'])}</li>"
+        for row in analysis["key_numbers"]
+    )
+    layers = []
+    for name, heading in (
+        ("current_number", "Current number and denominator"),
+        ("board_context", "Same-edition board context"),
+        ("does_not_show", "What this reading does not show"),
+    ):
+        sentences = "".join(
+            f"<li>{_h(item['text'])}</li>" for item in analysis["brief"][name]["sentences"]
+        )
+        layers.append(
+            f"<h3 class=\"nw-assessment__subhead\">{_h(heading)}</h3>"
+            f"<ul class=\"nw-assessment__rationale\">{sentences}</ul>"
+        )
+    counters = "".join(f"<li>{_h(item['text'])}</li>" for item in analysis["counterreadings"])
+    limits = "".join(f"<li>{_h(item['text'])}</li>" for item in analysis["limitations"])
+    peers = analysis["elevated_peers"]
+    peer_line = (
+        ", ".join(f"{row['signal_id']} ({row['section']})" for row in peers) or "none named"
+    )
+    if surface == "reading":
+        story_analysis = _h(_site_path(str(analysis["url"])))
+        reading_json = _h(str(analysis["reading_analysis_url"]).rsplit("/", 1)[-1])
+        story_page = _h(_site_path(str(analysis["story_url"])))
+        receipt = (
+            f"Analysis <code>{_h(analysis['analysis_id'])}</code> · "
+            f'<a href="{story_analysis}">structured assessment</a> · '
+            f'<a href="{reading_json}">reading companion</a> · '
+            f'<a href="{story_page}">newsroom story</a>'
+        )
+    else:
+        receipt = (
+            f"Analysis <code>{_h(analysis['analysis_id'])}</code> · "
+            f'<a href="analysis.json">structured assessment</a> · '
+            f'<a href="{_h(analysis["reading_analysis_url"])}">reading companion</a>'
+        )
+    return f"""<section class="nw-assessment" data-disposition="{_h(analysis['disposition'])}" aria-labelledby="instrument-analysis-title">
+  <p class="nw-section__label">Palimpsest addition</p>
+  <h2 id="instrument-analysis-title">Instrument brief</h2>
+  <p class="nw-assessment__status">{_h(analysis['disposition'])} · {_h(_status_label(analysis['status']))}</p>
+  <p class="nw-assessment__position">{_h(analysis['position'])}</p>
+  <h3 class="nw-assessment__subhead">Key number</h3>
+  <ul class="nw-assessment__rationale">{numbers}</ul>
+  {"".join(layers)}
+  <h3 class="nw-assessment__subhead">Elevated peers this edition</h3>
+  <p>{_h(peer_line)}</p>
+  <h3 class="nw-assessment__subhead">Counterreadings</h3>
+  <ul class="nw-assessment__rationale">{counters}</ul>
+  <h3 class="nw-assessment__subhead">Limitations</h3>
+  <ul class="nw-assessment__rationale">{limits}</ul>
+  <p class="nw-assessment__receipt">{receipt}</p>
+</section>"""
+
+
+_READING_ASIDE_STYLE = """<style>
+#instrument-analysis{margin:28px 0 36px;padding:18px 20px;border:1px solid var(--tk-line,rgba(20,24,31,.12));background:var(--tk-bg-2,#fff);color:var(--tk-text-1,#14202b)}
+#instrument-analysis h2{margin:8px 0 10px;font-size:1.35rem}
+#instrument-analysis h3{margin:18px 0 8px;font-size:1.05rem}
+#instrument-analysis ul{margin:0;padding-left:1.2em}
+#instrument-analysis li{margin:0 0 6px}
+#instrument-analysis .nw-section__label{margin:0;font-family:var(--tk-font-mono,monospace);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--tk-text-3,#667)}
+#instrument-analysis .nw-assessment__position{max-width:70ch}
+</style>
+"""
+
+
+def render_reading_analysis_embed(analysis: Mapping[str, Any]) -> str:
+    """Static HTML fragment injected into existing reading dashboards."""
+
+    body = render_instrument_analysis(analysis, surface="reading")
+    return (
+        '<aside class="nw-assessment nw-assessment--reading" id="instrument-analysis">'
+        + _READING_ASIDE_STYLE
+        + body
+        + "</aside>\n"
+    )
+
+
+def inject_reading_analysis(html: str, analysis: Mapping[str, Any]) -> str:
+    cleaned = re.sub(
+        r'\s*<aside class="nw-assessment nw-assessment--reading"[^>]*>.*?</aside>\s*',
+        "\n",
+        html,
+        count=1,
+        flags=re.S,
+    )
+    fragment = render_reading_analysis_embed(analysis)
+    close = "</main>"
+    if close in cleaned:
+        return cleaned.replace(close, "\n" + fragment + close, 1)
+    open_main = re.search(r"<main\b[^>]*>", cleaned)
+    if open_main:
+        at = open_main.end()
+        return cleaned[:at] + "\n" + fragment + cleaned[at:]
+    return cleaned.rstrip() + "\n" + fragment
+
+
 def render_story(
     story: Mapping[str, Any],
     *,
     section: Mapping[str, Any],
     by_id: Mapping[str, Mapping[str, Any]],
+    analysis: Mapping[str, Any] | None = None,
 ) -> str:
     claim_items = "\n".join(
         f'<p><strong>{_h(claim["type"].replace("_", " ").title())}.</strong> {_h(claim["statement"])}</p>'
@@ -2861,6 +2982,7 @@ def render_story(
         <p>{_h(story['method']['summary'])}</p>
         <h2>What this cannot establish</h2>
         <ul class="nw-limitations">{limitations}</ul>
+        {render_instrument_analysis(analysis) if analysis is not None else ""}
         <h2>Read the evidence</h2>
         <p>The exact source reading is <a href="{_h(story['evidence']['url'])}">{_h(story['evidence']['input']['filename'])}</a>. The structured version of this dispatch is <a href="story.json">published beside the article</a>.</p>
       </div>
@@ -2920,6 +3042,66 @@ _ANALYSIS_DISPOSITION_LABELS = {
     "collector-context": "Current collector context",
     "collector-abstention": "Collector conclusion withheld",
 }
+
+
+def _event_brief_html(analysis: Mapping[str, Any]) -> str:
+    """Render the v2 cited brief when present. v1 assessments stay unchanged."""
+
+    brief = analysis.get("brief")
+    if not isinstance(brief, Mapping):
+        return ""
+    receipt = analysis.get("publication_receipt") if isinstance(analysis.get("publication_receipt"), Mapping) else {}
+    sections: list[str] = []
+    headings = {
+        "lead": "Lead",
+        "timeline": "Timeline",
+        "official_page": "Official-page movement",
+        "deletion_ledger": "Deletion-ledger context",
+        "pipe_context": "Pipe context",
+        "archive_context": "Archive-derived context",
+    }
+    for key, heading in headings.items():
+        layer = brief.get(key)
+        if not isinstance(layer, Mapping):
+            continue
+        sentences = "".join(
+            f"<li>{_h(item['text'])}</li>"
+            for item in layer.get("sentences") or []
+            if isinstance(item, Mapping) and item.get("text")
+        )
+        status = layer.get("status") or "abstained"
+        sections.append(
+            f"<h4 class=\"nw-assessment__subhead\">{_h(heading)} · {_h(str(status))}</h4>"
+            f"<ul class=\"nw-assessment__rationale\">{sentences}</ul>"
+        )
+    counters = "".join(
+        f"<li>{_h(item['text'])}</li>"
+        for item in analysis.get("counterreadings") or []
+        if isinstance(item, Mapping) and item.get("text")
+    )
+    unknowns = "".join(
+        f"<li>{_h(item['text'])}</li>"
+        for item in analysis.get("unknowns") or []
+        if isinstance(item, Mapping) and item.get("text")
+    )
+    auto = receipt.get("automatic_publication")
+    coverage = receipt.get("citation_coverage")
+    footer = (
+        f"<p class=\"nw-method-note\">Cited brief · citation coverage {coverage} · "
+        f"automatic publication {'prohibited' if auto is False else 'not granted'} · "
+        "human review required.</p>"
+    )
+    return (
+        "<div class=\"nw-assessment__brief\">"
+        "<h3 class=\"nw-assessment__subhead\">Cited newsroom brief</h3>"
+        + "".join(sections)
+        + "<h4 class=\"nw-assessment__subhead\">Counterreadings</h4>"
+        + f"<ul class=\"nw-assessment__rationale\">{counters}</ul>"
+        + "<h4 class=\"nw-assessment__subhead\">What this brief does not know</h4>"
+        + f"<ul class=\"nw-assessment__rationale\">{unknowns}</ul>"
+        + footer
+        + "</div>"
+    )
 
 
 def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
@@ -2982,6 +3164,7 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
   </div>
   <h3 class="nw-assessment__subhead">Why this is the bounded position</h3>
   <ul class="nw-assessment__rationale">{rationale}</ul>
+  {_event_brief_html(analysis)}
   <h3 class="nw-assessment__subhead">Collector findings used</h3>
   {collector_context}
   <p class="nw-assessment__receipt">Analysis <code>{_h(analysis['analysis_id'])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis['analysis_id'])}.json">immutable revision</a></p>
@@ -4519,11 +4702,25 @@ def build_outputs(
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
     china_analysis = china_analysis_model.build(feed)
+    instrument_analyses = instrument_analysis_model.build_instrument_analyses(feed)
     event_analyses: dict[str, Mapping[str, Any]] = {}
     china_stream: Mapping[str, Any] | None = None
     whispers_document: Mapping[str, Any] | None = None
     if wire is not None:
-        event_analyses = event_analysis_model.build_event_analyses(wire, feed)
+        readings_dir = resolve_readings_dir(preferred=archive_root / "readings")
+        event_analyses = event_analysis_model.build_event_analyses(
+            wire,
+            feed,
+            live_families=event_analysis_model.load_optional_live_families(readings_dir),
+            archive_context=event_analysis_model.load_optional_archive_context(
+                readings_dir
+            ),
+            corroboration=event_analysis_model.load_optional_corroboration(readings_dir),
+            peer_warehouses=event_analysis_model.load_optional_peer_warehouses(
+                readings_dir
+            ),
+            archive_refresh_status=load_archive_refresh_status(),
+        )
         china_stream = china_stream_model.build_china_article_stream(
             wire, event_analyses, telegram_watch=telegram_watch
         )
@@ -4775,13 +4972,28 @@ def build_outputs(
                 outputs, capsule_path, _pretty_json(capsule)
             )
     for story in feed["stories"]:
+        analysis = instrument_analyses[story["signal_id"]]
         base = Path("news") / story["slug"]
         outputs[base / "index.html"] = render_story(
             story,
             section=sections[story["section"]],
             by_id=stories,
+            analysis=analysis,
         ).encode("utf-8")
         outputs[base / "story.json"] = _pretty_json(story)
+        outputs[base / "analysis.json"] = instrument_analysis_model.pretty_json_bytes(
+            analysis
+        )
+        outputs[instrument_analysis_model.reading_analysis_relpath(story)] = (
+            instrument_analysis_model.pretty_json_bytes(analysis)
+        )
+        html_rel = instrument_analysis_model.READING_HTML.get(story["signal_id"])
+        if html_rel is not None:
+            source = archive_root / html_rel
+            if source.is_file():
+                outputs[html_rel] = inject_reading_analysis(
+                    source.read_text(encoding="utf-8"), analysis
+                ).encode("utf-8")
         if wire is not None:
             revision = _revision_id(story, "storyv")
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)

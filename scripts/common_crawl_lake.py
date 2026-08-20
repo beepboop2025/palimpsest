@@ -21,10 +21,13 @@ from collectors.common_crawl_lake import (
     write_summary,
 )
 from processors.archive_context import write_archive_context, write_china_lake_joins
+from core.live_paths import resolve_newswire_path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_NEWSWIRE = ROOT / "readings" / "newswire-latest.json"
+DEFAULT_NEWSWIRE = resolve_newswire_path(
+    preferred=ROOT / "readings" / "newswire-latest.json"
+)
 DEFAULT_OSINT = ROOT / "readings" / "osint-china-latest.json"
 
 

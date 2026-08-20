@@ -118,6 +118,8 @@ def test_every_in_scope_event_gets_one_situation_without_strengthening(
         assert row["reporting"]["independent_groups"] == len(event["evidence_groups"])
         assert row["social_context"] == []
         assert "do not increase that count" in row["synthesis"]["summary"]
+        assert "official-page coverage is" in row["synthesis"]["summary"]
+        assert "archive-news-context" in row["synthesis"]["summary"]
 
 
 def test_reviewed_telegram_empty_state_is_bound_without_event_guessing(inputs):

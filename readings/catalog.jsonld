@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-20T07:34:26.395859Z",
+  "dateModified": "2026-08-20T08:24:33.131773Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -541,6 +541,22 @@
       "identifier": "public-deletion-ledgers",
       "name": "Public deletion ledgers",
       "description": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style). Each feed is a candidate; if every ledger is unreachable the runner abstains rather than publish a zero.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT1H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "archive-news-context",
+      "name": "Archive news context",
+      "description": "Deterministic point-in-time join of live news-wire, official-first-seen, and public-deletion-ledger observations to Common Crawl derived host features. Public copy is context-only: coverage on a watched official host, or shared topics with a watched host. No article-body fetch, causal inference, motive sentence, raw Common Crawl URL dump, or WARC body.",
       "url": "https://palimpsest.info/osint-china.html",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [

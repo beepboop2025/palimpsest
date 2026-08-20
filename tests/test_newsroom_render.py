@@ -22,7 +22,13 @@ def test_renderer_emits_one_html_and_json_document_per_story():
     feed = _feed()
     outputs = build_newsroom.build_outputs(feed)
 
-    assert len(outputs) == 9 + (2 * feed["n_stories"])
+    reading_html = sum(
+        1
+        for story in feed["stories"]
+        if story["signal_id"] in build_newsroom.instrument_analysis_model.READING_HTML
+        and (ROOT / build_newsroom.instrument_analysis_model.READING_HTML[story["signal_id"]]).is_file()
+    )
+    assert len(outputs) == 9 + (4 * feed["n_stories"]) + reading_html
     assert Path("readings/newsroom-latest.json") in outputs
     assert Path("readings/china-censorship-analysis-latest.json") in outputs
     assert Path("news/index.html") in outputs
@@ -32,6 +38,7 @@ def test_renderer_emits_one_html_and_json_document_per_story():
     for story in feed["stories"]:
         assert Path("news") / story["slug"] / "index.html" in outputs
         assert Path("news") / story["slug"] / "story.json" in outputs
+        assert Path("news") / story["slug"] / "analysis.json" in outputs
 
 
 def test_index_is_server_rendered_semantic_and_evidence_first():

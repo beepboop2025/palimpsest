@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from collectors.news_wire_live import observation_from_event, observations_from_events
 
 
@@ -11,6 +13,7 @@ EVENT = {
     "headline": "CDT: 白纸 protests and a public directive",
     "dek": "Feed excerpt already held on the evidence wire.",
     "desk": "censorship",
+    "topics": ["censorship", "policy"],
     "published_at": "2026-08-20T01:00:00Z",
     "updated_at": "2026-08-20T01:00:00Z",
     "evidence_refs": [{
@@ -30,6 +33,7 @@ def test_uses_publisher_url_not_the_palimpsest_permalink():
     assert "白纸" in (obs.get("text") or "")
     assert obs["archive"]["wayback_lookup"]
     assert obs["provenance"]["collector"] == "news_wire_live"
+    assert obs["topics"] == ["censorship", "policy"]
 
 
 def test_skips_events_without_a_publisher_url():
@@ -43,6 +47,41 @@ def test_skips_events_without_a_publisher_url():
 def test_dedupes_by_publisher_url():
     rows = observations_from_events([EVENT, EVENT])
     assert len(rows) == 1
+
+
+def test_resolver_prefers_the_live_timer_wire(tmp_path, monkeypatch):
+    from core import live_paths
+
+    live = tmp_path / "newswire-latest.json"
+    live.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(live_paths, "LIVE_NEWSWIRE_PATH", live)
+    assert live_paths.resolve_newswire_path(preferred=tmp_path / "repo.json") == live
+
+
+def test_pull_projects_the_live_timer_wire_when_present(tmp_path, monkeypatch):
+    import scripts.news_wire_live_pull as pull
+    from core import live_paths
+
+    live = tmp_path / "live-newswire.json"
+    live.write_text(
+        json.dumps({"events": [EVENT]}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(live_paths, "LIVE_NEWSWIRE_PATH", live)
+    monkeypatch.setattr(pull, "LIVE_NEWSWIRE_PATH", live)
+    monkeypatch.setattr(pull, "OUT", tmp_path / "news-wire-live-latest.json")
+    monkeypatch.setattr(pull, "HIST", tmp_path / "news-wire-live-history.jsonl")
+    monkeypatch.setattr(pull, "READINGS", tmp_path)
+    monkeypatch.setattr(pull, "WIRE", tmp_path / "newswire-latest.json")
+    monkeypatch.setattr(pull, "KillSwitch", lambda: type("K", (), {"is_halted": lambda self: False})())
+
+    called = {"newswire": False}
+    monkeypatch.setattr(pull, "newswire_main", lambda: called.__setitem__("newswire", True) or 0)
+
+    out = pull.main(now=__import__("datetime").datetime(2026, 8, 20, tzinfo=__import__("datetime").timezone.utc))
+    assert called["newswire"] is False
+    assert out is not None
+    assert out["n_events"] == 1
 
 
 def test_pull_abstains_when_newswire_reports_no_fresh_sources(tmp_path, monkeypatch):
