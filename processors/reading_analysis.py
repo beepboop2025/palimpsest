@@ -451,7 +451,7 @@ LIVE_INVENTORY = {
         "gdelt": 215,
         "ooni-bulk": 208,
         "ioda-outages": 197,
-        "stock-connect": 157,
+        "stock-connect": 158,
         "erasure-observatory": 122,
         "in-path-interference": 111,
         "refusal-drift": 109,
