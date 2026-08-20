@@ -90,6 +90,12 @@ CONTRACT = {
     "wikipedia-gazetteer-rc": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "baike-public-snapshot": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
+    "public-hot-boards": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
                                "n_items"),
@@ -259,6 +265,8 @@ PENDING = {
     "official-first-seen",
     "news-wire-live",
     "wikipedia-gazetteer-rc",
+    "baike-public-snapshot",
+    "public-hot-boards",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately

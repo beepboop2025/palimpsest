@@ -1,0 +1,26 @@
+{
+  "_meta": {
+    "purpose": "Keyless public aggregate hot boards. Titles and ranks only. No user pages, no login, no profiles.",
+    "safety": "Each board is a candidate. A login wall, captcha, or empty JSON is a silent board, not a zero."
+  },
+  "boards": [
+    {
+      "name": "baidu_realtime",
+      "kind": "baidu",
+      "url": "https://top.baidu.com/api/board?platform=wise&tab=realtime",
+      "note": "Baidu public realtime hot-search JSON. Aggregate list only."
+    },
+    {
+      "name": "toutiao_hot_board",
+      "kind": "toutiao",
+      "url": "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc",
+      "note": "Toutiao public hot-event board JSON if served without login."
+    },
+    {
+      "name": "douyin_hot_words",
+      "kind": "douyin",
+      "url": "https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/",
+      "note": "Douyin public hot-word billboard JSON if still keyless. Abstain if login-walled."
+    }
+  ]
+}

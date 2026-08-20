@@ -97,6 +97,7 @@ def test_china_fusion_and_ledger_jobs_are_in_the_always_on_fleet(monkeypatch):
         "silence-index", "vantage-fusion", "erasure-observatory",
         "undertext", "public-deletion-ledgers",
         "official-first-seen", "news-wire-live", "wikipedia-gazetteer-rc",
+        "baike-public-snapshot", "public-hot-boards",
     } <= names
 
 
@@ -202,7 +203,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 31  # feed head + index processor + 29 passive snapshots
+    assert len(specs) == 33  # feed head + index processor + 31 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -229,8 +230,9 @@ def test_vigorous_profile_really_samples_fast_sources_more_often():
     assert "*/6" in str(standard["collect-snapshot-gdelt"]["schedule"])
     assert "* *" in str(vigorous["collect-snapshot-news-wire-live"]["schedule"])
     assert "*/6" in str(standard["collect-snapshot-news-wire-live"]["schedule"])
-    assert "*/3" in str(vigorous["collect-snapshot-official-first-seen"]["schedule"])
+    assert "* *" in str(vigorous["collect-snapshot-official-first-seen"]["schedule"])
     assert "*/12" in str(standard["collect-snapshot-official-first-seen"]["schedule"])
+    assert "*/6" in str(vigorous["collect-snapshot-censored-planet"]["schedule"])
 
 
 def test_ddti_head_is_one_honestly_identified_request_not_a_repeat_archive_sweep():
@@ -412,9 +414,15 @@ def test_china_live_jobs_have_conservative_standard_and_faster_vigorous_cadences
         return next(row for row in expected_collector_specs(profile) if row["source"] == name)
 
     assert spec("standard", "official-first-seen")["cadence_seconds"] == 12 * 3600
-    assert spec("vigorous", "official-first-seen")["cadence_seconds"] == 3 * 3600
+    assert spec("vigorous", "official-first-seen")["cadence_seconds"] == 3600
     assert spec("standard", "news-wire-live")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "news-wire-live")["cadence_seconds"] == 3600
+    assert spec("standard", "baike-public-snapshot")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "baike-public-snapshot")["cadence_seconds"] == 3600
+    assert spec("standard", "public-hot-boards")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "public-hot-boards")["cadence_seconds"] == 3600
+    assert spec("standard", "censored-planet")["cadence_seconds"] == 24 * 3600
+    assert spec("vigorous", "censored-planet")["cadence_seconds"] == 6 * 3600
     assert spec("standard", "wikipedia-gazetteer-rc")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "wikipedia-gazetteer-rc")["cadence_seconds"] == 3 * 3600
     assert spec("standard", "gdelt")["cadence_seconds"] == 6 * 3600
@@ -444,18 +452,25 @@ def test_vigorous_gdelt_sets_the_fifteen_minute_window_without_compose_flags(
 
 def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path):
     seen = []
+    import scripts.baike_public_snapshot_pull as baike
     import scripts.news_wire_live_pull as news
     import scripts.official_first_seen_pull as official
+    import scripts.public_hot_boards_pull as boards
     import scripts.wikipedia_gazetteer_rc_pull as wiki
 
     monkeypatch.setattr(official, "main", lambda: seen.append("official-first-seen"))
     monkeypatch.setattr(news, "main", lambda: seen.append("news-wire-live"))
     monkeypatch.setattr(wiki, "main", lambda: seen.append("wikipedia-gazetteer-rc"))
+    monkeypatch.setattr(baike, "main", lambda: seen.append("baike-public-snapshot"))
+    monkeypatch.setattr(boards, "main", lambda: seen.append("public-hot-boards"))
     _invoke_snapshot("official-first-seen", tmp_path)
     _invoke_snapshot("news-wire-live", tmp_path)
     _invoke_snapshot("wikipedia-gazetteer-rc", tmp_path)
+    _invoke_snapshot("baike-public-snapshot", tmp_path)
+    _invoke_snapshot("public-hot-boards", tmp_path)
     assert seen == [
         "official-first-seen", "news-wire-live", "wikipedia-gazetteer-rc",
+        "baike-public-snapshot", "public-hot-boards",
     ]
 
 

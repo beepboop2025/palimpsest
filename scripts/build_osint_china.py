@@ -336,6 +336,8 @@ EXCLUDED_LATEST_FILES = frozenset({
     "official-first-seen-latest.json",
     "news-wire-live-latest.json",
     "wikipedia-gazetteer-rc-latest.json",
+    "baike-public-snapshot-latest.json",
+    "public-hot-boards-latest.json",
 })
 
 

@@ -37,6 +37,10 @@ def test_watchlist_is_official_landings_and_skips_baike():
     assert any("miit.gov.cn" in url for url in urls)
     assert any("stats.gov.cn/sj/zxfb" in url for url in urls)
     assert any("wenshu.court.gov.cn" in url for url in urls)
+    assert any("npc.gov.cn" in url for url in urls)
+    assert any("moe.gov.cn" in url for url in urls)
+    assert any("nhc.gov.cn" in url for url in urls)
+    assert any("english.www.gov.cn" in url for url in urls)
     assert not any("weibo.com" in url for url in urls)
 
 

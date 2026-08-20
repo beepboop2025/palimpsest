@@ -30,18 +30,19 @@ the join `topic-or-url-context-not-corroboration`.
 | Surface | Runner | 24/7 path | Notes |
 | --- | --- | --- | --- |
 | DDTI / CDT | `scripts/ddti_live_pull.py` | fleet `ddti` | Index now keeps `observation_records` and ranked-term `last_seen`. |
-| Wayback reconstruction | `scripts/wayback_reconstruct_pull.py` | fleet `wayback` | Watchlist in `config/wayback_watchlist.json` now includes Xinhua, People's Daily, gov.cn, MFA, PBOC, CAC, NDRC, MIIT, and the *landing page only* of `wenshu.court.gov.cn`. No captcha docket scrape. |
+| Wayback reconstruction | `scripts/wayback_reconstruct_pull.py` | fleet `wayback` | Watchlist in `config/wayback_watchlist.json` covers official landings (Xinhua, People's Daily, gov.cn + English, MFA, PBOC, CAC, NDRC, MIIT, NPC, MOE, NHC, NBS latest-releases, wenshu landing only) plus topic/event Baike lemmas. No person pages. No captcha docket scrape. |
 | Weibo hot-search join | `scripts/weibo_hotsearch_pull.py` | fleet `weibo-hotsearch` | Public board archive only. `observation_records` from join/breakthroughs. |
 | GitHub refuge | `scripts/github_refuge_pull.py` | fleet `github-refuge` | `active_watchlist` stays empty until an activation review. |
-| UNDERTEXT fusion | `scripts/undertext_pull.py` | fleet `undertext` | Default is **offline fusion** of every committed Wayback reconstruction, every DDTI ranked sample, Weibo suppression / breakthrough / withdrawal rows, plus public-deletion-ledgers / official-first-seen / news-wire-live / Wikipedia gazetteer RC when those readings exist. Clock = newest input `generated_at`. Clustered by public URL, with GDELT / OONI / Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present. An empty or absent lake abstains. `UNDERTEXT_LIVE_SURFACES=1` may add Wikipedia-only presence (last-confirmed-alive, not a deletion). Never live Weibo / Baidu / Baike. Never invent a crawl or scrape publishers to refill the lake. |
+| UNDERTEXT fusion | `scripts/undertext_pull.py` | fleet `undertext` | Default is **offline fusion** of every committed Wayback reconstruction, every DDTI ranked sample, Weibo suppression / breakthrough / withdrawal rows, plus public-deletion-ledgers / official-first-seen / news-wire-live / Wikipedia gazetteer RC / Baike public snapshots / public hot boards when those readings exist. Clock = newest input `generated_at`. Clustered by public URL, with GDELT / OONI / Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present. An empty or absent lake abstains. `UNDERTEXT_LIVE_SURFACES=1` may add Wikipedia-only presence (last-confirmed-alive, not a deletion). Live Weibo / Baidu / Baike *inside UNDERTEXT* stay off; those surfaces have their own fleet jobs. Never invent a crawl or scrape publishers to refill the lake. |
 | Public deletion ledgers | `scripts/public_deletion_ledgers_pull.py` | fleet `public-deletion-ledgers` | CDT EN/ZH, GreatFire RSS, FreeWeibo-style feed. Each feed is a candidate. If every ledger is unreachable the runner **abstains**. Newly first-seen ledger URLs may request IA Save Page Now; a snapshot URL is attached only when IA confirmed one. |
-| Official first-seen | `scripts/official_first_seen_pull.py` | fleet `official-first-seen` | Polls public official landing pages (Xinhua, People's Daily, gov.cn, MFA, PBOC, CAC, NDRC, MIIT, NBS latest-releases, wenshu landing only). Keeps first-seen text, `content_sha256`, last-confirmed-alive, and a deletion/rewrite trail. **No Baike.** Abstains if every page is silent and there is no prior state. |
+| Official first-seen | `scripts/official_first_seen_pull.py` | fleet `official-first-seen` | Polls public official landing pages (Xinhua, People's Daily, gov.cn + English, MFA, PBOC, CAC, NDRC, MIIT, NPC, MOE, NHC, NBS latest-releases, wenshu landing only). Keeps first-seen text, `content_sha256`, last-confirmed-alive, and a deletion/rewrite trail. **No Baike** (that is a separate public-HTML job). Abstains if every page is silent and there is no prior state. |
 | News-wire live | `scripts/news_wire_live_pull.py` | fleet `news-wire-live` | Collects the public `config/news_sources.json` RSS/Atom registry (currently 47 sources) via the existing newswire runner, then projects fat observations from title + excerpt + publisher URL. Article HTML is not scraped. A no-fresh-sources wire **abstains**. |
 | Wikipedia gazetteer RC | `scripts/wikipedia_gazetteer_rc_pull.py` | fleet `wikipedia-gazetteer-rc` | MediaWiki recentchanges on zh/en, titles and revision ids only (`rcprop` excludes `user`). Matched against the human-authored gazetteer. Both APIs silent → **abstain**. |
 | Silence / vantage / erasure | existing pull scripts | fleet `silence-index`, `vantage-fusion`, `erasure-observatory` | Fusion jobs now sit on the always-on Hetzner schedule so the China bundle does not wait for a GitHub-only refresh. |
 | GDELT cross-signal | `scripts/gdelt_cross_pull.py` | fleet `gdelt` | Keyless DOC `timelinevol`. Vigorous uses a 15-minute window and an 8-term cap (`setdefault` only). Silent GDELT abstains. |
 | Research-corpus metadata | `scripts/research_corpus_ingest.py` | fleet `research-corpus` | Metadata-only Git refs. Blobs and keywords stay unpublished. |
-| Baike redaction | disabled | not scheduled live | `disabled_no_authorized_access`. Do not enable. |
+| Public Baike article snapshot | `scripts/baike_public_snapshot_pull.py` | fleet `baike-public-snapshot` | Public HTML + Wayback CDX for topic/event articles only. Hash trail + last-confirmed-alive. No logged-in API. No person pages. The Wikipedia-fork `baike-redaction` runner stays `disabled_no_authorized_access`. |
+| Public hot boards | `scripts/public_hot_boards_pull.py` | fleet `public-hot-boards` | Baidu / Toutiao / Douyin aggregate JSON. Titles and ranks only. Each board is a candidate; login-walled or empty boards abstain. |
 
 `china/sources/` remains a static economic catalogue. It is not a collector.
 
@@ -73,9 +74,9 @@ the join `topic-or-url-context-not-corroboration`.
 - Treat a Situation OSINT join as corroboration or an extra independent source.
 - Invent a Common Crawl, scrape live publisher sites to refill the node lake, or
   publish lake URLs / WARC paths / bodies. An empty lake abstains.
-- Scrape Baike, logged-in Weibo/WeChat, or China Judgements dockets. Wenshu is
-  the landing page only. Baidu hot-search is not collected (no keyless public
-  board archive equivalent to the existing Weibo hot-search GitHub archive).
+- Scrape China Judgements dockets. Wenshu is the landing page only.
+- Use a logged-in Baike API or build Baike user profiles. Public article HTML
+  and Wayback CDX on topic/event pages are in scope.
 - Invent live bleedthrough, GDELT, ledger, official, news-wire, or Wikipedia RC
   rows. A silent feed abstains. Archive snapshot URLs are attached only when an
   archive API confirmed one.

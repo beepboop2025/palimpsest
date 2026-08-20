@@ -65,6 +65,8 @@ _FUSION_INPUTS = (
     "official-first-seen-latest.json",
     "news-wire-live-latest.json",
     "wikipedia-gazetteer-rc-latest.json",
+    "baike-public-snapshot-latest.json",
+    "public-hot-boards-latest.json",
 )
 
 _OBSERVATION_FUSION = (
@@ -72,6 +74,8 @@ _OBSERVATION_FUSION = (
     ("official-first-seen-latest.json", "official-first-seen"),
     ("news-wire-live-latest.json", "news-wire-live"),
     ("wikipedia-gazetteer-rc-latest.json", "wikipedia-gazetteer-rc"),
+    ("baike-public-snapshot-latest.json", "baike-public-snapshot"),
+    ("public-hot-boards-latest.json", "public-hot-boards"),
 )
 
 # Public encyclopedia search only. Not Weibo, not Baidu, not Baike.

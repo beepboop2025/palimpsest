@@ -56,10 +56,12 @@ Public extras that stay keyless under these rules:
 - **GreatFire** public RSS / blocked-site listings already covered by the deletion-ledger
   feeds. No login.
 - **Official landing pages** (Xinhua, People's Daily, gov.cn, ministries, NBS index,
-  China Judgements Online *landing page only*). No person pages. No Baike scrape.
-- **Baidu hot-search** is not collected. There is no keyless public board archive of the
-  same class as the existing Weibo hot-search GitHub archive, and live `top.baidu.com`
-  is a JavaScript board, not that class.
+  China Judgements Online *landing page only*). No person pages.
+- **Public Baike article HTML** for topic/event lemmas only, plus Wayback CDX digests.
+  No logged-in Baike API. No person pages. The Wikipedia-fork `baike_redaction`
+  collector stays disabled pending authorized access.
+- **Public aggregate hot boards** (Baidu / Toutiao / Douyin JSON) when they answer
+  without login. Titles and ranks only. A login wall or empty JSON abstains.
 
 ## Isolation of the velocity leg
 

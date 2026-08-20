@@ -111,6 +111,8 @@ SNAPSHOT_OUTPUTS = {
     "official-first-seen": "readings/official-first-seen-latest.json",
     "news-wire-live": "readings/news-wire-live-latest.json",
     "wikipedia-gazetteer-rc": "readings/wikipedia-gazetteer-rc-latest.json",
+    "baike-public-snapshot": "readings/baike-public-snapshot-latest.json",
+    "public-hot-boards": "readings/public-hot-boards-latest.json",
 }
 
 
@@ -163,6 +165,8 @@ _STANDARD = {
     "official-first-seen": Cadence(11, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
     "news-wire-live": Cadence(21, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "wikipedia-gazetteer-rc": Cadence(27, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "baike-public-snapshot": Cadence(16, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "public-hot-boards": Cadence(36, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
 }
 
 
@@ -187,7 +191,7 @@ _VIGOROUS = {
         grace_s=3 * 24 * 3600,
     ),
     "apple-censorship": Cadence(11, 7, expires_s=12 * 3600),
-    "censored-planet": Cadence(13, 8, expires_s=12 * 3600),
+    "censored-planet": Cadence(13, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "data-darkness": Cadence(
         7, "0,12", expires_s=8 * 3600, interval_s=12 * 3600,
     ),
@@ -217,9 +221,11 @@ _VIGOROUS = {
     "erasure-observatory": Cadence(19, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "undertext": Cadence(44, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "public-deletion-ledgers": Cadence(8, "*", expires_s=45 * 60, interval_s=3600),
-    "official-first-seen": Cadence(11, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "official-first-seen": Cadence(11, "*", expires_s=45 * 60, interval_s=3600),
     "news-wire-live": Cadence(21, "*", expires_s=45 * 60, interval_s=3600),
     "wikipedia-gazetteer-rc": Cadence(27, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "baike-public-snapshot": Cadence(16, "*", expires_s=45 * 60, interval_s=3600),
+    "public-hot-boards": Cadence(36, "*", expires_s=45 * 60, interval_s=3600),
 }
 
 
@@ -402,6 +408,8 @@ _COUNT_PATHS = {
     "official-first-seen": ("n_observations",),
     "news-wire-live": ("n_observations",),
     "wikipedia-gazetteer-rc": ("n_observations",),
+    "baike-public-snapshot": ("n_observations",),
+    "public-hot-boards": ("n_observations",),
 }
 
 
@@ -580,6 +588,12 @@ def _invoke_snapshot(name: str, root: Path) -> None:
         main()
     elif name == "wikipedia-gazetteer-rc":
         from scripts.wikipedia_gazetteer_rc_pull import main
+        main()
+    elif name == "baike-public-snapshot":
+        from scripts.baike_public_snapshot_pull import main
+        main()
+    elif name == "public-hot-boards":
+        from scripts.public_hot_boards_pull import main
         main()
     else:  # defensive: callers validate before this point too
         raise KeyError(f"unknown snapshot job: {name}")
