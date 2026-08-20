@@ -371,6 +371,29 @@
       "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "archive-news-context",
+      "name": "Archive news context",
+      "description": "Deterministic point-in-time join of live news-wire, official-first-seen, and public-deletion-ledger observations to Common Crawl derived host features. Public copy is context-only: coverage on a watched official host, or shared topics with a watched host. No article-body fetch, causal inference, motive sentence, raw Common Crawl URL dump, or WARC body.",
+      "layer": "content",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "warming",
+      "cadence": "PT1H",
+      "geography": ["CN", "GLOBAL"],
+      "sources": [
+        "Common Crawl derived host features",
+        "News-wire-live observations",
+        "Official first-seen landings",
+        "Public deletion ledgers"
+      ],
+      "latest": "readings/archive-news-context-latest.json",
+      "history": "readings/archive-news-context-history.jsonl",
+      "landing_page": "osint-china.html",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": ["n_events_contextualized", "n_observations_joined"],
+      "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "app-storefront",
       "name": "App Storefront panel",
       "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",

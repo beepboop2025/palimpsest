@@ -19,6 +19,7 @@ from collectors.public_deletion_ledgers import DEFAULT_FEEDS, collect_ledgers
 from core.china_observation import iso_z, serialize_observation
 from core.governance import KillSwitch, RateCeiling
 from core.safe_fetch import FetchError, safe_fetch
+from processors.archive_context import attach_derived_archive_context
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -90,11 +91,13 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
         return None
 
     generated = iso_z(result["generated_at"]) or iso_z(datetime.now(timezone.utc))
-    observations = attach_new_url_captures(
-        [serialize_observation(obs) for obs in result["observations"]],
-        previous_urls=previous_urls_from_reading(OUT),
-        fetch=_save_text if fetch is None else None,
-        limit=8,
+    observations = attach_derived_archive_context(
+        attach_new_url_captures(
+            [serialize_observation(obs) for obs in result["observations"]],
+            previous_urls=previous_urls_from_reading(OUT),
+            fetch=_save_text if fetch is None else None,
+            limit=8,
+        )
     )
     out = {
         "generated_at": generated,

@@ -87,6 +87,9 @@ CONTRACT = {
     "news-wire-live": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "archive-news-context": _d(
+        "generated_at", ["source", "method", "scope"], "n_events_contextualized"
+    ),
     "wikipedia-gazetteer-rc": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
@@ -306,6 +309,7 @@ SCHEDULED_PUBLICATIONS = {
     "research-corpus",
     "social-observations",
     "china-situation",
+    "archive-news-context",
 }
 
 
@@ -348,6 +352,17 @@ def test_scheduled_publications_are_registered_and_have_distinct_semantics():
         "production scheduled publications must not be marked as unfinished")
     assert not (SCHEDULED_PUBLICATIONS & OPTIONAL_EXTERNAL), (
         "first-party scheduled publications must not be marked as optional imports")
+
+
+def test_archive_news_context_contract_is_scheduled_and_context_only():
+    assert CONTRACT["archive-news-context"] == {
+        "timestamp": "generated_at",
+        "provenance": ["source", "method", "scope"],
+        "denominator": "n_events_contextualized",
+        "reason": None,
+    }
+    assert "archive-news-context" in SCHEDULED_PUBLICATIONS
+    assert "archive-news-context" not in PENDING
 
 
 def test_newsroom_contract_keeps_provenance_and_story_denominator_explicit():

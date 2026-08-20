@@ -11,6 +11,7 @@ EVENT = {
     "headline": "CDT: 白纸 protests and a public directive",
     "dek": "Feed excerpt already held on the evidence wire.",
     "desk": "censorship",
+    "topics": ["censorship", "policy"],
     "published_at": "2026-08-20T01:00:00Z",
     "updated_at": "2026-08-20T01:00:00Z",
     "evidence_refs": [{
@@ -30,6 +31,7 @@ def test_uses_publisher_url_not_the_palimpsest_permalink():
     assert "白纸" in (obs.get("text") or "")
     assert obs["archive"]["wayback_lookup"]
     assert obs["provenance"]["collector"] == "news_wire_live"
+    assert obs["topics"] == ["censorship", "policy"]
 
 
 def test_skips_events_without_a_publisher_url():

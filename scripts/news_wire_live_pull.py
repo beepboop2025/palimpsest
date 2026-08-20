@@ -17,6 +17,7 @@ from collectors.news_wire_live import load_wire_events, observations_from_events
 from core.china_observation import SCHEMA_VERSION, iso_z, serialize_observation
 from core.governance import KillSwitch
 from core.safe_fetch import safe_fetch
+from processors.archive_context import attach_derived_archive_context
 from scripts.newswire_pull import main as newswire_main
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,11 +67,13 @@ def main(*, events=None, skip_collect: bool = False, now: datetime | None = None
         print("news-wire-live: no publisher-URL events; abstaining")
         return None
 
-    serialized = attach_new_url_captures(
-        [serialize_observation(obs) for obs in observations],
-        previous_urls=previous_urls_from_reading(OUT),
-        fetch=_save_text if live_collect else None,
-        limit=8,
+    serialized = attach_derived_archive_context(
+        attach_new_url_captures(
+            [serialize_observation(obs) for obs in observations],
+            previous_urls=previous_urls_from_reading(OUT),
+            fetch=_save_text if live_collect else None,
+            limit=8,
+        )
     )
     generated = iso_z(now or datetime.now(timezone.utc))
     out = {

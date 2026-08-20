@@ -110,6 +110,7 @@ SNAPSHOT_OUTPUTS = {
     "public-deletion-ledgers": "readings/public-deletion-ledgers-latest.json",
     "official-first-seen": "readings/official-first-seen-latest.json",
     "news-wire-live": "readings/news-wire-live-latest.json",
+    "archive-news-context": "readings/archive-news-context-latest.json",
     "wikipedia-gazetteer-rc": "readings/wikipedia-gazetteer-rc-latest.json",
     "baike-public-snapshot": "readings/baike-public-snapshot-latest.json",
     "public-hot-boards": "readings/public-hot-boards-latest.json",
@@ -165,6 +166,7 @@ _STANDARD = {
     "public-deletion-ledgers": Cadence(8, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "official-first-seen": Cadence(11, "*/12", expires_s=8 * 3600, interval_s=12 * 3600),
     "news-wire-live": Cadence(21, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "archive-news-context": Cadence(25, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "wikipedia-gazetteer-rc": Cadence(27, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "baike-public-snapshot": Cadence(16, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "public-hot-boards": Cadence(36, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
@@ -225,6 +227,7 @@ _VIGOROUS = {
     "public-deletion-ledgers": Cadence(8, "*", expires_s=45 * 60, interval_s=3600),
     "official-first-seen": Cadence(11, "*", expires_s=45 * 60, interval_s=3600),
     "news-wire-live": Cadence(21, "*", expires_s=45 * 60, interval_s=3600),
+    "archive-news-context": Cadence(25, "*", expires_s=45 * 60, interval_s=3600),
     "wikipedia-gazetteer-rc": Cadence(27, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "baike-public-snapshot": Cadence(16, "*", expires_s=45 * 60, interval_s=3600),
     "public-hot-boards": Cadence(36, "*", expires_s=45 * 60, interval_s=3600),
@@ -410,6 +413,7 @@ _COUNT_PATHS = {
     "public-deletion-ledgers": ("n_observations",),
     "official-first-seen": ("n_observations",),
     "news-wire-live": ("n_observations",),
+    "archive-news-context": ("n_events_contextualized",),
     "wikipedia-gazetteer-rc": ("n_observations",),
     "baike-public-snapshot": ("n_observations",),
     "public-hot-boards": ("n_observations",),
@@ -460,6 +464,14 @@ def _observation(path: Path, source: str | None = None) -> tuple[str | None, int
     if counts:
         return str(token) if token is not None else None, max(counts)
     return str(token) if token is not None else None, 1 if token is not None else 0
+
+
+def _refresh_archive_news_context(root: Path) -> None:
+    """Attach derived crawl context after a live news family round, or abstain."""
+
+    from scripts.archive_news_context_pull import main
+
+    main(root=root)
 
 
 def _invoke_snapshot(name: str, root: Path) -> None:
@@ -584,12 +596,17 @@ def _invoke_snapshot(name: str, root: Path) -> None:
     elif name == "public-deletion-ledgers":
         from scripts.public_deletion_ledgers_pull import main
         main()
+        _refresh_archive_news_context(root)
     elif name == "official-first-seen":
         from scripts.official_first_seen_pull import main
         main()
+        _refresh_archive_news_context(root)
     elif name == "news-wire-live":
         from scripts.news_wire_live_pull import main
         main()
+        _refresh_archive_news_context(root)
+    elif name == "archive-news-context":
+        _refresh_archive_news_context(root)
     elif name == "wikipedia-gazetteer-rc":
         from scripts.wikipedia_gazetteer_rc_pull import main
         main()

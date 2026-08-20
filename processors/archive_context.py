@@ -9,6 +9,7 @@ features without copying article bodies, asserting causality, or assigning truth
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import os
 import tempfile
@@ -41,6 +42,24 @@ from processors.editorial_priority import editorial_priority
 UTC = timezone.utc
 CONTEXT_SCHEMA_VERSION = "palimpsest-archive-news-context/v1"
 TRAINING_SCHEMA_VERSION = "palimpsest-story-ranking-features/v1"
+CONTEXT_METHOD = (
+    "deterministic point-in-time topical join; no article-body fetch, causal inference, "
+    "truth score, or automatic publication"
+)
+FEATURES_FILENAME = "common-crawl-features.jsonl"
+LIVE_ARCHIVE_CONTEXT_FAMILIES = (
+    "news-wire-live",
+    "public-deletion-ledgers",
+    "official-first-seen",
+)
+HOST_PUBLIC_COPY = "coverage on this official host moved"
+TOPIC_PUBLIC_COPY = "this event shares topics with a watched host."
+_FORBIDDEN_COPY = (
+    "censored because",
+    "this was censored",
+    "intent to",
+    "because they",
+)
 MAX_DOCUMENT_BYTES = 128 * 1024 * 1024
 MAX_FEATURE_LINE_BYTES = 1024 * 1024
 
@@ -209,6 +228,192 @@ def _bounded_number(value: object) -> float | None:
     return number if math.isfinite(number) else None
 
 
+def derived_feature_paths() -> list[Path]:
+    """Candidate derived feature exports. Never inbox, sqlite, or WARC."""
+
+    from collectors.common_crawl_lake import DEFAULT_WAREHOUSE
+
+    paths: list[Path] = []
+    env_features = (os.getenv("PALIMPSEST_COMMON_CRAWL_FEATURES") or "").strip()
+    if env_features:
+        paths.append(Path(env_features).expanduser())
+    env_warehouse = (os.getenv("PALIMPSEST_COMMON_CRAWL_WAREHOUSE_DIR") or "").strip()
+    if env_warehouse:
+        paths.append(Path(env_warehouse).expanduser() / "derived" / FEATURES_FILENAME)
+    paths.append(Path("/var/lib/palimpsest/common-crawl") / "derived" / FEATURES_FILENAME)
+    paths.append(DEFAULT_WAREHOUSE / "derived" / FEATURES_FILENAME)
+    return paths
+
+
+def find_feature_export(path: Path | str | None = None) -> Path | None:
+    """Return the first readable derived feature export. Missing lake abstains."""
+
+    candidates = [Path(path).expanduser()] if path is not None else derived_feature_paths()
+    for candidate in candidates:
+        if candidate.is_file() and candidate.stat().st_size > 0:
+            return candidate
+    return None
+
+
+def load_feature_export_or_none(
+    path: Path | str | None = None,
+    config: LakeConfig | None = None,
+) -> tuple[list[dict[str, Any]], str] | None:
+    """Load derived feature rows. Missing or empty lake returns None."""
+
+    feature_path = find_feature_export(path)
+    if feature_path is None:
+        return None
+    cfg = config or load_config()
+    return load_feature_rows(feature_path, cfg)
+
+
+def _optional_timestamp(value: object) -> datetime | None:
+    if type(value) is not str or not value:
+        return None
+    try:
+        return _timestamp(value, "optional")
+    except ValidationError:
+        return None
+
+
+def _observation_when(record: Mapping[str, Any]) -> datetime | None:
+    for field in (
+        "detected_at",
+        "first_seen",
+        "published_at",
+        "updated_at",
+        "last_seen",
+        "last_confirmed_alive",
+    ):
+        parsed = _optional_timestamp(record.get(field))
+        if parsed is not None:
+            return parsed
+    provenance = record.get("provenance")
+    if isinstance(provenance, Mapping):
+        parsed = _optional_timestamp(provenance.get("fetched_at"))
+        if parsed is not None:
+            return parsed
+    return None
+
+
+def _explicit_topics(record: Mapping[str, Any]) -> set[str]:
+    topics = record.get("topics")
+    if not isinstance(topics, list):
+        return set()
+    return {topic for topic in topics if type(topic) is str and topic}
+
+
+def _observation_url(record: Mapping[str, Any]) -> str | None:
+    for field in ("url", "source_url", "event_url"):
+        value = record.get(field)
+        if type(value) is str and value:
+            return value
+    return None
+
+
+def public_copy_for_match(match_kind: str) -> str:
+    """Context-only sentence. Never assigns motive, intent, or causation."""
+
+    if match_kind == "host":
+        copy = HOST_PUBLIC_COPY
+    elif match_kind == "topic":
+        copy = TOPIC_PUBLIC_COPY
+    else:
+        raise ValidationError("archive context match_kind is not host or topic")
+    lowered = copy.casefold()
+    if any(token in lowered for token in _FORBIDDEN_COPY):
+        raise ValidationError("archive context copy is not context-only")
+    return copy
+
+
+def match_feature_rows_for_record(
+    record: Mapping[str, Any],
+    feature_rows: list[dict[str, Any]],
+    config: LakeConfig,
+    *,
+    when: datetime | None = None,
+) -> tuple[str | None, list[dict[str, Any]]]:
+    """Return (match_kind, point-in-time feature rows). Never invents a join."""
+
+    event_time = when or _observation_when(record)
+    if event_time is None:
+        return None, []
+    url = _observation_url(record)
+    identity = public_url_identity(url, maximum_chars=config.limits.url_chars) if url else None
+    if identity is not None:
+        target = config.target_by_host.get(identity[1])
+        if target is not None and "palimpsest" in target.products:
+            row = _latest_before(feature_rows, target.id, event_time)
+            if row is not None:
+                return "host", [row]
+    topic_set = _explicit_topics(record)
+    if not topic_set:
+        return None, []
+    matched: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for target in config.targets:
+        if "palimpsest" not in target.products:
+            continue
+        if not topic_set.intersection(target.topics):
+            continue
+        row = _latest_before(feature_rows, target.id, event_time)
+        if row is None or row["target_id"] in seen:
+            continue
+        seen.add(row["target_id"])
+        matched.append(row)
+    if not matched:
+        return None, []
+    return "topic", matched
+
+
+def _public_archive_receipts(
+    rows: list[dict[str, Any]], event_time: datetime
+) -> list[dict[str, Any]]:
+    return [_archive_receipt(row, event_time) for row in rows]
+
+
+def attach_derived_archive_context(
+    observations: Iterable[Mapping[str, Any]],
+    *,
+    feature_rows: list[dict[str, Any]] | None = None,
+    feature_export_sha256: str | None = None,
+    config: LakeConfig | None = None,
+    features_path: Path | str | None = None,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Attach derived host/topic receipts. Missing lake leaves observations unchanged."""
+
+    rows = [dict(item) for item in observations if type(item) is dict or isinstance(item, Mapping)]
+    loaded = None
+    if feature_rows is None:
+        loaded = load_feature_export_or_none(features_path, config)
+        if loaded is None:
+            return rows
+        feature_rows, feature_export_sha256 = loaded
+    cfg = config or load_config()
+    attached: list[dict[str, Any]] = []
+    for record in rows:
+        row = dict(record)
+        event_time = _observation_when(row) or now
+        match_kind, matched = match_feature_rows_for_record(
+            row, feature_rows, cfg, when=event_time
+        )
+        if match_kind is None or not matched or event_time is None:
+            attached.append(row)
+            continue
+        receipts = _public_archive_receipts(matched, event_time)
+        row["archive_context"] = receipts
+        row["archive_context_match"] = {
+            "match_kind": match_kind,
+            "public_copy": public_copy_for_match(match_kind),
+            "feature_export_sha256": feature_export_sha256,
+            "relation": "context-not-causation",
+        }
+        attached.append(row)
+    return attached
+
+
 def build_archive_context(
     newswire: dict[str, Any],
     osint_board: dict[str, Any],
@@ -345,10 +550,7 @@ def build_archive_context(
         "osint_generated_at": osint_board.get("generated_at"),
         "feature_export_sha256": feature_export_sha256,
         "scope": "China-scoped RSS metadata joined to prior aggregate archive and signal context",
-        "method": (
-            "deterministic point-in-time topical join; no article-body fetch, causal inference, "
-            "truth score, or automatic publication"
-        ),
+        "method": CONTEXT_METHOD,
         "n_events_considered": len(events),
         "n_events_contextualized": len(context_events),
         "events": context_events,
@@ -546,6 +748,227 @@ def write_china_lake_joins(
         "status": document["status"],
         "matches": len(document.get("matches") or []),
         "path": str(dest) if wrote else None,
+    }
+
+
+def _live_family_filename(family: str) -> str:
+    return f"{family}-latest.json"
+
+
+def _load_optional_json(path: Path, label: str) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        value = _read_json(path, label)
+    except ValidationError:
+        return None
+    return value
+
+
+def _live_event_id(record: Mapping[str, Any], family: str) -> str:
+    from core.china_observation import observation_key, public_text
+
+    provenance = record.get("provenance") if isinstance(record.get("provenance"), Mapping) else {}
+    event_id = public_text(provenance.get("event_id"), limit=80)
+    if event_id:
+        return event_id
+    return f"{family}:{observation_key(record)}"
+
+
+def _live_context_event(
+    record: Mapping[str, Any],
+    *,
+    family: str,
+    match_kind: str,
+    archive_context: list[dict[str, Any]],
+    published_at: str,
+) -> dict[str, Any]:
+    from core.china_observation import observation_key
+
+    topics = sorted(_explicit_topics(record))
+    return {
+        "event_id": _live_event_id(record, family),
+        "family": family,
+        "observation_key": observation_key(record),
+        "event_url": _observation_url(record),
+        "published_at": published_at,
+        "topics": topics,
+        "relation": "context-not-causation",
+        "match_kind": match_kind,
+        "public_copy": public_copy_for_match(match_kind),
+        "archive_context": archive_context,
+        "automatic_publication_eligible": False,
+        "limitations": [
+            "Archive links are topical or host-level context, not evidence that one caused another.",
+            "Common Crawl is monthly and may substantially predate a live observation.",
+            "A coverage change is an archive coverage fact, not a finding about why a page changed.",
+        ],
+    }
+
+
+def build_public_archive_news_context(
+    *,
+    feature_rows: list[dict[str, Any]],
+    feature_export_sha256: str,
+    config: LakeConfig,
+    live_families: Mapping[str, Mapping[str, Any] | None] | None = None,
+    newswire: Mapping[str, Any] | None = None,
+    osint_board: Mapping[str, Any] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Public context-only reading. Joins only when a feature row already matches."""
+
+    context_events: list[dict[str, Any]] = []
+    n_events_considered = 0
+    family_status: dict[str, str] = {}
+    if (
+        type(newswire) is dict
+        and type(osint_board) is dict
+        and newswire.get("schema_version") == "palimpsest-newswire.v1"
+        and osint_board.get("schema_version") == "osint-china.v1"
+    ):
+        wire = build_archive_context(
+            dict(newswire),
+            dict(osint_board),
+            feature_rows,
+            feature_export_sha256,
+            config,
+            now=now,
+        )
+        n_events_considered += int(wire.get("n_events_considered") or 0)
+        for event in wire.get("events") or []:
+            if type(event) is not dict:
+                continue
+            row = dict(event)
+            row["family"] = "newswire"
+            row["match_kind"] = "topic" if row.get("archive_context") else None
+            if row.get("archive_context"):
+                row["public_copy"] = public_copy_for_match("topic")
+                context_events.append(row)
+    families = live_families or {}
+    n_observations_considered = 0
+    n_observations_joined = 0
+    for family in LIVE_ARCHIVE_CONTEXT_FAMILIES:
+        payload = families.get(family)
+        if type(payload) is not dict:
+            family_status[family] = "missing"
+            continue
+        family_status[family] = "present"
+        observations = payload.get("observations")
+        if not isinstance(observations, list):
+            continue
+        for record in observations:
+            if type(record) is not dict:
+                continue
+            n_observations_considered += 1
+            event_time = _observation_when(record)
+            match_kind, matched = match_feature_rows_for_record(
+                record, feature_rows, config, when=event_time
+            )
+            if match_kind is None or not matched or event_time is None:
+                continue
+            published_at = record.get("detected_at") or record.get("first_seen") or record.get(
+                "published_at"
+            )
+            if type(published_at) is not str or not published_at:
+                published_at = _iso_now(event_time)
+            context_events.append(
+                _live_context_event(
+                    record,
+                    family=family,
+                    match_kind=match_kind,
+                    archive_context=_public_archive_receipts(matched, event_time),
+                    published_at=published_at,
+                )
+            )
+            n_observations_joined += 1
+    context_events.sort(
+        key=lambda item: (item.get("published_at") or "", item.get("event_id") or ""),
+        reverse=True,
+    )
+    document: dict[str, Any] = {
+        "schema_version": CONTEXT_SCHEMA_VERSION,
+        "generated_at": _iso_now(now),
+        "status": "ok",
+        "source": (
+            "Common Crawl derived host features joined to live news-wire, "
+            "official-first-seen, and public-deletion-ledger observations"
+        ),
+        "scope": (
+            "Context-only host coverage and topical overlap. No article-body fetch. "
+            "No causal claim. Raw Common Crawl URLs and source bodies stay private."
+        ),
+        "method": CONTEXT_METHOD,
+        "feature_export_sha256": feature_export_sha256,
+        "families": family_status,
+        "n_events_considered": n_events_considered,
+        "n_events_contextualized": len(context_events),
+        "n_observations_considered": n_observations_considered,
+        "n_observations_joined": n_observations_joined,
+        "events": context_events,
+        "publication_policy": {
+            "automatic_publication": "prohibited",
+            "human_review_required": True,
+            "causal_language": "prohibited-without-a-declared-design",
+            "person_level_analysis": "prohibited",
+        },
+    }
+    copies = [
+        str(event.get("public_copy") or "")
+        for event in context_events
+        if type(event) is dict
+    ]
+    lowered = " ".join(copies).casefold()
+    if any(token in lowered for token in _FORBIDDEN_COPY):
+        raise ValidationError("public archive context copy is not context-only")
+    document["context_sha256"] = hashlib.sha256(_canonical_json(document)).hexdigest()
+    return document
+
+
+def write_public_archive_news_context(
+    *,
+    readings_dir: Path | str,
+    output_path: Path | str | None = None,
+    features_path: Path | str | None = None,
+    config_path: Path | str = DEFAULT_CONFIG,
+    now: datetime | None = None,
+) -> dict[str, Any] | None:
+    """Write the public reading, or abstain when the derived lake is missing."""
+
+    config = load_config(config_path)
+    loaded = load_feature_export_or_none(features_path, config)
+    if loaded is None:
+        return None
+    feature_rows, feature_sha256 = loaded
+    readings = Path(readings_dir)
+    live_families: dict[str, dict[str, Any] | None] = {}
+    for family in LIVE_ARCHIVE_CONTEXT_FAMILIES:
+        live_families[family] = _load_optional_json(
+            readings / _live_family_filename(family), family
+        )
+    newswire = _load_optional_json(readings / "newswire-latest.json", "newswire")
+    osint_board = _load_optional_json(readings / "osint-china-latest.json", "OSINT board")
+    document = build_public_archive_news_context(
+        feature_rows=feature_rows,
+        feature_export_sha256=feature_sha256,
+        config=config,
+        live_families=live_families,
+        newswire=newswire,
+        osint_board=osint_board,
+        now=now,
+    )
+    dest = Path(output_path) if output_path is not None else readings / "archive-news-context-latest.json"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "status": "ok",
+        "context_sha256": document["context_sha256"],
+        "events": document["n_events_contextualized"],
+        "observations_joined": document["n_observations_joined"],
+        "path": str(dest),
     }
 
 

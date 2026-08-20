@@ -9,17 +9,17 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 62,
+    "datasets": 63,
     "states": {
       "disabled": 1,
       "fresh": 41,
       "gated": 6,
       "private-node": 1,
       "stale": 10,
-      "warming": 3
+      "warming": 4
     },
     "layers": {
-      "content": 11,
+      "content": 12,
       "cross-layer": 17,
       "economy": 4,
       "integrity": 1,
@@ -29,8 +29,8 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 13747146,
-    "history_rows": 6533
+    "published_bytes": 13747851,
+    "history_rows": 6536
   },
   "datasets": [
     {
@@ -407,15 +407,15 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-19T06:00:00.280611Z",
-        "age_seconds": 79110,
+        "observed_at": "2026-08-20T06:00:18.004639Z",
+        "age_seconds": 0,
         "counts": {
           "series_points": 70,
           "n_events": 0
         },
-        "latest_bytes": 3374,
-        "history_bytes": 2855,
-        "history_rows": 28,
+        "latest_bytes": 3372,
+        "history_bytes": 2957,
+        "history_rows": 29,
         "latest_available": true,
         "history_available": true
       },
@@ -546,14 +546,14 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-19T05:45:54Z",
-        "age_seconds": 79957,
+        "observed_at": "2026-08-20T05:45:24Z",
+        "age_seconds": 0,
         "counts": {
-          "history_days": 415
+          "history_days": 416
         },
         "latest_bytes": 1077,
-        "history_bytes": 119343,
-        "history_rows": 415,
+        "history_bytes": 119641,
+        "history_rows": 416,
         "latest_available": true,
         "history_available": true
       },
@@ -1014,6 +1014,55 @@
       }
     },
     {
+      "id": "archive-news-context",
+      "name": "Archive news context",
+      "description": "Deterministic point-in-time join of live news-wire, official-first-seen, and public-deletion-ledger observations to Common Crawl derived host features. Public copy is context-only: coverage on a watched official host, or shared topics with a watched host. No article-body fetch, causal inference, motive sentence, raw Common Crawl URL dump, or WARC body.",
+      "layer": "content",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "warming",
+      "cadence": "PT1H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Common Crawl derived host features",
+        "News-wire-live observations",
+        "Official first-seen landings",
+        "Public deletion ledgers"
+      ],
+      "latest": "readings/archive-news-context-latest.json",
+      "history": "readings/archive-news-context-history.jsonl",
+      "landing_page": "osint-china.html",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": [
+        "n_events_contextualized",
+        "n_observations_joined"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/archive-news-context-latest.json",
+        "history": "https://palimpsest.info/readings/archive-news-context-history.jsonl",
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
+      }
+    },
+    {
       "id": "app-storefront",
       "name": "App Storefront panel",
       "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
@@ -1093,14 +1142,14 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-19T05:59:54.732335Z",
-        "age_seconds": 79116,
+        "observed_at": "2026-08-20T06:00:10.337526Z",
+        "age_seconds": 0,
         "counts": {
-          "country.total_tested": 109541
+          "country.total_tested": 109652
         },
         "latest_bytes": 1909,
-        "history_bytes": 6754,
-        "history_rows": 22,
+        "history_bytes": 7061,
+        "history_rows": 23,
         "latest_available": true,
         "history_available": true
       },
