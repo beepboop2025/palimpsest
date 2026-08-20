@@ -78,6 +78,7 @@ def _gfw_rows(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
         anomaly = int(raw.get("anomaly_count") or 0)
         out.append({
             "host": host,
+            "asn": None,
             "measurement_count": measurements,
             "completed_measurement_count": completed,
             "anomaly_count": anomaly,
@@ -181,6 +182,7 @@ def scan_warehouse_for_hosts(
                     )
                     row = index.setdefault(host, {
                         "host": host,
+                        "asn": None,
                         "measurement_count": 0,
                         "completed_measurement_count": 0,
                         "anomaly_count": 0,
@@ -197,6 +199,11 @@ def scan_warehouse_for_hosts(
                         row["last_measurement"] is None or measured > row["last_measurement"]
                     ):
                         row["last_measurement"] = measured
+                        asn = record.get("probe_asn")
+                        if type(asn) is int and asn > 0:
+                            row["asn"] = f"AS{asn}"
+                        elif isinstance(asn, str) and asn.upper().startswith("AS"):
+                            row["asn"] = asn.upper()
         except OSError as exc:
             logger.info("OONI warehouse object unreadable: %s", type(exc).__name__)
             continue
@@ -236,6 +243,7 @@ def join_hosts(
             n_miss += 1
             rows.append({
                 "host": host,
+                "asn": None,
                 "status": "miss",
                 "measurement_count": None,
                 "completed_measurement_count": None,

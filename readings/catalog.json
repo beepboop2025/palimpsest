@@ -9,27 +9,27 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 64,
+    "datasets": 67,
     "states": {
       "disabled": 1,
       "fresh": 41,
       "gated": 6,
       "private-node": 1,
       "stale": 10,
-      "warming": 5
+      "warming": 8
     },
     "layers": {
-      "content": 11,
+      "content": 13,
       "cross-layer": 18,
       "economy": 4,
       "integrity": 1,
       "model": 7,
       "narrative": 2,
-      "network": 13,
+      "network": 14,
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 14087650,
+    "published_bytes": 14091528,
     "history_rows": 6549
   },
   "datasets": [
@@ -1106,6 +1106,136 @@
       "urls": {
         "latest": "https://palimpsest.info/readings/peer-context-latest.json",
         "history": "https://palimpsest.info/readings/peer-context-history.jsonl",
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
+      }
+    },
+    {
+      "id": "ooni-peer-context",
+      "name": "OONI peer-context host join",
+      "description": "Host/ASN feature rows joined from already-held ooni-gfw-latest or warehouse/ooni-bulk. Does not re-download the 33G archive. Silent or miss joins fail closed.",
+      "layer": "network",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "warming",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "OONI Probe / OONI data"
+      ],
+      "latest": "readings/ooni-peer-context-latest.json",
+      "history": "readings/ooni-peer-context-history.jsonl",
+      "landing_page": "news/china/situation/",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": [
+        "n_hits"
+      ],
+      "license": {
+        "name": "OONI data license; Palimpsest derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/ooni-peer-context-latest.json",
+        "history": "https://palimpsest.info/readings/ooni-peer-context-history.jsonl",
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
+      }
+    },
+    {
+      "id": "cdt-context",
+      "name": "CDT peer editorial context",
+      "description": "Titles, links, bounded excerpts, and gazetteer terms from public CDT RSS. Full articles are not republished. A silent feed fails closed.",
+      "layer": "content",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "warming",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "China Digital Times RSS"
+      ],
+      "latest": "readings/cdt-context-latest.json",
+      "history": "readings/cdt-context-history.jsonl",
+      "landing_page": "news/china/situation/",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": [
+        "n_items"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/cdt-context-latest.json",
+        "history": "https://palimpsest.info/readings/cdt-context-history.jsonl",
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
+      }
+    },
+    {
+      "id": "weiboscope-context",
+      "name": "Weiboscope documented abstention",
+      "description": "Citation pointer only (doi:10.25442/hku.16674565). The 2012 226M-message dump is not downloaded or stored.",
+      "layer": "content",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "warming",
+      "cadence": "PT6H",
+      "geography": [
+        "CN"
+      ],
+      "sources": [
+        "Weiboscope / HKU JMSC citation"
+      ],
+      "latest": "readings/weiboscope-context-latest.json",
+      "landing_page": "news/china/situation/",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": [],
+      "license": {
+        "name": "Citation only; no dump retained",
+        "url": "https://doi.org/10.25442/hku.16674565"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/weiboscope-context-latest.json",
         "landing_page": "https://palimpsest.info/news/china/situation/",
         "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
       }
@@ -2478,11 +2608,11 @@
         "age_seconds": 5,
         "counts": {
           "inputs": 8,
-          "resources": 117,
-          "dependency_groups": 92,
+          "resources": 120,
+          "dependency_groups": 94,
           "projects": 5
         },
-        "latest_bytes": 185188,
+        "latest_bytes": 189066,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,

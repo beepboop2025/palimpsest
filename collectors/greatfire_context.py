@@ -98,7 +98,19 @@ def compact_verdict(payload: Mapping[str, Any], *, query_url: str, path: str) ->
         "stale": bool(payload.get("stale")) if payload.get("stale") is not None else None,
         "as_of": _as_of(payload.get("as_of") or payload.get("last_tested")),
         "last_tested": _as_of(payload.get("last_tested") or payload.get("as_of")),
+        "last_tested_at": _as_of(payload.get("last_tested") or payload.get("as_of")),
         "first_tested": _as_of(payload.get("first_tested")),
+        "n_tests": _count(payload.get("conclusions") or payload.get("tests")),
+        "block_share_90d": (
+            None
+            if _finite(payload.get("blocked_percent")) is None
+            else round(
+                float(payload["blocked_percent"]) / 100.0
+                if float(payload["blocked_percent"]) > 1
+                else float(payload["blocked_percent"]),
+                4,
+            )
+        ),
         "source_url": credit_url(path),
         "attribution": ATTRIBUTION,
         "license": LICENSE,

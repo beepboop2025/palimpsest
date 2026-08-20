@@ -25,6 +25,12 @@ from core.peer_context import (
     collect_palimpsest_urls,
     load_peer_document,
 )
+from core.peer_features import (
+    append_history,
+    build_feature_table,
+    write_feature_jsonl,
+    write_json,
+)
 from core.safe_fetch import FetchError, safe_fetch
 
 
@@ -32,6 +38,12 @@ ROOT = Path(__file__).resolve().parent.parent
 READINGS = ROOT / "readings"
 OUT = READINGS / "peer-context-latest.json"
 HIST = READINGS / "peer-context-history.jsonl"
+FEATURES = READINGS / "peer-context-features.jsonl"
+OONI_OUT = READINGS / "ooni-peer-context-latest.json"
+OONI_HIST = READINGS / "ooni-peer-context-history.jsonl"
+CDT_OUT = READINGS / "cdt-context-latest.json"
+CDT_HIST = READINGS / "cdt-context-history.jsonl"
+WEIBO_OUT = READINGS / "weiboscope-context-latest.json"
 GF_CACHE = READINGS / "greatfire-context-latest.json"
 OONI_GFW = READINGS / "ooni-gfw-latest.json"
 def _warehouse_path() -> Path | None:
@@ -110,8 +122,34 @@ def main(*, fetch=None, now: datetime | None = None, probe_weiboscope: bool = Tr
     document["schema_version"] = SCHEMA_VERSION
     document["method_version"] = METHOD_VERSION
     document["generated_at"] = iso_z(now)
+    table = build_feature_table(
+        greatfire=greatfire,
+        ooni=document.get("ooni"),
+        cdt_items_or_doc=cdt_items,
+        now=now,
+    )
+    docs = table["documents"]
+    document["feature_rows"] = table["n_rows"]
     READINGS.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(document, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_feature_jsonl(FEATURES, table["rows"])
+    if docs["ooni"] is None:
+        print("peer-context: OONI silent or miss — not publishing ooni-peer-context-latest")
+    else:
+        write_json(OONI_OUT, docs["ooni"])
+        append_history(OONI_HIST, {
+            "generated_at": document["generated_at"],
+            "n_hits": docs["ooni"]["n_hits"],
+        })
+    if docs["cdt"] is None:
+        print("peer-context: CDT silent — not publishing cdt-context-latest")
+    else:
+        write_json(CDT_OUT, docs["cdt"])
+        append_history(CDT_HIST, {
+            "generated_at": document["generated_at"],
+            "n_titles": docs["cdt"]["n_items"],
+        })
+    write_json(WEIBO_OUT, docs["weiboscope"])
     with HIST.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps({
             "generated_at": document["generated_at"],
@@ -119,12 +157,14 @@ def main(*, fetch=None, now: datetime | None = None, probe_weiboscope: bool = Tr
             "n_greatfire": document["n_greatfire"],
             "n_ooni": document["n_ooni"],
             "n_cdt": document["n_cdt"],
+            "n_feature_rows": table["n_rows"],
             "weiboscope_dump_on_node": False,
         }, ensure_ascii=False) + "\n")
     print(
         f"peer-context: {document['n_hosts']} hosts, "
         f"{document['n_greatfire']} GreatFire, {document['n_ooni']} OONI, "
-        f"{document['n_cdt']} CDT; Weiboscope dump not on node"
+        f"{document['n_cdt']} CDT, {table['n_rows']} feature rows; "
+        "Weiboscope dump not on node"
     )
     return document
 

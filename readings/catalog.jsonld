@@ -586,6 +586,53 @@
     },
     {
       "@type": "Dataset",
+      "identifier": "ooni-peer-context",
+      "name": "OONI peer-context host join",
+      "description": "Host/ASN feature rows joined from already-held ooni-gfw-latest or warehouse/ooni-bulk. Does not re-download the 33G archive. Silent or miss joins fail closed.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "cdt-context",
+      "name": "CDT peer editorial context",
+      "description": "Titles, links, bounded excerpts, and gazetteer terms from public CDT RSS. Full articles are not republished. A silent feed fails closed.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "weiboscope-context",
+      "name": "Weiboscope documented abstention",
+      "description": "Citation pointer only (doi:10.25442/hku.16674565). The 2012 226M-message dump is not downloaded or stored.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://doi.org/10.25442/hku.16674565",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
       "identifier": "app-storefront",
       "name": "App Storefront panel",
       "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",

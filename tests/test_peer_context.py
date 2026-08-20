@@ -17,6 +17,16 @@ from collectors.ooni_peer_join import host_of, join_hosts
 from collectors.public_deletion_ledgers import collect_ledgers
 from collectors.weiboscope import DOI, documented_abstention, probe_public_index
 from core import event_analysis, peer_context
+from core.peer_features import (
+    FEATURE_FIELDS,
+    GF_SCHEMA,
+    OONI_SCHEMA,
+    build_feature_table,
+    cdt_document,
+    greatfire_document,
+    ooni_document,
+    weiboscope_document,
+)
 from core.governance import KillSwitch
 
 
@@ -56,6 +66,8 @@ def test_greatfire_lookup_from_a_fixture_url():
     assert "history" not in row
     assert "GreatFire" in row["attribution"]
     assert row["license"] == "CC BY 4.0"
+    assert row["block_share_90d"] == 1.0
+    assert "history" not in row
     sentence = peer_context.greatfire_sentence(row["verdict"], row["as_of"], status="live")
     assert sentence == "GreatFire's 90-day verdict for this host is blocked as of 2026-08-15."
 
@@ -93,6 +105,39 @@ def test_greatfire_pull_does_not_publish_a_hollow_board(monkeypatch, tmp_path):
 
     assert pull.main(fetch=fetch, urls=[FIXTURE_URL], now=NOW) is None
     assert not (tmp_path / "greatfire-context-latest.json").exists()
+
+
+def test_peer_context_pull_fails_closed_when_measurement_peers_are_silent(monkeypatch, tmp_path):
+    import scripts.peer_context_pull as pull
+
+    monkeypatch.setattr(pull, "OUT", tmp_path / "peer-context-latest.json")
+    monkeypatch.setattr(pull, "HIST", tmp_path / "peer-context-history.jsonl")
+    monkeypatch.setattr(pull, "FEATURES", tmp_path / "peer-context-features.jsonl")
+    monkeypatch.setattr(pull, "OONI_OUT", tmp_path / "ooni-peer-context-latest.json")
+    monkeypatch.setattr(pull, "OONI_HIST", tmp_path / "ooni-peer-context-history.jsonl")
+    monkeypatch.setattr(pull, "CDT_OUT", tmp_path / "cdt-context-latest.json")
+    monkeypatch.setattr(pull, "CDT_HIST", tmp_path / "cdt-context-history.jsonl")
+    monkeypatch.setattr(pull, "WEIBO_OUT", tmp_path / "weiboscope-context-latest.json")
+    monkeypatch.setattr(pull, "GF_CACHE", tmp_path / "missing-greatfire.json")
+    monkeypatch.setattr(pull, "OONI_GFW", tmp_path / "missing-ooni-gfw.json")
+    monkeypatch.setattr(pull, "WAREHOUSE", None)
+    monkeypatch.setattr(pull, "READINGS", tmp_path)
+    monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
+    monkeypatch.setattr(pull, "collect_palimpsest_urls", lambda *_args, **_kwargs: [FIXTURE_URL])
+    monkeypatch.setattr(pull, "cdt_items_from_readings", lambda *_args, **_kwargs: [])
+
+    document = pull.main(fetch=lambda _url: (_ for _ in ()).throw(OSError("silent")), now=NOW, probe_weiboscope=False)
+    assert document is not None
+    assert not (tmp_path / "ooni-peer-context-latest.json").exists()
+    assert not (tmp_path / "cdt-context-latest.json").exists()
+    assert (tmp_path / "weiboscope-context-latest.json").exists()
+    assert (tmp_path / "peer-context-features.jsonl").exists()
+    feature_lines = (tmp_path / "peer-context-features.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(feature_lines) == 1
+    row = json.loads(feature_lines[0])
+    assert row["peer"] == "weiboscope"
+    assert row["status"] == "abstain"
+    assert "GreatFire" not in row["credit"]
 
 
 def test_ooni_miss_abstains(tmp_path):
@@ -286,9 +331,100 @@ def test_default_analysis_has_empty_peer_context_and_outside_remit_stays_empty()
 
 
 def test_no_fake_latest_peer_files_are_committed():
-    assert not (ROOT / "readings" / "greatfire-context-latest.json").exists()
-    assert not (ROOT / "readings" / "peer-context-latest.json").exists()
-    assert not (ROOT / "readings" / "weiboscope-context-latest.json").exists()
+    for name in (
+        "greatfire-context-latest.json",
+        "peer-context-latest.json",
+        "ooni-peer-context-latest.json",
+        "cdt-context-latest.json",
+        "weiboscope-context-latest.json",
+        "peer-context-features.jsonl",
+    ):
+        assert not (ROOT / "readings" / name).exists()
+
+
+def test_feature_table_emits_ranker_rows_and_silent_peers_fail_closed():
+    gf = {
+        "generated_at": "2026-08-20T12:00:00Z",
+        "n_urls_queried": 1,
+        "n_verdicts": 1,
+        "verdicts": [{
+            "query_url": "https://www.news.cn/",
+            "path": "https/www.news.cn",
+            "found": True,
+            "verdict": "not blocked",
+            "blocked_percent": 2,
+            "block_share_90d": 0.02,
+            "window_days": 90,
+            "as_of": "2026-08-18T00:00:00Z",
+            "last_tested": "2026-08-18T00:00:00Z",
+            "n_tests": 40,
+            "conclusions": 40,
+        }],
+    }
+    ooni = {
+        "generated_at": "2026-08-20T12:00:00Z",
+        "n_hits": 1,
+        "hosts": [{
+            "host": "www.hrw.org",
+            "asn": "AS4134",
+            "status": "live",
+            "measurement_count": 44,
+            "anomaly_rate": 1.0,
+            "last_measurement": "2026-08-19T00:00:00Z",
+        }],
+    }
+    cdt = [{
+        "title": "Minitrue: 白纸运动 directive",
+        "url": "https://chinadigitaltimes.net/2026/08/example/",
+        "excerpt": "Bounded excerpt.",
+        "published_at": "2026-08-17T00:00:00Z",
+    }]
+    table = build_feature_table(greatfire=gf, ooni=ooni, cdt_items_or_doc=cdt, now=NOW)
+    by_peer = {row["peer"]: row for row in table["rows"]}
+    gf_row = by_peer["greatfire"]
+    assert set(gf_row) == FEATURE_FIELDS
+    assert gf_row["host"] == "www.news.cn"
+    assert gf_row["path"] == "https/www.news.cn"
+    assert gf_row["verdict"] == "not blocked"
+    assert gf_row["window_start"] == "2026-05-20T00:00:00Z"
+    assert gf_row["window_end"] == "2026-08-18T00:00:00Z"
+    assert gf_row["block_share_90d"] == 0.02
+    assert gf_row["n_tests"] == 40
+    assert gf_row["last_tested_at"] == "2026-08-18T00:00:00Z"
+    assert "GreatFire" in gf_row["credit"]
+    assert gf_row["review"]["meaning"].startswith("review priority only")
+    ooni_row = by_peer["ooni"]
+    assert ooni_row["host"] == "www.hrw.org"
+    assert ooni_row["asn"] == "AS4134"
+    assert ooni_row["n_measurements"] == 44
+    assert ooni_row["anomaly_rate"] == 1.0
+    assert ooni_row["last_measured_at"] == "2026-08-19T00:00:00Z"
+    cdt_row = by_peer["cdt"]
+    assert cdt_row["title"].startswith("Minitrue")
+    assert cdt_row["url"].startswith("https://chinadigitaltimes.net/")
+    assert cdt_row["published_at"] == "2026-08-17T00:00:00Z"
+    assert cdt_row["excerpt_len_bounded"] <= peer_context.CDT_EXCERPT_LIMIT
+    assert isinstance(cdt_row["extracted_terms"], list)
+    weibo = by_peer["weiboscope"]
+    assert weibo["status"] == "abstain"
+    assert weibo["doi"] == DOI
+    assert table["documents"]["greatfire"]["schema_version"] == GF_SCHEMA
+    assert table["documents"]["ooni"]["schema_version"] == OONI_SCHEMA
+
+    silent = build_feature_table(greatfire=None, ooni={"n_hits": 0, "hosts": []}, cdt_items_or_doc=[], now=NOW)
+    assert silent["documents"]["greatfire"] is None
+    assert silent["documents"]["ooni"] is None
+    assert silent["documents"]["cdt"] is None
+    assert silent["n_greatfire"] == 0
+    assert silent["n_ooni"] == 0
+    assert silent["n_cdt"] == 0
+    assert silent["n_weiboscope"] == 1
+    assert greatfire_document({"verdicts": []}) is None
+    assert ooni_document({"n_hits": 0, "hosts": [{"host": "example.com", "status": "miss"}]}) is None
+    assert cdt_document([]) is None
+    abstain = weiboscope_document(now=NOW)
+    assert abstain["dump_on_node"] is False
+    assert "16674565" in abstain["doi"]
 
 
 def test_collect_palimpsest_urls_includes_official_and_bleedthrough_hosts():

@@ -22,6 +22,7 @@ from collectors.greatfire_context import (
 from core.china_observation import iso_z
 from core.governance import KillSwitch, RateCeiling
 from core.peer_context import collect_palimpsest_urls
+from core.peer_features import GF_SCHEMA, greatfire_document
 from core.safe_fetch import FetchError, safe_fetch
 
 
@@ -87,6 +88,15 @@ def main(*, fetch=None, now: datetime | None = None, urls=None) -> dict | None:
         return None
 
     out = _serialize(result)
+    projected = greatfire_document(out, now=now)
+    if projected is None:
+        print(
+            "greatfire-context: no live verdicts after compact projection — "
+            "abstaining, not publishing a hollow verdict board"
+        )
+        return None
+    out.update(projected)
+    out["schema_version"] = GF_SCHEMA
     out["method_version"] = METHOD_VERSION
     out["attribution"] = ATTRIBUTION
     READINGS.mkdir(parents=True, exist_ok=True)

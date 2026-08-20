@@ -556,6 +556,7 @@ def build_peer_document(
                 seen.add(host)
                 hosts.append(host)
     ooni = join_hosts(hosts, gfw_path=gfw_path, warehouse=warehouse, now=now)
+    ooni["generated_at"] = iso_z(ooni.get("generated_at") or now)
     weibo = weiboscope if isinstance(weiboscope, Mapping) else {
         "abstention": documented_abstention(now=now),
         "dump_on_node": False,
