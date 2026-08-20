@@ -1,6 +1,6 @@
 {
   "schema": "palimpsest-data-catalog/v1",
-  "generated_at": "2026-08-20T07:24:41.927802Z",
+  "generated_at": "2026-08-20T07:34:26.395859Z",
   "id": "palimpsest-evidence-atlas",
   "name": "Palimpsest Evidence Atlas",
   "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, and model-evaluation datasets.",
@@ -12,10 +12,10 @@
     "datasets": 62,
     "states": {
       "disabled": 1,
-      "fresh": 32,
+      "fresh": 40,
       "gated": 6,
       "private-node": 1,
-      "stale": 19,
+      "stale": 11,
       "warming": 3
     },
     "layers": {
@@ -29,8 +29,8 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 13896678,
-    "history_rows": 6541
+    "published_bytes": 13951010,
+    "history_rows": 6549
   },
   "datasets": [
     {
@@ -63,7 +63,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T07:06:05.431547Z",
-        "age_seconds": 1116,
+        "age_seconds": 1700,
         "counts": {
           "n_observations": 82,
           "n_terms": 211
@@ -111,7 +111,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T07:12:09.355483Z",
-        "age_seconds": 752,
+        "age_seconds": 1337,
         "counts": {
           "n_measurements": 273449,
           "n_tests_with_data": 6
@@ -213,14 +213,14 @@
       },
       "artifacts": {
         "evidence_state": "gated",
-        "observed_at": "2026-08-20T02:04:26.058707Z",
-        "age_seconds": 19215,
+        "observed_at": "2026-08-20T07:25:31.646327Z",
+        "age_seconds": 534,
         "counts": {
           "panel_size": 11,
           "n_censored_answered": 5,
           "n_censored_blocked": 5
         },
-        "latest_bytes": 70693,
+        "latest_bytes": 70637,
         "history_bytes": 4981,
         "history_rows": 33,
         "latest_available": true,
@@ -267,7 +267,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-17T00:57:15.314667Z",
-        "age_seconds": 282446,
+        "age_seconds": 283031,
         "counts": {
           "vantages_probed": 216,
           "vantages_injecting": 216,
@@ -363,7 +363,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T07:14:29.232398Z",
-        "age_seconds": 612,
+        "age_seconds": 1197,
         "counts": {},
         "latest_bytes": 4263,
         "history_bytes": 10009,
@@ -408,7 +408,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T06:00:18.004639Z",
-        "age_seconds": 5063,
+        "age_seconds": 5648,
         "counts": {
           "series_points": 70,
           "n_events": 0
@@ -453,7 +453,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T07:16:01Z",
-        "age_seconds": 520,
+        "age_seconds": 1105,
         "counts": {},
         "latest_bytes": 668,
         "history_bytes": 18176,
@@ -499,7 +499,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T02:05:13.136512Z",
-        "age_seconds": 19168,
+        "age_seconds": 19753,
         "counts": {
           "n_recent": 8,
           "n_blocking": 1,
@@ -547,7 +547,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T05:45:24Z",
-        "age_seconds": 5957,
+        "age_seconds": 6542,
         "counts": {
           "history_days": 416
         },
@@ -590,8 +590,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T02:08:31.079358Z",
-        "age_seconds": 18970,
+        "observed_at": "2026-08-20T07:30:30.045381Z",
+        "age_seconds": 236,
         "counts": {},
         "latest_bytes": 2093,
         "history_bytes": 517,
@@ -634,16 +634,16 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T02:06:13Z",
-        "age_seconds": 19108,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:26:43Z",
+        "age_seconds": 463,
         "counts": {
-          "board_entries": 2694,
-          "ddti_terms_joined": 0
+          "board_entries": 2796,
+          "ddti_terms_joined": 1
         },
-        "latest_bytes": 4991,
-        "history_bytes": 34087,
-        "history_rows": 125,
+        "latest_bytes": 19091,
+        "history_bytes": 34354,
+        "history_rows": 126,
         "latest_available": true,
         "history_available": true
       },
@@ -686,17 +686,17 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T02:12:09.768626Z",
-        "age_seconds": 18752,
+        "observed_at": "2026-08-20T07:33:18.735529Z",
+        "age_seconds": 67,
         "counts": {
           "n_terms": 25,
-          "n_with_global_data": 6,
+          "n_with_global_data": 2,
           "n_blackout": 0,
-          "n_containment": 6
+          "n_containment": 2
         },
-        "latest_bytes": 6713,
-        "history_bytes": 28213,
-        "history_rows": 177,
+        "latest_bytes": 6773,
+        "history_bytes": 28372,
+        "history_rows": 178,
         "latest_available": true,
         "history_available": true
       },
@@ -739,7 +739,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T02:03:48.548743Z",
-        "age_seconds": 19253,
+        "age_seconds": 19837,
         "counts": {
           "n_watched": 7,
           "n_present": 7,
@@ -794,7 +794,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T07:24:40.450275Z",
-        "age_seconds": 1,
+        "age_seconds": 585,
         "counts": {
           "n_sources": 5,
           "n_changed": 0,
@@ -846,7 +846,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T01:56:45.794752Z",
-        "age_seconds": 19676,
+        "age_seconds": 20260,
         "counts": {
           "n_watched": 4,
           "n_deletions": 0,
@@ -898,7 +898,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T03:58:30Z",
-        "age_seconds": 12371,
+        "age_seconds": 12956,
         "counts": {
           "n_observations": 18
         },
@@ -948,7 +948,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T03:58:30Z",
-        "age_seconds": 12371,
+        "age_seconds": 12956,
         "counts": {
           "n_rows": 19
         },
@@ -1043,9 +1043,9 @@
         "url": "https://www.apple.com/legal/internet-services/itunes/"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T02:08:20.229491Z",
-        "age_seconds": 18981,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:29:32.025343Z",
+        "age_seconds": 294,
         "counts": {
           "panel_size": 12,
           "n_tracked": 10,
@@ -1094,7 +1094,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T06:00:10.337526Z",
-        "age_seconds": 5071,
+        "age_seconds": 5656,
         "counts": {
           "country.total_tested": 109652
         },
@@ -1141,7 +1141,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-17T05:08:57.248957Z",
-        "age_seconds": 267344,
+        "age_seconds": 267929,
         "counts": {
           "n_additions": 503,
           "n_gazetteer_proposals": 17
@@ -1190,7 +1190,7 @@
       "artifacts": {
         "evidence_state": "disabled",
         "observed_at": "2026-07-30T20:31:16.856256Z",
-        "age_seconds": 1767205,
+        "age_seconds": 1767789,
         "counts": {
           "n_entities": 10,
           "n_comparable": 0,
@@ -1242,7 +1242,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T10:31:35Z",
-        "age_seconds": 334386,
+        "age_seconds": 334971,
         "counts": {
           "n_series_watched": 7,
           "n_series_reporting": 6
@@ -1290,7 +1290,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T15:32:28Z",
-        "age_seconds": 316333,
+        "age_seconds": 316918,
         "counts": {
           "history_days": 44
         },
@@ -1340,7 +1340,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T15:32:28.785540Z",
-        "age_seconds": 316333,
+        "age_seconds": 316917,
         "counts": {
           "artifact.records": 1651,
           "coverage.series_count": 15,
@@ -1391,7 +1391,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-16T15:32:28.785540Z",
-        "age_seconds": 316333,
+        "age_seconds": 316917,
         "counts": {
           "n_targets": 3,
           "summary.ready_targets": 0,
@@ -1442,7 +1442,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T17:26:16Z",
-        "age_seconds": 309505,
+        "age_seconds": 310090,
         "counts": {
           "history_days": 10
         },
@@ -1492,7 +1492,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-18T07:23:09Z",
-        "age_seconds": 172892,
+        "age_seconds": 173477,
         "counts": {
           "n_components_present": 1,
           "n_components_required": 3,
@@ -1541,7 +1541,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-19T14:02:30Z",
-        "age_seconds": 62531,
+        "age_seconds": 63116,
         "counts": {
           "history_days": 157
         },
@@ -1590,7 +1590,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T02:14:02Z",
-        "age_seconds": 18639,
+        "age_seconds": 19224,
         "counts": {
           "n_topics_considered": 25,
           "n_scored": 0,
@@ -1640,16 +1640,16 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T02:07:15.067222Z",
-        "age_seconds": 19046,
+        "observed_at": "2026-08-20T07:28:10.825057Z",
+        "age_seconds": 375,
         "counts": {
           "n_signals": 15,
           "n_reporting": 12,
           "n_open": 14
         },
-        "latest_bytes": 5178,
-        "history_bytes": 18230,
-        "history_rows": 38,
+        "latest_bytes": 6372,
+        "history_bytes": 18777,
+        "history_rows": 39,
         "latest_available": true,
         "history_available": true
       },
@@ -1687,10 +1687,10 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T02:07:58.634429Z",
-        "age_seconds": 19003,
+        "observed_at": "2026-08-20T07:29:31.553194Z",
+        "age_seconds": 294,
         "counts": {},
-        "latest_bytes": 9166,
+        "latest_bytes": 10284,
         "history_bytes": 4658,
         "history_rows": 26,
         "latest_available": true,
@@ -1730,8 +1730,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T02:07:58.693367Z",
-        "age_seconds": 19003,
+        "observed_at": "2026-08-20T07:29:31.647602Z",
+        "age_seconds": 294,
         "counts": {},
         "latest_bytes": 4503,
         "history_bytes": 4844,
@@ -1776,13 +1776,13 @@
       },
       "artifacts": {
         "evidence_state": "warming",
-        "observed_at": "2026-08-20T02:07:58.782488Z",
-        "age_seconds": 19003,
+        "observed_at": "2026-08-20T07:29:31.778851Z",
+        "age_seconds": 294,
         "counts": {
           "n_pairs_tested": 8,
           "n_confirmed": 0
         },
-        "latest_bytes": 10136,
+        "latest_bytes": 10134,
         "history_bytes": 364,
         "history_rows": 4,
         "latest_available": true,
@@ -1826,16 +1826,16 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T02:07:58.725453Z",
-        "age_seconds": 19003,
+        "observed_at": "2026-08-20T07:29:31.695656Z",
+        "age_seconds": 294,
         "counts": {
-          "n_forecasts": 1500,
+          "n_forecasts": 1508,
           "n_signals_scored": 8,
           "n_beating_baseline": 3
         },
-        "latest_bytes": 13747,
-        "history_bytes": 84391,
-        "history_rows": 97,
+        "latest_bytes": 13965,
+        "history_bytes": 85305,
+        "history_rows": 98,
         "latest_available": true,
         "history_available": true
       },
@@ -1875,7 +1875,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T03:29:20.696288Z",
-        "age_seconds": 14121,
+        "age_seconds": 14705,
         "counts": {
           "layers_contributing": 2
         },
@@ -1919,13 +1919,13 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T03:58:31Z",
-        "age_seconds": 12370,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:34:19Z",
+        "age_seconds": 7,
         "counts": {
           "n_stories": 36
         },
-        "latest_bytes": 78423,
+        "latest_bytes": 78421,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -1970,7 +1970,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T23:59:23Z",
-        "age_seconds": 285918,
+        "age_seconds": 286503,
         "counts": {
           "n_items": 577,
           "n_events": 524,
@@ -2024,7 +2024,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T23:59:23Z",
-        "age_seconds": 285918,
+        "age_seconds": 286503,
         "counts": {
           "n_entries": 494,
           "coverage.registered_sources": 47,
@@ -2079,7 +2079,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-17T05:21:41Z",
-        "age_seconds": 266580,
+        "age_seconds": 267165,
         "counts": {
           "n_observations": 20,
           "coverage.configured": 8,
@@ -2129,7 +2129,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-15T08:16:38Z",
-        "age_seconds": 428883,
+        "age_seconds": 429468,
         "counts": {
           "n_entries": 0
         },
@@ -2181,7 +2181,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-20T03:58:30Z",
-        "age_seconds": 12371,
+        "age_seconds": 12956,
         "counts": {
           "coverage.in_scope_events": 459,
           "coverage.publisher_reports": 494,
@@ -2229,14 +2229,14 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T03:58:31Z",
-        "age_seconds": 12370,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:34:19Z",
+        "age_seconds": 7,
         "counts": {
           "publication_receipt.required_signal_count": 10,
           "publication_receipt.live_signal_count": 10
         },
-        "latest_bytes": 24698,
+        "latest_bytes": 24693,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2280,7 +2280,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T17:26:16Z",
-        "age_seconds": 309505,
+        "age_seconds": 310090,
         "counts": {
           "n_metrics": 41,
           "coverage.registered_sources": 33,
@@ -2327,13 +2327,13 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T03:58:31Z",
-        "age_seconds": 12370,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:34:19Z",
+        "age_seconds": 7,
         "counts": {
           "n_cases": 2
         },
-        "latest_bytes": 34384,
+        "latest_bytes": 34383,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2376,16 +2376,16 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T03:58:33Z",
-        "age_seconds": 12368,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:34:21Z",
+        "age_seconds": 5,
         "counts": {
           "inputs": 8,
           "resources": 113,
           "dependency_groups": 89,
           "projects": 5
         },
-        "latest_bytes": 179675,
+        "latest_bytes": 179585,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2426,13 +2426,13 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T03:58:33Z",
-        "age_seconds": 12368,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:34:21Z",
+        "age_seconds": 5,
         "counts": {
           "n_cases": 2
         },
-        "latest_bytes": 37828,
+        "latest_bytes": 38036,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2489,7 +2489,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-12T11:09:06Z",
-        "age_seconds": 677735,
+        "age_seconds": 678320,
         "counts": {
           "n_documents": 13,
           "n_vintages": 16,
@@ -2544,7 +2544,7 @@
       "artifacts": {
         "evidence_state": "stale",
         "observed_at": "2026-08-16T23:59:23Z",
-        "age_seconds": 285918,
+        "age_seconds": 286503,
         "counts": {
           "n_events": 524,
           "n_candidate_edges": 0,
@@ -2598,14 +2598,14 @@
       },
       "artifacts": {
         "evidence_state": "warming",
-        "observed_at": "2026-08-19T07:22:50Z",
-        "age_seconds": 86511,
+        "observed_at": "2026-08-20T07:25:31Z",
+        "age_seconds": 535,
         "counts": {
-          "n_rounds": 22,
+          "n_rounds": 23,
           "n_comparable_rounds": 0,
           "panel.target_count": 11
         },
-        "latest_bytes": 121616,
+        "latest_bytes": 127021,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2647,7 +2647,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-12T11:24:43Z",
-        "age_seconds": 676798,
+        "age_seconds": 677383,
         "counts": {
           "n_packages": 3,
           "n_records": 0
@@ -2700,9 +2700,9 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T03:58:31Z",
-        "age_seconds": 12370,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:34:19Z",
+        "age_seconds": 7,
         "counts": {
           "summary.wire_events": 524,
           "summary.wire_eligible": 524,
@@ -2750,12 +2750,12 @@
       },
       "artifacts": {
         "evidence_state": "gated",
-        "observed_at": "2026-08-19T07:30:06.356454Z",
-        "age_seconds": 86075,
+        "observed_at": "2026-08-20T07:32:12.077740Z",
+        "age_seconds": 134,
         "counts": {},
-        "latest_bytes": 197733,
-        "history_bytes": 146200,
-        "history_rows": 43,
+        "latest_bytes": 199565,
+        "history_bytes": 149830,
+        "history_rows": 44,
         "latest_available": true,
         "history_available": true
       },
@@ -2796,7 +2796,7 @@
       "artifacts": {
         "evidence_state": "gated",
         "observed_at": "2026-08-20T01:47:29.258006Z",
-        "age_seconds": 20232,
+        "age_seconds": 20817,
         "counts": {},
         "latest_bytes": 67232,
         "history_bytes": 69178,
@@ -2843,8 +2843,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-19T07:30:06.356454Z",
-        "age_seconds": 86075,
+        "observed_at": "2026-08-20T07:32:12.077740Z",
+        "age_seconds": 134,
         "counts": {
           "n_models": 3,
           "n_prompt_arms": 44,
@@ -2852,7 +2852,7 @@
           "n_cells": 132,
           "n_samples": 660
         },
-        "latest_bytes": 1314418,
+        "latest_bytes": 1336363,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2894,16 +2894,16 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T01:47:29.258006Z",
-        "age_seconds": 20232,
+        "observed_at": "2026-08-20T07:34:17.740874Z",
+        "age_seconds": 8,
         "counts": {
-          "runs": 493,
+          "runs": 496,
           "models": 7,
           "problems": 0
         },
-        "latest_bytes": 3982,
-        "history_bytes": 339402,
-        "history_rows": 499,
+        "latest_bytes": 4422,
+        "history_bytes": 341853,
+        "history_rows": 502,
         "latest_available": true,
         "history_available": true
       },
@@ -2946,8 +2946,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T01:47:29.258006Z",
-        "age_seconds": 20232,
+        "observed_at": "2026-08-20T07:34:17.740874Z",
+        "age_seconds": 8,
         "counts": {
           "summary.checks": 11,
           "summary.pass": 9,
@@ -2996,8 +2996,8 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-20T01:47:29.258006Z",
-        "age_seconds": 20232,
+        "observed_at": "2026-08-20T07:34:17.740874Z",
+        "age_seconds": 8,
         "counts": {
           "n_articles": 4
         },
@@ -3041,7 +3041,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T01:47:29.258006Z",
-        "age_seconds": 20232,
+        "age_seconds": 20817,
         "counts": {
           "n_articles": 4
         },
@@ -3088,7 +3088,7 @@
       "artifacts": {
         "evidence_state": "fresh",
         "observed_at": "2026-08-20T03:29:33.419111Z",
-        "age_seconds": 14108,
+        "age_seconds": 14692,
         "counts": {
           "wayback_snapshots": 0,
           "readings_problems": 0
