@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from collectors.telegram_public_channels import load_channels
+from collectors.weibo_hotsearch import _SENSE_RULES, carries_sensitive_sense
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -55,7 +56,7 @@ OFFICIAL_MISSING_WHISPER_REFUSAL = (
     "detained, or dead."
 )
 
-REQUIRED_SPREADING = ("weibo-hotsearch", "public-hot-boards")
+REQUIRED_SPREADING = ("weibo-hotsearch", "weibo-hotsearch-terms", "public-hot-boards")
 OPTIONAL_SPREADING = ("telegram-public-channels", "social-observations")
 MATCH_TARGETS = (
     "newswire",
@@ -159,7 +160,7 @@ _EVENT_ID = re.compile(r"^event-[0-9a-f]{24}$")
 _CJK = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
 _SOURCE_ID = re.compile(r"^[a-z][a-z0-9:._-]{1,79}$")
 
-MAX_ROWS = 256
+MAX_ROWS = 4096
 MAX_TERM = 180
 MIN_CJK = 2
 MIN_LATIN = 4
@@ -299,6 +300,11 @@ def looks_like_named_person_package(term: str) -> bool:
 
     if not contains_person_status(term):
         return False
+    for gated in _SENSE_RULES:
+        if gated in term:
+            keep, _cue = carries_sensitive_sense(gated, term)
+            if not keep:
+                return False
     stripped = term
     for marker in PERSON_STATUS_MARKERS:
         stripped = re.sub(re.escape(marker), " ", stripped, flags=re.I)
@@ -584,11 +590,46 @@ def _same_string_in(term: str, haystack: str) -> bool:
     return bool(term) and bool(haystack) and term in haystack
 
 
+def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+    generated = _iso_or_none(doc.get("generated_at"))
+    for row in doc.get("terms") or []:
+        if not isinstance(row, Mapping) or not row.get("title"):
+            continue
+        first = row.get("first_seen")
+        last = row.get("last_seen")
+        seen = generated
+        if isinstance(first, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", first):
+            seen = f"{first}T00:00:00Z"
+        elif isinstance(last, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", last):
+            seen = f"{last}T00:00:00Z"
+        _add_term(
+            bucket,
+            str(row["title"]),
+            source_id="weibo-hotsearch-terms",
+            seen_at=_iso_or_none(seen) or generated,
+        )
+    for day in doc.get("pinned_headlines") or []:
+        if not isinstance(day, Mapping):
+            continue
+        date = str(day.get("date") or "")
+        seen = f"{date}T00:00:00Z" if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else generated
+        for title in day.get("pinned") or []:
+            _add_term(
+                bucket,
+                str(title),
+                source_id="weibo-hotsearch-terms",
+                seen_at=_iso_or_none(seen) or generated,
+            )
+
+
 def extract_spreading_terms(inputs: Mapping[str, Mapping[str, Any] | None]) -> dict[str, dict[str, Any]]:
     bucket: dict[str, dict[str, Any]] = {}
     weibo = inputs.get("weibo-hotsearch")
     if isinstance(weibo, Mapping):
         _extract_weibo(weibo, bucket)
+    terms = inputs.get("weibo-hotsearch-terms")
+    if isinstance(terms, Mapping):
+        _extract_weibo_terms(terms, bucket)
     boards = inputs.get("public-hot-boards")
     if isinstance(boards, Mapping):
         _extract_hot_boards(boards, bucket)
@@ -816,7 +857,8 @@ def _assemble(
         "job_name": JOB_NAME,
         "status": status,
         "source": (
-            "Public Weibo hot-search titles, public aggregate hot-board titles, "
+            "Public Weibo hot-search titles (join summary and the term-level "
+            "board dump), public aggregate hot-board titles, "
             "in-tree public Telegram channel titles/excerpts "
             "(DragonDenWhispers, DragonDenCyber, DragonDenBorderlands), and "
             "closed-registry social observation titles, joined to already-stored "
@@ -824,11 +866,13 @@ def _assemble(
             "and public deletion-ledger titles. Wayback is context only."
         ),
         "method": (
-            "Extract spreading terms from retained public board titles and channel "
-            "excerpts. Match only when the same string already appears in a "
-            "registered newswire headline/dek, an official last-alive page title, "
-            "or a deletion-ledger title. Whisper-only names do not emit a person "
-            "package. Missing required spreading collectors abstain."
+            "Extract spreading terms from the Weibo board-title dump, public "
+            "hot boards, and retained channel excerpts. Match only when the "
+            "same string already appears in a registered newswire headline/dek, "
+            "an official last-alive page title, or a deletion-ledger title. "
+            "Whisper-only names do not emit a person package. Sense-gated "
+            "ordinary 失联 accidents stay topic rows. Missing required "
+            "spreading collectors abstain."
         ),
         "scope": (
             "Public Chinese attention surfaces already collected outside the "

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/weibo-hotsearch-terms-v1.schema.json",
+  "title": "Palimpsest Weibo hot-search term dump v1",
+  "description": "Every distinct public Weibo hot-search board title in the current archive window. The board is a censored surface; this is not uncensored public opinion.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "job_name",
+    "status",
+    "source",
+    "method",
+    "scope",
+    "disclaimer",
+    "publication_policy",
+    "window_days",
+    "board_entries",
+    "n_titles",
+    "n_pinned_days",
+    "n_withdrawal_candidates",
+    "n_ddti_joined",
+    "regimes",
+    "terms",
+    "pinned_headlines",
+    "withdrawal_watch",
+    "ddti_join"
+  ],
+  "properties": {
+    "schema_version": { "const": "palimpsest-weibo-hotsearch-terms.v1" },
+    "generated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$" },
+    "job_name": { "const": "weibo-hotsearch-terms" },
+    "status": { "enum": ["live", "abstain"] },
+    "source": { "type": "string", "minLength": 1 },
+    "method": { "type": "string", "minLength": 1 },
+    "scope": { "type": "string", "minLength": 1 },
+    "disclaimer": {
+      "const": "The hot-search board is itself a censored surface (curated 置顶 slot, on-command withdrawals). This dump is the record of permitted attention, not uncensored public opinion."
+    },
+    "publication_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "automatic_publication",
+        "named_person_packages_auto_published",
+        "counts_as_corroboration",
+        "user_ids_included",
+        "post_bodies_included",
+        "private_profiles_included",
+        "follower_graphs_included"
+      ],
+      "properties": {
+        "automatic_publication": { "const": true },
+        "named_person_packages_auto_published": { "const": false },
+        "counts_as_corroboration": { "const": false },
+        "user_ids_included": { "const": false },
+        "post_bodies_included": { "const": false },
+        "private_profiles_included": { "const": false },
+        "follower_graphs_included": { "const": false }
+      }
+    },
+    "window_days": { "type": "array", "items": { "type": "string" } },
+    "board_entries": { "type": "integer", "minimum": 0 },
+    "n_titles": { "type": "integer", "minimum": 0 },
+    "n_pinned_days": { "type": "integer", "minimum": 0 },
+    "n_withdrawal_candidates": { "type": "integer", "minimum": 0 },
+    "n_ddti_joined": { "type": "integer", "minimum": 0 },
+    "regimes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contained_visible", "suppressed_invisible"],
+      "properties": {
+        "contained_visible": { "type": "integer", "minimum": 0 },
+        "suppressed_invisible": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "terms": {
+      "type": "array",
+      "maxItems": 20000,
+      "items": { "$ref": "#/$defs/term" }
+    },
+    "pinned_headlines": { "type": "array" },
+    "withdrawal_watch": { "type": "object" },
+    "ddti_join": { "type": "array" }
+  },
+  "$defs": {
+    "term": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "title_sha256",
+        "best_rank",
+        "pinned",
+        "first_seen",
+        "last_seen",
+        "days_present",
+        "appearances"
+      ],
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 180 },
+        "title_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "best_rank": { "type": ["integer", "null"], "minimum": 1 },
+        "pinned": { "type": "boolean" },
+        "first_seen": { "type": "string", "minLength": 1 },
+        "last_seen": { "type": "string", "minLength": 1 },
+        "days_present": { "type": "integer", "minimum": 1 },
+        "appearances": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

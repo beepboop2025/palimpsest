@@ -59,6 +59,7 @@ CONTRACT = {
     "refusal-drift":        _d("generated_at", ["method", "verify_cmd"], "n_probes"),
     "wayback":              _d("generated_at", ["source", "scope"], "n_watched"),
     "weibo-hotsearch":      _d("generated_at", ["source", "method_note"], "board_entries"),
+    "weibo-hotsearch-terms": _d("generated_at", ["source", "method", "scope"], "n_titles"),
     "censored-planet":      _d("generated_at", ["source", "method"], "n_events"),
     "eval-registry":        _d("generated_at", ["registry", "verify_cmd"], "runs"),
     "eval-assurance":       _d(
@@ -275,6 +276,7 @@ PENDING = {
     "public-hot-boards",
     "telegram-public-channels",
     "social-spread",
+    "weibo-hotsearch-terms",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately

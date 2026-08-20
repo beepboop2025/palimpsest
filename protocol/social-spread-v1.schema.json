@@ -63,6 +63,7 @@
       "additionalProperties": false,
       "required": [
         "weibo-hotsearch",
+        "weibo-hotsearch-terms",
         "public-hot-boards",
         "telegram-public-channels",
         "social-observations",
@@ -74,6 +75,7 @@
       ],
       "properties": {
         "weibo-hotsearch": { "enum": ["present", "missing", "abstain"] },
+        "weibo-hotsearch-terms": { "enum": ["present", "missing", "abstain"] },
         "public-hot-boards": { "enum": ["present", "missing", "abstain"] },
         "telegram-public-channels": { "enum": ["present", "missing", "abstain"] },
         "social-observations": { "enum": ["present", "missing", "abstain"] },
@@ -89,7 +91,7 @@
     "n_refused": { "type": "integer", "minimum": 0 },
     "rows": {
       "type": "array",
-      "maxItems": 256,
+      "maxItems": 4096,
       "items": { "$ref": "#/$defs/row" }
     },
     "refusals": {

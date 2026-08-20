@@ -342,6 +342,62 @@ def test_no_wechat_and_no_new_telegram_handles_in_desk():
     assert "DragonDenWhispersBot" not in src
 
 
+def test_sense_gated_ordinary_shilian_accident_is_not_a_person_package():
+    document = build_social_spread(
+        _inputs(
+            **{
+                "weibo-hotsearch-terms": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "terms": [
+                        {
+                            "title": "重庆彭水发现失联中巴车残骸",
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                        }
+                    ],
+                },
+                "public-hot-boards": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "observations": [{"title": "杭州暴雨", "source": "public-hot-boards"}],
+                },
+                "newswire": _wire("杭州暴雨"),
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
+    row = next(
+        item for item in document["rows"] if item["term"] == "重庆彭水发现失联中巴车残骸"
+    )
+    assert row["names_a_person"] is False
+    assert row["automatic_publication"] is True
+    assert row["disposition"] == "circulating-unverified"
+    assert not any(item["names_a_person"] for item in document["rows"])
+
+
+def test_weibo_terms_and_hot_boards_fold_into_one_join():
+    document = build_social_spread(
+        _inputs(
+            **{
+                "weibo-hotsearch-terms": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "terms": [{"title": "杭州暴雨", "first_seen": "2026-08-19"}],
+                },
+                "public-hot-boards": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "observations": [{"title": "杭州暴雨", "source": "public-hot-boards:baidu"}],
+                },
+                "newswire": _wire("杭州暴雨"),
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
+    row = next(item for item in document["rows"] if item["term"] == "杭州暴雨")
+    assert row["disposition"] == "matched-to-wire"
+    assert "weibo-hotsearch-terms" in row["spreading"]["source_ids"]
+    assert "public-hot-boards:baidu" in row["spreading"]["source_ids"]
+    assert row["spreading"]["n_surfaces"] == 2
+
+
 def test_json_schema_accepts_a_live_document():
     jsonschema = pytest.importorskip("jsonschema")
     document = build_social_spread(

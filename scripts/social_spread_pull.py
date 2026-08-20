@@ -26,6 +26,7 @@ HIST = READINGS / "social-spread-history.jsonl"
 
 INPUT_FILES = {
     "weibo-hotsearch": "weibo-hotsearch-latest.json",
+    "weibo-hotsearch-terms": "weibo-hotsearch-terms-latest.json",
     "public-hot-boards": "public-hot-boards-latest.json",
     "telegram-public-channels": "telegram-public-channels-latest.json",
     "social-observations": "social-observations-latest.json",
