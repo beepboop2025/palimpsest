@@ -30,6 +30,11 @@ summary.
 - **Git:** `readings/live-watch-latest.json` and
   `readings/rumour-board-latest.json`
   Sealed coverage summaries. A zero is a coverage receipt, not silence.
+- **Page join:** `/news/china/rumour/` also projects already-sealed warehouse
+  readings (OONI, Wayback, Weibo hot-search archive, GDELT, IODA, newswire).
+  That projection is not a new scrape and is not a new catalog reading. A
+  shared host is host-surface context. It does not increment independent
+  source groups.
 
 The repository `data/` directory is already gitignored. Local tests may write
 there. They must not commit day files.
@@ -41,6 +46,12 @@ Every live event carries one locked relation. Rumour-board rows use
 `/news/china/rumour/` and as a situation briefing. They never increment
 independent publisher groups. Rank flips, wiki edits, CT names, and
 Telegram previews use the same rule: context, never corroboration.
+
+Warehouse pulses and host-surface joins use
+`warehouse-join-context-not-corroboration` or
+`host-surface-only-not-corroboration`. They fill the desk from sealed
+warehouses. They are not the four-leg product tuple until an exact HTTPS
+URL is shared by the legs and `qualify_tuple` clears the gate.
 
 ## Telegram first
 

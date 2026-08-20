@@ -124,7 +124,7 @@ def test_situation_briefing_does_not_claim_corroboration():
 
 
 def test_builder_seals_coverage_without_network():
-    watch, rumour = build_rumour_board.build_documents(
+    watch, rumour, join = build_rumour_board.build_documents(
         generated_at="2026-08-20T12:00:00Z"
     )
     assert watch["n_events"] == 0
@@ -134,9 +134,12 @@ def test_builder_seals_coverage_without_network():
     assert fourchan["error_code"] == "flag-off"
     assert rumour["status"] == "COVERAGE_ONLY"
     assert "t.me/s/" in rumour["limitations"][2]
-    page = build_rumour_board.render_page(rumour, watch)
+    assert join["publication_policy"]["increments_independent_groups"] is False
+    assert join["n_tuples"] == 0
+    page = build_rumour_board.render_page(rumour, watch, join)
     assert "wikimedia-eventstreams" in page
     assert "Never keep the HTML" in page
+    assert "Sit on warehouses incrementally" in page
 
 
 def test_now_flag_normalizes_to_utc_seconds():
