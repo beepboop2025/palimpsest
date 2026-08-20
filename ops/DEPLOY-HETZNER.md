@@ -332,7 +332,7 @@ the OSINT bundle does not wait for a GitHub-only refresh:
 | `silence-index` | `readings/silence-index-latest.json` | every 3h |
 | `vantage-fusion` | `readings/vantage-fusion-latest.json` | every 3h |
 | `erasure-observatory` | `readings/erasure-observatory-latest.json` | every 3h |
-| `undertext` | `readings/undertext-latest.json` | every 3h (offline fusion of Wayback / Weibo board / DDTI / ledgers / official first-seen / news-wire / Wikipedia RC when those files exist; Wikipedia live surfaces stay gated) |
+| `undertext` | `readings/undertext-latest.json` | every 3h (offline fusion of Wayback / Weibo board / DDTI / ledgers / official first-seen / news-wire / Wikipedia RC / public Telegram channels when those files exist; Wikipedia live surfaces stay gated) |
 | `public-deletion-ledgers` | `readings/public-deletion-ledgers-latest.json` | hourly when a public ledger answers; abstains if every feed is silent |
 | `official-first-seen` | `readings/official-first-seen-latest.json` | hourly; official landings including NPC / MOE / NHC; no Baike; abstains if every page is silent and there is no prior state |
 | `news-wire-live` | `readings/news-wire-live-latest.json` | hourly; projects the public `news_sources.json` RSS/Atom registry; abstains on no-fresh-sources |
@@ -340,6 +340,7 @@ the OSINT bundle does not wait for a GitHub-only refresh:
 | `gdelt` | `readings/gdelt-latest.json` | every 15 min on vigorous (`PALIMPSEST_GDELT_TIMESPAN=15min`, 8-term cap, setdefault only — not in Compose `.env`); abstains if GDELT returns no volume |
 | `baike-public-snapshot` | `readings/baike-public-snapshot-latest.json` | hourly; public Baike article HTML + CDX; abstains if every article is silent/walled |
 | `public-hot-boards` | `readings/public-hot-boards-latest.json` | hourly; Baidu / Toutiao / Douyin aggregate JSON; abstains if every board is silent |
+| `telegram-public-channels` | `readings/telegram-public-channels-latest.json` | hourly; public Dragon Den `t.me/s/` HTML + ScamShield inbox drain; abstains if every preview is silent/walled. Does not write `telegram-watch-latest.json` |
 | `censored-planet` | `readings/censored-planet-latest.json` | every 6h on vigorous (standard stays daily) |
 | `ooni-gfw` / `ioda-outages` | existing readings | every 2h on vigorous |
 

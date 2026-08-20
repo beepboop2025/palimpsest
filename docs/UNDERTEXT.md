@@ -131,8 +131,8 @@ The scheduled 24/7 runner is `scripts/undertext_pull.py`. Its default is **offli
 fusion** of already-published Wayback reconstructions, Weibo
 `suppressed_invisible` joins, DDTI samples, and — when those readings exist —
 public deletion ledgers, official first-seen polls, news-wire live projections,
-Wikipedia gazetteer recent-changes, public Baike article snapshots, and public
-hot boards. The clock is the newest input
+Wikipedia gazetteer recent-changes, public Baike article snapshots, public
+hot boards, and public Telegram channel previews. The clock is the newest input
 `generated_at`. Optional Wikipedia-only live surfaces require
 `UNDERTEXT_LIVE_SURFACES=1` and record presence as last-confirmed-alive, not a
 deletion. Live Weibo, Baidu, and Baike stay disabled. See

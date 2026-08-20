@@ -131,6 +131,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "wikipedia-gazetteer-rc-latest.json",
         "baike-public-snapshot-latest.json",
         "public-hot-boards-latest.json",
+        "telegram-public-channels-latest.json",
     }
 
 

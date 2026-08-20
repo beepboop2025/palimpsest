@@ -96,6 +96,9 @@ CONTRACT = {
     "public-hot-boards": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "telegram-public-channels": _d(
+        "generated_at", ["source", "method", "scope"], "n_observations"
+    ),
     "newsroom":             _d("generated_at", ["source", "method", "scope"], "n_stories"),
     "newswire":             _d("generated_at", ["source_registry", "method", "scope"],
                                "n_items"),
@@ -267,6 +270,7 @@ PENDING = {
     "wikipedia-gazetteer-rc",
     "baike-public-snapshot",
     "public-hot-boards",
+    "telegram-public-channels",
 }
 
 # External public products whose contract is agreed here but whose presence is deliberately

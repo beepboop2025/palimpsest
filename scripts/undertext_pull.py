@@ -67,6 +67,7 @@ _FUSION_INPUTS = (
     "wikipedia-gazetteer-rc-latest.json",
     "baike-public-snapshot-latest.json",
     "public-hot-boards-latest.json",
+    "telegram-public-channels-latest.json",
 )
 
 _OBSERVATION_FUSION = (
@@ -76,6 +77,7 @@ _OBSERVATION_FUSION = (
     ("wikipedia-gazetteer-rc-latest.json", "wikipedia-gazetteer-rc"),
     ("baike-public-snapshot-latest.json", "baike-public-snapshot"),
     ("public-hot-boards-latest.json", "public-hot-boards"),
+    ("telegram-public-channels-latest.json", "telegram-public-channels"),
 )
 
 # Public encyclopedia search only. Not Weibo, not Baidu, not Baike.
