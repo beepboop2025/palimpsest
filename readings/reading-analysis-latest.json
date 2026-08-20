@@ -1,7 +1,7 @@
 {
   "schema_version": "palimpsest-reading-analysis/v1",
   "job": "reading-analysis",
-  "generated_at": "2026-08-20T13:43:46Z",
+  "generated_at": "2026-08-20T19:29:22Z",
   "source": "Committed public instrument histories, live newswire and newsroom stories, and archive-news-context when present",
   "method": "per-instrument robust MAD (prequential-robust-mad/v1) or the instrument's existing board/believability gate against that instrument's own history; story rows are review rank only; no generative model, causal attribution, or cross-instrument censorship rate",
   "scope": "Per-instrument unusualness vs that instrument's own history, plus review rank for news rows. No causal attribution. No cross-instrument censorship rate. Common Crawl host scores stay null until six crawls.",
@@ -23,7 +23,7 @@
       "gdelt": 215,
       "ooni-bulk": 208,
       "ioda-outages": 197,
-      "stock-connect": 157,
+      "stock-connect": 158,
       "erasure-observatory": 122,
       "in-path-interference": 111,
       "refusal-drift": 109,
@@ -92,16 +92,16 @@
           "instrument_id": "ooni-gfw",
           "field": "gfw_index",
           "trainer": "conformal_events+robust-mad",
-          "n": 172,
-          "n_extracted": 172,
-          "n_prior": 138,
+          "n": 173,
+          "n_extracted": 173,
+          "n_prior": 139,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 240,
           "holdout": {
             "split": "time",
-            "n_extracted": 172,
-            "n_prior": 138,
+            "n_extracted": 173,
+            "n_prior": 139,
             "n_holdout": 34,
             "n_holdout_scored": 34,
             "n_holdout_unusual": 0,
@@ -114,9 +114,9 @@
               "instrument_id": "ooni-gfw",
               "field": "gfw_index",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 172,
-              "n_history": 171,
-              "current_value": 59.2,
+              "n_file_lines": 173,
+              "n_history": 172,
+              "current_value": 59.0,
               "unusualness": 0.0
             }
           ],
@@ -129,16 +129,16 @@
           "instrument_id": "ddti",
           "field": "top_threat",
           "trainer": "conformal_events+robust-mad",
-          "n": 324,
-          "n_extracted": 324,
-          "n_prior": 284,
+          "n": 326,
+          "n_extracted": 326,
+          "n_prior": 286,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 323,
           "holdout": {
             "split": "time",
-            "n_extracted": 324,
-            "n_prior": 284,
+            "n_extracted": 326,
+            "n_prior": 286,
             "n_holdout": 40,
             "n_holdout_scored": 40,
             "n_holdout_unusual": 0,
@@ -151,9 +151,9 @@
               "instrument_id": "ddti",
               "field": "top_threat",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 324,
-              "n_history": 323,
-              "current_value": 1.5466,
+              "n_file_lines": 326,
+              "n_history": 325,
+              "current_value": 1.4223,
               "unusualness": 0.0
             }
           ],
@@ -240,18 +240,18 @@
           "instrument_id": "gdelt",
           "field": "n_containment+n_blackout",
           "trainer": "conformal_events+robust-mad",
-          "n": 179,
-          "n_extracted": 179,
+          "n": 180,
+          "n_extracted": 180,
           "n_prior": 144,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 215,
           "holdout": {
             "split": "time",
-            "n_extracted": 179,
+            "n_extracted": 180,
             "n_prior": 144,
-            "n_holdout": 35,
-            "n_holdout_scored": 35,
+            "n_holdout": 36,
+            "n_holdout_scored": 36,
             "n_holdout_unusual": 0,
             "holdout_unusualness_median": 0.0,
             "holdout_flag_rate": 0.0,
@@ -262,10 +262,10 @@
               "instrument_id": "gdelt",
               "field": "n_containment+n_blackout",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 179,
-              "n_history": 178,
-              "current_value": 1.0,
-              "unusualness": 0.0
+              "n_file_lines": 180,
+              "n_history": 179,
+              "current_value": 6.0,
+              "unusualness": 0.337245
             }
           ],
           "rights": {
@@ -388,18 +388,18 @@
           "instrument_id": "ioda-outages",
           "field": "events_started_yesterday",
           "trainer": "conformal_events+robust-mad",
-          "n": 129,
-          "n_extracted": 129,
+          "n": 130,
+          "n_extracted": 130,
           "n_prior": 104,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 197,
           "holdout": {
             "split": "time",
-            "n_extracted": 129,
+            "n_extracted": 130,
             "n_prior": 104,
-            "n_holdout": 25,
-            "n_holdout_scored": 25,
+            "n_holdout": 26,
+            "n_holdout_scored": 26,
             "n_holdout_unusual": 0,
             "holdout_unusualness_median": 0.0,
             "holdout_flag_rate": 0.0,
@@ -410,8 +410,8 @@
               "instrument_id": "ioda-outages",
               "field": "events_started_yesterday",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 129,
-              "n_history": 128,
+              "n_file_lines": 130,
+              "n_history": 129,
               "current_value": 0.0,
               "unusualness": 0.0
             }
@@ -684,16 +684,16 @@
           "instrument_id": "stock-connect",
           "field": "southbound_net_b",
           "trainer": "prequential-robust-mad/v1",
-          "n": 157,
-          "n_extracted": 157,
-          "n_prior": 126,
+          "n": 158,
+          "n_extracted": 158,
+          "n_prior": 127,
           "minimum_prior": 6,
           "state": "scored",
-          "live_inventory_n": 157,
+          "live_inventory_n": 158,
           "holdout": {
             "split": "time",
-            "n_extracted": 157,
-            "n_prior": 126,
+            "n_extracted": 158,
+            "n_prior": 127,
             "n_holdout": 31,
             "n_holdout_scored": 31,
             "n_holdout_unusual": 0,
@@ -706,9 +706,9 @@
               "instrument_id": "stock-connect",
               "field": "southbound_net_b",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 157,
-              "n_history": 156,
-              "current_value": -10.621,
+              "n_file_lines": 158,
+              "n_history": 157,
+              "current_value": -10.412,
               "unusualness": 1.75
             }
           ],
@@ -758,16 +758,16 @@
           "instrument_id": "inside-view",
           "field": "block_rate",
           "trainer": "prequential-robust-mad/v1",
-          "n": 34,
-          "n_extracted": 32,
-          "n_prior": 26,
+          "n": 35,
+          "n_extracted": 33,
+          "n_prior": 27,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 23,
           "holdout": {
             "split": "time",
-            "n_extracted": 32,
-            "n_prior": 26,
+            "n_extracted": 33,
+            "n_prior": 27,
             "n_holdout": 6,
             "n_holdout_scored": 6,
             "n_holdout_unusual": 0,
@@ -780,8 +780,8 @@
               "instrument_id": "inside-view",
               "field": "block_rate",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 34,
-              "n_history": 31,
+              "n_file_lines": 35,
+              "n_history": 32,
               "current_value": 1.0,
               "unusualness": 0.0
             }
@@ -795,16 +795,16 @@
           "instrument_id": "in-path-interference",
           "field": "middlebox_index",
           "trainer": "prequential-robust-mad/v1",
-          "n": 77,
-          "n_extracted": 77,
-          "n_prior": 62,
+          "n": 78,
+          "n_extracted": 78,
+          "n_prior": 63,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 111,
           "holdout": {
             "split": "time",
-            "n_extracted": 77,
-            "n_prior": 62,
+            "n_extracted": 78,
+            "n_prior": 63,
             "n_holdout": 15,
             "n_holdout_scored": 15,
             "n_holdout_unusual": 0,
@@ -817,9 +817,9 @@
               "instrument_id": "in-path-interference",
               "field": "middlebox_index",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 77,
-              "n_history": 76,
-              "current_value": 1.31,
+              "n_file_lines": 78,
+              "n_history": 77,
+              "current_value": 1.32,
               "unusualness": 0.0
             }
           ],
@@ -869,18 +869,18 @@
           "instrument_id": "forecast-ledger",
           "field": "pooled_empirical_coverage",
           "trainer": "prequential-robust-mad/v1",
-          "n": 99,
-          "n_extracted": 99,
+          "n": 100,
+          "n_extracted": 100,
           "n_prior": 80,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 63,
           "holdout": {
             "split": "time",
-            "n_extracted": 99,
+            "n_extracted": 100,
             "n_prior": 80,
-            "n_holdout": 19,
-            "n_holdout_scored": 19,
+            "n_holdout": 20,
+            "n_holdout_scored": 20,
             "n_holdout_unusual": 0,
             "holdout_unusualness_median": 1.01,
             "holdout_flag_rate": 0.0,
@@ -891,10 +891,10 @@
               "instrument_id": "forecast-ledger",
               "field": "pooled_empirical_coverage",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 99,
-              "n_history": 98,
-              "current_value": 0.841,
-              "unusualness": 0.17
+              "n_file_lines": 100,
+              "n_history": 99,
+              "current_value": 0.842,
+              "unusualness": 0.34
             }
           ],
           "rights": {
@@ -906,20 +906,20 @@
           "instrument_id": "erasure-trail",
           "field": "n_rows",
           "trainer": "prequential-robust-mad/v1",
-          "n": 9,
-          "n_extracted": 9,
+          "n": 10,
+          "n_extracted": 10,
           "n_prior": 8,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": null,
           "holdout": {
             "split": "time",
-            "n_extracted": 9,
+            "n_extracted": 10,
             "n_prior": 8,
-            "n_holdout": 1,
-            "n_holdout_scored": 1,
+            "n_holdout": 2,
+            "n_holdout_scored": 2,
             "n_holdout_unusual": 0,
-            "holdout_unusualness_median": 0.674491,
+            "holdout_unusualness_median": 1.821125,
             "holdout_flag_rate": 0.0,
             "threshold": 4.5
           },
@@ -928,10 +928,10 @@
               "instrument_id": "erasure-trail",
               "field": "n_rows",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 9,
-              "n_history": 8,
-              "current_value": 24.0,
-              "unusualness": 0.674491
+              "n_file_lines": 10,
+              "n_history": 9,
+              "current_value": 41.0,
+              "unusualness": 2.967759
             }
           ],
           "rights": {
@@ -1202,16 +1202,16 @@
           "instrument_id": "research-corpus",
           "field": "n_sources",
           "trainer": "prequential-robust-mad/v1",
-          "n": 38,
-          "n_extracted": 38,
-          "n_prior": 31,
+          "n": 39,
+          "n_extracted": 39,
+          "n_prior": 32,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 36,
           "holdout": {
             "split": "time",
-            "n_extracted": 38,
-            "n_prior": 31,
+            "n_extracted": 39,
+            "n_prior": 32,
             "n_holdout": 7,
             "n_holdout_scored": 7,
             "n_holdout_unusual": 0,
@@ -1224,8 +1224,8 @@
               "instrument_id": "research-corpus",
               "field": "n_sources",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 38,
-              "n_history": 37,
+              "n_file_lines": 39,
+              "n_history": 38,
               "current_value": 5.0,
               "unusualness": 0.0
             }
@@ -1521,10 +1521,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 172,
+      "n_file_lines": 173,
       "state": "scored",
-      "n_history": 171,
-      "current_value": 59.2,
+      "n_history": 172,
+      "current_value": 59.0,
       "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
@@ -1533,23 +1533,23 @@
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 2.5935,
-      "public_copy": "this instrument is within its own 171 prior points",
+      "board_stat": 2.2763,
+      "public_copy": "this instrument is within its own 172 prior points",
       "feature_citations": [
         {
           "instrument_id": "ooni-gfw",
           "field": "gfw_index",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 172,
-          "n_history": 171,
-          "current_value": 59.2,
+          "n_file_lines": 173,
+          "n_history": 172,
+          "current_value": 59.0,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 172,
-        "n_prior": 138,
+        "n_extracted": 173,
+        "n_prior": 139,
         "n_holdout": 34,
         "n_holdout_scored": 34,
         "n_holdout_unusual": 0,
@@ -1570,10 +1570,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 324,
+      "n_file_lines": 326,
       "state": "scored",
-      "n_history": 323,
-      "current_value": 1.5466,
+      "n_history": 325,
+      "current_value": 1.4223,
       "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
@@ -1582,23 +1582,23 @@
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 12.9996,
-      "public_copy": "this instrument is within its own 323 prior points",
+      "board_stat": 9.4669,
+      "public_copy": "this instrument is within its own 325 prior points",
       "feature_citations": [
         {
           "instrument_id": "ddti",
           "field": "top_threat",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 324,
-          "n_history": 323,
-          "current_value": 1.5466,
+          "n_file_lines": 326,
+          "n_history": 325,
+          "current_value": 1.4223,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 324,
-        "n_prior": 284,
+        "n_extracted": 326,
+        "n_prior": 286,
         "n_holdout": 40,
         "n_holdout_scored": 40,
         "n_holdout_unusual": 0,
@@ -1717,37 +1717,37 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 179,
+      "n_file_lines": 180,
       "state": "scored",
-      "n_history": 178,
-      "current_value": 1.0,
-      "unusualness": 0.0,
+      "n_history": 179,
+      "current_value": 6.0,
+      "unusualness": 0.337245,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 0.0,
+        "score": 2.5,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 7.5987,
-      "public_copy": "this instrument is within its own 178 prior points",
+      "board_stat": 4.6354,
+      "public_copy": "this instrument is within its own 179 prior points",
       "feature_citations": [
         {
           "instrument_id": "gdelt",
           "field": "n_containment+n_blackout",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 179,
-          "n_history": 178,
-          "current_value": 1.0,
-          "unusualness": 0.0
+          "n_file_lines": 180,
+          "n_history": 179,
+          "current_value": 6.0,
+          "unusualness": 0.337245
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 179,
+        "n_extracted": 180,
         "n_prior": 144,
-        "n_holdout": 35,
-        "n_holdout_scored": 35,
+        "n_holdout": 36,
+        "n_holdout_scored": 36,
         "n_holdout_unusual": 0,
         "holdout_unusualness_median": 0.0,
         "holdout_flag_rate": 0.0,
@@ -1911,9 +1911,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 129,
+      "n_file_lines": 130,
       "state": "scored",
-      "n_history": 128,
+      "n_history": 129,
       "current_value": 0.0,
       "unusualness": 0.0,
       "unusual": false,
@@ -1924,24 +1924,24 @@
       },
       "board_state": "calm",
       "board_stat": 1.0,
-      "public_copy": "this instrument is within its own 128 prior points",
+      "public_copy": "this instrument is within its own 129 prior points",
       "feature_citations": [
         {
           "instrument_id": "ioda-outages",
           "field": "events_started_yesterday",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 129,
-          "n_history": 128,
+          "n_file_lines": 130,
+          "n_history": 129,
           "current_value": 0.0,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 129,
+        "n_extracted": 130,
         "n_prior": 104,
-        "n_holdout": 25,
-        "n_holdout_scored": 25,
+        "n_holdout": 26,
+        "n_holdout_scored": 26,
         "n_holdout_unusual": 0,
         "holdout_unusualness_median": 0.0,
         "holdout_flag_rate": 0.0,
@@ -2294,10 +2294,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 157,
+      "n_file_lines": 158,
       "state": "scored",
-      "n_history": 156,
-      "current_value": -10.621,
+      "n_history": 157,
+      "current_value": -10.412,
       "unusualness": 1.75,
       "unusual": false,
       "review_rank": {
@@ -2305,22 +2305,22 @@
         "score": 13.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 156 prior points",
+      "public_copy": "this instrument is within its own 157 prior points",
       "feature_citations": [
         {
           "instrument_id": "stock-connect",
           "field": "southbound_net_b",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 157,
-          "n_history": 156,
-          "current_value": -10.621,
+          "n_file_lines": 158,
+          "n_history": 157,
+          "current_value": -10.412,
           "unusualness": 1.75
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 157,
-        "n_prior": 126,
+        "n_extracted": 158,
+        "n_prior": 127,
         "n_holdout": 31,
         "n_holdout_scored": 31,
         "n_holdout_unusual": 0,
@@ -2388,9 +2388,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 34,
+      "n_file_lines": 35,
       "state": "scored",
-      "n_history": 31,
+      "n_history": 32,
       "current_value": 1.0,
       "unusualness": 0.0,
       "unusual": false,
@@ -2399,22 +2399,22 @@
         "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 31 prior points",
+      "public_copy": "this instrument is within its own 32 prior points",
       "feature_citations": [
         {
           "instrument_id": "inside-view",
           "field": "block_rate",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 34,
-          "n_history": 31,
+          "n_file_lines": 35,
+          "n_history": 32,
           "current_value": 1.0,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 32,
-        "n_prior": 26,
+        "n_extracted": 33,
+        "n_prior": 27,
         "n_holdout": 6,
         "n_holdout_scored": 6,
         "n_holdout_unusual": 0,
@@ -2435,10 +2435,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 77,
+      "n_file_lines": 78,
       "state": "scored",
-      "n_history": 76,
-      "current_value": 1.31,
+      "n_history": 77,
+      "current_value": 1.32,
       "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
@@ -2446,22 +2446,22 @@
         "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 76 prior points",
+      "public_copy": "this instrument is within its own 77 prior points",
       "feature_citations": [
         {
           "instrument_id": "in-path-interference",
           "field": "middlebox_index",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 77,
-          "n_history": 76,
-          "current_value": 1.31,
+          "n_file_lines": 78,
+          "n_history": 77,
+          "current_value": 1.32,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 77,
-        "n_prior": 62,
+        "n_extracted": 78,
+        "n_prior": 63,
         "n_holdout": 15,
         "n_holdout_scored": 15,
         "n_holdout_unusual": 0,
@@ -2529,35 +2529,35 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 99,
+      "n_file_lines": 100,
       "state": "scored",
-      "n_history": 98,
-      "current_value": 0.841,
-      "unusualness": 0.17,
+      "n_history": 99,
+      "current_value": 0.842,
+      "unusualness": 0.34,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 1.3,
+        "score": 2.5,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 98 prior points",
+      "public_copy": "this instrument is within its own 99 prior points",
       "feature_citations": [
         {
           "instrument_id": "forecast-ledger",
           "field": "pooled_empirical_coverage",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 99,
-          "n_history": 98,
-          "current_value": 0.841,
-          "unusualness": 0.17
+          "n_file_lines": 100,
+          "n_history": 99,
+          "current_value": 0.842,
+          "unusualness": 0.34
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 99,
+        "n_extracted": 100,
         "n_prior": 80,
-        "n_holdout": 19,
-        "n_holdout_scored": 19,
+        "n_holdout": 20,
+        "n_holdout_scored": 20,
         "n_holdout_unusual": 0,
         "holdout_unusualness_median": 1.01,
         "holdout_flag_rate": 0.0,
@@ -2576,37 +2576,37 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 9,
+      "n_file_lines": 10,
       "state": "scored",
-      "n_history": 8,
-      "current_value": 24.0,
-      "unusualness": 0.674491,
+      "n_history": 9,
+      "current_value": 41.0,
+      "unusualness": 2.967759,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 5.0,
+        "score": 22.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 8 prior points",
+      "public_copy": "this instrument is within its own 9 prior points",
       "feature_citations": [
         {
           "instrument_id": "erasure-trail",
           "field": "n_rows",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 9,
-          "n_history": 8,
-          "current_value": 24.0,
-          "unusualness": 0.674491
+          "n_file_lines": 10,
+          "n_history": 9,
+          "current_value": 41.0,
+          "unusualness": 2.967759
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 9,
+        "n_extracted": 10,
         "n_prior": 8,
-        "n_holdout": 1,
-        "n_holdout_scored": 1,
+        "n_holdout": 2,
+        "n_holdout_scored": 2,
         "n_holdout_unusual": 0,
-        "holdout_unusualness_median": 0.674491,
+        "holdout_unusualness_median": 1.821125,
         "holdout_flag_rate": 0.0,
         "threshold": 4.5
       }
@@ -2952,9 +2952,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 38,
+      "n_file_lines": 39,
       "state": "scored",
-      "n_history": 37,
+      "n_history": 38,
       "current_value": 5.0,
       "unusualness": 0.0,
       "unusual": false,
@@ -2963,22 +2963,22 @@
         "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 37 prior points",
+      "public_copy": "this instrument is within its own 38 prior points",
       "feature_citations": [
         {
           "instrument_id": "research-corpus",
           "field": "n_sources",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 38,
-          "n_history": 37,
+          "n_file_lines": 39,
+          "n_history": 38,
           "current_value": 5.0,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 38,
-        "n_prior": 31,
+        "n_extracted": 39,
+        "n_prior": 32,
         "n_holdout": 7,
         "n_holdout_scored": 7,
         "n_holdout_unusual": 0,
@@ -17447,7 +17447,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:board-alarm",
       "signal_id": "board-alarm",
-      "published_at": "2026-08-20T07:29:31Z",
+      "published_at": "2026-08-20T13:35:46Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17468,14 +17468,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "4f4f3625b138ef37589e90010e8a7b23bec8e8ec5aa3d8961f5391c3be888608"
+      "row_sha256": "98efa5c4722ae788854d9df77d3ef6e30cc883a213348254b551776008ee9f8e"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:event-flags",
       "signal_id": "event-flags",
-      "published_at": "2026-08-20T07:28:10Z",
+      "published_at": "2026-08-20T13:34:34Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17496,14 +17496,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "dd1d0c2f68c50e36cce1dda38fc3791a56d30380b2d07b2c520106e774c5b5c5"
+      "row_sha256": "5f9cbe8ca651ed58f0200efded24f8653509eedb7d632d77227ddf50dcc7fee0"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:coverage-guard",
       "signal_id": "coverage-guard",
-      "published_at": "2026-08-20T07:29:31Z",
+      "published_at": "2026-08-20T13:35:46Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17524,14 +17524,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "ae5caabfb39f44d67da6358c08a0b08aaf5583fa4e5e0d814791301b8b0747e7"
+      "row_sha256": "9afbff0f9f9baadfb91b38138783e32c0c4d4eba02e65fd4e297811f0dfc937b"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:forecast-ledger",
       "signal_id": "forecast-ledger",
-      "published_at": "2026-08-20T07:29:31Z",
+      "published_at": "2026-08-20T13:35:46Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17552,14 +17552,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "8c9409bd0bee6175b36ebce95780b5735f5eb43b4570435b3d4886707764b763"
+      "row_sha256": "6c09eddec6a9d0e54b80a62fdedeab776b8c6ed6157dafbff4b7c45b7e77f663"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:cross-layer",
       "signal_id": "cross-layer",
-      "published_at": "2026-08-20T07:29:31Z",
+      "published_at": "2026-08-20T13:35:46Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17580,14 +17580,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "a4460d983fa6aa52734f9024ab5fda8dab559c2bccb013e80ef537b14bb86036"
+      "row_sha256": "477fec3f7b63fdd0afb4b783e4ca1aa4ca21d2139ea1716e6d8f295f6eba1bb9"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:ddti",
       "signal_id": "ddti",
-      "published_at": "2026-08-20T09:50:04Z",
+      "published_at": "2026-08-20T13:10:42Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17608,14 +17608,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "4c7683cee48926d6c9ec3608f361e99e5e43c515abc055328409eda1dd2887b5"
+      "row_sha256": "76adf0dd2ceea25e01ba16b6978c59d1a75a4eabdeba18a94007941c02dd2efd"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:gdelt",
       "signal_id": "gdelt",
-      "published_at": "2026-08-20T07:33:18Z",
+      "published_at": "2026-08-20T13:39:08Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17636,7 +17636,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "91ab33668d06d91560639e3ff9a852b230d43f150de1448c7501993b763b0465"
+      "row_sha256": "bbf3486806f578277877fa2074a5d486ac7920e5b24691c6245c24e01e2e47d7"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -17727,7 +17727,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:net4people",
       "signal_id": "net4people",
-      "published_at": "2026-08-20T02:05:13Z",
+      "published_at": "2026-08-20T13:30:13Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17748,14 +17748,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "0c2627cac16aea9a23dc856d602d8f28eae4d73708fe43aa34880b7113302089"
+      "row_sha256": "bed326ad0dec9dc4b6030a281bdf2db9389256b7f4fdde7236e0930842daed1d"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:public-deletion-ledgers",
       "signal_id": "public-deletion-ledgers",
-      "published_at": "2026-08-20T09:50:33Z",
+      "published_at": "2026-08-20T14:51:58Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17776,7 +17776,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "5d07e89ae0d6fdc91366c09b3a4b9f27c391bc57caa3dc1cbc98dcbde54f9f25"
+      "row_sha256": "be02a95290fe26e5fa2ad872935bce3479de996e809d09662c26b2b7cacf3ee1"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -17811,7 +17811,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:research-corpus",
       "signal_id": "research-corpus",
-      "published_at": "2026-08-20T07:24:40Z",
+      "published_at": "2026-08-20T13:29:56Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17832,14 +17832,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "7bb2a40f8c428d815651e10308001682eefc7084e064acc9c903d7df863697a3"
+      "row_sha256": "b7102e18a25acc5e9e6502c28c9d19a09852ca0c297089ec92be3c88bc85d769"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:peer-context",
       "signal_id": "peer-context",
-      "published_at": "2026-08-20T09:50:33Z",
+      "published_at": "2026-08-20T14:51:58Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17860,14 +17860,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "b0c64b4b19e5d41cba7b5a81c756cac98a56402d085b448140721f371e1dc7d6"
+      "row_sha256": "3fef51d98c776dadd9d66985f95454ea27a850185095237ae146d5e56e35a658"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:ooni-gfw",
       "signal_id": "ooni-gfw",
-      "published_at": "2026-08-20T07:12:09Z",
+      "published_at": "2026-08-20T13:17:46Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17888,14 +17888,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "908048c07090aa7b1ddce517b8288f7e0e4a3c01a1053279abdced71de6969f6"
+      "row_sha256": "1f9595959f19094f419bd5800c490804e269c75b6bc4c3e17ea1e728670b3d85"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:in-path-interference",
       "signal_id": "in-path-interference",
-      "published_at": "2026-08-20T07:14:29Z",
+      "published_at": "2026-08-20T13:25:18Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17916,7 +17916,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "5bd53403f36afd306e5f0e34db509ff8be6446a4cb7217688c376d9aaed8dd3a"
+      "row_sha256": "005949a806e5560cf7f3d41a0956cc2b231ef404e505d81848996b80822ae778"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -17951,7 +17951,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:inside-view",
       "signal_id": "inside-view",
-      "published_at": "2026-08-20T07:25:31Z",
+      "published_at": "2026-08-20T13:30:01Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17972,14 +17972,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "6aca7db66b7bd0f39e78fd443f48013af44a2f52601507e00935d458a7f055c5"
+      "row_sha256": "e7a4b345f71e1b315afcf1e9c0b8f0c448c43fb50ef831fed9e4d62dcdd32e52"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:ioda-outages",
       "signal_id": "ioda-outages",
-      "published_at": "2026-08-20T07:16:01Z",
+      "published_at": "2026-08-20T13:25:52Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18000,7 +18000,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "ae47bcbe1e9796a9eb0e3f3cd6b36d0bda62650c3c35c38d563c93f49c71dd1e"
+      "row_sha256": "83234917535cddaa1b616b803b2b24fba48123cef172c58783032bb052722395"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18035,7 +18035,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:vantage-fusion",
       "signal_id": "vantage-fusion",
-      "published_at": "2026-08-20T07:30:30Z",
+      "published_at": "2026-08-20T13:37:38Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18056,7 +18056,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "5c6f8751aaffb5367675cf783b02ca2dd907aea2b6d6ae4ecb47c9ce6651550e"
+      "row_sha256": "a90118b2760d4eed5eb4e6dbf462f22c5614687acef5b00f997ca1c427cb63f5"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18091,7 +18091,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:greatfire-context",
       "signal_id": "greatfire-context",
-      "published_at": "2026-08-20T09:50:33Z",
+      "published_at": "2026-08-20T14:51:58Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18112,7 +18112,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "b641bdf14682cb0d61a2e3633a5db810b9745f93bc4763c79f8c39a5abf7cced"
+      "row_sha256": "ee9a903d6f3d24d31e5fa63500ef14a38a36f300090f035115b55e20c80ea2d7"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18147,7 +18147,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:wayback",
       "signal_id": "wayback",
-      "published_at": "2026-08-20T01:56:45Z",
+      "published_at": "2026-08-20T13:23:14Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18168,7 +18168,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "093f7d5c2b49af437b2a2f5d454c8ee5d73145814034e4d2eb26eab5c9c268df"
+      "row_sha256": "d7870efff9c668def03e3923082e249c77707a240afc723a2594bc28602040ff"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18203,7 +18203,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:github-refuge",
       "signal_id": "github-refuge",
-      "published_at": "2026-08-20T02:03:48Z",
+      "published_at": "2026-08-20T13:28:53Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18224,14 +18224,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "086ea30e6831f14ba49e5e97b0c255158ae44df6153d4eacf1e19570889e00c8"
+      "row_sha256": "843192aef704b6380cd04e7e4f8b79b324df394380cefe08cdddb61267b4f666"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:app-storefront",
       "signal_id": "app-storefront",
-      "published_at": "2026-08-20T07:29:32Z",
+      "published_at": "2026-08-20T13:35:54Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18252,7 +18252,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "7e06155b1f07fff337967d9e02015b3f319b4a5bfa6c6a54c08ac63e5bb98057"
+      "row_sha256": "bcabe2542a6692b6570ed85a52f0f9506b32eeae684de173a29849247ca52cbe"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18343,7 +18343,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:stock-connect",
       "signal_id": "stock-connect",
-      "published_at": "2026-08-19T14:02:30Z",
+      "published_at": "2026-08-20T14:05:03Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18364,7 +18364,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "3ebe6886854ac6c6e3b86f38ad4958ebec424557213c57c15360317dd2b1e5d4"
+      "row_sha256": "dc2af50625e5ea01496243572700eca2074663df9affbd6075bb3f85da0ee408"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18514,5 +18514,5 @@
     "person_level_analysis": "prohibited",
     "generative_model": "prohibited"
   },
-  "analysis_sha256": "df5fc704d8a578d1ab3727935f5e977e820d4679b5170a02e51803772e5ad1d4"
+  "analysis_sha256": "fc0602fececb6b95be111691d040f738ddbe5dbc8413c73ceecb008e2fb5a140"
 }
