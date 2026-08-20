@@ -13,12 +13,12 @@
   ],
   "items": [
     {
-      "id": "palimpsest-news:board-alarm:sha256:c79ad234beae3d6b644818c122a1dc1e7e5de8334de048e81af92215f226ee51",
+      "id": "palimpsest-news:board-alarm:sha256:1db70cdc98198720af2469552c236c07edf4c560cda8f6b4fa1a7c86f0f8d303",
       "url": "https://palimpsest.info/news/board-alarm/",
       "external_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "title": "[Palimpsest measurement] Multiple layers elevated together in the latest board synthesis",
       "summary": "Palimpsest measurement. The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 36 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 1 missing. The board-wide e-value is 243.327; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing. The board-wide e-value is 243.327; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
       "date_published": "2026-08-20T07:29:31Z",
       "date_modified": "2026-08-20T07:29:31Z",
       "tags": [
@@ -37,7 +37,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-bc92587f21e68cadb780181d",
+        "revision_id": "storyv-6811b49fb76203e860ed1a33",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -418,6 +418,34 @@
       }
     },
     {
+      "id": "palimpsest-news:peer-context:sha256:c93a0a183ade1fd5320f4b2266cec5630c86b7ffae4ee142c1c3ab016c2a5362",
+      "url": "https://palimpsest.info/news/attributed-peer-context/",
+      "external_url": "https://palimpsest.info/readings/peer-context-latest.json",
+      "title": "[Palimpsest measurement] Attributed peer-context warehouse: no current finding",
+      "summary": "Palimpsest measurement. The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Attributed peer-context warehouse because the source status is missing.\n\nLimit: Current finding withheld: source file is missing Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator.\n\nEvidence: https://palimpsest.info/readings/peer-context-latest.json",
+      "date_published": "2026-08-20T07:34:19Z",
+      "date_modified": "2026-08-20T07:34:19Z",
+      "tags": [
+        "palimpsest-measurement",
+        "Attention and Narrative",
+        "peer-context",
+        "missing"
+      ],
+      "attachments": [
+        {
+          "url": "https://palimpsest.info/readings/peer-context-latest.json",
+          "mime_type": "application/json",
+          "title": "peer-context-latest.json"
+        }
+      ],
+      "_palimpsest": {
+        "kind": "instrument_measurement",
+        "revision_id": "storyv-35e1d8ff6af023504014175e",
+        "verification_status": "palimpsest_measurement"
+      }
+    },
+    {
       "id": "palimpsest-news:ooni-gfw:sha256:5a7000819361c164aea993cbe03ed5c1135e50247cadc2a4beec6721c2118057",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "external_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
@@ -646,6 +674,34 @@
       "_palimpsest": {
         "kind": "instrument_measurement",
         "revision_id": "storyv-cbac19d77ddad99b12d21bec",
+        "verification_status": "palimpsest_measurement"
+      }
+    },
+    {
+      "id": "palimpsest-news:greatfire-context:sha256:6ddc8e5dc67c681b51e2f36eca577b761b69107a888b025e369f40b7370aed10",
+      "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
+      "external_url": "https://palimpsest.info/readings/greatfire-context-latest.json",
+      "title": "[Palimpsest measurement] GreatFire attributed verdicts: no current finding",
+      "summary": "Palimpsest measurement. The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for GreatFire attributed verdicts because the source status is missing.\n\nLimit: Current finding withheld: source file is missing A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive.\n\nEvidence: https://palimpsest.info/readings/greatfire-context-latest.json",
+      "date_published": "2026-08-20T07:34:19Z",
+      "date_modified": "2026-08-20T07:34:19Z",
+      "tags": [
+        "palimpsest-measurement",
+        "Network and Circumvention",
+        "greatfire-context",
+        "missing"
+      ],
+      "attachments": [
+        {
+          "url": "https://palimpsest.info/readings/greatfire-context-latest.json",
+          "mime_type": "application/json",
+          "title": "greatfire-context-latest.json"
+        }
+      ],
+      "_palimpsest": {
+        "kind": "instrument_measurement",
+        "revision_id": "storyv-ddab17c9deba52cdfab5d8bb",
         "verification_status": "palimpsest_measurement"
       }
     },

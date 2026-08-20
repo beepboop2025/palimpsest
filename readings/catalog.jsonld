@@ -554,6 +554,38 @@
     },
     {
       "@type": "Dataset",
+      "identifier": "greatfire-context",
+      "name": "GreatFire attributed verdicts",
+      "description": "Caches GreatFire Analyzer 90-day URL verdicts (CC BY 4.0) for hosts Palimpsest already holds. Palimpsest is not the origin of these measurements and does not crawl the 700k catalog.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT12H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "peer-context",
+      "name": "Attributed peer-context warehouse",
+      "description": "Joins GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. Peer rows never become Palimpsest capture.",
+      "url": "https://palimpsest.info/news/china/situation/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": null,
+      "isAccessibleForFree": true,
+      "distribution": []
+    },
+    {
+      "@type": "Dataset",
       "identifier": "app-storefront",
       "name": "App Storefront panel",
       "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
@@ -1201,7 +1233,7 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-20T03:58:30Z",
+      "dateModified": "2026-08-20T07:06:05Z",
       "isAccessibleForFree": true,
       "distribution": [
         {

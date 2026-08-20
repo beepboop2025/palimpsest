@@ -9,27 +9,27 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 62,
+    "datasets": 64,
     "states": {
       "disabled": 1,
-      "fresh": 40,
+      "fresh": 41,
       "gated": 6,
       "private-node": 1,
-      "stale": 11,
-      "warming": 3
+      "stale": 10,
+      "warming": 5
     },
     "layers": {
       "content": 11,
-      "cross-layer": 17,
+      "cross-layer": 18,
       "economy": 4,
       "integrity": 1,
       "model": 7,
       "narrative": 2,
-      "network": 12,
+      "network": 13,
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 13951010,
+    "published_bytes": 14087650,
     "history_rows": 6549
   },
   "datasets": [
@@ -1014,6 +1014,103 @@
       }
     },
     {
+      "id": "greatfire-context",
+      "name": "GreatFire attributed verdicts",
+      "description": "Caches GreatFire Analyzer 90-day URL verdicts (CC BY 4.0) for hosts Palimpsest already holds. Palimpsest is not the origin of these measurements and does not crawl the 700k catalog.",
+      "layer": "network",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "warming",
+      "cadence": "PT12H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire Analyzer open API"
+      ],
+      "latest": "readings/greatfire-context-latest.json",
+      "history": "readings/greatfire-context-history.jsonl",
+      "landing_page": "osint-china.html",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": [
+        "n_verdicts",
+        "n_urls_queried"
+      ],
+      "license": {
+        "name": "GreatFire Analyzer CC BY 4.0; Palimpsest derived metadata MIT",
+        "url": "https://creativecommons.org/licenses/by/4.0/"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/greatfire-context-latest.json",
+        "history": "https://palimpsest.info/readings/greatfire-context-history.jsonl",
+        "landing_page": "https://palimpsest.info/osint-china.html",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
+      }
+    },
+    {
+      "id": "peer-context",
+      "name": "Attributed peer-context warehouse",
+      "description": "Joins GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. Peer rows never become Palimpsest capture.",
+      "layer": "cross-layer",
+      "stage": "corroboration",
+      "collection_mode": "passive",
+      "status": "warming",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "GreatFire Analyzer",
+        "OONI",
+        "China Digital Times",
+        "Weiboscope citation"
+      ],
+      "latest": "readings/peer-context-latest.json",
+      "history": "readings/peer-context-history.jsonl",
+      "landing_page": "news/china/situation/",
+      "method": "docs/CHINA-CAPTURE.md",
+      "count_fields": [
+        "n_hosts",
+        "n_greatfire",
+        "n_ooni",
+        "n_cdt"
+      ],
+      "license": {
+        "name": "Upstream rights retained; derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": 0,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": false,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/peer-context-latest.json",
+        "history": "https://palimpsest.info/readings/peer-context-history.jsonl",
+        "landing_page": "https://palimpsest.info/news/china/situation/",
+        "method": "https://palimpsest.info/docs/CHINA-CAPTURE.md"
+      }
+    },
+    {
       "id": "app-storefront",
       "name": "App Storefront panel",
       "description": "Tracks a fixed app panel across Apple storefronts and reports delistings only when controls and source health pass.",
@@ -1923,9 +2020,9 @@
         "observed_at": "2026-08-20T07:34:19Z",
         "age_seconds": 7,
         "counts": {
-          "n_stories": 36
+          "n_stories": 38
         },
-        "latest_bytes": 78421,
+        "latest_bytes": 82244,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2031,7 +2128,7 @@
           "coverage.successful_sources": 44,
           "coverage.excluded_global_feed_items": 83
         },
-        "latest_bytes": 2319282,
+        "latest_bytes": 2434384,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2179,9 +2276,9 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-20T03:58:30Z",
-        "age_seconds": 12956,
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-20T07:06:05Z",
+        "age_seconds": 1701,
         "counts": {
           "coverage.in_scope_events": 459,
           "coverage.publisher_reports": 494,
@@ -2189,7 +2286,7 @@
           "coverage.social_observations_linked": 0,
           "coverage.reviewed_telegram_signals": 0
         },
-        "latest_bytes": 2175487,
+        "latest_bytes": 2187599,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
@@ -2381,11 +2478,11 @@
         "age_seconds": 5,
         "counts": {
           "inputs": 8,
-          "resources": 113,
-          "dependency_groups": 89,
+          "resources": 117,
+          "dependency_groups": 92,
           "projects": 5
         },
-        "latest_bytes": 179585,
+        "latest_bytes": 185188,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,

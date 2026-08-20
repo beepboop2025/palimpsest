@@ -25,6 +25,22 @@
       "title": "Public deletion ledgers: missing"
     },
     {
+      "id": "health-greatfire-context",
+      "kind": "health",
+      "severity": "notice",
+      "source_id": "greatfire-context",
+      "summary": "source file is missing",
+      "title": "GreatFire attributed verdicts: missing"
+    },
+    {
+      "id": "health-peer-context",
+      "kind": "health",
+      "severity": "notice",
+      "source_id": "peer-context",
+      "summary": "source file is missing",
+      "title": "Attributed peer-context warehouse: missing"
+    },
+    {
       "id": "health-bleedthrough",
       "kind": "health",
       "severity": "notice",
@@ -90,13 +106,13 @@
     }
   ],
   "generated_at": "2026-08-20T07:34:19Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 36 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 1 missing.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 3,
       "live": 27,
-      "missing": 1,
+      "missing": 3,
       "stale": 5
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
@@ -126,10 +142,10 @@
     },
     {
       "id": "attention",
-      "n_degraded": 1,
+      "n_degraded": 2,
       "n_live": 8,
       "n_reporting": 8,
-      "n_total": 9,
+      "n_total": 10,
       "signal_ids": [
         "ddti",
         "gdelt",
@@ -138,6 +154,7 @@
         "blocklist",
         "net4people",
         "public-deletion-ledgers",
+        "peer-context",
         "undertext",
         "research-corpus"
       ],
@@ -146,11 +163,12 @@
     },
     {
       "id": "network",
-      "n_degraded": 1,
+      "n_degraded": 2,
       "n_live": 7,
       "n_reporting": 8,
-      "n_total": 8,
+      "n_total": 9,
       "signal_ids": [
+        "greatfire-context",
         "ooni-gfw",
         "in-path-interference",
         "censored-planet",
@@ -237,7 +255,7 @@
   "method_version": 1,
   "n_signals_live": 27,
   "n_signals_reporting": 35,
-  "n_signals_total": 36,
+  "n_signals_total": 38,
   "schema_version": "osint-china.v1",
   "scope": "China public-source measurement across attention, network access, erasure, economic undertext, model behaviour, command safeguards and integrity witnessing.",
   "signals": [
@@ -8658,6 +8676,72 @@
       "status": "missing",
       "summary": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style) with reachability explicit. No payload is present at readings/public-deletion-ledgers-latest.json; no current measurement is claimed.",
       "title": "Public deletion ledgers"
+    },
+    {
+      "cadence_hours": 12,
+      "freshness_deadline": null,
+      "health": {
+        "age_hours": null,
+        "collector_reason": null,
+        "collector_status": null,
+        "ok": false,
+        "pipeline_checked_at": null,
+        "reason": "source file is missing",
+        "upstream_status": null
+      },
+      "id": "greatfire-context",
+      "input": {
+        "bytes": null,
+        "filename": "greatfire-context-latest.json",
+        "sha256": null
+      },
+      "layer": "network",
+      "live": false,
+      "method": "Keyless /api/url/ and /api/verdict lookups; silent API abstains",
+      "method_version": null,
+      "metric": null,
+      "optional": true,
+      "payload": null,
+      "raw_url": "https://palimpsest.info/readings/greatfire-context-latest.json",
+      "scope": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements.",
+      "source": "GreatFire Analyzer open API, CC BY 4.0",
+      "source_timestamp": null,
+      "status": "missing",
+      "summary": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements. No payload is present at readings/greatfire-context-latest.json; no current measurement is claimed.",
+      "title": "GreatFire attributed verdicts"
+    },
+    {
+      "cadence_hours": 6,
+      "freshness_deadline": null,
+      "health": {
+        "age_hours": null,
+        "collector_reason": null,
+        "collector_status": null,
+        "ok": false,
+        "pipeline_checked_at": null,
+        "reason": "source file is missing",
+        "upstream_status": null
+      },
+      "id": "peer-context",
+      "input": {
+        "bytes": null,
+        "filename": "peer-context-latest.json",
+        "sha256": null
+      },
+      "layer": "attention",
+      "live": false,
+      "method": "Offline host join; no catalog crawl; no 2012 Weiboscope dump",
+      "method_version": null,
+      "metric": null,
+      "optional": true,
+      "payload": null,
+      "raw_url": "https://palimpsest.info/readings/peer-context-latest.json",
+      "scope": "Joins GreatFire, OONI, CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts.",
+      "source": "GreatFire cache, OONI warehouse/ooni-gfw-latest, CDT RSS, Weiboscope citation",
+      "source_timestamp": null,
+      "status": "missing",
+      "summary": "Joins GreatFire, OONI, CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. No payload is present at readings/peer-context-latest.json; no current measurement is claimed.",
+      "title": "Attributed peer-context warehouse"
     },
     {
       "cadence_hours": 6,

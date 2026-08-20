@@ -296,6 +296,23 @@
       "related_signal_ids": ["github-refuge", "wayback"]
     },
     {
+      "id": "peer-context",
+      "name": "Attributed peer-context warehouse",
+      "slug": "attributed-peer-context",
+      "section": "attention",
+      "order": 10,
+      "type": "analysis",
+      "priority": "background",
+      "claim_type": "observation",
+      "headline_template": "Peer-context joins {value} already-held Palimpsest hosts",
+      "dek_template": "GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention stay named as peer context. They never become Palimpsest capture.",
+      "claim_template": "The current peer-context warehouse joins {value} already-held hosts.",
+      "limitations": [
+        "Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator."
+      ],
+      "related_signal_ids": ["greatfire-context", "ooni-gfw", "public-deletion-ledgers"]
+    },
+    {
       "id": "ooni-gfw",
       "name": "OONI Great Firewall index",
       "slug": "ooni-great-firewall-index",
@@ -430,6 +447,23 @@
         "This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading."
       ],
       "related_signal_ids": ["in-path-interference", "vantage-fusion"]
+    },
+    {
+      "id": "greatfire-context",
+      "name": "GreatFire attributed verdicts",
+      "slug": "greatfire-attributed-verdicts",
+      "section": "network",
+      "order": 9,
+      "type": "measurement",
+      "priority": "background",
+      "claim_type": "observation",
+      "headline_template": "GreatFire's cache holds {value} 90-day verdicts for already-held Palimpsest URLs",
+      "dek_template": "The GreatFire Analyzer open API is credited by name and date. Palimpsest is not the origin of these measurements and does not crawl the catalog.",
+      "claim_template": "The current GreatFire context cache contains {value} compact 90-day verdicts.",
+      "limitations": [
+        "A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive."
+      ],
+      "related_signal_ids": ["ooni-gfw", "peer-context", "public-deletion-ledgers"]
     },
     {
       "id": "erasure-observatory",
