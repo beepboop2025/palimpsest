@@ -340,6 +340,8 @@ EXCLUDED_LATEST_FILES = frozenset({
     "baike-public-snapshot-latest.json",
     "public-hot-boards-latest.json",
     "telegram-public-channels-latest.json",
+    "reading-analysis-latest.json",
+    "peer-context-latest.json",
 })
 
 

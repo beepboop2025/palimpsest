@@ -1,0 +1,55 @@
+name: Refresh reading analysis
+
+# Per-instrument unusualness and unlabeled story review ranks. Pure local
+# recomputation over committed histories plus live newswire/newsroom if
+# present. No network, no generative model, no Common Crawl bodies.
+
+on:
+  schedule:
+    - cron: "59 */6 * * *"     # every 6 hours, after board-alarm at :53
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reading-analysis-refresh
+  cancel-in-progress: false
+
+jobs:
+  reading-analysis:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Fit each public instrument against its own history
+        run: python -m scripts.reading_analysis_pull
+
+      - name: Read the public surface before pushing it
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: python scripts/verify_public_surface.py
+
+      - name: Commit & push if the analysis changed
+        env:
+          PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
+        run: |
+          git config user.name  "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git add readings/reading-analysis-latest.json \
+                  readings/reading-analysis-history.jsonl 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change"
+          else
+            git commit -m "data: reading analysis refresh ($(date -u +%FT%TZ)) [skip ci]"
+            python scripts/push_data_commit.py \
+              --rebuild-module scripts.reading_analysis_pull \
+              --stage readings/reading-analysis-latest.json \
+              --stage readings/reading-analysis-history.jsonl
+          fi

@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-20T08:26:14.583898Z",
+  "dateModified": "2026-08-20T08:27:14.887142Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -1633,6 +1633,64 @@
           "name": "Live Eval Findings — latest",
           "encodingFormat": "application/json",
           "contentUrl": "https://palimpsest.info/readings/eval-articles-latest.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "reading-analysis",
+      "name": "Reading analysis and review rank",
+      "description": "Per-instrument unusualness versus that instrument's own history, plus unlabeled editorial review ranks for live news rows. This is analysis context, not a motive sentence, not a cross-instrument censorship rate, and not automatic publication permission.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-20T08:00:00Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Reading analysis and review rank — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/reading-analysis-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Reading analysis and review rank — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/reading-analysis-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "peer-context",
+      "name": "Peer-context review rank",
+      "description": "Orders GreatFire, OONI, and CDT peer rows against each peer's own history and a fail-closed Palimpsest join. This is a review rank, not a generative brief, not a causal attribution, and not automatic publication permission. Weiboscope is a citation only; the 2012 dump is not loaded.",
+      "url": "https://palimpsest.info/osint-china.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-20T08:00:00Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Peer-context review rank — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/peer-context-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Peer-context review rank — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/peer-context-history.jsonl"
         }
       ]
     },

@@ -49,6 +49,7 @@ from core.safe_fetch import safe_fetch_bytes
 UTC = timezone.utc
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = ROOT / "config" / "common_crawl_targets.json"
+DEFAULT_INDEX_PLAN = ROOT / "config" / "common_crawl_index_plan.json"
 DEFAULT_WAREHOUSE = ROOT / "data" / "common-crawl"
 DEFAULT_DATABASE_NAME = "common-crawl.sqlite3"
 LOCK_NAME = ".common-crawl.lock"
@@ -2034,6 +2035,79 @@ COPY (
 ) TO {_sql_literal(output_path)}
   (FORMAT JSON, ARRAY false, COMPRESSION GZIP);
 """
+
+
+def plan_index_ingest(
+    *,
+    config_path: Path | str = DEFAULT_CONFIG,
+    plan_path: Path | str = DEFAULT_INDEX_PLAN,
+    dry_run: bool = True,
+) -> dict[str, Any]:
+    """Emit an index-only JSONL plan for one prior public crawl.
+
+    This never downloads WARCs, never copies a second parquet mirror, never
+    contacts the URL Index, and never writes a URL dump. The next ingest, if
+    operators run it, is a tens-of-MB allowlisted-host JSONL like the existing
+    18MB inbox — not another 169G table.
+    """
+
+    if not dry_run:
+        raise CommonCrawlLakeError(
+            "plan-index-ingest is index-only JSONL; pass --dry-run. "
+            "WARC download and a second parquet mirror are forbidden"
+        )
+    raw = json.loads(Path(plan_path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ConfigurationError("index plan must be a JSON object")
+    config = load_config(config_path)
+    crawls = raw.get("planned_crawls")
+    if not isinstance(crawls, list) or not crawls:
+        raise ConfigurationError("index plan is missing planned_crawls")
+    queries = []
+    for crawl in crawls:
+        if not isinstance(crawl, str):
+            raise ConfigurationError("planned crawl ids must be strings")
+        crawl_id = _crawl(crawl, None)
+        queries.append(
+            {
+                "crawl": crawl_id,
+                "mode": "index_only_jsonl",
+                "index_url": f"{config.index_base_url}{crawl_id}-index",
+                "n_targets": len(config.targets),
+                "expected_volume": raw.get("expected_volume")
+                or "tens of MB, like the existing 18MB inbox",
+                "download_warc": False,
+                "parquet_mirror": False,
+                "emit_url_dump": False,
+            }
+        )
+    return {
+        "schema": raw.get("schema") or "palimpsest-common-crawl-index-plan/v1",
+        "collector": "common-crawl-lake",
+        "command": "plan-index-ingest",
+        "mode": "index_only_jsonl",
+        "dry_run": True,
+        "status": "planned",
+        "download_warc": False,
+        "parquet_mirror": False,
+        "commit_url_dumps": False,
+        "n_targets": len(config.targets),
+        "n_crawls": len(queries),
+        "planned_crawls": [row["crawl"] for row in queries],
+        "current_in_lake": raw.get("current_in_lake"),
+        "minimum_prior_crawls_for_scores": int(
+            raw.get("minimum_prior_crawls_for_scores") or 6
+        ),
+        "allowlist_source": raw.get("allowlist_source")
+        or "config/common_crawl_targets.json",
+        "rights": raw.get("rights")
+        or {
+            "training_use": "derived_only",
+            "raw_text_policy": "excluded",
+            "url_list_policy": "do_not_publish",
+        },
+        "queries": queries,
+    }
 
 
 def _strict_json_bytes(payload: bytes, *, maximum: int, label: str) -> Any:

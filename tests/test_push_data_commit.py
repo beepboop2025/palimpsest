@@ -625,6 +625,8 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
         "net4people-refresh.yml",
         "ooni-gfw-refresh.yml",
         "osint-china-refresh.yml",
+        "reading-analysis-refresh.yml",
+        "peer-context-refresh.yml",
         "silence-index-refresh.yml",
         "stock-connect-refresh.yml",
         "vantage-fusion-refresh.yml",

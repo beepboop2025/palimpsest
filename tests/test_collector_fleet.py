@@ -208,7 +208,7 @@ def test_registry_exposes_machine_readable_cadence_and_freshness(monkeypatch):
     monkeypatch.delenv("PALIMPSEST_CLOUDFLARE_RADAR_ENABLED", raising=False)
     specs = expected_collector_specs("vigorous")
 
-    assert len(specs) == 38  # feed head + index processor + 36 passive snapshots
+    assert len(specs) == 40  # feed head + index processor + 38 passive snapshots
     assert all(spec["cadence_seconds"] > 0 for spec in specs)
     assert all(spec["grace_seconds"] > 0 for spec in specs)
     assert all(
@@ -456,6 +456,16 @@ def test_china_live_jobs_have_conservative_standard_and_faster_vigorous_cadences
     assert spec("vigorous", "public-deletion-ledgers")["cadence_seconds"] == 3600
     assert spec("standard", "undertext")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "undertext")["cadence_seconds"] == 3 * 3600
+    assert spec("standard", "reading-analysis")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "reading-analysis")["cadence_seconds"] == 3 * 3600
+    assert spec("standard", "reading-analysis")["output_path"] == (
+        "readings/reading-analysis-latest.json"
+    )
+    assert spec("standard", "peer-context")["cadence_seconds"] == 6 * 3600
+    assert spec("vigorous", "peer-context")["cadence_seconds"] == 3 * 3600
+    assert spec("standard", "peer-context")["output_path"] == (
+        "readings/peer-context-latest.json"
+    )
 
 
 def test_vigorous_gdelt_sets_the_fifteen_minute_window_without_compose_flags(
@@ -521,6 +531,24 @@ def test_new_china_jobs_are_on_the_static_invoke_allowlist(monkeypatch, tmp_path
         "weibo-hotsearch-terms",
         "public-board-terms",
     ]
+
+
+def test_reading_analysis_invokes_the_local_ranker(monkeypatch, tmp_path):
+    seen = []
+    import scripts.reading_analysis_pull as pull
+
+    monkeypatch.setattr(pull, "main", lambda argv=None: seen.append(argv or []) or 0)
+    _invoke_snapshot("reading-analysis", tmp_path)
+    assert seen == [[]]
+
+
+def test_peer_context_invokes_the_local_ranker(monkeypatch, tmp_path):
+    seen = []
+    import scripts.peer_context_pull as pull
+
+    monkeypatch.setattr(pull, "main", lambda argv=None: seen.append(argv or []) or 0)
+    _invoke_snapshot("peer-context", tmp_path)
+    assert seen == [[]]
 
 
 def test_primary_documents_invokes_the_closed_registry_cli(monkeypatch, tmp_path):
