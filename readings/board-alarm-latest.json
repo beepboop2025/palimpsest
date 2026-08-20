@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-20T02:07:58.634429+00:00",
-  "board_e_value": 93.972,
+  "generated_at": "2026-08-20T07:29:31.553194+00:00",
+  "board_e_value": 243.327,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -14,28 +14,30 @@
   },
   "layers": {
     "network": {
-      "e": 184.126,
+      "e": 426.65,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
-        "censored_planet": 728.6,
+        "censored_planet": 1699.519,
         "ioda_outages": 1.0,
-        "ooni_gfw": 3.655,
-        "tor_bridge_cn": 3.249
+        "ooni_gfw": 3.038,
+        "tor_bridge_cn": 3.044
       },
-      "recent_alarms": []
+      "recent_alarms": [
+        "censored_planet"
+      ]
     },
     "content": {
-      "e": 33.869,
+      "e": 121.112,
       "n_signals": 6,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "data_darkness": 31.062,
-        "ddti_novelty": 152.892,
-        "ddti_threat": 13.543,
-        "gdelt_containment": 1.751,
+        "ddti_novelty": 675.227,
+        "ddti_threat": 14.407,
+        "gdelt_containment": 2.011,
         "github_refuge": 2.965,
         "weibo_suppression": 1.0
       },
@@ -55,59 +57,61 @@
     "network"
   ],
   "layer_coincidence": 2,
-  "recently_fired": [],
+  "recently_fired": [
+    "censored_planet"
+  ],
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 3.6553,
-      "n": 170,
-      "direction": "up",
-      "robust_z": 0.08,
+      "e": 3.0376,
+      "n": 171,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "up",
-      "readings_since_alarm": 23,
+      "readings_since_alarm": 24,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 13.5427,
-      "n": 320,
-      "direction": "down",
-      "robust_z": -0.13,
+      "e": 14.4071,
+      "n": 322,
+      "direction": "up",
+      "robust_z": 0.09,
       "driver_side": "up",
-      "readings_since_alarm": 81,
+      "readings_since_alarm": 83,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
-      "state": "calm",
-      "e": 152.8917,
-      "n": 320,
-      "direction": "down",
-      "robust_z": -8.77,
+      "state": "watch",
+      "e": 675.2271,
+      "n": 322,
+      "direction": "up",
+      "robust_z": 59.36,
       "driver_side": "up",
-      "readings_since_alarm": 62,
+      "readings_since_alarm": 64,
       "n_alarms_in_history": 2,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
     "censored_planet": {
-      "state": "watch",
-      "e": 728.5998,
-      "n": 28,
+      "state": "alarm",
+      "e": 1699.5188,
+      "n": 29,
       "direction": "down",
-      "robust_z": -0.84,
+      "robust_z": -1.47,
       "driver_side": "down",
-      "readings_since_alarm": null,
-      "n_alarms_in_history": 0,
+      "readings_since_alarm": 0,
+      "n_alarms_in_history": 1,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 1.7507,
-      "n": 176,
-      "direction": "down",
-      "robust_z": -0.34,
-      "driver_side": "down",
+      "e": 2.011,
+      "n": 177,
+      "direction": "up",
+      "robust_z": 0.34,
+      "driver_side": "up",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
       "meaning": "terms loud abroad while censored at home"
@@ -130,15 +134,12 @@
       "closed": "closed 2026-08-01 at the v1→v2 method break: v2 measures family refusal rates (a different estimand) and appends history only on label movement; the live model-layer signal is refusal_churn — the v2 suite's own anytime-valid churn monitor"
     },
     "bleedthrough_pools": {
-      "state": "warming_up",
-      "e": 0.0,
+      "state": "stale",
       "n": 1,
-      "direction": "flat",
-      "robust_z": null,
-      "driver_side": null,
-      "readings_since_alarm": null,
-      "n_alarms_in_history": 0,
-      "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation"
+      "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
+      "age_hours": 173.1,
+      "bound_hours": 168.0,
+      "reason": "newest row is 173.1h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "warming_up",
@@ -153,19 +154,19 @@
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "e": 3.2493,
-      "n": 405,
+      "e": 3.0437,
+      "n": 406,
       "direction": "up",
-      "robust_z": 0.81,
-      "driver_side": "down",
-      "readings_since_alarm": 100,
+      "robust_z": 1.26,
+      "driver_side": "up",
+      "readings_since_alarm": 101,
       "n_alarms_in_history": 6,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 125,
+      "n": 126,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -176,7 +177,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 127,
+      "n": 128,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -203,17 +204,54 @@
     "refusal_churn": {
       "meaning": "cross-lab refusal churn across the audited panel — each model's flip rate between adjacent runs, tested against its own calibrated serving noise; a rise means answer/refusal labels are moving faster than that model's baseline",
       "e": null,
-      "n_models": 0,
-      "models": {},
-      "n_rows": 32,
+      "n_models": 4,
+      "models": {
+        "anthropic/claude-3-haiku": {
+          "state": "calibrating",
+          "evalue": null,
+          "p0": null,
+          "pairs_seen": 9,
+          "pairs_needed": 21,
+          "undetectable_at_or_below": null,
+          "monitored_comparisons": null
+        },
+        "meta-llama/llama-3.3-70b-instruct": {
+          "state": "calibrating",
+          "evalue": null,
+          "p0": null,
+          "pairs_seen": 9,
+          "pairs_needed": 21,
+          "undetectable_at_or_below": null,
+          "monitored_comparisons": null
+        },
+        "mistralai/mistral-nemo": {
+          "state": "calibrating",
+          "evalue": null,
+          "p0": null,
+          "pairs_seen": 9,
+          "pairs_needed": 21,
+          "undetectable_at_or_below": null,
+          "monitored_comparisons": null
+        },
+        "openai/gpt-4o-mini": {
+          "state": "calibrating",
+          "evalue": null,
+          "p0": null,
+          "pairs_seen": 9,
+          "pairs_needed": 21,
+          "undetectable_at_or_below": null,
+          "monitored_comparisons": null
+        }
+      },
+      "n_rows": 36,
       "instrument": {
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 61.1,
+      "age_hours": 5.7,
       "bound_hours": 30.0,
-      "state": "stale",
-      "reason": "newest churn row is 61.1h old, past the 30h bound"
+      "state": "calibrating",
+      "reason": "burn-in in progress: furthest model has 9 of 21 adjacent-run pairs"
     }
   },
   "headline": "MULTI-LAYER CO-MOVEMENT: content + network elevated together",
