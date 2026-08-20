@@ -99,6 +99,7 @@ DISPOSITIONS = frozenset(
 )
 INPUT_STATES = frozenset({"present", "missing", "abstain"})
 PUBLICATION_POLICY = {
+    "automatic_publication": False,
     "human_review_required": True,
     "named_person_packages_auto_published": False,
     "named_person_findings_included": False,
@@ -919,7 +920,7 @@ def _news_story(
         "headline": "Public-board terms now circulating",
         "dek": DISCLAIMER,
         "body": body,
-        "automatic_publication": True,
+        "automatic_publication": False,
         "relation": RELATION,
         "disclaimer": DISCLAIMER,
     }
@@ -1279,8 +1280,8 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             raise SocialSpreadError("news story body must include the disclaimer")
         if item["relation"] != RELATION:
             raise SocialSpreadError("news story relation must remain topic-surface-only")
-        if item["automatic_publication"] is not True:
-            raise SocialSpreadError("news story is only emitted for topic-only rows")
+        if item["automatic_publication"] is not False:
+            raise SocialSpreadError("news story cannot auto-publish")
         if any(row["names_a_person"] for row in rows):
             # A mixed document may still carry a topic-only story, but never a
             # person-name headline.

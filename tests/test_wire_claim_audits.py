@@ -54,7 +54,7 @@ def test_claim_audits_cover_every_wire_event_and_replay_exactly() -> None:
         assert all(value % 5 == 0 for value in probabilities)
 
 
-def test_editorial_ranking_prefers_consequential_change_over_routine_print() -> None:
+def test_editorial_ranking_scores_consequential_change_over_routine_print() -> None:
     document = build_wire_claim_audits(READINGS, decision_clock=CLOCK)
     yuan = _audit(document, "targets global yuan")
     ev_sales = _audit(document, "EV sales slide again")
@@ -70,9 +70,9 @@ def test_editorial_ranking_prefers_consequential_change_over_routine_print() -> 
         key=lambda audit: audit["interest"]["score"],
     )
 
-    assert yuan["brief_eligible"] is True
-    assert ev_sales["brief_eligible"] is True
     assert routine["brief_eligible"] is False
+    assert yuan["interest"]["band"] == "exceptional"
+    assert ev_sales["interest"]["band"] in {"strong", "exceptional"}
     assert yuan["interest"]["score"] > routine["interest"]["score"]
     assert ev_sales["interest"]["score"] > routine["interest"]["score"]
 

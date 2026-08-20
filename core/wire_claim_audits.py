@@ -987,12 +987,10 @@ def _ddti_event_trace(
         lexical_match = bool(_tokens(term) & event_tokens) and (
             len(term) >= 4 or any("\u3400" <= char <= "\u9fff" for char in term)
         )
+        same_lineage = same_lineage or exact_echo
         if exact_echo or lexical_match:
-            if term not in matched:
+            if term not in matched and len(matched) < 6:
                 matched.append(term)
-            same_lineage = same_lineage or exact_echo
-        if len(matched) >= 6:
-            break
     return matched, same_lineage
 
 

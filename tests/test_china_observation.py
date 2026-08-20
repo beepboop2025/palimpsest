@@ -91,6 +91,23 @@ def test_enrich_observation_is_additive_and_honest():
     assert serialized["detected_at"] == "2026-08-01T12:00:00Z"
 
 
+def test_situation_projection_removes_prohibited_url_fragments_only():
+    row = {
+        "source": "undertext",
+        "title": "Public source",
+        "url": "https://example.org/report?edition=public#new_tab",
+        "first_seen": "2026-08-20T07:00:00Z",
+        "last_seen": "2026-08-20T07:05:00Z",
+    }
+
+    card = situation_osint_row(row)
+
+    assert card["url"] == "https://example.org/report?edition=public"
+    assert card["first_seen"] == row["first_seen"]
+    assert card["last_seen"] == row["last_seen"]
+    assert row["url"] == "https://example.org/report?edition=public#new_tab"
+
+
 def test_language_tag_is_lexical_not_translated():
     assert language_tag(text_zh="白纸", text_en="White Paper") == "mixed"
     assert language_tag(text_zh="白纸", text_en="") == "zh"
