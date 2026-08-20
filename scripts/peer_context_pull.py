@@ -130,6 +130,7 @@ def assemble_warehouse(
     document["schema_version"] = SCHEMA_VERSION
     document["method_version"] = METHOD_VERSION
     document["generated_at"] = iso_z(now)
+    document["observer_class"] = "outside-china-node"
     table = build_feature_table(
         greatfire=greatfire,
         ooni=document.get("ooni"),

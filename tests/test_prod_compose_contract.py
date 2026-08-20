@@ -83,6 +83,25 @@ def test_radar_bearer_secret_is_mounted_only_into_collector_worker():
     assert "\nCLOUDFLARE_API_TOKEN=" not in env_example
 
 
+def test_velocity_leg_and_live_flag_stay_off_in_production_compose():
+    compose = COMPOSE.read_text(encoding="utf-8")
+    assert "CENSORWATCH_ENABLED: 1" not in compose
+    assert "CENSORWATCH_ENABLED: \"1\"" not in compose
+    assert "PALIMPSEST_LIVE: ${PALIMPSEST_LIVE:-0}" in compose
+    env_example = (ROOT / "ops" / "docker" / ".env.example").read_text(
+        encoding="utf-8"
+    )
+    assert "Do NOT set CENSORWATCH_ENABLED in production compose." in env_example
+    assert not any(
+        line.strip() == "CENSORWATCH_ENABLED=1"
+        for line in env_example.splitlines()
+    )
+    assert not any(
+        line.strip() == "PALIMPSEST_GREYBALL_ENABLED=1"
+        for line in env_example.splitlines()
+    )
+
+
 def test_runtime_state_mounts_can_live_outside_the_git_checkout():
     document = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
     services = document["services"]

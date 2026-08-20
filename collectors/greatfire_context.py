@@ -304,6 +304,7 @@ def collect_greatfire_context(
     n_found = sum(1 for row in verdicts if row.get("found") and row.get("verdict"))
     return {
         "generated_at": now,
+        "observer_class": "public-ledger",
         "method_version": METHOD_VERSION,
         "source": f"GreatFire Analyzer open API ({SOURCE_PAGE}), {LICENSE}",
         "scope": (

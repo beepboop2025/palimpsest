@@ -99,3 +99,29 @@ the join `topic-or-url-context-not-corroboration`.
   a peer 90-day verdict as proof of Party motive.
 - Auto-publish Dragon Whispers or `telegram-watch`. Those stay human-review-gated.
   Warehouse fat public-channel records do not write those files.
+
+## Greyball / OTF-friend methods
+
+The ten collection methods, forbidden list, visibility-event schema, and
+exact-key join rule (`host | url_path | term | asn`, UTC ±24h) live in
+[GREYBALL-METHODS.md](GREYBALL-METHODS.md). They are Palimpsest `core/` /
+`collectors/` / `processors/` machinery, not CensorWatch, not BLEEDTHROUGH
+systemd, not Common Crawl systemd, and not GFI.
+
+Already-on-main fleet jobs that Greyball **labels rather than reimplements**:
+`weibo-hotsearch-terms`, `archive-news-context`, `public-board-terms`,
+`social-spread`, `reading-analysis`, `greatfire-context`, `peer-context`,
+`peer-context-rank`. Closed-schema writers keep their exact field sets.
+Observer class is `core.observer_class.fleet_observer_class`. China-as-sensor
+is a hard reject.
+
+| Surface | Runner | 24/7 path | Notes |
+| --- | --- | --- | --- |
+| Missingness calibration | `scripts/greyball_missingness_pull.py` | fleet `greyball-missingness` (inert unless `PALIMPSEST_GREYBALL_ENABLED=1`) | Offline eight-case fixture pack. Distinguishes or withholds a censorship label. Missing is not censorship. Not a substitute: data_darkness / silence-index / conformal events. |
+| Declared public endpoints | `scripts/greyball_endpoint_pull.py` | fleet `greyball-endpoint` (flagged) | HTTPS GET of reviewer-declared URLs. 401/403/CAPTCHA/param mutation records and **stops**. Empty panel / `robots_tos_permit: false` abstains. |
+| Donation ingest | `scripts/greyball_donation_pull.py` | fleet `greyball-donation` (flagged) | Hashes / transitions / counts only. Identity-key denylist. Empty inbox abstains. |
+| Frozen SERP | `scripts/greyball_serp_pull.py` | fleet `greyball-serp` (flagged) | Frozen gazetteer vocabulary. Anomaly, not censorship. Cannot mutate terms to hunt blocks. |
+| Outside-China observers | `scripts/greyball_observers_pull.py` | fleet `greyball-observers` (flagged) | Refuse `china_in_country`, `in_country=true`, `path_kind=residential_proxy`. AS24940 rows collapse to one backer. Blocked → abstain. |
+| Official + Telegram panel | `scripts/greyball_panel_pull.py` | fleet `greyball-panel` (flagged) | official-first-seen + Telegram previews. No followers/personal accounts. |
+
+Browser-capture contract (`collectors/greyball_browser.py`) is confirmed-upload only and has no fleet job until an extension exists. Semantic event clusters (`readings/greyball-clusters-sidecar.json`) are a policy sidecar; `semantic_match_score` cannot raise corroboration or attach `SLOT_IDS`.

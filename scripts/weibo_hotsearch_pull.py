@@ -80,6 +80,7 @@ def _observation_records(now, joined, breakthroughs, days, withdrawals=None) -> 
     """Project join/breakthrough/withdrawal rows onto the shared China observation schema."""
 
     from core.china_observation import enrich_observation, serialize_observation
+    from core.visibility_event import stamp_visibility_event
 
     records = []
     for row in list(joined) + list(breakthroughs):
@@ -102,7 +103,7 @@ def _observation_records(now, joined, breakthroughs, days, withdrawals=None) -> 
             "source": "weibo-hotsearch",
             "regime": regime,
         }
-        records.append(serialize_observation(enrich_observation(
+        records.append(serialize_observation(stamp_visibility_event(enrich_observation(
             raw,
             text=text,
             provenance={
@@ -113,7 +114,7 @@ def _observation_records(now, joined, breakthroughs, days, withdrawals=None) -> 
                 "method_version": METHOD_VERSION,
                 "board_days": len(days),
             },
-        )))
+        ))))
     for row in withdrawals or []:
         if not isinstance(row, dict):
             continue
@@ -130,7 +131,7 @@ def _observation_records(now, joined, breakthroughs, days, withdrawals=None) -> 
             "source": "weibo-hotsearch",
             "regime": "withdrawal_watch",
         }
-        records.append(serialize_observation(enrich_observation(
+        records.append(serialize_observation(stamp_visibility_event(enrich_observation(
             raw,
             text=text,
             provenance={
@@ -141,7 +142,7 @@ def _observation_records(now, joined, breakthroughs, days, withdrawals=None) -> 
                 "method_version": METHOD_VERSION,
                 "board_days": len(days),
             },
-        )))
+        ))))
     return records[:256]
 
 

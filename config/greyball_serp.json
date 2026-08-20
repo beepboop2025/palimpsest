@@ -1,0 +1,42 @@
+{
+  "_meta": {
+    "purpose": "Frozen SERP vocabulary for Greyball method 6. Authored, never discovered by triggering moderation. The runner cannot mutate terms to hunt blocks.",
+    "control": "Unaffected control queries must keep returning results or the scorer abstains.",
+    "variants": "zh-Hans, zh-Hant, pinyin, acronyms, punctuation, image-text where already public."
+  },
+  "frozen": true,
+  "mutable": false,
+  "controls": [
+    {
+      "query": "天气预报",
+      "kind": "weather",
+      "note": "Ordinary public weather query; used only as an unaffected control."
+    }
+  ],
+  "terms": [
+    {
+      "canonical": "六四",
+      "en": "June 4",
+      "variants": {
+        "zh-Hans": ["六四"],
+        "zh-Hant": ["六四"],
+        "pinyin": ["liusi"],
+        "acronym": ["8964", "VIIV"],
+        "punctuation": ["六.四", "六-四"],
+        "image-text": []
+      }
+    },
+    {
+      "canonical": "白纸",
+      "en": "white paper",
+      "variants": {
+        "zh-Hans": ["白纸"],
+        "zh-Hant": ["白紙"],
+        "pinyin": ["baizhi"],
+        "acronym": ["A4"],
+        "punctuation": ["白-纸"],
+        "image-text": []
+      }
+    }
+  ]
+}

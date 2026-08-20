@@ -74,7 +74,9 @@ The CensorWatch deletion-detection package is feature flagged (`CENSORWATCH_ENAB
 writes to its own dedicated database tables, separate from the rest of the schema. With the
 flag unset it is inert in every respect: its beat entries are never merged and its tasks
 return no-op markers. This keeps the most sensitive part of the system contained and easy
-to audit.
+to audit. CensorWatch is not an in-country China sensor. The collection-methods wall —
+ten Greyball methods, the forbidden list, and the exact-key join rule — is
+[docs/GREYBALL-METHODS.md](docs/GREYBALL-METHODS.md).
 
 ## Reporting a concern
 

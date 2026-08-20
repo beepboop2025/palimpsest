@@ -63,6 +63,7 @@ def test_collect_ledgers_enriches_a_reachable_feed_and_records_an_unreachable_on
         hit["zh"] == "白纸" for hit in obs["gazetteer_hits"]
     )
     assert obs["content_sha256"]
+    assert obs["observer_class"] == "public-ledger"
     assert obs["archive"]["wayback_lookup"]
     assert obs["provenance"]["collector"] == "public_deletion_ledgers"
     statuses = {row["name"]: row["status"] for row in result["ledgers"]}

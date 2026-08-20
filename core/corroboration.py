@@ -24,6 +24,10 @@ DECISIONS_VERSION = "palimpsest-corroboration-decisions.v1"
 MAX_CANDIDATES = 16_384
 MAX_PERIOD_HOURS = 31 * 24
 
+# Greyball event-cluster sidecar: lexical/semantic similarity is never
+# corroboration. Exact-key joins remain the only published join.
+SEMANTIC_MATCH_IS_CORROBORATION = False
+
 
 class CorroborationError(ValueError):
     """An evidence input, review decision, or public join failed closed."""

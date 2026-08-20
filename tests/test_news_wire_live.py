@@ -33,6 +33,7 @@ def test_uses_publisher_url_not_the_palimpsest_permalink():
     assert "白纸" in (obs.get("text") or "")
     assert obs["archive"]["wayback_lookup"]
     assert obs["provenance"]["collector"] == "news_wire_live"
+    assert obs["observer_class"] == "outside-china-node"
     assert obs["topics"] == ["censorship", "policy"]
 
 

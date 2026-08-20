@@ -443,6 +443,7 @@ def test_greatfire_silent_api_abstains():
     )
     assert result["n_verdicts"] == 0
     assert result["n_silent"] == 1
+    assert result["observer_class"] == "public-ledger"
     assert result["verdicts"] == []
     assert all(row["status"] == "silent" for row in result["ledgers"])
     sentence = peer_context.greatfire_sentence(None, None, status="silent")

@@ -301,9 +301,11 @@ were removed, because that denominator is not observable from outside.
 method properly: capture a public post as it appears, re-check it on an age-tiered schedule, and
 confirm a deletion only after repeated consistent observations. It is feature-flagged
 (`CENSORWATCH_ENABLED`), has never been enabled in production, and has archived zero posts. It
-needs an in-country egress path to be meaningful, which the project does not have. Until then this
-is a description of an instrument, not of a running signal, and nothing on the board is derived
-from it.
+is not an in-country China sensor. Collection methods that close visibility gaps from outside
+the wall — archives, public ledgers, opt-in observers, donation hashes, synthetic calibration —
+are specified in [docs/GREYBALL-METHODS.md](docs/GREYBALL-METHODS.md). Until CensorWatch is
+deliberately enabled it remains a description of an instrument, not of a running signal, and
+nothing on the board is derived from it.
 
 The DDTI distils into a single, auditable **0–100 Censorship Fear Index**, how hard is the state
 working to bury things right now, reported component by component, never a black box.
@@ -462,6 +464,7 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest, does the method catch documented events? |
 | [docs/NEW-METHODS.md](docs/NEW-METHODS.md) | The observation surfaces (Generative Firewall, CDN-edge, Blocklist, Silence, GitHub-refuge, Baike, Wayback Reconstruction) |
+| [docs/GREYBALL-METHODS.md](docs/GREYBALL-METHODS.md) | Ten Greyball / OTF-friend collection methods, forbidden list, visibility schema, exact-key join |
 | [docs/UNDERTEXT.md](docs/UNDERTEXT.md) | Active differential tomography, many-vantage divergence as signal |
 | [docs/BLEEDTHROUGH.md](docs/BLEEDTHROUGH.md) | Injector-fleet tomography, the method and the safety line for making the censor's own devices answer |
 | [docs/OSINT_SOURCES.md](docs/OSINT_SOURCES.md) | Every public source, how it is accessed, what it yields, its limits |

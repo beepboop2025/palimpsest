@@ -60,6 +60,7 @@ def test_first_seen_then_rewrite_then_disappear():
     )
     assert first["n_ok"] == 1
     assert first["observations"][0]["deletion_signal"] == "first_seen"
+    assert first["observations"][0]["observer_class"] == "official-landing"
     assert first["observations"][0]["content_sha256"]
     assert first["observations"][0]["text"]
     digest = first["pages"][url]["content_sha256"]

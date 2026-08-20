@@ -30,7 +30,9 @@ contributions adding them will be declined:
 The line is simple: **collection and analysis of already-public information, in service of
 transparency and the people censorship harms.** Anything that crosses from *observing the
 censor* to *acting against a target* — or from *measuring suppression* to *surveilling a
-person* — is out of scope by design.
+person* — is out of scope by design. The ten Greyball collection methods, the forbidden
+techniques, and the exact-key join rule are the executable wall:
+[GREYBALL-METHODS.md](GREYBALL-METHODS.md).
 
 ## The model-trust asymmetry
 

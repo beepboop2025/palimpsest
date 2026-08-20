@@ -61,6 +61,8 @@ def load_watchlist() -> list:
 
 def _reconstruction_row(rec) -> dict:
     """The human-facing evidence for one URL (mirrors github-refuge's per-repo reading rows)."""
+    from core.visibility_event import stamp_visibility_event
+
     primary = rec.primary
     row = {
         "url": rec.url,
@@ -70,6 +72,12 @@ def _reconstruction_row(rec) -> dict:
         "last_capture": rec.last_capture,
         "event": primary.kind if primary else (rec.note or "stable"),
         "note": rec.note,
+        "source": "wayback",
+        "provenance": {
+            "collector": "wayback_vantage",
+            "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
+            "vantage": "ARCHIVE",
+        },
     }
     if primary is not None:
         row.update({
@@ -79,7 +87,26 @@ def _reconstruction_row(rec) -> dict:
             "post_event_snapshot": primary.b.raw_excerpt or None,
             "detail": primary.detail,
         })
-    return row
+    confirmed_live_gone = bool(primary) and str(getattr(primary, "kind", "")) in {"DELETION", "deletion"}
+    return stamp_visibility_event(
+        row,
+        observer_class="archive-crawler",
+        surface="wayback-cdx",
+        locator=rec.url,
+        visibility_state=(
+            "unavailable" if rec.note == "no_baseline" or confirmed_live_gone
+            else "visible"
+        ),
+        visibility_label=(
+            "archive_gap" if rec.note == "no_baseline"
+            else ("visibility_anomaly" if confirmed_live_gone else None)
+        ),
+        missingness="archive_gap" if rec.note == "no_baseline" else (
+            "coverage_gap" if rec.note == "unreachable" else None
+        ),
+        had_live_baseline=confirmed_live_gone,
+        confirmed=False,
+    )
 
 
 def main() -> None:
@@ -110,6 +137,13 @@ def main() -> None:
                 source_url=rec.url,
                 last_live_snapshot=rec.primary.a.raw_excerpt if rec.primary is not None else None,
                 post_event_snapshot=rec.primary.b.raw_excerpt if rec.primary is not None else None,
+            )
+            from core.visibility_event import stamp_visibility_event
+            obs = stamp_visibility_event(
+                obs,
+                observer_class="archive-crawler",
+                surface="wayback-cdx",
+                locator=rec.url,
             )
             ddti_observations.append(serialize_observation(obs))
 
