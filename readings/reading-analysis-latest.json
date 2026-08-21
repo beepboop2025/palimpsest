@@ -1,7 +1,7 @@
 {
   "schema_version": "palimpsest-reading-analysis/v1",
   "job": "reading-analysis",
-  "generated_at": "2026-08-20T19:29:22Z",
+  "generated_at": "2026-08-21T02:22:07Z",
   "source": "Committed public instrument histories, live newswire and newsroom stories, and archive-news-context when present",
   "method": "per-instrument robust MAD (prequential-robust-mad/v1) or the instrument's existing board/believability gate against that instrument's own history; story rows are review rank only; no generative model, causal attribution, or cross-instrument censorship rate",
   "scope": "Per-instrument unusualness vs that instrument's own history, plus review rank for news rows. No causal attribution. No cross-instrument censorship rate. Common Crawl host scores stay null until six crawls.",
@@ -92,16 +92,16 @@
           "instrument_id": "ooni-gfw",
           "field": "gfw_index",
           "trainer": "conformal_events+robust-mad",
-          "n": 173,
-          "n_extracted": 173,
-          "n_prior": 139,
+          "n": 174,
+          "n_extracted": 174,
+          "n_prior": 140,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 240,
           "holdout": {
             "split": "time",
-            "n_extracted": 173,
-            "n_prior": 139,
+            "n_extracted": 174,
+            "n_prior": 140,
             "n_holdout": 34,
             "n_holdout_scored": 34,
             "n_holdout_unusual": 0,
@@ -114,9 +114,9 @@
               "instrument_id": "ooni-gfw",
               "field": "gfw_index",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 173,
-              "n_history": 172,
-              "current_value": 59.0,
+              "n_file_lines": 174,
+              "n_history": 173,
+              "current_value": 59.2,
               "unusualness": 0.0
             }
           ],
@@ -129,16 +129,16 @@
           "instrument_id": "ddti",
           "field": "top_threat",
           "trainer": "conformal_events+robust-mad",
-          "n": 326,
-          "n_extracted": 326,
-          "n_prior": 286,
+          "n": 328,
+          "n_extracted": 328,
+          "n_prior": 288,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 323,
           "holdout": {
             "split": "time",
-            "n_extracted": 326,
-            "n_prior": 286,
+            "n_extracted": 328,
+            "n_prior": 288,
             "n_holdout": 40,
             "n_holdout_scored": 40,
             "n_holdout_unusual": 0,
@@ -151,9 +151,9 @@
               "instrument_id": "ddti",
               "field": "top_threat",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 326,
-              "n_history": 325,
-              "current_value": 1.4223,
+              "n_file_lines": 328,
+              "n_history": 327,
+              "current_value": 1.286,
               "unusualness": 0.0
             }
           ],
@@ -240,16 +240,16 @@
           "instrument_id": "gdelt",
           "field": "n_containment+n_blackout",
           "trainer": "conformal_events+robust-mad",
-          "n": 180,
-          "n_extracted": 180,
-          "n_prior": 144,
+          "n": 181,
+          "n_extracted": 181,
+          "n_prior": 145,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 215,
           "holdout": {
             "split": "time",
-            "n_extracted": 180,
-            "n_prior": 144,
+            "n_extracted": 181,
+            "n_prior": 145,
             "n_holdout": 36,
             "n_holdout_scored": 36,
             "n_holdout_unusual": 0,
@@ -262,10 +262,10 @@
               "instrument_id": "gdelt",
               "field": "n_containment+n_blackout",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 180,
-              "n_history": 179,
-              "current_value": 6.0,
-              "unusualness": 0.337245
+              "n_file_lines": 181,
+              "n_history": 180,
+              "current_value": 3.0,
+              "unusualness": 0.0
             }
           ],
           "rights": {
@@ -277,18 +277,18 @@
           "instrument_id": "github-refuge",
           "field": "n_pressure_events",
           "trainer": "conformal_events+robust-mad",
-          "n": 89,
-          "n_extracted": 89,
+          "n": 90,
+          "n_extracted": 90,
           "n_prior": 72,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 106,
           "holdout": {
             "split": "time",
-            "n_extracted": 89,
+            "n_extracted": 90,
             "n_prior": 72,
-            "n_holdout": 17,
-            "n_holdout_scored": 17,
+            "n_holdout": 18,
+            "n_holdout_scored": 18,
             "n_holdout_unusual": 0,
             "holdout_unusualness_median": 0.0,
             "holdout_flag_rate": 0.0,
@@ -299,8 +299,8 @@
               "instrument_id": "github-refuge",
               "field": "n_pressure_events",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 89,
-              "n_history": 88,
+              "n_file_lines": 90,
+              "n_history": 89,
               "current_value": 1.0,
               "unusualness": 0.0
             }
@@ -388,16 +388,16 @@
           "instrument_id": "ioda-outages",
           "field": "events_started_yesterday",
           "trainer": "conformal_events+robust-mad",
-          "n": 130,
-          "n_extracted": 130,
-          "n_prior": 104,
+          "n": 131,
+          "n_extracted": 131,
+          "n_prior": 105,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 197,
           "holdout": {
             "split": "time",
-            "n_extracted": 130,
-            "n_prior": 104,
+            "n_extracted": 131,
+            "n_prior": 105,
             "n_holdout": 26,
             "n_holdout_scored": 26,
             "n_holdout_unusual": 0,
@@ -410,8 +410,8 @@
               "instrument_id": "ioda-outages",
               "field": "events_started_yesterday",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 130,
-              "n_history": 129,
+              "n_file_lines": 131,
+              "n_history": 130,
               "current_value": 0.0,
               "unusualness": 0.0
             }
@@ -610,21 +610,21 @@
           "instrument_id": "wayback",
           "field": "n_deletions",
           "trainer": "prequential-robust-mad/v1",
-          "n": 78,
-          "n_extracted": 78,
-          "n_prior": 63,
+          "n": 79,
+          "n_extracted": 79,
+          "n_prior": 64,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 93,
           "holdout": {
             "split": "time",
-            "n_extracted": 78,
-            "n_prior": 63,
+            "n_extracted": 79,
+            "n_prior": 64,
             "n_holdout": 15,
             "n_holdout_scored": 15,
-            "n_holdout_unusual": 0,
+            "n_holdout_unusual": 1,
             "holdout_unusualness_median": 0.0,
-            "holdout_flag_rate": 0.0,
+            "holdout_flag_rate": 0.0667,
             "threshold": 4.5
           },
           "feature_citations": [
@@ -632,10 +632,10 @@
               "instrument_id": "wayback",
               "field": "n_deletions",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 78,
-              "n_history": 77,
-              "current_value": 0.0,
-              "unusualness": 0.0
+              "n_file_lines": 79,
+              "n_history": 78,
+              "current_value": 2.0,
+              "unusualness": 20.0
             }
           ],
           "rights": {
@@ -795,16 +795,16 @@
           "instrument_id": "in-path-interference",
           "field": "middlebox_index",
           "trainer": "prequential-robust-mad/v1",
-          "n": 78,
-          "n_extracted": 78,
-          "n_prior": 63,
+          "n": 79,
+          "n_extracted": 79,
+          "n_prior": 64,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 111,
           "holdout": {
             "split": "time",
-            "n_extracted": 78,
-            "n_prior": 63,
+            "n_extracted": 79,
+            "n_prior": 64,
             "n_holdout": 15,
             "n_holdout_scored": 15,
             "n_holdout_unusual": 0,
@@ -817,9 +817,9 @@
               "instrument_id": "in-path-interference",
               "field": "middlebox_index",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 78,
-              "n_history": 77,
-              "current_value": 1.32,
+              "n_file_lines": 79,
+              "n_history": 78,
+              "current_value": 1.31,
               "unusualness": 0.0
             }
           ],
@@ -832,16 +832,16 @@
           "instrument_id": "net4people",
           "field": "n_recent",
           "trainer": "prequential-robust-mad/v1",
-          "n": 26,
-          "n_extracted": 26,
-          "n_prior": 21,
+          "n": 27,
+          "n_extracted": 27,
+          "n_prior": 22,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 23,
           "holdout": {
             "split": "time",
-            "n_extracted": 26,
-            "n_prior": 21,
+            "n_extracted": 27,
+            "n_prior": 22,
             "n_holdout": 5,
             "n_holdout_scored": 5,
             "n_holdout_unusual": 0,
@@ -854,10 +854,10 @@
               "instrument_id": "net4people",
               "field": "n_recent",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 26,
-              "n_history": 25,
-              "current_value": 9.0,
-              "unusualness": 1.348982
+              "n_file_lines": 27,
+              "n_history": 26,
+              "current_value": 10.0,
+              "unusualness": 2.023472
             }
           ],
           "rights": {
@@ -869,16 +869,16 @@
           "instrument_id": "forecast-ledger",
           "field": "pooled_empirical_coverage",
           "trainer": "prequential-robust-mad/v1",
-          "n": 100,
-          "n_extracted": 100,
-          "n_prior": 80,
+          "n": 101,
+          "n_extracted": 101,
+          "n_prior": 81,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 63,
           "holdout": {
             "split": "time",
-            "n_extracted": 100,
-            "n_prior": 80,
+            "n_extracted": 101,
+            "n_prior": 81,
             "n_holdout": 20,
             "n_holdout_scored": 20,
             "n_holdout_unusual": 0,
@@ -891,10 +891,10 @@
               "instrument_id": "forecast-ledger",
               "field": "pooled_empirical_coverage",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 100,
-              "n_history": 99,
-              "current_value": 0.842,
-              "unusualness": 0.34
+              "n_file_lines": 101,
+              "n_history": 100,
+              "current_value": 0.841,
+              "unusualness": 0.1
             }
           ],
           "rights": {
@@ -1202,18 +1202,18 @@
           "instrument_id": "research-corpus",
           "field": "n_sources",
           "trainer": "prequential-robust-mad/v1",
-          "n": 39,
-          "n_extracted": 39,
+          "n": 40,
+          "n_extracted": 40,
           "n_prior": 32,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 36,
           "holdout": {
             "split": "time",
-            "n_extracted": 39,
+            "n_extracted": 40,
             "n_prior": 32,
-            "n_holdout": 7,
-            "n_holdout_scored": 7,
+            "n_holdout": 8,
+            "n_holdout_scored": 8,
             "n_holdout_unusual": 0,
             "holdout_unusualness_median": 0.0,
             "holdout_flag_rate": 0.0,
@@ -1224,8 +1224,8 @@
               "instrument_id": "research-corpus",
               "field": "n_sources",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 39,
-              "n_history": 38,
+              "n_file_lines": 40,
+              "n_history": 39,
               "current_value": 5.0,
               "unusualness": 0.0
             }
@@ -1276,16 +1276,16 @@
           "instrument_id": "event-flags",
           "field": "n_active",
           "trainer": "conformal_events+robust-mad",
-          "n": 40,
-          "n_extracted": 40,
-          "n_prior": 32,
+          "n": 41,
+          "n_extracted": 41,
+          "n_prior": 33,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 26,
           "holdout": {
             "split": "time",
-            "n_extracted": 40,
-            "n_prior": 32,
+            "n_extracted": 41,
+            "n_prior": 33,
             "n_holdout": 8,
             "n_holdout_scored": 8,
             "n_holdout_unusual": 8,
@@ -1298,8 +1298,8 @@
               "instrument_id": "event-flags",
               "field": "n_active",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 40,
-              "n_history": 39,
+              "n_file_lines": 41,
+              "n_history": 40,
               "current_value": 1.0,
               "unusualness": 20.0
             }
@@ -1313,21 +1313,21 @@
           "instrument_id": "coverage-guard",
           "field": "n_confounded",
           "trainer": "prequential-robust-mad/v1",
-          "n": 15,
-          "n_extracted": 15,
-          "n_prior": 12,
+          "n": 16,
+          "n_extracted": 16,
+          "n_prior": 13,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 13,
           "holdout": {
             "split": "time",
-            "n_extracted": 15,
-            "n_prior": 12,
+            "n_extracted": 16,
+            "n_prior": 13,
             "n_holdout": 3,
             "n_holdout_scored": 3,
-            "n_holdout_unusual": 3,
+            "n_holdout_unusual": 2,
             "holdout_unusualness_median": 20.0,
-            "holdout_flag_rate": 1.0,
+            "holdout_flag_rate": 0.6667,
             "threshold": 4.5
           },
           "feature_citations": [
@@ -1335,10 +1335,10 @@
               "instrument_id": "coverage-guard",
               "field": "n_confounded",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 15,
-              "n_history": 14,
-              "current_value": 1.0,
-              "unusualness": 20.0
+              "n_file_lines": 16,
+              "n_history": 15,
+              "current_value": 0.0,
+              "unusualness": 0.0
             }
           ],
           "rights": {
@@ -1521,10 +1521,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 173,
+      "n_file_lines": 174,
       "state": "scored",
-      "n_history": 172,
-      "current_value": 59.0,
+      "n_history": 173,
+      "current_value": 59.2,
       "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
@@ -1533,23 +1533,23 @@
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 2.2763,
-      "public_copy": "this instrument is within its own 172 prior points",
+      "board_stat": 2.1069,
+      "public_copy": "this instrument is within its own 173 prior points",
       "feature_citations": [
         {
           "instrument_id": "ooni-gfw",
           "field": "gfw_index",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 173,
-          "n_history": 172,
-          "current_value": 59.0,
+          "n_file_lines": 174,
+          "n_history": 173,
+          "current_value": 59.2,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 173,
-        "n_prior": 139,
+        "n_extracted": 174,
+        "n_prior": 140,
         "n_holdout": 34,
         "n_holdout_scored": 34,
         "n_holdout_unusual": 0,
@@ -1570,10 +1570,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 326,
+      "n_file_lines": 328,
       "state": "scored",
-      "n_history": 325,
-      "current_value": 1.4223,
+      "n_history": 327,
+      "current_value": 1.286,
       "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
@@ -1582,23 +1582,23 @@
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 9.4669,
-      "public_copy": "this instrument is within its own 325 prior points",
+      "board_stat": 6.1777,
+      "public_copy": "this instrument is within its own 327 prior points",
       "feature_citations": [
         {
           "instrument_id": "ddti",
           "field": "top_threat",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 326,
-          "n_history": 325,
-          "current_value": 1.4223,
+          "n_file_lines": 328,
+          "n_history": 327,
+          "current_value": 1.286,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 326,
-        "n_prior": 286,
+        "n_extracted": 328,
+        "n_prior": 288,
         "n_holdout": 40,
         "n_holdout_scored": 40,
         "n_holdout_unusual": 0,
@@ -1717,35 +1717,35 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 180,
+      "n_file_lines": 181,
       "state": "scored",
-      "n_history": 179,
-      "current_value": 6.0,
-      "unusualness": 0.337245,
+      "n_history": 180,
+      "current_value": 3.0,
+      "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 2.5,
+        "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 4.6354,
-      "public_copy": "this instrument is within its own 179 prior points",
+      "board_stat": 4.3885,
+      "public_copy": "this instrument is within its own 180 prior points",
       "feature_citations": [
         {
           "instrument_id": "gdelt",
           "field": "n_containment+n_blackout",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 180,
-          "n_history": 179,
-          "current_value": 6.0,
-          "unusualness": 0.337245
+          "n_file_lines": 181,
+          "n_history": 180,
+          "current_value": 3.0,
+          "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 180,
-        "n_prior": 144,
+        "n_extracted": 181,
+        "n_prior": 145,
         "n_holdout": 36,
         "n_holdout_scored": 36,
         "n_holdout_unusual": 0,
@@ -1766,9 +1766,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 89,
+      "n_file_lines": 90,
       "state": "scored",
-      "n_history": 88,
+      "n_history": 89,
       "current_value": 1.0,
       "unusualness": 0.0,
       "unusual": false,
@@ -1778,25 +1778,25 @@
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 2.1562,
-      "public_copy": "this instrument is within its own 88 prior points",
+      "board_stat": 1.7148,
+      "public_copy": "this instrument is within its own 89 prior points",
       "feature_citations": [
         {
           "instrument_id": "github-refuge",
           "field": "n_pressure_events",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 89,
-          "n_history": 88,
+          "n_file_lines": 90,
+          "n_history": 89,
           "current_value": 1.0,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 89,
+        "n_extracted": 90,
         "n_prior": 72,
-        "n_holdout": 17,
-        "n_holdout_scored": 17,
+        "n_holdout": 18,
+        "n_holdout_scored": 18,
         "n_holdout_unusual": 0,
         "holdout_unusualness_median": 0.0,
         "holdout_flag_rate": 0.0,
@@ -1911,9 +1911,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 130,
+      "n_file_lines": 131,
       "state": "scored",
-      "n_history": 129,
+      "n_history": 130,
       "current_value": 0.0,
       "unusualness": 0.0,
       "unusual": false,
@@ -1924,22 +1924,22 @@
       },
       "board_state": "calm",
       "board_stat": 1.0,
-      "public_copy": "this instrument is within its own 129 prior points",
+      "public_copy": "this instrument is within its own 130 prior points",
       "feature_citations": [
         {
           "instrument_id": "ioda-outages",
           "field": "events_started_yesterday",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 130,
-          "n_history": 129,
+          "n_file_lines": 131,
+          "n_history": 130,
           "current_value": 0.0,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 130,
-        "n_prior": 104,
+        "n_extracted": 131,
+        "n_prior": 105,
         "n_holdout": 26,
         "n_holdout_scored": 26,
         "n_holdout_unusual": 0,
@@ -2200,38 +2200,38 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 78,
+      "n_file_lines": 79,
       "state": "scored",
-      "n_history": 77,
-      "current_value": 0.0,
-      "unusualness": 0.0,
-      "unusual": false,
+      "n_history": 78,
+      "current_value": 2.0,
+      "unusualness": 20.0,
+      "unusual": true,
       "review_rank": {
         "status": "configured",
-        "score": 0.0,
+        "score": 100.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 77 prior points",
+      "public_copy": "this instrument is unusual vs its own 78 prior points",
       "feature_citations": [
         {
           "instrument_id": "wayback",
           "field": "n_deletions",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 78,
-          "n_history": 77,
-          "current_value": 0.0,
-          "unusualness": 0.0
+          "n_file_lines": 79,
+          "n_history": 78,
+          "current_value": 2.0,
+          "unusualness": 20.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 78,
-        "n_prior": 63,
+        "n_extracted": 79,
+        "n_prior": 64,
         "n_holdout": 15,
         "n_holdout_scored": 15,
-        "n_holdout_unusual": 0,
+        "n_holdout_unusual": 1,
         "holdout_unusualness_median": 0.0,
-        "holdout_flag_rate": 0.0,
+        "holdout_flag_rate": 0.0667,
         "threshold": 4.5
       }
     },
@@ -2435,10 +2435,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 78,
+      "n_file_lines": 79,
       "state": "scored",
-      "n_history": 77,
-      "current_value": 1.32,
+      "n_history": 78,
+      "current_value": 1.31,
       "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
@@ -2446,22 +2446,22 @@
         "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 77 prior points",
+      "public_copy": "this instrument is within its own 78 prior points",
       "feature_citations": [
         {
           "instrument_id": "in-path-interference",
           "field": "middlebox_index",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 78,
-          "n_history": 77,
-          "current_value": 1.32,
+          "n_file_lines": 79,
+          "n_history": 78,
+          "current_value": 1.31,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 78,
-        "n_prior": 63,
+        "n_extracted": 79,
+        "n_prior": 64,
         "n_holdout": 15,
         "n_holdout_scored": 15,
         "n_holdout_unusual": 0,
@@ -2482,33 +2482,33 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 26,
+      "n_file_lines": 27,
       "state": "scored",
-      "n_history": 25,
-      "current_value": 9.0,
-      "unusualness": 1.348982,
+      "n_history": 26,
+      "current_value": 10.0,
+      "unusualness": 2.023472,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 10.0,
+        "score": 15.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 25 prior points",
+      "public_copy": "this instrument is within its own 26 prior points",
       "feature_citations": [
         {
           "instrument_id": "net4people",
           "field": "n_recent",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 26,
-          "n_history": 25,
-          "current_value": 9.0,
-          "unusualness": 1.348982
+          "n_file_lines": 27,
+          "n_history": 26,
+          "current_value": 10.0,
+          "unusualness": 2.023472
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 26,
-        "n_prior": 21,
+        "n_extracted": 27,
+        "n_prior": 22,
         "n_holdout": 5,
         "n_holdout_scored": 5,
         "n_holdout_unusual": 0,
@@ -2529,33 +2529,33 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 100,
+      "n_file_lines": 101,
       "state": "scored",
-      "n_history": 99,
-      "current_value": 0.842,
-      "unusualness": 0.34,
+      "n_history": 100,
+      "current_value": 0.841,
+      "unusualness": 0.1,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 2.5,
+        "score": 0.7,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 99 prior points",
+      "public_copy": "this instrument is within its own 100 prior points",
       "feature_citations": [
         {
           "instrument_id": "forecast-ledger",
           "field": "pooled_empirical_coverage",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 100,
-          "n_history": 99,
-          "current_value": 0.842,
-          "unusualness": 0.34
+          "n_file_lines": 101,
+          "n_history": 100,
+          "current_value": 0.841,
+          "unusualness": 0.1
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 100,
-        "n_prior": 80,
+        "n_extracted": 101,
+        "n_prior": 81,
         "n_holdout": 20,
         "n_holdout_scored": 20,
         "n_holdout_unusual": 0,
@@ -2952,9 +2952,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 39,
+      "n_file_lines": 40,
       "state": "scored",
-      "n_history": 38,
+      "n_history": 39,
       "current_value": 5.0,
       "unusualness": 0.0,
       "unusual": false,
@@ -2963,24 +2963,24 @@
         "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 38 prior points",
+      "public_copy": "this instrument is within its own 39 prior points",
       "feature_citations": [
         {
           "instrument_id": "research-corpus",
           "field": "n_sources",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 39,
-          "n_history": 38,
+          "n_file_lines": 40,
+          "n_history": 39,
           "current_value": 5.0,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 39,
+        "n_extracted": 40,
         "n_prior": 32,
-        "n_holdout": 7,
-        "n_holdout_scored": 7,
+        "n_holdout": 8,
+        "n_holdout_scored": 8,
         "n_holdout_unusual": 0,
         "holdout_unusualness_median": 0.0,
         "holdout_flag_rate": 0.0,
@@ -3046,9 +3046,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 40,
+      "n_file_lines": 41,
       "state": "scored",
-      "n_history": 39,
+      "n_history": 40,
       "current_value": 1.0,
       "unusualness": 20.0,
       "unusual": true,
@@ -3058,23 +3058,23 @@
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 6.4293,
-      "public_copy": "this instrument is unusual vs its own 39 prior points",
+      "board_stat": 4.9988,
+      "public_copy": "this instrument is unusual vs its own 40 prior points",
       "feature_citations": [
         {
           "instrument_id": "event-flags",
           "field": "n_active",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 40,
-          "n_history": 39,
+          "n_file_lines": 41,
+          "n_history": 40,
           "current_value": 1.0,
           "unusualness": 20.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 40,
-        "n_prior": 32,
+        "n_extracted": 41,
+        "n_prior": 33,
         "n_holdout": 8,
         "n_holdout_scored": 8,
         "n_holdout_unusual": 8,
@@ -3095,38 +3095,38 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 15,
+      "n_file_lines": 16,
       "state": "scored",
-      "n_history": 14,
-      "current_value": 1.0,
-      "unusualness": 20.0,
-      "unusual": true,
+      "n_history": 15,
+      "current_value": 0.0,
+      "unusualness": 0.0,
+      "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 100.0,
+        "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is unusual vs its own 14 prior points",
+      "public_copy": "this instrument is within its own 15 prior points",
       "feature_citations": [
         {
           "instrument_id": "coverage-guard",
           "field": "n_confounded",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 15,
-          "n_history": 14,
-          "current_value": 1.0,
-          "unusualness": 20.0
+          "n_file_lines": 16,
+          "n_history": 15,
+          "current_value": 0.0,
+          "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 15,
-        "n_prior": 12,
+        "n_extracted": 16,
+        "n_prior": 13,
         "n_holdout": 3,
         "n_holdout_scored": 3,
-        "n_holdout_unusual": 3,
+        "n_holdout_unusual": 2,
         "holdout_unusualness_median": 20.0,
-        "holdout_flag_rate": 1.0,
+        "holdout_flag_rate": 0.6667,
         "threshold": 4.5
       }
     },
@@ -18514,5 +18514,5 @@
     "person_level_analysis": "prohibited",
     "generative_model": "prohibited"
   },
-  "analysis_sha256": "fc0602fececb6b95be111691d040f738ddbe5dbc8413c73ceecb008e2fb5a140"
+  "analysis_sha256": "a76c420665065f1a7136e12f4b8ddf584d36784d6fce2ad110e3190de6528e80"
 }
