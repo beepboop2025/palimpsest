@@ -1,31 +1,9 @@
 {
-  "generated_at": "2026-08-21T07:31:21.513281+00:00",
+  "generated_at": "2026-08-21T13:36:44.558854+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
   "pairs": [
-    {
-      "ok": true,
-      "overlap_days": 41,
-      "lag_days": 7,
-      "correlation": 0.678,
-      "p_value": 0.1481,
-      "n_shifts": 26,
-      "null_median_abs_r": 0.359,
-      "pair": [
-        "github_refuge",
-        "ooni_gfw"
-      ],
-      "layers": [
-        "content",
-        "network"
-      ],
-      "first_day": "2026-07-11",
-      "last_day": "2026-08-21",
-      "reading": "github_refuge moves 7d BEFORE ooni_gfw",
-      "holm_threshold": 0.00625,
-      "survives_multiplicity": false
-    },
     {
       "ok": true,
       "overlap_days": 43,
@@ -45,6 +23,28 @@
       "first_day": "2026-07-06",
       "last_day": "2026-08-18",
       "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
+      "holm_threshold": 0.00625,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 41,
+      "lag_days": 7,
+      "correlation": 0.678,
+      "p_value": 0.1852,
+      "n_shifts": 26,
+      "null_median_abs_r": 0.363,
+      "pair": [
+        "github_refuge",
+        "ooni_gfw"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-11",
+      "last_day": "2026-08-21",
+      "reading": "github_refuge moves 7d BEFORE ooni_gfw",
       "holm_threshold": 0.00714,
       "survives_multiplicity": false
     },
@@ -165,7 +165,7 @@
       "correlation": 0.228,
       "p_value": 1.0,
       "n_shifts": 26,
-      "null_median_abs_r": 0.432,
+      "null_median_abs_r": 0.43,
       "pair": [
         "ddti_threat",
         "ooni_gfw"
