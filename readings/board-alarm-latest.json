@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-20T19:22:11.606236+00:00",
-  "board_e_value": 195.236,
+  "generated_at": "2026-08-21T02:16:05.450324+00:00",
+  "board_e_value": 214.9,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -8,19 +8,19 @@
     ],
     "alpha": 0.1,
     "k": 1,
-    "n_tested": 9,
-    "threshold": 90.0
+    "n_tested": 8,
+    "threshold": 80.0
   },
   "layers": {
     "network": {
-      "e": 426.46,
+      "e": 426.417,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "censored_planet": 1699.519,
         "ioda_outages": 1.0,
-        "ooni_gfw": 2.276,
+        "ooni_gfw": 2.107,
         "tor_bridge_cn": 3.044
       },
       "recent_alarms": [
@@ -28,15 +28,14 @@
       ]
     },
     "content": {
-      "e": 10.257,
-      "n_signals": 5,
+      "e": 3.382,
+      "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
-        "data_darkness": 31.062,
-        "ddti_threat": 9.467,
-        "gdelt_containment": 7.599,
-        "github_refuge": 2.156,
+        "ddti_threat": 6.178,
+        "gdelt_containment": 4.635,
+        "github_refuge": 1.715,
         "weibo_suppression": 1.0
       },
       "recent_alarms": [
@@ -64,34 +63,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 2.2763,
-      "n": 173,
-      "direction": "down",
-      "robust_z": -0.17,
+      "e": 2.1069,
+      "n": 174,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "up",
-      "readings_since_alarm": 26,
+      "readings_since_alarm": 27,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 9.4669,
-      "n": 326,
+      "e": 6.1777,
+      "n": 328,
       "direction": "down",
-      "robust_z": -0.19,
+      "robust_z": -0.34,
       "driver_side": "up",
-      "readings_since_alarm": 87,
+      "readings_since_alarm": 89,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "warming_up",
       "e": 0.0,
-      "n": 326,
+      "n": 328,
       "direction": "up",
       "robust_z": 59.36,
       "driver_side": null,
-      "readings_since_alarm": 3,
+      "readings_since_alarm": 5,
       "n_alarms_in_history": 3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -108,10 +107,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 7.5987,
-      "n": 179,
-      "direction": "down",
-      "robust_z": -1.35,
+      "e": 4.6354,
+      "n": 180,
+      "direction": "up",
+      "robust_z": 0.34,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -119,8 +118,8 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 2.1562,
-      "n": 89,
+      "e": 1.7148,
+      "n": 90,
       "direction": "flat",
       "robust_z": 0.0,
       "driver_side": "up",
@@ -138,9 +137,9 @@
       "state": "stale",
       "n": 1,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
-      "age_hours": 185.0,
+      "age_hours": 191.9,
       "bound_hours": 168.0,
-      "reason": "newest row is 185.0h old, past the 168h bound"
+      "reason": "newest row is 191.9h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "warming_up",
@@ -178,7 +177,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 130,
+      "n": 131,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -187,15 +186,12 @@
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
     },
     "data_darkness": {
-      "state": "calm",
-      "e": 31.0619,
+      "state": "stale",
       "n": 15,
-      "direction": "up",
-      "robust_z": 1.36,
-      "driver_side": "up",
-      "readings_since_alarm": null,
-      "n_alarms_in_history": 0,
-      "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
+      "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
+      "age_hours": 122.3,
+      "bound_hours": 120.0,
+      "reason": "newest row is 122.3h old, past the 120h bound"
     },
     "silence_blackouts": {
       "state": "no_data",
@@ -249,7 +245,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 17.6,
+      "age_hours": 24.5,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 9 of 21 adjacent-run pairs"
