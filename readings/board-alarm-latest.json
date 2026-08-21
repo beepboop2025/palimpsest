@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-21T02:16:05.450324+00:00",
-  "board_e_value": 214.9,
+  "generated_at": "2026-08-21T07:31:21.233712+00:00",
+  "board_e_value": 214.778,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -13,7 +13,7 @@
   },
   "layers": {
     "network": {
-      "e": 426.417,
+      "e": 426.757,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
@@ -21,20 +21,20 @@
         "censored_planet": 1699.519,
         "ioda_outages": 1.0,
         "ooni_gfw": 2.107,
-        "tor_bridge_cn": 3.044
+        "tor_bridge_cn": 4.403
       },
       "recent_alarms": [
         "censored_planet"
       ]
     },
     "content": {
-      "e": 3.382,
+      "e": 2.8,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
-        "ddti_threat": 6.178,
-        "gdelt_containment": 4.635,
+        "ddti_threat": 4.095,
+        "gdelt_containment": 4.388,
         "github_refuge": 1.715,
         "weibo_suppression": 1.0
       },
@@ -74,23 +74,23 @@
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 6.1777,
-      "n": 328,
+      "e": 4.095,
+      "n": 330,
       "direction": "down",
-      "robust_z": -0.34,
+      "robust_z": -0.44,
       "driver_side": "up",
-      "readings_since_alarm": 89,
+      "readings_since_alarm": 91,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "warming_up",
       "e": 0.0,
-      "n": 328,
+      "n": 330,
       "direction": "up",
       "robust_z": 59.36,
       "driver_side": null,
-      "readings_since_alarm": 5,
+      "readings_since_alarm": 7,
       "n_alarms_in_history": 3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -107,10 +107,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 4.6354,
-      "n": 180,
-      "direction": "up",
-      "robust_z": 0.34,
+      "e": 4.3885,
+      "n": 181,
+      "direction": "down",
+      "robust_z": -0.67,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -137,9 +137,9 @@
       "state": "stale",
       "n": 1,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
-      "age_hours": 191.9,
+      "age_hours": 197.1,
       "bound_hours": 168.0,
-      "reason": "newest row is 191.9h old, past the 168h bound"
+      "reason": "newest row is 197.1h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "warming_up",
@@ -154,12 +154,12 @@
     },
     "tor_bridge_cn": {
       "state": "calm",
-      "e": 3.0437,
-      "n": 406,
+      "e": 4.4032,
+      "n": 407,
       "direction": "up",
-      "robust_z": 1.26,
+      "robust_z": 1.32,
       "driver_side": "up",
-      "readings_since_alarm": 101,
+      "readings_since_alarm": 102,
       "n_alarms_in_history": 6,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
@@ -189,9 +189,9 @@
       "state": "stale",
       "n": 15,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
-      "age_hours": 122.3,
+      "age_hours": 127.5,
       "bound_hours": 120.0,
-      "reason": "newest row is 122.3h old, past the 120h bound"
+      "reason": "newest row is 127.5h old, past the 120h bound"
     },
     "silence_blackouts": {
       "state": "no_data",
@@ -245,7 +245,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 24.5,
+      "age_hours": 29.7,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 9 of 21 adjacent-run pairs"
