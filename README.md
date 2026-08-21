@@ -6,6 +6,7 @@
 ![verify](https://img.shields.io/badge/verify-offline%2C%20one%20command-06d6e0.svg)
 ![data](https://img.shields.io/badge/data-public%20OSINT%20only-success.svg)
 ![safety](https://img.shields.io/badge/watches-the%20censor%2C%20never%20the%20censored-informational.svg)
+[![Sponsor Palimpsest](https://img.shields.io/badge/Sponsor-Palimpsest-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/beepboop2025)
 
 [![DDTI refresh](https://github.com/beepboop2025/palimpsest/actions/workflows/ddti-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/ddti-refresh.yml)
 [![Generative Firewall](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml/badge.svg)](https://github.com/beepboop2025/palimpsest/actions/workflows/gfi-refresh.yml)
@@ -41,6 +42,23 @@ pointed at two places where the record gets rewritten in the dark:
   available beside the finding.
 
 Built entirely from open sources. **It watches the censor, never the censored.**
+
+## Fund independent validation
+
+Palimpsest has already frozen and published a 145-row validation sample, its codebook and the
+agreement script. The immediate campaign has a **planned $1,800 target** for two independent
+Mandarin-speaking coders. Their completed coding sheets, agreement result and limitations will be
+published even if the result rejects the labelling scheme.
+
+[Fund the study on GitHub](https://github.com/sponsors/beepboop2025) monthly or once, starting at
+$1. You can also [inspect the campaign and direct crypto routes](https://palimpsest.info/support.html#validation-study),
+[review the public funding ledger](https://palimpsest.info/funding-ledger.html), or use the
+[Giveth project page](https://giveth.io/project/palimpsest). The Giveth verification application is
+submitted but not yet approved, and the project is not yet GIVbacks eligible.
+
+Ongoing support pays for vantage points, archives, model credits and independent human review. It
+never buys a say in the research questions, methods, findings or publication schedule. Card
+checkout is handled on GitHub; Palimpsest does not collect or store donor card or bank details.
 
 The AI-evaluation work began with a specific observation. Palimpsest's founder tested Chinese
 and state-aligned language models on documented events and criticism of the Chinese Communist

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palimpsest independent validation study · grant brief</title>
+<meta name="description" content="A concise, printable funding brief for Palimpsest's pre-registered independent human validation study.">
+<link rel="canonical" href="https://palimpsest.info/grant-brief.html">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  .gb-page { max-width: 980px; padding: 34px 22px 58px; }
+  .gb-top { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 28px; }
+  .gb-mark { font-family: var(--tk-font-mono); font-weight: 700; letter-spacing: .19em; color: var(--tk-text-0, #fff); }
+  .gb-nav { display: flex; flex-wrap: wrap; gap: 12px; font-family: var(--tk-font-mono); font-size: 11px; }
+  .gb-page a { color: var(--tk-live, #06d6e0); }
+  .gb-page a.ps-btn { color: #04141a; }
+  .gb-hero { padding: clamp(22px, 4vw, 34px); }
+  .gb-hero h1 { margin: 5px 0 12px; max-width: 16ch; color: var(--tk-text-0, #fff); font-size: clamp(34px, 6vw, 62px); letter-spacing: -.04em; line-height: .98; }
+  .gb-hero > p { max-width: 70ch; color: var(--tk-text-2, #94a3b8); font-size: 15px; line-height: 1.6; }
+  .gb-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 18px; }
+  .gb-actions .ps-btn { min-height: 44px; display: inline-flex; align-items: center; }
+  .gb-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  .gb-card { padding: 17px 19px; }
+  .gb-card h2 { margin: 3px 0 8px; color: var(--tk-text-0, #fff); font-size: 18px; }
+  .gb-card p, .gb-card li { color: var(--tk-text-2, #94a3b8); font-size: 12.75px; line-height: 1.55; }
+  .gb-card ul { margin: 7px 0 0; padding-left: 18px; }
+  .gb-card li { margin: 4px 0; }
+  .gb-wide { grid-column: 1 / -1; }
+  .gb-status { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .gb-status b { display: block; color: var(--tk-text-0, #fff); margin-bottom: 3px; }
+  .gb-note { margin: 14px 0 0; font-family: var(--tk-font-mono); font-size: 10.5px; line-height: 1.55; color: var(--tk-text-3, #7d8ca3); }
+  @media (max-width: 700px) { .gb-grid, .gb-status { grid-template-columns: 1fr; } .gb-wide { grid-column: auto; } }
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    body { background: #fff !important; color: #111 !important; }
+    .gb-page { max-width: none; padding: 0; }
+    .gb-nav, .gb-actions .ps-btn { display: none !important; }
+    .gb-top { margin-bottom: 5mm; }
+    .gb-mark, .gb-hero h1, .gb-card h2, .gb-status b { color: #111 !important; }
+    .gb-hero, .gb-card { background: #fff !important; border: 1px solid #bbb !important; box-shadow: none !important; break-inside: avoid; }
+    .gb-hero { padding: 6mm; }
+    .gb-hero h1 { font-size: 29pt; }
+    .gb-hero > p, .gb-card p, .gb-card li, .gb-note { color: #333 !important; }
+    .gb-grid { gap: 3mm; margin-top: 3mm; }
+    .gb-card { padding: 4mm; }
+    .gb-card p, .gb-card li { font-size: 8.5pt; line-height: 1.35; }
+    .gb-card h2 { font-size: 12pt; }
+    a { color: #111 !important; text-decoration: underline; }
+  }
+</style>
+</head>
+<body class="ps">
+<main class="ps-wrap gb-page">
+  <div class="gb-top">
+    <a class="gb-mark" href="/">PALIMPSEST</a>
+    <nav class="gb-nav" aria-label="Funding brief links">
+      <a href="/fund.html">Full diligence page</a>
+      <a href="/funding-ledger.html">Funding ledger</a>
+      <a href="https://github.com/beepboop2025/palimpsest/issues/new?template=funding-inquiry.yml">Written inquiry</a>
+    </nav>
+  </div>
+
+  <header class="ps-p3 gb-hero">
+    <p class="ps-label">Grant brief · current priority</p>
+    <h1>Fund the independent validation study</h1>
+    <p>Palimpsest is an MIT-licensed public evidence workbench for censorship measurements
+    and reproducible AI evaluations. Its current validation study is pre-registered and
+    published. Funding is needed for the two independent human coding passes that remain.</p>
+    <div class="gb-actions">
+      <a class="ps-btn" href="https://github.com/sponsors/beepboop2025" target="_blank" rel="noopener">Fund independent validation</a>
+      <a href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">Inspect the frozen study</a>
+    </div>
+  </header>
+
+  <div class="gb-grid">
+    <section class="ps-p2 gb-card">
+      <p class="ps-label">Problem</p>
+      <h2>A machine label is not human validation</h2>
+      <p>Palimpsest's published lexical classifier labels AI responses, but no inter-rater
+      agreement figure exists yet. Without independent human coding, the project correctly
+      describes those labels as unvalidated.</p>
+    </section>
+
+    <section class="ps-p2 gb-card">
+      <p class="ps-label">Work already complete</p>
+      <h2>The study is ready to code</h2>
+      <ul>
+        <li>145-row frozen sample</li>
+        <li>Published codebook and protocol</li>
+        <li>Committed answer-key digest</li>
+        <li>Agreement and verification scripts</li>
+      </ul>
+    </section>
+
+    <section class="ps-p2 gb-card gb-wide">
+      <p class="ps-label">Funded deliverable</p>
+      <div class="gb-status">
+        <div><b>1 · Code independently</b>Two coders apply the published codebook and attest that they did not inspect the classifier or answer key.</div>
+        <div><b>2 · Calculate openly</b>The published script calculates agreement against the pre-registered thresholds.</div>
+        <div><b>3 · Publish the outcome</b>Coded sheets, agreement result and limitations are published, including an unfavourable result.</div>
+      </div>
+    </section>
+
+    <section class="ps-p2 gb-card">
+      <p class="ps-label">Falsifier</p>
+      <h2>The grant does not buy success</h2>
+      <p>The frozen protocol states that Krippendorff's alpha below 0.667 rejects the
+      labelling scheme. That outcome remains publishable evidence, not a failed deliverable.
+      Funders receive no control over questions, methods, findings or publication.</p>
+    </section>
+
+    <section class="ps-p2 gb-card">
+      <p class="ps-label">Budget and contact</p>
+      <h2>$1,800 planned target</h2>
+      <p>This forward honoraria budget covers two independent Mandarin-speaking coders. It
+      is not an invoice, amount spent or funds received. Request a current breakdown through the project's
+      <a href="https://github.com/beepboop2025/palimpsest/issues/new?template=funding-inquiry.yml">public issue form</a>;
+      do not post confidential documents there.
+      The <a href="/funding-ledger.html">aggregate ledger</a> labels missing periods rather
+      than reporting them as zero.</p>
+    </section>
+  </div>
+
+  <p class="gb-note">Evidence: palimpsest.info · Source and study:
+  github.com/beepboop2025/palimpsest · No paywall · No supporter-only evidence ·
+  Watch the censor, never the censored.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,35 @@
+name: Funding or institutional inquiry
+description: Request a written budget, diligence material, or a verification walkthrough.
+title: "[Funding] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue will be public. Do not include confidential documents, personal data, payment details, or information that could put anyone at risk. No call is required; the maintainer can respond in writing.
+  - type: dropdown
+    id: request
+    attributes:
+      label: What would help you evaluate Palimpsest?
+      options:
+        - Current validation-study budget
+        - Technical diligence material
+        - Written verification walkthrough
+        - Institutional sponsorship information
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What do you need?
+      description: A short request is enough. Link only material that is already public.
+      placeholder: Please send the current study budget and publication milestones.
+    validations:
+      required: true
+  - type: checkboxes
+    id: public
+    attributes:
+      label: Public-thread check
+      options:
+        - label: I understand this request and its replies will be public, and I have not included sensitive information.
+          required: true

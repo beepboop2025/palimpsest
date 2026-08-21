@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Support Palimpsest — keep the observatory measuring</title>
-<meta name="description" content="Palimpsest is a free, open-source censorship observatory with no sponsor and no paywall. Contributions in BTC, ETH, SOL or USDT fund vantage points, archival storage and model probes.">
+<title>Fund Palimpsest's independent validation study</title>
+<meta name="description" content="Help Palimpsest complete its pre-registered human validation study with two independent coders. The sample, codebook and verification method are already public.">
 <link rel="canonical" href="https://palimpsest.info/support.html">
 <meta name="robots" content="index, follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Support Palimpsest — keep the observatory measuring">
-<meta property="og:description" content="No sponsor, no paywall, no ads. The observatory runs on contributions. Every satoshi goes to measurement infrastructure.">
+<meta property="og:title" content="Fund Palimpsest's independent validation study">
+<meta property="og:description" content="The 145-row sample and codebook are public. Funding pays for the two independent coders still needed to finish the study.">
 <meta property="og:url" content="https://palimpsest.info/support.html">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -23,9 +23,20 @@
 
   .sp-head { padding: clamp(32px, 6vw, 64px) 0 2px; }
 
-  /* ---- the two funding paths, so neither audience lands on the wrong one ---- */
-  .sp-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 6px 0 4px; }
-  @media (max-width: 720px) { .sp-paths { grid-template-columns: 1fr; } }
+  .sp-campaign { padding: clamp(20px, 4vw, 34px); margin: 22px 0 14px; }
+  .sp-campaign h2 { margin: 4px 0 10px; color: var(--tk-text-0, #fff); font-size: clamp(25px, 4vw, 38px); line-height: 1.08; }
+  .sp-campaign p { max-width: 68ch; color: var(--tk-text-2, #94a3b8); line-height: 1.65; }
+  .sp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 18px; }
+  .sp-actions .ps-btn { display: inline-flex; align-items: center; min-height: 44px; }
+  .sp-proof { color: var(--tk-live, #06d6e0); font-family: var(--tk-font-mono); font-size: 11.5px; }
+  .sp-state { margin: 18px 0 0; padding-top: 15px; border-top: 1px solid var(--ps-edge-1); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .sp-state div { color: var(--tk-text-2, #94a3b8); font-size: 12.5px; line-height: 1.55; }
+  .sp-state b { display: block; color: var(--tk-text-0, #fff); margin-bottom: 3px; }
+  @media (max-width: 720px) { .sp-state { grid-template-columns: 1fr; } }
+
+  /* ---- secondary funding paths, kept below the primary study campaign ---- */
+  .sp-paths { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 6px 0 4px; }
+  @media (max-width: 840px) { .sp-paths { grid-template-columns: 1fr; } }
   .sp-path { display: block; padding: 16px 18px; text-decoration: none; color: inherit; }
   .sp-path__k {
     font-family: var(--tk-font-mono); font-size: 9.5px; letter-spacing: .16em;
@@ -38,6 +49,25 @@
     font-size: 10.5px; letter-spacing: .07em; color: var(--tk-live, #06d6e0);
   }
   .sp-path--here .sp-path__go { color: var(--tk-text-4, #6f8098); }
+
+  .sp-sponsor { padding: 20px; margin: 0 0 24px; }
+  .sp-sponsor h3 { margin: 4px 0 8px; color: var(--tk-text-0, #fff); font-size: 22px; }
+  .sp-sponsor p { margin: 0 0 14px; max-width: 64ch; color: var(--tk-text-2, #94a3b8); line-height: 1.6; }
+  .sp-sponsor .ps-btn { display: inline-flex; align-items: center; min-height: 44px; }
+  .sp-trust {
+    list-style: none; margin: 18px 0 0; padding: 14px 0 0;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+    border-top: 1px solid var(--ps-edge-1);
+  }
+  @media (max-width: 720px) { .sp-trust { grid-template-columns: 1fr; } }
+  .sp-trust li { color: var(--tk-text-2, #94a3b8); font-size: 12.5px; line-height: 1.55; }
+  .sp-trust b { display: block; margin-bottom: 3px; color: var(--tk-text-0, #fff); }
+  .sp-trust a { color: inherit; }
+  .sp-subhead { margin: 28px 0 8px; color: var(--tk-text-0, #fff); font-size: 19px; }
+  .sp-crypto { margin-top: 28px; }
+  .sp-crypto summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--tk-live, #06d6e0); font-family: var(--tk-font-mono); font-size: 12px; letter-spacing: .04em; }
+  .sp-crypto summary:hover { color: var(--tk-text-0, #fff); }
+  .sp-crypto[open] summary { margin-bottom: 12px; }
 
   /* ---- what a contribution funds: the receipts, so plane 1 ---- */
   .sp-funds {
@@ -176,34 +206,38 @@
 
 <main id="main" class="ps-wrap">
 
-  <header class="sp-head ps-recede">
-    <p class="ps-kicker">No sponsor · no paywall · no ads</p>
-    <h1 class="ps-h1">Keep the observatory measuring</h1>
-    <p class="ps-lede">Palimpsest has no institutional funder. Every signal on this site — the deletion
-    tracker, the Generative Firewall Index, the GDELT and refuge feeds — runs on infrastructure someone
-    has to pay for. If the measurements are useful to you, a contribution keeps them running and makes
-    them better: more vantage points, deeper archives, more models probed, faster refresh.</p>
+  <header class="sp-head ps-recede" id="validation-study">
+    <p class="ps-kicker">One unfinished study · two independent coders needed</p>
+    <h1 class="ps-h1">Fund the independent validation study</h1>
+    <p class="ps-lede">Palimpsest has published a frozen 145-row sample, its codebook and
+    the script that will calculate agreement. The remaining work cannot be automated:
+    two people must code the sample independently before the project can publish an
+    inter-rater reliability result.</p>
 
-    <div class="sp-paths ps-stagger">
-      <div class="sp-path sp-path--here ps-p3">
-        <p class="sp-path__k">You are here</p>
-        <b>Individual support</b>
-        <p>Any amount, in crypto, with no account and no donor list. Nothing is asked in return and
-        nothing is withheld from anyone who gives nothing.</p>
-        <span class="sp-path__go">Addresses below</span>
+    <div class="sp-campaign ps-p3">
+      <p class="ps-label">Current campaign · $1,800 planned target</p>
+      <h2>Turn a published method into a completed result</h2>
+      <p>Your sponsorship funds independent coder time. When both coding passes are complete,
+      Palimpsest will publish the coded sheets, agreement result and stated limitations—also
+      if the result rejects the labelling scheme.</p>
+      <div class="sp-actions">
+        <a class="ps-btn" href="https://github.com/sponsors/beepboop2025" target="_blank" rel="noopener">Fund independent validation</a>
+        <a class="sp-proof" href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">Inspect the frozen study <span aria-hidden="true">→</span></a>
       </div>
-      <a class="sp-path ps-p2 ps-lift" href="/fund.html">
-        <p class="sp-path__k">Funding an institution can write</p>
-        <b>What a grant pays for</b>
-        <p>For grantmakers and technical funders: what the observatory costs to run, what a grant
-        buys, and how to reach the person who runs it.</p>
-        <span class="sp-path__go">Open the funder page <span aria-hidden="true">→</span></span>
-      </a>
+      <div class="sp-state" aria-label="Current validation study status">
+        <div><b>Already public</b>145-row sample, codebook, protocol and verification script</div>
+        <div><b>Still missing</b>Two independent, attested coding passes</div>
+        <div><b>Publication promise</b>Result, coded sheets and limitations—whatever the outcome</div>
+      </div>
     </div>
+    <p class="sp-why">The planned campaign target is <strong>$1,800</strong> for two independent
+    Mandarin-speaking coders. This is a forward budget, not an invoice or a claim about funds
+    received or spent. See the <a href="/funding-ledger.html">public funding ledger</a> for
+    the current reporting state or the <a href="/fund.html">funder evidence page</a> for full diligence.</p>
   </header>
 
   <section class="ps-defer">
-    <h2 class="ps-section-head">What a contribution funds</h2>
+    <h2 class="ps-section-head">After the study, what ongoing support funds</h2>
     <ul class="sp-funds ps-stagger">
       <li class="ps-p1 ps-reveal"><b>Vantage points.</b> Differential observation needs eyes in more than one place. Network
       egress and residential vantage infrastructure is the single largest running cost.</li>
@@ -217,12 +251,47 @@
   </section>
 
   <section class="ps-defer">
-    <h2 class="ps-section-head">Contribute</h2>
-    <p class="sp-why">Contributions are accepted in crypto only.
-    That is deliberate: this project measures censors, and permissionless rails are the ones they cannot
-    lean on. No donor list is kept and nothing is tracked.</p>
+    <h2 class="ps-section-head">Fund the study</h2>
+    <div class="sp-sponsor ps-p3 ps-reveal">
+      <p class="ps-label">Recommended · monthly or one-time</p>
+      <h3>Fund independent validation on GitHub</h3>
+      <p>Choose a published tier or enter your own amount. GitHub Sponsors is the simplest way to
+      support the work with a standard checkout, and you can stop a monthly sponsorship at any time.</p>
+      <a class="ps-btn" href="https://github.com/sponsors/beepboop2025" target="_blank" rel="noopener">Fund independent validation</a>
+      <ul class="sp-trust" aria-label="What donors can verify">
+        <li><b>Hosted checkout.</b>Your card checkout happens on GitHub. Palimpsest never collects or
+        stores your card or bank details.</li>
+        <li><b>No influence for sale.</b>A contribution does not unlock private evidence or a say in
+        research questions, methods or findings.</li>
+        <li><b>Public proof.</b>Check the <a href="https://github.com/beepboop2025/palimpsest">source</a>,
+        <a href="/for-researchers.html">method</a> and <a href="/readings/index.html">live readings</a>
+        before deciding.</li>
+      </ul>
+    </div>
 
-    <div class="coins ps-stagger">
+    <div class="sp-paths ps-stagger" aria-label="Additional funding routes">
+      <a class="sp-path ps-p2 ps-lift" href="https://giveth.io/project/palimpsest" target="_blank" rel="noopener">
+        <p class="sp-path__k">Public-goods crypto route · application submitted</p>
+        <b>View Palimpsest on Giveth</b>
+        <p>The public project page is live and its verification application is pending. It is
+        not yet verified or GIVbacks eligible.</p>
+        <span class="sp-path__go">Open the Giveth listing <span aria-hidden="true">→</span></span>
+      </a>
+      <a class="sp-path ps-p2 ps-lift" href="/fund.html">
+        <p class="sp-path__k">Institutions and grantmakers</p>
+        <b>Review the evidence and current gaps</b>
+        <p>Open the full diligence page, printable brief and public funding ledger.</p>
+        <span class="sp-path__go">Open the funder page <span aria-hidden="true">→</span></span>
+      </a>
+    </div>
+
+    <details class="sp-crypto">
+      <summary>Prefer crypto? Show the permissionless routes</summary>
+      <p class="sp-why">Palimpsest does not maintain a private donor list for direct wallet
+      transfers. Transactions on public blockchains remain publicly visible, and giving never
+      unlocks private evidence or influence over findings.</p>
+
+      <div class="coins ps-stagger">
       <div class="coin ps-p2 ps-reveal">
         <div class="ct"><span class="dot" style="color:#f7931a;background:#f7931a"></span>Bitcoin · BTC</div>
         <p class="net">Bitcoin network only</p>
@@ -265,14 +334,16 @@
 <code class="addr" id="xmr">44juwNHWxVhgPf6jp8BVqP8LSKwBbVm6rVoJ6d1Qhqd5AwRHhH5CNWSSQCbDNDvZuK6WcuJwT4wKt5csePngREkERtgPYs1</code>
         <button class="copy" type="button" data-for="xmr" aria-live="polite" aria-label="Copy the Monero address">copy address</button>
       </div>
-    </div>
+      </div>
 
-    <div class="caveat ps-p1">
-      <p class="ps-label">Before you send</p>
-      <p>Verify the first and last characters after pasting. Send only on the network named
-      on each card; transfers on the wrong network are unrecoverable. Contributions are gifts to an
-      open-source project, not payments for a service, and are not tax deductible.</p>
-    </div>
+      <div class="caveat ps-p1">
+        <p class="ps-label">Before you send</p>
+        <p>Verify the first and last characters after pasting. Send only on the network named
+        on each card; transfers on the wrong network are unrecoverable. Contributions are gifts to an
+        open-source project, not payments for a service, and are not tax deductible. Palimpsest will
+        never ask you to send card or bank details directly.</p>
+      </div>
+    </details>
   </section>
 
   <section class="ps-defer">
@@ -291,6 +362,7 @@
   <p class="foot">Free and open-source, developed in the open as a public good. Contributions fund
   measurement infrastructure only — the project never monetizes the people or topics it observes.
   The internet stays free because people keep measuring the dark.
+  <a href="https://github.com/sponsors/beepboop2025">Sponsor on GitHub</a> ·
   Institutions and grantmakers: <a href="/fund.html">what a grant pays for</a>.</p>
 
 </main>

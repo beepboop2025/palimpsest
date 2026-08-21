@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Palimpsest public funding ledger</title>
+<meta name="description" content="The public aggregate record of funds received, expense categories and outputs enabled for Palimpsest.">
+<link rel="canonical" href="https://palimpsest.info/funding-ledger.html">
+<meta name="robots" content="index, follow">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  .fl-main { padding: clamp(36px, 7vw, 76px) 0 64px; }
+  .fl-main a { color: var(--tk-live, #06d6e0); }
+  .fl-main a.ps-btn { color: #04141a; }
+  .fl-actions { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 20px 0 0; }
+  .fl-actions .ps-btn { min-height: 44px; display: inline-flex; align-items: center; }
+  .fl-section { margin-top: clamp(38px, 6vw, 68px); }
+  .fl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 720px) { .fl-grid { grid-template-columns: 1fr; } }
+  .fl-card { padding: 18px 20px; }
+  .fl-card h2, .fl-card h3 { color: var(--tk-text-0, #fff); margin: 0 0 8px; }
+  .fl-card h2 { font-size: 22px; }
+  .fl-card h3 { font-size: 15px; }
+  .fl-card p, .fl-card li { color: var(--tk-text-2, #94a3b8); font-size: 13.5px; line-height: 1.62; }
+  .fl-card p:last-child { margin-bottom: 0; }
+  .fl-empty { border-left: 3px solid var(--tk-warning, #ffb020); }
+  .fl-empty strong { color: var(--tk-warning, #ffb020); }
+  .fl-table-wrap { overflow-x: auto; }
+  .fl-table { border-collapse: collapse; width: 100%; min-width: 650px; font-family: var(--tk-font-mono); font-size: 11.5px; }
+  .fl-table th, .fl-table td { padding: 12px; border-bottom: 1px solid var(--ps-edge-1); text-align: left; color: var(--tk-text-2, #94a3b8); }
+  .fl-table th { color: var(--tk-text-4, #6f8098); text-transform: uppercase; letter-spacing: .08em; font-size: 9.5px; }
+  .fl-table .empty-row td { white-space: normal; color: var(--tk-text-3, #7d8ca3); }
+  .fl-note { margin-top: 12px; font-family: var(--tk-font-mono); font-size: 11px; color: var(--tk-text-3, #7d8ca3); line-height: 1.65; }
+</style>
+</head>
+<body class="ps">
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/readings/index.html">Evidence</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/fund.html">Funder brief</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/support.html">Support</a></div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+
+<main id="main" class="ps-wrap fl-main">
+  <header>
+    <p class="ps-kicker">Public accountability · aggregate reporting</p>
+    <h1 class="ps-h1">Funding ledger</h1>
+    <p class="ps-lede">This page will connect aggregate funds to expense categories and
+    public outputs. It does not publish donor identities, payment credentials or private
+    grant discussions.</p>
+    <div class="fl-actions">
+      <a class="ps-btn" href="https://github.com/sponsors/beepboop2025" target="_blank" rel="noopener">Fund independent validation</a>
+      <a href="/funding/ledger.json">Download the machine-readable ledger</a>
+    </div>
+  </header>
+
+  <section class="fl-section fl-grid" aria-labelledby="state-title">
+    <div class="ps-p2 fl-card fl-empty" data-ledger-status="no_reconciled_period_published">
+      <p class="ps-label">Reporting state · reviewed 21 August 2026</p>
+      <h2 id="state-title">No reconciled period is published yet</h2>
+      <p><strong>This is not a claim that zero money has been received or spent.</strong>
+      It means there is not yet a reconciled aggregate period that can be published accurately.
+      Palimpsest will not substitute estimates for accounting records.</p>
+    </div>
+    <div class="ps-p2 fl-card" data-target-status="planned_budget_published">
+      <p class="ps-label">Current campaign</p>
+      <h2>$1,800 planned target</h2>
+      <p>This forward honoraria budget covers two independent Mandarin-speaking coders. It
+      is not an invoice, amount spent or funds received. The deliverable is fixed: Two
+      independent coding passes, published coded sheets, an agreement result, and stated
+      limitations.</p>
+      <p><a href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">Inspect the frozen study</a>.</p>
+    </div>
+  </section>
+
+  <section class="fl-section" aria-labelledby="period-title">
+    <p class="ps-label">Aggregate periods</p>
+    <h2 class="ps-h2" id="period-title">Funds → costs → public output</h2>
+    <div class="ps-p1 fl-table-wrap">
+      <table class="fl-table">
+        <thead><tr><th>Period</th><th>Funds received</th><th>Expense category</th><th>Amount spent</th><th>Public output</th></tr></thead>
+        <tbody>
+          <tr class="empty-row"><td colspan="5">No reconciled aggregate period has been published. The first row will appear only after income and expenses can be checked against records.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="fl-note">Reporting rule: aggregate periods only; no donor names. Expenses are
+    linked to a receipt or public output when one can be shared safely. Unknown and pending
+    amounts remain labelled unknown or pending.</p>
+  </section>
+
+  <section class="fl-section fl-grid" aria-labelledby="categories-title">
+    <div class="ps-p2 fl-card">
+      <p class="ps-label">Permitted categories</p>
+      <h2 id="categories-title">What support may fund</h2>
+      <ul>
+        <li>Independent human coding</li>
+        <li>Network vantage points</li>
+        <li>Archival storage and external anchoring</li>
+        <li>Model probe credits</li>
+      </ul>
+    </div>
+    <div class="ps-p2 fl-card">
+      <p class="ps-label">Independence rule</p>
+      <h2>Funding cannot buy a finding</h2>
+      <p>Support does not buy access to private evidence or control over research questions,
+      methods, results or publication. The validation result will be published even if it
+      rejects the labelling scheme.</p>
+    </div>
+  </section>
+</main>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

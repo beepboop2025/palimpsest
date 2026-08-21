@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fund Palimpsest · what a grant pays for</title>
-<meta name="description" content="Palimpsest is an MIT-licensed censorship observatory and verifiable AI eval registry with no sponsor and no paywall. This page states what it is, shows the live evidence that it is real, and says what funding buys.">
+<title>Fund Palimpsest's independent validation study</title>
+<meta name="description" content="Fund the two independent coders needed to complete Palimpsest's pre-registered human validation study. Inspect the frozen sample, method and live evidence.">
 <link rel="canonical" href="https://palimpsest.info/fund.html">
 <meta name="robots" content="index, follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Fund Palimpsest · what a grant pays for">
-<meta property="og:description" content="Open source, no paywall, no sponsor, never monetizes the observed. Every claim on this page ships the file you can check it against.">
+<meta property="og:title" content="Fund Palimpsest's independent validation study">
+<meta property="og:description" content="The sample, codebook and verification method are public. The remaining gap is two independent human coding passes.">
 <meta property="og:url" content="https://palimpsest.info/fund.html">
 <meta property="og:image" content="https://palimpsest.info/brand/palimpsest-og2.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -22,6 +22,11 @@
   .f-hero { padding: clamp(34px, 6.5vw, 70px) 0 4px; }
   .f-hero .ps-lede { margin-bottom: 18px; }
   .f-cta { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 8px; }
+  .f-cta .ps-btn { min-height: 44px; display: inline-flex; align-items: center; }
+  .f-campaign { margin: 22px 0 0; padding: 18px 20px; }
+  .f-campaign h2 { margin: 4px 0 8px; color: var(--tk-text-0, #fff); font-size: clamp(22px, 3vw, 30px); }
+  .f-campaign p { margin: 0 0 8px; max-width: 74ch; color: var(--tk-text-2, #94a3b8); line-height: 1.62; }
+  .f-campaign p:last-child { margin-bottom: 0; }
 
   .f-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 30px 0 0; }
   @media (max-width: 820px) { .f-tiles { grid-template-columns: 1fr; } }
@@ -193,25 +198,28 @@
 
   <!-- ================================================================= HERO -->
   <header class="f-hero">
-    <p class="ps-kicker">For grantmakers and technical funders</p>
-    <h1 class="ps-h1">What a grant to Palimpsest pays for</h1>
-    <p class="ps-lede">Palimpsest measures censorship. Its founder began the AI eval work after
-    seeing Chinese and state-aligned language models change, withhold or replace answers when
-    prompts criticised the Chinese Communist Party. Today it watches what governments and their
-    AI models quietly remove from the public record, publishes each measurement as an open
-    JSON file within hours of taking it, and seals the exact served bytes so that a later
-    change breaks local verification and can be compared with external witnesses. It is MIT licensed and
-    fully open source. It has no sponsor, no paywall and no advertising, and it never
-    monetizes the people or the topics it observes. Everything below is that same claim
-    broken into parts, each one sitting directly above the file you can check it against.</p>
+    <p class="ps-kicker">For grantmakers and technical funders · current priority</p>
+    <h1 class="ps-h1">Fund the independent validation study</h1>
+    <p class="ps-lede">Palimpsest has already frozen and published a 145-row sample, the
+    codebook and the analysis procedure for its AI-response classifier. The remaining gap is
+    human work: two independent coders must label the same sample before the project can
+    publish an inter-rater reliability result.</p>
 
     <p class="f-cta">
-      <a class="ps-btn" href="https://github.com/beepboop2025/palimpsest/issues">Open a funding conversation</a>
-      <a class="ps-btn ps-btn--ghost" href="/evals/">Read the AI Eval Journal</a>
-      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest">Read the source</a>
-      <a class="ps-btn ps-btn--ghost" href="/readings/index.html">Browse the live readings</a>
-      <a class="ps-btn ps-btn--ghost" href="/readings/eval-assurance-latest.json">Read the eval assurance</a>
+      <a class="ps-btn" href="https://github.com/sponsors/beepboop2025" target="_blank" rel="noopener">Fund independent validation</a>
+      <a class="ps-btn ps-btn--ghost" href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">Inspect the frozen study</a>
     </p>
+
+    <div class="ps-p2 f-campaign">
+      <p class="ps-label">The funding case in one minute</p>
+      <h2>The method is ready. The independent coding is not.</h2>
+      <p>Funding pays for two attested coding passes. Palimpsest will publish the completed
+      sheets, the agreement calculation and the study's limitations whatever the result.
+      A low agreement score would reject the labelling scheme; it will not be hidden or replaced.</p>
+      <p><a href="/grant-brief.html">Open the print-friendly grant brief</a> &middot;
+      <a href="/funding-ledger.html">Review the public funding ledger</a> &middot;
+      <a href="https://github.com/beepboop2025/palimpsest/issues/new?template=funding-inquiry.yml">Open a written funding inquiry</a></p>
+    </div>
 
     <div class="f-tiles ps-stagger">
       <div class="ps-p3 f-tile" id="card-registry-hero">
@@ -447,7 +455,7 @@
   <section class="f-sec ps-band ps-reveal" id="public-good" aria-labelledby="h-pg">
     <div class="ps-pin f-claim">
       <p class="ps-label">03 &middot; Is it a public good</p>
-      <h2 class="ps-h2" id="h-pg">Free, open, unsponsored, and structurally unable to sell you out</h2>
+      <h2 class="ps-h2" id="h-pg">Free, open, independently funded, and structurally unable to sell you out</h2>
       <p>Public good is a claim about structure, not intention, so each line here points at
       the thing that makes it true rather than at a promise.</p>
     </div>
@@ -461,9 +469,9 @@
         Every reading on this site is a plain JSON file served to anyone who asks, with a
         history file beside it. There is no premium dataset and no embargo window.
         <a href="/readings/index.html">The readings index</a>.</li>
-        <li><b>No sponsor and no advertising</b>
-        Nothing on this site is placed. Individual support is voluntary, taken in crypto,
-        with no donor list kept.
+        <li><b>No advertising or paid placement</b>
+        Support is voluntary, whether through GitHub Sponsors or crypto. It never buys a say
+        in research questions, methods, findings or the publication schedule.
         <a href="/support.html">The individual support page</a>.</li>
         <li><b>It never monetizes the people it observes</b>
         The subject of measurement is the act of suppression. There is no product built on
@@ -700,16 +708,36 @@
   <section class="f-sec ps-band ps-reveal" id="buys" aria-labelledby="h-buys">
     <div class="ps-pin f-claim">
       <p class="ps-label">06 &middot; What money buys</p>
-      <h2 class="ps-h2" id="h-buys">Four cost categories, each attached to a gap you can see on this page</h2>
-      <p>Funding here buys measurement capacity and nothing else. Each category below names
-      the specific limitation in the current published record that more of it removes.</p>
-      <p>No budget figures are published on this page. Ask through the repository and a
-      current cost breakdown against these four categories will be prepared for you.</p>
+      <h2 class="ps-h2" id="h-buys">One immediate study, then three continuing infrastructure needs</h2>
+      <p>The current campaign is deliberately narrow: pay two independent coders to finish
+      the pre-registered validation study. Continuing support can expand the measurement
+      capacity described after it.</p>
+      <p>The planned campaign target is <strong>$1,800</strong> for two independent
+      Mandarin-speaking coders. It is a forward honoraria budget, not an invoice, amount
+      spent or claim about funds received. The <a href="/funding-ledger.html">public funding
+      ledger</a> keeps that target separate from reconciled income and expenses.</p>
     </div>
 
     <div class="f-ev">
+      <div class="ps-p3 f-card">
+        <h3>Priority &middot; Two independent human coding passes</h3>
+        <p>The sampling frame, 145-row sheet, codebook and analysis script are already
+        published. What is missing is paid coder time. Both coders must work independently
+        and attest that they did not inspect the classifier or answer key while coding.</p>
+        <p>The deliverable is public: completed coding sheets, the calculated agreement
+        result and the study limitations. The frozen protocol says that Krippendorff's alpha
+        below 0.667 rejects the labelling scheme, so funding completion does not buy a
+        favourable result.</p>
+        <div class="ps-p1 f-receipt">
+          <p>Current status: pre-registered, not yet coded; no human agreement figure exists.</p>
+          <p><a href="https://github.com/beepboop2025/palimpsest/tree/main/validation/studies/2026-08-01-gfi-classifier-v1">frozen study</a>
+          &middot; <a href="https://github.com/beepboop2025/palimpsest/blob/main/validation/CODEBOOK.md">codebook</a>
+          &middot; <a href="https://github.com/beepboop2025/palimpsest/blob/main/scripts/gfi_validation_agreement.py">agreement script</a></p>
+        </div>
+      </div>
+
       <div class="ps-p2 f-card">
-        <h3>01 &middot; Vantage points, the single largest running cost</h3>
+        <h3>After the study &middot; Independent vantage points</h3>
         <p>Censorship is vantage dependent. Two independent methods can legitimately
         disagree because of routing, partial deployment or probe location, and when they
         do, the honest published answer is a range rather than a midpoint. Egress and
@@ -723,7 +751,7 @@
       </div>
 
       <div class="ps-p2 f-card">
-        <h3>02 &middot; Archival storage and external anchoring</h3>
+        <h3>After the study &middot; Archival storage and external anchoring</h3>
         <p>Deletion is only measurable if the original was captured first, so the archive
         grows every cycle and nothing is ever removed from it. Anchoring costs sit here too:
         each root has to be stamped outside this project for the seal to mean anything to a
@@ -737,7 +765,7 @@
       </div>
 
       <div class="ps-p2 f-card">
-        <h3>03 &middot; Model probe budget</h3>
+        <h3>After the study &middot; Model probe budget</h3>
         <p>The eval registry pays per query. Every sealed run is a frozen probe set put to a
         named model, and the value of the series comes from repeating it on a schedule for
         long enough that drift becomes visible. More budget means more models, more
@@ -746,23 +774,6 @@
           <p>The gap, live and unretouched:</p>
           <p><span id="buy-probe" class="f-pend">not loaded</span></p>
           <p><a href="/readings/eval-registry-latest.json">eval-registry-latest.json</a></p>
-        </div>
-      </div>
-
-      <div class="ps-p2 f-card">
-        <h3>04 &middot; Human validation studies</h3>
-        <p>Machine labels are not evidence until humans have checked them. The sampling
-        frame and codebook for the generative firewall labels are already written and
-        published; the answer key is withheld until coding finishes, with its digest
-        published so the eventual release is checkable against a commitment that predates
-        the labels. What is missing is paid coder time, which is the difference between a
-        plausible index and a validated one, and the reason no agreement figure appears
-        anywhere on this site.</p>
-        <div class="ps-p1 f-receipt">
-          <p>The gap, stated plainly: two independent coders have not yet worked the
-          published sheets, so inter rater agreement is unmeasured and every model derived
-          label on this site should be read as unvalidated until it is.</p>
-          <p><a href="https://github.com/beepboop2025/palimpsest/blob/main/validation/CODEBOOK.md">validation/CODEBOOK.md</a></p>
         </div>
       </div>
 
@@ -777,26 +788,32 @@
   <section class="f-sec ps-band ps-reveal" id="contact" aria-labelledby="h-contact">
     <div class="ps-pin f-claim">
       <p class="ps-label">07 &middot; Contact</p>
-      <h2 class="ps-h2" id="h-contact">How to start a conversation</h2>
-      <p>The repository is the front door, because it is the one route a stranger can verify
-      reaches the person who actually maintains the project.</p>
+      <h2 class="ps-h2" id="h-contact">Asynchronous funder contact</h2>
+      <p>No call is required. The currently verified route is the project's public issue
+      tracker. Do not include confidential material there.</p>
     </div>
 
     <div class="f-ev">
       <ul class="ps-p2 f-card f-list">
         <li><b>Funders and institutions</b>
-        Open an issue on the repository saying what you need to see. Diligence material,
-        a cost breakdown against the four categories above, or a walkthrough of the
-        verification path can all be prepared on request.
-        <a href="https://github.com/beepboop2025/palimpsest/issues">github.com/beepboop2025/palimpsest/issues</a>.</li>
+        Open a <a href="https://github.com/beepboop2025/palimpsest/issues/new?template=funding-inquiry.yml">public funding inquiry</a>
+        asking for diligence material, the current reconciled budget, or a written walkthrough
+        of the verification path. Do not post confidential documents. Start with the
+        <a href="/grant-brief.html">one-page grant brief</a> and
+        <a href="/funding-ledger.html">public funding ledger</a>.</li>
         <li><b>Anything touching a person's safety</b>
         Use the private reporting route in SECURITY.md rather than a public issue. It
         reaches the maintainer with no public trace.
         <a href="https://github.com/beepboop2025/palimpsest/blob/main/SECURITY.md">SECURITY.md</a>.</li>
         <li><b>Individuals who want to give</b>
-        The individual support page takes contributions in crypto, keeps no donor list, and
-        is deliberately separate from institutional funding.
-        <a href="/support.html">Support page</a>.</li>
+        Sponsor monthly or once through GitHub, or use the crypto route if you prefer a
+        permissionless transfer. Neither route buys influence over the work.
+        <a href="https://github.com/sponsors/beepboop2025">GitHub Sponsors</a>,
+        <a href="https://giveth.io/project/palimpsest">Giveth listing</a>,
+        <a href="/support.html">direct crypto support</a>. The Giveth verification application
+        is submitted but not yet approved, and the project is not yet GIVbacks eligible.
+        Card checkout happens on GitHub;
+        Palimpsest does not collect or store donor card or bank details.</li>
         <li><b>Help that is not money</b>
         Cite the data in research and journalism, replicate a reading and say where it
         disagreed, or volunteer as a coder for the validation study. Coders are the single
@@ -805,14 +822,10 @@
         <a href="https://github.com/beepboop2025/palimpsest/blob/main/CONTRIBUTING.md">contributing</a>.</li>
       </ul>
 
-      <!-- No direct email or postal address is published here because none is published
-           anywhere in the repository, and inventing one would be worse than omitting it.
-           If a direct contact address should appear on this page, add it here by hand. -->
-
       <div class="ps-p1 f-card">
-        <p class="f-note" style="margin-top:0">This page names no institution, no team size
-        and no funding total, because none of those are things a reader could check. What is
-        checkable is on the page, and what is not has been left off it.</p>
+        <p class="f-note" style="margin-top:0">This page names no team size or funding total
+        because neither has a published, reconciled source. What is checkable is linked;
+        what is not yet checkable is labelled as missing.</p>
       </div>
     </div>
   </section>
@@ -823,6 +836,7 @@
     <a href="/">Home</a> &middot;
     <a href="/readings/index.html">Readings</a> &middot;
     <a href="/for-researchers.html">For researchers</a> &middot;
+    <a href="https://github.com/sponsors/beepboop2025">Sponsor</a> &middot;
     <a href="/support.html">Individual support</a> &middot;
     <a href="https://github.com/beepboop2025/palimpsest">Source</a>
   </p>
