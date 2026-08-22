@@ -800,7 +800,14 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
 
 def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
     text = WORKFLOW.read_text(encoding="utf-8")
-    assert text.count("python -m scripts.build_erasure_trail") == 3
+    assert sum(
+        line.strip() == "python -m scripts.build_erasure_trail"
+        for line in text.splitlines()
+    ) == 3
+    assert sum(
+        line.strip() == "python -m scripts.build_erasure_trail --check"
+        for line in text.splitlines()
+    ) == 3
     assert text.count("python -m scripts.build_newsroom") == 6
     assert text.count("python -m scripts.build_investigations") == 3
     assert text.count("python -m scripts.build_economic_pulse") == 3

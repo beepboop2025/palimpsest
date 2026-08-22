@@ -119,6 +119,8 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "python -m scripts.build_economic_pulse",
         "python -m scripts.build_china_econ_manifest",
         "python -m scripts.build_china_site",
+        "python -m scripts.build_erasure_trail",
+        "python -m scripts.build_erasure_trail --check",
         'python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"',
         "python -m scripts.build_investigations",
         "python -m scripts.build_network_rounds",
@@ -136,7 +138,7 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "python scripts/seal_readings.py",
     ]
     retry_graph = list(graph)
-    retry_graph[3] = (
+    retry_graph[5] = (
         'python -m scripts.build_osint_china --input-commit '
         '"$(git rev-parse origin/main)"'
     )
@@ -227,10 +229,10 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
     assert "seal_readings" not in preserve_text
     assert "git add" not in preserve_text
 
-    for command in graph[:3] + graph[4:]:
+    for command in graph[:5] + graph[6:]:
         assert lines.count(command) == 3
-    assert lines.count(graph[3]) == 1
-    assert lines.count(retry_graph[3]) == 2
+    assert lines.count(graph[5]) == 1
+    assert lines.count(retry_graph[5]) == 2
 
     required_tests = {
         "tests/test_data_darkness.py",
@@ -271,6 +273,9 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "readings/china-economic-pulse-latest.json",
         "readings/china-econ-observations-latest.json",
         "readings/china-index-latest.json",
+        "readings/erasure-trail-latest.json",
+        "readings/erasure-trail-history.jsonl",
+        "readings/erasure-trail.csv",
         "readings/osint-china-latest.json",
         "readings/investigations-latest.json",
         "readings/evidence-mesh-latest.json",
