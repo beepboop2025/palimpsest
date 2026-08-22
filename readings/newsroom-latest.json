@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 29 are live. Health qualifiers: 3 degraded, 7 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 30 are live. Health qualifiers: 3 degraded, 6 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-22T20:06:56Z",
+  "generated_at": "2026-08-22T20:28:36Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "75a3718044fe5cfb8cfc9a90e8e3b41e638da831",
+  "source_commit": "522724b9d55d338c2f9211ba962a0bbe006ab692",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 29,
+    "live": 30,
     "status": "degraded",
     "counts": {
-      "live": 29,
+      "live": 30,
       "degraded": 3,
-      "stale": 7,
+      "stale": 6,
       "missing": 0,
       "corrupt": 0
     }
@@ -1955,46 +1955,45 @@
       "slug": "generative-firewall-index",
       "url": "https://palimpsest.info/news/generative-firewall-index/",
       "signal_id": "generative-firewall",
-      "headline": "Generative Firewall Index: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The Generative Firewall Index reads 21 across 20 evaluated cells",
+      "dek": "A controlled prompt bank measures answer, refusal and party-line behaviour by model and concept.",
       "section": "models",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
-      "status": "stale",
-      "published_at": "2026-08-20T07:32:12Z",
-      "modified_at": "2026-08-20T07:32:12Z",
-      "claim_fingerprint": "sha256:0bfa3b14c7c791752ef73fc9b37fd6e3bd1d1630a585f16a73ef961d77358116",
+      "status": "live",
+      "published_at": "2026-08-22T20:20:26Z",
+      "modified_at": "2026-08-22T20:20:26Z",
+      "claim_fingerprint": "sha256:706b9d35c75074a76200d888fee299c00ea7c31da63a21671786daa62976e7e4",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "GFI",
+        "value": 21.0,
+        "unit": "index",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "evaluated cells",
+          "value": 20
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Generative Firewall Index because the source status is stale."
+          "type": "finding",
+          "statement": "The current controlled evaluation reports a Generative Firewall Index of 21 across 20 cells."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/latest.json",
         "input": {
           "filename": "latest.json",
-          "sha256": "54a1c8fe351952eb1d667cb4da8f41e1ab5d2bf9d6a3f71c90108fc446d53a3e",
-          "bytes": 199565
+          "sha256": "408d1bf43271cc4994737cf79278f91de7d897af96bc6afb4ed73c0e04f5e3bd",
+          "bytes": 201279
         },
-        "source_timestamp": "2026-08-20T07:32:12Z"
+        "source_timestamp": "2026-08-22T20:20:26Z"
       },
       "method": {
         "summary": "k5-wilson95",
         "version": 4
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "The index describes a fixed prompt-and-model evaluation grid; it does not generalize to every prompt, language or deployment route."
       ],
       "related_signal_ids": [
