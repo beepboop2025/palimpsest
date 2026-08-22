@@ -79,25 +79,17 @@
       "source_id": "anchors",
       "summary": "freshness deadline has passed",
       "title": "Integrity anchors: stale"
-    },
-    {
-      "id": "health-nemesis",
-      "kind": "health",
-      "severity": "notice",
-      "source_id": "nemesis",
-      "summary": "freshness deadline has passed",
-      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-22T19:30:56Z",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 28 are live. Health qualifiers: 3 degraded, 8 stale.",
+  "generated_at": "2026-08-22T20:06:56Z",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 29 are live. Health qualifiers: 3 degraded, 7 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 3,
-      "live": 28,
+      "live": 29,
       "missing": 0,
-      "stale": 8
+      "stale": 7
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -106,7 +98,7 @@
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "97a648e0c570eaead57e101c9f105b087a398139",
+  "input_commit": "75a3718044fe5cfb8cfc9a90e8e3b41e638da831",
   "layers": [
     {
       "id": "command",
@@ -225,20 +217,20 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 1,
-      "n_live": 0,
+      "n_degraded": 0,
+      "n_live": 1,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Source payloads that fit the public embed bound are retained in full; larger source files keep health, metrics and a compact prefix, with complete bytes at raw_url matching input.sha256. Freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 28,
+  "n_signals_live": 29,
   "n_signals_reporting": 39,
   "n_signals_total": 39,
   "schema_version": "osint-china.v1",
@@ -248,7 +240,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 5.071,
+        "age_hours": 5.671,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -564,7 +556,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T09:06:16Z",
       "health": {
-        "age_hours": 0.411,
+        "age_hours": 1.011,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -785,7 +777,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 5.071,
+        "age_hours": 5.671,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -929,7 +921,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 5.071,
+        "age_hours": 5.671,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -1509,7 +1501,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 5.071,
+        "age_hours": 5.671,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -1896,7 +1888,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-23T01:48:52Z",
       "health": {
-        "age_hours": 0.701,
+        "age_hours": 1.301,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2330,7 +2322,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T09:09:26Z",
       "health": {
-        "age_hours": 0.358,
+        "age_hours": 0.958,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2634,7 +2626,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T21:53:13Z",
       "health": {
-        "age_hours": 0.629,
+        "age_hours": 1.229,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3831,7 +3823,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T20:43:02Z",
       "health": {
-        "age_hours": 1.798,
+        "age_hours": 2.398,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4131,7 +4123,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-25T05:08:57Z",
       "health": {
-        "age_hours": 134.366,
+        "age_hours": 134.966,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4443,7 +4435,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:16:08Z",
       "health": {
-        "age_hours": 6.247,
+        "age_hours": 6.847,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4728,9 +4720,9 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-22T22:08:00Z",
+      "freshness_deadline": "2026-08-23T02:08:00Z",
       "health": {
-        "age_hours": 4.382,
+        "age_hours": 0.982,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4742,7 +4734,7 @@
       "input": {
         "bytes": 65782,
         "filename": "public-deletion-ledgers-latest.json",
-        "sha256": "0ee168aa25c50fcfaf81e706e60881515b1984ab4711e38f7e29e9ba16596893"
+        "sha256": "8447428ae9a23ba04a24add94de10e009c5d488229f323e2d508d59b869b2cbe"
       },
       "layer": "attention",
       "live": true,
@@ -4759,7 +4751,7 @@
       },
       "optional": true,
       "payload": {
-        "generated_at": "2026-08-22T15:08:00Z",
+        "generated_at": "2026-08-22T19:08:00Z",
         "ledgers": [
           {
             "http_status": 200,
@@ -5070,16 +5062,16 @@
       "raw_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
       "scope": "Public ledger items only: titles, excerpts, source URLs, gazetteer hits, archive lookup addresses, and capture provenance. No account graphs, no in-country vantage, no fabricated live readings.",
       "source": "public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style)",
-      "source_timestamp": "2026-08-22T15:08:00Z",
+      "source_timestamp": "2026-08-22T19:08:00Z",
       "status": "live",
       "summary": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style) with reachability explicit. Latest payload reports ledger observations at 15 count across 1 feeds answering.",
       "title": "Public deletion ledgers"
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-23T08:33:00Z",
+      "freshness_deadline": "2026-08-23T14:33:11Z",
       "health": {
-        "age_hours": 6.966,
+        "age_hours": 1.562,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5089,9 +5081,9 @@
       },
       "id": "greatfire-context",
       "input": {
-        "bytes": 59096,
+        "bytes": 60438,
         "filename": "greatfire-context-latest.json",
-        "sha256": "8b39685e5bcca3a3cc255659c3a7dc066849a6fb10aa80e166dbe48816d4d1ec"
+        "sha256": "5d0bbd46ed6b22543712dcd6bb30b84b17fe12fc04f356abafed1550d1c5a993"
       },
       "layer": "network",
       "live": true,
@@ -5100,7 +5092,7 @@
       "metric": {
         "denominator": {
           "label": "URLs queried",
-          "value": 53
+          "value": 55
         },
         "label": "GreatFire verdicts",
         "unit": "count",
@@ -5109,7 +5101,7 @@
       "optional": true,
       "payload": {
         "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-        "generated_at": "2026-08-22T12:33:00Z",
+        "generated_at": "2026-08-22T18:33:11Z",
         "hosts": [
           {
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
@@ -5444,7 +5436,7 @@
             "last_tested_at": null,
             "n_tests": null,
             "observed_at": null,
-            "path": "https/baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
+            "path": "https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
             "peer_date": null,
             "source": "cached-verdicts-only",
             "tested": null,
@@ -5480,7 +5472,7 @@
             "last_tested_at": null,
             "n_tests": null,
             "observed_at": null,
-            "path": "http/www.nhc.gov.cn",
+            "path": "https/www.nhc.gov.cn",
             "peer_date": null,
             "source": "cached-verdicts-only",
             "tested": null,
@@ -5513,124 +5505,124 @@
             "http_status": 200,
             "items": [
               {
-                "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E7%94%B0%E9%9D%92",
+                "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E4%B8%8D%E8%B7%9F%E6%88%91%E8%B5%B0%E6%88%91%E5%B0%B1%E5%8F%AB%E4%BB%96%E4%BB%AC%E8%B7%9F%E4%BD%A0%E8%B5%B0",
                 "status": "blocked",
-                "title": "http://www.google.com/search?q=%E7%94%B0%E9%9D%92 is blocked in mainland China"
+                "title": "http://www.google.com/search?q=%E4%B8%8D%E8%B7%9F%E6%88%91%E8%B5%B0%E6%88%91%E5%B0%B1%E5%8F%AB%E4%BB%96%E4%BB%AC%E8%B7%9F%E4%BD%A0%E8%B5%B0 is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/javdb006.com",
+                "path": "https://en.greatfire.org/bububullnick.wix.com/resume",
                 "status": "blocked",
-                "title": "https://javdb006.com is blocked in mainland China"
+                "title": "http://bububullnick.wix.com/resume is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/din.wikipedia.org",
+                "path": "https://en.greatfire.org/www.empflix.com",
                 "status": "blocked",
-                "title": "https://din.wikipedia.org is blocked in mainland China"
+                "title": "http://www.empflix.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/idowa.de",
+                "path": "https://en.greatfire.org/https/zi0.cc",
                 "status": "blocked",
-                "title": "https://idowa.de is blocked in mainland China"
+                "title": "https://zi0.cc is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/hotnaked.net",
+                "path": "https://en.greatfire.org/https/zh.wikipedia.org/wiki/%E6%B3%8C%E4%B9%B3%E5%81%9C%E7%B6%93%E6%B3%95",
                 "status": "blocked",
-                "title": "https://hotnaked.net is blocked in mainland China"
+                "title": "https://zh.wikipedia.org/wiki/%E6%B3%8C%E4%B9%B3%E5%81%9C%E7%B6%93%E6%B3%95 is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/czechboobs.com",
+                "path": "https://en.greatfire.org/cn.wsj.com/gb/20141016/cec153506.asp",
                 "status": "blocked",
-                "title": "https://czechboobs.com is blocked in mainland China"
+                "title": "http://cn.wsj.com/gb/20141016/cec153506.asp is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/swampland.time.com",
+                "path": "https://en.greatfire.org/webredirect.org",
                 "status": "blocked",
-                "title": "https://swampland.time.com is blocked in mainland China"
+                "title": "http://webredirect.org is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/psiphon.win",
+                "path": "https://en.greatfire.org/aldeadesigns.com",
                 "status": "blocked",
-                "title": "https://psiphon.win is blocked in mainland China"
+                "title": "http://aldeadesigns.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/ceskeporno.cz",
+                "path": "https://en.greatfire.org/90655.com",
                 "status": "blocked",
-                "title": "https://ceskeporno.cz is blocked in mainland China"
+                "title": "http://90655.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js",
+                "path": "https://en.greatfire.org/www.churchofjesuschrist.org",
                 "status": "blocked",
-                "title": "https://ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js is blocked in mainland China"
+                "title": "http://www.churchofjesuschrist.org is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.screencrush.com",
+                "path": "https://en.greatfire.org/time.com/videos",
                 "status": "blocked",
-                "title": "http://www.screencrush.com is blocked in mainland China"
+                "title": "http://time.com/videos is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/cn.wsj.com/gb/20160422/ASD081533.asp",
+                "path": "https://en.greatfire.org/https/battlecats-db.com",
                 "status": "blocked",
-                "title": "http://cn.wsj.com/gb/20160422/ASD081533.asp is blocked in mainland China"
+                "title": "https://battlecats-db.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/insecam.org",
+                "path": "https://en.greatfire.org/devoteemom.blogspot.com",
                 "status": "blocked",
-                "title": "https://insecam.org is blocked in mainland China"
+                "title": "http://devoteemom.blogspot.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/fashiola.fr",
+                "path": "https://en.greatfire.org/74.125.128.132",
                 "status": "blocked",
-                "title": "https://fashiola.fr is blocked in mainland China"
+                "title": "http://74.125.128.132 is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/74.125.142.116",
+                "path": "https://en.greatfire.org/https/enigma.im",
                 "status": "blocked",
-                "title": "http://74.125.142.116 is blocked in mainland China"
+                "title": "https://enigma.im is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/suyou.org",
+                "path": "https://en.greatfire.org/https/seeksunslowly.com",
                 "status": "blocked",
-                "title": "https://suyou.org is blocked in mainland China"
+                "title": "https://seeksunslowly.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/itssa.co.kr",
+                "path": "https://en.greatfire.org/https/zh.z-lib.org",
                 "status": "blocked",
-                "title": "https://itssa.co.kr is blocked in mainland China"
+                "title": "https://zh.z-lib.org is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/3dgirlz.com",
+                "path": "https://en.greatfire.org/74.125.21.84",
                 "status": "blocked",
-                "title": "https://3dgirlz.com is blocked in mainland China"
+                "title": "http://74.125.21.84 is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/between-legs.com",
+                "path": "https://en.greatfire.org/club.tgfcer.com/thread-7105925-1-1.html",
                 "status": "blocked",
-                "title": "https://between-legs.com is blocked in mainland China"
+                "title": "http://club.tgfcer.com/thread-7105925-1-1.html is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/expressvpnw.com",
+                "path": "https://en.greatfire.org/https/ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js",
                 "status": "blocked",
-                "title": "https://expressvpnw.com is blocked in mainland China"
+                "title": "https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/lapland.lol",
+                "path": "https://en.greatfire.org/twitter.com",
                 "status": "blocked",
-                "title": "https://lapland.lol is blocked in mainland China"
+                "title": "http://twitter.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/pinimg.com",
+                "path": "https://en.greatfire.org/www.m7k7.com",
                 "status": "blocked",
-                "title": "http://pinimg.com is blocked in mainland China"
+                "title": "http://www.m7k7.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/huobi.co.kr",
+                "path": "https://en.greatfire.org/www2.g-queen.com/eng",
                 "status": "blocked",
-                "title": "https://huobi.co.kr is blocked in mainland China"
+                "title": "http://www2.g-queen.com/eng is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.rumble.com",
+                "path": "https://en.greatfire.org/fucked-tube.com",
                 "status": "blocked",
-                "title": "http://www.rumble.com is blocked in mainland China"
+                "title": "http://fucked-tube.com is blocked in mainland China"
               }
             ],
             "list": "blocked",
@@ -5642,124 +5634,124 @@
             "http_status": 200,
             "items": [
               {
-                "path": "https://en.greatfire.org/insiderpages.com",
+                "path": "https://en.greatfire.org/www.hp.com.cn",
                 "status": "accessible",
-                "title": "http://insiderpages.com is reachable from mainland China"
+                "title": "http://www.hp.com.cn is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/fb.co",
+                "path": "https://en.greatfire.org/www.baidu.com/s%3Fwd%3D%E6%8B%B1chan%E6%8C%A1",
                 "status": "accessible",
-                "title": "http://fb.co is reachable from mainland China"
+                "title": "http://www.baidu.com/s?wd=%E6%8B%B1chan%E6%8C%A1 is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/1511.com",
+                "path": "https://en.greatfire.org/flirt.com",
                 "status": "accessible",
-                "title": "http://1511.com is reachable from mainland China"
+                "title": "http://flirt.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/tieba.baidu.com/f%3Fkw%3DWin10_22H2_Chinese_Simplified_x64v1",
+                "path": "https://en.greatfire.org/www.esun.com.tw",
                 "status": "accessible",
-                "title": "http://tieba.baidu.com/f?kw=Win10_22H2_Chinese_Simplified_x64v1 is reachable from mainland China"
+                "title": "http://www.esun.com.tw is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/adidas.cc",
+                "path": "https://en.greatfire.org/60ee.app",
                 "status": "accessible",
-                "title": "https://adidas.cc is reachable from mainland China"
+                "title": "http://60ee.app is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/uee.me/cBrV",
+                "path": "https://en.greatfire.org/www.ponycanyon.co.jp",
                 "status": "accessible",
-                "title": "http://uee.me/cBrV is reachable from mainland China"
+                "title": "http://www.ponycanyon.co.jp is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/s.weibo.com/weibo/media.org.hk",
+                "path": "https://en.greatfire.org/phoenixtv.com",
                 "status": "accessible",
-                "title": "http://s.weibo.com/weibo/media.org.hk is reachable from mainland China"
+                "title": "http://phoenixtv.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/md.liimpops.com",
+                "path": "https://en.greatfire.org/mozart.ro",
                 "status": "accessible",
-                "title": "https://md.liimpops.com is reachable from mainland China"
+                "title": "http://mozart.ro is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/buzzheavier.com",
+                "path": "https://en.greatfire.org/https/www.babylonclinic.com.tw",
                 "status": "accessible",
-                "title": "https://buzzheavier.com is reachable from mainland China"
+                "title": "https://www.babylonclinic.com.tw is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/ovear.info",
+                "path": "https://en.greatfire.org/www.haaga-helia.fi",
                 "status": "accessible",
-                "title": "https://ovear.info is reachable from mainland China"
+                "title": "http://www.haaga-helia.fi is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/195195d.com",
+                "path": "https://en.greatfire.org/www.last.fm/es",
                 "status": "accessible",
-                "title": "https://195195d.com is reachable from mainland China"
+                "title": "http://www.last.fm/es is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/jmcomic-ph.cc",
+                "path": "https://en.greatfire.org/https/download.mozilla.org",
                 "status": "accessible",
-                "title": "https://jmcomic-ph.cc is reachable from mainland China"
+                "title": "https://download.mozilla.org is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.zqware.com",
+                "path": "https://en.greatfire.org/optus.com.au",
                 "status": "accessible",
-                "title": "http://www.zqware.com is reachable from mainland China"
+                "title": "http://optus.com.au is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/the-little-language-designer.github.io",
+                "path": "https://en.greatfire.org/hosting.url.com.tw/propaganda.html",
                 "status": "accessible",
-                "title": "https://the-little-language-designer.github.io is reachable from mainland China"
+                "title": "http://hosting.url.com.tw/propaganda.html is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.acams.org",
+                "path": "https://en.greatfire.org/https/bellthrough.com",
                 "status": "accessible",
-                "title": "https://www.acams.org is reachable from mainland China"
+                "title": "https://bellthrough.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/md.hrfyvb.com",
+                "path": "https://en.greatfire.org/https/dz8unhg4kgqhk.cloudfront.net",
                 "status": "accessible",
-                "title": "https://md.hrfyvb.com is reachable from mainland China"
+                "title": "https://dz8unhg4kgqhk.cloudfront.net is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/blockbench.net",
+                "path": "https://en.greatfire.org/liaojunmin.weebly.com",
                 "status": "accessible",
-                "title": "https://blockbench.net is reachable from mainland China"
+                "title": "http://liaojunmin.weebly.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/pitapoison.de",
+                "path": "https://en.greatfire.org/https/tw.wamazing.com/snow",
                 "status": "accessible",
-                "title": "http://pitapoison.de is reachable from mainland China"
+                "title": "https://tw.wamazing.com/snow is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.landers.com.au",
+                "path": "https://en.greatfire.org/https/www.stmichaels.vic.edu.au",
                 "status": "accessible",
-                "title": "http://www.landers.com.au is reachable from mainland China"
+                "title": "https://www.stmichaels.vic.edu.au is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/mixuebcd.uk/download/index.html",
+                "path": "https://en.greatfire.org/https/kinacentrum.se",
                 "status": "accessible",
-                "title": "https://mixuebcd.uk/download/index.html is reachable from mainland China"
+                "title": "https://kinacentrum.se is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/rdg.com.hk",
+                "path": "https://en.greatfire.org/wwe.com",
                 "status": "accessible",
-                "title": "https://rdg.com.hk is reachable from mainland China"
+                "title": "http://wwe.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/adidas.ru",
+                "path": "https://en.greatfire.org/https/pandaisfast.github.io",
                 "status": "accessible",
-                "title": "https://adidas.ru is reachable from mainland China"
+                "title": "https://pandaisfast.github.io is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/shine-star-global-concepts.vitajoydan.chatgpt.site",
+                "path": "https://en.greatfire.org/zfuy.githup.io/130713a",
                 "status": "accessible",
-                "title": "https://shine-star-global-concepts.vitajoydan.chatgpt.site is reachable from mainland China"
+                "title": "http://zfuy.githup.io/130713a is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.nissindigital.com",
+                "path": "https://en.greatfire.org/byb4.app",
                 "status": "accessible",
-                "title": "http://www.nissindigital.com is reachable from mainland China"
+                "title": "http://byb4.app is reachable from mainland China"
               }
             ],
             "list": "accessible",
@@ -5773,7 +5765,7 @@
         "method_version": 1,
         "n_misses": 0,
         "n_silent": 0,
-        "n_urls_queried": 53,
+        "n_urls_queried": 55,
         "n_verdicts": 22,
         "observer_class": "public-ledger",
         "schema_version": "palimpsest-greatfire-context/v1",
@@ -6243,16 +6235,16 @@
       "raw_url": "https://palimpsest.info/readings/greatfire-context-latest.json",
       "scope": "90-day host verdicts Palimpsest already holds.",
       "source": "GreatFire Analyzer open API (https://en.greatfire.org/data), CC BY 4.0",
-      "source_timestamp": "2026-08-22T12:33:00Z",
+      "source_timestamp": "2026-08-22T18:33:11Z",
       "status": "live",
-      "summary": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements. Latest payload reports GreatFire verdicts at 22 count across 53 URLs queried.",
+      "summary": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements. Latest payload reports GreatFire verdicts at 22 count across 55 URLs queried.",
       "title": "GreatFire attributed verdicts"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T02:48:00Z",
+      "freshness_deadline": "2026-08-23T08:48:00Z",
       "health": {
-        "age_hours": 6.716,
+        "age_hours": 1.316,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6262,9 +6254,9 @@
       },
       "id": "peer-context",
       "input": {
-        "bytes": 77699,
+        "bytes": 79041,
         "filename": "peer-context-latest.json",
-        "sha256": "fe18c972580a54528b7ee7a69a26c32f3d3cc3678c91b75a82b65541d4f9c5f2"
+        "sha256": "d905859262701d0dd3d946314db97a9ea6beae80c940d104c5e194f5f4270e18"
       },
       "layer": "attention",
       "live": true,
@@ -6389,16 +6381,16 @@
           "cdt_excerpts": "~15 titles/links/280-char excerpts",
           "greatfire_context_json": "~32-256 KiB cached verdicts (not the 700k catalog)",
           "n_cdt_rows": 15,
-          "n_greatfire_rows": 53,
+          "n_greatfire_rows": 55,
           "n_ooni_rows": 22,
           "ooni_peer_index": "~22 host rows; warehouse remains ~33G already on node",
           "weiboscope": "0 bytes of the 2012 dump; citation pointer only"
         },
         "feature_rows": 38,
-        "generated_at": "2026-08-22T12:48:00Z",
+        "generated_at": "2026-08-22T18:48:00Z",
         "greatfire": {
           "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-          "generated_at": "2026-08-22T12:33:00Z",
+          "generated_at": "2026-08-22T18:33:11Z",
           "hosts": [
             {
               "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
@@ -6733,7 +6725,7 @@
               "last_tested_at": null,
               "n_tests": null,
               "observed_at": null,
-              "path": "https/baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
+              "path": "https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
               "peer_date": null,
               "source": "cached-verdicts-only",
               "tested": null,
@@ -6769,7 +6761,7 @@
               "last_tested_at": null,
               "n_tests": null,
               "observed_at": null,
-              "path": "http/www.nhc.gov.cn",
+              "path": "https/www.nhc.gov.cn",
               "peer_date": null,
               "source": "cached-verdicts-only",
               "tested": null,
@@ -6802,124 +6794,124 @@
               "http_status": 200,
               "items": [
                 {
-                  "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E7%94%B0%E9%9D%92",
+                  "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E4%B8%8D%E8%B7%9F%E6%88%91%E8%B5%B0%E6%88%91%E5%B0%B1%E5%8F%AB%E4%BB%96%E4%BB%AC%E8%B7%9F%E4%BD%A0%E8%B5%B0",
                   "status": "blocked",
-                  "title": "http://www.google.com/search?q=%E7%94%B0%E9%9D%92 is blocked in mainland China"
+                  "title": "http://www.google.com/search?q=%E4%B8%8D%E8%B7%9F%E6%88%91%E8%B5%B0%E6%88%91%E5%B0%B1%E5%8F%AB%E4%BB%96%E4%BB%AC%E8%B7%9F%E4%BD%A0%E8%B5%B0 is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/javdb006.com",
+                  "path": "https://en.greatfire.org/bububullnick.wix.com/resume",
                   "status": "blocked",
-                  "title": "https://javdb006.com is blocked in mainland China"
+                  "title": "http://bububullnick.wix.com/resume is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/din.wikipedia.org",
+                  "path": "https://en.greatfire.org/www.empflix.com",
                   "status": "blocked",
-                  "title": "https://din.wikipedia.org is blocked in mainland China"
+                  "title": "http://www.empflix.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/idowa.de",
+                  "path": "https://en.greatfire.org/https/zi0.cc",
                   "status": "blocked",
-                  "title": "https://idowa.de is blocked in mainland China"
+                  "title": "https://zi0.cc is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/hotnaked.net",
+                  "path": "https://en.greatfire.org/https/zh.wikipedia.org/wiki/%E6%B3%8C%E4%B9%B3%E5%81%9C%E7%B6%93%E6%B3%95",
                   "status": "blocked",
-                  "title": "https://hotnaked.net is blocked in mainland China"
+                  "title": "https://zh.wikipedia.org/wiki/%E6%B3%8C%E4%B9%B3%E5%81%9C%E7%B6%93%E6%B3%95 is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/czechboobs.com",
+                  "path": "https://en.greatfire.org/cn.wsj.com/gb/20141016/cec153506.asp",
                   "status": "blocked",
-                  "title": "https://czechboobs.com is blocked in mainland China"
+                  "title": "http://cn.wsj.com/gb/20141016/cec153506.asp is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/swampland.time.com",
+                  "path": "https://en.greatfire.org/webredirect.org",
                   "status": "blocked",
-                  "title": "https://swampland.time.com is blocked in mainland China"
+                  "title": "http://webredirect.org is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/psiphon.win",
+                  "path": "https://en.greatfire.org/aldeadesigns.com",
                   "status": "blocked",
-                  "title": "https://psiphon.win is blocked in mainland China"
+                  "title": "http://aldeadesigns.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/ceskeporno.cz",
+                  "path": "https://en.greatfire.org/90655.com",
                   "status": "blocked",
-                  "title": "https://ceskeporno.cz is blocked in mainland China"
+                  "title": "http://90655.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js",
+                  "path": "https://en.greatfire.org/www.churchofjesuschrist.org",
                   "status": "blocked",
-                  "title": "https://ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js is blocked in mainland China"
+                  "title": "http://www.churchofjesuschrist.org is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.screencrush.com",
+                  "path": "https://en.greatfire.org/time.com/videos",
                   "status": "blocked",
-                  "title": "http://www.screencrush.com is blocked in mainland China"
+                  "title": "http://time.com/videos is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/cn.wsj.com/gb/20160422/ASD081533.asp",
+                  "path": "https://en.greatfire.org/https/battlecats-db.com",
                   "status": "blocked",
-                  "title": "http://cn.wsj.com/gb/20160422/ASD081533.asp is blocked in mainland China"
+                  "title": "https://battlecats-db.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/insecam.org",
+                  "path": "https://en.greatfire.org/devoteemom.blogspot.com",
                   "status": "blocked",
-                  "title": "https://insecam.org is blocked in mainland China"
+                  "title": "http://devoteemom.blogspot.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/fashiola.fr",
+                  "path": "https://en.greatfire.org/74.125.128.132",
                   "status": "blocked",
-                  "title": "https://fashiola.fr is blocked in mainland China"
+                  "title": "http://74.125.128.132 is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/74.125.142.116",
+                  "path": "https://en.greatfire.org/https/enigma.im",
                   "status": "blocked",
-                  "title": "http://74.125.142.116 is blocked in mainland China"
+                  "title": "https://enigma.im is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/suyou.org",
+                  "path": "https://en.greatfire.org/https/seeksunslowly.com",
                   "status": "blocked",
-                  "title": "https://suyou.org is blocked in mainland China"
+                  "title": "https://seeksunslowly.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/itssa.co.kr",
+                  "path": "https://en.greatfire.org/https/zh.z-lib.org",
                   "status": "blocked",
-                  "title": "https://itssa.co.kr is blocked in mainland China"
+                  "title": "https://zh.z-lib.org is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/3dgirlz.com",
+                  "path": "https://en.greatfire.org/74.125.21.84",
                   "status": "blocked",
-                  "title": "https://3dgirlz.com is blocked in mainland China"
+                  "title": "http://74.125.21.84 is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/between-legs.com",
+                  "path": "https://en.greatfire.org/club.tgfcer.com/thread-7105925-1-1.html",
                   "status": "blocked",
-                  "title": "https://between-legs.com is blocked in mainland China"
+                  "title": "http://club.tgfcer.com/thread-7105925-1-1.html is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/expressvpnw.com",
+                  "path": "https://en.greatfire.org/https/ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js",
                   "status": "blocked",
-                  "title": "https://expressvpnw.com is blocked in mainland China"
+                  "title": "https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/lapland.lol",
+                  "path": "https://en.greatfire.org/twitter.com",
                   "status": "blocked",
-                  "title": "https://lapland.lol is blocked in mainland China"
+                  "title": "http://twitter.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/pinimg.com",
+                  "path": "https://en.greatfire.org/www.m7k7.com",
                   "status": "blocked",
-                  "title": "http://pinimg.com is blocked in mainland China"
+                  "title": "http://www.m7k7.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/huobi.co.kr",
+                  "path": "https://en.greatfire.org/www2.g-queen.com/eng",
                   "status": "blocked",
-                  "title": "https://huobi.co.kr is blocked in mainland China"
+                  "title": "http://www2.g-queen.com/eng is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.rumble.com",
+                  "path": "https://en.greatfire.org/fucked-tube.com",
                   "status": "blocked",
-                  "title": "http://www.rumble.com is blocked in mainland China"
+                  "title": "http://fucked-tube.com is blocked in mainland China"
                 }
               ],
               "list": "blocked",
@@ -6931,124 +6923,124 @@
               "http_status": 200,
               "items": [
                 {
-                  "path": "https://en.greatfire.org/insiderpages.com",
+                  "path": "https://en.greatfire.org/www.hp.com.cn",
                   "status": "accessible",
-                  "title": "http://insiderpages.com is reachable from mainland China"
+                  "title": "http://www.hp.com.cn is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/fb.co",
+                  "path": "https://en.greatfire.org/www.baidu.com/s%3Fwd%3D%E6%8B%B1chan%E6%8C%A1",
                   "status": "accessible",
-                  "title": "http://fb.co is reachable from mainland China"
+                  "title": "http://www.baidu.com/s?wd=%E6%8B%B1chan%E6%8C%A1 is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/1511.com",
+                  "path": "https://en.greatfire.org/flirt.com",
                   "status": "accessible",
-                  "title": "http://1511.com is reachable from mainland China"
+                  "title": "http://flirt.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/tieba.baidu.com/f%3Fkw%3DWin10_22H2_Chinese_Simplified_x64v1",
+                  "path": "https://en.greatfire.org/www.esun.com.tw",
                   "status": "accessible",
-                  "title": "http://tieba.baidu.com/f?kw=Win10_22H2_Chinese_Simplified_x64v1 is reachable from mainland China"
+                  "title": "http://www.esun.com.tw is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/adidas.cc",
+                  "path": "https://en.greatfire.org/60ee.app",
                   "status": "accessible",
-                  "title": "https://adidas.cc is reachable from mainland China"
+                  "title": "http://60ee.app is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/uee.me/cBrV",
+                  "path": "https://en.greatfire.org/www.ponycanyon.co.jp",
                   "status": "accessible",
-                  "title": "http://uee.me/cBrV is reachable from mainland China"
+                  "title": "http://www.ponycanyon.co.jp is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/s.weibo.com/weibo/media.org.hk",
+                  "path": "https://en.greatfire.org/phoenixtv.com",
                   "status": "accessible",
-                  "title": "http://s.weibo.com/weibo/media.org.hk is reachable from mainland China"
+                  "title": "http://phoenixtv.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/md.liimpops.com",
+                  "path": "https://en.greatfire.org/mozart.ro",
                   "status": "accessible",
-                  "title": "https://md.liimpops.com is reachable from mainland China"
+                  "title": "http://mozart.ro is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/buzzheavier.com",
+                  "path": "https://en.greatfire.org/https/www.babylonclinic.com.tw",
                   "status": "accessible",
-                  "title": "https://buzzheavier.com is reachable from mainland China"
+                  "title": "https://www.babylonclinic.com.tw is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/ovear.info",
+                  "path": "https://en.greatfire.org/www.haaga-helia.fi",
                   "status": "accessible",
-                  "title": "https://ovear.info is reachable from mainland China"
+                  "title": "http://www.haaga-helia.fi is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/195195d.com",
+                  "path": "https://en.greatfire.org/www.last.fm/es",
                   "status": "accessible",
-                  "title": "https://195195d.com is reachable from mainland China"
+                  "title": "http://www.last.fm/es is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/jmcomic-ph.cc",
+                  "path": "https://en.greatfire.org/https/download.mozilla.org",
                   "status": "accessible",
-                  "title": "https://jmcomic-ph.cc is reachable from mainland China"
+                  "title": "https://download.mozilla.org is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.zqware.com",
+                  "path": "https://en.greatfire.org/optus.com.au",
                   "status": "accessible",
-                  "title": "http://www.zqware.com is reachable from mainland China"
+                  "title": "http://optus.com.au is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/the-little-language-designer.github.io",
+                  "path": "https://en.greatfire.org/hosting.url.com.tw/propaganda.html",
                   "status": "accessible",
-                  "title": "https://the-little-language-designer.github.io is reachable from mainland China"
+                  "title": "http://hosting.url.com.tw/propaganda.html is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.acams.org",
+                  "path": "https://en.greatfire.org/https/bellthrough.com",
                   "status": "accessible",
-                  "title": "https://www.acams.org is reachable from mainland China"
+                  "title": "https://bellthrough.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/md.hrfyvb.com",
+                  "path": "https://en.greatfire.org/https/dz8unhg4kgqhk.cloudfront.net",
                   "status": "accessible",
-                  "title": "https://md.hrfyvb.com is reachable from mainland China"
+                  "title": "https://dz8unhg4kgqhk.cloudfront.net is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/blockbench.net",
+                  "path": "https://en.greatfire.org/liaojunmin.weebly.com",
                   "status": "accessible",
-                  "title": "https://blockbench.net is reachable from mainland China"
+                  "title": "http://liaojunmin.weebly.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/pitapoison.de",
+                  "path": "https://en.greatfire.org/https/tw.wamazing.com/snow",
                   "status": "accessible",
-                  "title": "http://pitapoison.de is reachable from mainland China"
+                  "title": "https://tw.wamazing.com/snow is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.landers.com.au",
+                  "path": "https://en.greatfire.org/https/www.stmichaels.vic.edu.au",
                   "status": "accessible",
-                  "title": "http://www.landers.com.au is reachable from mainland China"
+                  "title": "https://www.stmichaels.vic.edu.au is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/mixuebcd.uk/download/index.html",
+                  "path": "https://en.greatfire.org/https/kinacentrum.se",
                   "status": "accessible",
-                  "title": "https://mixuebcd.uk/download/index.html is reachable from mainland China"
+                  "title": "https://kinacentrum.se is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/rdg.com.hk",
+                  "path": "https://en.greatfire.org/wwe.com",
                   "status": "accessible",
-                  "title": "https://rdg.com.hk is reachable from mainland China"
+                  "title": "http://wwe.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/adidas.ru",
+                  "path": "https://en.greatfire.org/https/pandaisfast.github.io",
                   "status": "accessible",
-                  "title": "https://adidas.ru is reachable from mainland China"
+                  "title": "https://pandaisfast.github.io is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/shine-star-global-concepts.vitajoydan.chatgpt.site",
+                  "path": "https://en.greatfire.org/zfuy.githup.io/130713a",
                   "status": "accessible",
-                  "title": "https://shine-star-global-concepts.vitajoydan.chatgpt.site is reachable from mainland China"
+                  "title": "http://zfuy.githup.io/130713a is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.nissindigital.com",
+                  "path": "https://en.greatfire.org/byb4.app",
                   "status": "accessible",
-                  "title": "http://www.nissindigital.com is reachable from mainland China"
+                  "title": "http://byb4.app is reachable from mainland China"
                 }
               ],
               "list": "accessible",
@@ -7062,7 +7054,7 @@
           "method_version": 1,
           "n_misses": 0,
           "n_silent": 0,
-          "n_urls_queried": 53,
+          "n_urls_queried": 55,
           "n_verdicts": 22,
           "observer_class": "public-ledger",
           "schema_version": "palimpsest-greatfire-context/v1",
@@ -7537,7 +7529,7 @@
         "observer_class": "outside-china-node",
         "ooni": {
           "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
-          "generated_at": "2026-08-22T12:48:00Z",
+          "generated_at": "2026-08-22T18:48:00Z",
           "hosts": [
             {
               "anomaly_count": null,
@@ -7818,7 +7810,7 @@
         "weiboscope": {
           "abstention": {
             "anomaly_rate": null,
-            "as_of": "2026-08-22T12:48:00Z",
+            "as_of": "2026-08-22T18:48:00Z",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "citation": "Fu KW, Chan CH, Chau M. Assessing Censorship on Microblogs in China: Discriminatory Keyword Analysis and the Real-Name Registration Policy. IEEE Internet Computing. 2013; 17(3): 42-50. Weiboscope Open Data doi:10.25442/hku.16674565.",
             "doi": "10.25442/hku.16674565",
@@ -7841,7 +7833,7 @@
           "citation": "Fu KW, Chan CH, Chau M. Assessing Censorship on Microblogs in China: Discriminatory Keyword Analysis and the Real-Name Registration Policy. IEEE Internet Computing. 2013; 17(3): 42-50. Weiboscope Open Data doi:10.25442/hku.16674565.",
           "doi": "10.25442/hku.16674565",
           "dump_on_node": false,
-          "generated_at": "2026-08-22T12:48:00Z",
+          "generated_at": "2026-08-22T18:48:00Z",
           "index": null,
           "method": "Do not download doi:10.25442/hku.16674565. Probe only named leftover index URLs; login walls and HTML homepages abstain.",
           "method_version": 1,
@@ -7860,7 +7852,7 @@
       "raw_url": "https://palimpsest.info/readings/peer-context-latest.json",
       "scope": "Peer verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of these measurements. Weiboscope's 2012 dump is not on this node.",
       "source": "Attributed context warehouse: GreatFire Analyzer (CC BY 4.0), OONI, China Digital Times RSS, Weiboscope citation",
-      "source_timestamp": "2026-08-22T12:48:00Z",
+      "source_timestamp": "2026-08-22T18:48:00Z",
       "status": "live",
       "summary": "Joins GreatFire, OONI, CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. Latest payload reports hosts joined at 22 count.",
       "title": "Attributed peer-context warehouse"
@@ -7869,7 +7861,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T09:09:26Z",
       "health": {
-        "age_hours": 0.358,
+        "age_hours": 0.958,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7881,7 +7873,7 @@
       "input": {
         "bytes": 8463264,
         "filename": "undertext-latest.json",
-        "sha256": "36c3f88a4598624a0b9b42c20d04bf642ca231f15900ea41e0d1ae7df5b40295"
+        "sha256": "98cb6af20c28361bd29fd354ebfbde6bd6b0a40711a7e08922fb7e4c153a2e3b"
       },
       "layer": "attention",
       "live": true,
@@ -7920,7 +7912,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T18:57:40Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8011,7 +8003,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T18:57:40Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8094,7 +8086,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T18:57:40Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8187,7 +8179,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T18:57:40Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8278,7 +8270,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T09:12:23Z",
       "health": {
-        "age_hours": 12.309,
+        "age_hours": 12.909,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8518,7 +8510,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T08:53:22Z",
       "health": {
-        "age_hours": 0.626,
+        "age_hours": 1.226,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8849,7 +8841,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T08:55:14Z",
       "health": {
-        "age_hours": 0.595,
+        "age_hours": 1.195,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9021,7 +9013,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:29Z",
       "health": {
-        "age_hours": 13.557,
+        "age_hours": 14.157,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9198,7 +9190,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:14:57Z",
       "health": {
-        "age_hours": 6.266,
+        "age_hours": 6.866,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10720,7 +10712,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T08:55:57Z",
       "health": {
-        "age_hours": 0.583,
+        "age_hours": 1.183,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10771,7 +10763,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:41:02Z",
       "health": {
-        "age_hours": 13.832,
+        "age_hours": 14.432,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10845,7 +10837,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T09:12:30Z",
       "health": {
-        "age_hours": 0.307,
+        "age_hours": 0.907,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10922,9 +10914,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T02:57:39Z",
+      "freshness_deadline": "2026-08-23T08:57:40Z",
       "health": {
-        "age_hours": 6.554,
+        "age_hours": 1.154,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10936,7 +10928,7 @@
       "input": {
         "bytes": 2781,
         "filename": "bleedthrough-latest.json",
-        "sha256": "acf3261ec4285e6d8cf32d879dd39d1a1d3646077fe28a42fd0f1d3d16460d17"
+        "sha256": "c0268e22c0970310a8abb7bc09c395610c8059fe2674ee255d22cbf063ea8270"
       },
       "layer": "network",
       "live": true,
@@ -10993,7 +10985,7 @@
             "vantage": "CN/AS9808"
           }
         ],
-        "generated_at": "2026-08-22T12:57:39.884425Z",
+        "generated_at": "2026-08-22T18:57:40.975479Z",
         "last_changed_at": "2026-08-22T00:57:42.383621Z",
         "max_process_count": 3,
         "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs + open-resolver fallback. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
@@ -11037,7 +11029,7 @@
       "raw_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
       "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
       "source": "Optional deployment-controlled prober outside China",
-      "source_timestamp": "2026-08-22T12:57:39Z",
+      "source_timestamp": "2026-08-22T18:57:40Z",
       "status": "live",
       "summary": "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; absence means no controlled deployment has published a current round. Latest payload reports injector response-process floor at 3 count across 210 injecting target IPs.",
       "title": "Bleedthrough injector tomography"
@@ -11046,7 +11038,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:11Z",
       "health": {
-        "age_hours": 16.312,
+        "age_hours": 16.912,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11172,7 +11164,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:11:04Z",
       "health": {
-        "age_hours": 6.331,
+        "age_hours": 6.931,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11968,7 +11960,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 550.994,
+        "age_hours": 551.594,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -12123,7 +12115,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T01:21:09Z",
       "health": {
-        "age_hours": 8.163,
+        "age_hours": 8.763,
         "collector_reason": null,
         "collector_status": "observed",
         "ok": true,
@@ -12337,7 +12329,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:10:55Z",
       "health": {
-        "age_hours": 6.333,
+        "age_hours": 6.933,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13000,7 +12992,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T09:12:09Z",
       "health": {
-        "age_hours": 0.313,
+        "age_hours": 0.913,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13177,7 +13169,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:21Z",
       "health": {
-        "age_hours": 13.56,
+        "age_hours": 14.16,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13282,7 +13274,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:38:19Z",
       "health": {
-        "age_hours": 11.877,
+        "age_hours": 12.477,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13350,7 +13342,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T19:27:35Z",
       "health": {
-        "age_hours": 2.056,
+        "age_hours": 2.656,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13403,7 +13395,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 29.46,
+        "age_hours": 30.06,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13462,7 +13454,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T12:32:24Z",
       "health": {
-        "age_hours": 8.976,
+        "age_hours": 9.576,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13619,7 +13611,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 108.13,
+        "age_hours": 108.73,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -13687,7 +13679,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-22T09:32:12Z",
       "health": {
-        "age_hours": 59.979,
+        "age_hours": 60.579,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -15964,7 +15956,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:23Z",
       "health": {
-        "age_hours": 16.309,
+        "age_hours": 16.909,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -16009,24 +16001,24 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-22T16:29:16Z",
+      "freshness_deadline": "2026-08-22T20:59:16Z",
       "health": {
-        "age_hours": 4.028,
+        "age_hours": 0.128,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "ok"
       },
       "id": "nemesis",
       "input": {
-        "bytes": 170418,
+        "bytes": 170449,
         "filename": "nemesis-latest.json",
-        "sha256": "009412c2969e6a175664c721206cd22b86ab73ef386e0604d09410633c98e6b5"
+        "sha256": "2807c7da2021fd52d03f11b66f748f4c036c4483423e451cc36e2b4259779900"
       },
       "layer": "nemesis",
-      "live": false,
+      "live": true,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -16081,7 +16073,7 @@
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1787412556.397,
+        "data_timestamp": 1787428756.575,
         "ddti": {
           "by_domain": {
             "ECONOMY": 6,
@@ -16093,13 +16085,13 @@
             "SOCIETY": 10,
             "UNREST": 9
           },
-          "generated_at": 1787412556.397,
+          "generated_at": 1787428756.575,
           "n_posts": 16,
           "n_posts_scored": 16,
           "n_terms": 192,
           "ranked": [
             {
-              "attention": 1.68,
+              "attention": 1.67,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16134,11 +16126,11 @@
               "tag_observations": 3,
               "term": "netizen comments",
               "text_observations": 0,
-              "threat": 4.21,
+              "threat": 4.17,
               "total": 3
             },
             {
-              "attention": 2.88,
+              "attention": 2.86,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16173,11 +16165,11 @@
               "tag_observations": 9,
               "term": "social media censorship",
               "text_observations": 0,
-              "threat": 2.88,
+              "threat": 2.86,
               "total": 9
             },
             {
-              "attention": 2.79,
+              "attention": 2.77,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16212,11 +16204,11 @@
               "tag_observations": 8,
               "term": "internet censorship",
               "text_observations": 0,
-              "threat": 2.79,
+              "threat": 2.77,
               "total": 8
             },
             {
-              "attention": 2.76,
+              "attention": 2.74,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16251,11 +16243,11 @@
               "tag_observations": 8,
               "term": "online censorship",
               "text_observations": 0,
-              "threat": 2.76,
+              "threat": 2.74,
               "total": 8
             },
             {
-              "attention": 1.45,
+              "attention": 1.44,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16290,11 +16282,11 @@
               "tag_observations": 4,
               "term": "social media",
               "text_observations": 0,
-              "threat": 2.33,
+              "threat": 2.31,
               "total": 4
             },
             {
-              "attention": 1.32,
+              "attention": 1.31,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16321,11 +16313,11 @@
               "tag_observations": 2,
               "term": "humor",
               "text_observations": 0,
-              "threat": 2.12,
+              "threat": 2.1,
               "total": 2
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16344,11 +16336,11 @@
               "tag_observations": 1,
               "term": "arts censorship",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "LEADERSHIP",
               "is_new": false,
@@ -16367,11 +16359,11 @@
               "tag_observations": 1,
               "term": "ccp history",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16390,11 +16382,11 @@
               "tag_observations": 1,
               "term": "chinese opera",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16413,11 +16405,11 @@
               "tag_observations": 1,
               "term": "comedy",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16436,11 +16428,11 @@
               "tag_observations": 1,
               "term": "cross-talk",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16459,11 +16451,11 @@
               "tag_observations": 1,
               "term": "cultural policy",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16482,11 +16474,11 @@
               "tag_observations": 1,
               "term": "cultural revolution",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16505,11 +16497,11 @@
               "tag_observations": 1,
               "term": "free expression",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16528,11 +16520,11 @@
               "tag_observations": 1,
               "term": "insulting heroes and martyrs",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16551,11 +16543,11 @@
               "tag_observations": 1,
               "term": "party history",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             },
             {
-              "attention": 0.89,
+              "attention": 0.88,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16574,13 +16566,13 @@
               "tag_observations": 1,
               "term": "revolutionary films",
               "text_observations": 0,
-              "threat": 1.95,
+              "threat": 1.93,
               "total": 1
             }
           ]
         },
         "economic": {
-          "generated_at": 1787412556.413,
+          "generated_at": 1787428756.587,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
           "pct": 17,
@@ -16593,7 +16585,7 @@
                 }
               ],
               "term": "wages",
-              "weight": 0.57
+              "weight": 0.56
             },
             {
               "samples": [
@@ -16628,33 +16620,33 @@
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1787412556.422,
+        "generated_at": 1787428756.602,
         "health": {
           "freshness": {
-            "age_seconds": 0.025,
-            "core_data_at": 1787412556.397,
+            "age_seconds": 0.027,
+            "core_data_at": 1787428756.575,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1787412556.421,
+            "duration_s": 0.41,
+            "finished_at": 1787428756.601,
             "healthy": true,
-            "id": 1716,
-            "started_at": 1787412556.183,
+            "id": 1734,
+            "started_at": 1787428756.186,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.24,
-            "finished_at": 1787412556.421,
+            "duration_s": 0.41,
+            "finished_at": 1787428756.601,
             "healthy": true,
-            "id": 1716,
-            "started_at": 1787412556.183,
+            "id": 1734,
+            "started_at": 1787428756.186,
             "status": "ok"
           },
-          "last_successful_run_at": 1787412556.421,
+          "last_successful_run_at": 1787428756.601,
           "live": true,
           "posts": 32,
           "ready": true,
@@ -16694,9 +16686,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
               }
             ],
-            "score": 8.2,
+            "score": 8.1,
             "term": "netizen comments",
-            "threat": 4.21
+            "threat": 4.17
           },
           {
             "domain": "INFORMATION",
@@ -16729,9 +16721,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
               }
             ],
-            "score": 5.5,
+            "score": 5.4,
             "term": "social media censorship",
-            "threat": 2.88
+            "threat": 2.86
           },
           {
             "domain": "INFORMATION",
@@ -16766,7 +16758,7 @@
             ],
             "score": 5.0,
             "term": "internet censorship",
-            "threat": 2.79
+            "threat": 2.77
           },
           {
             "domain": "INFORMATION",
@@ -16799,9 +16791,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
               }
             ],
-            "score": 5.0,
+            "score": 4.9,
             "term": "online censorship",
-            "threat": 2.76
+            "threat": 2.74
           },
           {
             "domain": "INFORMATION",
@@ -16836,7 +16828,7 @@
             ],
             "score": 3.9,
             "term": "social media",
-            "threat": 2.33
+            "threat": 2.31
           },
           {
             "domain": "OTHER",
@@ -16861,9 +16853,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
               }
             ],
-            "score": 3.1,
+            "score": 3.0,
             "term": "humor",
-            "threat": 2.12
+            "threat": 2.1
           },
           {
             "domain": "INFORMATION",
@@ -16882,7 +16874,7 @@
             ],
             "score": 3.0,
             "term": "arts censorship",
-            "threat": 1.95
+            "threat": 1.93
           },
           {
             "domain": "LEADERSHIP",
@@ -16901,7 +16893,7 @@
             ],
             "score": 3.0,
             "term": "ccp history",
-            "threat": 1.95
+            "threat": 1.93
           },
           {
             "domain": "OTHER",
@@ -16920,7 +16912,7 @@
             ],
             "score": 3.0,
             "term": "chinese opera",
-            "threat": 1.95
+            "threat": 1.93
           },
           {
             "domain": "OTHER",
@@ -16939,7 +16931,7 @@
             ],
             "score": 3.0,
             "term": "comedy",
-            "threat": 1.95
+            "threat": 1.93
           }
         ],
         "method": "Observed public-source topic attention, novelty, and economic-topic share",
@@ -16955,10 +16947,10 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1787412556.421,
-          "ddti_generated_at": 1787412556.397,
-          "economic_generated_at": 1787412556.413,
-          "last_successful_run_at": 1787412556.421,
+          "data_updated_at": 1787428756.601,
+          "ddti_generated_at": 1787428756.575,
+          "economic_generated_at": 1787428756.587,
+          "last_successful_run_at": 1787428756.601,
           "latest_fetched_at": 1787204656.268,
           "latest_published_at": 1787200643.0
         }
@@ -16967,9 +16959,9 @@
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-22T15:29:16Z",
-      "status": "stale",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-22T15:29:16Z passed its freshness deadline 2026-08-22T16:29:16Z, so it is not labelled live. Latest payload reports topics ranked at 192 count.",
+      "source_timestamp": "2026-08-22T19:59:16Z",
+      "status": "live",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 192 count.",
       "title": "Private runtime bridge"
     }
   ],
