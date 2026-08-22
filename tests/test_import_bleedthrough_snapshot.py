@@ -751,7 +751,9 @@ def test_workflow_imports_tests_and_stages_the_artifacts_in_every_race_path():
             text.index(start_marker) : text.index(end_marker, text.index(start_marker))
         ]
         assert branch.count("python -m scripts.import_bleedthrough_snapshot") == 1
-        assert branch.count("--allow-empty-bootstrap-404") == 1
+        assert branch.count(
+            "python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404"
+        ) == 1
         assert branch.count("python -m scripts.build_osint_china") == 1
         assert branch.count("tests/test_import_bleedthrough_snapshot.py") == 1
         assert branch.count("readings/bleedthrough-latest.json") == 1

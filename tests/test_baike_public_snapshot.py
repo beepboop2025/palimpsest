@@ -76,7 +76,7 @@ def test_login_wall_without_prior_state_emits_nothing():
     assert result["n_observations"] == 0
 
 
-def test_pull_abstains_when_walled_and_stateless(tmp_path, monkeypatch):
+def test_pull_publishes_refused_access_when_no_article_answers(tmp_path, monkeypatch):
     import scripts.baike_public_snapshot_pull as pull
 
     monkeypatch.setattr(pull, "OUT", tmp_path / "baike-public-snapshot-latest.json")
@@ -85,5 +85,29 @@ def test_pull_abstains_when_walled_and_stateless(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "READINGS", tmp_path)
     monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
 
-    assert pull.main(fetch=lambda url: (200, WALL), fetch_cdx=lambda url: "") is None
-    assert not (tmp_path / "baike-public-snapshot-latest.json").exists()
+    out = pull.main(fetch=lambda url: (403, ""), fetch_cdx=lambda url: "")
+    assert out is not None
+    assert out["n_ok"] == 0
+    assert out["n_unreachable"] == out["n_pages"]
+    assert out["status"] == "unreachable"
+    assert out["collector_status"] == "source_refused"
+    assert out["valid_for_series"] is False
+    assert (tmp_path / "baike-public-snapshot-latest.json").is_file()
+
+
+def test_pull_publishes_login_wall_as_unreachable_not_rewrite(tmp_path, monkeypatch):
+    import scripts.baike_public_snapshot_pull as pull
+
+    monkeypatch.setattr(pull, "OUT", tmp_path / "baike-public-snapshot-latest.json")
+    monkeypatch.setattr(pull, "HIST", tmp_path / "baike-public-snapshot-history.jsonl")
+    monkeypatch.setattr(pull, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(pull, "READINGS", tmp_path)
+    monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
+
+    out = pull.main(fetch=lambda url: (200, WALL), fetch_cdx=lambda url: "")
+    assert out is not None
+    assert out["n_ok"] == 0
+    assert out["n_login_walled"] == out["n_pages"]
+    assert out["status"] == "unreachable"
+    assert out["valid_for_series"] is False
+    assert (tmp_path / "baike-public-snapshot-latest.json").is_file()

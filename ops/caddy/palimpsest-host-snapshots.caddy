@@ -1,0 +1,54 @@
+# Import this file at Caddyfile top level, then place
+# `import palimpsest_host_snapshots` inside the api.seiche.info site block.
+# Only these sanitized Hetzner readings are reachable. Private warehouse,
+# Common Crawl, the large fusion reading, and bleedthrough baseline state have
+# no extra route.
+(palimpsest_host_snapshots) {
+    @palimpsest_baike_public path \
+        /palimpsest/baike-public-snapshot/baike-public-snapshot-latest.json
+    handle @palimpsest_baike_public {
+        header Access-Control-Allow-Origin "https://palimpsest.info"
+        header Cache-Control "no-store, no-transform"
+        header Content-Disposition "inline"
+        header X-Content-Type-Options "nosniff"
+        uri strip_prefix /palimpsest/baike-public-snapshot
+        root * /var/lib/palimpsest/readings
+        file_server
+    }
+
+    @palimpsest_peer_context path \
+        /palimpsest/peer-context/peer-context-latest.json
+    handle @palimpsest_peer_context {
+        header Access-Control-Allow-Origin "https://palimpsest.info"
+        header Cache-Control "no-store, no-transform"
+        header Content-Disposition "inline"
+        header X-Content-Type-Options "nosniff"
+        uri strip_prefix /palimpsest/peer-context
+        root * /var/lib/palimpsest/readings
+        file_server
+    }
+
+    @palimpsest_greatfire_context path \
+        /palimpsest/greatfire-context/greatfire-context-latest.json
+    handle @palimpsest_greatfire_context {
+        header Access-Control-Allow-Origin "https://palimpsest.info"
+        header Cache-Control "no-store, no-transform"
+        header Content-Disposition "inline"
+        header X-Content-Type-Options "nosniff"
+        uri strip_prefix /palimpsest/greatfire-context
+        root * /var/lib/palimpsest/readings
+        file_server
+    }
+
+    @palimpsest_public_deletion path \
+        /palimpsest/public-deletion-ledgers/public-deletion-ledgers-latest.json
+    handle @palimpsest_public_deletion {
+        header Access-Control-Allow-Origin "https://palimpsest.info"
+        header Cache-Control "no-store, no-transform"
+        header Content-Disposition "inline"
+        header X-Content-Type-Options "nosniff"
+        uri strip_prefix /palimpsest/public-deletion-ledgers
+        root * /var/lib/palimpsest/readings
+        file_server
+    }
+}

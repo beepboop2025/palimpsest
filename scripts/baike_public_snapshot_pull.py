@@ -90,10 +90,6 @@ def main(*, fetch=None, fetch_cdx=None, now: datetime | None = None, state_path:
         rate_ceiling=None if fetch is not None else RateCeiling(rate=0.4, capacity=2.0),
         now=now or datetime.now(timezone.utc),
     )
-    if result["n_ok"] == 0 and not previous.get("pages"):
-        print("baike-public-snapshot: no public article answered and no prior state — abstaining")
-        return None
-
     prior_urls = {
         url for url, row in (previous.get("pages") or {}).items()
         if isinstance(row, dict) and row.get("content_sha256")
@@ -123,6 +119,9 @@ def main(*, fetch=None, fetch_cdx=None, now: datetime | None = None, state_path:
         "n_unreachable": result["n_unreachable"],
         "n_login_walled": result["n_login_walled"],
         "n_observations": len(observations),
+        "status": "ok" if result["n_ok"] else "unreachable",
+        "collector_status": "observed" if result["n_ok"] else "source_refused",
+        "valid_for_series": bool(result["n_ok"]),
         "pages": result["pages"],
         "observations": observations,
     }
@@ -139,7 +138,10 @@ def main(*, fetch=None, fetch_cdx=None, now: datetime | None = None, state_path:
             "n_ok": out["n_ok"],
             "n_observations": out["n_observations"],
         }, ensure_ascii=False) + "\n")
-    print(f"baike-public-snapshot: {out['n_ok']}/{out['n_pages']} articles, {out['n_observations']} observations")
+    print(
+        f"baike-public-snapshot: {out['n_ok']}/{out['n_pages']} articles, "
+        f"{out['n_observations']} observations, status={out['status']}"
+    )
     return out
 
 

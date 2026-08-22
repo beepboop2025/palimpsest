@@ -50,6 +50,7 @@ jobs:
           git config user.email "bot@palimpsest.info"
           git add readings/peer-context-latest.json \
                   readings/peer-context-history.jsonl 2>/dev/null || true
+          git add -A -- readings
           if git diff --cached --quiet; then
             echo "no change"
           else

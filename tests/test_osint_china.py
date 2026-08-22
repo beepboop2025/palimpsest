@@ -81,6 +81,15 @@ def _write_current_source(directory: Path, spec, timestamp="2026-08-04T11:00:00Z
             "collector_status": "observed",
             "valid_for_series": True,
         })
+    if spec.id == "baike-public-snapshot":
+        payload.update({
+            "n_pages": 8,
+            "n_ok": 1,
+            "n_unreachable": 7,
+            "status": "ok",
+            "collector_status": "observed",
+            "valid_for_series": True,
+        })
     _write_json(directory / spec.filename, payload)
     return payload
 
@@ -132,11 +141,9 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "official-first-seen-latest.json",
         "news-wire-live-latest.json",
         "wikipedia-gazetteer-rc-latest.json",
-        "baike-public-snapshot-latest.json",
         "public-hot-boards-latest.json",
         "telegram-public-channels-latest.json",
         "reading-analysis-latest.json",
-        "peer-context-latest.json",
         "peer-context-rank-latest.json",
     }
 
@@ -154,6 +161,9 @@ def test_manifest_has_stable_unique_ids_files_layers_and_freshness(mod):
     assert nemesis.layer == "nemesis"
     baike = next(spec for spec in mod.SIGNALS if spec.id == "baike-redaction")
     assert baike.optional is True
+    public_baike = next(spec for spec in mod.SIGNALS if spec.id == "baike-public-snapshot")
+    assert public_baike.optional is True
+    assert public_baike.filename == "baike-public-snapshot-latest.json"
 
     future = {spec.id: spec for spec in mod.SIGNALS
               if spec.id in {"believability", "bleedthrough"}}
@@ -780,6 +790,8 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     )
     assert "readings/osint-china-latest.json" in text
     assert "python -m scripts.newswire_pull" not in text
+    assert text.count("git add -A -- readings china news datapackage.json") == 3
+    assert text.count("python -m scripts.import_host_snapshot") == 3
 
 
 def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():

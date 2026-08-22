@@ -176,6 +176,11 @@ jobs:
             datapackage.json \
             china/ \
             news/
+          git add -A -- readings china news datapackage.json
+          if git status --porcelain=v1 --untracked-files=all | grep -q .; then
+            echo "unstaged after git add:"
+            git status --porcelain=v1 --untracked-files=all | head -80
+          fi
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
@@ -306,6 +311,11 @@ jobs:
             datapackage.json \
             china/ \
             news/
+          git add -A -- readings china news datapackage.json
+          if git status --porcelain=v1 --untracked-files=all | grep -q .; then
+            echo "unstaged after git add:"
+            git status --porcelain=v1 --untracked-files=all | head -80
+          fi
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet origin/main; then
               echo "no change after synchronization"
@@ -437,6 +447,11 @@ jobs:
             datapackage.json \
             china/ \
             news/
+          git add -A -- readings china news datapackage.json
+          if git status --porcelain=v1 --untracked-files=all | grep -q .; then
+            echo "unstaged after git add:"
+            git status --porcelain=v1 --untracked-files=all | head -80
+          fi
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet; then
               echo "no change after push race"

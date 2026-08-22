@@ -50,6 +50,7 @@ jobs:
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
           git add readings/weibo-hotsearch-latest.json readings/weibo-hotsearch-history.jsonl 2>/dev/null || true
+          git add -A -- readings
           if git diff --cached --quiet; then
             echo "no change"
           else

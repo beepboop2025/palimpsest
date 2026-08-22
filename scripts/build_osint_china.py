@@ -256,6 +256,15 @@ SIGNALS: tuple[SignalSpec, ...] = (
        method_fallback=(
            "Offline comparison of authorized snapshots; the public runner remains disabled "
            "until an authorized Baike source is configured")),
+    _s("baike-public-snapshot", "Baike public snapshot", "erasure",
+       "baike-public-snapshot-latest.json", 6, 14,
+       "Polls public Baike article HTML from outside China. A 403 or login wall is recorded as unreachable, never as a rewrite.",
+       "articles fetched", ("n_ok",), "count", "pages watched", ("n_pages",),
+       optional=True,
+       source_fallback="Public Baike article HTML from the Hetzner vantage",
+       method_fallback=(
+           "Keyless GET of reviewed topic and event pages; Wikipedia-fork "
+           "baike-redaction stays disabled pending authorized access")),
     _s("github-refuge", "GitHub refuge watch", "erasure", "github-refuge-latest.json", 12, 26,
        "Watches public pressure metadata for repositories preserving censored material.",
        "pressure events", ("n_pressure_events",), "count", "repositories watched", ("n_watched",)),
@@ -367,11 +376,9 @@ EXCLUDED_LATEST_FILES = frozenset({
     "official-first-seen-latest.json",
     "news-wire-live-latest.json",
     "wikipedia-gazetteer-rc-latest.json",
-    "baike-public-snapshot-latest.json",
     "public-hot-boards-latest.json",
     "telegram-public-channels-latest.json",
     "reading-analysis-latest.json",
-    "peer-context-latest.json",
     "peer-context-rank-latest.json",
 })
 

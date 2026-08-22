@@ -65,6 +65,14 @@
       "title": "Baike redaction: degraded"
     },
     {
+      "id": "health-baike-public-snapshot",
+      "kind": "health",
+      "severity": "notice",
+      "source_id": "baike-public-snapshot",
+      "summary": "source file is missing",
+      "title": "Baike public snapshot: missing"
+    },
+    {
       "id": "health-believability",
       "kind": "health",
       "severity": "notice",
@@ -98,13 +106,13 @@
     }
   ],
   "generated_at": "2026-08-22T09:47:32Z",
-  "headline": "Upstream board reports: single layer elevated: network. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing.",
+  "headline": "Upstream board reports: single layer elevated: network. 35 of 39 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 4 missing.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 3,
       "live": 27,
-      "missing": 3,
+      "missing": 4,
       "stale": 5
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
@@ -175,14 +183,15 @@
     },
     {
       "id": "erasure",
-      "n_degraded": 1,
+      "n_degraded": 2,
       "n_live": 5,
       "n_reporting": 6,
-      "n_total": 6,
+      "n_total": 7,
       "signal_ids": [
         "erasure-observatory",
         "wayback",
         "baike-redaction",
+        "baike-public-snapshot",
         "github-refuge",
         "app-storefront",
         "apple-censorship"
@@ -247,7 +256,7 @@
   "method_version": 1,
   "n_signals_live": 27,
   "n_signals_reporting": 35,
-  "n_signals_total": 38,
+  "n_signals_total": 39,
   "schema_version": "osint-china.v1",
   "scope": "China public-source measurement across attention, network access, erasure, economic undertext, model behaviour, command safeguards and integrity witnessing.",
   "signals": [
@@ -9529,6 +9538,40 @@
       "status": "degraded",
       "summary": "Compares Baidu Baike entries with an open-record control and abstains without comparable pairs. The upstream payload reports status 'disabled'; this roll-up does not convert that abstention or limitation into a finding. Semantic health limitation: Baike series eligibility failed: valid_for_series is not explicitly true; collector_status is 'disabled_no_authorized_access', not 'observed'. Collector operational status is 'disabled_no_authorized_access': Baike collection is disabled pending authorized access; no new observation was made. Upstream reading: Baike collection is disabled pending authorized access; no new observation was made.",
       "title": "Baike redaction"
+    },
+    {
+      "cadence_hours": 6,
+      "freshness_deadline": null,
+      "health": {
+        "age_hours": null,
+        "collector_reason": null,
+        "collector_status": null,
+        "ok": false,
+        "pipeline_checked_at": null,
+        "reason": "source file is missing",
+        "upstream_status": null
+      },
+      "id": "baike-public-snapshot",
+      "input": {
+        "bytes": null,
+        "filename": "baike-public-snapshot-latest.json",
+        "sha256": null
+      },
+      "layer": "erasure",
+      "live": false,
+      "method": "Keyless GET of reviewed topic and event pages; Wikipedia-fork baike-redaction stays disabled pending authorized access",
+      "method_version": null,
+      "metric": null,
+      "optional": true,
+      "payload": null,
+      "payload_complete": false,
+      "raw_url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+      "scope": "Polls public Baike article HTML from outside China. A 403 or login wall is recorded as unreachable, never as a rewrite.",
+      "source": "Public Baike article HTML from the Hetzner vantage",
+      "source_timestamp": null,
+      "status": "missing",
+      "summary": "Polls public Baike article HTML from outside China. A 403 or login wall is recorded as unreachable, never as a rewrite. No payload is present at readings/baike-public-snapshot-latest.json; no current measurement is claimed.",
+      "title": "Baike public snapshot"
     },
     {
       "cadence_hours": 12,
