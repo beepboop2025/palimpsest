@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-22T14:26:41.578142+00:00",
-  "board_e_value": 4.307,
+  "generated_at": "2026-08-22T23:03:36.752510+00:00",
+  "board_e_value": 4.538,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [],
@@ -11,14 +11,14 @@
   },
   "layers": {
     "network": {
-      "e": 3.076,
+      "e": 2.659,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "bleedthrough_capacity": 1.27,
         "ioda_outages": 1.0,
-        "ooni_gfw": 4.479,
+        "ooni_gfw": 2.81,
         "tor_bridge_cn": 5.555
       },
       "recent_alarms": [
@@ -26,15 +26,15 @@
       ]
     },
     "content": {
-      "e": 5.128,
+      "e": 5.79,
       "n_signals": 6,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "data_darkness": 16.031,
-        "ddti_novelty": 6.058,
-        "ddti_threat": 3.05,
-        "gdelt_containment": 2.379,
+        "ddti_novelty": 4.864,
+        "ddti_threat": 4.363,
+        "gdelt_containment": 6.232,
         "github_refuge": 2.252,
         "weibo_suppression": 1.0
       },
@@ -59,34 +59,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 4.4793,
-      "n": 176,
-      "direction": "down",
-      "robust_z": -0.87,
+      "e": 2.8102,
+      "n": 177,
+      "direction": "up",
+      "robust_z": 0.18,
       "driver_side": "down",
-      "readings_since_alarm": 29,
+      "readings_since_alarm": 30,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 3.0495,
-      "n": 340,
+      "e": 4.3632,
+      "n": 343,
       "direction": "down",
-      "robust_z": -0.88,
+      "robust_z": -0.96,
       "driver_side": "down",
-      "readings_since_alarm": 101,
+      "readings_since_alarm": 104,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 6.058,
-      "n": 340,
+      "e": 4.8635,
+      "n": 343,
       "direction": "up",
       "robust_z": 6.74,
       "driver_side": "up",
-      "readings_since_alarm": 17,
+      "readings_since_alarm": 20,
       "n_alarms_in_history": 3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -103,10 +103,10 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 2.3788,
-      "n": 187,
+      "e": 6.2316,
+      "n": 188,
       "direction": "down",
-      "robust_z": -0.34,
+      "robust_z": -1.35,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -133,9 +133,9 @@
       "state": "stale",
       "n": 1,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
-      "age_hours": 228.1,
+      "age_hours": 236.7,
       "bound_hours": 168.0,
-      "reason": "newest row is 228.1h old, past the 168h bound"
+      "reason": "newest row is 236.7h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "calm",
@@ -162,7 +162,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 128,
+      "n": 134,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -173,7 +173,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 133,
+      "n": 134,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -244,7 +244,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 12.7,
+      "age_hours": 21.3,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 10 of 21 adjacent-run pairs"

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-22T14:26:41.788332+00:00",
+  "generated_at": "2026-08-22T23:03:36.979090+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
@@ -33,7 +33,7 @@
       "correlation": 0.679,
       "p_value": 0.1071,
       "n_shifts": 27,
-      "null_median_abs_r": 0.394,
+      "null_median_abs_r": 0.39,
       "pair": [
         "github_refuge",
         "ooni_gfw"
@@ -74,10 +74,10 @@
       "ok": true,
       "overlap_days": 42,
       "lag_days": 3,
-      "correlation": -0.29,
+      "correlation": -0.274,
       "p_value": 0.4643,
       "n_shifts": 27,
-      "null_median_abs_r": 0.204,
+      "null_median_abs_r": 0.205,
       "pair": [
         "ddti_novelty",
         "ooni_gfw"
@@ -96,10 +96,10 @@
       "ok": true,
       "overlap_days": 42,
       "lag_days": 0,
-      "correlation": -0.325,
+      "correlation": -0.318,
       "p_value": 0.5,
       "n_shifts": 27,
-      "null_median_abs_r": 0.32,
+      "null_median_abs_r": 0.316,
       "pair": [
         "gdelt_containment",
         "ooni_gfw"
@@ -112,28 +112,6 @@
       "last_day": "2026-08-22",
       "reading": "gdelt_containment and ooni_gfw move the same day",
       "holm_threshold": 0.0125,
-      "survives_multiplicity": false
-    },
-    {
-      "ok": true,
-      "overlap_days": 42,
-      "lag_days": 7,
-      "correlation": 0.234,
-      "p_value": 0.9643,
-      "n_shifts": 27,
-      "null_median_abs_r": 0.374,
-      "pair": [
-        "ddti_threat",
-        "ooni_gfw"
-      ],
-      "layers": [
-        "content",
-        "network"
-      ],
-      "first_day": "2026-07-11",
-      "last_day": "2026-08-22",
-      "reading": "ddti_threat moves 7d BEFORE ooni_gfw",
-      "holm_threshold": 0.01667,
       "survives_multiplicity": false
     },
     {
@@ -155,7 +133,7 @@
       "first_day": "2026-07-06",
       "last_day": "2026-08-19",
       "reading": "tor_bridge_cn moves 4d BEFORE gdelt_containment",
-      "holm_threshold": 0.025,
+      "holm_threshold": 0.01667,
       "survives_multiplicity": false
     },
     {
@@ -177,6 +155,28 @@
       "first_day": "2026-07-05",
       "last_day": "2026-08-19",
       "reading": "ddti_novelty moves 3d BEFORE tor_bridge_cn",
+      "holm_threshold": 0.025,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 42,
+      "lag_days": 7,
+      "correlation": 0.232,
+      "p_value": 1.0,
+      "n_shifts": 27,
+      "null_median_abs_r": 0.378,
+      "pair": [
+        "ddti_threat",
+        "ooni_gfw"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-11",
+      "last_day": "2026-08-22",
+      "reading": "ddti_threat moves 7d BEFORE ooni_gfw",
       "holm_threshold": 0.05,
       "survives_multiplicity": false
     }
