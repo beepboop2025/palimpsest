@@ -1,0 +1,48 @@
+[Unit]
+Description=Palimpsest read-only MCP server
+Documentation=https://github.com/beepboop2025/palimpsest/blob/main/docs/MCP-SERVER.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=palimpsest-mcp
+Group=palimpsest-mcp
+WorkingDirectory=/opt/palimpsest-mcp
+ExecStart=/usr/bin/python3 -I /opt/palimpsest-mcp/palimpsest_mcp.py
+Restart=on-failure
+RestartSec=3s
+TimeoutStartSec=20s
+TimeoutStopSec=20s
+UMask=0077
+
+# The server needs outbound HTTPS to read the same public artifacts as readers.
+# It needs no writable application path, private home, device, capability, or key.
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateDevices=true
+PrivateTmp=true
+PrivateUsers=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+ProtectSystem=strict
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+
+[Install]
+WantedBy=multi-user.target
