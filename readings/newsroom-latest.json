@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 28 are live. Health qualifiers: 3 degraded, 8 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-22T17:45:43Z",
+  "generated_at": "2026-08-22T18:34:27Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "f7aef925458724b914e685161060148768e69f0b",
+  "source_commit": "a053dcb9a3073144ca7b9c1d05c8a7cb86210d3e",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -505,8 +505,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "degraded",
-      "published_at": "2026-08-22T16:53:47Z",
-      "modified_at": "2026-08-22T16:53:47Z",
+      "published_at": "2026-08-22T17:43:02Z",
+      "modified_at": "2026-08-22T17:43:02Z",
       "claim_fingerprint": "sha256:0aaa02fcf26cf2cb3f6a9bc1cbc9d5cd42cf48a141926be5afdeb224c4e6e529",
       "metric": {
         "label": null,
@@ -527,10 +527,10 @@
         "url": "https://palimpsest.info/readings/silence-index-latest.json",
         "input": {
           "filename": "silence-index-latest.json",
-          "sha256": "e8f2b5c8458c85c02e0db350ad9da1fbf81076b5ff0c6bfa471586676204f03d",
-          "bytes": 6681
+          "sha256": "87dd5c07280203852bb6ccc369dce7daded9d54454e111192e89a0fde8ba3d0a",
+          "bytes": 6677
         },
-        "source_timestamp": "2026-08-22T16:53:47Z"
+        "source_timestamp": "2026-08-22T17:43:02Z"
       },
       "method": {
         "summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in both the latest reading and the history, never zeros",
@@ -713,8 +713,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-22T15:34:51Z",
-      "modified_at": "2026-08-22T15:34:51Z",
+      "published_at": "2026-08-22T17:41:02Z",
+      "modified_at": "2026-08-22T17:41:02Z",
       "claim_fingerprint": "sha256:f73c954f58480014687a79f2a52f1270c3d81ea99732b6fc88f807879bd9afdd",
       "metric": {
         "label": "observations",
@@ -735,10 +735,10 @@
         "url": "https://palimpsest.info/readings/undertext-latest.json",
         "input": {
           "filename": "undertext-latest.json",
-          "sha256": "d89cabb78011054df58b1add8d97455b0ebc09be78cadd3b11478a92d5f0efc1",
+          "sha256": "e5d761c1b5f3a7983b597ce25604663dfe355d6b338995572204993b9419d980",
           "bytes": 8463288
         },
-        "source_timestamp": "2026-08-22T15:34:51Z"
+        "source_timestamp": "2026-08-22T17:41:02Z"
       },
       "method": {
         "summary": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
