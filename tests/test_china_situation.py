@@ -72,6 +72,20 @@ def _minutes_after(timestamp: str, minutes: int = 1) -> str:
     return (parsed + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _protocol_validator(schema_path: Path):
+    jsonschema = pytest.importorskip("jsonschema")
+    referencing = pytest.importorskip("referencing")
+    resources = []
+    for path in (ROOT / "protocol").glob("*.schema.json"):
+        document = json.loads(path.read_text())
+        schema_id = document.get("$id")
+        if schema_id:
+            resources.append((schema_id, referencing.Resource.from_contents(document)))
+    registry = referencing.Registry().with_resources(resources)
+    schema = json.loads(schema_path.read_text())
+    return jsonschema.Draft202012Validator(schema, registry=registry)
+
+
 def _social_receipts(registry, successful_source):
     return [
         {
@@ -342,9 +356,8 @@ def test_runtime_validator_rejects_relation_and_count_tampering(situation):
 
 
 def test_generated_situation_conforms_to_public_json_schema(situation):
-    jsonschema = pytest.importorskip("jsonschema")
-    schema = json.loads((ROOT / "protocol/china-situation-v1.schema.json").read_text())
-    jsonschema.Draft202012Validator(schema).validate(situation)
+    validator = _protocol_validator(ROOT / "protocol/china-situation-v1.schema.json")
+    validator.validate(situation)
 
 
 def test_osint_observations_join_by_exact_url_or_topic_and_stay_non_corroboration(
