@@ -1,0 +1,834 @@
+{
+  "schema_version": "palimpsest-event-analysis.v2",
+  "analysis_id": "analysisv-0e704f6f476415a07f75a480",
+  "event_id": "event-f40ebc8392ba0b19b4dae21d",
+  "event_version_id": "eventv-b1398b7e3f6f5596f3cf17f7",
+  "event_url": "https://palimpsest.info/news/wire/event-f40ebc8392ba0b19b4dae21d/",
+  "url": "https://palimpsest.info/news/wire/event-f40ebc8392ba0b19b4dae21d/analysis.json",
+  "generated_at": "2026-08-22T21:02:03Z",
+  "disposition": "source-assessment",
+  "scope_status": "in-scope",
+  "position": "Palimpsest's view: this is a single attributed report, not an independently established fact. No archive-news-context row matches this event_id. 144 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. Declared receipts: public-deletion-ledgers. No interconnection peer met an exact join key.",
+  "rationale": [
+    "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.",
+    "No Palimpsest collector surface is declared for this event, so the assessment stops at source structure and attribution."
+  ],
+  "evidence_assessment": {
+    "strength": "single-source",
+    "independent_groups": 1,
+    "source_count": 1,
+    "conclusion": "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration."
+  },
+  "collector_context": [],
+  "peer_context": [
+    {
+      "peer": "greatfire",
+      "status": "miss",
+      "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-22.",
+      "as_of": "2026-08-22T18:48:00Z",
+      "peer_url": null,
+      "title": null,
+      "excerpt": null,
+      "host": "www.rfi.fr",
+      "measurement_count": null,
+      "anomaly_rate": null,
+      "verdict": null,
+      "window_days": 90,
+      "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+      "relation": "peer-context-not-palimpsest-capture"
+    },
+    {
+      "peer": "ooni",
+      "status": "miss",
+      "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
+      "as_of": "2026-08-22T18:48:00Z",
+      "peer_url": null,
+      "title": null,
+      "excerpt": null,
+      "host": "www.rfi.fr",
+      "measurement_count": null,
+      "anomaly_rate": null,
+      "verdict": null,
+      "window_days": null,
+      "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
+      "relation": "peer-context-not-palimpsest-capture"
+    },
+    {
+      "peer": "weiboscope",
+      "status": "abstain",
+      "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
+      "as_of": "2026-08-22T18:48:00Z",
+      "peer_url": "https://doi.org/10.25442/hku.16674565",
+      "title": "Weiboscope Open Data (2012)",
+      "excerpt": null,
+      "host": null,
+      "measurement_count": null,
+      "anomaly_rate": null,
+      "verdict": null,
+      "window_days": null,
+      "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
+      "relation": "peer-context-not-palimpsest-capture"
+    }
+  ],
+  "limitations": [
+    "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch or semantically evaluate the article body.",
+    "Independent-source counts describe publication structure, not the truth, completeness, or intent of the underlying claims.",
+    "No current Palimpsest measurement is used in this assessment.",
+    "Live-family joins use exact URL or declared topic overlap only; absence of a reading is a coverage gap.",
+    "Interconnection peers attach only on a named exact key plus a UTC ±24h window; a miss is not a same-story guess.",
+    "A missing official, ledger, wire, or archive reading causes that layer to abstain; the gap is not a zero.",
+    "Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They are not Palimpsest capture and do not share Palimpsest's denominator."
+  ],
+  "method": "Deterministic assessment of one validated newswire event against its independent-source structure, the collector stories explicitly declared by that event, and only the live-family readings supplied to this builder (official-first-seen, public-deletion-ledgers, news-wire-live, undertext, and archive-news-context). Named-key interconnection peers from supplied peer-warehouse readings attach only on an exact host, URL path, extracted term, or ASN plus a UTC ±24h window from event.published_at. A peer without an exact key, a silent warehouse, or a warming_up warehouse is skipped. GreatFire, OONI, and CDT counts keep separate denominators and dates. Collector, live-family, and interconnection joins remain topic-surface-only: no article body is fetched, no generative model is used, and no current measurement is represented as article-specific verification, causation, or motive. The v2 brief copies retained metadata into a closed article shape with sentence-level citations. A missing surface abstains.",
+  "brief": {
+    "lead": {
+      "status": "present",
+      "sentences": [
+        {
+          "text": "RFI published “美国封锁措施见效，消息人士称伊朗原油对中国买家报价减少、价格上涨” at 2026-08-22T13:10:11Z.",
+          "citation_ids": [
+            "eventevidence-6fa85d541e963ddedfaa"
+          ]
+        },
+        {
+          "text": "Evidence strength is single-source across 1 independent source group and 1 attributed source record.",
+          "citation_ids": [
+            "eventevidence-6fa85d541e963ddedfaa"
+          ]
+        },
+        {
+          "text": "Palimpsest retained feed title, canonical link, publication time, and a bounded excerpt; it did not fetch the article body.",
+          "citation_ids": [
+            "eventevidence-6fa85d541e963ddedfaa"
+          ]
+        },
+        {
+          "text": "No interconnection peer met an exact host, URL path, term, or ASN key inside the UTC ±24h window.",
+          "citation_ids": [
+            "eventevidence-6fa85d541e963ddedfaa"
+          ]
+        }
+      ]
+    },
+    "timeline": {
+      "status": "abstained",
+      "sentences": [
+        {
+          "text": "official-first-seen is missing, so first-seen, last-alive, and hash-change points are omitted.",
+          "citation_ids": [
+            "eventevidence-6690b9ad33cadc17144f"
+          ]
+        },
+        {
+          "text": "news-wire-live is missing, so that capture time is omitted.",
+          "citation_ids": [
+            "eventevidence-1182e0167ef19e7a7f6e"
+          ]
+        },
+        {
+          "text": "A public deletion-ledger item matching this event was recorded at 2026-08-20T04:37:23Z.",
+          "citation_ids": [
+            "eventevidence-9597b53998aaa8d81a2f"
+          ]
+        },
+        {
+          "text": "archive-news-context is missing, so archive-hit time is omitted.",
+          "citation_ids": [
+            "eventevidence-702f03f1f37e5defd650"
+          ]
+        }
+      ]
+    },
+    "official_page": {
+      "status": "none-reviewed",
+      "sentences": [
+        {
+          "text": "No live official-first-seen reading was supplied to this analysis.",
+          "citation_ids": [
+            "eventevidence-6690b9ad33cadc17144f"
+          ]
+        },
+        {
+          "text": "Official-page first-seen, last-alive, and hash values are withheld.",
+          "citation_ids": [
+            "eventevidence-6690b9ad33cadc17144f"
+          ]
+        },
+        {
+          "text": "Official-page corroboration coverage is none-reviewed: 0 accepted edges, 0 primary documents, 0 reviewed.",
+          "citation_ids": [
+            "eventevidence-63d9b2bb3857d7d7e0ff"
+          ]
+        }
+      ]
+    },
+    "deletion_ledger": {
+      "status": "present",
+      "sentences": [
+        {
+          "text": "A cdt ledger item matches this declared topic surface. That is a peer observation, not a Palimpsest-verified deletion.",
+          "citation_ids": [
+            "eventevidence-9597b53998aaa8d81a2f"
+          ]
+        },
+        {
+          "text": "Palimpsest does not have its own first-seen to gone trail for this URL, so the ledger item stays a peer observation.",
+          "citation_ids": [
+            "eventevidence-9597b53998aaa8d81a2f",
+            "eventevidence-6690b9ad33cadc17144f"
+          ]
+        }
+      ]
+    },
+    "pipe_context": {
+      "status": "not-declared",
+      "sentences": [
+        {
+          "text": "This event does not declare OONI, bleedthrough, vantage, or IODA signal ids, so pipe context is withheld.",
+          "citation_ids": [
+            "eventevidence-6fa85d541e963ddedfaa"
+          ]
+        }
+      ]
+    },
+    "archive_context": {
+      "status": "abstained",
+      "sentences": [
+        {
+          "text": "No live archive-news-context reading was supplied to this analysis.",
+          "citation_ids": [
+            "eventevidence-702f03f1f37e5defd650"
+          ]
+        },
+        {
+          "text": "Host-level unique_urls, mutation_rate, archive_gap_rate, and anomaly_state are withheld.",
+          "citation_ids": [
+            "eventevidence-702f03f1f37e5defd650"
+          ]
+        }
+      ]
+    }
+  },
+  "surface_context": [
+    {
+      "surface_id": "corroboration",
+      "status": "unmatched",
+      "match_kind": null,
+      "headline": "Primary-document corroboration coverage",
+      "finding": "Official-page corroboration coverage is none-reviewed: 0 accepted edges, 0 primary documents, 0 reviewed.",
+      "source_timestamp": "2026-08-22T21:02:03Z",
+      "reading_url": "https://palimpsest.info/readings/corroboration-latest.json",
+      "input_sha256": "7e9862ec711ea147e0cfdda06508de13b28e2ccdea98c27d9b2c958b55802d49",
+      "relation": "topic-surface-only",
+      "interpretation": "Human-reviewed primary-document coverage. official_page none-reviewed is a coverage fact, not a takedown claim."
+    },
+    {
+      "surface_id": "official-first-seen",
+      "status": "missing",
+      "match_kind": null,
+      "headline": "official-first-seen: withheld",
+      "finding": "No live official-first-seen reading was supplied to this analysis.",
+      "source_timestamp": null,
+      "reading_url": "https://palimpsest.info/readings/official-first-seen-latest.json",
+      "input_sha256": null,
+      "relation": "topic-surface-only",
+      "interpretation": "This layer abstains because the collector reading is not live here. No value was invented."
+    },
+    {
+      "surface_id": "public-deletion-ledgers",
+      "status": "live",
+      "match_kind": "topic",
+      "headline": "cdt ledger peer observation",
+      "finding": "A cdt ledger item matches this declared topic surface. That is a peer observation, not a Palimpsest-verified deletion. Palimpsest does not have its own first-seen to gone trail for this URL, so the ledger item stays a peer observation.",
+      "source_timestamp": "2026-08-20T04:37:23Z",
+      "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+      "input_sha256": "2b81b83b0ca2c491eaf283d664090b7e6701c8b83904ae09aab3b7c22d815e2f",
+      "relation": "topic-surface-only",
+      "interpretation": "Peer observation from an already-public deletion or blocking ledger."
+    },
+    {
+      "surface_id": "news-wire-live",
+      "status": "missing",
+      "match_kind": null,
+      "headline": "news-wire-live: withheld",
+      "finding": "No live news-wire-live reading was supplied to this analysis.",
+      "source_timestamp": null,
+      "reading_url": "https://palimpsest.info/readings/news-wire-live-latest.json",
+      "input_sha256": null,
+      "relation": "topic-surface-only",
+      "interpretation": "This layer abstains because the collector reading is not live here. No value was invented."
+    },
+    {
+      "surface_id": "undertext",
+      "status": "live",
+      "match_kind": "topic",
+      "headline": "Undertext matching observation",
+      "finding": "undertext reports a matching observation among 2039 fused observations.",
+      "source_timestamp": "2026-08-20T04:37:23Z",
+      "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+      "input_sha256": "8e04223c3ae9487534a00f6744df4bdade957f1d16c934f2fb5bd53c3c919168",
+      "relation": "topic-surface-only",
+      "interpretation": "Public-archive fusion context. Not a claim that this article was blocked."
+    },
+    {
+      "surface_id": "archive-news-context",
+      "status": "missing",
+      "match_kind": null,
+      "headline": "archive-news-context: withheld",
+      "finding": "No live archive-news-context reading was supplied to this analysis.",
+      "source_timestamp": null,
+      "reading_url": "https://palimpsest.info/readings/archive-news-context-latest.json",
+      "input_sha256": null,
+      "relation": "topic-surface-only",
+      "interpretation": "This layer abstains because the collector reading is not live here. No value was invented."
+    }
+  ],
+  "evidence": [
+    {
+      "evidence_id": "eventevidence-6fa85d541e963ddedfaa",
+      "kind": "event-source",
+      "surface_id": "newswire",
+      "status": "live",
+      "headline": "美国封锁措施见效，消息人士称伊朗原油对中国买家报价减少、价格上涨",
+      "claim": "RFI published “美国封锁措施见效，消息人士称伊朗原油对中国买家报价减少、价格上涨” at 2026-08-22T13:10:11Z.",
+      "reading_url": "https://palimpsest.info/news/wire/event-f40ebc8392ba0b19b4dae21d/",
+      "source_timestamp": "2026-08-22T13:10:11Z",
+      "input_sha256": "a63c253e75833622e82e27c92463adaa9d764afd87a72ac3881c9890fa69e76b",
+      "interpretation_limit": "Feed title, canonical link, publication time, and a bounded excerpt only."
+    },
+    {
+      "evidence_id": "eventevidence-63d9b2bb3857d7d7e0ff",
+      "kind": "corroboration",
+      "surface_id": "corroboration",
+      "status": "unmatched",
+      "headline": "Primary-document corroboration coverage",
+      "claim": "Official-page corroboration coverage is none-reviewed: 0 accepted edges, 0 primary documents, 0 reviewed.",
+      "reading_url": "https://palimpsest.info/readings/corroboration-latest.json",
+      "source_timestamp": "2026-08-22T21:02:03Z",
+      "input_sha256": "7e9862ec711ea147e0cfdda06508de13b28e2ccdea98c27d9b2c958b55802d49",
+      "interpretation_limit": "Coverage fact only. Empty review is not a deletion or official-movement finding."
+    },
+    {
+      "evidence_id": "eventevidence-6690b9ad33cadc17144f",
+      "kind": "surface-missing",
+      "surface_id": "official-first-seen",
+      "status": "missing",
+      "headline": "official-first-seen: reading absent",
+      "claim": "No live official-first-seen reading was supplied to this analysis.",
+      "reading_url": "https://palimpsest.info/readings/official-first-seen-latest.json",
+      "source_timestamp": null,
+      "input_sha256": null,
+      "interpretation_limit": "Absence is a coverage gap, not a zero finding."
+    },
+    {
+      "evidence_id": "eventevidence-9597b53998aaa8d81a2f",
+      "kind": "public-deletion-ledgers",
+      "surface_id": "public-deletion-ledgers",
+      "status": "live",
+      "headline": "cdt ledger peer observation",
+      "claim": "A cdt ledger item matches this declared topic surface. That is a peer observation, not a Palimpsest-verified deletion.",
+      "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+      "source_timestamp": "2026-08-20T04:37:23Z",
+      "input_sha256": "2b81b83b0ca2c491eaf283d664090b7e6701c8b83904ae09aab3b7c22d815e2f",
+      "interpretation_limit": "Peer ledger metadata only; not a Palimpsest liveness check."
+    },
+    {
+      "evidence_id": "eventevidence-1182e0167ef19e7a7f6e",
+      "kind": "surface-missing",
+      "surface_id": "news-wire-live",
+      "status": "missing",
+      "headline": "news-wire-live: reading absent",
+      "claim": "No live news-wire-live reading was supplied to this analysis.",
+      "reading_url": "https://palimpsest.info/readings/news-wire-live-latest.json",
+      "source_timestamp": null,
+      "input_sha256": null,
+      "interpretation_limit": "Absence is a coverage gap, not a zero finding."
+    },
+    {
+      "evidence_id": "eventevidence-783ac1ee343c1b07ce08",
+      "kind": "undertext",
+      "surface_id": "undertext",
+      "status": "live",
+      "headline": "Undertext matching observation",
+      "claim": "undertext reports a matching observation among 2039 fused observations.",
+      "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+      "source_timestamp": "2026-08-20T04:37:23Z",
+      "input_sha256": "8e04223c3ae9487534a00f6744df4bdade957f1d16c934f2fb5bd53c3c919168",
+      "interpretation_limit": "Fused public-archive context only; not a blocking claim about this article."
+    },
+    {
+      "evidence_id": "eventevidence-702f03f1f37e5defd650",
+      "kind": "surface-missing",
+      "surface_id": "archive-news-context",
+      "status": "missing",
+      "headline": "archive-news-context: reading absent",
+      "claim": "No live archive-news-context reading was supplied to this analysis.",
+      "reading_url": "https://palimpsest.info/readings/archive-news-context-latest.json",
+      "source_timestamp": null,
+      "input_sha256": null,
+      "interpretation_limit": "Absence is a coverage gap, not a zero finding."
+    }
+  ],
+  "counterreadings": [
+    {
+      "text": "A ledger hit can reflect the ledger's own selection rules rather than a deletion of this URL.",
+      "citation_ids": [
+        "eventevidence-9597b53998aaa8d81a2f"
+      ]
+    },
+    {
+      "text": "A hash change or disappearance on an official page can reflect a routine update, a fetch failure, or a removal; the trail does not choose among those.",
+      "citation_ids": [
+        "eventevidence-6690b9ad33cadc17144f"
+      ]
+    },
+    {
+      "text": "A current pipe or undertext value can post-date the article and cannot establish that this article was blocked.",
+      "citation_ids": [
+        "eventevidence-783ac1ee343c1b07ce08",
+        "eventevidence-6fa85d541e963ddedfaa"
+      ]
+    }
+  ],
+  "unknowns": [
+    {
+      "text": "Palimpsest does not know why any page, hash, or ledger item changed.",
+      "citation_ids": [
+        "eventevidence-6690b9ad33cadc17144f",
+        "eventevidence-9597b53998aaa8d81a2f"
+      ]
+    },
+    {
+      "text": "Palimpsest did not read the article body and does not verify the publisher's claims.",
+      "citation_ids": [
+        "eventevidence-6fa85d541e963ddedfaa"
+      ]
+    },
+    {
+      "text": "Person-level attribution and claims about why an actor acted are outside this brief.",
+      "citation_ids": [
+        "eventevidence-6fa85d541e963ddedfaa"
+      ]
+    }
+  ],
+  "key_numbers": [
+    {
+      "value": "1",
+      "label": "independent source groups",
+      "note": "publication structure, not a truth score",
+      "citation_ids": [
+        "eventevidence-6fa85d541e963ddedfaa"
+      ]
+    },
+    {
+      "value": "1",
+      "label": "attributed source records",
+      "note": "feed metadata only",
+      "citation_ids": [
+        "eventevidence-6fa85d541e963ddedfaa"
+      ]
+    },
+    {
+      "value": "2",
+      "label": "live attached surfaces",
+      "note": "URL or declared-topic joins only",
+      "citation_ids": [
+        "eventevidence-6fa85d541e963ddedfaa"
+      ]
+    },
+    {
+      "value": "144",
+      "label": "same-window events sharing a topic",
+      "note": "counts and names only; not verification",
+      "citation_ids": [
+        "eventevidence-6fa85d541e963ddedfaa"
+      ]
+    },
+    {
+      "value": "0",
+      "label": "reviewed corroboration edges",
+      "note": "official_page none-reviewed",
+      "citation_ids": [
+        "eventevidence-63d9b2bb3857d7d7e0ff"
+      ]
+    }
+  ],
+  "publication_receipt": {
+    "status": "passed",
+    "publishable": true,
+    "automatic_publication": false,
+    "citation_coverage": 1.0,
+    "human_review_required": true,
+    "availability_warnings": [
+      "corroboration",
+      "official-first-seen",
+      "news-wire-live",
+      "archive-news-context"
+    ],
+    "gates": [
+      {
+        "gate_id": "closed-source-set",
+        "label": "Every analytical input is the event, a declared collector story, a supplied live-family reading, or a supplied peer warehouse",
+        "passed": true,
+        "detail": "7 evidence receipts were projected from supplied inputs only."
+      },
+      {
+        "gate_id": "sentence-citations",
+        "label": "Every analytical sentence names exact evidence receipts",
+        "passed": true,
+        "detail": "16 of 16 analytical sentences carry citations."
+      },
+      {
+        "gate_id": "no-causal-language",
+        "label": "Emitted text does not assign motive, intent, or a blocking cause",
+        "passed": true,
+        "detail": "No forbidden causal phrase is present."
+      },
+      {
+        "gate_id": "bounded-authorship",
+        "label": "No interviews or free-form model prose are represented as reporting",
+        "passed": true,
+        "detail": "Generated from one validated newswire event, its declared collector stories, and only the live-family readings supplied to this builder. No interviews, no article-body fetch, and no free-form model prose were used."
+      },
+      {
+        "gate_id": "denominators-separated",
+        "label": "Incompatible instruments are not collapsed into one censorship rate",
+        "passed": true,
+        "detail": "Pipe, ledger, official-trail, archive host rates, and interconnection peers keep separate denominators. GreatFire is not collapsed into OONI."
+      },
+      {
+        "gate_id": "human-review-policy",
+        "label": "Human review remains required; automatic publication stays prohibited",
+        "passed": true,
+        "detail": "The existing human-review and causal-language policy still holds."
+      }
+    ]
+  },
+  "authorship": {
+    "byline": "Palimpsest China Desk",
+    "mode": "deterministic-event-brief",
+    "human_interviews": "none",
+    "freeform_model_generation": "none"
+  },
+  "disclosure": "Generated from one validated newswire event, its declared collector stories, and only the live-family readings supplied to this builder. No interviews, no article-body fetch, and no free-form model prose were used.",
+  "declared_links": {
+    "relation": "topic-surface-only",
+    "scan_signal_ids": [],
+    "economic_signal_ids": [],
+    "live_family_ids": [
+      "official-first-seen",
+      "public-deletion-ledgers",
+      "news-wire-live",
+      "undertext"
+    ]
+  },
+  "window_peers": {
+    "same_window_peer_count": 144,
+    "shared_topics": [
+      "economy",
+      "politics",
+      "rights",
+      "transparency"
+    ],
+    "peer_source_ids": [
+      "bbc-chinese",
+      "china-news-service-finance",
+      "china-news-service-politics",
+      "dw-chinese",
+      "financial-times-china",
+      "foreign-policy-china",
+      "guardian-china",
+      "hksar-releases",
+      "hong-kong-free-press",
+      "new-bloom",
+      "rfa-mandarin",
+      "rfi-chinese",
+      "rthk-finance",
+      "rthk-greater-china",
+      "scmp-china",
+      "scmp-china-economy",
+      "scmp-china-tech",
+      "voa-chinese"
+    ],
+    "peer_independence_groups": [
+      "bbc-chinese-editorial",
+      "china-news-service-state-media",
+      "deutsche-welle-chinese-editorial",
+      "financial-times-editorial",
+      "foreign-policy-editorial",
+      "france-medias-monde-rfi-editorial",
+      "guardian-editorial",
+      "hksar-government",
+      "hong-kong-free-press-editorial",
+      "new-bloom-editorial",
+      "radio-free-asia-mandarin",
+      "rthk-editorial",
+      "south-china-morning-post-editorial",
+      "voice-of-america-chinese-editorial"
+    ],
+    "relation": "topic-surface-only"
+  },
+  "corroboration": {
+    "accepted_edges": 0,
+    "primary_docs": 0,
+    "reviewed": 0,
+    "official_page": "none-reviewed",
+    "status": "empty",
+    "relation": "coverage-fact-only"
+  },
+  "archive_news_context": {
+    "matched": false,
+    "match_kind": null,
+    "event_id": "event-f40ebc8392ba0b19b4dae21d",
+    "anomaly_state": null,
+    "anomaly_score_published": false,
+    "relation": "topic-surface-only",
+    "receipts": [],
+    "refresh_status": "unknown"
+  },
+  "interconnection": {
+    "schema_version": "palimpsest-event-interconnection.v1",
+    "relation": "topic-surface-only",
+    "quality_bar": "two-independent-source-groups",
+    "independent_source_groups": 1,
+    "meets_quality_bar": false,
+    "joined_count": 0,
+    "required_exact_keys": [
+      "host",
+      "url_path",
+      "term",
+      "asn"
+    ],
+    "window": {
+      "unit": "hours",
+      "radius_hours": 24,
+      "anchor": "event.published_at"
+    },
+    "event_keys": {
+      "hosts": [
+        "rfi.fr"
+      ],
+      "url_paths": [
+        "/cn/%E6%94%BF%E6%B2%BB/20260822-%E7%BE%8E%E5%9B%BD%E5%B0%81%E9%94%81%E6%8E%AA%E6%96%BD%E8%A7%81%E6%95%88%EF%BC%8C%E6%B6%88%E6%81%AF%E4%BA%BA%E5%A3%AB%E7%A7%B0%E4%BC%8A%E6%9C%97%E5%8E%9F%E6%B2%B9%E5%AF%B9%E4%B8%AD%E5%9B%BD%E4%B9%B0%E5%AE%B6%E6%8A%A5%E4%BB%B7%E5%87%8F%E5%B0%91-%E4%BB%B7%E6%A0%BC%E4%B8%8A%E6%B6%A8"
+      ],
+      "terms": [
+        "美国封锁措施见效，消息人士称伊朗原油对中国买家报价减少、价格上涨",
+        "路透社周五（8月21日）的一篇深度报道披露，消息人士表示，由于美国实施的封锁措施导致伊朗原油运输量下降，本周面向中国买家的伊朗原油报价明显减少，价格则大幅上涨。"
+      ],
+      "calendar_day": "2026-08-22",
+      "asns": []
+    },
+    "peers": [
+      {
+        "peer_id": "official-first-seen",
+        "record_id": null,
+        "peer_name": "official-first-seen",
+        "independence_group": "official-first-seen",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "peer warehouse is missing; slot left empty for a later fill",
+        "skip_reason": "silent",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": null,
+        "input_sha256": null,
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "greatfire",
+        "record_id": null,
+        "peer_name": "GreatFire",
+        "independence_group": "greatfire",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "no exact host, url_path, term, or ASN is shared with this event",
+        "skip_reason": "no_key",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": "https://palimpsest.info/readings/greatfire-context-latest.json",
+        "input_sha256": "ff8e2993db121669a81057b544a3a7922c6b9b3d70ce97b687cd1095362376d3",
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "ooni",
+        "record_id": null,
+        "peer_name": "OONI",
+        "independence_group": "ooni",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "no exact host, url_path, term, or ASN is shared with this event",
+        "skip_reason": "no_key",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": "https://palimpsest.info/readings/ooni-peer-context-latest.json",
+        "input_sha256": "243317ec137a4bfa988d05c83795f952430c4fa1488a340c68c676a66cf9efe9",
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "bleedthrough",
+        "record_id": null,
+        "peer_name": "Bleedthrough",
+        "independence_group": "bleedthrough",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "no exact host, url_path, term, or ASN is shared with this event",
+        "skip_reason": "no_key",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
+        "input_sha256": "faa15a2b527d75a431d4bdbd912af173233ce31308eb725d5ef6e013a60c169a",
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "wayback",
+        "record_id": null,
+        "peer_name": "Wayback",
+        "independence_group": "wayback",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "no exact host, url_path, term, or ASN is shared with this event",
+        "skip_reason": "no_key",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": "https://palimpsest.info/readings/wayback-latest.json",
+        "input_sha256": "987dadb30dd564632ca514828436deef673145ee80fe9cd11a6bb6d2b4914e8c",
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "ddti",
+        "record_id": null,
+        "peer_name": "DDTI",
+        "independence_group": "ddti",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "no exact host, url_path, term, or ASN is shared with this event",
+        "skip_reason": "no_key",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+        "input_sha256": "6c8ef0596f622cc12cfb6c92c4e532efa2445eccaeb06f956d1bd920d7f5273d",
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "weibo-hotsearch",
+        "record_id": null,
+        "peer_name": "Weibo hot search",
+        "independence_group": "weibo-hotsearch",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "no exact host, url_path, term, or ASN is shared with this event",
+        "skip_reason": "no_key",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+        "input_sha256": "7a1f0d18bfa39d1bd419f9a09196a4c741031481c47e71abd978e1bd4040aa76",
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "cdt",
+        "record_id": null,
+        "peer_name": "China Digital Times",
+        "independence_group": "cdt",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "peer warehouse is missing; slot left empty for a later fill",
+        "skip_reason": "silent",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": null,
+        "input_sha256": null,
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "gazetteer",
+        "record_id": null,
+        "peer_name": "gazetteer",
+        "independence_group": "gazetteer",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "no exact host, url_path, term, or ASN is shared with this event",
+        "skip_reason": "no_key",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+        "input_sha256": "8d89890d59c25aea1d61c08a4b1355b40c59a1445aee9b1f34bd0614bc654a36",
+        "relation": "topic-surface-only"
+      },
+      {
+        "peer_id": "public-board",
+        "record_id": null,
+        "peer_name": "public board",
+        "independence_group": "public-board",
+        "status": "skipped",
+        "join_keys": [],
+        "why_joined": null,
+        "why_skipped": "peer warehouse is missing; slot left empty for a later fill",
+        "skip_reason": "silent",
+        "peer_date": null,
+        "observed_at": null,
+        "count": null,
+        "count_label": null,
+        "denominator_label": null,
+        "denominator_value": null,
+        "citation": null,
+        "reading_url": null,
+        "input_sha256": null,
+        "relation": "topic-surface-only"
+      }
+    ]
+  }
+}
