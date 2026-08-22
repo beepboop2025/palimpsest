@@ -39,6 +39,18 @@ def test_hourly_silence_publisher_runs_compatibility_tests_before_publish() -> N
     assert "tests/test_silence_index_pull_publish.py" in workflow
 
 
+def test_hourly_stdlib_collectors_install_their_pinned_test_runner() -> None:
+    for path in (
+        ".github/workflows/weibo-hotsearch-refresh.yml",
+        ".github/workflows/silence-index-refresh.yml",
+    ):
+        workflow = _read(path)
+        assert "python -m pytest" in workflow
+        assert "Install the pinned offline test runner" in workflow
+        assert "python -m pip install --quiet --require-hashes" in workflow
+        assert "-r .github/osint-china-ci-requirements.txt" in workflow
+
+
 def test_every_hourly_artifact_declares_the_same_cadence_to_readers() -> None:
     catalog = json.loads(_read("config/public_data_catalog.json"))
     by_id = {dataset["id"]: dataset for dataset in catalog["datasets"]}
