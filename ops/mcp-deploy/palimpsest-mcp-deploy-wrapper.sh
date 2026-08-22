@@ -81,6 +81,48 @@ require_root_directory() {
   (( (8#$mode & 0022) == 0 )) || fail "group/other-writable directory: $path"
 }
 
+require_service_value() {
+  local property=$1
+  local expected=$2
+  local actual
+  actual=$(systemctl show --property="$property" --value "$SERVICE")
+  [[ "$actual" = "$expected" ]] \
+    || fail "service ${property} is ${actual@Q}, expected ${expected@Q}"
+}
+
+require_hardened_runtime() {
+  systemctl is-active --quiet "$SERVICE" \
+    || fail "service is not active under the reviewed unit"
+  require_service_value "User" "$RUNTIME_USER"
+  require_service_value "Group" "$RUNTIME_USER"
+  require_service_value "NoNewPrivileges" "yes"
+  require_service_value "ProtectSystem" "strict"
+  require_service_value "PrivateDevices" "yes"
+  require_service_value "PrivateTmp" "yes"
+  require_service_value "PrivateUsers" "yes"
+  require_service_value "ProtectHome" "yes"
+  require_service_value "ProtectKernelTunables" "yes"
+  require_service_value "RestrictSUIDSGID" "yes"
+  require_service_value "LockPersonality" "yes"
+  require_service_value "MemoryDenyWriteExecute" "yes"
+  require_service_value "RemoveIPC" "yes"
+  require_service_value "CapabilityBoundingSet" ""
+  require_service_value "AmbientCapabilities" ""
+
+  local main_pid exec_main_pid runtime_uid process_uid
+  main_pid=$(systemctl show --property=MainPID --value "$SERVICE")
+  exec_main_pid=$(systemctl show --property=ExecMainPID --value "$SERVICE")
+  [[ "$main_pid" =~ ^[1-9][0-9]*$ ]] \
+    || fail "service has no live MainPID"
+  [[ "$exec_main_pid" = "$main_pid" ]] \
+    || fail "service MainPID and ExecMainPID differ"
+  runtime_uid=$(id -u "$RUNTIME_USER")
+  process_uid=$(ps -o uid= -p "$main_pid" | tr -d '[:space:]') \
+    || fail "cannot inspect the service process owner"
+  [[ "$process_uid" = "$runtime_uid" ]] \
+    || fail "service PID is not owned by the unprivileged runtime account"
+}
+
 restore_file_if_present() {
   local backup=$1
   local destination=$2
@@ -245,6 +287,7 @@ service_exec=$(systemctl show --property=ExecStart --value "$SERVICE")
   || fail "systemd has not loaded the pinned unit bytes"
 [[ -z "$(systemctl show --property=DropInPaths --value "$SERVICE")" ]] \
   || fail "service has unreviewed systemd drop-ins"
+require_hardened_runtime
 
 version=$(python3 -c \
   'import json,sys; v=json.load(open(sys.argv[1], encoding="utf-8"))["version"]; assert isinstance(v,str); print(v)' \
@@ -302,6 +345,7 @@ for _attempt in $(seq 1 12); do
   fi
   sleep 2
 done
+require_hardened_runtime
 
 receipt_tmp=$(mktemp "${RECEIPT_DIR}/.${target_sha}.XXXXXX")
 python3 - "$receipt_tmp" "$target_sha" "$version" "$candidate_sha256" \

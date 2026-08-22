@@ -20,8 +20,11 @@ from scripts import smoke_palimpsest_mcp as smoke
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "ops/mcp-deploy/palimpsest-mcp-deploy-wrapper.sh"
 VERIFIER_PATH = ROOT / "ops/mcp-deploy/verify_release.py"
+REGISTRY_VERIFIER_PATH = ROOT / "ops/mcp-deploy/verify_registry_release.py"
 WORKFLOW = ROOT / ".github/workflows/deploy-mcp.yml"
+REGISTRY_WORKFLOW = ROOT / ".github/workflows/registry-publish.yml"
 UNIT = ROOT / "ops/systemd/palimpsest-mcp.service"
+RUNBOOK = ROOT / "ops/mcp-deploy/README.md"
 
 
 def _load_verifier() -> ModuleType:
@@ -33,6 +36,19 @@ def _load_verifier() -> ModuleType:
 
 
 verifier = _load_verifier()
+
+
+def _load_registry_verifier() -> ModuleType:
+    spec = importlib.util.spec_from_file_location(
+        "mcp_registry_release_verifier", REGISTRY_VERIFIER_PATH
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+registry_verifier = _load_registry_verifier()
 
 
 def test_current_candidate_satisfies_release_contract() -> None:
@@ -181,18 +197,24 @@ def test_host_wrapper_is_syntax_valid_and_fail_closed() -> None:
         "--github-commit-json",
         'run_as_verify_user "$VERIFY_RELEASE"',
         'run_as_verify_user "$SMOKE"',
-        "env -i PATH=\"$PATH\"",
+        'env -i PATH="$PATH"',
         'expected_blob=$(git --git-dir="$REPOSITORY" rev-parse',
         "flock -n",
-        "mv -fT -- \"$candidate_tmp\" \"$TARGET_FILE\"",
+        'mv -fT -- "$candidate_tmp" "$TARGET_FILE"',
         'systemctl restart "$SERVICE"',
         '"$SMOKE" --url "$LOCAL_ENDPOINT"',
         "rollback",
         "DEPLOYED_SHA_FILE",
+        "require_hardened_runtime",
+        'require_service_value "User" "$RUNTIME_USER"',
+        'require_service_value "NoNewPrivileges" "yes"',
+        "main_pid=$(systemctl show --property=MainPID",
+        "exec_main_pid=$(systemctl show --property=ExecMainPID",
+        'process_uid=$(ps -o uid= -p "$main_pid"',
     ]
     for needle in required:
         assert needle in text
-    assert "eval \"" not in text
+    assert 'eval "' not in text
     assert "bash -c" not in text
     assert "git checkout" not in text
 
@@ -227,6 +249,15 @@ def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
     assert "mcp-publisher publish" not in text
     assert "id-token: write" not in text
     assert "cancel-in-progress: false" in text
+    assert "palimpsest.mcp-deployment-receipt.v1" in text
+    assert "ops/mcp-deploy/verify_registry_release.py" in text
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in text
+    assert (
+        "palimpsest-mcp-deployment-${{ needs.verify.outputs.target_sha }}-run-"
+        "${{ github.run_id }}-attempt-${{ github.run_attempt }}" in text
+    )
+    assert '"forced_command_deploy": "passed"' in text
+    assert '"public_smoke": "passed"' in text
 
 
 def test_systemd_unit_runs_only_the_controlled_loopback_server() -> None:
@@ -237,3 +268,190 @@ def test_systemd_unit_runs_only_the_controlled_loopback_server() -> None:
     assert "ProtectSystem=strict" in text
     assert "CapabilityBoundingSet=" in text
     assert "EnvironmentFile=" not in text
+
+
+def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    legacy_sha = "2a80981815680006f3daf7caf503a125d6299c3c"
+    assert legacy_sha in text
+    assert 'show "${legacy_sha}:server.json"' in text
+    assert text.count('--manifest "$legacy_manifest" --basic') == 2
+    assert text.index('--manifest "$legacy_manifest" --basic') < text.index(
+        "sudo install -o root -g root -m 0644 ops/systemd/palimpsest-mcp.service"
+    )
+    assert "systemctl enable --now" not in text
+    assert "sudo systemctl enable palimpsest-mcp.service" in text
+    assert "sudo systemctl restart palimpsest-mcp.service" in text
+    assert "--property=User" in text
+    assert "--property=MainPID" in text
+    assert "--property=ExecMainPID" in text
+    assert 'ps -o uid= -p "$main_pid"' in text
+    for property_value in (
+        "NoNewPrivileges=yes",
+        "ProtectSystem=strict",
+        "PrivateUsers=yes",
+        "MemoryDenyWriteExecute=yes",
+        "CapabilityBoundingSet=",
+    ):
+        assert property_value in text
+
+
+def _write_registry_binding_fixture(
+    tmp_path: Path,
+) -> tuple[str, str, Path, Path, Path]:
+    target_sha = "a" * 40
+    run_id = "123456"
+    manifest_path = tmp_path / "server.json"
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    run_path = tmp_path / "run.json"
+    run_path.write_text(
+        json.dumps(
+            {
+                "id": int(run_id),
+                "event": "workflow_dispatch",
+                "status": "completed",
+                "conclusion": "success",
+                "head_branch": "main",
+                "head_sha": target_sha,
+                "path": ".github/workflows/deploy-mcp.yml",
+                "repository": {"full_name": "beepboop2025/palimpsest"},
+                "head_repository": {"full_name": "beepboop2025/palimpsest"},
+                "run_attempt": 2,
+            }
+        ),
+        encoding="utf-8",
+    )
+    receipt_path = tmp_path / "deployment-receipt.json"
+    receipt_path.write_text(
+        json.dumps(
+            {
+                "schema": "palimpsest.mcp-deployment-receipt.v1",
+                "repository": "beepboop2025/palimpsest",
+                "workflow": ".github/workflows/deploy-mcp.yml",
+                "workflow_run_id": int(run_id),
+                "workflow_run_attempt": 2,
+                "target_sha": target_sha,
+                "server_version": manifest["version"],
+                "public_mcp_url": "https://api.seiche.info/palimpsest/mcp",
+                "forced_command_deploy": "passed",
+                "public_smoke": "passed",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return target_sha, run_id, manifest_path, run_path, receipt_path
+
+
+def test_registry_verifier_binds_exact_successful_deploy_receipt(
+    tmp_path: Path,
+) -> None:
+    target_sha, run_id, manifest, run, receipt = _write_registry_binding_fixture(
+        tmp_path
+    )
+    result = registry_verifier.verify_deployment_binding(
+        receipt_path=receipt,
+        run_path=run,
+        manifest_path=manifest,
+        target_sha=target_sha,
+        deploy_run_id=run_id,
+        repository="beepboop2025/palimpsest",
+    )
+    assert result == {
+        "target_sha": target_sha,
+        "server_version": "1.9.0",
+        "deploy_run_id": int(run_id),
+        "deploy_run_attempt": 2,
+    }
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "field", "value", "message"),
+    [
+        ("run", "head_sha", "b" * 40, "head SHA"),
+        ("run", "conclusion", "failure", "did not succeed"),
+        ("receipt", "server_version", "1.8.1", "version drifted"),
+        ("receipt", "public_smoke", "failed", "public smoke"),
+    ],
+)
+def test_registry_verifier_rejects_unbound_or_failed_deployments(
+    tmp_path: Path,
+    fixture_name: str,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    target_sha, run_id, manifest, run, receipt = _write_registry_binding_fixture(
+        tmp_path
+    )
+    path = run if fixture_name == "run" else receipt
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload[field] = value
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(registry_verifier.RegistryReleaseError, match=message):
+        registry_verifier.verify_deployment_binding(
+            receipt_path=receipt,
+            run_path=run,
+            manifest_path=manifest,
+            target_sha=target_sha,
+            deploy_run_id=run_id,
+            repository="beepboop2025/palimpsest",
+        )
+
+
+def test_registry_verifier_requires_exact_active_latest_server_card(
+    tmp_path: Path,
+) -> None:
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    manifest_path = tmp_path / "server.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    registry_path = tmp_path / "registry.json"
+    registry_payload = {
+        "server": manifest,
+        "_meta": {
+            "io.modelcontextprotocol.registry/official": {
+                "status": "active",
+                "isLatest": True,
+            }
+        },
+    }
+    registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
+    result = registry_verifier.verify_published_registry(
+        registry_path=registry_path,
+        manifest_path=manifest_path,
+    )
+    assert result["version"] == "1.9.0"
+    registry_payload["server"]["version"] = "1.8.1"
+    registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
+    with pytest.raises(registry_verifier.RegistryReleaseError, match="differs"):
+        registry_verifier.verify_published_registry(
+            registry_path=registry_path,
+            manifest_path=manifest_path,
+        )
+
+
+def test_registry_workflow_is_sha_receipt_and_post_publish_bound() -> None:
+    text = REGISTRY_WORKFLOW.read_text(encoding="utf-8")
+    for needle in (
+        "target_sha:",
+        "deploy_run_id:",
+        "ref: ${{ inputs.target_sha }}",
+        "persist-credentials: false",
+        'test "$GITHUB_REF" = refs/heads/main',
+        'test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"',
+        'test -z "$(git status --porcelain)"',
+        "actions: read",
+        'gh run download "$DEPLOY_RUN_ID"',
+        "-run-${DEPLOY_RUN_ID}-attempt-${run_attempt}",
+        "verify_registry_release.py deployment",
+        "scripts/smoke_palimpsest_mcp.py",
+        '"$publisher" validate',
+        '"$publisher" publish',
+        "verify_registry_release.py published",
+        "REGISTRY_LATEST_URL",
+        'MCP_PUBLISHER_VERSION: "1.8.1"',
+        'MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"',
+    ):
+        assert needle in text
+    assert "id-token: write" in text
+    assert "PALIMPSEST_MCP_DEPLOY_KEY" not in text

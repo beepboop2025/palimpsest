@@ -1,48 +1,149 @@
-name: Publish to MCP Registry
+name: Publish deployed Palimpsest MCP to Registry
 
-# The official MCP Registry authenticates this repo's identity through
-# GitHub's OIDC token (mcp-publisher login github-oidc), so no secret is
-# created, stored or pasted anywhere. Publishes whatever version the
-# committed server.json carries. PulseMCP re-ingests the official registry
-# weekly and Glama syncs connectors from it, so landing here propagates to
-# those directories for free.
-#
-# The publisher binary is version-pinned and sha256-verified: this job
-# holds an OIDC id-token, so executing an unpinned "latest" download here
-# would hand namespace publish rights to whoever controls the next
-# release. Bump the version and hash together, from
-# registry_<ver>_checksums.txt on the release.
-#
-# Run it with: gh workflow run registry-publish.yml
-
+# Registry publication is a separate, SHA-addressed release transaction. The
+# selected commit must still be the exact origin/main tip and must have a receipt
+# artifact from a successful deploy-mcp run for the same SHA and server version.
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact deployed current-main SHA to publish
+        required: true
+        type: string
+      deploy_run_id:
+        description: Successful deploy-mcp workflow run carrying the matching receipt
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: palimpsest-mcp-registry
+  cancel-in-progress: false
+
 env:
-  MCP_PUBLISHER_VERSION: "1.8.0"
-  MCP_PUBLISHER_SHA256: "1370446bbe74d562608e8005a6ccce02d146a661fbd78674e11cc70b9618d6cf"
+  MCP_PUBLISHER_VERSION: "1.8.1"
+  MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
+  PUBLIC_MCP_URL: https://api.seiche.info/palimpsest/mcp
+  REGISTRY_LATEST_URL: https://registry.modelcontextprotocol.io/v0.1/servers/io.github.beepboop2025%2Fpalimpsest/versions/latest
 
 jobs:
   mcp-registry:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
-      id-token: write
+      actions: read
       contents: read
+      id-token: write
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 0
+          persist-credentials: false
 
-      - name: Install mcp-publisher (pinned + checksum-verified)
+      - name: Bind publication to exact clean current main
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
         run: |
-          curl -sSLo mcp-publisher.tar.gz \
+          set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          timeout --kill-after=5s 120s \
+            git fetch --force --no-tags origin \
+              '+refs/heads/main:refs/remotes/origin/main'
+          test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain)"
+
+      - name: Prove successful deployment run and matching receipt
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          DEPLOY_RUN_ID: ${{ inputs.deploy_run_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          run_json="$RUNNER_TEMP/deploy-run.json"
+          curl --disable --fail --silent --show-error \
+            --proto '=https' --tlsv1.2 --max-time 20 --max-filesize 1048576 \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${DEPLOY_RUN_ID}" \
+            --output "$run_json"
+          run_attempt=$(python3 -c \
+            'import json,sys; value=json.load(open(sys.argv[1], encoding="utf-8"))["run_attempt"]; assert type(value) is int and value >= 1; print(value)' \
+            "$run_json")
+          receipt_dir="$RUNNER_TEMP/deployment-receipt"
+          install -d -m 0700 "$receipt_dir"
+          gh run download "$DEPLOY_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "palimpsest-mcp-deployment-${TARGET_SHA}-run-${DEPLOY_RUN_ID}-attempt-${run_attempt}" \
+            --dir "$receipt_dir"
+          python3 ops/mcp-deploy/verify_registry_release.py deployment \
+            --receipt "$receipt_dir/deployment-receipt.json" \
+            --run-json "$run_json" \
+            --manifest server.json \
+            --target-sha "$TARGET_SHA" \
+            --deploy-run-id "$DEPLOY_RUN_ID" \
+            --repository "$GITHUB_REPOSITORY"
+          test -z "$(git status --porcelain)"
+
+      - name: Re-probe the deployed public endpoint
+        run: |
+          set -euo pipefail
+          python3 scripts/smoke_palimpsest_mcp.py \
+            --url "$PUBLIC_MCP_URL" \
+            --module mcp/palimpsest_mcp.py \
+            --manifest server.json \
+            --timeout 20
+          test -z "$(git status --porcelain)"
+
+      - name: Install checksum-pinned mcp-publisher
+        run: |
+          set -euo pipefail
+          publisher_dir="$RUNNER_TEMP/mcp-publisher"
+          install -d -m 0700 "$publisher_dir"
+          curl --disable --fail --silent --show-error --location \
+            --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 60 \
+            --output "$publisher_dir/mcp-publisher.tar.gz" \
             "https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
-          echo "${MCP_PUBLISHER_SHA256}  mcp-publisher.tar.gz" | sha256sum -c -
-          tar xzf mcp-publisher.tar.gz mcp-publisher
-          chmod +x mcp-publisher
+          printf '%s  %s\n' "$MCP_PUBLISHER_SHA256" \
+            "$publisher_dir/mcp-publisher.tar.gz" | sha256sum --check --strict -
+          tar xzf "$publisher_dir/mcp-publisher.tar.gz" \
+            -C "$publisher_dir" mcp-publisher
+          chmod 0500 "$publisher_dir/mcp-publisher"
+          printf 'publisher=%s\n' "$publisher_dir/mcp-publisher" >>"$GITHUB_ENV"
+          test -z "$(git status --porcelain)"
 
-      - name: Authenticate by OIDC and publish
+      - name: Authenticate by OIDC and publish exact manifest
         run: |
-          ./mcp-publisher login github-oidc
-          ./mcp-publisher publish
+          set -euo pipefail
+          "$publisher" validate
+          "$publisher" login github-oidc
+          "$publisher" publish
+          test -z "$(git status --porcelain)"
+
+      - name: Verify official Registry version and exact server card
+        run: |
+          set -euo pipefail
+          registry_json="$RUNNER_TEMP/registry-latest.json"
+          for attempt in $(seq 1 12); do
+            if curl --disable --fail --silent --show-error --location \
+              --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 20 \
+              --header 'Accept: application/json' \
+              --header 'Cache-Control: no-cache' \
+              "$REGISTRY_LATEST_URL" --output "$registry_json" && \
+              python3 ops/mcp-deploy/verify_registry_release.py published \
+                --registry-json "$registry_json" --manifest server.json; then
+              break
+            fi
+            if [[ "$attempt" = 12 ]]; then
+              echo 'official Registry did not converge to the published version' >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          test -z "$(git status --porcelain)"

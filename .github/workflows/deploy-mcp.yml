@@ -80,6 +80,7 @@ jobs:
           bash -n ops/mcp-deploy/palimpsest-mcp-deploy-wrapper.sh
           python3 -m py_compile \
             ops/mcp-deploy/verify_release.py \
+            ops/mcp-deploy/verify_registry_release.py \
             scripts/smoke_palimpsest_mcp.py
           python3 ops/mcp-deploy/verify_release.py \
             --module mcp/palimpsest_mcp.py \
@@ -179,3 +180,43 @@ jobs:
           printf 'public release verified: %s version %s\n' \
             '${{ needs.verify.outputs.target_sha }}' \
             '${{ needs.verify.outputs.version }}'
+
+      - name: Record immutable deployment receipt
+        env:
+          TARGET_SHA: ${{ needs.verify.outputs.target_sha }}
+          SERVER_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          receipt_dir="$RUNNER_TEMP/palimpsest-mcp-deployment-receipt"
+          install -d -m 0700 "$receipt_dir"
+          python3 - "$receipt_dir/deployment-receipt.json" <<'PY'
+          import json
+          import os
+          import sys
+
+          receipt = {
+              "schema": "palimpsest.mcp-deployment-receipt.v1",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow": ".github/workflows/deploy-mcp.yml",
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "target_sha": os.environ["TARGET_SHA"],
+              "server_version": os.environ["SERVER_VERSION"],
+              "public_mcp_url": os.environ["PUBLIC_MCP_URL"],
+              "forced_command_deploy": "passed",
+              "public_smoke": "passed",
+          }
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump(receipt, handle, sort_keys=True, separators=(",", ":"))
+              handle.write("\n")
+          PY
+          chmod 0400 "$receipt_dir/deployment-receipt.json"
+
+      - name: Upload immutable deployment receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: palimpsest-mcp-deployment-${{ needs.verify.outputs.target_sha }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/palimpsest-mcp-deployment-receipt/deployment-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

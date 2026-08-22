@@ -74,20 +74,99 @@ cannot bootstrap or broaden its own authority.
      /usr/local/libexec/palimpsest-mcp-smoke.py
    ```
 
-3. Preserve the existing runtime until its current source commit is known. Then
-   install the reviewed unit, confirm the diff, reload systemd, and run the local
-   smoke. Do not write `deployed-sha` by hand; the first successful controlled
-   release creates it.
+3. Preserve the existing runtime until its current source commit is known. The
+   pre-controller runtime is version 1.8.1 from exact core commit
+   `2a80981815680006f3daf7caf503a125d6299c3c`. Extract that commit's exact
+   `server.json` from the root-owned mirror and run the compatibility smoke with
+   `--basic` before changing the service. This proves the old runtime against its
+   own discovery contract without asking it for the later `interconnection`
+   call.
+
+   Installing new unit bytes does not replace an already-active legacy process:
+   `enable --now` can leave its root-owned PID running. Install and reload the
+   reviewed unit, explicitly restart the service, then prove the effective unit,
+   PID owner, service identity, and hardening properties. Repeat the 1.8.1 basic
+   smoke after the restart. Do not write `deployed-sha` by hand; the first
+   successful controlled release creates it.
 
    ```bash
-   sudo install -o root -g root -m 0644 ops/systemd/palimpsest-mcp.service \
-     /etc/systemd/system/palimpsest-mcp.service
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now palimpsest-mcp.service
-   sudo /usr/local/libexec/palimpsest-mcp-smoke.py \
-     --url http://127.0.0.1:8793/ --allow-http-loopback \
-     --module /opt/palimpsest-mcp/palimpsest_mcp.py \
-     --manifest /path/to/the-matching-reviewed/server.json
+   (
+     set -euo pipefail
+     readonly legacy_sha=2a80981815680006f3daf7caf503a125d6299c3c
+     legacy_manifest=$(mktemp /tmp/palimpsest-mcp-1.8.1-server.XXXXXX)
+     trap 'rm -f -- "$legacy_manifest"' EXIT
+
+     test "$(sudo git --git-dir=/var/lib/palimpsest-mcp-deploy/repository.git \
+       rev-parse --verify "${legacy_sha}^{commit}")" = "$legacy_sha"
+     sudo git --git-dir=/var/lib/palimpsest-mcp-deploy/repository.git \
+       show "${legacy_sha}:server.json" >"$legacy_manifest"
+     chmod 0444 "$legacy_manifest"
+     test "$(python3 -c \
+       'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["version"])' \
+       "$legacy_manifest")" = 1.8.1
+     sudo timeout --kill-after=5s 90s \
+       runuser --user palimpsest-mcp-verify -- \
+       env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+       /usr/local/libexec/palimpsest-mcp-smoke.py \
+       --url http://127.0.0.1:8793/ --allow-http-loopback \
+       --module /opt/palimpsest-mcp/palimpsest_mcp.py \
+       --manifest "$legacy_manifest" --basic
+
+     sudo install -o root -g root -m 0644 ops/systemd/palimpsest-mcp.service \
+       /etc/systemd/system/palimpsest-mcp.service
+     sudo systemctl daemon-reload
+     sudo systemctl enable palimpsest-mcp.service
+     sudo systemctl restart palimpsest-mcp.service
+     sudo systemctl is-active --quiet palimpsest-mcp.service
+     test "$(sudo systemctl show --property=FragmentPath --value \
+       palimpsest-mcp.service)" = /etc/systemd/system/palimpsest-mcp.service
+     test "$(sudo systemctl show --property=NeedDaemonReload --value \
+       palimpsest-mcp.service)" = no
+     test -z "$(sudo systemctl show --property=DropInPaths --value \
+       palimpsest-mcp.service)"
+     test "$(sudo systemctl show --property=User --value \
+       palimpsest-mcp.service)" = palimpsest-mcp
+     test "$(sudo systemctl show --property=Group --value \
+       palimpsest-mcp.service)" = palimpsest-mcp
+
+     main_pid=$(sudo systemctl show --property=MainPID --value \
+       palimpsest-mcp.service)
+     exec_main_pid=$(sudo systemctl show --property=ExecMainPID --value \
+       palimpsest-mcp.service)
+     [[ "$main_pid" =~ ^[1-9][0-9]*$ ]]
+     test "$exec_main_pid" = "$main_pid"
+     test "$(sudo ps -o uid= -p "$main_pid" | tr -d '[:space:]')" = \
+       "$(id -u palimpsest-mcp)"
+
+     for property_expected in \
+       NoNewPrivileges=yes \
+       ProtectSystem=strict \
+       PrivateDevices=yes \
+       PrivateTmp=yes \
+       PrivateUsers=yes \
+       ProtectHome=yes \
+       ProtectKernelTunables=yes \
+       RestrictSUIDSGID=yes \
+       LockPersonality=yes \
+       MemoryDenyWriteExecute=yes \
+       RemoveIPC=yes \
+       CapabilityBoundingSet= \
+       AmbientCapabilities=; do
+       property=${property_expected%%=*}
+       expected=${property_expected#*=}
+       actual=$(sudo systemctl show --property="$property" --value \
+         palimpsest-mcp.service)
+       test "$actual" = "$expected"
+     done
+
+     sudo timeout --kill-after=5s 90s \
+       runuser --user palimpsest-mcp-verify -- \
+       env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+       /usr/local/libexec/palimpsest-mcp-smoke.py \
+       --url http://127.0.0.1:8793/ --allow-http-loopback \
+       --module /opt/palimpsest-mcp/palimpsest_mcp.py \
+       --manifest "$legacy_manifest" --basic
+   )
    ```
 
 4. Put a dedicated Ed25519 public key in root's `authorized_keys`, restricted to
@@ -130,6 +209,20 @@ sudo cat /var/lib/palimpsest-mcp-deploy/deployed-sha
 sudo cat /var/lib/palimpsest-mcp-deploy/receipts/<target-sha>.json
 ```
 
-Only after the live SHA, version, discovery, and calls are verified should the
-separate `registry-publish.yml` workflow be considered. A successful runtime
+The successful deploy run uploads a non-secret artifact named
+`palimpsest-mcp-deployment-<target-sha>-run-<run-id>-attempt-<attempt>`. It binds
+the exact SHA, run attempt, and server version to the forced-command deployment
+and public smoke. Only after the live SHA, version, discovery, calls, and
+artifact are verified should the separate Registry transaction run:
+
+```bash
+gh workflow run registry-publish.yml \
+  -f target_sha=<40-character-current-main-SHA> \
+  -f deploy_run_id=<successful-deploy-mcp-run-id>
+```
+
+The Registry workflow checks out that exact current `origin/main`, requires a
+clean tree, validates the selected successful deployment run and its receipt,
+repeats the public smoke, publishes, then polls the official Registry until the
+latest active record exactly matches `server.json`. A successful runtime
 deployment is not an MCP Registry publication, and vice versa.
