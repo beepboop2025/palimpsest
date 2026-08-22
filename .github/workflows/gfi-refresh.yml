@@ -159,6 +159,9 @@ jobs:
             test -e "$p" || { echo "FATAL: expected GFI artifact is missing: $p"; exit 1; }
             git add "$p"
           done
+          # Sealing rewrites the per-reading analysis receipts as one atomic graph.
+          # Stage the generated trees, not a filename snapshot that can drift.
+          git add -A -- readings news evals journal datapackage.json
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
@@ -182,7 +185,10 @@ jobs:
           for attempt in 1 2 3 4; do
             echo "GFI publication retry $attempt/4: retaining responses, rebuilding seals"
             git fetch origin main
-            git switch --detach origin/main
+            # This is an ephemeral Actions checkout. A rejected candidate can
+            # leave generated residue, so every retry starts at the public base.
+            git reset --hard origin/main
+            git clean -fd
             for p in readings/latest.json \
                      readings/history.jsonl \
                      readings/generative-firewall-index.html \
@@ -269,6 +275,7 @@ jobs:
                      journal/ ; do
               git add "$p"
             done
+            git add -A -- readings news evals journal datapackage.json
             if git diff --cached --quiet; then
               echo "the current public head already contains these measured bytes"
               exit 0

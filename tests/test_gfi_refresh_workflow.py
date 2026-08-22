@@ -82,5 +82,8 @@ def test_push_race_reseals_responses_without_requerying_models():
     assert "python -m scripts.ingest_gfi_v2" in retry
     assert "generative_firewall_reading.py" not in retry
     assert "for attempt in 1 2 3 4; do" in retry
+    assert "git reset --hard origin/main" in retry
+    assert "git clean -fd" in retry
+    assert text.count("git add -A -- readings news evals journal datapackage.json") == 2
     assert "FATAL: GFI publication exhausted four verified reseal retries" in retry
     assert "--force" not in text
