@@ -319,7 +319,6 @@ PENDING = {
     "public-hot-boards",
     "telegram-public-channels",
     "social-spread",
-    "weibo-hotsearch-terms",
     "public-board-terms",
     "ooni-peer-context",
     "cdt-context",

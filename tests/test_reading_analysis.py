@@ -62,6 +62,7 @@ def test_every_committed_public_history_is_registered():
     assert "peer-context-history.jsonl" not in names
     assert "weekly-situation-history.jsonl" not in names
     assert "collector-health-history.jsonl" not in names
+    assert "weibo-hotsearch-terms-history.jsonl" not in names
     assert LIVE_INVENTORY["common_crawl_lake"]["observations"] == 270664
     assert LIVE_INVENTORY["common_crawl_lake"]["unique_urls"] == 268254
     assert LIVE_INVENTORY["common_crawl_lake"]["mutated_urls"] == 0

@@ -341,7 +341,8 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # consumes this roll-up and therefore cannot be fed back into it; live-watch and
 # rumour-board are public-vantage coverage receipts, not OSINT China measurements;
 # weekly-situation, collector-health and gazetteer-phylogeny are derived fusion and
-# ops surfaces over inputs already counted here; and the remaining files are generic
+# ops surfaces over inputs already counted here; weibo-hotsearch-terms is the
+# title-union dump of the already-counted hot-search board; and the remaining files are generic
 # model evaluation surfaces. Research-corpus metadata is a first-party China-adjacent
 # input and is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset({
@@ -385,6 +386,7 @@ EXCLUDED_LATEST_FILES = frozenset({
     "weekly-situation-latest.json",
     "collector-health-latest.json",
     "gazetteer-phylogeny-latest.json",
+    "weibo-hotsearch-terms-latest.json",
 })
 
 

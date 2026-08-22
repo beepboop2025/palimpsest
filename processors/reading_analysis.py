@@ -620,6 +620,7 @@ def list_public_history_files(readings_dir: Path | str) -> list[str]:
         "peer-context-history.jsonl",
         "weekly-situation-history.jsonl",
         "collector-health-history.jsonl",
+        "weibo-hotsearch-terms-history.jsonl",
     }
     for path in sorted(root.glob("*-history.jsonl")):
         if path.name in skip:

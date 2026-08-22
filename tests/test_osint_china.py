@@ -148,6 +148,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "weekly-situation-latest.json",
         "collector-health-latest.json",
         "gazetteer-phylogeny-latest.json",
+        "weibo-hotsearch-terms-latest.json",
     }
 
 
