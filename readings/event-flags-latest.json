@@ -1,28 +1,28 @@
 {
-  "generated_at": "2026-08-22T13:20:05.857919+00:00",
+  "generated_at": "2026-08-22T19:06:16.242031+00:00",
   "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
   "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "stat": 4.4793,
-      "n": 176,
+      "stat": 2.8102,
+      "n": 177,
       "n_alarms_in_history": 2,
       "age_hours": 0.2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "stat": 3.0495,
-      "n": 340,
+      "stat": 3.8223,
+      "n": 342,
       "n_alarms_in_history": 4,
       "age_hours": 0.3,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "stat": 6.058,
-      "n": 340,
+      "stat": 5.4362,
+      "n": 342,
       "n_alarms_in_history": 3,
       "age_hours": 0.3,
       "meaning": "newly-sensitive terms entering the deletion stream"
@@ -32,15 +32,15 @@
       "stat": 0.0,
       "n": 30,
       "n_alarms_in_history": 1,
-      "age_hours": 7.4,
+      "age_hours": 13.1,
       "meaning": "remote-vantage interference rate"
     },
     "gdelt_containment": {
       "state": "calm",
-      "stat": 2.606,
-      "n": 186,
+      "stat": 2.3788,
+      "n": 187,
       "n_alarms_in_history": 0,
-      "age_hours": 5.9,
+      "age_hours": 5.7,
       "meaning": "terms loud abroad while censored at home"
     },
     "github_refuge": {
@@ -48,7 +48,7 @@
       "stat": 2.2517,
       "n": 93,
       "n_alarms_in_history": 0,
-      "age_hours": 0.2,
+      "age_hours": 5.9,
       "meaning": "takedown/pressure events on refuge repositories"
     },
     "refusal_drift": {
@@ -61,16 +61,16 @@
       "state": "stale",
       "n": 1,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
-      "age_hours": 226.9,
+      "age_hours": 232.7,
       "bound_hours": 168.0,
-      "reason": "newest row is 226.9h old, past the 168h bound"
+      "reason": "newest row is 232.7h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "calm",
       "stat": 1.2705,
       "n": 9,
       "n_alarms_in_history": 0,
-      "age_hours": 12.4,
+      "age_hours": 18.1,
       "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity"
     },
     "tor_bridge_cn": {
@@ -78,21 +78,21 @@
       "stat": 5.555,
       "n": 408,
       "n_alarms_in_history": 6,
-      "age_hours": 85.3,
+      "age_hours": 91.1,
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
       "state": "calm",
       "stat": 1.0,
-      "n": 128,
+      "n": 133,
       "n_alarms_in_history": 0,
-      "age_hours": 0.0,
+      "age_hours": 0.2,
       "meaning": "DDTI terms deleted AND denied hot-search attention at once"
     },
     "ioda_outages": {
       "state": "calm",
       "stat": 1.0,
-      "n": 133,
+      "n": 134,
       "n_alarms_in_history": 0,
       "age_hours": 0.2,
       "meaning": "shutdown-scale connectivity events detected by IODA's instruments"
@@ -102,7 +102,7 @@
       "stat": 16.0309,
       "n": 16,
       "n_alarms_in_history": 0,
-      "age_hours": 13.3,
+      "age_hours": 19.1,
       "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)"
     },
     "silence_blackouts": {
@@ -157,7 +157,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 11.6,
+      "age_hours": 17.3,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 10 of 21 adjacent-run pairs"
