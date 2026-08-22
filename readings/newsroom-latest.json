@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 29 are live. Health qualifiers: 3 degraded, 7 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 30 are live. Health qualifiers: 3 degraded, 6 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-22T21:02:12Z",
+  "generated_at": "2026-08-22T21:22:09Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "5c4d8b6f9c5f0efac43a17744107a2dc0b684265",
+  "source_commit": "05791727748400b1a5cf3b782c62ad81f659fbfd",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 29,
+    "live": 30,
     "status": "degraded",
     "counts": {
-      "live": 29,
+      "live": 30,
       "degraded": 3,
-      "stale": 7,
+      "stale": 6,
       "missing": 0,
       "corrupt": 0
     }
@@ -661,8 +661,8 @@
       "type": "measurement",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-22T19:08:00Z",
-      "modified_at": "2026-08-22T19:08:00Z",
+      "published_at": "2026-08-22T21:08:00Z",
+      "modified_at": "2026-08-22T21:08:00Z",
       "claim_fingerprint": "sha256:b127fe694f82db95b4f4134d88b79c63c69835d2faf69bb0e25a235983cfcf2f",
       "metric": {
         "label": "ledger observations",
@@ -683,10 +683,10 @@
         "url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
         "input": {
           "filename": "public-deletion-ledgers-latest.json",
-          "sha256": "8447428ae9a23ba04a24add94de10e009c5d488229f323e2d508d59b869b2cbe",
+          "sha256": "2a56594e44d2f1bf5e8068b0f8cb0bf69b18c464038f0848c52e75e0945f59f2",
           "bytes": 65782
         },
-        "source_timestamp": "2026-08-22T19:08:00Z"
+        "source_timestamp": "2026-08-22T21:08:00Z"
       },
       "method": {
         "summary": "Keyless RSS/Atom ingest through collectors.feed_parse.parse_feed_items and core.safe_fetch; each feed is a candidate and reports its own reachability.",
@@ -713,8 +713,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-22T19:09:26Z",
-      "modified_at": "2026-08-22T19:09:26Z",
+      "published_at": "2026-08-22T21:08:00Z",
+      "modified_at": "2026-08-22T21:08:00Z",
       "claim_fingerprint": "sha256:f73c954f58480014687a79f2a52f1270c3d81ea99732b6fc88f807879bd9afdd",
       "metric": {
         "label": "observations",
@@ -735,10 +735,10 @@
         "url": "https://palimpsest.info/readings/undertext-latest.json",
         "input": {
           "filename": "undertext-latest.json",
-          "sha256": "98cb6af20c28361bd29fd354ebfbde6bd6b0a40711a7e08922fb7e4c153a2e3b",
+          "sha256": "fbadecdc3aa405b7624fbed1808809bbdd1cd8305ecd39252143ea815ff544df",
           "bytes": 8463264
         },
-        "source_timestamp": "2026-08-22T19:09:26Z"
+        "source_timestamp": "2026-08-22T21:08:00Z"
       },
       "method": {
         "summary": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
@@ -2059,20 +2059,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "Private runtime bridge: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The sanitized intelligence bridge ranks 192 aggregate topics",
+      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "stale",
-      "published_at": "2026-08-22T19:59:16Z",
-      "modified_at": "2026-08-22T19:59:16Z",
-      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
+      "status": "live",
+      "published_at": "2026-08-22T21:14:16Z",
+      "modified_at": "2026-08-22T21:14:16Z",
+      "claim_fingerprint": "sha256:fdf7e3ab9fb97dd3cad85be81aebdbf920c1ba67c67d71957e915c9dcafe9030",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "topics ranked",
+        "value": 192,
+        "unit": "count",
         "denominator": {
           "label": null,
           "value": null
@@ -2080,25 +2080,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
+          "type": "observation",
+          "statement": "The current sanitized optional export contains 192 ranked aggregate topics."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "2807c7da2021fd52d03f11b66f748f4c036c4483423e451cc36e2b4259779900",
+          "sha256": "7c9ebec8204998488e57119ce9987bfef8e706e7cfc8a3f3e3c6a2c98c972236",
           "bytes": 170449
         },
-        "source_timestamp": "2026-08-22T19:59:16Z"
+        "source_timestamp": "2026-08-22T21:14:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",
         "version": "nemesis-public-v2"
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [
