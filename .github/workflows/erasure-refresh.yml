@@ -1,11 +1,10 @@
 name: Refresh Information Erasure Observatory
 
-# The unifying signal. Reads the latest per-surface readings (OONI GFW network
-# layer, Generative Firewall model layer, Baike redaction narrative layer when
-# present), seals each raw reading into the tamper-evident ledger at capture
-# time, and publishes the composite Erasure Index plus the ledger's integrity
-# proof. Re-measures nothing; stdlib-only, key-less, vantage-insensitive. Runs
-# after the per-surface signals so it seals fresh readings.
+# The unifying publication lane. It reads the latest OONI/GFI/Baike surface
+# readings, runs the keyed frontier refusal-drift audit when configured, seals the
+# evidence into the tamper-evident ledgers, and publishes the composite Erasure
+# Index plus integrity proofs. The aggregate builder itself is key-less and does
+# not re-measure its inputs; this workflow also owns the paid model observation.
 
 on:
   schedule:
@@ -16,7 +15,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: erasure-refresh
+  # GFI and erasure both append to the same eval registry. A shared writer lane
+  # prevents the known workflows from producing competing registry tails.
+  group: eval-registry-writer
   cancel-in-progress: false
 
 jobs:
@@ -95,6 +96,22 @@ jobs:
         run: |
           python -m scripts.verify_refusal_transcripts || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
+
+      - name: Retain the paid refusal measurement for publication recovery
+        # Publication and anchoring happen after several shared-chain gates. Keep the
+        # expensive source observation briefly so an infrastructure failure does not
+        # force the same model calls to be purchased again. These are public evidence
+        # artifacts, not credentials; the recovery script still validates every byte.
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: refusal-drift-measurement-${{ github.run_id }}
+          path: |
+            readings/refusal-drift-latest.json
+            readings/refusal-drift-history.jsonl
+            readings/refusal-drift-transcripts.json
+            readings/refusal-drift-churn.jsonl
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Verify any published GFI v2 transcripts and rebuild eval assurance
         run: |
@@ -207,8 +224,13 @@ jobs:
             if [ "$previous_base" = "$current_base" ]; then
               echo "rebuild=false" >> "$GITHUB_OUTPUT"
             else
+              # A shared chain is not a mergeable generated file. Preserve the new
+              # public registry head, then re-attest this run's retained measurement
+              # onto it in the rebuild step below.
               git restore --source=origin/main --staged --worktree \
-                readings/readings-ledger.jsonl
+                readings/readings-ledger.jsonl \
+                readings/eval-registry.jsonl \
+                readings/eval-registry-latest.json
               echo "rebuild=true" >> "$GITHUB_OUTPUT"
             fi
             echo "recreate=false" >> "$GITHUB_OUTPUT"
@@ -222,8 +244,6 @@ jobs:
                      readings/baike-redaction-history.jsonl \
                      readings/baike-public-snapshot-latest.json \
                      readings/baike-public-snapshot-history.jsonl \
-                     readings/eval-registry.jsonl \
-                     readings/eval-registry-latest.json \
                      readings/refusal-drift-latest.json \
                      readings/refusal-drift-history.jsonl \
                      readings/refusal-drift-transcripts.json \
@@ -239,6 +259,8 @@ jobs:
       - name: Rebuild the aggregate and shared seal after an input change
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
+          python -m scripts.eval_registry_ingest
+          python -m scripts.ingest_refusal_drift
           python -m scripts.erasure_pull
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
@@ -327,7 +349,7 @@ jobs:
         continue-on-error: true
         run: python scripts/push_data_commit.py --base-locked
 
-      - name: Recollect, reverify, and retry after a push race
+      - name: Reattest, reverify, and retry after a push race
         if: steps.push_attempt.outcome == 'failure'
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
@@ -341,13 +363,13 @@ jobs:
             git switch --detach origin/main
 
             # Carry forward only this run's measured/model artifacts. Aggregates,
-            # shared seals, and anchors stay at origin/main until rebuilt below.
+            # shared registries, derived seals, and anchors stay at origin/main until
+            # rebuilt below. In particular, never replace a newer GFI registry tail
+            # with the stale fork that happened to contain this refusal measurement.
             for p in readings/baike-redaction-latest.json \
                      readings/baike-redaction-history.jsonl \
                      readings/baike-public-snapshot-latest.json \
                      readings/baike-public-snapshot-history.jsonl \
-                     readings/eval-registry.jsonl \
-                     readings/eval-registry-latest.json \
                      readings/refusal-drift-latest.json \
                      readings/refusal-drift-history.jsonl \
                      readings/refusal-drift-transcripts.json \
@@ -357,6 +379,8 @@ jobs:
               fi
             done
 
+            python -m scripts.eval_registry_ingest
+            python -m scripts.ingest_refusal_drift
             python -m scripts.erasure_pull
             python -m scripts.build_eval_assurance
             python -m scripts.build_eval_journal

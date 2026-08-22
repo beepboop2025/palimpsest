@@ -15,7 +15,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: gfi-refresh
+  # GFI and erasure both append to the same eval registry. Keep one hosted writer
+  # active at a time; the base-locked reseal paths still defend against other writers.
+  group: eval-registry-writer
   cancel-in-progress: false
 
 jobs:
