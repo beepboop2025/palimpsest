@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-21T19:16:17.449091+00:00",
+  "generated_at": "2026-08-22T02:07:54.748487+00:00",
   "signals": {
     "ooni_gfw": {
       "n_pairs": 174,
@@ -13,10 +13,10 @@
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 334,
-      "metric_now": 1.0064,
+      "n_pairs": 336,
+      "metric_now": 0.9109,
       "denominator_now": 211.0,
-      "metric_robust_z": -0.64,
+      "metric_robust_z": -0.74,
       "denominator_robust_z": 1.31,
       "denominator_change_pct": 21.3,
       "verdict": "NO_MOVE",
@@ -24,26 +24,26 @@
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 334,
+      "n_pairs": 336,
       "metric_now": 117.0,
       "denominator_now": 211.0,
       "metric_robust_z": 59.36,
       "denominator_robust_z": 1.31,
       "denominator_change_pct": 21.3,
       "fit": {
-        "slope": -0.024902,
-        "intercept": 30.8249,
-        "correlation": -0.028
+        "slope": 0.012733,
+        "intercept": 24.5937,
+        "correlation": 0.013
       },
       "verdict": "CONFIRMED",
-      "note": "the measurement base does not track this metric historically (r=-0.03), so coverage does not explain the move",
+      "note": "the measurement base does not track this metric historically (r=0.01), so coverage does not explain the move",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 183,
-      "metric_now": 4.0,
+      "n_pairs": 184,
+      "metric_now": 3.0,
       "denominator_now": 25.0,
-      "metric_robust_z": -0.34,
+      "metric_robust_z": -0.67,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -79,7 +79,7 @@
       "denominator_is": "DDTI terms available to join against the hot-search board"
     },
     "github_refuge": {
-      "n_pairs": 91,
+      "n_pairs": 92,
       "metric_now": 2.0,
       "denominator_now": 7.0,
       "metric_robust_z": 0.67,
