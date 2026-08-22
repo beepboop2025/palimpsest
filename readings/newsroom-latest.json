@@ -2,24 +2,24 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 35 of 39 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 4 missing.",
+  "headline": "Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 32 are live. Health qualifiers: 3 degraded, 4 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-22T09:47:32Z",
+  "generated_at": "2026-08-22T11:25:23Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "1456e1668baa6b1cccadf588544b07592f40cf94",
+  "source_commit": "2735bd786030537549a9b929ec810daec5aab78e",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
-    "reporting": 35,
-    "live": 27,
+    "reporting": 39,
+    "live": 32,
     "status": "degraded",
     "counts": {
-      "live": 27,
+      "live": 32,
       "degraded": 3,
-      "stale": 5,
-      "missing": 4,
+      "stale": 4,
+      "missing": 0,
       "corrupt": 0
     }
   },
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-22T07:23:38Z",
       "modified_at": "2026-08-22T07:23:38Z",
-      "claim_fingerprint": "sha256:faf31dc72cda4d01c9dbbe39a2a0ff8bd9630297120d988703098440205fd13e",
+      "claim_fingerprint": "sha256:b7ae9858f5e2276044f0bbc10c44788b54533f73e10c006e039219ebbec1cdd2",
       "metric": {
         "label": "board e-value",
         "value": 3.123,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 35 of 39 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 4 missing. The board-wide e-value is 3.123; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 32 are live. Health qualifiers: 3 degraded, 4 stale. The board-wide e-value is 3.123; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -650,46 +650,45 @@
       "slug": "public-deletion-ledgers",
       "url": "https://palimpsest.info/news/public-deletion-ledgers/",
       "signal_id": "public-deletion-ledgers",
-      "headline": "Public deletion ledgers: no current finding",
-      "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Public deletion ledgers carry 15 observations from reachable feeds",
+      "dek": "CDT, GreatFire and FreeWeibo-style RSS/Atom ledgers are ingested only when a feed answers; unreachable ledgers stay named rather than becoming a zero.",
       "section": "attention",
       "order": 7,
       "type": "measurement",
       "priority": "standard",
-      "status": "missing",
-      "published_at": "2026-08-22T09:47:32Z",
-      "modified_at": "2026-08-22T09:47:32Z",
-      "claim_fingerprint": "sha256:8117bd542245247c54b0f3a90b31e932666384cb9c8a30673094b27839bcb6df",
+      "status": "live",
+      "published_at": "2026-08-22T11:23:45Z",
+      "modified_at": "2026-08-22T11:23:45Z",
+      "claim_fingerprint": "sha256:b127fe694f82db95b4f4134d88b79c63c69835d2faf69bb0e25a235983cfcf2f",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "ledger observations",
+        "value": 15,
+        "unit": "count",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "feeds answering",
+          "value": 1
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Public deletion ledgers because the source status is missing."
+          "type": "observation",
+          "statement": "The current ledger ingest published 15 public observations."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
         "input": {
           "filename": "public-deletion-ledgers-latest.json",
-          "sha256": null,
-          "bytes": null
+          "sha256": "7f9b0aac4b02a9d995bee74c44d5fb76cbb41b8d8bae053c439c9065e7cbaba1",
+          "bytes": 66326
         },
-        "source_timestamp": null
+        "source_timestamp": "2026-08-22T11:23:45Z"
       },
       "method": {
-        "summary": "Keyless RSS/Atom ingest; unreachable ledgers are reported and never published as a zero",
-        "version": null
+        "summary": "Keyless RSS/Atom ingest through collectors.feed_parse.parse_feed_items and core.safe_fetch; each feed is a candidate and reports its own reachability.",
+        "version": 1
       },
       "limitations": [
-        "Current finding withheld: source file is missing",
         "A missing ledger file is an abstention, not proof that nothing was deleted. Reachability of a public RSS feed is not a census of Chinese-language deletions."
       ],
       "related_signal_ids": [
@@ -807,20 +806,20 @@
       "slug": "attributed-peer-context",
       "url": "https://palimpsest.info/news/attributed-peer-context/",
       "signal_id": "peer-context",
-      "headline": "Attributed peer-context warehouse: no current finding",
-      "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Peer-context joins 17 already-held Palimpsest hosts",
+      "dek": "GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention stay named as peer context. They never become Palimpsest capture.",
       "section": "attention",
       "order": 10,
       "type": "analysis",
       "priority": "background",
-      "status": "missing",
-      "published_at": "2026-08-22T09:47:32Z",
-      "modified_at": "2026-08-22T09:47:32Z",
-      "claim_fingerprint": "sha256:c93a0a183ade1fd5320f4b2266cec5630c86b7ffae4ee142c1c3ab016c2a5362",
+      "status": "live",
+      "published_at": "2026-08-22T09:48:00Z",
+      "modified_at": "2026-08-22T09:48:00Z",
+      "claim_fingerprint": "sha256:985bd2859b7fcd26d15f61323ede3f94d23b8839b449818eb93e1fe0697a6e6f",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "hosts joined",
+        "value": 17,
+        "unit": "count",
         "denominator": {
           "label": null,
           "value": null
@@ -828,25 +827,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Attributed peer-context warehouse because the source status is missing."
+          "type": "observation",
+          "statement": "The current peer-context warehouse joins 17 already-held hosts."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/peer-context-latest.json",
         "input": {
           "filename": "peer-context-latest.json",
-          "sha256": null,
-          "bytes": null
+          "sha256": "2f9364eb3f326ea69b466a9ff47a8389783c5d4efa4fc09ef336bfcc22929a93",
+          "bytes": 52878
         },
-        "source_timestamp": null
+        "source_timestamp": "2026-08-22T09:48:00Z"
       },
       "method": {
-        "summary": "Offline host join; no catalog crawl; no 2012 Weiboscope dump",
-        "version": null
+        "summary": "GreatFire lookups are cached by the greatfire-context job. OONI is an exact host join against already-held ooni-gfw-latest / ooni-bulk warehouse objects. CDT keeps titles, links, and excerpts bounded at 280 characters. Weiboscope is a documented abstention.",
+        "version": 1
       },
       "limitations": [
-        "Current finding withheld: source file is missing",
         "Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator."
       ],
       "related_signal_ids": [
@@ -1226,46 +1224,45 @@
       "slug": "bleedthrough-injector-tomography",
       "url": "https://palimpsest.info/news/bleedthrough-injector-tomography/",
       "signal_id": "bleedthrough",
-      "headline": "Bleedthrough injector tomography: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Controlled external probes publish a current injector-tomography round",
+      "dek": "The optional, rate-limited measurement runs only from a declared controlled deployment.",
       "section": "network",
       "order": 8,
       "type": "measurement",
       "priority": "background",
-      "status": "stale",
-      "published_at": "2026-08-17T00:57:15Z",
-      "modified_at": "2026-08-17T00:57:15Z",
-      "claim_fingerprint": "sha256:491da606cfd905f6d8d7e1debefc95cfd3be2cee2d7bd824cb5358109324b168",
+      "status": "live",
+      "published_at": "2026-08-22T06:57:38Z",
+      "modified_at": "2026-08-22T06:57:38Z",
+      "claim_fingerprint": "sha256:770a92ede5886d27c94541df3cc7763a7040196ff131e414759647d754a2abdf",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "injector response-process floor",
+        "value": 3,
+        "unit": "count",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "injecting target IPs",
+          "value": 210
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Bleedthrough injector tomography because the source status is stale."
+          "type": "observation",
+          "statement": "A current controlled DNS-probe round is available for injector-tomography analysis."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
         "input": {
           "filename": "bleedthrough-latest.json",
-          "sha256": "5140ca36decf6014f1f612d04cb91768cb5ca25525e5a1b6b05acf6c4b863677",
-          "bytes": 2760
+          "sha256": "48e127d7455c19d9dd4201eee52a0c4edfa420309e808edc33eaf76f704ebc7a",
+          "bytes": 2781
         },
-        "source_timestamp": "2026-08-17T00:57:15Z"
+        "source_timestamp": "2026-08-22T06:57:38Z"
       },
       "method": {
-        "summary": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
+        "summary": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs + open-resolver fallback. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
         "version": 3
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading."
       ],
       "related_signal_ids": [
@@ -1278,46 +1275,45 @@
       "slug": "greatfire-attributed-verdicts",
       "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
       "signal_id": "greatfire-context",
-      "headline": "GreatFire attributed verdicts: no current finding",
-      "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "GreatFire's cache holds 17 90-day verdicts for already-held Palimpsest URLs",
+      "dek": "The GreatFire Analyzer open API is credited by name and date. Palimpsest is not the origin of these measurements and does not crawl the catalog.",
       "section": "network",
       "order": 9,
       "type": "measurement",
       "priority": "background",
-      "status": "missing",
-      "published_at": "2026-08-22T09:47:32Z",
-      "modified_at": "2026-08-22T09:47:32Z",
-      "claim_fingerprint": "sha256:6ddc8e5dc67c681b51e2f36eca577b761b69107a888b025e369f40b7370aed10",
+      "status": "live",
+      "published_at": "2026-08-22T06:33:12Z",
+      "modified_at": "2026-08-22T06:33:12Z",
+      "claim_fingerprint": "sha256:40486e9052e584207a14c5449e16188f38882040f38c45acb033ff84a69033ed",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "GreatFire verdicts",
+        "value": 17,
+        "unit": "count",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "URLs queried",
+          "value": 35
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for GreatFire attributed verdicts because the source status is missing."
+          "type": "observation",
+          "statement": "The current GreatFire context cache contains 17 compact 90-day verdicts."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/greatfire-context-latest.json",
         "input": {
           "filename": "greatfire-context-latest.json",
-          "sha256": null,
-          "bytes": null
+          "sha256": "50eee7b1e15067da9cf43d66dc2bdb25d5ba8127bcf2c11e6b34ab5a49202b53",
+          "bytes": 44357
         },
-        "source_timestamp": null
+        "source_timestamp": "2026-08-22T06:33:12Z"
       },
       "method": {
-        "summary": "Keyless /api/url/ and /api/verdict lookups; silent API abstains",
-        "version": null
+        "summary": "Keyless /api/url/ and /api/verdict lookups for already-held Palimpsest URLs. Per-test history discarded. Not a 700k catalog crawl.",
+        "version": 1
       },
       "limitations": [
-        "Current finding withheld: source file is missing",
         "A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive."
       ],
       "related_signal_ids": [
@@ -1643,46 +1639,45 @@
       "slug": "baike-public-snapshot",
       "url": "https://palimpsest.info/news/baike-public-snapshot/",
       "signal_id": "baike-public-snapshot",
-      "headline": "Baike public snapshot: no current finding",
-      "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Public Baike HTML answered 1 of 8 watched articles",
+      "dek": "Topic and event pages are fetched without a login. A 403 or login wall is recorded as unreachable, never as a rewrite. The Wikipedia-fork collector stays disabled.",
       "section": "erasure",
       "order": 7,
       "type": "measurement",
       "priority": "background",
-      "status": "missing",
-      "published_at": "2026-08-22T09:47:32Z",
-      "modified_at": "2026-08-22T09:47:32Z",
-      "claim_fingerprint": "sha256:9916e08748cf38233b7bd64de8e97877cbe2135807058cba2740f260fcf0187b",
+      "status": "live",
+      "published_at": "2026-08-22T11:21:09Z",
+      "modified_at": "2026-08-22T11:21:09Z",
+      "claim_fingerprint": "sha256:9f00fc4d56f11fe8a32fa8b96eb87a4ec7579652294414784e84d488322580d9",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "articles fetched",
+        "value": 1,
+        "unit": "count",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "pages watched",
+          "value": 8
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Baike public snapshot because the source status is missing."
+          "type": "observation",
+          "statement": "The public Baike snapshot fetched 1 of 8 watched articles this round."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
         "input": {
           "filename": "baike-public-snapshot-latest.json",
-          "sha256": null,
-          "bytes": null
+          "sha256": "26e2a824c09d0978d46c52024eb98e8b9f72de8f3d9b2cec4fd749a5ad2b3713",
+          "bytes": 11860
         },
-        "source_timestamp": null
+        "source_timestamp": "2026-08-22T11:21:09Z"
       },
       "method": {
-        "summary": "Keyless GET of reviewed topic and event pages; Wikipedia-fork baike-redaction stays disabled pending authorized access",
-        "version": null
+        "summary": "Keyless GET of reviewed public Baike article URLs; extract_baike facets; hash comparison against node-local state; CDX digest attached when IA answers.",
+        "version": 1
       },
       "limitations": [
-        "Current finding withheld: source file is missing",
         "A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites."
       ],
       "related_signal_ids": [
@@ -1859,8 +1854,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-22T09:37:09Z",
-      "modified_at": "2026-08-22T09:37:09Z",
+      "published_at": "2026-08-22T10:32:24Z",
+      "modified_at": "2026-08-22T10:32:24Z",
       "claim_fingerprint": "sha256:972a60dac730dec17b446bc2e826c3c1a03314f19f3ebcaf514e61768fafec97",
       "metric": {
         "label": "darkness index",
@@ -1881,10 +1876,10 @@
         "url": "https://palimpsest.info/readings/data-darkness-latest.json",
         "input": {
           "filename": "data-darkness-latest.json",
-          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
+          "sha256": "9204999fcdc67705a4957557b4f704bdd8d0740e17183c5363f2117331056329",
           "bytes": 3882
         },
-        "source_timestamp": "2026-08-22T09:37:09Z"
+        "source_timestamp": "2026-08-22T10:32:24Z"
       },
       "method": {
         "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",

@@ -54,13 +54,16 @@ def _http_fetch(url: str) -> tuple[int, str]:
 
 def _save_text(url: str) -> str:
     proxy = os.getenv("PALIMPSEST_PROXY", "").strip() or None
-    return safe_fetch(
-        url,
-        max_bytes=512 * 1024,
-        timeout=25,
-        headers={"User-Agent": USER_AGENT},
-        proxy=proxy,
-    )
+    try:
+        return safe_fetch(
+            url,
+            max_bytes=512 * 1024,
+            timeout=25,
+            headers={"User-Agent": USER_AGENT},
+            proxy=proxy,
+        )
+    except FetchError as exc:
+        raise OSError(str(exc)) from exc
 
 
 def _load_state(path: Path) -> dict:
@@ -94,12 +97,22 @@ def main(*, fetch=None, fetch_cdx=None, now: datetime | None = None, state_path:
         url for url, row in (previous.get("pages") or {}).items()
         if isinstance(row, dict) and row.get("content_sha256")
     }
-    observations = attach_new_url_captures(
-        [serialize_observation(obs) for obs in result["observations"]],
-        previous_urls=prior_urls,
-        fetch=_save_text if fetch is None else None,
-        limit=6,
-    )
+    serialized = [serialize_observation(obs) for obs in result["observations"]]
+    # Unreachable pages are not first-seen text. Do not ask IA to save a 403
+    # wall, and never let a Save Page Now transport failure block the reading.
+    if result["n_ok"] and serialized:
+        try:
+            observations = attach_new_url_captures(
+                serialized,
+                previous_urls=prior_urls,
+                fetch=_save_text if fetch is None else None,
+                limit=6,
+            )
+        except (FetchError, OSError) as exc:
+            print(f"baike-public-snapshot: archive save skipped ({exc})")
+            observations = serialized
+    else:
+        observations = serialized
     generated = iso_z(result["generated_at"]) or iso_z(datetime.now(timezone.utc))
     out = {
         "generated_at": generated,

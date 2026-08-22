@@ -60,13 +60,16 @@ def _http_fetch(url: str) -> tuple[int, str]:
 
 def _save_text(url: str) -> str:
     proxy = os.getenv("PALIMPSEST_PROXY", "").strip() or None
-    return safe_fetch(
-        url,
-        max_bytes=512 * 1024,
-        timeout=_TIMEOUT,
-        headers={"User-Agent": USER_AGENT},
-        proxy=proxy,
-    )
+    try:
+        return safe_fetch(
+            url,
+            max_bytes=512 * 1024,
+            timeout=_TIMEOUT,
+            headers={"User-Agent": USER_AGENT},
+            proxy=proxy,
+        )
+    except FetchError as exc:
+        raise OSError(str(exc)) from exc
 
 
 def main(*, fetch=None, now: datetime | None = None) -> dict | None:
@@ -91,14 +94,18 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
         return None
 
     generated = iso_z(result["generated_at"]) or iso_z(datetime.now(timezone.utc))
-    observations = attach_derived_archive_context(
-        attach_new_url_captures(
-            [serialize_observation(obs) for obs in result["observations"]],
+    serialized = [serialize_observation(obs) for obs in result["observations"]]
+    try:
+        captured = attach_new_url_captures(
+            serialized,
             previous_urls=previous_urls_from_reading(OUT),
             fetch=_save_text if fetch is None else None,
             limit=8,
         )
-    )
+    except (FetchError, OSError) as exc:
+        print(f"public-deletion-ledgers: archive save skipped ({exc})")
+        captured = serialized
+    observations = attach_derived_archive_context(captured)
     out = {
         "generated_at": generated,
         "method_version": METHOD_VERSION,

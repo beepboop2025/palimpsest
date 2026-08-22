@@ -10,8 +10,8 @@
   "type": "analysis",
   "priority": "high",
   "status": "live",
-  "published_at": "2026-08-22T09:37:09Z",
-  "modified_at": "2026-08-22T09:37:09Z",
+  "published_at": "2026-08-22T10:32:24Z",
+  "modified_at": "2026-08-22T10:32:24Z",
   "claim_fingerprint": "sha256:972a60dac730dec17b446bc2e826c3c1a03314f19f3ebcaf514e61768fafec97",
   "metric": {
     "label": "darkness index",
@@ -32,10 +32,10 @@
     "url": "https://palimpsest.info/readings/data-darkness-latest.json",
     "input": {
       "filename": "data-darkness-latest.json",
-      "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
+      "sha256": "9204999fcdc67705a4957557b4f704bdd8d0740e17183c5363f2117331056329",
       "bytes": 3882
     },
-    "source_timestamp": "2026-08-22T09:37:09Z"
+    "source_timestamp": "2026-08-22T10:32:24Z"
   },
   "method": {
     "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
