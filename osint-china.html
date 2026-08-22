@@ -334,7 +334,7 @@
     </section>
 
     <div class="oc-section-intro">
-      <div><h2 class="ps-section-head" id="coverage" style="margin-bottom:6px">Full coverage ledger</h2><p>Every configured signal appears, even when missing or stale. Search across every retained payload, then open a record to inspect source, method, health, fingerprint and all nested fields.</p></div>
+      <div><h2 class="ps-section-head" id="coverage" style="margin-bottom:6px">Full coverage ledger</h2><p>Every configured signal appears, even when missing or stale. Search the board, then open a record for source, method, health and fingerprint. When a source file is larger than the public board bound, this page keeps a compact prefix and the complete bytes stay at that signal's raw URL.</p></div>
     </div>
     <div class="oc-search" role="search">
       <label for="oc-search-input">Search the complete retained record</label>
@@ -550,7 +550,17 @@
         appendFacts(factSection, facts); body.appendChild(factSection);
       }
       var dataSection = node("section", "oc-record__section");
-      dataSection.appendChild(node("h5", null, "Complete structured record"));
+      var compact = record && record.payload_complete === false;
+      dataSection.appendChild(node("h5", null, compact ? "Compact structured record" : "Complete structured record"));
+      if (compact && record.raw_url) {
+        var note = node("p");
+        note.appendChild(document.createTextNode("The source file is larger than the public board bound. Health and metrics stay here. Complete bytes remain at "));
+        var link = node("a", null, "the source reading");
+        link.href = record.raw_url;
+        note.appendChild(link);
+        note.appendChild(document.createTextNode(" and match the input SHA-256."));
+        dataSection.appendChild(note);
+      }
       var rootBranch = structuredNode("record", record, "record", 0);
       dataSection.appendChild(rootBranch); body.appendChild(dataSection);
       rootBranch.open = true;
@@ -569,6 +579,8 @@
       ["Health reason", health.reason], ["Upstream status", health.upstream_status],
       ["Method version", signal.method_version], ["Input filename", input.filename],
       ["Input bytes", input.bytes], ["Input SHA-256", input.sha256],
+      ["Payload complete in board", signal.payload_complete === false ? "no, see raw URL" : (signal.payload_complete === true ? "yes" : "")],
+      ["Raw URL", signal.raw_url],
       ["Observation records", payloadCount(signal, "observation_records") || payloadCount(signal, "observations")],
       ["First seen", firstObservationField(signal, "first_seen")],
       ["Last seen", firstObservationField(signal, "last_seen")],

@@ -685,10 +685,11 @@ def test_default_analysis_has_empty_peer_context_and_outside_remit_stays_empty()
 
 
 def test_no_fake_latest_peer_files_are_committed():
+    # Warehouse and peer-cache files stay off git. The review ranker is the
+    # public product and writes readings/peer-context-rank-latest.json.
     for name in (
         "greatfire-context-latest.json",
         "peer-context-latest.json",
-        "peer-context-rank-latest.json",
         "ooni-peer-context-latest.json",
         "cdt-context-latest.json",
         "weiboscope-context-latest.json",
