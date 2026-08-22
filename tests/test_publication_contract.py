@@ -50,6 +50,12 @@ CONTRACT = {
     "cross-layer":          _d("generated_at", ["method"], "n_pairs_tested"),
     "ddti":                 _d("generated_at", ["citation"], "n_observations"),
     "forecast-ledger":      _d("generated_at", ["method"], "n_signals_scored"),
+    "weekly-situation":     _d("generated_at", ["template", "limitations"], "n_layers_present"),
+    "gazetteer-phylogeny":  _d("generated_at", ["policy", "rules"], "n_nodes"),
+    "collector-health":     _d(
+        "generated_at", ["method", "limitations"],
+        reason="the atlas datasets are enumerated in signals and summary.by_state; "
+               "collapsing them into one rate would mix fresh, stale, gated and missing."),
     "gdelt":                _d("generated_at", ["source", "scope"], "n_terms"),
     "github-refuge":        _d("generated_at", ["source", "scope"], "n_watched"),
     "inside-view":          _d("generated_at", ["source", "method"], "panel_size"),
