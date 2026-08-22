@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:baike-public-snapshot",
+  "slug": "baike-public-snapshot",
+  "url": "https://palimpsest.info/news/baike-public-snapshot/",
+  "signal_id": "baike-public-snapshot",
+  "headline": "Baike public snapshot: no current finding",
+  "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "section": "erasure",
+  "order": 7,
+  "type": "measurement",
+  "priority": "background",
+  "status": "missing",
+  "published_at": "2026-08-22T09:47:32Z",
+  "modified_at": "2026-08-22T09:47:32Z",
+  "claim_fingerprint": "sha256:9916e08748cf38233b7bd64de8e97877cbe2135807058cba2740f260fcf0187b",
+  "metric": {
+    "label": null,
+    "value": null,
+    "unit": null,
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "availability",
+      "statement": "No current finding is published for Baike public snapshot because the source status is missing."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+    "input": {
+      "filename": "baike-public-snapshot-latest.json",
+      "sha256": null,
+      "bytes": null
+    },
+    "source_timestamp": null
+  },
+  "method": {
+    "summary": "Keyless GET of reviewed topic and event pages; Wikipedia-fork baike-redaction stays disabled pending authorized access",
+    "version": null
+  },
+  "limitations": [
+    "Current finding withheld: source file is missing",
+    "A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites."
+  ],
+  "related_signal_ids": [
+    "baike-redaction",
+    "wayback",
+    "erasure-observatory"
+  ]
+}
