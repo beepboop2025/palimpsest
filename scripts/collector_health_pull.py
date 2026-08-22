@@ -41,13 +41,23 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, json.JSONDecodeError):
             print(f"STALE: {OUT.relative_to(ROOT)} is missing")
             return 1
-        skip = {"generated_at"}
-        if {k: v for k, v in current.items() if k not in skip} != {
-            k: v for k, v in reading.items() if k not in skip
-        }:
-            print(f"STALE: {OUT.relative_to(ROOT)} does not match a rebuild")
+        # Ages move with the atlas clock. Membership must not.
+        expected_ids = {
+            row.get("id")
+            for row in catalog.get("datasets") or []
+            if isinstance(row, dict) and row.get("id")
+        }
+        current_ids = {row.get("id") for row in current.get("signals") or []}
+        rebuilt_ids = {row.get("id") for row in reading.get("signals") or []}
+        if current.get("schema_version") != reading.get("schema_version"):
+            print(f"STALE: {OUT.relative_to(ROOT)} schema does not match a rebuild")
             return 1
-        print(f"INTACT: {OUT.relative_to(ROOT)}")
+        if current_ids != expected_ids or rebuilt_ids != expected_ids:
+            print(
+                f"STALE: {OUT.relative_to(ROOT)} dataset ids do not match the atlas"
+            )
+            return 1
+        print(f"INTACT: {OUT.relative_to(ROOT)} membership matches the atlas")
         return 0
     OUT.parent.mkdir(parents=True, exist_ok=True)
     atomic_replace_bytes(OUT, pretty.encode("utf-8"))

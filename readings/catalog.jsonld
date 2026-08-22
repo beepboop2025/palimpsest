@@ -9,7 +9,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-22T11:37:24.199113Z",
+  "dateModified": "2026-08-22T12:28:49Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -1483,7 +1483,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-22T11:36:43Z",
+      "dateModified": "2026-08-22T12:28:49Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1506,7 +1506,7 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-22T11:36:43Z",
+      "dateModified": "2026-08-22T12:28:49Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1836,6 +1836,84 @@
           "name": "Reading analysis and review rank — history",
           "encodingFormat": "application/x-ndjson",
           "contentUrl": "https://palimpsest.info/readings/reading-analysis-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "weekly-situation",
+      "name": "Weekly situation report",
+      "description": "Sealed weekly fusion of DDTI, Weibo, GDELT, GitHub-refuge, board alarm, forecast skill and the Generative Firewall Index. DDTI ranks; other layers annotate. Frozen template. No model prose.",
+      "url": "https://palimpsest.info/weekly-situation.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-22T12:26:42.516601Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Weekly situation report — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/weekly-situation-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Weekly situation report — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/weekly-situation-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "collector-health",
+      "name": "Collector health board",
+      "description": "Public projection of Evidence Atlas evidence_state: fresh, stale, gated, abstained or missing. A stale seal is still a seal, never a zero.",
+      "url": "https://palimpsest.info/status.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "GLOBAL"
+      ],
+      "temporalResolution": "PT6H",
+      "dateModified": "2026-08-22T12:28:48.964354Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Collector health board — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/collector-health-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "Collector health board — history",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/readings/collector-health-history.jsonl"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "gazetteer-phylogeny",
+      "name": "Gazetteer phylogeny",
+      "description": "Public graph of human-authored mutation_of edges in the Chinese sensitive-term gazetteer. Advisory only. No model adds a node.",
+      "url": "https://palimpsest.info/for-researchers.html",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN"
+      ],
+      "temporalResolution": "P7D",
+      "dateModified": "2026-08-22T12:26:43.269084Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Gazetteer phylogeny — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/gazetteer-phylogeny-latest.json"
         }
       ]
     },

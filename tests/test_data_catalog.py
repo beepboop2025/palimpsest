@@ -294,6 +294,22 @@ def test_investigations_catalog_exposes_review_gates_and_public_contract():
     assert "does not automate allegations" in description
 
 
+def test_cite_layer_datasets_are_in_the_atlas():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+    weekly = by_id["weekly-situation"]
+    assert weekly["latest"] == "readings/weekly-situation-latest.json"
+    assert weekly["landing_page"] == "weekly-situation.html"
+    assert weekly["method"] == "docs/WEEKLY-SITUATION.md"
+    assert weekly["collection_mode"] == "derived"
+    health = by_id["collector-health"]
+    assert health["latest"] == "readings/collector-health-latest.json"
+    assert health["landing_page"] == "status.html"
+    phylo = by_id["gazetteer-phylogeny"]
+    assert phylo["latest"] == "readings/gazetteer-phylogeny-latest.json"
+    assert phylo["count_fields"] == ["n_nodes", "n_edges"]
+
+
 def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}

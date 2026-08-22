@@ -69,8 +69,10 @@ See [cite.html](https://palimpsest.info/cite.html).
 
 ## Atlas enrollment
 
-This reading is published as JSON, HTML and a history JSONL. It is not yet a
-row in `config/public_data_catalog.json`, because adding a catalog id currently
-requires an evidence-mesh restamp. That restamp is a derived-graph job and must
-not overlap an in-flight OSINT publication. Enrollment is the next catalog
-rebuild, not this method change.
+Catalog ids: `weekly-situation`, `collector-health`, `gazetteer-phylogeny`.
+They appear in the Evidence Atlas (`readings/catalog.json`, `/data.html`) and
+in the evidence mesh as derived catalog resources. `weekly-situation` declares
+its fused inputs in `config/evidence_mesh.json` so the report cannot look like
+an independent upstream.
+
+Cite `readings/weekly-situation-latest.json` and the `seal.payload_sha256`.

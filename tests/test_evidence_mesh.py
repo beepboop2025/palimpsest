@@ -157,6 +157,19 @@ def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(mesh: d
     }
 
 
+def test_weekly_situation_is_derived_not_an_independent_upstream(mesh: dict) -> None:
+    weekly = _resource(mesh, "palimpsest:catalog:weekly-situation")
+    assert weekly["independence_eligible"] is False
+    assert "palimpsest:catalog:ddti" in weekly["dependency_resource_ids"]
+    assert "palimpsest:catalog:gdelt" in weekly["dependency_resource_ids"]
+    assert weekly["source_id"] in {
+        row["id"]
+        for row in json.loads((ROOT / "config/public_data_catalog.json").read_text())[
+            "datasets"
+        ]
+    }
+
+
 def test_all_sibling_projects_have_typed_capabilities_and_input_contracts(mesh: dict) -> None:
     projects = {row["id"]: row for row in mesh["projects"]}
     assert set(projects) == {
