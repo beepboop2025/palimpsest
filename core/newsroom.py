@@ -103,6 +103,7 @@ _SIGNAL_FIELDS = frozenset(
         "metric",
         "optional",
         "payload",
+        "payload_complete",
         "raw_url",
         "scope",
         "source",
@@ -530,6 +531,10 @@ def _validate_signal(raw_signal: object, path: str, feed_generated_at: str) -> d
         _fail(f"{path}.live must be a boolean")
     if type(signal["optional"]) is not bool:
         _fail(f"{path}.optional must be a boolean")
+    if type(signal["payload_complete"]) is not bool:
+        _fail(f"{path}.payload_complete must be a boolean")
+    if signal["payload"] is None and signal["payload_complete"] is not False:
+        _fail(f"{path} missing payloads must set payload_complete false")
 
     health = _expect_object(signal["health"], f"{path}.health")
     _exact_fields(health, _SIGNAL_HEALTH_FIELDS, f"{path}.health")

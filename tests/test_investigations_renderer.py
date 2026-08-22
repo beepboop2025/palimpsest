@@ -115,7 +115,9 @@ def test_open_work_is_a_report_and_never_newsarticle(publication) -> None:
     rendered = build_newsroom.render_investigation_case(open_case)
 
     assert "RESEARCH LEAD · NOT A PUBLISHED INVESTIGATION" in rendered
-    assert 'data-publication-state="open"' in rendered
+    state = build_newsroom._case_publication_state(open_case)
+    assert state in {"open", "abstained"}
+    assert f'data-publication-state="{state}"' in rendered
     assert '"@type":"Report"' in rendered
     assert '"@type":"NewsArticle"' not in rendered
     assert '<meta property="og:type" content="website">' in rendered

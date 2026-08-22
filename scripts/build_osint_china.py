@@ -2,8 +2,10 @@
 
 This is deliberately a *roll-up*, not another collector.  It performs no network
 requests and invents no replacement values.  Every configured source remains in the
-output when its file is missing, corrupt, or stale, and every valid source payload is
-embedded in full so a downstream reader never has to infer what the summary omitted.
+output when its file is missing, corrupt, or stale. Source payloads that fit the
+public embed bound are retained in full. Larger source files keep health, metrics
+and a compact prefix here; the complete bytes stay at ``raw_url`` and match
+``input.sha256``, so a downstream reader never has to infer what the summary omitted.
 
 The build is deterministic for a fixed input directory and ``now`` value.  The CLI
 accepts ``--now`` for reproducible rebuilds; the scheduled job supplies wall-clock UTC.
@@ -42,6 +44,18 @@ PUBLIC_BASE = "https://palimpsest.info/readings/"
 
 SCHEMA_VERSION = "osint-china.v1"
 METHOD_VERSION = 1
+# Keep the public board inside the 8 MiB investigations and evidence-mesh
+# input caps. One Wayback reconstruction already exceeds that bound, and
+# inlining it freezes every derived publication (OSINT, wire, china-econ).
+PAYLOAD_EMBED_MAX_BYTES = 48 * 1024
+MAX_EMBED_ARRAY_ITEMS = 24
+MAX_EMBED_ARRAY_BYTES = 12 * 1024
+MAX_EMBED_STRING = 4000
+ROLLUP_MAX_BYTES = 6 * 1024 * 1024
+
+
+class OsintChinaError(RuntimeError):
+    """The roll-up cannot be published without violating its public size bound."""
 
 
 @dataclass(frozen=True)
@@ -360,6 +374,45 @@ EXCLUDED_LATEST_FILES = frozenset({
     "peer-context-latest.json",
     "peer-context-rank-latest.json",
 })
+
+
+def _canonical_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _compact_value(value: Any) -> Any:
+    """Keep scalars and a bounded prefix of containers for the public board."""
+    if isinstance(value, dict):
+        return {str(key): _compact_value(child) for key, child in value.items()}
+    if isinstance(value, list):
+        compacted = [_compact_value(child) for child in value[:MAX_EMBED_ARRAY_ITEMS]]
+        while compacted and len(_canonical_bytes(compacted)) > MAX_EMBED_ARRAY_BYTES:
+            compacted.pop()
+        return compacted
+    if isinstance(value, str) and len(value) > MAX_EMBED_STRING:
+        return value[:MAX_EMBED_STRING]
+    return value
+
+
+def _embed_payload(payload: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Return (embedded, complete). Complete bytes always remain at raw_url."""
+    if len(_canonical_bytes(payload)) <= PAYLOAD_EMBED_MAX_BYTES:
+        return payload, True
+    compact = _compact_value(payload)
+    while len(_canonical_bytes(compact)) > PAYLOAD_EMBED_MAX_BYTES:
+        containers = [
+            (key, len(_canonical_bytes(child)))
+            for key, child in compact.items()
+            if isinstance(child, (dict, list))
+        ]
+        if not containers:
+            break
+        containers.sort(key=lambda item: item[1], reverse=True)
+        del compact[containers[0][0]]
+    return compact, False
 
 
 def _at(payload: dict[str, Any], path: Sequence[str] | None) -> Any:
@@ -816,6 +869,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
             "raw_url": raw_url,
             "input": input_fingerprint,
             "payload": None,
+            "payload_complete": False,
         }
 
     measured_at, timestamp_error = _timestamp(payload, spec)
@@ -887,6 +941,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     payload_method_version = payload.get("method_version")
     if payload_method_version is None:
         payload_method_version = _at(payload, ("summary", "method_version"))
+    embedded, payload_complete = _embed_payload(payload)
     return {
         "id": spec.id,
         "title": spec.title,
@@ -916,7 +971,8 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         "metric": metric,
         "raw_url": raw_url,
         "input": input_fingerprint,
-        "payload": payload,
+        "payload": embedded,
+        "payload_complete": payload_complete,
     }
 
 
@@ -1101,8 +1157,10 @@ def build_document(
         "source": ("Committed Palimpsest China OSINT readings, the China-specific "
                    "Generative Firewall reading, integrity anchors, and predeclared "
                    "optional Nemesis, believability and controlled-prober exports"),
-        "method": ("Deterministic offline roll-up of declared source files. Complete valid "
-                   "payloads are embedded; freshness is evaluated only from source "
+        "method": ("Deterministic offline roll-up of declared source files. Source payloads "
+                   "that fit the public embed bound are retained in full; larger source "
+                   "files keep health, metrics and a compact prefix, with complete bytes at "
+                   "raw_url matching input.sha256. Freshness is evaluated only from source "
                    "timestamps and declared deadlines; no missing value is estimated."),
         "scope": ("China public-source measurement across attention, network access, "
                   "erasure, economic undertext, model behaviour, command safeguards and "
@@ -1136,15 +1194,22 @@ def build_document(
 def write_atomic(document: dict[str, Any], output: Path = OUT) -> None:
     """Durably replace ``output`` without exposing a partial JSON document."""
     output = Path(output)
+    rendered = json.dumps(
+        document, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False
+    ) + "\n"
+    raw = rendered.encode("utf-8")
+    if len(raw) > ROLLUP_MAX_BYTES:
+        raise OsintChinaError(
+            f"roll-up exceeds {ROLLUP_MAX_BYTES} bytes ({len(raw)}); "
+            "oversized source payloads must stay referenced at raw_url"
+        )
     output.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(
         dir=output.parent, prefix=f".{output.name}.", suffix=".tmp")
     temporary = Path(temporary_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
-            json.dump(document, fh, ensure_ascii=False, indent=2, sort_keys=True,
-                      allow_nan=False)
-            fh.write("\n")
+            fh.write(rendered)
             fh.flush()
             # mkstemp deliberately starts at 0600. The final artefact is a public static
             # asset and may be served by a different OS user, so set its intended mode on

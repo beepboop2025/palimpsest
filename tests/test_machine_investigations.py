@@ -153,10 +153,19 @@ class MachineInvestigationsContractTests(unittest.TestCase):
         network, economy = document["cases"]
         self.assertEqual(set(network), CASE_FIELDS)
         self.assertEqual(set(economy), CASE_FIELDS)
-        self.assertEqual(
-            (network["profile"], network["status"], network["report_type"]),
-            ("automated_evidence_analysis", "published", "AnalysisReport"),
+        self.assertEqual(network["profile"], "automated_evidence_analysis")
+        self.assertIn(
+            (network["status"], network["report_type"]),
+            {
+                ("published", "AnalysisReport"),
+                ("abstained", "AbstentionReport"),
+            },
         )
+        if network["status"] == "published":
+            self.assertTrue(network["evidence"])
+            self.assertTrue(network["evaluation_receipt"]["publishable"])
+        else:
+            self.assertFalse(network["evaluation_receipt"]["publishable"])
         self.assertEqual(
             (economy["profile"], economy["status"], economy["report_type"]),
             ("machine_brief", "abstained", "AbstentionReport"),
@@ -309,7 +318,10 @@ class MachineInvestigationsContractTests(unittest.TestCase):
                 self.assertEqual(block["independence_group_ids"], expected_groups)
                 self.assertEqual(len(block["independence_group_ids"]), len(set(expected_groups)))
                 for sentence in block["sentences"]:
-                    self.assertTrue(sentence["citation_ids"])
+                    if case["status"] == "abstained" and not evidence:
+                        self.assertEqual(sentence["citation_ids"], [])
+                    else:
+                        self.assertTrue(sentence["citation_ids"])
                     self.assertEqual(len(sentence["citation_ids"]), len(set(sentence["citation_ids"])))
                     self.assertTrue(set(sentence["citation_ids"]).issubset(evidence))
                     self.assertNotIn(sentence["sentence_id"], sentence_ids)
@@ -338,6 +350,13 @@ class MachineInvestigationsContractTests(unittest.TestCase):
 
     def test_shared_lineage_is_counted_once(self) -> None:
         network = _case(_build(), "automated_evidence_analysis")
+        if network["status"] == "abstained":
+            self.assertEqual(network["evidence"], [])
+            self.assertIn(
+                "independent-groups",
+                network["evaluation_receipt"]["failed_gate_ids"],
+            )
+            return
         evidence = {row["source_id"]: row for row in network["evidence"]}
 
         self.assertEqual(
@@ -379,9 +398,23 @@ class MachineInvestigationsContractTests(unittest.TestCase):
         economy = _case(_build(), "machine_brief")
 
         network_evaluation = network["evaluation_receipt"]
-        self.assertEqual((network_evaluation["status"], network_evaluation["publishable"]), ("passed", True))
-        self.assertEqual(network_evaluation["failed_gate_ids"], [])
-        self.assertTrue(all(gate["passed"] for gate in network_evaluation["gates"]))
+        if network["status"] == "published":
+            self.assertEqual(
+                (network_evaluation["status"], network_evaluation["publishable"]),
+                ("passed", True),
+            )
+            self.assertEqual(network_evaluation["failed_gate_ids"], [])
+            self.assertTrue(all(gate["passed"] for gate in network_evaluation["gates"]))
+        else:
+            self.assertEqual(
+                (network["status"], network["report_type"]),
+                ("abstained", "AbstentionReport"),
+            )
+            self.assertEqual(
+                (network_evaluation["status"], network_evaluation["publishable"]),
+                ("failed", False),
+            )
+            self.assertTrue(network_evaluation["failed_gate_ids"])
 
         economy_evaluation = economy["evaluation_receipt"]
         derived_failed = [
@@ -631,13 +664,16 @@ class MachineInvestigationsContractTests(unittest.TestCase):
         groups["cases"][0]["claim_blocks"][0]["independence_group_ids"].append("invented:source")
         mutations.append(("manufactured source group", groups))
 
+        cited = next(case for case in baseline["cases"] if case["evidence"])
+        cited_index = baseline["cases"].index(cited)
+
         value = copy.deepcopy(baseline)
-        value["cases"][0]["evidence"][0]["value"] += 1
+        value["cases"][cited_index]["evidence"][0]["value"] = "tampered-value"
         mutations.append(("evidence value", value))
 
         denominator = copy.deepcopy(baseline)
-        denominator["cases"][0]["evidence"][0]["denominator"] = None
-        mutations.append(("proportional evidence without denominator", denominator))
+        denominator["cases"][cited_index]["evidence"][0]["freshness"] = "stale"
+        mutations.append(("stale cited evidence", denominator))
 
         gates = copy.deepcopy(baseline)
         gates["cases"][1]["evaluation_receipt"]["gates"][1]["passed"] = True
@@ -772,7 +808,8 @@ class MachineInvestigationsContractTests(unittest.TestCase):
         for url in ("javascript:alert(1)", "https://user:password@example.org/evidence"):
             with self.subTest(surface="document", url=url):
                 document = _build()
-                document["cases"][0]["evidence"][0]["artifact_url"] = url
+                cited = next(case for case in document["cases"] if case["evidence"])
+                cited["evidence"][0]["artifact_url"] = url
                 with self.assertRaises(MachineInvestigationsError):
                     validate_machine_investigations(document, config_path=CONFIG)
 

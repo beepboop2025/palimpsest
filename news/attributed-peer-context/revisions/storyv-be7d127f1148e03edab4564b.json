@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:peer-context",
+  "slug": "attributed-peer-context",
+  "url": "https://palimpsest.info/news/attributed-peer-context/",
+  "signal_id": "peer-context",
+  "headline": "Attributed peer-context warehouse: no current finding",
+  "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "section": "attention",
+  "order": 10,
+  "type": "analysis",
+  "priority": "background",
+  "status": "missing",
+  "published_at": "2026-08-21T21:45:00Z",
+  "modified_at": "2026-08-21T21:45:00Z",
+  "claim_fingerprint": "sha256:c93a0a183ade1fd5320f4b2266cec5630c86b7ffae4ee142c1c3ab016c2a5362",
+  "metric": {
+    "label": null,
+    "value": null,
+    "unit": null,
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "availability",
+      "statement": "No current finding is published for Attributed peer-context warehouse because the source status is missing."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/peer-context-latest.json",
+    "input": {
+      "filename": "peer-context-latest.json",
+      "sha256": null,
+      "bytes": null
+    },
+    "source_timestamp": null
+  },
+  "method": {
+    "summary": "Offline host join; no catalog crawl; no 2012 Weiboscope dump",
+    "version": null
+  },
+  "limitations": [
+    "Current finding withheld: source file is missing",
+    "Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator."
+  ],
+  "related_signal_ids": [
+    "greatfire-context",
+    "ooni-gfw",
+    "public-deletion-ledgers"
+  ]
+}

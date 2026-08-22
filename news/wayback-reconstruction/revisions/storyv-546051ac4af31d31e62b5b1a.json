@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:wayback",
+  "slug": "wayback-reconstruction",
+  "url": "https://palimpsest.info/news/wayback-reconstruction/",
+  "signal_id": "wayback",
+  "headline": "Archive witnesses reconstruct 0 deletions across 21 watched URLs",
+  "dek": "A deletion or silent mutation is reported only when outside-the-wall captures provide a checkable witness.",
+  "section": "erasure",
+  "order": 2,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-21T13:21:55Z",
+  "modified_at": "2026-08-21T13:21:55Z",
+  "claim_fingerprint": "sha256:ea4b476fb40158578a871eb88774ad152e1326c348ecfeabc6f5c08574ffd4cb",
+  "metric": {
+    "label": "reconstructed deletions",
+    "value": 0,
+    "unit": "count",
+    "denominator": {
+      "label": "URLs watched",
+      "value": 21
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "Wayback evidence reconstructs 0 deletions among 21 watched URLs in the current reading."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/wayback-latest.json",
+    "input": {
+      "filename": "wayback-latest.json",
+      "sha256": "9529c8925e5ef3bb5c00e6ea15ada40ff288cb10cca6632489a7ceefca14e91b",
+      "bytes": 6648309
+    },
+    "source_timestamp": "2026-08-21T13:21:55Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 1
+  },
+  "limitations": [
+    "Archive coverage is incomplete; an unwitnessed URL cannot support a deletion or mutation claim."
+  ],
+  "related_signal_ids": [
+    "erasure-observatory",
+    "baike-redaction",
+    "anchors"
+  ]
+}

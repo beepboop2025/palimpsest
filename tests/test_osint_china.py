@@ -1,7 +1,7 @@
 """Offline contract tests for the OSINT-China deterministic roll-up.
 
 These tests exercise the publication boundary, not any remote collector.  They make the
-source inventory, stable schema, freshness semantics, complete payload retention and atomic
+source inventory, stable schema, freshness semantics, bounded payload retention and atomic
 replacement executable promises.
 """
 from __future__ import annotations
@@ -192,6 +192,7 @@ def test_valid_source_retains_the_complete_payload_and_normalizes_contract(mod, 
     document = mod.build_document(tmp_path, NOW)
     signal = _signal(document, "ddti")
     assert signal["payload"] == payload, "the roll-up must retain every upstream field"
+    assert signal["payload_complete"] is True
     assert signal["status"] == "live" and signal["live"] is True
     assert signal["source_timestamp"] == "2026-08-04T11:30:00Z"
     assert signal["freshness_deadline"] == "2026-08-04T18:30:00Z"
@@ -208,6 +209,45 @@ def test_valid_source_retains_the_complete_payload_and_normalizes_contract(mod, 
         "bytes": len(source_bytes),
     }
     assert "Ranks terms" in signal["summary"]
+
+
+def test_oversized_source_payload_is_compacted_and_receipt_still_matches(mod, tmp_path):
+    spec = next(spec for spec in mod.SIGNALS if spec.id == "wayback")
+    reconstructions = [
+        {"url": f"https://example.invalid/{index}", "captures": ["a" * 80]}
+        for index in range(4000)
+    ]
+    payload = {
+        "generated_at": "2026-08-04T11:30:00Z",
+        "n_deletions": 12,
+        "n_watched": 40,
+        "reconstructions": reconstructions,
+    }
+    _write_json(tmp_path / spec.filename, payload)
+    source_bytes = (tmp_path / spec.filename).read_bytes()
+    assert len(source_bytes) > mod.PAYLOAD_EMBED_MAX_BYTES
+
+    document = mod.build_document(tmp_path, NOW)
+    signal = _signal(document, "wayback")
+    assert signal["payload_complete"] is False
+    assert signal["payload"]["n_deletions"] == 12
+    assert signal["payload"]["n_watched"] == 40
+    assert signal["metric"]["value"] == 12
+    assert len(json.dumps(signal["payload"])) < len(source_bytes)
+    assert signal["input"] == {
+        "filename": spec.filename,
+        "sha256": hashlib.sha256(source_bytes).hexdigest(),
+        "bytes": len(source_bytes),
+    }
+    rendered = json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    assert len(rendered.encode("utf-8")) < mod.ROLLUP_MAX_BYTES
+
+
+def test_write_atomic_refuses_a_document_over_the_public_bound(mod, tmp_path):
+    document = {"schema_version": "osint-china.v1", "pad": "x" * (mod.ROLLUP_MAX_BYTES + 1)}
+    with pytest.raises(mod.OsintChinaError, match="exceeds"):
+        mod.write_atomic(document, tmp_path / "osint-china-latest.json")
+    assert not (tmp_path / "osint-china-latest.json").exists()
 
 
 def test_ooni_denominator_is_completed_measurements_not_attempt_volume(mod, tmp_path):
@@ -613,8 +653,30 @@ def test_builder_normalizes_its_clock_before_age_calculations(mod, tmp_path):
     assert subsecond_document["generated_at"] == "2026-08-04T12:00:00Z"
 
 
+def test_rebuild_from_current_readings_stays_inside_the_public_bound(mod, tmp_path):
+    """A 6 MiB+ Wayback source must not block OSINT, wire, or china-econ publication."""
+    published = json.loads(PUBLISHED.read_text(encoding="utf-8"))
+    document = mod.build_document(
+        READINGS,
+        mod.parse_timestamp(published["generated_at"]),
+        published["input_commit"],
+    )
+    output = tmp_path / PUBLISHED.name
+    mod.write_atomic(document, output)
+    assert output.stat().st_size <= mod.ROLLUP_MAX_BYTES
+    wayback = _signal(document, "wayback")
+    if wayback["input"]["bytes"] and wayback["input"]["bytes"] > mod.PAYLOAD_EMBED_MAX_BYTES:
+        assert wayback["payload_complete"] is False
+        assert wayback["raw_url"].endswith("wayback-latest.json")
+
+
 def test_published_rollup_is_byte_identical_when_it_replays_itself(mod, tmp_path):
     published = json.loads(PUBLISHED.read_text(encoding="utf-8"))
+    if any("payload_complete" not in signal for signal in published["signals"]):
+        pytest.skip(
+            "committed board predates the public embed bound; "
+            "the next successful osint-china-refresh publishes the new shape"
+        )
     replay = mod.build_document(
         READINGS,
         mod.parse_timestamp(published["generated_at"]),
@@ -655,6 +717,10 @@ def test_published_rollup_obeys_the_stable_schema_and_contract(mod):
         assert signal["status"] in {"live", "degraded", "stale", "missing", "corrupt"}
         assert signal["live"] is (signal["status"] == "live")
         assert set(("id", "layer", "summary", "metric", "raw_url", "input", "payload")) <= set(signal)
+        if "payload_complete" in signal:
+            assert signal["payload_complete"] in {True, False}
+            if signal["payload"] is None:
+                assert signal["payload_complete"] is False
         assert signal["raw_url"].startswith("https://palimpsest.info/readings/")
         assert signal["input"]["filename"]
         if signal["input"]["bytes"] is not None:

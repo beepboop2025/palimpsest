@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:greatfire-context",
+  "slug": "greatfire-attributed-verdicts",
+  "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
+  "signal_id": "greatfire-context",
+  "headline": "GreatFire attributed verdicts: no current finding",
+  "dek": "The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "section": "network",
+  "order": 9,
+  "type": "measurement",
+  "priority": "background",
+  "status": "missing",
+  "published_at": "2026-08-21T21:45:00Z",
+  "modified_at": "2026-08-21T21:45:00Z",
+  "claim_fingerprint": "sha256:6ddc8e5dc67c681b51e2f36eca577b761b69107a888b025e369f40b7370aed10",
+  "metric": {
+    "label": null,
+    "value": null,
+    "unit": null,
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "availability",
+      "statement": "No current finding is published for GreatFire attributed verdicts because the source status is missing."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/greatfire-context-latest.json",
+    "input": {
+      "filename": "greatfire-context-latest.json",
+      "sha256": null,
+      "bytes": null
+    },
+    "source_timestamp": null
+  },
+  "method": {
+    "summary": "Keyless /api/url/ and /api/verdict lookups; silent API abstains",
+    "version": null
+  },
+  "limitations": [
+    "Current finding withheld: source file is missing",
+    "A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive."
+  ],
+  "related_signal_ids": [
+    "ooni-gfw",
+    "peer-context",
+    "public-deletion-ledgers"
+  ]
+}

@@ -146,7 +146,8 @@ _OSINT_TOP_FIELDS = frozenset({
 })
 _OSINT_SIGNAL_FIELDS = frozenset({
     "cadence_hours", "freshness_deadline", "health", "id", "input", "layer",
-    "live", "method", "method_version", "metric", "optional", "payload", "raw_url",
+    "live", "method", "method_version", "metric", "optional", "payload",
+    "payload_complete", "raw_url",
     "scope", "source", "source_timestamp", "status", "summary", "title",
 })
 _OSINT_HEALTH_FIELDS = frozenset({
@@ -628,6 +629,10 @@ def _validate_osint(value: Any) -> dict[str, Any]:
             _safe_count(input_value["bytes"], f"{path}.input.bytes")
         if type(signal["live"]) is not bool or type(signal["optional"]) is not bool:
             raise EvidenceMeshError(f"{path} live/optional must be boolean")
+        if type(signal["payload_complete"]) is not bool:
+            raise EvidenceMeshError(f"{path}.payload_complete must be boolean")
+        if signal["payload"] is None and signal["payload_complete"] is not False:
+            raise EvidenceMeshError(f"{path} missing payloads must set payload_complete false")
         if signal["source_timestamp"] is not None:
             _parse_timestamp(signal["source_timestamp"], f"{path}.source_timestamp")
         if signal["freshness_deadline"] is not None:

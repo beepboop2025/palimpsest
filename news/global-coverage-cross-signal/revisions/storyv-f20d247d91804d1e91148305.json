@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:gdelt",
+  "slug": "global-coverage-cross-signal",
+  "url": "https://palimpsest.info/news/global-coverage-cross-signal/",
+  "signal_id": "gdelt",
+  "headline": "Global coverage is measurable for 3 of 25 compared terms",
+  "dek": "The cross-signal supplies an outside-China attention baseline without treating a missing result as proof of silence.",
+  "section": "attention",
+  "order": 2,
+  "type": "measurement",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-21T19:20:11Z",
+  "modified_at": "2026-08-21T19:20:11Z",
+  "claim_fingerprint": "sha256:a462c8969effbb856d92d73dfa544024cb463503e28396b62cb934eaf4d759d6",
+  "metric": {
+    "label": "terms with global data",
+    "value": 3,
+    "unit": "count",
+    "denominator": {
+      "label": "terms compared",
+      "value": 25
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "GDELT returned usable global coverage for 3 of 25 compared terms."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/gdelt-latest.json",
+    "input": {
+      "filename": "gdelt-latest.json",
+      "sha256": "9bcc8dc6edae5e93b53aeae5e158f257f80a6719d2d3ede71eefe5ac8416b924",
+      "bytes": 6774
+    },
+    "source_timestamp": "2026-08-21T19:20:11Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 1
+  },
+  "limitations": [
+    "GDELT coverage varies by language and publisher; absence from its index is not proof that a topic received no coverage."
+  ],
+  "related_signal_ids": [
+    "ddti",
+    "silence-index",
+    "weibo-hotsearch"
+  ]
+}

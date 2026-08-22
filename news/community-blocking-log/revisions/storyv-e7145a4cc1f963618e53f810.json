@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:net4people",
+  "slug": "community-blocking-log",
+  "url": "https://palimpsest.info/news/community-blocking-log/",
+  "signal_id": "net4people",
+  "headline": "The community log records 11 recent blocking or circumvention events",
+  "dek": "Public issue reports add qualitative context to instrumented network measurements without being counted as probes.",
+  "section": "attention",
+  "order": 6,
+  "type": "measurement",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-21T13:29:11Z",
+  "modified_at": "2026-08-21T13:29:11Z",
+  "claim_fingerprint": "sha256:e8e3ad3576c9ab05ff777018f8b1f2ea2c62b7a0caef5c54a824db08149766b7",
+  "metric": {
+    "label": "recent events",
+    "value": 11,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The configured recent window contains 11 qualifying events in the public community log."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/net4people-latest.json",
+    "input": {
+      "filename": "net4people-latest.json",
+      "sha256": "f8e09f3b623b0eddff74f02598d8a820f0b26adaf55c1d8a88093497f4db5260",
+      "bytes": 7633
+    },
+    "source_timestamp": "2026-08-21T13:29:11Z"
+  },
+  "method": {
+    "summary": "ingests a public overseas GitHub repo's issues; probes nothing (vantage-insensitive)",
+    "version": 1
+  },
+  "limitations": [
+    "Community reports are self-selected qualitative observations and do not estimate population prevalence."
+  ],
+  "related_signal_ids": [
+    "ooni-gfw",
+    "circumvention-demand",
+    "vantage-fusion"
+  ]
+}

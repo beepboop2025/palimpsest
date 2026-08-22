@@ -325,7 +325,11 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
     build_newsroom.publish(first_outputs, root=publication_root)
 
     refreshed_machine = copy.deepcopy(first_machine)
-    previous_case = first_machine["cases"][0]
+    case_index, previous_case = next(
+        (index, case)
+        for index, case in enumerate(first_machine["cases"])
+        if case["evidence"]
+    )
     refreshed_case = copy.deepcopy(previous_case)
     changed_evidence = refreshed_case["evidence"][0]
     changed_input_path = copied_readings / changed_evidence["artifact_id"]
@@ -358,7 +362,7 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
     ).isoformat().replace("+00:00", "Z")
     refreshed_case["updated_at"] = next_time
     refreshed_case["evaluation_receipt"]["evaluated_at"] = next_time
-    refreshed_machine["cases"][0] = machine_investigations._finalize_case(
+    refreshed_machine["cases"][case_index] = machine_investigations._finalize_case(
         refreshed_case, previous_case
     )
     refreshed_machine["generated_at"] = next_time
@@ -431,7 +435,7 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
         assert second_outputs[path] == original_bytes
         assert str(path) in second_manifest["immutable_revision_paths"]
     new_revision = old_revision.with_name(
-        f"{refreshed_machine['cases'][0]['revision_id']}.json"
+        f"{refreshed_machine['cases'][case_index]['revision_id']}.json"
     )
     new_capsule = Path("news/analysis/evidence") / f"sha256-{changed_digest}.json"
     assert new_revision in second_outputs

@@ -956,6 +956,7 @@ def _signal_fit(
 def _ddti_event_trace(
     row: Mapping[str, Any],
     event: Mapping[str, Any],
+    store: _InputStore | None = None,
 ) -> tuple[list[str], bool]:
     """Return bounded event-linked DDTI terms and whether they echo the same URL."""
 
@@ -966,6 +967,12 @@ def _ddti_event_trace(
     }
     event_tokens = _tokens(_event_text(event))
     payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+    if row.get("payload_complete") is False and store is not None:
+        filename = (row.get("input") or {}).get("filename")
+        if isinstance(filename, str) and _SAFE_FILE.fullmatch(filename):
+            raw = store.json(filename, required=False)
+            if isinstance(raw, dict):
+                payload = raw
     ranked = payload.get("ranked") if isinstance(payload.get("ranked"), list) else []
     matched: list[str] = []
     same_lineage = False
@@ -1099,7 +1106,7 @@ def _current_conditions(
                     f"/signals/@id={signal_id}/payload/benchmarks/fdr007"
                 )
         elif signal_id == "ddti":
-            trace_terms, same_lineage_trace = _ddti_event_trace(row, event)
+            trace_terms, same_lineage_trace = _ddti_event_trace(row, event, store)
             if trace_terms:
                 total_terms = _numeric(
                     (row.get("payload") or {}).get("n_terms")
