@@ -59,6 +59,8 @@ jobs:
           python -m scripts.build_china_econ_forecast --check
           python -m scripts.build_china_site
           python -m scripts.build_china_site --check
+          python -m scripts.build_erasure_trail
+          python -m scripts.build_erasure_trail --check
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -72,6 +74,8 @@ jobs:
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom
           python -m scripts.build_newsroom --check
+          python -m scripts.build_china_situation
+          python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
 
@@ -128,6 +132,9 @@ jobs:
             readings/china-econ-forecast-latest.json \
             readings/china-economic-pulse-latest.json \
             readings/china-index-latest.json \
+            readings/erasure-trail-latest.json \
+            readings/erasure-trail-history.jsonl \
+            readings/erasure-trail.csv \
             readings/osint-china-latest.json \
             readings/investigations-latest.json \
             readings/evidence-mesh-latest.json \

@@ -674,14 +674,109 @@ def test_event_analysis_emits_canned_peer_sentences_for_an_official_url():
     assert "proves the Party" not in json.dumps(analysis)
 
 
-def test_default_analysis_has_empty_peer_context_and_outside_remit_stays_empty():
-    wire = json.loads((ROOT / "readings/newswire-latest.json").read_text())
-    feed = json.loads((ROOT / "readings/newsroom-latest.json").read_text())
-    analyses = event_analysis.build_event_analyses(wire, feed)
-    assert all(row["peer_context"] == [] for row in analyses.values())
-    outside = analyses["event-7f9867253599802f5d470f8a"]
-    assert outside["scope_status"] == "outside-remit"
-    assert outside["peer_context"] == []
+def test_outside_remit_analysis_suppresses_projectable_peer_context():
+    event_id = "event-" + "81" * 12
+    item_id = "item-" + "82" * 12
+    headline = "Regional weather bulletin"
+    event = {
+        "event_id": event_id,
+        "version_id": "eventv-" + "83" * 12,
+        "url": f"https://palimpsest.info/news/wire/{event_id}/",
+        "headline": headline,
+        "dek": "A wire service published a routine regional weather note.",
+        "desk": "information-controls",
+        "topics": ["weather"],
+        "published_at": "2026-08-20T01:00:00Z",
+        "updated_at": "2026-08-20T01:00:00Z",
+        "lead": False,
+        "lead_reason": "single-source",
+        "evidence_strength": "single-source",
+        "reported_facts": [
+            {
+                "statement": f"Fixture Wire published “{headline}”.",
+                "attribution": "Fixture Wire",
+                "published_at": "2026-08-20T01:00:00Z",
+                "evidence_item_id": item_id,
+            }
+        ],
+        "evidence_refs": [
+            {
+                "item_id": item_id,
+                "version_id": "itemv-" + "84" * 12,
+                "source_id": "fixture-world-wire",
+                "source_name": "Fixture Wire",
+                "role": "media",
+                "independence_group": "fixture-wire",
+                "title": headline,
+                "url": "https://www.example.com/weather",
+                "published_at": "2026-08-20T01:00:00Z",
+            }
+        ],
+        "evidence_groups": [
+            {
+                "group_id": "fixture-wire",
+                "source_ids": ["fixture-world-wire"],
+                "roles": ["media"],
+            }
+        ],
+        "declared_links": {
+            "relation": "topic-surface-only",
+            "scan_signal_ids": [],
+            "economic_signal_ids": [],
+        },
+        "limitations": ["Synthetic feed metadata only."],
+        "mutation": {"kind": "new", "previous_version_id": None},
+    }
+    wire = {
+        "schema_version": "palimpsest-newswire.v1",
+        "items": [
+            {
+                "item_id": item_id,
+                "title": headline,
+                "excerpt": "A routine regional weather note.",
+                "feed_sha256": "85" * 32,
+                "source_id": "fixture-world-wire",
+            }
+        ],
+        "events": [event],
+    }
+    feed = {"schema_version": "palimpsest-news.v1", "stories": []}
+    peer = {
+        "generated_at": "2026-08-20T02:00:00Z",
+        "greatfire": {
+            "n_verdicts": 1,
+            "verdicts": [
+                {
+                    "query_url": "https://www.example.com/weather",
+                    "path": "https/www.example.com",
+                    "found": True,
+                    "verdict": "not blocked",
+                    "window_days": 90,
+                    "as_of": "2026-08-20T00:30:00Z",
+                    "last_tested": "2026-08-20T00:30:00Z",
+                    "source_url": "https://en.greatfire.org/https/www.example.com",
+                }
+            ],
+        },
+        "ooni": {"hosts": []},
+        "cdt_items": [],
+    }
+
+    projected = peer_context.peer_context_for_event(event, peer, wire=wire)
+    assert any(
+        row["peer"] == "greatfire" and row["status"] == "live"
+        for row in projected
+    )
+
+    analysis = event_analysis.build_event_analysis(
+        event,
+        wire=wire,
+        feed=feed,
+        peer=peer,
+    )
+    assert analysis["scope_status"] == "outside-remit"
+    assert analysis["disposition"] == "outside-remit"
+    assert analysis["peer_context"] == []
 
 
 def test_no_fake_latest_peer_files_are_committed():

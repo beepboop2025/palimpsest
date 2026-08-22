@@ -15,7 +15,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: gfi-refresh
+  # GFI and erasure both append to the same eval registry. Keep one hosted writer
+  # active at a time; the base-locked reseal paths still defend against other writers.
+  group: eval-registry-writer
   cancel-in-progress: false
 
 jobs:
@@ -72,6 +74,8 @@ jobs:
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
           python -m scripts.build_eval_findings
+          python -m scripts.build_erasure_trail
+          python -m scripts.build_erasure_trail --check
           python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
           python -m scripts.build_investigations
           python -m scripts.build_network_rounds
@@ -80,6 +84,9 @@ jobs:
           python -m core.evidence_mesh
           python -m core.machine_investigations
           python -m scripts.build_newsroom
+          python -m scripts.build_newsroom --check
+          python -m scripts.build_china_situation
+          python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
           python -m scripts.build_eval_assurance --check
@@ -87,7 +94,6 @@ jobs:
           python -m scripts.build_eval_findings --check
           python -m core.evidence_mesh --check
           python -m core.machine_investigations --check
-          python -m scripts.build_newsroom --check
           python -m scripts.build_data_catalog --check
           python scripts/seal_readings.py --check
           python -m pytest -q \
@@ -138,6 +144,9 @@ jobs:
                    readings/eval-journal-latest.json \
                    readings/eval-articles-latest.json \
                    readings/board-alarm-analysis.json \
+                   readings/erasure-trail-latest.json \
+                   readings/erasure-trail-history.jsonl \
+                   readings/erasure-trail.csv \
                    readings/osint-china-latest.json \
                    readings/investigations-latest.json \
                    readings/corroboration-latest.json \
@@ -148,6 +157,7 @@ jobs:
                    readings/machine-investigations-latest.json \
                    readings/newsroom-latest.json \
                    readings/china-article-stream-latest.json \
+                   readings/china-situation-latest.json \
                    readings/china-censorship-analysis-latest.json \
                    readings/readings-ledger.jsonl \
                    readings/catalog.json \
@@ -200,6 +210,8 @@ jobs:
             python -m scripts.build_eval_assurance
             python -m scripts.build_eval_journal
             python -m scripts.build_eval_findings
+            python -m scripts.build_erasure_trail
+            python -m scripts.build_erasure_trail --check
             python -m scripts.build_osint_china --input-commit "$(git rev-parse HEAD)"
             python -m scripts.build_investigations
             python -m scripts.build_network_rounds
@@ -208,6 +220,9 @@ jobs:
             python -m core.evidence_mesh
             python -m core.machine_investigations
             python -m scripts.build_newsroom
+            python -m scripts.build_newsroom --check
+            python -m scripts.build_china_situation
+            python -m scripts.build_china_situation --check
             python -m scripts.build_data_catalog
             python scripts/seal_readings.py
             python -m scripts.verify_eval_registry
@@ -217,7 +232,6 @@ jobs:
             python -m scripts.build_eval_findings --check
             python -m core.evidence_mesh --check
             python -m core.machine_investigations --check
-            python -m scripts.build_newsroom --check
             python -m scripts.build_data_catalog --check
             python scripts/seal_readings.py --check
             python -m pytest -q \
@@ -255,6 +269,9 @@ jobs:
                      readings/eval-journal-latest.json \
                      readings/eval-articles-latest.json \
                      readings/board-alarm-analysis.json \
+                     readings/erasure-trail-latest.json \
+                     readings/erasure-trail-history.jsonl \
+                     readings/erasure-trail.csv \
                      readings/osint-china-latest.json \
                      readings/investigations-latest.json \
                      readings/corroboration-latest.json \
@@ -265,6 +282,7 @@ jobs:
                      readings/machine-investigations-latest.json \
                      readings/newsroom-latest.json \
                      readings/china-article-stream-latest.json \
+                     readings/china-situation-latest.json \
                      readings/china-censorship-analysis-latest.json \
                      readings/readings-ledger.jsonl \
                      readings/catalog.json \

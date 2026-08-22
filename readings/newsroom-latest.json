@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 30 are live. Health qualifiers: 3 degraded, 6 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 29 are live. Health qualifiers: 3 degraded, 7 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-22T21:22:09Z",
+  "generated_at": "2026-08-22T22:00:48Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "05791727748400b1a5cf3b782c62ad81f659fbfd",
+  "source_commit": "d937a6cf797c0d3147a4a4c980c67e7a6d7b6b5e",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 30,
+    "live": 29,
     "status": "degraded",
     "counts": {
-      "live": 30,
+      "live": 29,
       "degraded": 3,
-      "stale": 6,
+      "stale": 7,
       "missing": 0,
       "corrupt": 0
     }
@@ -348,8 +348,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-22T18:48:52Z",
-      "modified_at": "2026-08-22T18:48:52Z",
+      "published_at": "2026-08-22T21:35:29Z",
+      "modified_at": "2026-08-22T21:35:29Z",
       "claim_fingerprint": "sha256:fae204427a58740a4135abd6dcdaf2a6b33492d9e8d226507a1b2626916b13d7",
       "metric": {
         "label": "terms ranked",
@@ -370,10 +370,10 @@
         "url": "https://palimpsest.info/readings/ddti-latest.json",
         "input": {
           "filename": "ddti-latest.json",
-          "sha256": "8eab44f57edbac7041d4b10b70704477beb0a520b5af0a513b2c81fbf9d58ccf",
-          "bytes": 167652
+          "sha256": "1a40c47272eeef4a319115e72b90b980c92a0b295b15a252b37bd34f778e27a5",
+          "bytes": 167666
         },
-        "source_timestamp": "2026-08-22T18:48:52Z"
+        "source_timestamp": "2026-08-22T21:35:29Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -1695,20 +1695,20 @@
       "slug": "china-money-market-benchmarks",
       "url": "https://palimpsest.info/news/china-money-market-benchmarks/",
       "signal_id": "china-econ",
-      "headline": "3 official money-market benchmark families are reporting",
-      "dek": "The feed carries published CFETS levels as economic context without inferring a policy signal from one print.",
+      "headline": "China money-market benchmarks: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "economy",
       "order": 1,
       "type": "measurement",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-22T07:38:19Z",
       "modified_at": "2026-08-22T07:38:19Z",
-      "claim_fingerprint": "sha256:ec0f881c4f5909c7ce1b1422ed24fed5ce90df6f28e8cbff1c7c66cab5ba5743",
+      "claim_fingerprint": "sha256:1d91487d1aeb7b0e73f9ee6c5b3a260275fc73cc426a0f287505c815d68b3de1",
       "metric": {
-        "label": "benchmark families reporting",
-        "value": 3,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1716,8 +1716,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current CFETS reading contains 3 reporting benchmark families."
+          "type": "availability",
+          "statement": "No current finding is published for China money-market benchmarks because the source status is stale."
         }
       ],
       "evidence": {
@@ -1734,6 +1734,7 @@
         "version": 3
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Official benchmark levels are state-published inputs; interpreting policy requires relationships and history, not one level."
       ],
       "related_signal_ids": [

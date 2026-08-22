@@ -11,6 +11,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "erasure-refresh.yml"
+GFI_WORKFLOW = ROOT / ".github" / "workflows" / "gfi-refresh.yml"
+
+
+def test_all_known_eval_registry_writers_share_one_serial_lane():
+    for workflow in (WORKFLOW, GFI_WORKFLOW):
+        text = workflow.read_text(encoding="utf-8")
+        assert "group: eval-registry-writer" in text
+        assert "cancel-in-progress: false" in text
 
 
 def test_eval_refresh_is_race_safe_and_never_swallows_a_rebase_failure():
@@ -37,15 +45,19 @@ def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
     assert text.count("python3 scripts/seal_readings.py || rc=$?") == 3
     assert text.count("python -m scripts.anchor_roots") == 2
     assert text.count("python -m scripts.verify_eval_registry") == 3
+    assert text.count("python -m scripts.ingest_refusal_drift") == 2
+    assert text.count("python -m scripts.eval_registry_ingest") == 3
     assert text.count("python scripts/verify_public_surface.py") == 3
     assert text.count("\n          PALIMPSEST_WAYBACK_ACCESS_KEY:") == 2
     assert text.count("\n          PALIMPSEST_WAYBACK_SECRET_KEY:") == 2
 
-    race = text.index("Recollect, reverify, and retry after a push race")
+    race = text.index("Reattest, reverify, and retry after a push race")
     refresh = text.index("git fetch origin main", race)
     reset = text.index("git switch --detach origin/main", refresh)
     restore = text.index('git checkout "$measurement_commit"', reset)
-    aggregate = text.index("python -m scripts.erasure_pull", restore)
+    legacy_ingest = text.index("python -m scripts.eval_registry_ingest", restore)
+    retained_ingest = text.index("python -m scripts.ingest_refusal_drift", legacy_ingest)
+    aggregate = text.index("python -m scripts.erasure_pull", retained_ingest)
     rebuild = text.index("python3 scripts/seal_readings.py || rc=$?", aggregate)
     verify = text.index("python -m scripts.verify_eval_registry", rebuild)
     anchor = text.index("python -m scripts.anchor_roots", verify)
@@ -56,6 +68,8 @@ def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
         < refresh
         < reset
         < restore
+        < legacy_ingest
+        < retained_ingest
         < aggregate
         < rebuild
         < verify
@@ -67,7 +81,7 @@ def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
 
 def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
     text = WORKFLOW.read_text(encoding="utf-8")
-    race = text.index("Recollect, reverify, and retry after a push race")
+    race = text.index("Reattest, reverify, and retry after a push race")
     preserve_start = text.index("# Carry forward only this run's measured/model artifacts", race)
     preserve_end = text.index("            done", preserve_start)
     preserved = text[preserve_start:preserve_end]
@@ -80,6 +94,8 @@ def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
         "readings/anchors.jsonl",
         "readings/anchors-latest.json",
         "readings/anchors/",
+        "readings/eval-registry.jsonl",
+        "readings/eval-registry-latest.json",
     ):
         assert derived_path not in preserved
 
@@ -87,7 +103,9 @@ def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
     loop = retry.index("for attempt in 1 2 3 4; do")
     refresh = retry.index("git fetch origin main", loop)
     reset = retry.index("git switch --detach origin/main", refresh)
-    rebuild = retry.index("python -m scripts.erasure_pull", reset)
+    legacy_ingest = retry.index("python -m scripts.eval_registry_ingest", reset)
+    retained_ingest = retry.index("python -m scripts.ingest_refusal_drift", legacy_ingest)
+    rebuild = retry.index("python -m scripts.erasure_pull", retained_ingest)
     seal = retry.index("python3 scripts/seal_readings.py || rc=$?", rebuild)
     verify_ledger = retry.index("python -m scripts.verify_ledger", seal)
     verify_eval = retry.index("python -m scripts.verify_eval_registry", verify_ledger)
@@ -101,18 +119,25 @@ def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
     push = retry.index(
         "if python scripts/push_data_commit.py --base-locked; then", commit
     )
-    assert loop < refresh < reset < rebuild < seal < verify_ledger
+    assert loop < refresh < reset < legacy_ingest < retained_ingest < rebuild
+    assert rebuild < seal < verify_ledger
     assert verify_ledger < verify_eval < verify_transcripts < verify_seal
     assert verify_seal < anchor < scrub < commit < push
 
 
-def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
+def test_workflow_bounds_provider_runtime_and_stages_every_reconciled_eval_artifact():
     text = WORKFLOW.read_text(encoding="utf-8")
 
     assert "timeout-minutes: 150" in text
     assert "timeout-minutes: 110" in text
     assert 'cron: "8 */6 * * *"' in text
-    race = text.index("Recollect, reverify, and retry after a push race")
+    race = text.index("Reattest, reverify, and retry after a push race")
+    carry_start = text.index("# Carry forward only this run's measured/model artifacts", race)
+    carry_end = text.index("            done", carry_start)
+    carry = text[carry_start:carry_end]
+    assert "readings/eval-registry.jsonl" not in carry
+    assert "readings/eval-registry-latest.json" not in carry
+
     staging_start = text.index(
         "for p in readings/erasure-observatory-latest.json", race
     )
@@ -133,6 +158,46 @@ def test_workflow_bounds_provider_runtime_and_stages_every_eval_artifact():
         "readings/anchors-latest.json",
     ):
         assert path in retry_staging, path
+
+
+def test_every_advanced_base_restores_the_public_registry_then_replays_measurement():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    sync = text[text.index("Rebase the candidate onto the latest public inputs"):]
+    sync = sync[: sync.index("Verify the reconciled eval and readings chains")]
+
+    clean_advance = sync[sync.index('if [ "$previous_base" = "$current_base" ]'):]
+    clean_advance = clean_advance[: clean_advance.index("else\n            git rebase --abort")]
+    assert "readings/eval-registry.jsonl" in clean_advance
+    assert "readings/eval-registry-latest.json" in clean_advance
+
+    conflict = sync[sync.index("git rebase --abort || true"):]
+    conflict_carry = conflict[conflict.index("for p in "): conflict.index("            done")]
+    assert "readings/eval-registry.jsonl" not in conflict_carry
+    assert "readings/eval-registry-latest.json" not in conflict_carry
+
+    rebuild = sync[sync.index("Rebuild the aggregate and shared seal after an input change"):]
+    legacy = rebuild.index("python -m scripts.eval_registry_ingest")
+    replay = rebuild.index("python -m scripts.ingest_refusal_drift")
+    aggregate = rebuild.index("python -m scripts.erasure_pull")
+    assert legacy < replay < aggregate
+
+
+def test_paid_measurement_is_retained_briefly_after_semantic_verification():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    verify = text.index("Verify the transcripts recompute the seal")
+    upload = text.index("Retain the paid refusal measurement", verify)
+    assurance = text.index("Verify any published GFI v2 transcripts", upload)
+    retained = text[upload:assurance]
+
+    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in retained
+    assert "retention-days: 7" in retained
+    for path in (
+        "readings/refusal-drift-latest.json",
+        "readings/refusal-drift-history.jsonl",
+        "readings/refusal-drift-transcripts.json",
+        "readings/refusal-drift-churn.jsonl",
+    ):
+        assert path in retained
 
 
 def test_eval_assurance_is_rebuilt_after_every_chain_reconciliation():
@@ -172,7 +237,7 @@ def test_eval_article_scenarios_gate_reconciliation_and_every_race_retry():
     reconcile_anchor = text.index("Anchor only the reconciled roots", reconcile_tests)
     assert reconcile < reconcile_check < reconcile_tests < reconcile_anchor
 
-    retry = text.index("Recollect, reverify, and retry after a push race")
+    retry = text.index("Reattest, reverify, and retry after a push race")
     retry_check = text.index("python -m scripts.build_eval_findings --check", retry)
     retry_tests = text.index(command, retry_check)
     retry_anchor = text.index("python -m scripts.anchor_roots", retry_tests)

@@ -15,6 +15,14 @@ ROOT = Path(__file__).resolve().parent.parent
 NEWSWIRE_WORKFLOW = ROOT / ".github" / "workflows" / "newswire-refresh.yml"
 OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
 TESTS_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
+OSINT_PUBLISHER_WORKFLOWS = tuple(
+    path
+    for path in sorted((ROOT / ".github" / "workflows").glob("*.yml"))
+    if any(
+        line.strip().startswith("python -m scripts.build_osint_china")
+        for line in path.read_text(encoding="utf-8").splitlines()
+    )
+)
 
 
 def _json(path: str) -> dict:
@@ -29,14 +37,7 @@ def _staged_occurrences(workflow: str, artifact: str) -> int:
 
 
 def test_every_newsroom_publisher_stages_both_china_article_heads():
-    workflow_paths = (
-        ROOT / ".github" / "workflows" / "china-econ-refresh.yml",
-        ROOT / ".github" / "workflows" / "data-darkness-refresh.yml",
-        ROOT / ".github" / "workflows" / "gfi-refresh.yml",
-        ROOT / ".github" / "workflows" / "newswire-refresh.yml",
-        ROOT / ".github" / "workflows" / "osint-china-refresh.yml",
-    )
-    for path in workflow_paths:
+    for path in OSINT_PUBLISHER_WORKFLOWS:
         workflow = path.read_text(encoding="utf-8")
         newsroom_heads = _staged_occurrences(
             workflow, "readings/newsroom-latest.json"
@@ -46,8 +47,55 @@ def test_every_newsroom_publisher_stages_both_china_article_heads():
             workflow, "readings/china-article-stream-latest.json"
         ) == newsroom_heads, path.name
         assert _staged_occurrences(
+            workflow, "readings/china-situation-latest.json"
+        ) == newsroom_heads, path.name
+        assert _staged_occurrences(
             workflow, "readings/china-censorship-analysis-latest.json"
         ) == newsroom_heads, path.name
+
+
+def test_every_osint_publisher_rebuilds_checks_and_stages_the_erasure_trail():
+    sequence = re.compile(
+        r"python -m scripts\.build_erasure_trail\n"
+        r"\s*python -m scripts\.build_erasure_trail --check\n"
+        r"\s*python -m scripts\.build_osint_china[^\n]*"
+    )
+    for path in OSINT_PUBLISHER_WORKFLOWS:
+        workflow = path.read_text(encoding="utf-8")
+        osint_builds = sum(
+            line.strip().startswith("python -m scripts.build_osint_china")
+            for line in workflow.splitlines()
+        )
+        assert osint_builds > 0, path.name
+        assert len(sequence.findall(workflow)) == osint_builds, path.name
+        assert _staged_occurrences(workflow, "news/") == osint_builds, path.name
+        for artifact in (
+            "readings/erasure-trail-latest.json",
+            "readings/erasure-trail-history.jsonl",
+            "readings/erasure-trail.csv",
+        ):
+            assert _staged_occurrences(workflow, artifact) == osint_builds, (
+                path.name,
+                artifact,
+            )
+
+
+def test_every_newsroom_publisher_rebuilds_the_china_situation_before_catalog():
+    sequence = re.compile(
+        r"python -m scripts\.build_newsroom\n"
+        r"\s*python -m scripts\.build_newsroom --check\n"
+        r"\s*python -m scripts\.build_china_situation\n"
+        r"\s*python -m scripts\.build_china_situation --check\n"
+        r"\s*python -m scripts\.build_data_catalog"
+    )
+    for path in OSINT_PUBLISHER_WORKFLOWS:
+        workflow = path.read_text(encoding="utf-8")
+        newsroom_builds = sum(
+            line.strip() == "python -m scripts.build_newsroom"
+            for line in workflow.splitlines()
+        )
+        assert newsroom_builds > 0, path.name
+        assert len(sequence.findall(workflow)) == newsroom_builds, path.name
 
 
 def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
@@ -369,6 +417,8 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         r"python -m scripts\.build_economic_pulse\n"
         r"\s*python -m scripts\.build_china_econ_manifest\n"
         r"\s*python -m scripts\.build_china_site\n"
+        r"\s*python -m scripts\.build_erasure_trail\n"
+        r"\s*python -m scripts\.build_erasure_trail --check\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_network_rounds\n"
@@ -555,6 +605,7 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         r"\s*python -m scripts\.build_china_site\n"
         r"\s*python -m scripts\.undertext_pull\n"
         r"\s*python -m scripts\.build_erasure_trail\n"
+        r"\s*python -m scripts\.build_erasure_trail --check\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_network_rounds\n"
@@ -576,6 +627,7 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         r"\s*python -m scripts\.build_china_site\n"
         r"\s*python -m scripts\.undertext_pull\n"
         r"\s*python -m scripts\.build_erasure_trail\n"
+        r"\s*python -m scripts\.build_erasure_trail --check\n"
         r"\s*python -m scripts\.build_osint_china[^\n]*\n"
         r"\s*python -m scripts\.build_investigations\n"
         r"\s*python -m scripts\.build_network_rounds\n"
