@@ -47,25 +47,17 @@
       "source_id": "anchors",
       "summary": "integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
       "title": "Integrity anchors: degraded"
-    },
-    {
-      "id": "health-nemesis",
-      "kind": "health",
-      "severity": "notice",
-      "source_id": "nemesis",
-      "summary": "freshness deadline has passed",
-      "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-22T14:26:43Z",
-  "headline": "Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 33 are live. Health qualifiers: 4 degraded, 2 stale.",
+  "generated_at": "2026-08-22T15:40:12Z",
+  "headline": "Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 34 are live. Health qualifiers: 4 degraded, 1 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 4,
-      "live": 33,
+      "live": 34,
       "missing": 0,
-      "stale": 2
+      "stale": 1
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
@@ -74,7 +66,7 @@
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "4cdc5bc7a9a9f5e026e0a6eb784ffae41187caf5",
+  "input_commit": "afe54cbc9bb7d209d3f372489c28921d01574136",
   "layers": [
     {
       "id": "command",
@@ -193,20 +185,20 @@
     },
     {
       "id": "nemesis",
-      "n_degraded": 1,
-      "n_live": 0,
+      "n_degraded": 0,
+      "n_live": 1,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "nemesis"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Optional intelligence bridge"
     }
   ],
   "method": "Deterministic offline roll-up of declared source files. Source payloads that fit the public embed bound are retained in full; larger source files keep health, metrics and a compact prefix, with complete bytes at raw_url matching input.sha256. Freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 33,
+  "n_signals_live": 34,
   "n_signals_reporting": 39,
   "n_signals_total": 39,
   "schema_version": "osint-china.v1",
@@ -216,7 +208,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 0.0,
+        "age_hours": 1.225,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -532,7 +524,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:20:05Z",
       "health": {
-        "age_hours": 1.11,
+        "age_hours": 2.335,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -753,7 +745,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 0.0,
+        "age_hours": 1.225,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -897,7 +889,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 0.0,
+        "age_hours": 1.225,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1477,7 +1469,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 0.0,
+        "age_hours": 1.225,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1862,9 +1854,9 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-22T20:00:16Z",
+      "freshness_deadline": "2026-08-22T22:34:51Z",
       "health": {
-        "age_hours": 1.441,
+        "age_hours": 0.089,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1874,9 +1866,9 @@
       },
       "id": "ddti",
       "input": {
-        "bytes": 167669,
+        "bytes": 167651,
         "filename": "ddti-latest.json",
-        "sha256": "b9ab5cfdff7af21af87ef0649009b9cf31dfd96d0ba8703506a718931c462605"
+        "sha256": "cd3d177165932790751171fc5bcef1321413e48cc7b1a17439503cc5d32ffe1d"
       },
       "layer": "attention",
       "live": true,
@@ -1898,7 +1890,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 193.4,
+          "days_covered": 193.5,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1912,12 +1904,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-22T13:00:16.993101+00:00",
-        "n_observations": 84,
+        "generated_at": "2026-08-22T15:34:51.967392+00:00",
+        "n_observations": 81,
         "n_terms": 211,
         "ranked": [
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -1935,10 +1927,10 @@
               }
             ],
             "term": "Chinese opera",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -1956,10 +1948,10 @@
               }
             ],
             "term": "Cultural Revolution",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -1977,10 +1969,10 @@
               }
             ],
             "term": "Red",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -1998,10 +1990,10 @@
               }
             ],
             "term": "The Cultural Revolution Never Ended",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2019,10 +2011,10 @@
               }
             ],
             "term": "cross-talk",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2040,10 +2032,10 @@
               }
             ],
             "term": "cultural policy",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2061,10 +2053,10 @@
               }
             ],
             "term": "insulting heroes and martyrs",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2082,10 +2074,10 @@
               }
             ],
             "term": "revolutionary films",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2103,10 +2095,10 @@
               }
             ],
             "term": "wuhan",
-            "threat": 0.7753
+            "threat": 0.7469
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-24T06:17:30+00:00",
@@ -2128,10 +2120,10 @@
               }
             ],
             "term": "freedom of expression",
-            "threat": 0.7384
+            "threat": 0.7114
           },
           {
-            "attention": 0.5153,
+            "attention": 0.4965,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -2157,10 +2149,10 @@
               }
             ],
             "term": "netizen comments",
-            "threat": 0.7085
+            "threat": 0.6827
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-02-28T01:56:40+00:00",
@@ -2178,10 +2170,10 @@
               }
             ],
             "term": "arts censorship",
-            "threat": 0.6645
+            "threat": 0.6402
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -2199,10 +2191,10 @@
               }
             ],
             "term": "comedy",
-            "threat": 0.6645
+            "threat": 0.6402
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-25T05:15:19+00:00",
@@ -2220,10 +2212,10 @@
               }
             ],
             "term": "free expression",
-            "threat": 0.6645
+            "threat": 0.6402
           },
           {
-            "attention": 0.443,
+            "attention": 0.4268,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-07-06T06:26:18+00:00",
@@ -2241,10 +2233,10 @@
               }
             ],
             "term": "party history",
-            "threat": 0.6645
+            "threat": 0.6402
           },
           {
-            "attention": 0.3166,
+            "attention": 0.3051,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-27T20:03:29+00:00",
@@ -2266,7 +2258,7 @@
               }
             ],
             "term": "subway",
-            "threat": 0.6332
+            "threat": 0.6101
           }
         ],
         "source_feeds": {
@@ -2289,7 +2281,7 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-22T13:00:16Z",
+      "source_timestamp": "2026-08-22T15:34:51Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 211 count.",
       "title": "Deletion-directive term index"
@@ -2298,7 +2290,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:24:46Z",
       "health": {
-        "age_hours": 1.032,
+        "age_hours": 2.257,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2599,7 +2591,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T16:17:47Z",
       "health": {
-        "age_hours": 1.149,
+        "age_hours": 2.374,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3796,7 +3788,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T16:50:07Z",
       "health": {
-        "age_hours": 0.61,
+        "age_hours": 1.835,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4096,7 +4088,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-25T05:08:57Z",
       "health": {
-        "age_hours": 129.296,
+        "age_hours": 130.521,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4408,7 +4400,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:16:08Z",
       "health": {
-        "age_hours": 1.176,
+        "age_hours": 2.401,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4693,9 +4685,9 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-22T18:23:45Z",
+      "freshness_deadline": "2026-08-22T22:08:00Z",
       "health": {
-        "age_hours": 3.049,
+        "age_hours": 0.537,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4705,9 +4697,9 @@
       },
       "id": "public-deletion-ledgers",
       "input": {
-        "bytes": 66326,
+        "bytes": 65782,
         "filename": "public-deletion-ledgers-latest.json",
-        "sha256": "7f9b0aac4b02a9d995bee74c44d5fb76cbb41b8d8bae053c439c9065e7cbaba1"
+        "sha256": "0ee168aa25c50fcfaf81e706e60881515b1984ab4711e38f7e29e9ba16596893"
       },
       "layer": "attention",
       "live": true,
@@ -4724,7 +4716,7 @@
       },
       "optional": true,
       "payload": {
-        "generated_at": "2026-08-22T11:23:45Z",
+        "generated_at": "2026-08-22T15:08:00Z",
         "ledgers": [
           {
             "http_status": 200,
@@ -4767,7 +4759,7 @@
             "url": "https://freeweibo.com/feed"
           },
           {
-            "http_status": 403,
+            "http_status": 404,
             "kind": "freewechat",
             "n_items": 0,
             "n_observations": 0,
@@ -4788,7 +4780,6 @@
               "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
               "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
               "post_event_snapshot": null,
-              "save_note": "Save Page Now transport failed (OSError); lookup only",
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
@@ -4915,7 +4906,6 @@
               "archive_today_lookup": "https://archive.today/https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
               "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/",
               "post_event_snapshot": null,
-              "save_note": "Save Page Now transport failed (OSError); lookup only",
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
@@ -5037,16 +5027,16 @@
       "raw_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
       "scope": "Public ledger items only: titles, excerpts, source URLs, gazetteer hits, archive lookup addresses, and capture provenance. No account graphs, no in-country vantage, no fabricated live readings.",
       "source": "public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style)",
-      "source_timestamp": "2026-08-22T11:23:45Z",
+      "source_timestamp": "2026-08-22T15:08:00Z",
       "status": "live",
       "summary": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style) with reachability explicit. Latest payload reports ledger observations at 15 count across 1 feeds answering.",
       "title": "Public deletion ledgers"
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-23T02:33:12Z",
+      "freshness_deadline": "2026-08-23T08:33:00Z",
       "health": {
-        "age_hours": 7.892,
+        "age_hours": 3.12,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5056,9 +5046,9 @@
       },
       "id": "greatfire-context",
       "input": {
-        "bytes": 44357,
+        "bytes": 59096,
         "filename": "greatfire-context-latest.json",
-        "sha256": "50eee7b1e15067da9cf43d66dc2bdb25d5ba8127bcf2c11e6b34ab5a49202b53"
+        "sha256": "8b39685e5bcca3a3cc255659c3a7dc066849a6fb10aa80e166dbe48816d4d1ec"
       },
       "layer": "network",
       "live": true,
@@ -5067,16 +5057,16 @@
       "metric": {
         "denominator": {
           "label": "URLs queried",
-          "value": 35
+          "value": 53
         },
         "label": "GreatFire verdicts",
         "unit": "count",
-        "value": 17
+        "value": 22
       },
       "optional": true,
       "payload": {
         "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-        "generated_at": "2026-08-22T06:33:12Z",
+        "generated_at": "2026-08-22T12:33:00Z",
         "hosts": [
           {
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
@@ -5138,17 +5128,17 @@
             "block_share_90d": 0.0,
             "blocked": false,
             "host": "www.gov.cn",
-            "last_tested_at": "2026-08-21T21:51:19Z",
-            "n_tests": 117,
-            "observed_at": "2026-08-21T21:51:19Z",
+            "last_tested_at": "2026-08-22T10:44:54Z",
+            "n_tests": 118,
+            "observed_at": "2026-08-22T10:44:54Z",
             "path": "https/www.gov.cn",
-            "peer_date": "2026-08-21",
+            "peer_date": "2026-08-22",
             "source": "cached-verdicts-only",
-            "tested": 117,
+            "tested": 118,
             "verdict": "not blocked",
             "window_days": 90,
-            "window_end": "2026-08-21T21:51:19Z",
-            "window_start": "2026-05-23T21:51:19Z"
+            "window_end": "2026-08-22T10:44:54Z",
+            "window_start": "2026-05-24T10:44:54Z"
           },
           {
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
@@ -5317,11 +5307,101 @@
             "block_share": 0.0,
             "block_share_90d": 0.0,
             "blocked": false,
+            "host": "chinadigitaltimes.net",
+            "last_tested_at": null,
+            "n_tests": null,
+            "observed_at": null,
+            "path": "https/chinadigitaltimes.net/feed",
+            "peer_date": null,
+            "source": "cached-verdicts-only",
+            "tested": null,
+            "verdict": "not enough data",
+            "window_days": 90,
+            "window_end": null,
+            "window_start": null
+          },
+          {
+            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+            "block_share": 0.0,
+            "block_share_90d": 0.0,
+            "blocked": false,
+            "host": "en.greatfire.org",
+            "last_tested_at": null,
+            "n_tests": null,
+            "observed_at": null,
+            "path": "https/en.greatfire.org/rss.xml",
+            "peer_date": null,
+            "source": "cached-verdicts-only",
+            "tested": null,
+            "verdict": "not enough data",
+            "window_days": 90,
+            "window_end": null,
+            "window_start": null
+          },
+          {
+            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+            "block_share": 0.0,
+            "block_share_90d": 0.0,
+            "blocked": false,
+            "host": "freeweibo.com",
+            "last_tested_at": null,
+            "n_tests": null,
+            "observed_at": null,
+            "path": "https/freeweibo.com/feed",
+            "peer_date": null,
+            "source": "cached-verdicts-only",
+            "tested": null,
+            "verdict": "not enough data",
+            "window_days": 90,
+            "window_end": null,
+            "window_start": null
+          },
+          {
+            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+            "block_share": 0.0,
+            "block_share_90d": 0.0,
+            "blocked": false,
+            "host": "freewechat.com",
+            "last_tested_at": null,
+            "n_tests": null,
+            "observed_at": null,
+            "path": "https/freewechat.com/feed",
+            "peer_date": null,
+            "source": "cached-verdicts-only",
+            "tested": null,
+            "verdict": "not enough data",
+            "window_days": 90,
+            "window_end": null,
+            "window_start": null
+          },
+          {
+            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+            "block_share": 0.0,
+            "block_share_90d": 0.0,
+            "blocked": false,
+            "host": "freedomhouse.org",
+            "last_tested_at": null,
+            "n_tests": null,
+            "observed_at": null,
+            "path": "https/freedomhouse.org/article/tnr-watch-cyberattacks-tactic-digital-transnational-repression",
+            "peer_date": null,
+            "source": "cached-verdicts-only",
+            "tested": null,
+            "verdict": "not enough data",
+            "window_days": 90,
+            "window_end": null,
+            "window_start": null
+          },
+          {
+            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+            "block_share": 0.0,
+            "block_share_90d": 0.0,
+            "blocked": false,
             "host": "baike.baidu.com",
             "last_tested_at": null,
             "n_tests": null,
             "observed_at": null,
-            "path": "https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+            "path": "https/baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
             "peer_date": null,
             "source": "cached-verdicts-only",
             "tested": null,
@@ -5390,204 +5470,124 @@
             "http_status": 200,
             "items": [
               {
-                "path": "https://en.greatfire.org/74.125.138.93",
+                "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E7%94%B0%E9%9D%92",
                 "status": "blocked",
-                "title": "http://74.125.138.93 is blocked in mainland China"
+                "title": "http://www.google.com/search?q=%E7%94%B0%E9%9D%92 is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/teammatesv4.appspot.com",
+                "path": "https://en.greatfire.org/https/javdb006.com",
                 "status": "blocked",
-                "title": "http://teammatesv4.appspot.com is blocked in mainland China"
+                "title": "https://javdb006.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E5%B9%BF%E4%B8%9C%E7%BE%A4%E4%BC%97%E7%A0%B8%E8%AD%A6%E8%BD%A6",
+                "path": "https://en.greatfire.org/https/din.wikipedia.org",
                 "status": "blocked",
-                "title": "http://www.google.com/search?q=%E5%B9%BF%E4%B8%9C%E7%BE%A4%E4%BC%97%E7%A0%B8%E8%AD%A6%E8%BD%A6 is blocked in mainland China"
+                "title": "https://din.wikipedia.org is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.mm-11.com",
+                "path": "https://en.greatfire.org/https/idowa.de",
                 "status": "blocked",
-                "title": "http://www.mm-11.com is blocked in mainland China"
+                "title": "https://idowa.de is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.fuhui-official.com",
+                "path": "https://en.greatfire.org/https/hotnaked.net",
                 "status": "blocked",
-                "title": "http://www.fuhui-official.com is blocked in mainland China"
+                "title": "https://hotnaked.net is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/74.125.139.163",
+                "path": "https://en.greatfire.org/https/czechboobs.com",
                 "status": "blocked",
-                "title": "http://74.125.139.163 is blocked in mainland China"
+                "title": "https://czechboobs.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/cdnjs.loli.net",
+                "path": "https://en.greatfire.org/https/swampland.time.com",
                 "status": "blocked",
-                "title": "http://cdnjs.loli.net is blocked in mainland China"
+                "title": "https://swampland.time.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/discreetmilf.com",
+                "path": "https://en.greatfire.org/https/psiphon.win",
                 "status": "blocked",
-                "title": "http://discreetmilf.com is blocked in mainland China"
+                "title": "https://psiphon.win is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/cn.wsj.com/gb/20140612/ASD081858.asp",
+                "path": "https://en.greatfire.org/https/ceskeporno.cz",
                 "status": "blocked",
-                "title": "http://cn.wsj.com/gb/20140612/ASD081858.asp is blocked in mainland China"
+                "title": "https://ceskeporno.cz is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.tumblr.com/settings/blog/evergreenpri",
+                "path": "https://en.greatfire.org/https/ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js",
                 "status": "blocked",
-                "title": "https://www.tumblr.com/settings/blog/evergreenpri is blocked in mainland China"
+                "title": "https://ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.scmpchinese.com/sc/china/25995/xi-jin-ping-fang-ke-shi-jiang-qi-ji-guang-da-wei-kou-liang-yue-lai-15ci-tan-fan-kong",
+                "path": "https://en.greatfire.org/www.screencrush.com",
                 "status": "blocked",
-                "title": "http://www.scmpchinese.com/sc/china/25995/xi-jin-ping-fang-ke-shi-jiang-qi-ji-guang-da-wei-kou-liang-yue-lai-15ci-tan-fan-kong is blocked in mainland China"
+                "title": "http://www.screencrush.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/soundcloud.com/greg-packer/packer-rhodes-broken-soul",
+                "path": "https://en.greatfire.org/cn.wsj.com/gb/20160422/ASD081533.asp",
                 "status": "blocked",
-                "title": "https://soundcloud.com/greg-packer/packer-rhodes-broken-soul is blocked in mainland China"
+                "title": "http://cn.wsj.com/gb/20160422/ASD081533.asp is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.rfa.org/tibetan",
+                "path": "https://en.greatfire.org/https/insecam.org",
                 "status": "blocked",
-                "title": "https://www.rfa.org/tibetan is blocked in mainland China"
+                "title": "https://insecam.org is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/disqus.com/home/forum/nytchinese",
+                "path": "https://en.greatfire.org/https/fashiola.fr",
                 "status": "blocked",
-                "title": "http://disqus.com/home/forum/nytchinese is blocked in mainland China"
+                "title": "https://fashiola.fr is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/74.125.201.141",
+                "path": "https://en.greatfire.org/74.125.142.116",
                 "status": "blocked",
-                "title": "http://74.125.201.141 is blocked in mainland China"
+                "title": "http://74.125.142.116 is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www3.nhk.or.jp/nhkworld/ko/news/",
+                "path": "https://en.greatfire.org/https/suyou.org",
                 "status": "blocked",
-                "title": "https://www3.nhk.or.jp/nhkworld/ko/news/ is blocked in mainland China"
+                "title": "https://suyou.org is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.wujieliulan.com",
+                "path": "https://en.greatfire.org/https/itssa.co.kr",
                 "status": "blocked",
-                "title": "https://www.wujieliulan.com is blocked in mainland China"
+                "title": "https://itssa.co.kr is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/scontent-nrt1-1.cdninstagram.com/hphotos-xpa1/t50.2886-16/11684607_727297230714370_957277913_n.mp4",
+                "path": "https://en.greatfire.org/https/3dgirlz.com",
                 "status": "blocked",
-                "title": "https://scontent-nrt1-1.cdninstagram.com/hphotos-xpa1/t50.2886-16/11684607_727297230714370_957277913_n.mp4 is blocked in mainland China"
+                "title": "https://3dgirlz.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/brave-core-ext.s3.brave.com",
+                "path": "https://en.greatfire.org/https/between-legs.com",
                 "status": "blocked",
-                "title": "https://brave-core-ext.s3.brave.com is blocked in mainland China"
+                "title": "https://between-legs.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/theglobalist.com",
+                "path": "https://en.greatfire.org/https/expressvpnw.com",
                 "status": "blocked",
-                "title": "https://theglobalist.com is blocked in mainland China"
+                "title": "https://expressvpnw.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/74.125.26.81",
+                "path": "https://en.greatfire.org/https/lapland.lol",
                 "status": "blocked",
-                "title": "http://74.125.26.81 is blocked in mainland China"
+                "title": "https://lapland.lol is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/74.125.20.31",
+                "path": "https://en.greatfire.org/pinimg.com",
                 "status": "blocked",
-                "title": "https://74.125.20.31 is blocked in mainland China"
+                "title": "http://pinimg.com is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/youtube.com.br",
+                "path": "https://en.greatfire.org/https/huobi.co.kr",
                 "status": "blocked",
-                "title": "http://youtube.com.br is blocked in mainland China"
+                "title": "https://huobi.co.kr is blocked in mainland China"
               },
               {
-                "path": "https://en.greatfire.org/74.125.22.116",
+                "path": "https://en.greatfire.org/www.rumble.com",
                 "status": "blocked",
-                "title": "http://74.125.22.116 is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/agency.reuters.com",
-                "status": "blocked",
-                "title": "http://agency.reuters.com is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/api.yunwu.ai",
-                "status": "blocked",
-                "title": "https://api.yunwu.ai is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/familysearch.org",
-                "status": "blocked",
-                "title": "http://familysearch.org is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/azlinaamran.wixsite.com/rockpower",
-                "status": "blocked",
-                "title": "https://azlinaamran.wixsite.com/rockpower is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/www.oursteps.com.au/bbs/forum.php%3Fmod%3Dforumdisplay%26fid%3D20",
-                "status": "blocked",
-                "title": "https://www.oursteps.com.au/bbs/forum.php?mod=forumdisplay&fid=20 is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/s-pinimg-com.gslb.pinterest.com",
-                "status": "blocked",
-                "title": "http://s-pinimg-com.gslb.pinterest.com is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/www.extmatrix.com",
-                "status": "blocked",
-                "title": "http://www.extmatrix.com is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/r18.com",
-                "status": "blocked",
-                "title": "http://r18.com is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/api.quickrouter.ai",
-                "status": "blocked",
-                "title": "https://api.quickrouter.ai is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/rosannaroxx.wix.com/myportfolio",
-                "status": "blocked",
-                "title": "http://rosannaroxx.wix.com/myportfolio is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/ssr6.ssrsub.one",
-                "status": "blocked",
-                "title": "http://ssr6.ssrsub.one is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/26268888.com",
-                "status": "blocked",
-                "title": "http://26268888.com is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/www.amazon.co.jp/b/ref%3Ddvm_jp_pl_cs_pw_prime_bubblehudfte%3F_encoding%3DUTF8%26node%3D3535604051%26ref%3Ddvm_jp_pl_cs_pw_prime_bubblehudfte%26pf_rd_m%3DAN1VRQENFRJN5%26pf_rd_s%3D%26pf_rd_r%3DCGYCEFPXBZ4T8P94GHFN%26pf_rd_t%3D36701%26pf_rd_p%3D433ef87e-178d-4c4f-806a-6925413b8f1",
-                "status": "blocked",
-                "title": "https://www.amazon.co.jp/b/ref%3Ddvm_jp_pl_cs_pw_prime_bubblehudfte?_encoding=UTF8&node=3535604051&ref=dvm_jp_pl_cs_pw_prime_bubblehudfte&pf_rd_m=AN1VRQENFRJN5&pf_rd_s=&pf_rd_r=CGYCEFPXBZ4T8P94GHFN&pf_rd_t=36701&pf_rd_p=433ef87e-178d-4c4f-8"
-              },
-              {
-                "path": "https://en.greatfire.org/https/laminute.info",
-                "status": "blocked",
-                "title": "https://laminute.info is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/mt-shortwave.blogspot.com",
-                "status": "blocked",
-                "title": "http://mt-shortwave.blogspot.com is blocked in mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/www.t-powers.co.jp/talent",
-                "status": "blocked",
-                "title": "https://www.t-powers.co.jp/talent is blocked in mainland China"
+                "title": "http://www.rumble.com is blocked in mainland China"
               }
             ],
             "list": "blocked",
@@ -5599,204 +5599,124 @@
             "http_status": 200,
             "items": [
               {
-                "path": "https://en.greatfire.org/s.weibo.com/weibo/indie",
+                "path": "https://en.greatfire.org/insiderpages.com",
                 "status": "accessible",
-                "title": "http://s.weibo.com/weibo/indie is reachable from mainland China"
+                "title": "http://insiderpages.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/real.gr",
+                "path": "https://en.greatfire.org/fb.co",
                 "status": "accessible",
-                "title": "http://real.gr is reachable from mainland China"
+                "title": "http://fb.co is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/ddd633.net",
+                "path": "https://en.greatfire.org/1511.com",
                 "status": "accessible",
-                "title": "http://ddd633.net is reachable from mainland China"
+                "title": "http://1511.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.baidu.com/s%3Fwd%3D%E5%AE%BD%E8%A1%A3",
+                "path": "https://en.greatfire.org/tieba.baidu.com/f%3Fkw%3DWin10_22H2_Chinese_Simplified_x64v1",
                 "status": "accessible",
-                "title": "http://www.baidu.com/s?wd=%E5%AE%BD%E8%A1%A3 is reachable from mainland China"
+                "title": "http://tieba.baidu.com/f?kw=Win10_22H2_Chinese_Simplified_x64v1 is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.centorindia.com",
+                "path": "https://en.greatfire.org/https/adidas.cc",
                 "status": "accessible",
-                "title": "http://www.centorindia.com is reachable from mainland China"
+                "title": "https://adidas.cc is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.scene.ca",
+                "path": "https://en.greatfire.org/uee.me/cBrV",
                 "status": "accessible",
-                "title": "https://www.scene.ca is reachable from mainland China"
+                "title": "http://uee.me/cBrV is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/d2sl0dkiby0gu8.cloudfront.net",
+                "path": "https://en.greatfire.org/s.weibo.com/weibo/media.org.hk",
                 "status": "accessible",
-                "title": "https://d2sl0dkiby0gu8.cloudfront.net is reachable from mainland China"
+                "title": "http://s.weibo.com/weibo/media.org.hk is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.aiche.org:80",
+                "path": "https://en.greatfire.org/https/md.liimpops.com",
                 "status": "accessible",
-                "title": "http://www.aiche.org:80 is reachable from mainland China"
+                "title": "https://md.liimpops.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/chinesisch-lernen.org",
+                "path": "https://en.greatfire.org/https/buzzheavier.com",
                 "status": "accessible",
-                "title": "http://chinesisch-lernen.org is reachable from mainland China"
+                "title": "https://buzzheavier.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.theage.com/au",
+                "path": "https://en.greatfire.org/https/ovear.info",
                 "status": "accessible",
-                "title": "https://www.theage.com/au is reachable from mainland China"
+                "title": "https://ovear.info is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.netbridgeglobal.com",
+                "path": "https://en.greatfire.org/https/195195d.com",
                 "status": "accessible",
-                "title": "http://www.netbridgeglobal.com is reachable from mainland China"
+                "title": "https://195195d.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.appliedminds.com",
+                "path": "https://en.greatfire.org/https/jmcomic-ph.cc",
                 "status": "accessible",
-                "title": "http://www.appliedminds.com is reachable from mainland China"
+                "title": "https://jmcomic-ph.cc is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/aa242.net",
+                "path": "https://en.greatfire.org/www.zqware.com",
                 "status": "accessible",
-                "title": "http://aa242.net is reachable from mainland China"
+                "title": "http://www.zqware.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/developer.mozilla.org",
+                "path": "https://en.greatfire.org/https/the-little-language-designer.github.io",
                 "status": "accessible",
-                "title": "http://developer.mozilla.org is reachable from mainland China"
+                "title": "https://the-little-language-designer.github.io is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/soul2.hkuspace.hku.hk",
+                "path": "https://en.greatfire.org/https/www.acams.org",
                 "status": "accessible",
-                "title": "https://soul2.hkuspace.hku.hk is reachable from mainland China"
+                "title": "https://www.acams.org is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/prcm.jp",
+                "path": "https://en.greatfire.org/https/md.hrfyvb.com",
                 "status": "accessible",
-                "title": "http://prcm.jp is reachable from mainland China"
+                "title": "https://md.hrfyvb.com is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.awsacademy.com/vforcesite/LMS_Login",
+                "path": "https://en.greatfire.org/https/blockbench.net",
                 "status": "accessible",
-                "title": "https://www.awsacademy.com/vforcesite/LMS_Login is reachable from mainland China"
+                "title": "https://blockbench.net is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/bdsmovement.net",
+                "path": "https://en.greatfire.org/pitapoison.de",
                 "status": "accessible",
-                "title": "http://bdsmovement.net is reachable from mainland China"
+                "title": "http://pitapoison.de is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/andrewbbernard.com",
+                "path": "https://en.greatfire.org/www.landers.com.au",
                 "status": "accessible",
-                "title": "https://andrewbbernard.com is reachable from mainland China"
+                "title": "http://www.landers.com.au is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/www.wix.com/freesitebuilder/hiker-create%3Fdvc%3Dc%26experiment_id%3Dwix%5Ee%5E49108312300%5E1t1%3B%3Fh%3Dhttps%3A%2F%2Fad.atdmt.com%2Fs%2Fgo%3Badv%3D11038200900119%3Bec%3D11038200904332%3Bc.a%3D179424220%3Bs.a%3Dgoogle%3Bp.a%3D179424220%3Bas.a%3D10375166",
+                "path": "https://en.greatfire.org/https/mixuebcd.uk/download/index.html",
                 "status": "accessible",
-                "title": "https://www.wix.com/freesitebuilder/hiker-create?dvc=c&experiment_id=wix%5Ee%5E49108312300%5E1t1%3B%3Fh%3Dhttps%3A%2F%2Fad.atdmt.com%2Fs%2Fgo%3Badv%3D11038200900119%3Bec%3D11038200904332%3Bc.a%3D179424220%3Bs.a%3Dgoogle%3Bp.a%3D179424220%3B"
+                "title": "https://mixuebcd.uk/download/index.html is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.theland.com.au",
+                "path": "https://en.greatfire.org/https/rdg.com.hk",
                 "status": "accessible",
-                "title": "http://www.theland.com.au is reachable from mainland China"
+                "title": "https://rdg.com.hk is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/www.powderkegs.co.uk",
+                "path": "https://en.greatfire.org/https/adidas.ru",
                 "status": "accessible",
-                "title": "http://www.powderkegs.co.uk is reachable from mainland China"
+                "title": "https://adidas.ru is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/88443885.com",
+                "path": "https://en.greatfire.org/https/shine-star-global-concepts.vitajoydan.chatgpt.site",
                 "status": "accessible",
-                "title": "http://88443885.com is reachable from mainland China"
+                "title": "https://shine-star-global-concepts.vitajoydan.chatgpt.site is reachable from mainland China"
               },
               {
-                "path": "https://en.greatfire.org/https/t5input.github.io",
+                "path": "https://en.greatfire.org/www.nissindigital.com",
                 "status": "accessible",
-                "title": "https://t5input.github.io is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/www.hotelanna.cz",
-                "status": "accessible",
-                "title": "http://www.hotelanna.cz is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/www.spencerstuart.com",
-                "status": "accessible",
-                "title": "http://www.spencerstuart.com is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/github.com/programthink/zhao/issues",
-                "status": "accessible",
-                "title": "https://github.com/programthink/zhao/issues is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/www.glencoe.com/sites/common_assets/mathematics/ebook_assets/vmf/VMF-Interface.html",
-                "status": "accessible",
-                "title": "http://www.glencoe.com/sites/common_assets/mathematics/ebook_assets/vmf/VMF-Interface.html is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/babypips.com",
-                "status": "accessible",
-                "title": "http://babypips.com is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/goldenkey.sg",
-                "status": "accessible",
-                "title": "http://goldenkey.sg is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/signup.live.com/signup%3Flcid%3D1033%26wa%3Dwsignin1.0%26rpsnv%3D13%26ct%3D1526231985%26rver%3D6.7.6640.0%26wp%3DMBI_SSL%26wreply%3Dhttps%3A%2F%2Foutlook.live.com%2Fowa%2F%3Fnlp%3D1%26signup%3D1%26RpsCsrfState%3D3e3bc940-d8f4-f630-a977-a036308e6959%26id%3D292841%26CBCXT%3Dout%26lw%3D1%26fl%3Ddob%2C",
-                "status": "accessible",
-                "title": "https://signup.live.com/signup?lcid=1033&wa=wsignin1.0&rpsnv=13&ct=1526231985&rver=6.7.6640.0&wp=MBI_SSL&wreply=https%3A%2F%2Foutlook.live.com%2Fowa%2F%3Fnlp%3D1&signup=1&RpsCsrfState=3e3bc940-d8f4-f630-a977-a036308e6959&id=292841&CBCXT=out"
-              },
-              {
-                "path": "https://en.greatfire.org/https/www.afreecatv.com%3Fhash%3Dstaffpicks_87",
-                "status": "accessible",
-                "title": "https://www.afreecatv.com?hash=staffpicks_87 is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/www.hkjc.com/home/chinese/index.aspx",
-                "status": "accessible",
-                "title": "https://www.hkjc.com/home/chinese/index.aspx is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/www.temptationstyles.com",
-                "status": "accessible",
-                "title": "https://www.temptationstyles.com is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/yearlies.app",
-                "status": "accessible",
-                "title": "https://yearlies.app is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/fonts.gstatic.com/s/opensans/v14/cJZKeOuBrn4kERxqtaUH3VtXRa8TVwTICgirnJhmVJw.woff2",
-                "status": "accessible",
-                "title": "http://fonts.gstatic.com/s/opensans/v14/cJZKeOuBrn4kERxqtaUH3VtXRa8TVwTICgirnJhmVJw.woff2 is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/ddlhits.com",
-                "status": "accessible",
-                "title": "http://ddlhits.com is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/comm100.com",
-                "status": "accessible",
-                "title": "http://comm100.com is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/godoc.weebly.com",
-                "status": "accessible",
-                "title": "http://godoc.weebly.com is reachable from mainland China"
-              },
-              {
-                "path": "https://en.greatfire.org/https/applecose.wordpress.com",
-                "status": "accessible",
-                "title": "https://applecose.wordpress.com is reachable from mainland China"
+                "title": "http://www.nissindigital.com is reachable from mainland China"
               }
             ],
             "list": "accessible",
@@ -5810,8 +5730,8 @@
         "method_version": 1,
         "n_misses": 0,
         "n_silent": 0,
-        "n_urls_queried": 35,
-        "n_verdicts": 17,
+        "n_urls_queried": 53,
+        "n_verdicts": 22,
         "observer_class": "public-ledger",
         "schema_version": "palimpsest-greatfire-context/v1",
         "scope": "90-day host verdicts Palimpsest already holds.",
@@ -5890,20 +5810,20 @@
             "window_days": 90
           },
           {
-            "as_of": "2026-08-21T21:51:19Z",
+            "as_of": "2026-08-22T10:44:54Z",
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "block_share_90d": 0.0,
             "blocked_count": 0,
             "blocked_percent": 0,
-            "conclusions": 117,
+            "conclusions": 118,
             "contradictory_count": 0,
             "disrupted_percent": 0,
             "first_tested": "2019-08-20T05:42:47Z",
             "found": true,
-            "last_tested": "2026-08-21T21:51:19Z",
-            "last_tested_at": "2026-08-21T21:51:19Z",
+            "last_tested": "2026-08-22T10:44:54Z",
+            "last_tested_at": "2026-08-22T10:44:54Z",
             "license": "CC BY 4.0",
-            "n_tests": 117,
+            "n_tests": 118,
             "path": "https/www.gov.cn",
             "query_url": "https://www.gov.cn/",
             "redirected_count": 0,
@@ -6144,11 +6064,11 @@
             "last_tested_at": null,
             "license": "CC BY 4.0",
             "n_tests": null,
-            "path": "https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
-            "query_url": "https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+            "path": "https/chinadigitaltimes.net/feed",
+            "query_url": "https://chinadigitaltimes.net/feed/",
             "redirected_count": 0,
             "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+            "source_url": "https://en.greatfire.org/https/chinadigitaltimes.net/feed",
             "stale": false,
             "verdict": "not enough data",
             "window_days": 90
@@ -6168,11 +6088,11 @@
             "last_tested_at": null,
             "license": "CC BY 4.0",
             "n_tests": null,
-            "path": "https/baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
-            "query_url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+            "path": "https/chinadigitaltimes.net/chinese/feed",
+            "query_url": "https://chinadigitaltimes.net/chinese/feed/",
             "redirected_count": 0,
             "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+            "source_url": "https://en.greatfire.org/https/chinadigitaltimes.net/chinese/feed",
             "stale": false,
             "verdict": "not enough data",
             "window_days": 90
@@ -6192,11 +6112,11 @@
             "last_tested_at": null,
             "license": "CC BY 4.0",
             "n_tests": null,
-            "path": "http/www.stats.gov.cn/sj/zxfb",
-            "query_url": "http://www.stats.gov.cn/sj/zxfb/",
+            "path": "https/en.greatfire.org/rss.xml",
+            "query_url": "https://en.greatfire.org/rss.xml",
             "redirected_count": 0,
             "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.stats.gov.cn/sj/zxfb",
+            "source_url": "https://en.greatfire.org/https/en.greatfire.org/rss.xml",
             "stale": false,
             "verdict": "not enough data",
             "window_days": 90
@@ -6216,11 +6136,11 @@
             "last_tested_at": null,
             "license": "CC BY 4.0",
             "n_tests": null,
-            "path": "http/www.news.cn",
-            "query_url": "http://www.news.cn:80/",
+            "path": "https/freeweibo.com/feed",
+            "query_url": "https://freeweibo.com/feed",
             "redirected_count": 0,
             "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.news.cn",
+            "source_url": "https://en.greatfire.org/https/freeweibo.com/feed",
             "stale": false,
             "verdict": "not enough data",
             "window_days": 90
@@ -6240,11 +6160,11 @@
             "last_tested_at": null,
             "license": "CC BY 4.0",
             "n_tests": null,
-            "path": "http/english.news.cn",
-            "query_url": "http://english.news.cn:80/",
+            "path": "https/freewechat.com/feed",
+            "query_url": "https://freewechat.com/feed",
             "redirected_count": 0,
             "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/english.news.cn",
+            "source_url": "https://en.greatfire.org/https/freewechat.com/feed",
             "stale": false,
             "verdict": "not enough data",
             "window_days": 90
@@ -6264,395 +6184,11 @@
             "last_tested_at": null,
             "license": "CC BY 4.0",
             "n_tests": null,
-            "path": "http/www.people.com.cn",
-            "query_url": "http://www.people.com.cn:80/",
+            "path": "https/chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended",
+            "query_url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
             "redirected_count": 0,
             "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.people.com.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/www.gov.cn",
-            "query_url": "http://www.gov.cn:80/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/www.fmprc.gov.cn",
-            "query_url": "http://www.fmprc.gov.cn:80/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.fmprc.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/www.cac.gov.cn",
-            "query_url": "http://www.cac.gov.cn:80/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.cac.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/www.miit.gov.cn",
-            "query_url": "http://www.miit.gov.cn:80/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.miit.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/wenshu.court.gov.cn",
-            "query_url": "http://wenshu.court.gov.cn:80/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/wenshu.court.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/english.www.gov.cn",
-            "query_url": "http://english.www.gov.cn/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/english.www.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/www.npc.gov.cn",
-            "query_url": "http://www.npc.gov.cn:80/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.npc.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/www.moe.gov.cn",
-            "query_url": "http://www.moe.gov.cn:80/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.moe.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "http/www.nhc.gov.cn",
-            "query_url": "http://www.nhc.gov.cn/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/http/www.nhc.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "https/baike.baidu.com/item/%E5%85%AD%E5%9B%9B%E4%BA%8B%E4%BB%B6",
-            "query_url": "https://baike.baidu.com/item/%E5%85%AD%E5%9B%9B%E4%BA%8B%E4%BB%B6",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E5%85%AD%E5%9B%9B%E4%BA%8B%E4%BB%B6",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "https/baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E9%9D%A9%E5%91%BD",
-            "query_url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E9%9D%A9%E5%91%BD",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E9%9D%A9%E5%91%BD",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "https/baike.baidu.com/item/%E6%96%B0%E7%96%86%E5%86%8D%E6%95%99%E8%82%B2%E8%90%A5",
-            "query_url": "https://baike.baidu.com/item/%E6%96%B0%E7%96%86%E5%86%8D%E6%95%99%E8%82%B2%E8%90%A5",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E6%96%B0%E7%96%86%E5%86%8D%E6%95%99%E8%82%B2%E8%90%A5",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": "2026-08-18T23:42:47Z",
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 1.0,
-            "blocked_count": 13,
-            "blocked_percent": 100,
-            "conclusions": 13,
-            "contradictory_count": 0,
-            "disrupted_percent": 100,
-            "first_tested": "2012-08-24T06:04:40Z",
-            "found": true,
-            "last_tested": "2026-08-18T23:42:47Z",
-            "last_tested_at": "2026-08-18T23:42:47Z",
-            "license": "CC BY 4.0",
-            "n_tests": 13,
-            "path": "https/torproject.org",
-            "query_url": "https://torproject.org/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/torproject.org",
-            "stale": false,
-            "verdict": "blocked",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "https/www.npc.gov.cn",
-            "query_url": "https://www.npc.gov.cn/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/www.npc.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "https/www.nhc.gov.cn",
-            "query_url": "https://www.nhc.gov.cn/",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/www.nhc.gov.cn",
-            "stale": false,
-            "verdict": "not enough data",
-            "window_days": 90
-          },
-          {
-            "as_of": null,
-            "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-            "block_share_90d": 0.0,
-            "blocked_count": 0,
-            "blocked_percent": 0,
-            "conclusions": null,
-            "contradictory_count": 0,
-            "disrupted_percent": 0,
-            "first_tested": null,
-            "found": false,
-            "last_tested": null,
-            "last_tested_at": null,
-            "license": "CC BY 4.0",
-            "n_tests": null,
-            "path": "https/baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
-            "query_url": "https://baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
-            "redirected_count": 0,
-            "redirected_percent": 0,
-            "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
+            "source_url": "https://en.greatfire.org/https/chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended",
             "stale": false,
             "verdict": "not enough data",
             "window_days": 90
@@ -6660,20 +6196,20 @@
         ],
         "window_days": 90
       },
-      "payload_complete": true,
+      "payload_complete": false,
       "raw_url": "https://palimpsest.info/readings/greatfire-context-latest.json",
       "scope": "90-day host verdicts Palimpsest already holds.",
       "source": "GreatFire Analyzer open API (https://en.greatfire.org/data), CC BY 4.0",
-      "source_timestamp": "2026-08-22T06:33:12Z",
+      "source_timestamp": "2026-08-22T12:33:00Z",
       "status": "live",
-      "summary": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements. Latest payload reports GreatFire verdicts at 17 count across 35 URLs queried.",
+      "summary": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements. Latest payload reports GreatFire verdicts at 22 count across 53 URLs queried.",
       "title": "GreatFire attributed verdicts"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-22T23:48:00Z",
+      "freshness_deadline": "2026-08-23T02:48:00Z",
       "health": {
-        "age_hours": 4.645,
+        "age_hours": 2.87,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6683,9 +6219,9 @@
       },
       "id": "peer-context",
       "input": {
-        "bytes": 52878,
+        "bytes": 77699,
         "filename": "peer-context-latest.json",
-        "sha256": "2f9364eb3f326ea69b466a9ff47a8389783c5d4efa4fc09ef336bfcc22929a93"
+        "sha256": "fe18c972580a54528b7ee7a69a26c32f3d3cc3678c91b75a82b65541d4f9c5f2"
       },
       "layer": "attention",
       "live": true,
@@ -6695,25 +6231,131 @@
         "denominator": null,
         "label": "hosts joined",
         "unit": "count",
-        "value": 17
+        "value": 22
       },
       "optional": true,
       "payload": {
-        "cdt_items": [],
+        "cdt_items": [
+          {
+            "excerpt": "News that comedian Guo Degang is under investigation by the Wuhan Municipal Bureau of Culture and Tourism for a playful riff on an old “red tune” has set alarm bells ringing about the state of artistic censorship in China. While playing the popular role of “mad monk” Ji Gong in a",
+            "published_at": "2026-08-20T04:37:23Z",
+            "source": "cdt",
+            "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+            "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+          },
+          {
+            "excerpt": "This post from WeChat account 百里曾游 Bǎilǐ Céngyóu (&#34;100 Li Once Traveled&#34;), deleted at the source but archived at CDT Chinese, describes the gauntlet of security checks, ID-card scans, pat-downs, bag-checks, book-checks, hem-lifts, and shoe-squeezes involved in visiting Zh",
+            "published_at": "2026-08-19T05:20:06Z",
+            "source": "cdt",
+            "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+            "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+          },
+          {
+            "excerpt": "The announcement that two Chinese mathematicians have won the Fields Medal, awarded every four years to outstanding mathematicians under 40, has been met with an outpouring of national pride on Chinese social media, as well as debate about the state of Chinese academia and whethe",
+            "published_at": "2026-08-14T23:04:56Z",
+            "source": "cdt",
+            "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+            "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+          },
+          {
+            "excerpt": "div id=\"attachment_705721\" style=\"width: 610px\" class=\"wp-caption aligncenter\"img decoding=\"async\" aria-describedby=\"caption-attachment-705721\" src=\"http://chinadigitaltimes.net/wp-content/uploads/2026/08/CHINA-PINGYAO-by-Pierre-Doyen-e1786743725587.jpg\" alt=\"An aerial view of a ",
+            "published_at": "2026-08-14T21:45:24Z",
+            "source": "cdt",
+            "title": "Photo: CHINA – PINGYAO, by Pierre Doyen",
+            "url": "https://chinadigitaltimes.net/2026/08/photo-china-pingyao-by-pierre-doyen/"
+          },
+          {
+            "excerpt": "The post translated below, from WeChat account “Summer Flavors,” argues that keyword-based censorship on Chinese online platforms is missing the mark, both unnecessarily restricting harmless speech and failing to address the problems it is meant to target. This leaves users strug",
+            "published_at": "2026-08-14T00:51:23Z",
+            "source": "cdt",
+            "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+            "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+          },
+          {
+            "excerpt": "Late last month, Caixin published an update on the case, prompting commentator and former investigative journalist Chu Chaoxin to post a belated but heartfelt plea for Jing Shuren&#8217;s release. He emphasizes that Jing was for the most part only reposting others&#8217; content,",
+            "published_at": "2026-08-11T02:57:16Z",
+            "source": "cdt",
+            "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+            "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
+          },
+          {
+            "excerpt": "The rise of artificial intelligence and the widespread use of domestic and international large language models (LLMs) have had a profound impact, for better and worse, on the work of Chinese investigative journalists and news editors. New AI tools have reverberated through campus",
+            "published_at": "2026-08-05T20:22:05Z",
+            "source": "cdt",
+            "title": "Translation: “AI Has Determined That My Press Card Is a Fake”",
+            "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
+          },
+          {
+            "excerpt": "pa class=\"a2a_button_facebook\" href=\"https://www.addtoany.com/add_to/facebook?linkurl=https%3A%2F%2Ffreedomhouse.org%2Farticle%2Ftnr-watch-cyberattacks-tactic-digital-transnational-repression%23new_tab&amp;linkname=Freedom%20House%20%E2%80%93%20TNR%20Watch%3A%20Cyberattacks%20as%",
+            "published_at": "2026-08-01T05:53:58Z",
+            "source": "cdt",
+            "title": "Freedom House – TNR Watch: Cyberattacks as a Tactic of Digital Transnational Repression",
+            "url": "https://freedomhouse.org/article/tnr-watch-cyberattacks-tactic-digital-transnational-repression#new_tab"
+          },
+          {
+            "excerpt": "div id=\"attachment_705687\" style=\"width: 610px\" class=\"wp-caption aligncenter\"img decoding=\"async\" aria-describedby=\"caption-attachment-705687\" src=\"http://chinadigitaltimes.net/wp-content/uploads/2026/07/Xanadu-by-Xiquinho-Silva-e1785562770935.jpg\" alt=\"At the ruins of Xanadu (S",
+            "published_at": "2026-08-01T05:42:08Z",
+            "source": "cdt",
+            "title": "Photo: Xanadu, by Xiquinho Silva",
+            "url": "https://chinadigitaltimes.net/2026/07/photo-xanadu-by-xiquinho-silva/"
+          },
+          {
+            "excerpt": "CDT presents a monthly series of censored content that has been added to our “404 Deleted Content Archive.” Each month, we publish a summary of content blocked or deleted (often yielding the message “404: content not found”) from Chinese platforms such as WeChat, Weibo, Douyin (T",
+            "published_at": "2026-07-31T21:15:07Z",
+            "source": "cdt",
+            "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+            "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+          },
+          {
+            "excerpt": "The notice below was issued by the Hunan Library, a provincial institution located in Changsha. It announces the temporary suspension of library Wi-Fi in response to &#34;hazardous&#34; use of censorship circumvention tools. The message is underlined by the inclusion of partly re",
+            "published_at": "2026-07-29T23:48:00Z",
+            "source": "cdt",
+            "title": "Translation: No Scaling the Great Firewall in the Library",
+            "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+          },
+          {
+            "excerpt": "Recent weeks have seen extreme weather across central and southern China, particularly in Guangxi, where a dam breach led to at least 26 deaths. These events sparked widespread online discussion about accountability for human failings that exacerbated the damage; lionization of r",
+            "published_at": "2026-07-27T20:03:29Z",
+            "source": "cdt",
+            "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+            "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
+          },
+          {
+            "excerpt": "div id=\"attachment_705663\" style=\"width: 610px\" class=\"wp-caption aligncenter\"img decoding=\"async\" aria-describedby=\"caption-attachment-705663\" src=\"http://chinadigitaltimes.net/wp-content/uploads/2026/07/广场鸽子-by-Costi-e1784955261198.jpg\" alt=\"A large gathering of pigeons in vari",
+            "published_at": "2026-07-25T04:56:55Z",
+            "source": "cdt",
+            "title": "Photo: 广场鸽子, by Costi",
+            "url": "https://chinadigitaltimes.net/2026/07/photo-%e5%b9%bf%e5%9c%ba%e9%b8%bd%e5%ad%90-by-costi/"
+          },
+          {
+            "excerpt": "Disaster preparedness and disaster-relief efforts are hot topics on Chinese social media as the country braces for as many as three new typhoons in the next ten days. This follows the devastation earlier this month of twin typhoons Bavi and Maysak, which caused 39 deaths in south",
+            "published_at": "2026-07-24T22:16:02Z",
+            "source": "cdt",
+            "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+            "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+          },
+          {
+            "excerpt": "In yet another blow for book lovers and free thinkers in Hong Kong, national security police raided two independent bookstores (Have a Nice Stay and Greenfield, respectively) and arrested five individuals on suspicion of selling allegedly seditious publications, an offence punish",
+            "published_at": "2026-07-20T15:21:45Z",
+            "source": "cdt",
+            "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+            "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+          }
+        ],
         "disk_estimate": {
-          "cdt_excerpts": "~0 titles/links/280-char excerpts",
+          "cdt_excerpts": "~15 titles/links/280-char excerpts",
           "greatfire_context_json": "~32-256 KiB cached verdicts (not the 700k catalog)",
-          "n_cdt_rows": 0,
-          "n_greatfire_rows": 35,
-          "n_ooni_rows": 17,
-          "ooni_peer_index": "~17 host rows; warehouse remains ~33G already on node",
+          "n_cdt_rows": 15,
+          "n_greatfire_rows": 53,
+          "n_ooni_rows": 22,
+          "ooni_peer_index": "~22 host rows; warehouse remains ~33G already on node",
           "weiboscope": "0 bytes of the 2012 dump; citation pointer only"
         },
-        "feature_rows": 18,
-        "generated_at": "2026-08-22T09:48:00Z",
+        "feature_rows": 38,
+        "generated_at": "2026-08-22T12:48:00Z",
         "greatfire": {
           "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
-          "generated_at": "2026-08-22T06:33:12Z",
+          "generated_at": "2026-08-22T12:33:00Z",
           "hosts": [
             {
               "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
@@ -6775,17 +6417,17 @@
               "block_share_90d": 0.0,
               "blocked": false,
               "host": "www.gov.cn",
-              "last_tested_at": "2026-08-21T21:51:19Z",
-              "n_tests": 117,
-              "observed_at": "2026-08-21T21:51:19Z",
+              "last_tested_at": "2026-08-22T10:44:54Z",
+              "n_tests": 118,
+              "observed_at": "2026-08-22T10:44:54Z",
               "path": "https/www.gov.cn",
-              "peer_date": "2026-08-21",
+              "peer_date": "2026-08-22",
               "source": "cached-verdicts-only",
-              "tested": 117,
+              "tested": 118,
               "verdict": "not blocked",
               "window_days": 90,
-              "window_end": "2026-08-21T21:51:19Z",
-              "window_start": "2026-05-23T21:51:19Z"
+              "window_end": "2026-08-22T10:44:54Z",
+              "window_start": "2026-05-24T10:44:54Z"
             },
             {
               "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
@@ -6954,11 +6596,101 @@
               "block_share": 0.0,
               "block_share_90d": 0.0,
               "blocked": false,
+              "host": "chinadigitaltimes.net",
+              "last_tested_at": null,
+              "n_tests": null,
+              "observed_at": null,
+              "path": "https/chinadigitaltimes.net/feed",
+              "peer_date": null,
+              "source": "cached-verdicts-only",
+              "tested": null,
+              "verdict": "not enough data",
+              "window_days": 90,
+              "window_end": null,
+              "window_start": null
+            },
+            {
+              "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+              "block_share": 0.0,
+              "block_share_90d": 0.0,
+              "blocked": false,
+              "host": "en.greatfire.org",
+              "last_tested_at": null,
+              "n_tests": null,
+              "observed_at": null,
+              "path": "https/en.greatfire.org/rss.xml",
+              "peer_date": null,
+              "source": "cached-verdicts-only",
+              "tested": null,
+              "verdict": "not enough data",
+              "window_days": 90,
+              "window_end": null,
+              "window_start": null
+            },
+            {
+              "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+              "block_share": 0.0,
+              "block_share_90d": 0.0,
+              "blocked": false,
+              "host": "freeweibo.com",
+              "last_tested_at": null,
+              "n_tests": null,
+              "observed_at": null,
+              "path": "https/freeweibo.com/feed",
+              "peer_date": null,
+              "source": "cached-verdicts-only",
+              "tested": null,
+              "verdict": "not enough data",
+              "window_days": 90,
+              "window_end": null,
+              "window_start": null
+            },
+            {
+              "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+              "block_share": 0.0,
+              "block_share_90d": 0.0,
+              "blocked": false,
+              "host": "freewechat.com",
+              "last_tested_at": null,
+              "n_tests": null,
+              "observed_at": null,
+              "path": "https/freewechat.com/feed",
+              "peer_date": null,
+              "source": "cached-verdicts-only",
+              "tested": null,
+              "verdict": "not enough data",
+              "window_days": 90,
+              "window_end": null,
+              "window_start": null
+            },
+            {
+              "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+              "block_share": 0.0,
+              "block_share_90d": 0.0,
+              "blocked": false,
+              "host": "freedomhouse.org",
+              "last_tested_at": null,
+              "n_tests": null,
+              "observed_at": null,
+              "path": "https/freedomhouse.org/article/tnr-watch-cyberattacks-tactic-digital-transnational-repression",
+              "peer_date": null,
+              "source": "cached-verdicts-only",
+              "tested": null,
+              "verdict": "not enough data",
+              "window_days": 90,
+              "window_end": null,
+              "window_start": null
+            },
+            {
+              "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
+              "block_share": 0.0,
+              "block_share_90d": 0.0,
+              "blocked": false,
               "host": "baike.baidu.com",
               "last_tested_at": null,
               "n_tests": null,
               "observed_at": null,
-              "path": "https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+              "path": "https/baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
               "peer_date": null,
               "source": "cached-verdicts-only",
               "tested": null,
@@ -7027,124 +6759,124 @@
               "http_status": 200,
               "items": [
                 {
-                  "path": "https://en.greatfire.org/74.125.138.93",
+                  "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E7%94%B0%E9%9D%92",
                   "status": "blocked",
-                  "title": "http://74.125.138.93 is blocked in mainland China"
+                  "title": "http://www.google.com/search?q=%E7%94%B0%E9%9D%92 is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/teammatesv4.appspot.com",
+                  "path": "https://en.greatfire.org/https/javdb006.com",
                   "status": "blocked",
-                  "title": "http://teammatesv4.appspot.com is blocked in mainland China"
+                  "title": "https://javdb006.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.google.com/search%3Fq%3D%E5%B9%BF%E4%B8%9C%E7%BE%A4%E4%BC%97%E7%A0%B8%E8%AD%A6%E8%BD%A6",
+                  "path": "https://en.greatfire.org/https/din.wikipedia.org",
                   "status": "blocked",
-                  "title": "http://www.google.com/search?q=%E5%B9%BF%E4%B8%9C%E7%BE%A4%E4%BC%97%E7%A0%B8%E8%AD%A6%E8%BD%A6 is blocked in mainland China"
+                  "title": "https://din.wikipedia.org is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.mm-11.com",
+                  "path": "https://en.greatfire.org/https/idowa.de",
                   "status": "blocked",
-                  "title": "http://www.mm-11.com is blocked in mainland China"
+                  "title": "https://idowa.de is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.fuhui-official.com",
+                  "path": "https://en.greatfire.org/https/hotnaked.net",
                   "status": "blocked",
-                  "title": "http://www.fuhui-official.com is blocked in mainland China"
+                  "title": "https://hotnaked.net is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/74.125.139.163",
+                  "path": "https://en.greatfire.org/https/czechboobs.com",
                   "status": "blocked",
-                  "title": "http://74.125.139.163 is blocked in mainland China"
+                  "title": "https://czechboobs.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/cdnjs.loli.net",
+                  "path": "https://en.greatfire.org/https/swampland.time.com",
                   "status": "blocked",
-                  "title": "http://cdnjs.loli.net is blocked in mainland China"
+                  "title": "https://swampland.time.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/discreetmilf.com",
+                  "path": "https://en.greatfire.org/https/psiphon.win",
                   "status": "blocked",
-                  "title": "http://discreetmilf.com is blocked in mainland China"
+                  "title": "https://psiphon.win is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/cn.wsj.com/gb/20140612/ASD081858.asp",
+                  "path": "https://en.greatfire.org/https/ceskeporno.cz",
                   "status": "blocked",
-                  "title": "http://cn.wsj.com/gb/20140612/ASD081858.asp is blocked in mainland China"
+                  "title": "https://ceskeporno.cz is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.tumblr.com/settings/blog/evergreenpri",
+                  "path": "https://en.greatfire.org/https/ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js",
                   "status": "blocked",
-                  "title": "https://www.tumblr.com/settings/blog/evergreenpri is blocked in mainland China"
+                  "title": "https://ajax.googleapis.com/ajax/libs/yui/2.9.0/build/yahoo-dom-event/yahoo-dom-event.js is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.scmpchinese.com/sc/china/25995/xi-jin-ping-fang-ke-shi-jiang-qi-ji-guang-da-wei-kou-liang-yue-lai-15ci-tan-fan-kong",
+                  "path": "https://en.greatfire.org/www.screencrush.com",
                   "status": "blocked",
-                  "title": "http://www.scmpchinese.com/sc/china/25995/xi-jin-ping-fang-ke-shi-jiang-qi-ji-guang-da-wei-kou-liang-yue-lai-15ci-tan-fan-kong is blocked in mainland China"
+                  "title": "http://www.screencrush.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/soundcloud.com/greg-packer/packer-rhodes-broken-soul",
+                  "path": "https://en.greatfire.org/cn.wsj.com/gb/20160422/ASD081533.asp",
                   "status": "blocked",
-                  "title": "https://soundcloud.com/greg-packer/packer-rhodes-broken-soul is blocked in mainland China"
+                  "title": "http://cn.wsj.com/gb/20160422/ASD081533.asp is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.rfa.org/tibetan",
+                  "path": "https://en.greatfire.org/https/insecam.org",
                   "status": "blocked",
-                  "title": "https://www.rfa.org/tibetan is blocked in mainland China"
+                  "title": "https://insecam.org is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/disqus.com/home/forum/nytchinese",
+                  "path": "https://en.greatfire.org/https/fashiola.fr",
                   "status": "blocked",
-                  "title": "http://disqus.com/home/forum/nytchinese is blocked in mainland China"
+                  "title": "https://fashiola.fr is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/74.125.201.141",
+                  "path": "https://en.greatfire.org/74.125.142.116",
                   "status": "blocked",
-                  "title": "http://74.125.201.141 is blocked in mainland China"
+                  "title": "http://74.125.142.116 is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www3.nhk.or.jp/nhkworld/ko/news/",
+                  "path": "https://en.greatfire.org/https/suyou.org",
                   "status": "blocked",
-                  "title": "https://www3.nhk.or.jp/nhkworld/ko/news/ is blocked in mainland China"
+                  "title": "https://suyou.org is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.wujieliulan.com",
+                  "path": "https://en.greatfire.org/https/itssa.co.kr",
                   "status": "blocked",
-                  "title": "https://www.wujieliulan.com is blocked in mainland China"
+                  "title": "https://itssa.co.kr is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/scontent-nrt1-1.cdninstagram.com/hphotos-xpa1/t50.2886-16/11684607_727297230714370_957277913_n.mp4",
+                  "path": "https://en.greatfire.org/https/3dgirlz.com",
                   "status": "blocked",
-                  "title": "https://scontent-nrt1-1.cdninstagram.com/hphotos-xpa1/t50.2886-16/11684607_727297230714370_957277913_n.mp4 is blocked in mainland China"
+                  "title": "https://3dgirlz.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/brave-core-ext.s3.brave.com",
+                  "path": "https://en.greatfire.org/https/between-legs.com",
                   "status": "blocked",
-                  "title": "https://brave-core-ext.s3.brave.com is blocked in mainland China"
+                  "title": "https://between-legs.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/theglobalist.com",
+                  "path": "https://en.greatfire.org/https/expressvpnw.com",
                   "status": "blocked",
-                  "title": "https://theglobalist.com is blocked in mainland China"
+                  "title": "https://expressvpnw.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/74.125.26.81",
+                  "path": "https://en.greatfire.org/https/lapland.lol",
                   "status": "blocked",
-                  "title": "http://74.125.26.81 is blocked in mainland China"
+                  "title": "https://lapland.lol is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/74.125.20.31",
+                  "path": "https://en.greatfire.org/pinimg.com",
                   "status": "blocked",
-                  "title": "https://74.125.20.31 is blocked in mainland China"
+                  "title": "http://pinimg.com is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/youtube.com.br",
+                  "path": "https://en.greatfire.org/https/huobi.co.kr",
                   "status": "blocked",
-                  "title": "http://youtube.com.br is blocked in mainland China"
+                  "title": "https://huobi.co.kr is blocked in mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/74.125.22.116",
+                  "path": "https://en.greatfire.org/www.rumble.com",
                   "status": "blocked",
-                  "title": "http://74.125.22.116 is blocked in mainland China"
+                  "title": "http://www.rumble.com is blocked in mainland China"
                 }
               ],
               "list": "blocked",
@@ -7156,124 +6888,124 @@
               "http_status": 200,
               "items": [
                 {
-                  "path": "https://en.greatfire.org/s.weibo.com/weibo/indie",
+                  "path": "https://en.greatfire.org/insiderpages.com",
                   "status": "accessible",
-                  "title": "http://s.weibo.com/weibo/indie is reachable from mainland China"
+                  "title": "http://insiderpages.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/real.gr",
+                  "path": "https://en.greatfire.org/fb.co",
                   "status": "accessible",
-                  "title": "http://real.gr is reachable from mainland China"
+                  "title": "http://fb.co is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/ddd633.net",
+                  "path": "https://en.greatfire.org/1511.com",
                   "status": "accessible",
-                  "title": "http://ddd633.net is reachable from mainland China"
+                  "title": "http://1511.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.baidu.com/s%3Fwd%3D%E5%AE%BD%E8%A1%A3",
+                  "path": "https://en.greatfire.org/tieba.baidu.com/f%3Fkw%3DWin10_22H2_Chinese_Simplified_x64v1",
                   "status": "accessible",
-                  "title": "http://www.baidu.com/s?wd=%E5%AE%BD%E8%A1%A3 is reachable from mainland China"
+                  "title": "http://tieba.baidu.com/f?kw=Win10_22H2_Chinese_Simplified_x64v1 is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.centorindia.com",
+                  "path": "https://en.greatfire.org/https/adidas.cc",
                   "status": "accessible",
-                  "title": "http://www.centorindia.com is reachable from mainland China"
+                  "title": "https://adidas.cc is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.scene.ca",
+                  "path": "https://en.greatfire.org/uee.me/cBrV",
                   "status": "accessible",
-                  "title": "https://www.scene.ca is reachable from mainland China"
+                  "title": "http://uee.me/cBrV is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/d2sl0dkiby0gu8.cloudfront.net",
+                  "path": "https://en.greatfire.org/s.weibo.com/weibo/media.org.hk",
                   "status": "accessible",
-                  "title": "https://d2sl0dkiby0gu8.cloudfront.net is reachable from mainland China"
+                  "title": "http://s.weibo.com/weibo/media.org.hk is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.aiche.org:80",
+                  "path": "https://en.greatfire.org/https/md.liimpops.com",
                   "status": "accessible",
-                  "title": "http://www.aiche.org:80 is reachable from mainland China"
+                  "title": "https://md.liimpops.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/chinesisch-lernen.org",
+                  "path": "https://en.greatfire.org/https/buzzheavier.com",
                   "status": "accessible",
-                  "title": "http://chinesisch-lernen.org is reachable from mainland China"
+                  "title": "https://buzzheavier.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.theage.com/au",
+                  "path": "https://en.greatfire.org/https/ovear.info",
                   "status": "accessible",
-                  "title": "https://www.theage.com/au is reachable from mainland China"
+                  "title": "https://ovear.info is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.netbridgeglobal.com",
+                  "path": "https://en.greatfire.org/https/195195d.com",
                   "status": "accessible",
-                  "title": "http://www.netbridgeglobal.com is reachable from mainland China"
+                  "title": "https://195195d.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.appliedminds.com",
+                  "path": "https://en.greatfire.org/https/jmcomic-ph.cc",
                   "status": "accessible",
-                  "title": "http://www.appliedminds.com is reachable from mainland China"
+                  "title": "https://jmcomic-ph.cc is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/aa242.net",
+                  "path": "https://en.greatfire.org/www.zqware.com",
                   "status": "accessible",
-                  "title": "http://aa242.net is reachable from mainland China"
+                  "title": "http://www.zqware.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/developer.mozilla.org",
+                  "path": "https://en.greatfire.org/https/the-little-language-designer.github.io",
                   "status": "accessible",
-                  "title": "http://developer.mozilla.org is reachable from mainland China"
+                  "title": "https://the-little-language-designer.github.io is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/soul2.hkuspace.hku.hk",
+                  "path": "https://en.greatfire.org/https/www.acams.org",
                   "status": "accessible",
-                  "title": "https://soul2.hkuspace.hku.hk is reachable from mainland China"
+                  "title": "https://www.acams.org is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/prcm.jp",
+                  "path": "https://en.greatfire.org/https/md.hrfyvb.com",
                   "status": "accessible",
-                  "title": "http://prcm.jp is reachable from mainland China"
+                  "title": "https://md.hrfyvb.com is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.awsacademy.com/vforcesite/LMS_Login",
+                  "path": "https://en.greatfire.org/https/blockbench.net",
                   "status": "accessible",
-                  "title": "https://www.awsacademy.com/vforcesite/LMS_Login is reachable from mainland China"
+                  "title": "https://blockbench.net is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/bdsmovement.net",
+                  "path": "https://en.greatfire.org/pitapoison.de",
                   "status": "accessible",
-                  "title": "http://bdsmovement.net is reachable from mainland China"
+                  "title": "http://pitapoison.de is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/andrewbbernard.com",
+                  "path": "https://en.greatfire.org/www.landers.com.au",
                   "status": "accessible",
-                  "title": "https://andrewbbernard.com is reachable from mainland China"
+                  "title": "http://www.landers.com.au is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/www.wix.com/freesitebuilder/hiker-create%3Fdvc%3Dc%26experiment_id%3Dwix%5Ee%5E49108312300%5E1t1%3B%3Fh%3Dhttps%3A%2F%2Fad.atdmt.com%2Fs%2Fgo%3Badv%3D11038200900119%3Bec%3D11038200904332%3Bc.a%3D179424220%3Bs.a%3Dgoogle%3Bp.a%3D179424220%3Bas.a%3D10375166",
+                  "path": "https://en.greatfire.org/https/mixuebcd.uk/download/index.html",
                   "status": "accessible",
-                  "title": "https://www.wix.com/freesitebuilder/hiker-create?dvc=c&experiment_id=wix%5Ee%5E49108312300%5E1t1%3B%3Fh%3Dhttps%3A%2F%2Fad.atdmt.com%2Fs%2Fgo%3Badv%3D11038200900119%3Bec%3D11038200904332%3Bc.a%3D179424220%3Bs.a%3Dgoogle%3Bp.a%3D179424220%3B"
+                  "title": "https://mixuebcd.uk/download/index.html is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.theland.com.au",
+                  "path": "https://en.greatfire.org/https/rdg.com.hk",
                   "status": "accessible",
-                  "title": "http://www.theland.com.au is reachable from mainland China"
+                  "title": "https://rdg.com.hk is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/www.powderkegs.co.uk",
+                  "path": "https://en.greatfire.org/https/adidas.ru",
                   "status": "accessible",
-                  "title": "http://www.powderkegs.co.uk is reachable from mainland China"
+                  "title": "https://adidas.ru is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/88443885.com",
+                  "path": "https://en.greatfire.org/https/shine-star-global-concepts.vitajoydan.chatgpt.site",
                   "status": "accessible",
-                  "title": "http://88443885.com is reachable from mainland China"
+                  "title": "https://shine-star-global-concepts.vitajoydan.chatgpt.site is reachable from mainland China"
                 },
                 {
-                  "path": "https://en.greatfire.org/https/t5input.github.io",
+                  "path": "https://en.greatfire.org/www.nissindigital.com",
                   "status": "accessible",
-                  "title": "https://t5input.github.io is reachable from mainland China"
+                  "title": "http://www.nissindigital.com is reachable from mainland China"
                 }
               ],
               "list": "accessible",
@@ -7287,8 +7019,8 @@
           "method_version": 1,
           "n_misses": 0,
           "n_silent": 0,
-          "n_urls_queried": 35,
-          "n_verdicts": 17,
+          "n_urls_queried": 53,
+          "n_verdicts": 22,
           "observer_class": "public-ledger",
           "schema_version": "palimpsest-greatfire-context/v1",
           "scope": "90-day host verdicts Palimpsest already holds.",
@@ -7367,20 +7099,20 @@
               "window_days": 90
             },
             {
-              "as_of": "2026-08-21T21:51:19Z",
+              "as_of": "2026-08-22T10:44:54Z",
               "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
               "block_share_90d": 0.0,
               "blocked_count": 0,
               "blocked_percent": 0,
-              "conclusions": 117,
+              "conclusions": 118,
               "contradictory_count": 0,
               "disrupted_percent": 0,
               "first_tested": "2019-08-20T05:42:47Z",
               "found": true,
-              "last_tested": "2026-08-21T21:51:19Z",
-              "last_tested_at": "2026-08-21T21:51:19Z",
+              "last_tested": "2026-08-22T10:44:54Z",
+              "last_tested_at": "2026-08-22T10:44:54Z",
               "license": "CC BY 4.0",
-              "n_tests": 117,
+              "n_tests": 118,
               "path": "https/www.gov.cn",
               "query_url": "https://www.gov.cn/",
               "redirected_count": 0,
@@ -7621,11 +7353,11 @@
               "last_tested_at": null,
               "license": "CC BY 4.0",
               "n_tests": null,
-              "path": "https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
-              "query_url": "https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+              "path": "https/chinadigitaltimes.net/feed",
+              "query_url": "https://chinadigitaltimes.net/feed/",
               "redirected_count": 0,
               "redirected_percent": 0,
-              "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC",
+              "source_url": "https://en.greatfire.org/https/chinadigitaltimes.net/feed",
               "stale": false,
               "verdict": "not enough data",
               "window_days": 90
@@ -7645,11 +7377,11 @@
               "last_tested_at": null,
               "license": "CC BY 4.0",
               "n_tests": null,
-              "path": "https/baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
-              "query_url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+              "path": "https/chinadigitaltimes.net/chinese/feed",
+              "query_url": "https://chinadigitaltimes.net/chinese/feed/",
               "redirected_count": 0,
               "redirected_percent": 0,
-              "source_url": "https://en.greatfire.org/https/baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+              "source_url": "https://en.greatfire.org/https/chinadigitaltimes.net/chinese/feed",
               "stale": false,
               "verdict": "not enough data",
               "window_days": 90
@@ -7669,11 +7401,11 @@
               "last_tested_at": null,
               "license": "CC BY 4.0",
               "n_tests": null,
-              "path": "http/www.stats.gov.cn/sj/zxfb",
-              "query_url": "http://www.stats.gov.cn/sj/zxfb/",
+              "path": "https/en.greatfire.org/rss.xml",
+              "query_url": "https://en.greatfire.org/rss.xml",
               "redirected_count": 0,
               "redirected_percent": 0,
-              "source_url": "https://en.greatfire.org/http/www.stats.gov.cn/sj/zxfb",
+              "source_url": "https://en.greatfire.org/https/en.greatfire.org/rss.xml",
               "stale": false,
               "verdict": "not enough data",
               "window_days": 90
@@ -7693,11 +7425,11 @@
               "last_tested_at": null,
               "license": "CC BY 4.0",
               "n_tests": null,
-              "path": "http/www.news.cn",
-              "query_url": "http://www.news.cn:80/",
+              "path": "https/freeweibo.com/feed",
+              "query_url": "https://freeweibo.com/feed",
               "redirected_count": 0,
               "redirected_percent": 0,
-              "source_url": "https://en.greatfire.org/http/www.news.cn",
+              "source_url": "https://en.greatfire.org/https/freeweibo.com/feed",
               "stale": false,
               "verdict": "not enough data",
               "window_days": 90
@@ -7717,11 +7449,11 @@
               "last_tested_at": null,
               "license": "CC BY 4.0",
               "n_tests": null,
-              "path": "http/english.news.cn",
-              "query_url": "http://english.news.cn:80/",
+              "path": "https/freewechat.com/feed",
+              "query_url": "https://freewechat.com/feed",
               "redirected_count": 0,
               "redirected_percent": 0,
-              "source_url": "https://en.greatfire.org/http/english.news.cn",
+              "source_url": "https://en.greatfire.org/https/freewechat.com/feed",
               "stale": false,
               "verdict": "not enough data",
               "window_days": 90
@@ -7741,11 +7473,11 @@
               "last_tested_at": null,
               "license": "CC BY 4.0",
               "n_tests": null,
-              "path": "http/www.people.com.cn",
-              "query_url": "http://www.people.com.cn:80/",
+              "path": "https/chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended",
+              "query_url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
               "redirected_count": 0,
               "redirected_percent": 0,
-              "source_url": "https://en.greatfire.org/http/www.people.com.cn",
+              "source_url": "https://en.greatfire.org/https/chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended",
               "stale": false,
               "verdict": "not enough data",
               "window_days": 90
@@ -7755,14 +7487,14 @@
         },
         "method": "GreatFire lookups are cached by the greatfire-context job. OONI is an exact host join against already-held ooni-gfw-latest / ooni-bulk warehouse objects. CDT keeps titles, links, and excerpts bounded at 280 characters. Weiboscope is a documented abstention.",
         "method_version": 1,
-        "n_cdt": 0,
-        "n_greatfire": 17,
-        "n_hosts": 17,
+        "n_cdt": 15,
+        "n_greatfire": 22,
+        "n_hosts": 22,
         "n_ooni": 0,
         "observer_class": "outside-china-node",
         "ooni": {
           "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
-          "generated_at": "2026-08-22T09:48:00Z",
+          "generated_at": "2026-08-22T12:48:00Z",
           "hosts": [
             {
               "anomaly_count": null,
@@ -7926,6 +7658,66 @@
               "asn": null,
               "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
               "completed_measurement_count": null,
+              "host": "chinadigitaltimes.net",
+              "last_measurement": null,
+              "measurement_count": null,
+              "source": null,
+              "status": "miss"
+            },
+            {
+              "anomaly_count": null,
+              "anomaly_rate": null,
+              "asn": null,
+              "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
+              "completed_measurement_count": null,
+              "host": "en.greatfire.org",
+              "last_measurement": null,
+              "measurement_count": null,
+              "source": null,
+              "status": "miss"
+            },
+            {
+              "anomaly_count": null,
+              "anomaly_rate": null,
+              "asn": null,
+              "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
+              "completed_measurement_count": null,
+              "host": "freeweibo.com",
+              "last_measurement": null,
+              "measurement_count": null,
+              "source": null,
+              "status": "miss"
+            },
+            {
+              "anomaly_count": null,
+              "anomaly_rate": null,
+              "asn": null,
+              "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
+              "completed_measurement_count": null,
+              "host": "freewechat.com",
+              "last_measurement": null,
+              "measurement_count": null,
+              "source": null,
+              "status": "miss"
+            },
+            {
+              "anomaly_count": null,
+              "anomaly_rate": null,
+              "asn": null,
+              "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
+              "completed_measurement_count": null,
+              "host": "freedomhouse.org",
+              "last_measurement": null,
+              "measurement_count": null,
+              "source": null,
+              "status": "miss"
+            },
+            {
+              "anomaly_count": null,
+              "anomaly_rate": null,
+              "asn": null,
+              "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
+              "completed_measurement_count": null,
               "host": "baike.baidu.com",
               "last_measurement": null,
               "measurement_count": null,
@@ -7972,8 +7764,8 @@
           "method": "Exact host join against ooni-gfw-latest top_blocked, then a bounded read of already-downloaded CN web_connectivity objects when the private warehouse is present.",
           "method_version": 1,
           "n_hits": 0,
-          "n_hosts": 17,
-          "n_misses": 17,
+          "n_hosts": 22,
+          "n_misses": 22,
           "scope": "Host-level counts for URLs Palimpsest already holds. Does not re-download the bulk archive and does not publish measurement inputs.",
           "source": "OONI bulk warehouse (already on node) and/or ooni-gfw-latest"
         },
@@ -7983,7 +7775,7 @@
         "weiboscope": {
           "abstention": {
             "anomaly_rate": null,
-            "as_of": "2026-08-22T09:48:00Z",
+            "as_of": "2026-08-22T12:48:00Z",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "citation": "Fu KW, Chan CH, Chau M. Assessing Censorship on Microblogs in China: Discriminatory Keyword Analysis and the Real-Name Registration Policy. IEEE Internet Computing. 2013; 17(3): 42-50. Weiboscope Open Data doi:10.25442/hku.16674565.",
             "doi": "10.25442/hku.16674565",
@@ -8006,7 +7798,7 @@
           "citation": "Fu KW, Chan CH, Chau M. Assessing Censorship on Microblogs in China: Discriminatory Keyword Analysis and the Real-Name Registration Policy. IEEE Internet Computing. 2013; 17(3): 42-50. Weiboscope Open Data doi:10.25442/hku.16674565.",
           "doi": "10.25442/hku.16674565",
           "dump_on_node": false,
-          "generated_at": "2026-08-22T09:48:00Z",
+          "generated_at": "2026-08-22T12:48:00Z",
           "index": null,
           "method": "Do not download doi:10.25442/hku.16674565. Probe only named leftover index URLs; login walls and HTML homepages abstain.",
           "method_version": 1,
@@ -8025,16 +7817,16 @@
       "raw_url": "https://palimpsest.info/readings/peer-context-latest.json",
       "scope": "Peer verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of these measurements. Weiboscope's 2012 dump is not on this node.",
       "source": "Attributed context warehouse: GreatFire Analyzer (CC BY 4.0), OONI, China Digital Times RSS, Weiboscope citation",
-      "source_timestamp": "2026-08-22T09:48:00Z",
+      "source_timestamp": "2026-08-22T12:48:00Z",
       "status": "live",
-      "summary": "Joins GreatFire, OONI, CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. Latest payload reports hosts joined at 17 count.",
+      "summary": "Joins GreatFire, OONI, CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts. Latest payload reports hosts joined at 22 count.",
       "title": "Attributed peer-context warehouse"
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T03:24:46Z",
+      "freshness_deadline": "2026-08-23T05:34:51Z",
       "health": {
-        "age_hours": 1.032,
+        "age_hours": 0.089,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8046,7 +7838,7 @@
       "input": {
         "bytes": 8463288,
         "filename": "undertext-latest.json",
-        "sha256": "5f39a93240cf7337e871e56da1d59c35ce087d414b60c4e7ff9535c19e465262"
+        "sha256": "d89cabb78011054df58b1add8d97455b0ebc09be78cadd3b11478a92d5f0efc1"
       },
       "layer": "attention",
       "live": true,
@@ -8060,7 +7852,7 @@
       },
       "optional": false,
       "payload": {
-        "generated_at": "2026-08-22T13:24:46Z",
+        "generated_at": "2026-08-22T15:34:51Z",
         "live_round_ran": false,
         "live_surfaces_enabled": false,
         "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
@@ -8085,7 +7877,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T06:57:38Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8176,7 +7968,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T06:57:38Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8259,7 +8051,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T06:57:38Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8352,7 +8144,7 @@
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
-                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T06:57:38Z; forged-IP pool rotations, not a deletion of this post",
+                "note": "instrument-context-not-url-corroboration; last reading 2026-08-22T12:57:39Z; forged-IP pool rotations, not a deletion of this post",
                 "title": "Bleedthrough injector floor, 6 distinct pools",
                 "url": "https://palimpsest.info/readings/bleedthrough-latest.json"
               },
@@ -8434,7 +8226,7 @@
       "raw_url": "https://palimpsest.info/readings/undertext-latest.json",
       "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
       "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI + public deletion ledgers + official first-seen + news-wire-live + Wikipedia gazetteer RC when those readings exist, clustered by public URL, with GDELT/OONI/Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present",
-      "source_timestamp": "2026-08-22T13:24:46Z",
+      "source_timestamp": "2026-08-22T15:34:51Z",
       "status": "live",
       "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 2039 count.",
       "title": "UNDERTEXT differential fusion"
@@ -8443,7 +8235,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T09:12:23Z",
       "health": {
-        "age_hours": 7.239,
+        "age_hours": 8.463,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8683,7 +8475,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:05:44Z",
       "health": {
-        "age_hours": 1.35,
+        "age_hours": 2.574,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9014,7 +8806,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:07:19Z",
       "health": {
-        "age_hours": 1.323,
+        "age_hours": 2.548,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9186,7 +8978,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:29Z",
       "health": {
-        "age_hours": 8.487,
+        "age_hours": 9.712,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9363,7 +9155,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:14:57Z",
       "health": {
-        "age_hours": 1.196,
+        "age_hours": 2.421,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10885,7 +10677,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:08:12Z",
       "health": {
-        "age_hours": 1.309,
+        "age_hours": 2.533,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10936,7 +10728,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:41:02Z",
       "health": {
-        "age_hours": 8.761,
+        "age_hours": 9.986,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11010,7 +10802,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:22:06Z",
       "health": {
-        "age_hours": 1.077,
+        "age_hours": 2.302,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11087,9 +10879,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-22T20:57:38Z",
+      "freshness_deadline": "2026-08-23T02:57:39Z",
       "health": {
-        "age_hours": 7.484,
+        "age_hours": 2.709,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11101,7 +10893,7 @@
       "input": {
         "bytes": 2781,
         "filename": "bleedthrough-latest.json",
-        "sha256": "48e127d7455c19d9dd4201eee52a0c4edfa420309e808edc33eaf76f704ebc7a"
+        "sha256": "acf3261ec4285e6d8cf32d879dd39d1a1d3646077fe28a42fd0f1d3d16460d17"
       },
       "layer": "network",
       "live": true,
@@ -11158,7 +10950,7 @@
             "vantage": "CN/AS9808"
           }
         ],
-        "generated_at": "2026-08-22T06:57:38.940769Z",
+        "generated_at": "2026-08-22T12:57:39.884425Z",
         "last_changed_at": "2026-08-22T00:57:42.383621Z",
         "max_process_count": 3,
         "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs + open-resolver fallback. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
@@ -11202,7 +10994,7 @@
       "raw_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
       "scope": "apparatus-layer tomography of the Great Firewall's DNS-injector fleet: forged-IP pools, a floor on parallel injector responses, and operational events, measured from outside China",
       "source": "Optional deployment-controlled prober outside China",
-      "source_timestamp": "2026-08-22T06:57:38Z",
+      "source_timestamp": "2026-08-22T12:57:39Z",
       "status": "live",
       "summary": "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; absence means no controlled deployment has published a current round. Latest payload reports injector response-process floor at 3 count across 210 injecting target IPs.",
       "title": "Bleedthrough injector tomography"
@@ -11211,7 +11003,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:11Z",
       "health": {
-        "age_hours": 11.242,
+        "age_hours": 12.467,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11337,7 +11129,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:11:04Z",
       "health": {
-        "age_hours": 1.261,
+        "age_hours": 2.485,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12133,7 +11925,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 545.924,
+        "age_hours": 547.149,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -12288,7 +12080,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T01:21:09Z",
       "health": {
-        "age_hours": 3.093,
+        "age_hours": 4.317,
         "collector_reason": null,
         "collector_status": "observed",
         "ok": true,
@@ -12502,7 +12294,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:10:55Z",
       "health": {
-        "age_hours": 1.263,
+        "age_hours": 2.488,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13165,7 +12957,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:21:23Z",
       "health": {
-        "age_hours": 1.089,
+        "age_hours": 2.313,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13342,7 +13134,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:21Z",
       "health": {
-        "age_hours": 8.489,
+        "age_hours": 9.714,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13447,7 +13239,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:38:19Z",
       "health": {
-        "age_hours": 6.807,
+        "age_hours": 8.031,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13515,7 +13307,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T11:37:04Z",
       "health": {
-        "age_hours": 4.827,
+        "age_hours": 6.052,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13568,7 +13360,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 24.39,
+        "age_hours": 25.615,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13627,7 +13419,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T12:32:24Z",
       "health": {
-        "age_hours": 3.905,
+        "age_hours": 5.13,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13784,7 +13576,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 103.059,
+        "age_hours": 104.284,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -13852,7 +13644,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-22T09:32:12Z",
       "health": {
-        "age_hours": 54.909,
+        "age_hours": 56.133,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -16129,7 +15921,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:23Z",
       "health": {
-        "age_hours": 11.239,
+        "age_hours": 12.464,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -16174,24 +15966,24 @@
     },
     {
       "cadence_hours": 0.25,
-      "freshness_deadline": "2026-08-17T06:14:16Z",
+      "freshness_deadline": "2026-08-22T16:29:16Z",
       "health": {
-        "age_hours": 129.207,
+        "age_hours": 0.182,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": "ok"
       },
       "id": "nemesis",
       "input": {
-        "bytes": 168500,
+        "bytes": 170418,
         "filename": "nemesis-latest.json",
-        "sha256": "5d06c3a8ac1bf9919196b91d6d6fa337df51b6d06f6a990b53cc3237a8e233c4"
+        "sha256": "009412c2969e6a175664c721206cd22b86ab73ef386e0604d09410633c98e6b5"
       },
       "layer": "nemesis",
-      "live": false,
+      "live": true,
       "method": "Observed public-source topic attention, novelty, and economic-topic share",
       "method_version": "nemesis-public-v2",
       "metric": {
@@ -16205,7 +15997,7 @@
         "counts": {
           "economic_articles": 3,
           "leads": 10,
-          "posts": 30,
+          "posts": 32,
           "sources": 1,
           "topics": 192
         },
@@ -16232,39 +16024,195 @@
             ],
             "succeeded": 3
           },
-          "latest_fetched_at": 1786751056.142,
-          "latest_published_at": 1786748696.0,
+          "latest_fetched_at": 1787204656.268,
+          "latest_published_at": 1787200643.0,
           "observed_source_count": 1,
           "observed_sources": [
             {
               "first_published_at": 1777052300.0,
-              "latest_fetched_at": 1786751056.142,
-              "latest_published_at": 1786748696.0,
+              "latest_fetched_at": 1787204656.268,
+              "latest_published_at": 1787200643.0,
               "name": "cdt",
-              "posts": 30
+              "posts": 32
             }
           ],
           "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage."
         },
-        "data_timestamp": 1786943656.29,
+        "data_timestamp": 1787412556.397,
         "ddti": {
           "by_domain": {
-            "ECONOMY": 5,
+            "ECONOMY": 6,
             "FOREIGN": 5,
-            "INFORMATION": 28,
-            "LEADERSHIP": 3,
-            "OTHER": 130,
+            "INFORMATION": 30,
+            "LEADERSHIP": 2,
+            "OTHER": 126,
             "RIGHTS": 4,
             "SOCIETY": 10,
-            "UNREST": 7
+            "UNREST": 9
           },
-          "generated_at": 1786943656.29,
+          "generated_at": 1787412556.397,
           "n_posts": 16,
           "n_posts_scored": 16,
           "n_terms": 192,
           "ranked": [
             {
-              "attention": 1.9,
+              "attention": 1.68,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 1.0,
+              "recent": 2,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “How Do These Comments Break the Rules?”",
+                  "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+                }
+              ],
+              "tag_observations": 3,
+              "term": "netizen comments",
+              "text_observations": 0,
+              "threat": 4.21,
+              "total": 3
+            },
+            {
+              "attention": 2.88,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 2,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+                  "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+                  "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+                  "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+                }
+              ],
+              "tag_observations": 9,
+              "term": "social media censorship",
+              "text_observations": 0,
+              "threat": 2.88,
+              "total": 9
+            },
+            {
+              "attention": 2.79,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 2,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+                  "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+                  "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+                  "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+                }
+              ],
+              "tag_observations": 8,
+              "term": "internet censorship",
+              "text_observations": 0,
+              "threat": 2.79,
+              "total": 8
+            },
+            {
+              "attention": 2.76,
+              "direct_signal_observations": 0,
+              "domain": "INFORMATION",
+              "is_new": false,
+              "novelty": 0.0,
+              "recent": 2,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+                  "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+                  "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+                },
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+                  "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+                }
+              ],
+              "tag_observations": 8,
+              "term": "online censorship",
+              "text_observations": 0,
+              "threat": 2.76,
+              "total": 8
+            },
+            {
+              "attention": 1.45,
               "direct_signal_observations": 0,
               "domain": "INFORMATION",
               "is_new": false,
@@ -16299,128 +16247,11 @@
               "tag_observations": 4,
               "term": "social media",
               "text_observations": 0,
-              "threat": 3.05,
+              "threat": 2.33,
               "total": 4
             },
             {
-              "attention": 2.78,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
-                  "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-                  "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
-                }
-              ],
-              "tag_observations": 9,
-              "term": "social media censorship",
-              "text_observations": 0,
-              "threat": 2.78,
-              "total": 9
-            },
-            {
-              "attention": 2.66,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
-                  "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: No Scaling the Great Firewall in the Library",
-                  "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-                  "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
-                }
-              ],
-              "tag_observations": 8,
-              "term": "internet censorship",
-              "text_observations": 0,
-              "threat": 2.66,
-              "total": 8
-            },
-            {
-              "attention": 2.62,
-              "direct_signal_observations": 0,
-              "domain": "INFORMATION",
-              "is_new": false,
-              "novelty": 0.0,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
-                  "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-                  "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
-                },
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-                  "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
-                }
-              ],
-              "tag_observations": 8,
-              "term": "online censorship",
-              "text_observations": 0,
-              "threat": 2.62,
-              "total": 8
-            },
-            {
-              "attention": 1.34,
+              "attention": 1.32,
               "direct_signal_observations": 0,
               "domain": "OTHER",
               "is_new": false,
@@ -16432,28 +16263,28 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
-                  "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 },
                 {
                   "matched_in": [
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Translation: “AI Has Determined That My Press Card Is a Fake”",
+                  "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
                 }
               ],
               "tag_observations": 2,
-              "term": "nationalism",
+              "term": "humor",
               "text_observations": 0,
-              "threat": 2.15,
+              "threat": 2.12,
               "total": 2
             },
             {
               "attention": 0.89,
               "direct_signal_observations": 0,
-              "domain": "OTHER",
+              "domain": "INFORMATION",
               "is_new": false,
               "novelty": 0.8,
               "recent": 1,
@@ -16463,14 +16294,37 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 }
               ],
               "tag_observations": 1,
-              "term": "academia",
+              "term": "arts censorship",
               "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.95,
+              "total": 1
+            },
+            {
+              "attention": 0.89,
+              "direct_signal_observations": 0,
+              "domain": "LEADERSHIP",
+              "is_new": false,
+              "novelty": 0.8,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "ccp history",
+              "text_observations": 0,
+              "threat": 1.95,
               "total": 1
             },
             {
@@ -16486,37 +16340,14 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 }
               ],
               "tag_observations": 1,
-              "term": "academics",
+              "term": "chinese opera",
               "text_observations": 0,
-              "threat": 1.97,
-              "total": 1
-            },
-            {
-              "attention": 0.89,
-              "direct_signal_observations": 0,
-              "domain": "FOREIGN",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "foreign universities",
-              "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.95,
               "total": 1
             },
             {
@@ -16532,37 +16363,14 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 }
               ],
               "tag_observations": 1,
-              "term": "france",
+              "term": "comedy",
               "text_observations": 0,
-              "threat": 1.97,
-              "total": 1
-            },
-            {
-              "attention": 0.89,
-              "direct_signal_observations": 0,
-              "domain": "SOCIETY",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "higher education",
-              "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.95,
               "total": 1
             },
             {
@@ -16578,14 +16386,14 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 }
               ],
               "tag_observations": 1,
-              "term": "mathematics",
+              "term": "cross-talk",
               "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.95,
               "total": 1
             },
             {
@@ -16601,14 +16409,14 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 }
               ],
               "tag_observations": 1,
-              "term": "overseas chinese",
+              "term": "cultural policy",
               "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.95,
               "total": 1
             },
             {
@@ -16624,83 +16432,14 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 }
               ],
               "tag_observations": 1,
-              "term": "peking university",
+              "term": "cultural revolution",
               "text_observations": 0,
-              "threat": 1.97,
-              "total": 1
-            },
-            {
-              "attention": 0.89,
-              "direct_signal_observations": 0,
-              "domain": "SOCIETY",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "science education",
-              "text_observations": 0,
-              "threat": 1.97,
-              "total": 1
-            },
-            {
-              "attention": 0.89,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "u.s. universities",
-              "text_observations": 0,
-              "threat": 1.97,
-              "total": 1
-            },
-            {
-              "attention": 0.89,
-              "direct_signal_observations": 0,
-              "domain": "OTHER",
-              "is_new": false,
-              "novelty": 0.8,
-              "recent": 1,
-              "samples": [
-                {
-                  "matched_in": [
-                    "tag"
-                  ],
-                  "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-                }
-              ],
-              "tag_observations": 1,
-              "term": "universities",
-              "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.95,
               "total": 1
             },
             {
@@ -16716,23 +16455,92 @@
                     "tag"
                   ],
                   "source": "cdt",
-                  "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                  "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
                 }
               ],
               "tag_observations": 1,
-              "term": "weibo censorship",
+              "term": "free expression",
               "text_observations": 0,
-              "threat": 1.97,
+              "threat": 1.95,
+              "total": 1
+            },
+            {
+              "attention": 0.89,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.8,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "insulting heroes and martyrs",
+              "text_observations": 0,
+              "threat": 1.95,
+              "total": 1
+            },
+            {
+              "attention": 0.89,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.8,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "party history",
+              "text_observations": 0,
+              "threat": 1.95,
+              "total": 1
+            },
+            {
+              "attention": 0.89,
+              "direct_signal_observations": 0,
+              "domain": "OTHER",
+              "is_new": false,
+              "novelty": 0.8,
+              "recent": 1,
+              "samples": [
+                {
+                  "matched_in": [
+                    "tag"
+                  ],
+                  "source": "cdt",
+                  "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                  "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+                }
+              ],
+              "tag_observations": 1,
+              "term": "revolutionary films",
+              "text_observations": 0,
+              "threat": 1.95,
               "total": 1
             }
           ]
         },
         "economic": {
-          "generated_at": 1786943656.306,
+          "generated_at": 1787412556.413,
           "metric_name": "observed_economic_topic_share",
           "n_econ_articles": 3,
-          "pct": 22,
+          "pct": 17,
           "ranked": [
             {
               "samples": [
@@ -16742,7 +16550,7 @@
                 }
               ],
               "term": "wages",
-              "weight": 0.74
+              "weight": 0.57
             },
             {
               "samples": [
@@ -16752,7 +16560,7 @@
                 }
               ],
               "term": "economy",
-              "weight": 0.45
+              "weight": 0.34
             },
             {
               "samples": [
@@ -16762,7 +16570,7 @@
                 }
               ],
               "term": "unemployment",
-              "weight": 0.45
+              "weight": 0.34
             },
             {
               "samples": [
@@ -16772,46 +16580,81 @@
                 }
               ],
               "term": "tax",
-              "weight": 0.16
+              "weight": 0.12
             }
           ],
           "scope": "Time-weighted share of observed public-source records matching the allowlisted economic-topic vocabulary."
         },
-        "generated_at": 1786943656.315,
+        "generated_at": 1787412556.422,
         "health": {
           "freshness": {
             "age_seconds": 0.025,
-            "core_data_at": 1786943656.29,
+            "core_data_at": 1787412556.397,
             "stale_after_seconds": 1800,
             "status": "fresh"
           },
           "last_completed_run": {
             "collection_errors": 0,
-            "duration_s": 0.21,
-            "finished_at": 1786943656.314,
+            "duration_s": 0.24,
+            "finished_at": 1787412556.421,
             "healthy": true,
-            "id": 1195,
-            "started_at": 1786943656.109,
+            "id": 1716,
+            "started_at": 1787412556.183,
             "status": "ok"
           },
           "last_run": {
             "collection_errors": 0,
-            "duration_s": 0.21,
-            "finished_at": 1786943656.314,
+            "duration_s": 0.24,
+            "finished_at": 1787412556.421,
             "healthy": true,
-            "id": 1195,
-            "started_at": 1786943656.109,
+            "id": 1716,
+            "started_at": 1787412556.183,
             "status": "ok"
           },
-          "last_successful_run_at": 1786943656.314,
+          "last_successful_run_at": 1787412556.421,
           "live": true,
-          "posts": 30,
+          "posts": 32,
           "ready": true,
           "reasons": [],
           "stale": false,
           "status": "ok"
         },
         "leads": [
+          {
+            "domain": "OTHER",
+            "is_new": false,
+            "n": 3,
+            "novelty": 1.0,
+            "samples": [
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Translation: “How Do These Comments Break the Rules?”",
+                "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/"
+              },
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+              },
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+              }
+            ],
+            "score": 8.2,
+            "term": "netizen comments",
+            "threat": 4.21
+          },
           {
             "domain": "INFORMATION",
             "is_new": false,
@@ -16831,8 +16674,8 @@
                   "tag"
                 ],
                 "source": "cdt",
-                "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-                "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
+                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
               },
               {
                 "matched_in": [
@@ -16843,9 +16686,79 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
               }
             ],
-            "score": 5.3,
+            "score": 5.5,
             "term": "social media censorship",
-            "threat": 2.78
+            "threat": 2.88
+          },
+          {
+            "domain": "INFORMATION",
+            "is_new": false,
+            "n": 8,
+            "novelty": 0.0,
+            "samples": [
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+                "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+              },
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+              },
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+              }
+            ],
+            "score": 5.0,
+            "term": "internet censorship",
+            "threat": 2.79
+          },
+          {
+            "domain": "INFORMATION",
+            "is_new": false,
+            "n": 8,
+            "novelty": 0.0,
+            "samples": [
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+                "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+              },
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+              },
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+              }
+            ],
+            "score": 5.0,
+            "term": "online censorship",
+            "threat": 2.76
           },
           {
             "domain": "INFORMATION",
@@ -16878,79 +16791,9 @@
                 "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
               }
             ],
-            "score": 5.1,
+            "score": 3.9,
             "term": "social media",
-            "threat": 3.05
-          },
-          {
-            "domain": "INFORMATION",
-            "is_new": false,
-            "n": 8,
-            "novelty": 0.0,
-            "samples": [
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
-                "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
-              },
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "Translation: No Scaling the Great Firewall in the Library",
-                "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
-              },
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
-              }
-            ],
-            "score": 4.8,
-            "term": "internet censorship",
-            "threat": 2.66
-          },
-          {
-            "domain": "INFORMATION",
-            "is_new": false,
-            "n": 8,
-            "novelty": 0.0,
-            "samples": [
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
-                "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
-              },
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-                "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
-              },
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-                "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
-              }
-            ],
-            "score": 4.7,
-            "term": "online censorship",
-            "threat": 2.62
+            "threat": 2.33
           },
           {
             "domain": "OTHER",
@@ -16963,21 +16806,59 @@
                   "tag"
                 ],
                 "source": "cdt",
-                "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
-                "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+                "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
               },
               {
                 "matched_in": [
                   "tag"
                 ],
                 "source": "cdt",
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                "title": "Translation: “AI Has Determined That My Press Card Is a Fake”",
+                "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/"
               }
             ],
             "score": 3.1,
-            "term": "nationalism",
-            "threat": 2.15
+            "term": "humor",
+            "threat": 2.12
+          },
+          {
+            "domain": "INFORMATION",
+            "is_new": false,
+            "n": 1,
+            "novelty": 0.8,
+            "samples": [
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+              }
+            ],
+            "score": 3.0,
+            "term": "arts censorship",
+            "threat": 1.95
+          },
+          {
+            "domain": "LEADERSHIP",
+            "is_new": false,
+            "n": 1,
+            "novelty": 0.8,
+            "samples": [
+              {
+                "matched_in": [
+                  "tag"
+                ],
+                "source": "cdt",
+                "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+              }
+            ],
+            "score": 3.0,
+            "term": "ccp history",
+            "threat": 1.95
           },
           {
             "domain": "OTHER",
@@ -16990,13 +16871,13 @@
                   "tag"
                 ],
                 "source": "cdt",
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
               }
             ],
             "score": 3.0,
-            "term": "academia",
-            "threat": 1.97
+            "term": "chinese opera",
+            "threat": 1.95
           },
           {
             "domain": "OTHER",
@@ -17009,70 +16890,13 @@
                   "tag"
                 ],
                 "source": "cdt",
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+                "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+                "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
               }
             ],
             "score": 3.0,
-            "term": "academics",
-            "threat": 1.97
-          },
-          {
-            "domain": "FOREIGN",
-            "is_new": false,
-            "n": 1,
-            "novelty": 0.8,
-            "samples": [
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              }
-            ],
-            "score": 3.0,
-            "term": "foreign universities",
-            "threat": 1.97
-          },
-          {
-            "domain": "OTHER",
-            "is_new": false,
-            "n": 1,
-            "novelty": 0.8,
-            "samples": [
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              }
-            ],
-            "score": 3.0,
-            "term": "france",
-            "threat": 1.97
-          },
-          {
-            "domain": "SOCIETY",
-            "is_new": false,
-            "n": 1,
-            "novelty": 0.8,
-            "samples": [
-              {
-                "matched_in": [
-                  "tag"
-                ],
-                "source": "cdt",
-                "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-                "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
-              }
-            ],
-            "score": 3.0,
-            "term": "higher education",
-            "threat": 1.97
+            "term": "comedy",
+            "threat": 1.95
           }
         ],
         "method": "Observed public-source topic attention, novelty, and economic-topic share",
@@ -17088,21 +16912,21 @@
         "source": "Palimpsest-Nemesis",
         "status": "ok",
         "timestamps": {
-          "data_updated_at": 1786943656.314,
-          "ddti_generated_at": 1786943656.29,
-          "economic_generated_at": 1786943656.306,
-          "last_successful_run_at": 1786943656.314,
-          "latest_fetched_at": 1786751056.142,
-          "latest_published_at": 1786748696.0
+          "data_updated_at": 1787412556.421,
+          "ddti_generated_at": 1787412556.397,
+          "economic_generated_at": 1787412556.413,
+          "last_successful_run_at": 1787412556.421,
+          "latest_fetched_at": 1787204656.268,
+          "latest_published_at": 1787200643.0
         }
       },
       "payload_complete": false,
       "raw_url": "https://palimpsest.info/readings/nemesis-latest.json",
       "scope": "Observed records from enabled public-source collectors; not an estimate of total China coverage.",
       "source": "Palimpsest-Nemesis",
-      "source_timestamp": "2026-08-17T05:14:16Z",
-      "status": "stale",
-      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. The retained payload is stale: source timestamp 2026-08-17T05:14:16Z passed its freshness deadline 2026-08-17T06:14:16Z, so it is not labelled live. Latest payload reports topics ranked at 192 count.",
+      "source_timestamp": "2026-08-22T15:29:16Z",
+      "status": "live",
+      "summary": "Optional signed and sanitized intelligence export; absence never becomes a zero. Latest payload reports topics ranked at 192 count.",
       "title": "Private runtime bridge"
     }
   ],
