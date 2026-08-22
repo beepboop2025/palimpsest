@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-ca7d3214efa30982c6d76a15",
+  "analysis_id": "instrumentv-979e31bfd6c8127886413855",
   "signal_id": "anchors",
   "story_url": "https://palimpsest.info/news/integrity-anchors/",
   "url": "https://palimpsest.info/news/integrity-anchors/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, github-refuge, app-storefront, apple-censorship, cny-fix-gap, data-darkness.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, github-refuge, app-storefront, apple-censorship.",
           "citation_ids": [
             "instrumentevidence-38ef9bd800d3fe7a17fd"
           ]
@@ -109,7 +109,19 @@
   ],
   "elevated_peers": [
     {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "event-flags",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "coverage-guard",
       "section": "command",
       "status": "live",
       "priority": "high"
@@ -189,18 +201,6 @@
     {
       "signal_id": "apple-censorship",
       "section": "erasure",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "cny-fix-gap",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "data-darkness",
-      "section": "economy",
       "status": "live",
       "priority": "high"
     }

@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:public-deletion-ledgers",
+  "slug": "public-deletion-ledgers",
+  "url": "https://palimpsest.info/news/public-deletion-ledgers/",
+  "signal_id": "public-deletion-ledgers",
+  "headline": "Public deletion ledgers carry 15 observations from reachable feeds",
+  "dek": "CDT, GreatFire and FreeWeibo-style RSS/Atom ledgers are ingested only when a feed answers; unreachable ledgers stay named rather than becoming a zero.",
+  "section": "attention",
+  "order": 7,
+  "type": "measurement",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-22T23:08:00Z",
+  "modified_at": "2026-08-22T23:08:00Z",
+  "claim_fingerprint": "sha256:b127fe694f82db95b4f4134d88b79c63c69835d2faf69bb0e25a235983cfcf2f",
+  "metric": {
+    "label": "ledger observations",
+    "value": 15,
+    "unit": "count",
+    "denominator": {
+      "label": "feeds answering",
+      "value": 1
+    }
+  },
+  "claims": [
+    {
+      "type": "observation",
+      "statement": "The current ledger ingest published 15 public observations."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+    "input": {
+      "filename": "public-deletion-ledgers-latest.json",
+      "sha256": "00e95f820d4720902360305aebb05484c74779321ed20aabf4b418bf54dd6a8c",
+      "bytes": 65782
+    },
+    "source_timestamp": "2026-08-22T23:08:00Z"
+  },
+  "method": {
+    "summary": "Keyless RSS/Atom ingest through collectors.feed_parse.parse_feed_items and core.safe_fetch; each feed is a candidate and reports its own reachability.",
+    "version": 1
+  },
+  "limitations": [
+    "A missing ledger file is an abstention, not proof that nothing was deleted. Reachability of a public RSS feed is not a census of Chinese-language deletions."
+  ],
+  "related_signal_ids": [
+    "ddti",
+    "undertext",
+    "wayback"
+  ]
+}

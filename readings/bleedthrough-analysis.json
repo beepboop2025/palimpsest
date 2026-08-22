@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-5f84894da5389e0af58ab55d",
+  "analysis_id": "instrumentv-8c3fd0ce9a23d542a18347bd",
   "signal_id": "bleedthrough",
   "story_url": "https://palimpsest.info/news/bleedthrough-injector-tomography/",
   "url": "https://palimpsest.info/news/bleedthrough-injector-tomography/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap.",
           "citation_ids": [
             "instrumentevidence-7666200caf532ccbff61"
           ]
@@ -109,7 +109,19 @@
   ],
   "elevated_peers": [
     {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "event-flags",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "coverage-guard",
       "section": "command",
       "status": "live",
       "priority": "high"
@@ -191,18 +203,6 @@
       "section": "economy",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "data-darkness",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "generative-firewall",
-      "section": "models",
-      "status": "live",
-      "priority": "lead"
     }
   ],
   "review_rank": {

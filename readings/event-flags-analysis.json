@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-607121dae169dcea94a80751",
+  "analysis_id": "instrumentv-5f82fdb38f1303b131673d99",
   "signal_id": "event-flags",
   "story_url": "https://palimpsest.info/news/event-flags/",
   "url": "https://palimpsest.info/news/event-flags/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, coverage-guard, forecast-ledger, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap.",
           "citation_ids": [
             "instrumentevidence-d77ef27290a4d66cc0a2"
           ]
@@ -108,6 +108,24 @@
     }
   ],
   "elevated_peers": [
+    {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "coverage-guard",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "forecast-ledger",
+      "section": "command",
+      "status": "live",
+      "priority": "standard"
+    },
     {
       "signal_id": "ddti",
       "section": "attention",
@@ -185,18 +203,6 @@
       "section": "economy",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "data-darkness",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "generative-firewall",
-      "section": "models",
-      "status": "live",
-      "priority": "lead"
     }
   ],
   "review_rank": {

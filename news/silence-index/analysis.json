@@ -1,12 +1,12 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-ec5147c45f7bcf3091b53185",
+  "analysis_id": "instrumentv-47c29c7169a486e24bf8ee94",
   "signal_id": "silence-index",
   "story_url": "https://palimpsest.info/news/silence-index/",
   "url": "https://palimpsest.info/news/silence-index/analysis.json",
   "reading_url": "https://palimpsest.info/readings/silence-index-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/silence-index-analysis.json",
-  "generated_at": "2026-08-22T20:46:37Z",
+  "generated_at": "2026-08-22T23:49:49Z",
   "disposition": "availability-brief",
   "status": "degraded",
   "position": "Palimpsest withholds a current finding for silence-index: the source status is degraded. This is an availability brief, not a measurement.",
@@ -16,7 +16,7 @@
       "label": "headline metric",
       "note": "withheld because the source is not live",
       "citation_ids": [
-        "instrumentevidence-3ea720ab9bc01ebf9dc4"
+        "instrumentevidence-88a1cf70f5600a6178f3"
       ]
     }
   ],
@@ -27,13 +27,13 @@
         {
           "text": "No current number is published for silence-index because the newsroom status is degraded. The retained metric is withheld.",
           "citation_ids": [
-            "instrumentevidence-3ea720ab9bc01ebf9dc4"
+            "instrumentevidence-88a1cf70f5600a6178f3"
           ]
         },
         {
           "text": "No current finding is published for Silence index because the source status is degraded.",
           "citation_ids": [
-            "instrumentevidence-3ea720ab9bc01ebf9dc4"
+            "instrumentevidence-88a1cf70f5600a6178f3"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, gdelt, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, gdelt, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship.",
           "citation_ids": [
-            "instrumentevidence-3ea720ab9bc01ebf9dc4"
+            "instrumentevidence-88a1cf70f5600a6178f3"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-3ea720ab9bc01ebf9dc4"
+            "instrumentevidence-88a1cf70f5600a6178f3"
           ]
         }
       ]
@@ -61,19 +61,19 @@
         {
           "text": "Current finding withheld: declared measurement is incomplete: metric /n_blackout is absent or non-scalar",
           "citation_ids": [
-            "instrumentevidence-3ea720ab9bc01ebf9dc4"
+            "instrumentevidence-88a1cf70f5600a6178f3"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-3ea720ab9bc01ebf9dc4"
+            "instrumentevidence-88a1cf70f5600a6178f3"
           ]
         },
         {
           "text": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores - a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in both the latest reading and the history, never zeros",
           "citation_ids": [
-            "instrumentevidence-3ea720ab9bc01ebf9dc4"
+            "instrumentevidence-88a1cf70f5600a6178f3"
           ]
         }
       ]
@@ -83,13 +83,13 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-3ea720ab9bc01ebf9dc4"
+        "instrumentevidence-88a1cf70f5600a6178f3"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-3ea720ab9bc01ebf9dc4"
+        "instrumentevidence-88a1cf70f5600a6178f3"
       ]
     }
   ],
@@ -97,19 +97,31 @@
     {
       "text": "Current finding withheld: declared measurement is incomplete: metric /n_blackout is absent or non-scalar",
       "citation_ids": [
-        "instrumentevidence-3ea720ab9bc01ebf9dc4"
+        "instrumentevidence-88a1cf70f5600a6178f3"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-3ea720ab9bc01ebf9dc4"
+        "instrumentevidence-88a1cf70f5600a6178f3"
       ]
     }
   ],
   "elevated_peers": [
     {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "event-flags",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "coverage-guard",
       "section": "command",
       "status": "live",
       "priority": "high"
@@ -191,18 +203,6 @@
       "section": "erasure",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "cny-fix-gap",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "data-darkness",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
     }
   ],
   "review_rank": {
@@ -213,7 +213,7 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-3ea720ab9bc01ebf9dc4",
+      "evidence_id": "instrumentevidence-88a1cf70f5600a6178f3",
       "kind": "newsroom-story",
       "signal_id": "silence-index",
       "headline": "Silence index: no current finding",
@@ -221,8 +221,8 @@
       "claim": "No current finding is published for Silence index because the source status is degraded.",
       "story_url": "https://palimpsest.info/news/silence-index/",
       "reading_url": "https://palimpsest.info/readings/silence-index-latest.json",
-      "source_timestamp": "2026-08-22T20:46:37Z",
-      "input_sha256": "fd81c41b9226a061ce9203429a5b4597e924b807c1f5a3b840cd52aef3da096f",
+      "source_timestamp": "2026-08-22T23:49:49Z",
+      "input_sha256": "58a6ff236a5810b4db2914f9554cd7eef6cd45746d2c5b6ce90e70dcfb63b071",
       "interpretation_limit": "Current finding withheld: declared measurement is incomplete: metric /n_blackout is absent or non-scalar"
     }
   ],

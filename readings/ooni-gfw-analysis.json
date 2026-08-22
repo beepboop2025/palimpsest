@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-cd0c9cd27fd893c05c778761",
+  "analysis_id": "instrumentv-897e430458197e64b986fecd",
   "signal_id": "ooni-gfw",
   "story_url": "https://palimpsest.info/news/ooni-great-firewall-index/",
   "url": "https://palimpsest.info/news/ooni-great-firewall-index/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, weibo-hotsearch, undertext, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, undertext, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness.",
           "citation_ids": [
             "instrumentevidence-12d0ffe4518263df97ff"
           ]
@@ -109,7 +109,19 @@
   ],
   "elevated_peers": [
     {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "event-flags",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "coverage-guard",
       "section": "command",
       "status": "live",
       "priority": "high"
@@ -191,12 +203,6 @@
       "section": "economy",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "generative-firewall",
-      "section": "models",
-      "status": "live",
-      "priority": "lead"
     }
   ],
   "review_rank": {
