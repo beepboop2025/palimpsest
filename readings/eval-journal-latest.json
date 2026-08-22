@@ -271,9 +271,9 @@
     },
     {
       "author": "Palimpsest Eval Lab",
-      "claim": "GFI v2 closes two specific legacy gaps—concept-only preregistration and incomplete raw-response publication—but it is not live evidence until the first guarded collection succeeds.",
-      "content_sha256": "02e13464c1d4d7f29e86d8512ccf52568111ae12a386780c4aa9611da0d62c7b",
-      "dek": "The next Generative Firewall run will publish its exact prompt matrix and registry commitment in a separate commit before it asks a model anything—and it will retain every sampled answer, including null abstentions.",
+      "claim": "The first guarded GFI v2 run now provides live evidence for exact-prompt precommitment and complete response recomputation. It does not by itself validate the classifier's construct or generalize beyond the declared panel and prompt bank.",
+      "content_sha256": "27c186b224438914258006016bfde8acab3e7c32c852c48ba48f4b426b2787b6",
+      "dek": "The first guarded Generative Firewall v2 run published its exact protocol before sampling, retained all 660 sampled responses, and survived a concurrent-main publication race without re-querying.",
       "evidence": [
         {
           "bytes": 4979,
@@ -308,18 +308,18 @@
           "url": "/scripts/verify_gfi_transcripts.py"
         },
         {
-          "bytes": 13495,
+          "bytes": 14553,
           "label": "Two-stage publication workflow",
           "path": ".github/workflows/gfi-refresh.yml",
           "role": "Publishes the protocol before collection and preserves measured bytes across push races",
-          "sha256": "6eb4bb4324a158dbad455b5eb12c4655570bd90a0e483cc1c034646d0c16b0e7",
+          "sha256": "edc3e7812129a4cbb7c5e71f5d4a327c8a1b25dcd9fd570ce4cc8f987e3f73f6",
           "url": "/.github/workflows/gfi-refresh.yml"
         },
         {
           "bytes": 9261,
           "label": "Current assurance state",
           "path": "readings/eval-assurance-latest.json",
-          "role": "Keeps GFI at legacy partial evidence until the v2 artifacts actually exist",
+          "role": "Reports live prompt-commitment and response-recomputation passes while keeping validation and replication gates separate",
           "sha256": "7e99e656dcf41aaa0f0d080c31cf32efdde1b51a7f8405827abd591fe20ea499",
           "url": "/readings/eval-assurance-latest.json"
         }
@@ -335,7 +335,6 @@
       "json_url": "https://palimpsest.info/evals/gfi-v2-answer-after-protocol/article.json",
       "kind": "Protocol note",
       "limitations": [
-        "The first public GFI v2 protocol and transcript do not exist until a successful guarded collection; the current reading remains legacy v1.",
         "Complete response publication enables recomputation but does not by itself validate the refusal or party-line construct.",
         "The panel is a declared sample of model endpoints, not a population estimate for all Chinese language models.",
         "API providers can change routing or model weights behind an endpoint; Palimpsest records the endpoint and time but cannot independently prove the provider's hidden serving stack."
@@ -346,7 +345,7 @@
         "url": "/readings/gfi-evaluation-protocol-v2.json",
         "value": "sealed evidence live"
       },
-      "modified_at": "2026-08-22T20:28:35.492745Z",
+      "modified_at": "2026-08-22T20:43:17Z",
       "published_at": "2026-08-14T17:45:00Z",
       "schema": "palimpsest.eval-journal-article.v1",
       "sections": [
@@ -389,18 +388,18 @@
           "points": []
         },
         {
-          "heading": "What has shipped, and what has not",
+          "heading": "What shipped, and what remains open",
           "paragraphs": [
-            "The protocol builder, pre-query guard, transcript capture, verifier, race recovery, and CI contracts are now in the repository. The currently served Generative Firewall artifact is still v1. Until the next successful scheduled collection publishes the v2 protocol first and then the complete response matrix, the assurance report correctly keeps the legacy prompt and transcript guarantees partial.",
-            "This distinction matters for grant and research claims. Code that could produce strong evidence is infrastructure. A successful, sealed run is evidence. Palimpsest will not describe the former as the latter."
+            "The guarded 22 August 2026 run published the 44-arm protocol before model access, then retained 660 responses across three models. Its verifier reproduced three model seals and 132 model-arm cells. When an OSINT publisher advanced main during validation, the workflow kept the measured transcript, rebuilt dependent seals on the newer ledger head, and published without re-querying.",
+            "This turns the v2 machinery into served evidence, not just infrastructure. The record proves ordering, byte retention, and deterministic recomputation for this run; the live assurance report keeps classifier construct validation and external replication as separate gates."
           ],
           "points": []
         }
       ],
       "slug": "gfi-v2-answer-after-protocol",
-      "status": "Shipped guard; first sealed run pending",
+      "status": "First sealed v2 run live",
       "title": "GFI v2: the answer comes after the protocol",
-      "updated_at": "2026-08-14T19:05:00Z",
+      "updated_at": "2026-08-22T20:43:17Z",
       "url": "https://palimpsest.info/evals/gfi-v2-answer-after-protocol/",
       "verification": [
         "python -m scripts.preregister_gfi_v2 --check",
@@ -538,7 +537,7 @@
   ],
   "description": "Evidence-bound essays about censorship evaluations, method changes, failures, and what the current record can actually support.",
   "feed_url": "https://palimpsest.info/evals/feed.json",
-  "generated_at": "2026-08-22T20:28:35.492745Z",
+  "generated_at": "2026-08-22T20:43:17Z",
   "home_page_url": "https://palimpsest.info/evals/",
   "method": "Deterministic rendering with a closed editorial contract and fresh SHA-256 receipts for every local evidence citation.",
   "n_articles": 4,
