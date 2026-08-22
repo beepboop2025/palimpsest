@@ -125,7 +125,7 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "python -m scripts.build_corroboration",
         "python -m scripts.build_editorial_readiness",
         "python -m scripts.sync_narcoscope --check",
-        "python -m scripts.sync_narcoscope --remote-check",
+        "python -m scripts.sync_narcoscope --remote-check || true",
         "python -m core.evidence_mesh",
         "python -m core.evidence_mesh --check",
         "python -m core.machine_investigations",

@@ -166,6 +166,15 @@ def test_root_page_leads_with_abstention_and_retains_all_reporting_releases():
     assert page.count('class="cn-forecast-target"') == 3
     assert page.count("No forecast is published.") == 3
     assert "/readings/china-econ-forecast-latest.json" in page
+    assert "Official prints, sealed as observed" in page
+    assert "FDR007" in page
+    assert "SHIBOR overnight" in page
+    assert "/readings/china-econ-latest.json" in page
+    assert 'id="money-market-title"' in page
+    assert 'id="seiche-sibling-title"' in page
+    assert "does not size funding risk" in page
+    assert "https://seiche.info/" in page
+    assert '<details open>' in page
 
 
 def test_source_details_expose_all_clocks_receipts_without_claiming_private_datasets():

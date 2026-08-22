@@ -159,6 +159,58 @@ body.ps.cn-page > .cn-local {
 .cn-trust b { color: var(--cn-teal); }
 .cn-trust a { margin-left: auto; }
 
+.cn-prints {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 38px;
+  border-top: 1px solid var(--cn-ink);
+  border-bottom: 1px solid var(--cn-rule);
+}
+.cn-print { padding: 22px 18px 20px; border-left: 1px solid var(--cn-rule); }
+.cn-print:first-child { padding-left: 0; border-left: 0; }
+.cn-print dt {
+  color: var(--cn-muted);
+  font: 700 9px/1.3 var(--cn-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.cn-print dd {
+  margin-top: 8px;
+  color: var(--cn-ink);
+  font: 700 clamp(28px, 4vw, 46px)/.9 var(--cn-mono);
+  letter-spacing: -.05em;
+}
+.cn-print small {
+  display: block;
+  margin-top: 8px;
+  color: var(--cn-muted);
+  font: 500 11px/1.4 var(--cn-mono);
+}
+.cn-money__facts { margin-top: 28px; border-bottom: 0; }
+.cn-curve-groups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px 42px;
+  margin-top: 38px;
+}
+.cn-curve-group h3 {
+  margin-bottom: 12px;
+  font: 550 18px/1.2 var(--cn-serif);
+}
+.cn-curve-group table { min-width: 0; }
+.cn-sibling {
+  margin-top: 32px;
+  padding-top: 22px;
+  border-top: 1px solid var(--cn-rule);
+  max-width: 760px;
+}
+.cn-sibling p:not(.cn-kicker) {
+  margin-top: 10px;
+  color: var(--cn-muted);
+  font: 400 15px/1.6 var(--cn-serif);
+}
+
 .cn-section { padding: clamp(54px, 8vw, 96px) 0; border-top: 1px solid var(--cn-rule); }
 .cn-trust + .cn-section { border-top: 0; }
 .cn-section__head { display: grid; grid-template-columns: minmax(170px, .32fr) minmax(0, 1fr); column-gap: 32px; }
@@ -438,6 +490,9 @@ body.ps.cn-page > .cn-local {
   .cn-release-read { grid-template-columns: 1fr; }
   .cn-forecast-target dl { grid-template-columns: repeat(3, 1fr); row-gap: 18px; }
   .cn-forecast-target dl > div:nth-child(4) { padding-left: 0; border-left: 0; }
+  .cn-prints,
+  .cn-curve-groups { grid-template-columns: 1fr; }
+  .cn-print { padding-left: 0; border-left: 0; border-top: 1px solid var(--cn-rule); }
 }
 
 @media (max-width: 540px) {

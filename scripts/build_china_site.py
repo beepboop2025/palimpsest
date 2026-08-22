@@ -32,6 +32,7 @@ SITE_CONFIG = ROOT / "config" / "china_site.json"
 PULSE = ROOT / "readings" / "china-economic-pulse-latest.json"
 LEDGER = ROOT / "readings" / "china-econ-observations.jsonl"
 FORECAST = ROOT / "readings" / "china-econ-forecast-latest.json"
+CHINA_ECON_LATEST = ROOT / "readings" / "china-econ-latest.json"
 INDEX_OUTPUT = ROOT / "readings" / "china-index-latest.json"
 SITE_ROOT = ROOT / "china"
 
@@ -53,6 +54,30 @@ IMPLEMENTATIONS = {
     "out_of_scope",
 }
 ALIAS_RELATIONSHIPS = {"exact_dataset", "publisher_family", "unregistered_release_surface"}
+CFETS_CURVE = (
+    ("fdr001", "FDR001", "pledged repo", "%"),
+    ("fdr007", "FDR007", "pledged repo", "%"),
+    ("fdr014", "FDR014", "pledged repo", "%"),
+    ("fr001", "FR001", "fixing repo", "%"),
+    ("fr007", "FR007", "fixing repo", "%"),
+    ("fr014", "FR014", "fixing repo", "%"),
+    ("shibor_on", "SHIBOR overnight", "SHIBOR", "%"),
+    ("shibor_1w", "SHIBOR 1W", "SHIBOR", "%"),
+    ("shibor_2w", "SHIBOR 2W", "SHIBOR", "%"),
+    ("shibor_1m", "SHIBOR 1M", "SHIBOR", "%"),
+    ("shibor_3m", "SHIBOR 3M", "SHIBOR", "%"),
+    ("shibor_6m", "SHIBOR 6M", "SHIBOR", "%"),
+    ("shibor_9m", "SHIBOR 9M", "SHIBOR", "%"),
+    ("shibor_1y", "SHIBOR 1Y", "SHIBOR", "%"),
+    ("usdcny_parity", "USD/CNY parity", "FX", "CNY per USD"),
+)
+CFETS_HISTORY_SERIES = (
+    ("cn.cfets.fdr007", "FDR007"),
+    ("cn.cfets.shibor_on", "SHIBOR overnight"),
+    ("cn.cfets.usdcny_parity", "USD/CNY parity"),
+)
+CFETS_HISTORY_DAYS = 16
+MONEY_DESK_ID = "money-credit-fx"
 
 
 class ChinaSiteError(ValueError):
@@ -800,7 +825,205 @@ def _loom(index: Mapping[str, Any]) -> str:
     return "".join(parts)
 
 
-def _home(index: Mapping[str, Any]) -> bytes:
+def _money_market_view(root: Path) -> dict[str, Any] | None:
+    """HTML-only CFETS print. Never written into the closed china-index schema."""
+
+    path = root / "readings" / "china-econ-latest.json"
+    if not path.is_file():
+        return None
+    try:
+        latest, _ = _read_json(path)
+    except ChinaSiteError:
+        return None
+    benchmarks = latest.get("benchmarks")
+    if not isinstance(benchmarks, dict) or not benchmarks:
+        return None
+
+    curve: dict[str, list[dict[str, Any]]] = {}
+    prints: list[dict[str, Any]] = []
+    print_keys = {"fdr007", "shibor_on", "usdcny_parity"}
+    for key, label, family, unit in CFETS_CURVE:
+        value = benchmarks.get(key)
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+        row = {"key": key, "label": label, "family": family, "unit": unit, "value": value}
+        curve.setdefault(family, []).append(row)
+        if key in print_keys:
+            prints.append(row)
+    if not curve:
+        return None
+
+    history_columns = list(CFETS_HISTORY_SERIES)
+    history: list[dict[str, Any]] = []
+    series_counts: dict[str, int] = {}
+    first_period = None
+    last_period = None
+    ledger_path = root / "readings" / "china-econ-observations.jsonl"
+    if ledger_path.is_file():
+        try:
+            rows, _ = _read_ledger(ledger_path)
+        except (ChinaSiteError, LedgerIntegrityError):
+            rows = []
+        wanted = {series_id for series_id, _label in history_columns}
+        selected: dict[tuple[str, str], EconomicObservation] = {}
+        for row in rows:
+            series_counts[row.series_id] = series_counts.get(row.series_id, 0) + 1
+            if row.series_id not in wanted:
+                continue
+            period = row.period_end.isoformat()
+            key = (row.series_id, period)
+            previous = selected.get(key)
+            stamp = (row.released_at, row.collected_at, int(row.revision))
+            if previous is None:
+                selected[key] = row
+                continue
+            previous_stamp = (
+                previous.released_at,
+                previous.collected_at,
+                int(previous.revision),
+            )
+            if stamp > previous_stamp:
+                selected[key] = row
+        periods = sorted({period for _series, period in selected})
+        if periods:
+            first_period = periods[0]
+            last_period = periods[-1]
+        for period in periods[-CFETS_HISTORY_DAYS:]:
+            values = {}
+            for series_id, _label in history_columns:
+                row = selected.get((series_id, period))
+                values[series_id] = None if row is None else row.value
+            history.append({"period_end": period, "values": values})
+
+    families = latest.get("families_reporting")
+    if not isinstance(families, list):
+        families = []
+    return {
+        "asof": latest.get("asof"),
+        "generated_at": latest.get("generated_at"),
+        "history_days": latest.get("history_days"),
+        "source": latest.get("source"),
+        "note": latest.get("note"),
+        "families_reporting": [str(item) for item in families],
+        "prints": prints,
+        "curve": curve,
+        "history": history,
+        "history_columns": history_columns,
+        "series_counts": series_counts,
+        "first_period": first_period,
+        "last_period": last_period,
+        "n_observations": sum(series_counts.values()),
+    }
+
+
+def _money_market_html(view: Mapping[str, Any] | None) -> str:
+    if view is None:
+        return ""
+
+    print_items = []
+    for row in view["prints"]:
+        print_items.append(
+            "<div class=\"cn-print\">"
+            f"<dt>{_e(row['label'])}</dt>"
+            f"<dd class=\"cn-num\">{_e(_fmt_value(row['value']))}</dd>"
+            f"<small>{_e(row['unit'])}</small>"
+            "</div>"
+        )
+    prints = (
+        f'<dl class="cn-prints" aria-label="Current CFETS prints">{"".join(print_items)}</dl>'
+        if print_items
+        else ""
+    )
+
+    groups = []
+    for family, rows in view["curve"].items():
+        body = "".join(
+            "<tr>"
+            f"<th scope=\"row\">{_e(row['label'])}</th>"
+            f"<td class=\"cn-num\">{_e(_fmt_value(row['value']))}</td>"
+            f"<td>{_e(row['unit'])}</td>"
+            "</tr>"
+            for row in rows
+        )
+        groups.append(
+            f'<article class="cn-curve-group"><h3>{_e(family)}</h3>'
+            '<div class="cn-table-wrap"><table><thead><tr>'
+            "<th>Tenor</th><th>Print</th><th>Unit</th>"
+            f"</tr></thead><tbody>{body}</tbody></table></div></article>"
+        )
+
+    history_head = "".join(
+        f"<th>{_e(label)}</th>" for _series_id, label in view["history_columns"]
+    )
+    history_body = []
+    for row in reversed(view["history"]):
+        cells = []
+        for series_id, _label in view["history_columns"]:
+            cells.append(
+                f'<td class="cn-num">{_e(_fmt_value(row["values"].get(series_id)))}</td>'
+            )
+        history_body.append(
+            "<tr>"
+            f"<th scope=\"row\">{_e(row['period_end'])}</th>"
+            f"{''.join(cells)}"
+            "</tr>"
+        )
+    history_table = ""
+    if history_body:
+        history_table = (
+            '<p class="cn-table-cue" id="cfets-history-scroll">'
+            "Scroll horizontally to inspect recent official prints."
+            "</p>"
+            '<div class="cn-table-wrap" role="region" tabindex="0" '
+            'aria-label="Recent CFETS prints by trading day; horizontally scrollable" '
+            'aria-describedby="cfets-history-scroll">'
+            "<table><caption class=\"cn-visually-hidden\">"
+            "Latest retained CFETS vintage per trading day"
+            "</caption><thead><tr><th>Period end</th>"
+            f"{history_head}</tr></thead>"
+            f"<tbody>{''.join(history_body)}</tbody></table></div>"
+        )
+
+    families = ", ".join(view["families_reporting"]) or "none reporting"
+    span = "not available"
+    if view["first_period"] and view["last_period"]:
+        span = f"{view['first_period']} to {view['last_period']}"
+    history_days = view["history_days"]
+    history_days_label = (
+        "not available" if history_days is None else f"{history_days} compatibility days"
+    )
+    return f'''
+<section class="cn-section cn-money" aria-labelledby="money-market-title">
+  <div class="cn-section__head"><p class="cn-kicker">CFETS money-market ledger</p>
+  <h2 id="money-market-title">Official prints, sealed as observed</h2>
+  <p>Keyless CFETS chinamoney English-portal benchmarks. Palimpsest records the
+  published number, the trading day, and the collection clock. It does not turn
+  a fixing into a funding-stress call. CFETS publishes on Beijing business days;
+  the observatory restamps this page every hour so age stays visible when the
+  official print has not moved.</p></div>
+  {prints}
+  <section class="cn-facts cn-money__facts" aria-label="CFETS clocks">
+  <dl>
+    <div><dt>Trading day</dt><dd class="cn-mono">{_e(view["asof"] or "not available")}</dd></div>
+    <div><dt>Collected</dt><dd class="cn-mono">{_e(view["generated_at"] or "not available")}</dd></div>
+    <div><dt>Families reporting</dt><dd>{_e(families)}</dd></div>
+    <div><dt>Ledger</dt><dd>{_e(view["n_observations"])} observations · {_e(span)} · {_e(history_days_label)}</dd></div>
+  </dl>
+  </section>
+  <div class="cn-curve-groups">{"".join(groups)}</div>
+  {history_table}
+  <p class="cn-more"><a href="/readings/china-econ-latest.json">china-econ-latest.json</a>
+  · <a href="/readings/china-econ-observations.jsonl">bitemporal ledger</a>
+  · <a href="/china/sources/cfets_benchmarks/">CFETS source record</a></p>
+  <aside class="cn-sibling" aria-labelledby="seiche-sibling-title">
+    <p class="cn-kicker" id="seiche-sibling-title">Seiche sibling</p>
+    <p><a href="https://seiche.info/">Seiche</a> is the sibling funding-stress terminal. Palimpsest seals this CFETS ledger; Seiche consumes the same prints for its CHINA harbor row. This observatory does not size funding risk and does not inherit a Seiche regime call. A missing Seiche local rate is not evidence of calm.</p>
+  </aside>
+</section>
+'''
+
+
+def _home(index: Mapping[str, Any], money_market: Mapping[str, Any] | None = None) -> bytes:
     state = index["economic_state"]
     readiness = index["readiness"]
     forecast = index["forecast"]
@@ -857,8 +1080,9 @@ def _home(index: Mapping[str, Any]) -> bytes:
                 f'<td class="cn-mono">{_e(metric.get("period_end") or metric.get("latest_period") or "—")}</td>'
                 '</tr>'
             )
+        open_attr = " open" if desk.get("id") == MONEY_DESK_ID and metric_rows else ""
         details = (
-            '<details><summary>Inspect retained metrics</summary>'
+            f'<details{open_attr}><summary>Inspect retained metrics</summary>'
             '<div class="cn-table-wrap"><table><thead><tr><th>Metric</th><th>Value</th><th>State</th><th>Period end</th></tr></thead>'
             f'<tbody>{"".join(metric_rows)}</tbody></table></div></details>'
             if metric_rows
@@ -913,6 +1137,7 @@ def _home(index: Mapping[str, Any]) -> bytes:
   <span><b>{index["counts"]["release_monitors"]}</b> release monitors</span>
   <a href="/readings/china-index-latest.json">inspect index</a>
 </section>
+{_money_market_html(money_market)}
 <section class="cn-section cn-readiness" aria-labelledby="readiness-title">
   <div class="cn-section__head"><p class="cn-kicker">Abstention gate</p><h2 id="readiness-title">What prevents a composite</h2>
   <p>{_e(readiness["abstention_reason"])}</p></div>
@@ -964,7 +1189,7 @@ def _home(index: Mapping[str, Any]) -> bytes:
 '''
     return _page(
         title="China economic observatory",
-        description="A source-bound view of China economic evidence, release clocks, coverage gaps and bitemporal observations.",
+        description="Official CFETS money-market prints, source-bound China economic evidence, release clocks, coverage gaps and bitemporal observations.",
         route="/china/",
         body=body,
         index=index,
@@ -1280,9 +1505,10 @@ def _sitemap(html_paths: Sequence[Path], index: Mapping[str, Any]) -> bytes:
 
 def build_outputs(*, root: Path = ROOT) -> dict[Path, bytes]:
     index = build_index(root=root)
+    money_market = _money_market_view(root)
     outputs: dict[Path, bytes] = {
         root / "readings" / "china-index-latest.json": canonical_json(index),
-        root / "china" / "index.html": _home(index),
+        root / "china" / "index.html": _home(index, money_market),
         root / "china" / "sources" / "index.html": _sources_index(index),
         root / "china" / "releases" / "index.html": _releases_index(index),
         root / "china" / "domains" / "index.html": _domains_index(index),
