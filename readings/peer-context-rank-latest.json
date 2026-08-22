@@ -1,16 +1,16 @@
 {
   "schema_version": "palimpsest-peer-context-rank/v1",
   "job": "peer-context-rank",
-  "generated_at": "2026-08-22T12:44:54Z",
+  "generated_at": "2026-08-22T18:34:47Z",
   "source": "Cached GreatFire verdicts, OONI host/ASN or on-disk ooni-gfw history, and bounded CDT titles. Warehouse files are optional.",
   "method": "Per-peer robust MAD (prequential-robust-mad/v1) against that peer series' own history, then a fail-closed join onto a Palimpsest object by term/host/ASN/day. Review rank only. No generative brief. Weiboscope is cited as a literature pointer only; the 2012 dump is not loaded or trained on",
   "scope": "Per-peer unusualness vs that peer series' own history, plus a fail-closed join onto Palimpsest objects. No causal attribution. No Weiboscope dump. No GreatFire catalog crawl.",
   "rights": {
     "training_use": "derived_only"
   },
-  "n_peer_series": 38,
+  "n_peer_series": 43,
   "n_peer_series_scored": 1,
-  "n_peer_series_warming_up": 37,
+  "n_peer_series_warming_up": 42,
   "n_cdt_items": 19,
   "n_joins": 0,
   "n_objects_considered": 735,
@@ -95,7 +95,7 @@
       "peer": "GreatFire",
       "series_id": "gov.cn",
       "field": "block_share_90d",
-      "peer_date": "2026-08-21",
+      "peer_date": "2026-08-22",
       "current_value": 0.0,
       "n_history": 0,
       "minimum_prior": 6,
@@ -111,9 +111,9 @@
       "host": "gov.cn",
       "window_days": 90,
       "blocked": false,
-      "tested": 117,
+      "tested": 118,
       "source": "cached-verdicts-only",
-      "public_copy": "GreatFire 2026-08-21: this series is warming up vs its own 0 prior points"
+      "public_copy": "GreatFire 2026-08-22: this series is warming up vs its own 0 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -343,6 +343,131 @@
     {
       "schema_version": "palimpsest-peer-context-features/v1",
       "peer": "GreatFire",
+      "series_id": "chinadigitaltimes.net",
+      "field": "block_share_90d",
+      "peer_date": null,
+      "current_value": 0.0,
+      "n_history": 0,
+      "minimum_prior": 6,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "citation": null,
+      "host": "chinadigitaltimes.net",
+      "window_days": 90,
+      "blocked": false,
+      "tested": null,
+      "source": "cached-verdicts-only",
+      "public_copy": "GreatFire undated: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "GreatFire",
+      "series_id": "en.greatfire.org",
+      "field": "block_share_90d",
+      "peer_date": null,
+      "current_value": 0.0,
+      "n_history": 0,
+      "minimum_prior": 6,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "citation": null,
+      "host": "en.greatfire.org",
+      "window_days": 90,
+      "blocked": false,
+      "tested": null,
+      "source": "cached-verdicts-only",
+      "public_copy": "GreatFire undated: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "GreatFire",
+      "series_id": "freeweibo.com",
+      "field": "block_share_90d",
+      "peer_date": null,
+      "current_value": 0.0,
+      "n_history": 0,
+      "minimum_prior": 6,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "citation": null,
+      "host": "freeweibo.com",
+      "window_days": 90,
+      "blocked": false,
+      "tested": null,
+      "source": "cached-verdicts-only",
+      "public_copy": "GreatFire undated: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "GreatFire",
+      "series_id": "freewechat.com",
+      "field": "block_share_90d",
+      "peer_date": null,
+      "current_value": 0.0,
+      "n_history": 0,
+      "minimum_prior": 6,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "citation": null,
+      "host": "freewechat.com",
+      "window_days": 90,
+      "blocked": false,
+      "tested": null,
+      "source": "cached-verdicts-only",
+      "public_copy": "GreatFire undated: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "GreatFire",
+      "series_id": "freedomhouse.org",
+      "field": "block_share_90d",
+      "peer_date": null,
+      "current_value": 0.0,
+      "n_history": 0,
+      "minimum_prior": 6,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "citation": null,
+      "host": "freedomhouse.org",
+      "window_days": 90,
+      "blocked": false,
+      "tested": null,
+      "source": "cached-verdicts-only",
+      "public_copy": "GreatFire undated: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "GreatFire",
       "series_id": "baike.baidu.com",
       "field": "block_share_90d",
       "peer_date": null,
@@ -446,8 +571,8 @@
       "series_id": "cn-aggregate",
       "field": "gfw_index",
       "peer_date": "2026-08-22",
-      "current_value": 58.5,
-      "n_history": 174,
+      "current_value": 58.3,
+      "n_history": 175,
       "minimum_prior": 6,
       "state": "scored",
       "unusualness": 0.0,
@@ -460,7 +585,7 @@
       "citation": null,
       "kind": "country",
       "probe_cc": "CN",
-      "public_copy": "OONI 2026-08-22: this series is within its own 174 prior points"
+      "public_copy": "OONI 2026-08-22: this series is within its own 175 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -1533,6 +1658,121 @@
         },
         {
           "peer": "GreatFire",
+          "series_id": "chinadigitaltimes.net",
+          "field": "block_share_90d",
+          "n": 1,
+          "n_prior": 0,
+          "state": "warming_up",
+          "holdout": {
+            "split": "too_short",
+            "n_extracted": 1,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": null,
+            "holdout_flag_rate": null,
+            "threshold": 4.5
+          },
+          "reason": "series too short: 0 prior points (6 required)",
+          "rights": {
+            "training_use": "derived_only"
+          }
+        },
+        {
+          "peer": "GreatFire",
+          "series_id": "en.greatfire.org",
+          "field": "block_share_90d",
+          "n": 1,
+          "n_prior": 0,
+          "state": "warming_up",
+          "holdout": {
+            "split": "too_short",
+            "n_extracted": 1,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": null,
+            "holdout_flag_rate": null,
+            "threshold": 4.5
+          },
+          "reason": "series too short: 0 prior points (6 required)",
+          "rights": {
+            "training_use": "derived_only"
+          }
+        },
+        {
+          "peer": "GreatFire",
+          "series_id": "freeweibo.com",
+          "field": "block_share_90d",
+          "n": 1,
+          "n_prior": 0,
+          "state": "warming_up",
+          "holdout": {
+            "split": "too_short",
+            "n_extracted": 1,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": null,
+            "holdout_flag_rate": null,
+            "threshold": 4.5
+          },
+          "reason": "series too short: 0 prior points (6 required)",
+          "rights": {
+            "training_use": "derived_only"
+          }
+        },
+        {
+          "peer": "GreatFire",
+          "series_id": "freewechat.com",
+          "field": "block_share_90d",
+          "n": 1,
+          "n_prior": 0,
+          "state": "warming_up",
+          "holdout": {
+            "split": "too_short",
+            "n_extracted": 1,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": null,
+            "holdout_flag_rate": null,
+            "threshold": 4.5
+          },
+          "reason": "series too short: 0 prior points (6 required)",
+          "rights": {
+            "training_use": "derived_only"
+          }
+        },
+        {
+          "peer": "GreatFire",
+          "series_id": "freedomhouse.org",
+          "field": "block_share_90d",
+          "n": 1,
+          "n_prior": 0,
+          "state": "warming_up",
+          "holdout": {
+            "split": "too_short",
+            "n_extracted": 1,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": null,
+            "holdout_flag_rate": null,
+            "threshold": 4.5
+          },
+          "reason": "series too short: 0 prior points (6 required)",
+          "rights": {
+            "training_use": "derived_only"
+          }
+        },
+        {
+          "peer": "GreatFire",
           "series_id": "baike.baidu.com",
           "field": "block_share_90d",
           "n": 1,
@@ -1629,13 +1869,13 @@
           "peer": "OONI",
           "series_id": "cn-aggregate",
           "field": "gfw_index",
-          "n": 175,
-          "n_prior": 140,
+          "n": 176,
+          "n_prior": 141,
           "state": "scored",
           "holdout": {
             "split": "time",
-            "n_extracted": 175,
-            "n_prior": 140,
+            "n_extracted": 176,
+            "n_prior": 141,
             "n_holdout": 35,
             "n_holdout_scored": 35,
             "n_holdout_unusual": 0,
@@ -1736,5 +1976,5 @@
     "generative_model": "prohibited",
     "event_analysis_prose": "unchanged"
   },
-  "analysis_sha256": "1c360d74831b88bbbef16c218798bfcb411f15397429951cded9a5f33d39cb9a"
+  "analysis_sha256": "d27ae81691d8ff04bee5df532d8e31746c8ba4e393ccd9a5d02e8b677656f391"
 }
