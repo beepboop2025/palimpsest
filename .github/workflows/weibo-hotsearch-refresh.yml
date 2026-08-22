@@ -30,6 +30,13 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .github/osint-china-ci-requirements.txt
+
+      - name: Install the pinned offline test runner
+        run: >-
+          python -m pip install --quiet --require-hashes
+          -r .github/osint-china-ci-requirements.txt
 
       - name: Pull the hot-search archive and publish the join signal
         run: python -m scripts.weibo_hotsearch_pull

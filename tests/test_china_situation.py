@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -62,6 +63,27 @@ def _social_record(reference, *, observed_at, title="China publisher social noti
         "china_relevance_labels": ["china"],
         "related_urls": [reference["url"]],
     }
+
+
+def _minutes_after(timestamp: str, minutes: int = 1) -> str:
+    parsed = datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%SZ").replace(
+        tzinfo=timezone.utc
+    )
+    return (parsed + timedelta(minutes=minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _protocol_validator(schema_path: Path):
+    jsonschema = pytest.importorskip("jsonschema")
+    referencing = pytest.importorskip("referencing")
+    resources = []
+    for path in (ROOT / "protocol").glob("*.schema.json"):
+        document = json.loads(path.read_text())
+        schema_id = document.get("$id")
+        if schema_id:
+            resources.append((schema_id, referencing.Resource.from_contents(document)))
+    registry = referencing.Registry().with_resources(resources)
+    schema = json.loads(schema_path.read_text())
+    return jsonschema.Draft202012Validator(schema, registry=registry)
 
 
 def _social_receipts(registry, successful_source):
@@ -148,11 +170,12 @@ def test_social_url_index_excludes_outside_remit_events(inputs):
         wire, analyses, "outside-remit"
     )
     registry = social_observations.load_source_registry()
-    record = _social_record(reference, observed_at="2026-08-16T18:00:00Z")
+    fixture_time = _minutes_after(reference["published_at"])
+    record = _social_record(reference, observed_at=fixture_time)
     social, _ledger = social_observations.build_latest(
         [record],
         registry=registry,
-        generated_at="2026-08-16T18:00:00Z",
+        generated_at=fixture_time,
         collection_receipts=_social_receipts(registry, record["source_id"]),
     )
 
@@ -176,11 +199,12 @@ def test_cgtn_rss_and_telegram_keep_one_publisher_lineage(inputs):
         if reference["source_id"] == "cgtn-china"
     )
     registry = social_observations.load_source_registry()
-    record = _social_record(reference, observed_at="2026-08-16T18:00:00Z")
+    fixture_time = _minutes_after(reference["published_at"])
+    record = _social_record(reference, observed_at=fixture_time)
     social, _ledger = social_observations.build_latest(
         [record],
         registry=registry,
-        generated_at="2026-08-16T18:00:00Z",
+        generated_at=fixture_time,
         collection_receipts=_social_receipts(registry, "cgtn-telegram"),
     )
 
@@ -201,23 +225,25 @@ def test_instagram_edit_state_and_observation_time_advance_situation(inputs):
         wire, analyses, "in-scope", social_platform="instagram"
     )
     registry = social_observations.load_source_registry()
-    original = _social_record(reference, observed_at="2026-08-16T17:00:00Z")
+    first_time = _minutes_after(reference["published_at"])
+    edited_time = _minutes_after(first_time)
+    original = _social_record(reference, observed_at=first_time)
     receipts = _social_receipts(registry, original["source_id"])
     first_latest, first_ledger = social_observations.build_latest(
         [original],
         registry=registry,
-        generated_at="2026-08-16T17:00:00Z",
+        generated_at=first_time,
         collection_receipts=receipts,
     )
     changed = _social_record(
         reference,
-        observed_at="2026-08-16T18:00:00Z",
+        observed_at=edited_time,
         title="China publisher social notice — corrected",
     )
     edited_latest, _edited_ledger = social_observations.build_latest(
         [changed],
         registry=registry,
-        generated_at="2026-08-16T18:00:00Z",
+        generated_at=edited_time,
         prior_latest=first_latest,
         prior_ledger=first_ledger,
         collection_receipts=receipts,
@@ -230,7 +256,7 @@ def test_instagram_edit_state_and_observation_time_advance_situation(inputs):
         item for item in document["situations"] if item["event_id"] == event["event_id"]
     )
     assert row["social_context"][0]["state"] == "edited"
-    assert row["updated_at"] == "2026-08-16T18:00:00Z"
+    assert row["updated_at"] == edited_time
 
 
 def test_measurements_are_exact_event_analysis_context_and_remain_topic_only(
@@ -330,9 +356,8 @@ def test_runtime_validator_rejects_relation_and_count_tampering(situation):
 
 
 def test_generated_situation_conforms_to_public_json_schema(situation):
-    jsonschema = pytest.importorskip("jsonschema")
-    schema = json.loads((ROOT / "protocol/china-situation-v1.schema.json").read_text())
-    jsonschema.Draft202012Validator(schema).validate(situation)
+    validator = _protocol_validator(ROOT / "protocol/china-situation-v1.schema.json")
+    validator.validate(situation)
 
 
 def test_osint_observations_join_by_exact_url_or_topic_and_stay_non_corroboration(
@@ -401,14 +426,15 @@ def test_title_surface_match_is_not_corroboration_and_does_not_add_a_group(input
         item for item in baseline["situations"] if item["event_id"] == event["event_id"]
     )
     registry = social_observations.load_source_registry()
+    fixture_time = _minutes_after(reference["published_at"])
     record = _social_record(
-        reference, observed_at="2026-08-16T18:00:00Z", title=event["headline"]
+        reference, observed_at=fixture_time, title=event["headline"]
     )
     record["related_urls"] = []
     social, _ledger = social_observations.build_latest(
         [record],
         registry=registry,
-        generated_at="2026-08-16T18:00:00Z",
+        generated_at=fixture_time,
         collection_receipts=_social_receipts(registry, record["source_id"]),
     )
 
@@ -441,15 +467,16 @@ def test_exact_publisher_url_wins_over_a_title_surface_on_another_event(inputs):
         and row["headline"] != event_a["headline"]
     )
     registry = social_observations.load_source_registry()
+    fixture_time = _minutes_after(reference_a["published_at"])
     record = _social_record(
         reference_a,
-        observed_at="2026-08-16T18:00:00Z",
+        observed_at=fixture_time,
         title=event_b["headline"],
     )
     social, _ledger = social_observations.build_latest(
         [record],
         registry=registry,
-        generated_at="2026-08-16T18:00:00Z",
+        generated_at=fixture_time,
         collection_receipts=_social_receipts(registry, record["source_id"]),
     )
 
@@ -471,14 +498,16 @@ def test_generic_or_person_status_titles_do_not_become_situation_findings(inputs
     wire, _feed, analyses = inputs
     _event, reference = _event_and_social_reference(wire, analyses, "in-scope")
     registry = social_observations.load_source_registry()
+    generic_time = _minutes_after(reference["published_at"])
+    missing_time = _minutes_after(generic_time, minutes=5)
     generic = _social_record(
-        reference, observed_at="2026-08-16T18:00:00Z", title="China news"
+        reference, observed_at=generic_time, title="China news"
     )
     generic["related_urls"] = []
     generic["native_id"] = "fixture-generic-title"
     missing = _social_record(
         reference,
-        observed_at="2026-08-16T18:05:00Z",
+        observed_at=missing_time,
         title="A Chinese official is reported missing",
     )
     missing["related_urls"] = []
@@ -492,7 +521,7 @@ def test_generic_or_person_status_titles_do_not_become_situation_findings(inputs
     social, _ledger = social_observations.build_latest(
         [generic, missing],
         registry=registry,
-        generated_at="2026-08-16T18:05:00Z",
+        generated_at=missing_time,
         collection_receipts=_social_receipts(registry, generic["source_id"]),
     )
 

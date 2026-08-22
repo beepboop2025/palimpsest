@@ -67,6 +67,7 @@ def test_every_gfi_publication_path_runs_the_universal_semantic_contract():
         "readings/readings-ledger.jsonl",
         "readings/catalog.json",
         "readings/eval-articles-latest.json",
+        "readings/board-alarm-analysis.json",
         "journal/",
     ):
         assert output in candidate
