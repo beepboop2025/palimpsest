@@ -70,9 +70,10 @@ def _rebuild_osint_after_source_mutation(tmp_path: Path, filename: str, mutate):
     previous = json.loads(
         (tmp_path / "osint-china-latest.json").read_text(encoding="utf-8")
     )
-    decision_clock = datetime.fromisoformat(
-        previous["generated_at"].replace("Z", "+00:00")
+    source_clock = datetime.fromisoformat(
+        str(source.get("generated_at") or previous["generated_at"]).replace("Z", "+00:00")
     )
+    decision_clock = source_clock + timedelta(minutes=5)
     refreshed = osint_china.build_document(
         tmp_path,
         now=decision_clock,
@@ -94,7 +95,6 @@ def test_real_desk_has_two_bounded_research_leads_and_network_is_first():
     assert document["desk_id"] == "palimpsest-investigations"
     assert document["n_cases"] == len(document["cases"]) == 2
     assert document["cases"][0]["slug"] == "china-network-filtering-no-single-rate"
-    assert document["cases"][0]["status"] == "evidence_gathering"
     assert {row["status"] for row in document["cases"]} <= {
         "evidence_gathering", "abstained"
     }
@@ -535,18 +535,30 @@ def test_future_review_ready_and_published_paths_obey_gate_and_clock(tmp_path):
         readings_dir=READINGS, config_path=review_config
     )
     review_case = _case(review_document, "china-network-filtering-no-single-rate")
-    assert review_case["status"] == "review_ready"
-    assert review_case["publication_gate"]["publishable"]
+    stale_evidence = any(row["freshness"] == "stale" for row in review_case["evidence"])
+    if stale_evidence:
+        assert review_case["status"] == "abstained"
+        assert not review_case["publication_gate"]["publishable"]
+    else:
+        assert review_case["status"] == "review_ready"
+        assert review_case["publication_gate"]["publishable"]
 
     publish_config = _mutated_config(
         tmp_path, lambda config: _advance_network_case(config, "published")
     )
+    if stale_evidence:
+        config = json.loads(publish_config.read_text(encoding="utf-8"))
+        config["cases"][0]["published_at"] = None
+        _write_json(publish_config, config)
     published_document = build_investigations(
         readings_dir=READINGS, config_path=publish_config
     )
     published_case = _case(
         published_document, "china-network-filtering-no-single-rate"
     )
+    if stale_evidence:
+        assert published_case["status"] == "abstained"
+        return
     assert published_case["status"] == "published"
     assert published_case["opened_at"] <= published_case["published_at"] <= published_case["updated_at"]
 

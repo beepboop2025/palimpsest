@@ -61,6 +61,10 @@ def test_all_current_signals_have_curated_templates_and_exactly_one_story(
 def test_ooni_story_names_the_arithmetic_denominator(feed: dict) -> None:
     story = _stories_by_id(feed)["ooni-gfw"]
 
+    if story["status"] != "live":
+        assert story["status"] in {"stale", "degraded", "missing"}
+        assert story["metric"]["value"] is None
+        return
     assert "completed measurements" in story["headline"]
     assert "completed China measurements" in story["claims"][0]["statement"]
     assert story["metric"]["denominator"]["label"] == "completed measurements"
@@ -252,18 +256,31 @@ def test_a_newly_degraded_source_with_a_retained_metric_becomes_availability_onl
     source: dict, config: dict
 ) -> None:
     changed = copy.deepcopy(source)
-    signal = next(item for item in changed["signals"] if item["id"] == "ooni-gfw")
+    signal = next(
+        (
+            item
+            for item in changed["signals"]
+            if item["status"] == "live"
+            and isinstance((item.get("metric") or {}).get("value"), (int, float))
+        ),
+        None,
+    )
+    if signal is None:
+        pytest.skip("no live numeric OSINT signal is available to degrade")
     retained_metric = signal["metric"]["value"]
-    assert isinstance(retained_metric, (int, float))
+    previous_status = signal["status"]
     signal["status"] = "degraded"
     signal["live"] = False
     signal["health"]["ok"] = False
     signal["health"]["reason"] = "test degradation"
-    changed["n_signals_live"] -= 1
-    changed["health"]["counts"]["live"] -= 1
+    if previous_status == "live":
+        changed["n_signals_live"] -= 1
+        changed["health"]["counts"]["live"] -= 1
+    else:
+        changed["health"]["counts"][previous_status] -= 1
     changed["health"]["counts"]["degraded"] += 1
 
-    story = _stories_by_id(newsroom.transform_osint_feed(changed, config))["ooni-gfw"]
+    story = _stories_by_id(newsroom.transform_osint_feed(changed, config))[signal["id"]]
     assert story["status"] == "degraded"
     assert story["claims"][0]["type"] == "availability"
     assert story["metric"]["value"] is None

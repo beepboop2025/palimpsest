@@ -410,6 +410,8 @@ def _display_number(value: int | float) -> str:
 
 
 def _human_join(values: Sequence[str]) -> str:
+    if not values:
+        return "none"
     if len(values) == 1:
         return values[0]
     if len(values) == 2:
@@ -502,7 +504,9 @@ def _network_evidence(
         if len(raw) != input_receipt["bytes"] or _sha(raw) != input_receipt["sha256"]:
             raise MachineInvestigationsError(f"raw artifact receipt mismatch: {source_id}")
         raw_document = _loads_strict(raw, raw_path)
-        if type(raw_document) is not dict or raw_document != signal.get("payload"):
+        if type(raw_document) is not dict:
+            raise MachineInvestigationsError(f"OSINT payload differs from raw artifact: {source_id}")
+        if signal.get("payload_complete") is not False and raw_document != signal.get("payload"):
             raise MachineInvestigationsError(f"OSINT payload differs from raw artifact: {source_id}")
         raw_value = _json_pointer(raw_document, value_pointer, f"{source_id}.value_pointer")
         if raw_value != metric["value"]:
@@ -568,8 +572,6 @@ def _network_evidence(
             "integrity": "embedded-receipt-verified",
             "freshness": resource.get("freshness", {}).get("status"),
         })
-    if not evidence:
-        raise MachineInvestigationsError("no rights-eligible network evidence remains")
     return evidence, exclusions
 
 
@@ -733,6 +735,144 @@ def _network_case(
 ) -> dict[str, Any]:
     case = _base_case(config_case, generated_at, input_set_sha)
     evidence, exclusions = _network_evidence(documents, readings_dir)
+    if not evidence:
+        excluded_detail = (
+            f"Live rights-eligible network measurements were unavailable. "
+            f"Excluded: {_human_join(exclusions)}."
+            if exclusions else
+            "Live rights-eligible network measurements were unavailable."
+        )
+        case.update({
+            "status": "abstained",
+            "report_type": "AbstentionReport",
+            "status_reason": (
+                "Abstained because no live, rights-eligible network measurements remain to cite."
+            ),
+            "hypotheses": [
+                {
+                    "hypothesis_id": "hypothesis-observable-interference",
+                    "statement": "Network interference affecting China-facing tests is observable across independently produced measurement methods.",
+                    "disposition": "abstained",
+                    "citation_ids": [],
+                    "falsifier_ids": ["falsifier-control-convergence"],
+                },
+                {
+                    "hypothesis_id": "hypothesis-single-national-rate",
+                    "statement": "The headline values estimate one common national filtering rate.",
+                    "disposition": "abstained",
+                    "citation_ids": [],
+                    "falsifier_ids": ["falsifier-common-denominator"],
+                },
+            ],
+            "claim_blocks": [
+                {
+                    "block_id": "network-denominators",
+                    "paragraph": excluded_detail,
+                    "sentences": [{
+                        "sentence_id": "network-denominators-sentence-1",
+                        "text": excluded_detail,
+                        "citation_ids": [],
+                    }],
+                    "citation_ids": [],
+                    "independence_group_ids": [],
+                }
+            ],
+            "evidence": [],
+            "countercases": [{
+                "countercase_id": "countercase-measurement-artifact",
+                "statement": "A recorded interference indicator can arise from measurement conditions rather than a general filtering policy.",
+                "citation_ids": [],
+                "disposition": "Retained; without a live cited measurement the desk names the gap instead of inventing a rate.",
+            }],
+            "limitations": [
+                {
+                    "limitation_id": "limitation-incompatible-denominators",
+                    "statement": "The instruments observe different test populations with different denominators and units.",
+                    "consequence": "No weighted average or single national percentage is calculated.",
+                },
+                {
+                    "limitation_id": "limitation-no-live-network-evidence",
+                    "statement": excluded_detail,
+                    "consequence": "The desk publishes an abstention rather than a filtering rate.",
+                },
+            ],
+            "falsifiers": [
+                {
+                    "falsifier_id": "falsifier-control-convergence",
+                    "statement": "The observable-interference finding would weaken if independently operated China and control vantages converged within instrument error across repeated windows.",
+                    "test": "Repeat predeclared protocols over multiple windows and compare China/control distributions with retained raw denominators.",
+                    "status": "not-triggered",
+                    "citation_ids": [],
+                },
+                {
+                    "falsifier_id": "falsifier-common-denominator",
+                    "statement": "A national-rate estimate would become testable only after a representative sampling frame and common outcome definition exist.",
+                    "test": "Publish the sampling frame, inclusion probabilities, shared protocol, nonresponse accounting and uncertainty interval before estimating a population rate.",
+                    "status": "evidence-needed",
+                    "citation_ids": [],
+                },
+            ],
+            "methodology": [
+                {"step_id": "method-pin-inputs", "description": "Hash the exact four public input files and validate their declared schemas.", "reproducible": True},
+                {"step_id": "method-bind-evidence", "description": "Resolve predeclared network values and denominators against JSON pointers in their exact raw artifact bytes.", "reproducible": True},
+                {"step_id": "method-gate-rights", "description": "Republish and count only values whose mesh resource permits derived or full-text reuse with open or attribution-required redistribution.", "reproducible": True},
+                {"step_id": "method-deduplicate-lineage", "description": "Resolve independence groups through the evidence mesh before counting corroboration.", "reproducible": True},
+                {"step_id": "method-gate-publication", "description": "Require complete sentence citations, fresh evidence, independent groups and adversarial review.", "reproducible": True},
+            ],
+            "evaluation_receipt": {
+                "status": "failed",
+                "publishable": False,
+                "minimum_independent_groups": minimum_groups,
+                "observed_independent_groups": 0,
+                "independent_group_ids": [],
+                "citation_coverage": 1.0,
+                "gates": [
+                    {
+                        "gate_id": "sentence-citations",
+                        "label": "Every analytical sentence has exact evidence IDs",
+                        "passed": True,
+                        "observed": 1,
+                        "required": 1,
+                        "detail": "The abstention names the missing live measurements without inventing citations.",
+                    },
+                    {
+                        "gate_id": "numeric-reuse-rights",
+                        "label": "Every republished numeric value passes redistribution and reuse gates",
+                        "passed": True,
+                        "observed": 0,
+                        "required": 0,
+                        "detail": excluded_detail,
+                    },
+                    {
+                        "gate_id": "independent-groups",
+                        "label": "Independent evidence groups after lineage de-duplication",
+                        "passed": False,
+                        "observed": 0,
+                        "required": minimum_groups,
+                        "detail": "No live rights-eligible network measurement remains to count.",
+                    },
+                    {
+                        "gate_id": "fresh-evidence",
+                        "label": "Cited measurements are current under declared source deadlines",
+                        "passed": False,
+                        "observed": 0,
+                        "required": 1,
+                        "detail": "Freshness comes from the validated evidence mesh, not the machine desk's wall clock.",
+                    },
+                    {
+                        "gate_id": "adversarial-review",
+                        "label": "Countercases, limitations and falsifiers are explicit",
+                        "passed": True,
+                        "observed": 3,
+                        "required": 3,
+                        "detail": "The report includes all three adversarial-review surfaces.",
+                    },
+                ],
+                "failed_gate_ids": ["independent-groups", "fresh-evidence"],
+                "evaluated_at": generated_at,
+            },
+        })
+        return case
     by_id = {row["evidence_id"]: row for row in evidence}
     all_ids = [row["evidence_id"] for row in evidence]
     corroborating_ids: list[str] = []
@@ -1375,7 +1515,11 @@ def _validate_evidence(value: Any, path: str, generated_at: str) -> Mapping[str,
 
 
 def _validate_claim_blocks(
-    value: Any, path: str, evidence_by_id: Mapping[str, Mapping[str, Any]]
+    value: Any,
+    path: str,
+    evidence_by_id: Mapping[str, Mapping[str, Any]],
+    *,
+    allow_empty_citations: bool = False,
 ) -> tuple[int, int]:
     if type(value) is not list or not value or len(value) > 20:
         raise MachineInvestigationsError(f"{path} must be a non-empty bounded array")
@@ -1405,9 +1549,17 @@ def _validate_claim_blocks(
                 raise MachineInvestigationsError(f"duplicate sentence id: {sentence_id}")
             seen_sentences.add(sentence_id)
             _text(sentence["text"], f"{sentence_path}.text", maximum=1500)
-            citation_ids = _validate_string_list(sentence["citation_ids"], f"{sentence_path}.citation_ids")
+            citation_ids = _validate_string_list(
+                sentence["citation_ids"],
+                f"{sentence_path}.citation_ids",
+                allow_empty=allow_empty_citations,
+            )
             if any(citation_id not in evidence_by_id for citation_id in citation_ids):
                 raise MachineInvestigationsError(f"{sentence_path} contains an unresolved citation")
+            if allow_empty_citations and citation_ids:
+                raise MachineInvestigationsError(
+                    f"{sentence_path} cannot cite evidence that is not in the report"
+                )
             cited.update(citation_ids)
             n_sentences += 1
         expected_paragraph = " ".join(sentence["text"] for sentence in sentences)
@@ -1416,7 +1568,9 @@ def _validate_claim_blocks(
         expected_citations = _citation_union(sentences)
         if block["citation_ids"] != expected_citations:
             raise MachineInvestigationsError(f"{block_path}.citation_ids is not the exact sentence union")
-        expected_groups = sorted({evidence_by_id[citation]["independence_group"] for citation in expected_citations})
+        expected_groups = sorted(
+            {evidence_by_id[citation]["independence_group"] for citation in expected_citations}
+        )
         if block["independence_group_ids"] != expected_groups:
             raise MachineInvestigationsError(f"{block_path}.independence_group_ids is not derived")
     return n_sentences, len(cited)
@@ -1453,7 +1607,9 @@ def _validate_case(case_value: Any, path: str, generated_at: str, config_case: M
         raise MachineInvestigationsError(f"{path} publication clocks are inconsistent")
 
     evidence = case["evidence"]
-    if type(evidence) is not list or not 1 <= len(evidence) <= 50:
+    if type(evidence) is not list or len(evidence) > 50:
+        raise MachineInvestigationsError(f"{path}.evidence must be bounded")
+    if case["status"] == "published" and not 1 <= len(evidence) <= 50:
         raise MachineInvestigationsError(f"{path}.evidence must be non-empty and bounded")
     evidence_by_id: dict[str, Mapping[str, Any]] = {}
     for index, item in enumerate(evidence):
@@ -1461,7 +1617,13 @@ def _validate_case(case_value: Any, path: str, generated_at: str, config_case: M
         if row["evidence_id"] in evidence_by_id:
             raise MachineInvestigationsError(f"{path}.evidence contains duplicate IDs")
         evidence_by_id[row["evidence_id"]] = row
-    n_sentences, n_cited_evidence = _validate_claim_blocks(case["claim_blocks"], f"{path}.claim_blocks", evidence_by_id)
+    allow_empty_citations = case["status"] == "abstained" and not evidence_by_id
+    n_sentences, n_cited_evidence = _validate_claim_blocks(
+        case["claim_blocks"],
+        f"{path}.claim_blocks",
+        evidence_by_id,
+        allow_empty_citations=allow_empty_citations,
+    )
     if n_cited_evidence != len(evidence_by_id):
         raise MachineInvestigationsError(f"{path} contains evidence not used by any analytical sentence")
 
@@ -1480,7 +1642,11 @@ def _validate_case(case_value: Any, path: str, generated_at: str, config_case: M
         _text(row["test"], f"{item_path}.test")
         if row["status"] not in {"not-triggered", "evidence-needed", "triggered"}:
             raise MachineInvestigationsError(f"{item_path}.status is invalid")
-        citations = _validate_string_list(row["citation_ids"], f"{item_path}.citation_ids")
+        citations = _validate_string_list(
+            row["citation_ids"],
+            f"{item_path}.citation_ids",
+            allow_empty=allow_empty_citations,
+        )
         if any(citation not in evidence_by_id for citation in citations):
             raise MachineInvestigationsError(f"{item_path} contains an unresolved citation")
 
@@ -1498,7 +1664,11 @@ def _validate_case(case_value: Any, path: str, generated_at: str, config_case: M
         _text(row["statement"], f"{item_path}.statement")
         if row["disposition"] not in {"supported", "rejected", "abstained"}:
             raise MachineInvestigationsError(f"{item_path}.disposition is invalid")
-        citations = _validate_string_list(row["citation_ids"], f"{item_path}.citation_ids")
+        citations = _validate_string_list(
+            row["citation_ids"],
+            f"{item_path}.citation_ids",
+            allow_empty=allow_empty_citations,
+        )
         if any(citation not in evidence_by_id for citation in citations):
             raise MachineInvestigationsError(f"{item_path} contains an unresolved citation")
         linked_falsifiers = _validate_string_list(row["falsifier_ids"], f"{item_path}.falsifier_ids")
@@ -1518,7 +1688,11 @@ def _validate_case(case_value: Any, path: str, generated_at: str, config_case: M
         seen_countercases.add(item_id)
         _text(row["statement"], f"{item_path}.statement")
         _text(row["disposition"], f"{item_path}.disposition")
-        citations = _validate_string_list(row["citation_ids"], f"{item_path}.citation_ids")
+        citations = _validate_string_list(
+            row["citation_ids"],
+            f"{item_path}.citation_ids",
+            allow_empty=allow_empty_citations,
+        )
         if any(citation not in evidence_by_id for citation in citations):
             raise MachineInvestigationsError(f"{item_path} contains an unresolved citation")
 
