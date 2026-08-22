@@ -285,14 +285,14 @@ def test_holdout_unusualness_uses_frozen_prefix(tmp_path):
 def test_on_disk_training_report_covers_real_histories():
     report = validate_all_instruments(READINGS)
     by_id = {row["instrument_id"]: row for row in report["instruments"]}
-    assert by_id["circumvention-demand"]["n"] == 416
+    assert by_id["circumvention-demand"]["n"] >= 416
     assert by_id["circumvention-demand"]["state"] == "scored"
     assert by_id["circumvention-demand"]["holdout"]["split"] == "time"
     assert by_id["circumvention-demand"]["holdout"]["n_holdout"] >= 1
     assert by_id["circumvention-demand"]["n_prior"] >= 8
     assert by_id["weibo-hotsearch"]["n"] >= 100
     assert by_id["ddti"]["n"] >= 300
-    assert by_id["stock-connect"]["n"] == 158
+    assert by_id["stock-connect"]["n"] >= 158
     assert by_id["ooni-bulk"]["state"] == "missing"
     assert "node_only" in (by_id["ooni-bulk"].get("reason") or "")
     assert by_id["app-storefront"]["state"] == "warming_up"

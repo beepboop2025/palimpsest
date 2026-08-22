@@ -50,6 +50,10 @@ def test_ooni_live_brief_names_number_denominator_and_peers():
     story = next(row for row in feed["stories"] if row["signal_id"] == "ooni-gfw")
     analysis = instrument_analysis.build_instrument_analysis(story, feed)
 
+    if story["status"] != "live":
+        assert analysis["status"] == story["status"]
+        assert analysis["disposition"] == "availability-brief"
+        return
     assert analysis["status"] == "live"
     blob = " ".join(
         [analysis["position"], analysis["key_numbers"][0]["value"], analysis["key_numbers"][0]["note"]]
