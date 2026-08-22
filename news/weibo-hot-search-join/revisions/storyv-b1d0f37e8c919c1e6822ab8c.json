@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:weibo-hotsearch",
+  "slug": "weibo-hot-search-join",
+  "url": "https://palimpsest.info/news/weibo-hot-search-join/",
+  "signal_id": "weibo-hotsearch",
+  "headline": "The latest Weibo archive contains 3,113 hot-search board entries",
+  "dek": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
+  "section": "attention",
+  "order": 3,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-22T17:41:02Z",
+  "modified_at": "2026-08-22T17:41:02Z",
+  "claim_fingerprint": "sha256:306c0add749a8ba4954c6c278b8effad6729d768c2bde93a4bfca529bd36257c",
+  "metric": {
+    "label": "board entries",
+    "value": 3113,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current archive window contains 3,113 Weibo hot-search board entries available for joining."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+    "input": {
+      "filename": "weibo-hotsearch-latest.json",
+      "sha256": "936abe9627484db751cbd6fe68e92ec6823ee2048a242341874fd0589ed08aba",
+      "bytes": 32690
+    },
+    "source_timestamp": "2026-08-22T17:41:02Z"
+  },
+  "method": {
+    "summary": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
+    "version": 2
+  },
+  "limitations": [
+    "The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention."
+  ],
+  "related_signal_ids": [
+    "ddti",
+    "gdelt",
+    "silence-index"
+  ]
+}

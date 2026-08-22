@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:undertext",
+  "slug": "undertext-differential-fusion",
+  "url": "https://palimpsest.info/news/undertext-differential-fusion/",
+  "signal_id": "undertext",
+  "headline": "UNDERTEXT fuses 2,039 public observations across archive and board readings",
+  "dek": "The fusion remaps already-published Wayback, Weibo-board and DDTI records onto one observation schema without inventing a live deletion round.",
+  "section": "attention",
+  "order": 8,
+  "type": "analysis",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-22T18:53:22Z",
+  "modified_at": "2026-08-22T18:53:22Z",
+  "claim_fingerprint": "sha256:f73c954f58480014687a79f2a52f1270c3d81ea99732b6fc88f807879bd9afdd",
+  "metric": {
+    "label": "observations",
+    "value": 2039,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The current fusion contains 2,039 observations reconstructed from committed public readings."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/undertext-latest.json",
+    "input": {
+      "filename": "undertext-latest.json",
+      "sha256": "31ab3e0ab780c379c451bec417e230abcaa29de89feab12c620510184794b38d",
+      "bytes": 8463288
+    },
+    "source_timestamp": "2026-08-22T18:53:22Z"
+  },
+  "method": {
+    "summary": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
+    "version": 1
+  },
+  "limitations": [
+    "Fusion inherits the limits of its inputs; archive-status rows are not relabelled as deletions, and optional Wikipedia live surfaces stay gated."
+  ],
+  "related_signal_ids": [
+    "wayback",
+    "weibo-hotsearch",
+    "ddti"
+  ]
+}

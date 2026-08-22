@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-f1e2e2f5a14426737d1dff3e",
+  "analysis_id": "instrumentv-c98bdfa39f613a7a8b48d5bd",
   "signal_id": "stock-connect",
   "story_url": "https://palimpsest.info/news/stock-connect/",
   "url": "https://palimpsest.info/news/stock-connect/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, china-econ, cny-fix-gap, data-darkness.",
           "citation_ids": [
             "instrumentevidence-8f516d28bde6750c8fd1"
           ]
@@ -109,19 +109,7 @@
   ],
   "elevated_peers": [
     {
-      "signal_id": "board-alarm",
-      "section": "command",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
       "signal_id": "event-flags",
-      "section": "command",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "coverage-guard",
       "section": "command",
       "status": "live",
       "priority": "high"
@@ -181,12 +169,6 @@
       "priority": "lead"
     },
     {
-      "signal_id": "erasure-observatory",
-      "section": "erasure",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
       "signal_id": "wayback",
       "section": "erasure",
       "status": "live",
@@ -201,6 +183,24 @@
     {
       "signal_id": "apple-censorship",
       "section": "erasure",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "china-econ",
+      "section": "economy",
+      "status": "live",
+      "priority": "standard"
+    },
+    {
+      "signal_id": "cny-fix-gap",
+      "section": "economy",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "data-darkness",
+      "section": "economy",
       "status": "live",
       "priority": "high"
     }

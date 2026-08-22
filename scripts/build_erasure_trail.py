@@ -885,6 +885,45 @@ def _canonical_json(document: Mapping[str, Any]) -> str:
     return json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
 
 
+def _history_payload(document: Mapping[str, Any], *, path: Path | None = None) -> str:
+    """Return the information-preserving, idempotent history payload."""
+    history_path = path or HIST
+    rows: list[Any] = []
+    seen: set[str] = set()
+    if history_path.is_file():
+        for line_number, raw_line in enumerate(
+            history_path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if not raw_line.strip():
+                continue
+            try:
+                row = json.loads(raw_line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"invalid JSON in {history_path} at line {line_number}: {exc.msg}"
+                ) from exc
+            identity = json.dumps(
+                row, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            )
+            if identity not in seen:
+                rows.append(row)
+                seen.add(identity)
+
+    current = {
+        "generated_at": document["generated_at"],
+        "n_rows": document["n_rows"],
+    }
+    identity = json.dumps(
+        current, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    if identity not in seen:
+        rows.append(current)
+
+    return "".join(
+        json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows
+    )
+
+
 def write_outputs(document: Mapping[str, Any], *, history: bool = True) -> None:
     READINGS.mkdir(parents=True, exist_ok=True)
     PAGE_DIR.mkdir(parents=True, exist_ok=True)
@@ -892,11 +931,7 @@ def write_outputs(document: Mapping[str, Any], *, history: bool = True) -> None:
     CSV_OUT.write_text(render_csv(document), encoding="utf-8")
     HTML_OUT.write_text(render_html(document), encoding="utf-8")
     if history:
-        with HIST.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps({
-                "generated_at": document["generated_at"],
-                "n_rows": document["n_rows"],
-            }, ensure_ascii=False) + "\n")
+        HIST.write_text(_history_payload(document), encoding="utf-8")
 
 
 def check_outputs(document: Mapping[str, Any]) -> list[str]:
@@ -905,6 +940,7 @@ def check_outputs(document: Mapping[str, Any]) -> list[str]:
         JSON_OUT: _canonical_json(document),
         CSV_OUT: render_csv(document),
         HTML_OUT: render_html(document),
+        HIST: _history_payload(document),
     }
     for path, payload in expected.items():
         if not path.is_file():

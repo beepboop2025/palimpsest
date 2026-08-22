@@ -288,6 +288,31 @@ def test_a_newly_degraded_source_with_a_retained_metric_becomes_availability_onl
     assert f"{retained_metric:g}" not in story["dek"]
 
 
+def test_expired_board_reading_uses_an_availability_headline(
+    source: dict, config: dict
+) -> None:
+    changed = copy.deepcopy(source)
+    board = next(item for item in changed["signals"] if item["id"] == "board-alarm")
+    previous_status = board["status"]
+    generated_at = datetime.fromisoformat(changed["generated_at"].replace("Z", "+00:00"))
+    board["freshness_deadline"] = (
+        generated_at - timedelta(seconds=1)
+    ).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    board["status"] = "stale"
+    board["live"] = False
+    board["health"]["ok"] = False
+    board["health"]["reason"] = "source timestamp exceeded its freshness deadline"
+    if previous_status == "live":
+        changed["n_signals_live"] -= 1
+    changed["health"]["counts"][previous_status] -= 1
+    changed["health"]["counts"]["stale"] += 1
+
+    story = _stories_by_id(newsroom.transform_osint_feed(changed, config))["board-alarm"]
+    assert story["headline"] == "Board alarm: no current finding"
+    assert story["claims"][0]["type"] == "availability"
+    assert story["metric"]["value"] is None
+
+
 def test_every_claim_keeps_aggregate_metric_evidence_method_and_limitations_beside_it(
     source: dict, feed: dict
 ) -> None:
@@ -312,23 +337,28 @@ def test_feed_keeps_the_normalized_board_headline_and_strict_coverage_summary(
 ) -> None:
     assert feed["headline"] == source["headline"]
     board_story = _stories_by_id(feed)["board-alarm"]
-    single = re.match(
-        r"^Upstream board reports: single layer elevated: ([a-z][a-z0-9_-]{0,63})\.",
-        source["headline"],
-    )
-    if single:
-        layer = single.group(1).replace("_", " ").replace("-", " ").capitalize()
-        assert board_story["headline"] == (
-            f"{layer} layer elevated in the latest board synthesis"
-        )
+    if board_story["status"] != "live":
+        assert board_story["headline"] == "Board alarm: no current finding"
+        assert board_story["claims"][0]["type"] == "availability"
+        assert board_story["metric"]["value"] is None
     else:
-        assert board_story["headline"] in {
-            "Multiple layers elevated together in the latest board synthesis",
-            "Signal-level elevations detected in the latest board synthesis",
-            "No signal clears the board's historical-elevation threshold",
-            "No current board-level analytic headline is available",
-        }
-    assert source["headline"] in board_story["claims"][0]["statement"]
+        single = re.match(
+            r"^Upstream board reports: single layer elevated: ([a-z][a-z0-9_-]{0,63})\.",
+            source["headline"],
+        )
+        if single:
+            layer = single.group(1).replace("_", " ").replace("-", " ").capitalize()
+            assert board_story["headline"] == (
+                f"{layer} layer elevated in the latest board synthesis"
+            )
+        else:
+            assert board_story["headline"] in {
+                "Multiple layers elevated together in the latest board synthesis",
+                "Signal-level elevations detected in the latest board synthesis",
+                "No signal clears the board's historical-elevation threshold",
+                "No current board-level analytic headline is available",
+            }
+        assert source["headline"] in board_story["claims"][0]["statement"]
     assert all(len(story["headline"]) <= 160 for story in feed["stories"])
     assert feed["coverage"] == {
         "total": source["n_signals_total"],
