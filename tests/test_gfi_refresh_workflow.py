@@ -64,6 +64,7 @@ def test_every_gfi_publication_path_runs_the_universal_semantic_contract():
         "readings/evidence-mesh-latest.json",
         "readings/machine-investigations-latest.json",
         "readings/newsroom-latest.json",
+        "readings/china-situation-latest.json",
         "readings/readings-ledger.jsonl",
         "readings/catalog.json",
         "readings/eval-articles-latest.json",

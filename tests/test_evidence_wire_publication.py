@@ -47,6 +47,9 @@ def test_every_newsroom_publisher_stages_both_china_article_heads():
             workflow, "readings/china-article-stream-latest.json"
         ) == newsroom_heads, path.name
         assert _staged_occurrences(
+            workflow, "readings/china-situation-latest.json"
+        ) == newsroom_heads, path.name
+        assert _staged_occurrences(
             workflow, "readings/china-censorship-analysis-latest.json"
         ) == newsroom_heads, path.name
 
@@ -75,6 +78,24 @@ def test_every_osint_publisher_rebuilds_checks_and_stages_the_erasure_trail():
                 path.name,
                 artifact,
             )
+
+
+def test_every_newsroom_publisher_rebuilds_the_china_situation_before_catalog():
+    sequence = re.compile(
+        r"python -m scripts\.build_newsroom\n"
+        r"\s*python -m scripts\.build_newsroom --check\n"
+        r"\s*python -m scripts\.build_china_situation\n"
+        r"\s*python -m scripts\.build_china_situation --check\n"
+        r"\s*python -m scripts\.build_data_catalog"
+    )
+    for path in OSINT_PUBLISHER_WORKFLOWS:
+        workflow = path.read_text(encoding="utf-8")
+        newsroom_builds = sum(
+            line.strip() == "python -m scripts.build_newsroom"
+            for line in workflow.splitlines()
+        )
+        assert newsroom_builds > 0, path.name
+        assert len(sequence.findall(workflow)) == newsroom_builds, path.name
 
 
 def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():

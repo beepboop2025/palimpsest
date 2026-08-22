@@ -134,6 +134,8 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "python -m core.machine_investigations --check",
         "python -m scripts.build_newsroom",
         "python -m scripts.build_newsroom --check",
+        "python -m scripts.build_china_situation",
+        "python -m scripts.build_china_situation --check",
         "python -m scripts.build_data_catalog",
         "python scripts/seal_readings.py",
     ]
@@ -286,6 +288,7 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "readings/source-workflow-latest.json",
         "readings/editorial-readiness-latest.json",
         "readings/newsroom-latest.json",
+        "readings/china-situation-latest.json",
         "readings/readings-ledger.jsonl",
         "readings/catalog.json",
         "readings/catalog.jsonld",

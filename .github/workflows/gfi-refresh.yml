@@ -84,6 +84,9 @@ jobs:
           python -m core.evidence_mesh
           python -m core.machine_investigations
           python -m scripts.build_newsroom
+          python -m scripts.build_newsroom --check
+          python -m scripts.build_china_situation
+          python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
           python scripts/seal_readings.py
           python -m scripts.build_eval_assurance --check
@@ -91,7 +94,6 @@ jobs:
           python -m scripts.build_eval_findings --check
           python -m core.evidence_mesh --check
           python -m core.machine_investigations --check
-          python -m scripts.build_newsroom --check
           python -m scripts.build_data_catalog --check
           python scripts/seal_readings.py --check
           python -m pytest -q \
@@ -155,6 +157,7 @@ jobs:
                    readings/machine-investigations-latest.json \
                    readings/newsroom-latest.json \
                    readings/china-article-stream-latest.json \
+                   readings/china-situation-latest.json \
                    readings/china-censorship-analysis-latest.json \
                    readings/readings-ledger.jsonl \
                    readings/catalog.json \
@@ -217,6 +220,9 @@ jobs:
             python -m core.evidence_mesh
             python -m core.machine_investigations
             python -m scripts.build_newsroom
+            python -m scripts.build_newsroom --check
+            python -m scripts.build_china_situation
+            python -m scripts.build_china_situation --check
             python -m scripts.build_data_catalog
             python scripts/seal_readings.py
             python -m scripts.verify_eval_registry
@@ -226,7 +232,6 @@ jobs:
             python -m scripts.build_eval_findings --check
             python -m core.evidence_mesh --check
             python -m core.machine_investigations --check
-            python -m scripts.build_newsroom --check
             python -m scripts.build_data_catalog --check
             python scripts/seal_readings.py --check
             python -m pytest -q \
@@ -277,6 +282,7 @@ jobs:
                      readings/machine-investigations-latest.json \
                      readings/newsroom-latest.json \
                      readings/china-article-stream-latest.json \
+                     readings/china-situation-latest.json \
                      readings/china-censorship-analysis-latest.json \
                      readings/readings-ledger.jsonl \
                      readings/catalog.json \
