@@ -89,7 +89,7 @@
       "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-22T19:02:54Z",
+  "generated_at": "2026-08-22T19:30:56Z",
   "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 28 are live. Health qualifiers: 3 degraded, 8 stale.",
   "health": {
     "counts": {
@@ -106,7 +106,7 @@
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "307ce785593c6f759e25323fa37cba22f0c6939e",
+  "input_commit": "97a648e0c570eaead57e101c9f105b087a398139",
   "layers": [
     {
       "id": "command",
@@ -248,7 +248,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 4.603,
+        "age_hours": 5.071,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -562,9 +562,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T03:20:05Z",
+      "freshness_deadline": "2026-08-23T09:06:16Z",
       "health": {
-        "age_hours": 5.713,
+        "age_hours": 0.411,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -574,9 +574,9 @@
       },
       "id": "event-flags",
       "input": {
-        "bytes": 6341,
+        "bytes": 6344,
         "filename": "event-flags-latest.json",
-        "sha256": "877ca1e9bfac3c0d262c65934d733f05c74b82029034c1c626cdf41f41d0bc98"
+        "sha256": "c352b0f13c551db3e625a9d2fa8e3a7aeae6cce28c5f0ba2e5c6dde393501877"
       },
       "layer": "command",
       "live": true,
@@ -597,7 +597,7 @@
         "closed": [
           "refusal_drift"
         ],
-        "generated_at": "2026-08-22T13:20:05.857919+00:00",
+        "generated_at": "2026-08-22T19:06:16.242031+00:00",
         "guarantee": "anytime-valid for repeated monitoring: under no change, P(false flag within n readings) <= n/A and average readings to a false flag >= A (A=100 watch, 500 alarm)",
         "headline": "no signal elevated, but only 12 of 14 signals are reporting",
         "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
@@ -609,7 +609,7 @@
         ],
         "signals": {
           "bleedthrough_capacity": {
-            "age_hours": 12.4,
+            "age_hours": 18.1,
             "meaning": "floor on peak parallel injector responses to one query — not a fleet capacity",
             "n": 9,
             "n_alarms_in_history": 0,
@@ -617,15 +617,15 @@
             "state": "calm"
           },
           "bleedthrough_pools": {
-            "age_hours": 226.9,
+            "age_hours": 232.7,
             "bound_hours": 168.0,
             "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
             "n": 1,
-            "reason": "newest row is 226.9h old, past the 168h bound",
+            "reason": "newest row is 232.7h old, past the 168h bound",
             "state": "stale"
           },
           "censored_planet": {
-            "age_hours": 7.4,
+            "age_hours": 13.1,
             "meaning": "remote-vantage interference rate",
             "n": 30,
             "n_alarms_in_history": 1,
@@ -633,7 +633,7 @@
             "state": "warming_up"
           },
           "data_darkness": {
-            "age_hours": 13.3,
+            "age_hours": 19.1,
             "meaning": "official Chinese data surfaces late against their own publication rhythm — the withholding complement to the deletion signals (PBOC OMO, money & banking statistics, SAFE settlement, CFETS benchmarks, NBS energy and industrial monthlies, rail freight)",
             "n": 16,
             "n_alarms_in_history": 0,
@@ -643,29 +643,29 @@
           "ddti_novelty": {
             "age_hours": 0.3,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 340,
+            "n": 342,
             "n_alarms_in_history": 3,
-            "stat": 6.058,
+            "stat": 5.4362,
             "state": "calm"
           },
           "ddti_threat": {
             "age_hours": 0.3,
             "meaning": "peak censor attention on one term",
-            "n": 340,
+            "n": 342,
             "n_alarms_in_history": 4,
-            "stat": 3.0495,
+            "stat": 3.8223,
             "state": "calm"
           },
           "gdelt_containment": {
-            "age_hours": 5.9,
+            "age_hours": 5.7,
             "meaning": "terms loud abroad while censored at home",
-            "n": 186,
+            "n": 187,
             "n_alarms_in_history": 0,
-            "stat": 2.606,
+            "stat": 2.3788,
             "state": "calm"
           },
           "github_refuge": {
-            "age_hours": 0.2,
+            "age_hours": 5.9,
             "meaning": "takedown/pressure events on refuge repositories",
             "n": 93,
             "n_alarms_in_history": 0,
@@ -675,7 +675,7 @@
           "ioda_outages": {
             "age_hours": 0.2,
             "meaning": "shutdown-scale connectivity events detected by IODA's instruments",
-            "n": 133,
+            "n": 134,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
@@ -683,13 +683,13 @@
           "ooni_gfw": {
             "age_hours": 0.2,
             "meaning": "network-layer GFW anomaly rate",
-            "n": 176,
+            "n": 177,
             "n_alarms_in_history": 2,
-            "stat": 4.4793,
+            "stat": 2.8102,
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 11.6,
+            "age_hours": 17.3,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -752,7 +752,7 @@
             "state": "no_data"
           },
           "tor_bridge_cn": {
-            "age_hours": 85.3,
+            "age_hours": 91.1,
             "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising",
             "n": 408,
             "n_alarms_in_history": 6,
@@ -760,9 +760,9 @@
             "state": "calm"
           },
           "weibo_suppression": {
-            "age_hours": 0.0,
+            "age_hours": 0.2,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 128,
+            "n": 133,
             "n_alarms_in_history": 0,
             "stat": 1.0,
             "state": "calm"
@@ -776,7 +776,7 @@
       "raw_url": "https://palimpsest.info/readings/event-flags-latest.json",
       "scope": "Per-signal conformal event states, including non-reporting and stale series.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-22T13:20:05Z",
+      "source_timestamp": "2026-08-22T19:06:16Z",
       "status": "live",
       "summary": "Per-signal conformal event states, including non-reporting and stale series. Upstream reading: no signal elevated, but only 12 of 14 signals are reporting. Latest payload reports signals reporting at 12 count across 15 signals configured.",
       "title": "Event flags"
@@ -785,7 +785,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 4.603,
+        "age_hours": 5.071,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -929,7 +929,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 4.603,
+        "age_hours": 5.071,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -1509,7 +1509,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T17:26:41Z",
       "health": {
-        "age_hours": 4.603,
+        "age_hours": 5.071,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -1896,7 +1896,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-23T01:48:52Z",
       "health": {
-        "age_hours": 0.234,
+        "age_hours": 0.701,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2328,9 +2328,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T03:24:46Z",
+      "freshness_deadline": "2026-08-23T09:09:26Z",
       "health": {
-        "age_hours": 5.635,
+        "age_hours": 0.358,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2340,9 +2340,9 @@
       },
       "id": "gdelt",
       "input": {
-        "bytes": 6763,
+        "bytes": 6772,
         "filename": "gdelt-latest.json",
-        "sha256": "e52474874109a7eb8de7946d018bd274788b42cc6bb8cc1bce947978efff552d"
+        "sha256": "0d8b1890abb6bbc0de3f0e73ef9647f5e2bffa1602989b1220e1f05d49acf449"
       },
       "layer": "attention",
       "live": true,
@@ -2355,58 +2355,31 @@
         },
         "label": "terms with global data",
         "unit": "count",
-        "value": 4
+        "value": 1
       },
       "optional": false,
       "payload": {
-        "ddti_generated_at": "2026-08-22T13:00:16.993101+00:00",
-        "generated_at": "2026-08-22T13:24:46.562733+00:00",
+        "ddti_generated_at": "2026-08-22T18:48:52.641497+00:00",
+        "generated_at": "2026-08-22T19:09:26.194383+00:00",
         "method_version": 1,
         "n_blackout": 0,
-        "n_containment": 4,
+        "n_containment": 1,
         "n_terms": 25,
-        "n_with_global_data": 4,
+        "n_with_global_data": 1,
         "ranked": [
           {
-            "cross_score": 0.0128,
-            "domestic_attention": 0.4959,
-            "domestic_present": true,
-            "global_norm": 0.0385,
-            "global_volume_intensity": 0.1925562874251497,
-            "label": "containment",
-            "term": "censorship"
-          },
-          {
-            "cross_score": 0.0027,
-            "domestic_attention": 0.443,
-            "domestic_present": true,
-            "global_norm": 0.0087,
-            "global_volume_intensity": 0.043350299401197605,
-            "label": "containment",
-            "term": "freedom of expression"
-          },
-          {
-            "cross_score": 0.0002,
-            "domestic_attention": 0.3165,
-            "domestic_present": true,
-            "global_norm": 0.0007,
-            "global_volume_intensity": 0.0035562874251497006,
-            "label": "containment",
-            "term": "Extreme Security"
-          },
-          {
             "cross_score": 0.0001,
-            "domestic_attention": 0.3165,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
-            "global_norm": 0.0004,
-            "global_volume_intensity": 0.0018341317365269461,
+            "global_norm": 0.0005,
+            "global_volume_intensity": 0.002538922155688623,
             "label": "containment",
-            "term": "beijing subway"
+            "term": "CCP history"
           },
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2416,7 +2389,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2426,7 +2399,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2436,7 +2409,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2446,7 +2419,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2456,7 +2429,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2466,7 +2439,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2476,7 +2449,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2486,7 +2459,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2496,7 +2469,17 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.5153,
+            "domestic_attention": 0.4074,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "freedom of expression"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.4738,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2506,7 +2489,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2516,7 +2499,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2526,7 +2509,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2536,7 +2519,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
+            "domestic_attention": 0.4074,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2546,7 +2529,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.3166,
+            "domestic_attention": 0.2911,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2556,7 +2539,27 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.3165,
+            "domestic_attention": 0.456,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "censorship"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.291,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "Extreme Security"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.291,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2566,7 +2569,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.3165,
+            "domestic_attention": 0.291,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2576,7 +2579,17 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.3165,
+            "domestic_attention": 0.291,
+            "domestic_present": true,
+            "global_norm": null,
+            "global_volume_intensity": null,
+            "label": "unknown",
+            "term": "beijing subway"
+          },
+          {
+            "abstained": true,
+            "cross_score": 0.0,
+            "domestic_attention": 0.291,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2586,17 +2599,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.443,
-            "domestic_present": true,
-            "global_norm": null,
-            "global_volume_intensity": null,
-            "label": "unknown",
-            "term": "CCP history"
-          },
-          {
-            "abstained": true,
-            "cross_score": 0.0,
-            "domestic_attention": 0.4461,
+            "domestic_attention": 0.4102,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2606,7 +2609,7 @@
           {
             "abstained": true,
             "cross_score": 0.0,
-            "domestic_attention": 0.5158,
+            "domestic_attention": 0.4743,
             "domestic_present": true,
             "global_norm": null,
             "global_volume_intensity": null,
@@ -2622,16 +2625,16 @@
       "raw_url": "https://palimpsest.info/readings/gdelt-latest.json",
       "scope": "cross-signal: domestic censorship attention vs global coverage volume",
       "source": "GDELT DOC 2.0 API x Palimpsest DDTI terms",
-      "source_timestamp": "2026-08-22T13:24:46Z",
+      "source_timestamp": "2026-08-22T19:09:26Z",
       "status": "live",
-      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 4 count across 25 terms compared.",
+      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 1 count across 25 terms compared.",
       "title": "Global coverage cross-signal"
     },
     {
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T21:53:13Z",
       "health": {
-        "age_hours": 0.161,
+        "age_hours": 0.629,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3828,7 +3831,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-22T20:43:02Z",
       "health": {
-        "age_hours": 1.331,
+        "age_hours": 1.798,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4128,7 +4131,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-25T05:08:57Z",
       "health": {
-        "age_hours": 133.899,
+        "age_hours": 134.366,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4440,7 +4443,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:16:08Z",
       "health": {
-        "age_hours": 5.779,
+        "age_hours": 6.247,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4727,7 +4730,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-22T22:08:00Z",
       "health": {
-        "age_hours": 3.915,
+        "age_hours": 4.382,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5076,7 +5079,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T08:33:00Z",
       "health": {
-        "age_hours": 6.498,
+        "age_hours": 6.966,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6249,7 +6252,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T02:48:00Z",
       "health": {
-        "age_hours": 6.248,
+        "age_hours": 6.716,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7864,9 +7867,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T08:53:22Z",
+      "freshness_deadline": "2026-08-23T09:09:26Z",
       "health": {
-        "age_hours": 0.159,
+        "age_hours": 0.358,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7876,9 +7879,9 @@
       },
       "id": "undertext",
       "input": {
-        "bytes": 8463288,
+        "bytes": 8463264,
         "filename": "undertext-latest.json",
-        "sha256": "31ab3e0ab780c379c451bec417e230abcaa29de89feab12c620510184794b38d"
+        "sha256": "36c3f88a4598624a0b9b42c20d04bf642ca231f15900ea41e0d1ae7df5b40295"
       },
       "layer": "attention",
       "live": true,
@@ -7892,7 +7895,7 @@
       },
       "optional": false,
       "payload": {
-        "generated_at": "2026-08-22T18:53:22Z",
+        "generated_at": "2026-08-22T19:09:26Z",
         "live_round_ran": false,
         "live_surfaces_enabled": false,
         "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
@@ -8266,7 +8269,7 @@
       "raw_url": "https://palimpsest.info/readings/undertext-latest.json",
       "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
       "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI + public deletion ledgers + official first-seen + news-wire-live + Wikipedia gazetteer RC when those readings exist, clustered by public URL, with GDELT/OONI/Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present",
-      "source_timestamp": "2026-08-22T18:53:22Z",
+      "source_timestamp": "2026-08-22T19:09:26Z",
       "status": "live",
       "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 2039 count.",
       "title": "UNDERTEXT differential fusion"
@@ -8275,7 +8278,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T09:12:23Z",
       "health": {
-        "age_hours": 11.842,
+        "age_hours": 12.309,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8515,7 +8518,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T08:53:22Z",
       "health": {
-        "age_hours": 0.159,
+        "age_hours": 0.626,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8846,7 +8849,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T08:55:14Z",
       "health": {
-        "age_hours": 0.128,
+        "age_hours": 0.595,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9018,7 +9021,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:29Z",
       "health": {
-        "age_hours": 13.09,
+        "age_hours": 13.557,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9195,7 +9198,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T03:14:57Z",
       "health": {
-        "age_hours": 5.799,
+        "age_hours": 6.266,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10717,7 +10720,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T08:55:57Z",
       "health": {
-        "age_hours": 0.116,
+        "age_hours": 0.583,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10768,7 +10771,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:41:02Z",
       "health": {
-        "age_hours": 13.364,
+        "age_hours": 13.832,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10840,9 +10843,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T03:22:06Z",
+      "freshness_deadline": "2026-08-23T09:12:30Z",
       "health": {
-        "age_hours": 5.68,
+        "age_hours": 0.307,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10854,7 +10857,7 @@
       "input": {
         "bytes": 2094,
         "filename": "vantage-fusion-latest.json",
-        "sha256": "dcecccb35fc9fa71729e0af0d9f57af39dccd15ba94c741c2aba1e8fc784fcdd"
+        "sha256": "ed2a2a7ff8faaba8c48c809f7abfb3598247dc6b8a079d7f94ecf583147d2204"
       },
       "layer": "network",
       "live": true,
@@ -10864,11 +10867,11 @@
         "denominator": null,
         "label": "fused network index",
         "unit": "percent",
-        "value": 28.6
+        "value": 29.1
       },
       "optional": false,
       "payload": {
-        "agreement": 0.101,
+        "agreement": 0.082,
         "caveats": [
           "when single_rate_quotable is false the fused_index is NOT a defensible estimate — it is the weighted midpoint of methods that disagree, kept only for continuity of the series; quote the interval instead",
           "censorship is VANTAGE-DEPENDENT (arXiv:2406.19304): independent methods can legitimately disagree because of routing, partial deployment, or probe location — divergence is reported, never smoothed away",
@@ -10877,15 +10880,15 @@
           "coverage weights (Censored Planet 0.55, OONI 0.45) are a disclosed choice reflecting vantage count, renormalized over whichever vantages report"
         ],
         "confidence": "CONTESTED",
-        "divergence_pp": 54.0,
+        "divergence_pp": 55.1,
         "excluded_vantages": {},
-        "fused_index": 28.6,
-        "generated_at": "2026-08-22T13:22:06.008786+00:00",
+        "fused_index": 29.1,
+        "generated_at": "2026-08-22T19:12:30.183746+00:00",
         "interval": [
           4.3,
-          58.3
+          59.4
         ],
-        "interval_width_pp": 54.0,
+        "interval_width_pp": 55.1,
         "last_changed_at": "2026-08-08T19:17:09.485371+00:00",
         "method": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
         "method_version": 1,
@@ -10900,9 +10903,9 @@
         "single_rate_quotable": false,
         "vantages": {
           "censored_planet": 4.3,
-          "ooni": 58.3
+          "ooni": 59.4
         },
-        "verdict": "NO SINGLE RATE IS DEFENSIBLE: OONI reads 58 and Censored Planet 4, 54pp apart. The honest answer is the range 4–58, not its midpoint — censorship is vantage-dependent and these two methods are measuring different things about the same wall.",
+        "verdict": "NO SINGLE RATE IS DEFENSIBLE: OONI reads 59 and Censored Planet 4, 55pp apart. The honest answer is the range 4–59, not its midpoint — censorship is vantage-dependent and these two methods are measuring different things about the same wall.",
         "weights_used": {
           "censored_planet": 0.55,
           "ooni": 0.45
@@ -10912,16 +10915,16 @@
       "raw_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
       "scope": "Fuses only reporting network vantages and names excluded or divergent inputs.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-22T13:22:06Z",
+      "source_timestamp": "2026-08-22T19:12:30Z",
       "status": "live",
-      "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. Latest payload reports fused network index at 28.6 percent.",
+      "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. Latest payload reports fused network index at 29.1 percent.",
       "title": "Network vantage fusion"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T02:57:39Z",
       "health": {
-        "age_hours": 6.087,
+        "age_hours": 6.554,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11043,7 +11046,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:11Z",
       "health": {
-        "age_hours": 15.845,
+        "age_hours": 16.312,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11169,7 +11172,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:11:04Z",
       "health": {
-        "age_hours": 5.864,
+        "age_hours": 6.331,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11965,7 +11968,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 550.527,
+        "age_hours": 550.994,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -12120,7 +12123,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T01:21:09Z",
       "health": {
-        "age_hours": 7.696,
+        "age_hours": 8.163,
         "collector_reason": null,
         "collector_status": "observed",
         "ok": true,
@@ -12334,7 +12337,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T15:10:55Z",
       "health": {
-        "age_hours": 5.866,
+        "age_hours": 6.333,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12995,9 +12998,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-23T03:21:23Z",
+      "freshness_deadline": "2026-08-23T09:12:09Z",
       "health": {
-        "age_hours": 5.692,
+        "age_hours": 0.313,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13009,7 +13012,7 @@
       "input": {
         "bytes": 3519,
         "filename": "app-storefront-latest.json",
-        "sha256": "abb84ed948c0100132e4a9ca15041bf57fee3b7a26b896c7ec800aec51c093cb"
+        "sha256": "699b91e0afd332904a758ebd3f127da67d20e2257cb58b1c39ae4187891c8428"
       },
       "layer": "erasure",
       "live": true,
@@ -13151,7 +13154,7 @@
           "The New York Times"
         ],
         "delisting_rate": 0.6,
-        "generated_at": "2026-08-22T13:21:23.970845+00:00",
+        "generated_at": "2026-08-22T19:12:09.653312+00:00",
         "last_changed_at": "2026-07-31T04:15:37.987842+00:00",
         "method_version": 1,
         "n_delisted": 6,
@@ -13165,7 +13168,7 @@
       "raw_url": "https://palimpsest.info/readings/app-storefront-latest.json",
       "scope": "app-layer availability: which apps are offered in the Chinese App Store storefront versus the US one",
       "source": "Apple iTunes lookup API (itunes.apple.com), storefronts cn vs us",
-      "source_timestamp": "2026-08-22T13:21:23Z",
+      "source_timestamp": "2026-08-22T19:12:09Z",
       "status": "live",
       "summary": "Compares a fixed app panel in the China and US Apple storefronts. Upstream reading: much of the tracked catalogue is unavailable in the Chinese storefront. Latest payload reports delisting rate at 0.6 ratio across 10 apps tracked.",
       "title": "App Storefront panel"
@@ -13174,7 +13177,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:21Z",
       "health": {
-        "age_hours": 13.092,
+        "age_hours": 13.56,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13279,7 +13282,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:38:19Z",
       "health": {
-        "age_hours": 11.41,
+        "age_hours": 11.877,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13347,7 +13350,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T19:27:35Z",
       "health": {
-        "age_hours": 1.589,
+        "age_hours": 2.056,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13400,7 +13403,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 28.993,
+        "age_hours": 29.46,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13459,7 +13462,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T12:32:24Z",
       "health": {
-        "age_hours": 8.508,
+        "age_hours": 8.976,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13616,7 +13619,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 107.662,
+        "age_hours": 108.13,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -13684,7 +13687,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-22T09:32:12Z",
       "health": {
-        "age_hours": 59.512,
+        "age_hours": 59.979,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -15961,7 +15964,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:23Z",
       "health": {
-        "age_hours": 15.842,
+        "age_hours": 16.309,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -16008,7 +16011,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-22T16:29:16Z",
       "health": {
-        "age_hours": 3.56,
+        "age_hours": 4.028,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
