@@ -33,6 +33,7 @@ PULSE = ROOT / "readings" / "china-economic-pulse-latest.json"
 LEDGER = ROOT / "readings" / "china-econ-observations.jsonl"
 FORECAST = ROOT / "readings" / "china-econ-forecast-latest.json"
 CHINA_ECON_LATEST = ROOT / "readings" / "china-econ-latest.json"
+STOCK_CONNECT_LATEST = ROOT / "readings" / "stock-connect-latest.json"
 INDEX_OUTPUT = ROOT / "readings" / "china-index-latest.json"
 SITE_ROOT = ROOT / "china"
 
@@ -73,10 +74,11 @@ CFETS_CURVE = (
 )
 CFETS_HISTORY_SERIES = (
     ("cn.cfets.fdr007", "FDR007"),
+    ("cn.cfets.fr007", "FR007"),
     ("cn.cfets.shibor_on", "SHIBOR overnight"),
+    ("cn.cfets.shibor_3m", "SHIBOR 3M"),
     ("cn.cfets.usdcny_parity", "USD/CNY parity"),
 )
-CFETS_HISTORY_DAYS = 16
 MONEY_DESK_ID = "money-credit-fx"
 
 
@@ -888,7 +890,7 @@ def _money_market_view(root: Path) -> dict[str, Any] | None:
         if periods:
             first_period = periods[0]
             last_period = periods[-1]
-        for period in periods[-CFETS_HISTORY_DAYS:]:
+        for period in periods:
             values = {}
             for series_id, _label in history_columns:
                 row = selected.get((series_id, period))
@@ -972,10 +974,10 @@ def _money_market_html(view: Mapping[str, Any] | None) -> str:
     if history_body:
         history_table = (
             '<p class="cn-table-cue" id="cfets-history-scroll">'
-            "Scroll horizontally to inspect recent official prints."
+            "Scroll horizontally to inspect every retained official print."
             "</p>"
             '<div class="cn-table-wrap" role="region" tabindex="0" '
-            'aria-label="Recent CFETS prints by trading day; horizontally scrollable" '
+            'aria-label="Retained CFETS prints by trading day; horizontally scrollable" '
             'aria-describedby="cfets-history-scroll">'
             "<table><caption class=\"cn-visually-hidden\">"
             "Latest retained CFETS vintage per trading day"
@@ -1017,13 +1019,92 @@ def _money_market_html(view: Mapping[str, Any] | None) -> str:
   · <a href="/china/sources/cfets_benchmarks/">CFETS source record</a></p>
   <aside class="cn-sibling" aria-labelledby="seiche-sibling-title">
     <p class="cn-kicker" id="seiche-sibling-title">Seiche sibling</p>
-    <p><a href="https://seiche.info/">Seiche</a> is the sibling funding-stress terminal. Palimpsest seals this CFETS ledger; Seiche consumes the same prints for its CHINA harbor row. This observatory does not size funding risk and does not inherit a Seiche regime call. A missing Seiche local rate is not evidence of calm.</p>
+    <p><a href="https://seiche.info/">Seiche</a> is the sibling funding-stress terminal. Palimpsest seals this CFETS ledger as public provenance. This observatory does not inherit a Seiche regime call and does not size funding risk. A missing Seiche local rate is not evidence of calm.</p>
   </aside>
 </section>
 '''
 
 
-def _home(index: Mapping[str, Any], money_market: Mapping[str, Any] | None = None) -> bytes:
+def _cross_border_view(root: Path) -> dict[str, Any] | None:
+    """HTML-only HKEX Stock Connect print. Never written into china-index."""
+
+    path = root / "readings" / "stock-connect-latest.json"
+    if not path.is_file():
+        return None
+    try:
+        latest, _ = _read_json(path)
+    except ChinaSiteError:
+        return None
+    reading = latest.get("reading")
+    if not isinstance(reading, dict):
+        return None
+    prints: list[dict[str, Any]] = []
+    fields = (
+        ("nb_turnover_b", "Northbound turnover", "CNY billion"),
+        ("nb_sse_turnover_b", "Northbound SSE", "CNY billion"),
+        ("nb_szse_turnover_b", "Northbound SZSE", "CNY billion"),
+        ("sb_buy_b", "Southbound buy", "HKD billion"),
+        ("sb_sell_b", "Southbound sell", "HKD billion"),
+        ("southbound_net_b", "Southbound net", "HKD billion"),
+    )
+    for key, label, unit in fields:
+        value = reading.get(key)
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            continue
+        prints.append({"key": key, "label": label, "unit": unit, "value": value})
+    if not prints:
+        return None
+    return {
+        "asof": latest.get("asof"),
+        "generated_at": latest.get("generated_at"),
+        "history_days": latest.get("history_days"),
+        "source": latest.get("source"),
+        "prints": prints,
+    }
+
+
+def _cross_border_html(view: Mapping[str, Any] | None) -> str:
+    if view is None:
+        return ""
+    print_items = []
+    for row in view["prints"]:
+        print_items.append(
+            "<div class=\"cn-print\">"
+            f"<dt>{_e(row['label'])}</dt>"
+            f"<dd class=\"cn-num\">{_e(_fmt_value(row['value']))}</dd>"
+            f"<small>{_e(row['unit'])}</small>"
+            "</div>"
+        )
+    history_days = view["history_days"]
+    history_days_label = (
+        "not available" if history_days is None else f"{history_days} retained days"
+    )
+    return f'''
+<section class="cn-section cn-money cn-connect" aria-labelledby="stock-connect-title">
+  <div class="cn-section__head"><p class="cn-kicker">HKEX Stock Connect</p>
+  <h2 id="stock-connect-title">Cross-border turnover, sealed as observed</h2>
+  <p>Keyless HKEX daily statistics. Northbound is turnover only since August 2024;
+  Palimpsest does not estimate a northbound net flow. Southbound net is buy minus
+  sell. These are published prints, not a liquidity-stress call.</p></div>
+  <dl class="cn-prints" aria-label="Current Stock Connect prints">{"".join(print_items)}</dl>
+  <section class="cn-facts cn-money__facts" aria-label="Stock Connect clocks">
+  <dl>
+    <div><dt>Trading day</dt><dd class="cn-mono">{_e(view["asof"] or "not available")}</dd></div>
+    <div><dt>Collected</dt><dd class="cn-mono">{_e(view["generated_at"] or "not available")}</dd></div>
+    <div><dt>History</dt><dd>{_e(history_days_label)}</dd></div>
+    <div><dt>Source</dt><dd>{_e(view["source"] or "HKEX Stock Connect")}</dd></div>
+  </dl>
+  </section>
+  <p class="cn-more"><a href="/readings/stock-connect-latest.json">stock-connect-latest.json</a></p>
+</section>
+'''
+
+
+def _home(
+    index: Mapping[str, Any],
+    money_market: Mapping[str, Any] | None = None,
+    cross_border: Mapping[str, Any] | None = None,
+) -> bytes:
     state = index["economic_state"]
     readiness = index["readiness"]
     forecast = index["forecast"]
@@ -1138,6 +1219,7 @@ def _home(index: Mapping[str, Any], money_market: Mapping[str, Any] | None = Non
   <a href="/readings/china-index-latest.json">inspect index</a>
 </section>
 {_money_market_html(money_market)}
+{_cross_border_html(cross_border)}
 <section class="cn-section cn-readiness" aria-labelledby="readiness-title">
   <div class="cn-section__head"><p class="cn-kicker">Abstention gate</p><h2 id="readiness-title">What prevents a composite</h2>
   <p>{_e(readiness["abstention_reason"])}</p></div>
@@ -1189,7 +1271,7 @@ def _home(index: Mapping[str, Any], money_market: Mapping[str, Any] | None = Non
 '''
     return _page(
         title="China economic observatory",
-        description="Official CFETS money-market prints, source-bound China economic evidence, release clocks, coverage gaps and bitemporal observations.",
+        description="Official CFETS money-market prints, HKEX Stock Connect turnover, source-bound China economic evidence, release clocks, coverage gaps and bitemporal observations.",
         route="/china/",
         body=body,
         index=index,
@@ -1506,9 +1588,10 @@ def _sitemap(html_paths: Sequence[Path], index: Mapping[str, Any]) -> bytes:
 def build_outputs(*, root: Path = ROOT) -> dict[Path, bytes]:
     index = build_index(root=root)
     money_market = _money_market_view(root)
+    cross_border = _cross_border_view(root)
     outputs: dict[Path, bytes] = {
         root / "readings" / "china-index-latest.json": canonical_json(index),
-        root / "china" / "index.html": _home(index, money_market),
+        root / "china" / "index.html": _home(index, money_market, cross_border),
         root / "china" / "sources" / "index.html": _sources_index(index),
         root / "china" / "releases" / "index.html": _releases_index(index),
         root / "china" / "domains" / "index.html": _domains_index(index),

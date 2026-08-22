@@ -318,8 +318,13 @@ def test_index_schema_rejects_incomplete_evidence_and_ledger_structures():
     _assert_index_contract_rejects(short_rail)
 
     empty_observed_desk = deepcopy(index)
-    empty_observed_desk["desks"][0]["metrics"] = []
-    empty_observed_desk["desks"][0]["n_metrics"] = 0
+    observed = next(
+        desk
+        for desk in empty_observed_desk["desks"]
+        if desk["status"] == "observed" and desk["n_metrics"] > 0
+    )
+    observed["metrics"] = []
+    observed["n_metrics"] = 0
     _assert_index_contract_rejects(empty_observed_desk)
 
     empty_dimensions = deepcopy(index)

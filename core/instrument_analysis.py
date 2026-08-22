@@ -196,7 +196,7 @@ def _layer(status: str, *sentences: Mapping[str, Any]) -> dict[str, Any]:
     return {"status": status, "sentences": list(sentences)}
 
 
-def _metric_phrase(story: Mapping[str, Any]) -> tuple[str, str]:
+def _metric_phrase(story: Mapping[str, Any], *, live: bool) -> tuple[str, str]:
     metric = story.get("metric") if type(story.get("metric")) is dict else {}
     value = metric.get("value")
     label = metric.get("label") or "headline metric"
@@ -204,7 +204,7 @@ def _metric_phrase(story: Mapping[str, Any]) -> tuple[str, str]:
     denominator = metric.get("denominator") if type(metric.get("denominator")) is dict else {}
     denom_label = denominator.get("label") or "declared denominator"
     denom_value = denominator.get("value")
-    if story.get("status") != "live" or value is None:
+    if not live or value is None:
         return "withheld", f"{denom_label} withheld with the non-live metric"
     if type(value) is float and not math.isfinite(value):
         raise InstrumentAnalysisError("story metric is not finite")
@@ -327,7 +327,7 @@ def build_instrument_analysis(
     private = signal_id in PRIVATE_SIGNALS
     live = status == "live" and not private
     disposition = "live-reading" if live else "availability-brief"
-    number, denom = _metric_phrase(story)
+    number, denom = _metric_phrase(story, live=live)
     claim = _story_claim(story)
     limitation = _first_limitation(story)
     layers = _elevated_layers(feed)

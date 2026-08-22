@@ -85,6 +85,21 @@ def test_nemesis_never_becomes_a_live_finding():
     assert analysis["key_numbers"][0]["value"] == "withheld"
 
 
+def test_private_signal_with_live_status_still_withholds_the_metric():
+    feed = _feed()
+    public = next(
+        row
+        for row in feed["stories"]
+        if row["status"] == "live"
+        and row["signal_id"] not in instrument_analysis.PRIVATE_SIGNALS
+    )
+    story = dict(public)
+    story["signal_id"] = "nemesis"
+    analysis = instrument_analysis.build_instrument_analysis(story, feed)
+    assert analysis["disposition"] == "availability-brief"
+    assert analysis["key_numbers"][0]["value"] == "withheld"
+
+
 def test_newsroom_build_emits_story_and_reading_companions():
     feed = _feed()
     outputs = build_newsroom.build_outputs(feed)

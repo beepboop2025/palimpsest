@@ -168,12 +168,18 @@ def test_root_page_leads_with_abstention_and_retains_all_reporting_releases():
     assert "/readings/china-econ-forecast-latest.json" in page
     assert "Official prints, sealed as observed" in page
     assert "FDR007" in page
+    assert "FR007" in page
     assert "SHIBOR overnight" in page
+    assert "SHIBOR 3M" in page
     assert "/readings/china-econ-latest.json" in page
     assert 'id="money-market-title"' in page
     assert 'id="seiche-sibling-title"' in page
     assert "does not size funding risk" in page
     assert "https://seiche.info/" in page
+    assert "Cross-border turnover, sealed as observed" in page
+    assert "Northbound turnover" in page
+    assert "/readings/stock-connect-latest.json" in page
+    assert 'id="stock-connect-title"' in page
     assert '<details open>' in page
 
 
