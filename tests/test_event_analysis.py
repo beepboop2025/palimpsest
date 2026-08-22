@@ -197,3 +197,25 @@ def test_generated_analysis_conforms_to_the_public_json_schema(analyses) -> None
 
     for analysis in analyses.values():
         validator.validate(analysis)
+
+
+def test_peer_miss_rows_use_the_warehouse_clock_not_wall_clock() -> None:
+    from core.peer_context import peer_context_for_event
+
+    event = {
+        "event_id": "evt-peer-clock",
+        "updated_at": "2026-08-20T00:00:00Z",
+        "published_at": "2026-08-20T00:00:00Z",
+        "canonical_url": "https://www.example.com/story",
+        "url": "https://www.example.com/story",
+        "title": "example",
+        "items": [],
+    }
+    peer = {"generated_at": "2026-08-22T09:48:00Z", "greatfire": {}, "ooni": {}, "cdt_items": []}
+    first = peer_context_for_event(event, peer)
+    second = peer_context_for_event(event, peer)
+    assert first == second
+    assert all(row["as_of"] in {"2026-08-22T09:48:00Z", "2026-08-20T00:00:00Z"} or row["as_of"] is None or row["status"] == "live" for row in first)
+    miss_or_silent = [row for row in first if row["status"] in {"miss", "silent", "abstain"}]
+    assert miss_or_silent
+    assert all(row["as_of"] == "2026-08-22T09:48:00Z" for row in miss_or_silent)
