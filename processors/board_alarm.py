@@ -143,8 +143,8 @@ CADENCE_PER_DAY = {
     "ooni_gfw": 4.0, "ddti_threat": 8.0, "ddti_novelty": 8.0,
     "censored_planet": 1.0, "gdelt_containment": 4.0, "github_refuge": 2.0,
     "refusal_churn": 4.0, "bleedthrough_pools": 4.0, "bleedthrough_capacity": 4.0,
-    "tor_bridge_cn": 1.0, "weibo_suppression": 4.0, "ioda_outages": 4.0,
-    "data_darkness": 1.0, "silence_blackouts": 4.0,
+    "tor_bridge_cn": 1.0, "weibo_suppression": 24.0, "ioda_outages": 4.0,
+    "data_darkness": 1.0, "silence_blackouts": 24.0,
 }
 
 # Board-level signal -> history file, for every signal the board consumes: the

@@ -21,14 +21,16 @@ name: Refresh board-level judgements
 
 on:
   schedule:
-    - cron: "53 */6 * * *"     # every 6 hours, after event-flags at :47
+    - cron: "53 * * * *"       # hourly public edition, after event-flags/newswire at :47
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: board-alarm-refresh
+  # These files summarize almost every other collector. Serialize them with
+  # the newswire and OSINT publishers so main never exposes a half-built graph.
+  group: derived-graph-publish
   cancel-in-progress: false
 
 jobs:
@@ -63,6 +65,18 @@ jobs:
 
       - name: Publish gazetteer phylogeny
         run: python -m scripts.gazetteer_phylogeny_pull
+
+      - name: Validate the complete public edition
+        run: >-
+          python -m pytest -q
+          tests/test_board_alarm.py
+          tests/test_coverage_guard.py
+          tests/test_forecast_ledger.py
+          tests/test_cross_layer.py
+          tests/test_weekly_situation.py
+          tests/test_collector_health.py
+          tests/test_gazetteer_phylogeny.py
+          tests/test_publication_contract.py
 
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication

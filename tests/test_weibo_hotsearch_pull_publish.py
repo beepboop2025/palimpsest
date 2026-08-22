@@ -49,13 +49,13 @@ BREAKTHROUGH = "维权律师被带走"
 
 
 class _Clock:
-    """Advances six hours per round, matching the collector's cron cadence."""
+    """Advances one hour per round, matching the collector's cron cadence."""
 
     def __init__(self) -> None:
         self.t = datetime(2026, 7, 17, 3, 41, 0, tzinfo=timezone.utc)
 
     def now(self, tz=None) -> datetime:
-        self.t += timedelta(hours=6)
+        self.t += timedelta(hours=1)
         return self.t
 
 
