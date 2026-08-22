@@ -4,10 +4,10 @@
   "title": "Palimpsest China Newsroom",
   "headline": "Upstream board reports: single layer elevated: network. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-22T09:47:32Z",
+  "generated_at": "2026-08-22T10:37:17Z",
   "n_stories": 38,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "1456e1668baa6b1cccadf588544b07592f40cf94",
+  "source_commit": "f7bfc58841f009bc3aabcd29c06c015725e6b49f",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -657,8 +657,8 @@
       "type": "measurement",
       "priority": "standard",
       "status": "missing",
-      "published_at": "2026-08-22T09:47:32Z",
-      "modified_at": "2026-08-22T09:47:32Z",
+      "published_at": "2026-08-22T10:37:17Z",
+      "modified_at": "2026-08-22T10:37:17Z",
       "claim_fingerprint": "sha256:8117bd542245247c54b0f3a90b31e932666384cb9c8a30673094b27839bcb6df",
       "metric": {
         "label": null,
@@ -814,8 +814,8 @@
       "type": "analysis",
       "priority": "background",
       "status": "missing",
-      "published_at": "2026-08-22T09:47:32Z",
-      "modified_at": "2026-08-22T09:47:32Z",
+      "published_at": "2026-08-22T10:37:17Z",
+      "modified_at": "2026-08-22T10:37:17Z",
       "claim_fingerprint": "sha256:c93a0a183ade1fd5320f4b2266cec5630c86b7ffae4ee142c1c3ab016c2a5362",
       "metric": {
         "label": null,
@@ -1285,8 +1285,8 @@
       "type": "measurement",
       "priority": "background",
       "status": "missing",
-      "published_at": "2026-08-22T09:47:32Z",
-      "modified_at": "2026-08-22T09:47:32Z",
+      "published_at": "2026-08-22T10:37:17Z",
+      "modified_at": "2026-08-22T10:37:17Z",
       "claim_fingerprint": "sha256:6ddc8e5dc67c681b51e2f36eca577b761b69107a888b025e369f40b7370aed10",
       "metric": {
         "label": null,
@@ -1806,8 +1806,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-22T09:37:09Z",
-      "modified_at": "2026-08-22T09:37:09Z",
+      "published_at": "2026-08-22T10:32:24Z",
+      "modified_at": "2026-08-22T10:32:24Z",
       "claim_fingerprint": "sha256:972a60dac730dec17b446bc2e826c3c1a03314f19f3ebcaf514e61768fafec97",
       "metric": {
         "label": "darkness index",
@@ -1828,10 +1828,10 @@
         "url": "https://palimpsest.info/readings/data-darkness-latest.json",
         "input": {
           "filename": "data-darkness-latest.json",
-          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
+          "sha256": "9204999fcdc67705a4957557b4f704bdd8d0740e17183c5363f2117331056329",
           "bytes": 3882
         },
-        "source_timestamp": "2026-08-22T09:37:09Z"
+        "source_timestamp": "2026-08-22T10:32:24Z"
       },
       "method": {
         "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
