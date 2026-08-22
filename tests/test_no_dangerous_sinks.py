@@ -70,6 +70,9 @@ _SINKS = re.compile(
 #   its dedicated root-owned bare repository. Production refuses repository/public
 #   authority overrides; every ref, blob path, timeout, environment, and Git option
 #   is constructed by the module, subprocess stdin is closed, and no shell is used.
+#   reproduce_all.py: invokes only the current Python interpreter with a frozen
+#   tuple of first-party scripts and -m modules. No shell, no collected bytes in
+#   argv, and PYTHONPATH is the repo root. It is a local verifier, not a collector.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
@@ -77,6 +80,7 @@ _ALLOWED = {
     ("ops/osint-sync/public_osint_sync.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
+    ("scripts/reproduce_all.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
 }
 
@@ -175,6 +179,29 @@ def test_public_osint_sync_keeps_fixed_no_shell_git_boundary():
         "_prepare_repository:run",
         "_git_blob:run",
     ], "every subprocess call site must be individually reviewed and inventoried"
+
+
+def test_reproduce_all_keeps_a_fixed_no_shell_python_boundary():
+    """reproduce_all may spawn first-party verifiers, never a shell or fetched argv."""
+    text = (ROOT / "scripts" / "reproduce_all.py").read_text(encoding="utf-8")
+    assert "shell=True" not in text
+    assert "result = subprocess.run(" in text
+    assert "cwd=ROOT" in text
+    assert '"PYTHONPATH": str(ROOT)' in text
+    tree = ast.parse(text)
+    calls: list[str] = []
+    for function in (node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)):
+        for node in ast.walk(function):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "subprocess"
+            ):
+                calls.append(f"{function.name}:{node.func.attr}")
+    assert calls == ["_run:run"], (
+        "reproduce_all may only invoke subprocess inside _run, with the frozen command list"
+    )
 
 
 def test_analysis_broker_keeps_a_fixed_no_shell_docker_boundary():

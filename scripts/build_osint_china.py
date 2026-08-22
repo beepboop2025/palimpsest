@@ -340,8 +340,10 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # ledger is attributed publisher context rather than a measurement; the Situation index
 # consumes this roll-up and therefore cannot be fed back into it; live-watch and
 # rumour-board are public-vantage coverage receipts, not OSINT China measurements;
-# and the remaining files are generic model evaluation surfaces. Research-corpus
-# metadata is a first-party China-adjacent input and is listed in SIGNALS.
+# weekly-situation, collector-health and gazetteer-phylogeny are derived fusion and
+# ops surfaces over inputs already counted here; and the remaining files are generic
+# model evaluation surfaces. Research-corpus metadata is a first-party China-adjacent
+# input and is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset({
     "china-article-stream-latest.json",
     "china-censorship-analysis-latest.json",
@@ -380,6 +382,9 @@ EXCLUDED_LATEST_FILES = frozenset({
     "telegram-public-channels-latest.json",
     "reading-analysis-latest.json",
     "peer-context-rank-latest.json",
+    "weekly-situation-latest.json",
+    "collector-health-latest.json",
+    "gazetteer-phylogeny-latest.json",
 })
 
 
