@@ -815,7 +815,7 @@ def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
         r"\s*python -m scripts\.sync_narcoscope --check\n"
-        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check(?: \|\| true)?\n"
         r"\s*python -m core\.evidence_mesh\n"
         r"\s*python -m core\.evidence_mesh --check\n"
         r"\s*python -m core\.machine_investigations\n"

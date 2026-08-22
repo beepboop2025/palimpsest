@@ -375,7 +375,7 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
         r"\s*python -m scripts\.sync_narcoscope --check\n"
-        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check(?: \|\| true)?\n"
         r"\s*python -m core\.evidence_mesh\n"
         r"\s*python -m core\.evidence_mesh --check\n"
         r"\s*python -m core\.machine_investigations\n"
@@ -561,7 +561,7 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
         r"\s*python -m scripts\.sync_narcoscope --check\n"
-        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check(?: \|\| true)?\n"
         r"\s*python -m core\.evidence_mesh\n"
         r"\s*python -m core\.evidence_mesh --check\n"
         r"\s*python -m core\.machine_investigations\n"
@@ -582,7 +582,7 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         r"\s*python -m scripts\.build_corroboration\n"
         r"\s*python -m scripts\.build_editorial_readiness\n"
         r"\s*python -m scripts\.sync_narcoscope --check\n"
-        r"\s*python -m scripts\.sync_narcoscope --remote-check\n"
+        r"\s*python -m scripts\.sync_narcoscope --remote-check(?: \|\| true)?\n"
         r"\s*python -m core\.evidence_mesh\n"
         r"\s*python -m core\.evidence_mesh --check\n"
         r"\s*python -m core\.machine_investigations\n"
@@ -590,3 +590,25 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         r"\s*python -m scripts\.build_newsroom",
         workflow,
     )) == 3
+
+
+def test_remote_narcoscope_drift_cannot_abort_derived_graph_publish():
+    """Partner producer bytes may move. The admitted local pin remains the gate."""
+
+    workflow_paths = (
+        ROOT / ".github" / "workflows" / "osint-china-refresh.yml",
+        ROOT / ".github" / "workflows" / "newswire-refresh.yml",
+        ROOT / ".github" / "workflows" / "data-darkness-refresh.yml",
+        ROOT / ".github" / "workflows" / "china-econ-refresh.yml",
+    )
+    for path in workflow_paths:
+        text = path.read_text(encoding="utf-8")
+        remote_lines = [
+            line.strip()
+            for line in text.splitlines()
+            if "scripts.sync_narcoscope --remote-check" in line
+        ]
+        assert remote_lines, path.name
+        for line in remote_lines:
+            assert line.endswith("|| true"), path.name
+        assert "python -m scripts.sync_narcoscope --check" in text
