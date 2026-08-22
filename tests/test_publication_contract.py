@@ -307,18 +307,14 @@ def test_every_published_reading_is_registered():
 # the build, and — more usefully — means the three questions were answered while the code was
 # being written rather than retrofitted once a number was already on the board.
 PENDING = {
-    "public-deletion-ledgers",
     "official-first-seen",
     "news-wire-live",
     "wikipedia-gazetteer-rc",
-    "baike-public-snapshot",
     "public-hot-boards",
     "telegram-public-channels",
     "social-spread",
     "weibo-hotsearch-terms",
     "public-board-terms",
-    "greatfire-context",
-    "peer-context",
     "ooni-peer-context",
     "cdt-context",
     "weiboscope-context",
@@ -362,6 +358,10 @@ SCHEDULED_PUBLICATIONS = {
     "archive-news-context",
     "reading-analysis",
     "peer-context-rank",
+    "baike-public-snapshot",
+    "greatfire-context",
+    "peer-context",
+    "public-deletion-ledgers",
 }
 
 
@@ -466,6 +466,18 @@ def test_bleedthrough_graduated_to_a_scheduled_fixed_origin_import():
     }
     assert "bleedthrough" not in PENDING
     assert "bleedthrough" in SCHEDULED_PUBLICATIONS
+
+
+def test_hetzner_host_snapshots_are_scheduled_fixed_origin_imports():
+    for name in (
+        "baike-public-snapshot",
+        "greatfire-context",
+        "peer-context",
+        "public-deletion-ledgers",
+    ):
+        assert name not in PENDING
+        assert name in SCHEDULED_PUBLICATIONS
+        assert name in CONTRACT
 
 
 def test_reporting_newsroom_feeds_have_explicit_publication_contracts():

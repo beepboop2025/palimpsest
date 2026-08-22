@@ -54,13 +54,16 @@ def _http_fetch(url: str) -> tuple[int, str]:
 
 def _save_text(url: str) -> str:
     proxy = os.getenv("PALIMPSEST_PROXY", "").strip() or None
-    return safe_fetch(
-        url,
-        max_bytes=512 * 1024,
-        timeout=25,
-        headers={"User-Agent": USER_AGENT},
-        proxy=proxy,
-    )
+    try:
+        return safe_fetch(
+            url,
+            max_bytes=512 * 1024,
+            timeout=25,
+            headers={"User-Agent": USER_AGENT},
+            proxy=proxy,
+        )
+    except FetchError as exc:
+        raise OSError(str(exc)) from exc
 
 
 def _load_state(path: Path) -> dict:
@@ -90,20 +93,26 @@ def main(*, fetch=None, fetch_cdx=None, now: datetime | None = None, state_path:
         rate_ceiling=None if fetch is not None else RateCeiling(rate=0.4, capacity=2.0),
         now=now or datetime.now(timezone.utc),
     )
-    if result["n_ok"] == 0 and not previous.get("pages"):
-        print("baike-public-snapshot: no public article answered and no prior state — abstaining")
-        return None
-
     prior_urls = {
         url for url, row in (previous.get("pages") or {}).items()
         if isinstance(row, dict) and row.get("content_sha256")
     }
-    observations = attach_new_url_captures(
-        [serialize_observation(obs) for obs in result["observations"]],
-        previous_urls=prior_urls,
-        fetch=_save_text if fetch is None else None,
-        limit=6,
-    )
+    serialized = [serialize_observation(obs) for obs in result["observations"]]
+    # Unreachable pages are not first-seen text. Do not ask IA to save a 403
+    # wall, and never let a Save Page Now transport failure block the reading.
+    if result["n_ok"] and serialized:
+        try:
+            observations = attach_new_url_captures(
+                serialized,
+                previous_urls=prior_urls,
+                fetch=_save_text if fetch is None else None,
+                limit=6,
+            )
+        except (FetchError, OSError) as exc:
+            print(f"baike-public-snapshot: archive save skipped ({exc})")
+            observations = serialized
+    else:
+        observations = serialized
     generated = iso_z(result["generated_at"]) or iso_z(datetime.now(timezone.utc))
     out = {
         "generated_at": generated,
@@ -123,6 +132,9 @@ def main(*, fetch=None, fetch_cdx=None, now: datetime | None = None, state_path:
         "n_unreachable": result["n_unreachable"],
         "n_login_walled": result["n_login_walled"],
         "n_observations": len(observations),
+        "status": "ok" if result["n_ok"] else "unreachable",
+        "collector_status": "observed" if result["n_ok"] else "source_refused",
+        "valid_for_series": bool(result["n_ok"]),
         "pages": result["pages"],
         "observations": observations,
     }
@@ -139,7 +151,10 @@ def main(*, fetch=None, fetch_cdx=None, now: datetime | None = None, state_path:
             "n_ok": out["n_ok"],
             "n_observations": out["n_observations"],
         }, ensure_ascii=False) + "\n")
-    print(f"baike-public-snapshot: {out['n_ok']}/{out['n_pages']} articles, {out['n_observations']} observations")
+    print(
+        f"baike-public-snapshot: {out['n_ok']}/{out['n_pages']} articles, "
+        f"{out['n_observations']} observations, status={out['status']}"
+    )
     return out
 
 

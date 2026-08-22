@@ -114,8 +114,8 @@ def test_transform_is_byte_deterministic_with_stable_ids_slugs_and_order(
     assert [story["id"] for story in first["stories"]] == [
         f"palimpsest-news:{story['signal_id']}" for story in first["stories"]
     ]
-    assert len({story["id"] for story in first["stories"]}) == 38
-    assert len({story["slug"] for story in first["stories"]}) == 38
+    assert len({story["id"] for story in first["stories"]}) == len(source["signals"])
+    assert len({story["slug"] for story in first["stories"]}) == len(source["signals"])
     assert all(
         story["url"] == f"https://palimpsest.info/news/{story['slug']}/"
         for story in first["stories"]

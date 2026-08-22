@@ -62,7 +62,9 @@ jobs:
         run: python -m scripts.import_nemesis_snapshot
 
       - name: Import the pinned BLEEDTHROUGH public aggregate
-        run: python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
+        run: |
+          python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
+          python -m scripts.import_host_snapshot --allow-empty-bootstrap-404
 
       - name: Import Telegram observations and collect Instagram publishers
         env:
@@ -115,6 +117,7 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_import_bleedthrough_snapshot.py \
+            tests/test_import_host_snapshot.py \
             tests/test_import_nemesis_snapshot.py \
             tests/test_import_social_observations.py \
             tests/test_social_observations.py \
@@ -198,6 +201,11 @@ jobs:
               git add "$path"
             fi
           done
+          git add -A -- readings china news datapackage.json
+          if git status --porcelain=v1 --untracked-files=all | grep -q .; then
+            echo "unstaged after git add:"
+            git status --porcelain=v1 --untracked-files=all | head -80
+          fi
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
@@ -247,6 +255,7 @@ jobs:
           fi
           python -m scripts.import_nemesis_snapshot
           python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
+          python -m scripts.import_host_snapshot --allow-empty-bootstrap-404
           python -m scripts.import_social_observations
           python -m scripts.instagram_pull
 
@@ -281,6 +290,7 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_import_bleedthrough_snapshot.py \
+            tests/test_import_host_snapshot.py \
             tests/test_import_nemesis_snapshot.py \
             tests/test_import_social_observations.py \
             tests/test_social_observations.py \
@@ -365,6 +375,11 @@ jobs:
               git add "$path"
             fi
           done
+          git add -A -- readings china news datapackage.json
+          if git status --porcelain=v1 --untracked-files=all | grep -q .; then
+            echo "unstaged after git add:"
+            git status --porcelain=v1 --untracked-files=all | head -80
+          fi
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet origin/main; then
               echo "no change after synchronization"
@@ -417,6 +432,7 @@ jobs:
           fi
           python -m scripts.import_nemesis_snapshot
           python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
+          python -m scripts.import_host_snapshot --allow-empty-bootstrap-404
           python -m scripts.import_social_observations
           python -m scripts.instagram_pull
 
@@ -451,6 +467,7 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_import_bleedthrough_snapshot.py \
+            tests/test_import_host_snapshot.py \
             tests/test_import_nemesis_snapshot.py \
             tests/test_import_social_observations.py \
             tests/test_social_observations.py \
@@ -535,6 +552,11 @@ jobs:
               git add "$path"
             fi
           done
+          git add -A -- readings china news datapackage.json
+          if git status --porcelain=v1 --untracked-files=all | grep -q .; then
+            echo "unstaged after git add:"
+            git status --porcelain=v1 --untracked-files=all | head -80
+          fi
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet; then
               echo "no change after push race"

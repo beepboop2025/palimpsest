@@ -556,7 +556,8 @@ def test_hourly_rollup_rebuilds_and_commits_catalog_views():
     committed_lines = {
         line.strip().rstrip("\\").strip()
         for line in workflow.splitlines()
-        if "catalog.json" in line or "datapackage.json" in line
+        if ("catalog.json" in line or "datapackage.json" in line)
+        and "git add -A" not in line
     }
     assert committed_lines == {
         "readings/catalog.json",

@@ -13,12 +13,12 @@
   ],
   "items": [
     {
-      "id": "palimpsest-news:board-alarm:sha256:d724b35f0cddbc9a4d51fe63b81304ae4327fa1fc44bac4a742e1cd402e30101",
+      "id": "palimpsest-news:board-alarm:sha256:b7ae9858f5e2276044f0bbc10c44788b54533f73e10c006e039219ebbec1cdd2",
       "url": "https://palimpsest.info/news/board-alarm/",
       "external_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "title": "[Palimpsest measurement] Network layer elevated in the latest board synthesis",
       "summary": "Palimpsest measurement. The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: single layer elevated: network. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing. The board-wide e-value is 3.123; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 32 are live. Health qualifiers: 3 degraded, 4 stale. The board-wide e-value is 3.123; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
       "date_published": "2026-08-22T07:23:38Z",
       "date_modified": "2026-08-22T07:23:38Z",
       "tags": [
@@ -37,7 +37,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-b0a1703a47c7cc03615c4b4c",
+        "revision_id": "storyv-2a3c1c13225296c99a950487",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -332,30 +332,31 @@
       }
     },
     {
-      "id": "palimpsest-news:public-deletion-ledgers:sha256:8117bd542245247c54b0f3a90b31e932666384cb9c8a30673094b27839bcb6df",
+      "id": "palimpsest-news:public-deletion-ledgers:sha256:b127fe694f82db95b4f4134d88b79c63c69835d2faf69bb0e25a235983cfcf2f",
       "url": "https://palimpsest.info/news/public-deletion-ledgers/",
       "external_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
-      "title": "[Palimpsest measurement] Public deletion ledgers: no current finding",
-      "summary": "Palimpsest measurement. The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Public deletion ledgers because the source status is missing.\n\nLimit: Current finding withheld: source file is missing A missing ledger file is an abstention, not proof that nothing was deleted. Reachability of a public RSS feed is not a census of Chinese-language deletions.\n\nEvidence: https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
-      "date_published": "2026-08-22T10:37:17Z",
-      "date_modified": "2026-08-22T10:37:17Z",
+      "title": "[Palimpsest measurement] Public deletion ledgers carry 15 observations from reachable feeds",
+      "summary": "Palimpsest measurement. CDT, GreatFire and FreeWeibo-style RSS/Atom ledgers are ingested only when a feed answers; unreachable ledgers stay named rather than becoming a zero.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current ledger ingest published 15 public observations.\n\nLimit: A missing ledger file is an abstention, not proof that nothing was deleted. Reachability of a public RSS feed is not a census of Chinese-language deletions.\n\nEvidence: https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+      "date_published": "2026-08-22T11:23:45Z",
+      "date_modified": "2026-08-22T11:23:45Z",
       "tags": [
         "palimpsest-measurement",
         "Attention and Narrative",
         "public-deletion-ledgers",
-        "missing"
+        "live"
       ],
       "attachments": [
         {
           "url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
           "mime_type": "application/json",
-          "title": "public-deletion-ledgers-latest.json"
+          "title": "public-deletion-ledgers-latest.json",
+          "size_in_bytes": 66326
         }
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-b2eb580a12cb4ac42a78c9ed",
+        "revision_id": "storyv-19ad1724d4519e7089444e6a",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -418,30 +419,31 @@
       }
     },
     {
-      "id": "palimpsest-news:peer-context:sha256:c93a0a183ade1fd5320f4b2266cec5630c86b7ffae4ee142c1c3ab016c2a5362",
+      "id": "palimpsest-news:peer-context:sha256:985bd2859b7fcd26d15f61323ede3f94d23b8839b449818eb93e1fe0697a6e6f",
       "url": "https://palimpsest.info/news/attributed-peer-context/",
       "external_url": "https://palimpsest.info/readings/peer-context-latest.json",
-      "title": "[Palimpsest measurement] Attributed peer-context warehouse: no current finding",
-      "summary": "Palimpsest measurement. The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Attributed peer-context warehouse because the source status is missing.\n\nLimit: Current finding withheld: source file is missing Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator.\n\nEvidence: https://palimpsest.info/readings/peer-context-latest.json",
-      "date_published": "2026-08-22T10:37:17Z",
-      "date_modified": "2026-08-22T10:37:17Z",
+      "title": "[Palimpsest measurement] Peer-context joins 17 already-held Palimpsest hosts",
+      "summary": "Palimpsest measurement. GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention stay named as peer context. They never become Palimpsest capture.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current peer-context warehouse joins 17 already-held hosts.\n\nLimit: Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator.\n\nEvidence: https://palimpsest.info/readings/peer-context-latest.json",
+      "date_published": "2026-08-22T09:48:00Z",
+      "date_modified": "2026-08-22T09:48:00Z",
       "tags": [
         "palimpsest-measurement",
         "Attention and Narrative",
         "peer-context",
-        "missing"
+        "live"
       ],
       "attachments": [
         {
           "url": "https://palimpsest.info/readings/peer-context-latest.json",
           "mime_type": "application/json",
-          "title": "peer-context-latest.json"
+          "title": "peer-context-latest.json",
+          "size_in_bytes": 52878
         }
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-ff376f6322d5d421fecc8844",
+        "revision_id": "storyv-39a67495afaa9cece0c52d61",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -649,59 +651,60 @@
       }
     },
     {
-      "id": "palimpsest-news:bleedthrough:sha256:491da606cfd905f6d8d7e1debefc95cfd3be2cee2d7bd824cb5358109324b168",
+      "id": "palimpsest-news:bleedthrough:sha256:770a92ede5886d27c94541df3cc7763a7040196ff131e414759647d754a2abdf",
       "url": "https://palimpsest.info/news/bleedthrough-injector-tomography/",
       "external_url": "https://palimpsest.info/readings/bleedthrough-latest.json",
-      "title": "[Palimpsest measurement] Bleedthrough injector tomography: no current finding",
-      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Bleedthrough injector tomography because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading.\n\nEvidence: https://palimpsest.info/readings/bleedthrough-latest.json",
-      "date_published": "2026-08-17T00:57:15Z",
-      "date_modified": "2026-08-17T00:57:15Z",
+      "title": "[Palimpsest measurement] Controlled external probes publish a current injector-tomography round",
+      "summary": "Palimpsest measurement. The optional, rate-limited measurement runs only from a declared controlled deployment.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: A current controlled DNS-probe round is available for injector-tomography analysis.\n\nLimit: This optional active-probe layer is deployment-controlled; absence must never be converted into a zero or calm reading.\n\nEvidence: https://palimpsest.info/readings/bleedthrough-latest.json",
+      "date_published": "2026-08-22T06:57:38Z",
+      "date_modified": "2026-08-22T06:57:38Z",
       "tags": [
         "palimpsest-measurement",
         "Network and Circumvention",
         "bleedthrough",
-        "stale"
+        "live"
       ],
       "attachments": [
         {
           "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
           "mime_type": "application/json",
           "title": "bleedthrough-latest.json",
-          "size_in_bytes": 2760
+          "size_in_bytes": 2781
         }
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-cbac19d77ddad99b12d21bec",
+        "revision_id": "storyv-82cf320e4659d4189f533578",
         "verification_status": "palimpsest_measurement"
       }
     },
     {
-      "id": "palimpsest-news:greatfire-context:sha256:6ddc8e5dc67c681b51e2f36eca577b761b69107a888b025e369f40b7370aed10",
+      "id": "palimpsest-news:greatfire-context:sha256:40486e9052e584207a14c5449e16188f38882040f38c45acb033ff84a69033ed",
       "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
       "external_url": "https://palimpsest.info/readings/greatfire-context-latest.json",
-      "title": "[Palimpsest measurement] GreatFire attributed verdicts: no current finding",
-      "summary": "Palimpsest measurement. The source is missing. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for GreatFire attributed verdicts because the source status is missing.\n\nLimit: Current finding withheld: source file is missing A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive.\n\nEvidence: https://palimpsest.info/readings/greatfire-context-latest.json",
-      "date_published": "2026-08-22T10:37:17Z",
-      "date_modified": "2026-08-22T10:37:17Z",
+      "title": "[Palimpsest measurement] GreatFire's cache holds 17 90-day verdicts for already-held Palimpsest URLs",
+      "summary": "Palimpsest measurement. The GreatFire Analyzer open API is credited by name and date. Palimpsest is not the origin of these measurements and does not crawl the catalog.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current GreatFire context cache contains 17 compact 90-day verdicts.\n\nLimit: A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive.\n\nEvidence: https://palimpsest.info/readings/greatfire-context-latest.json",
+      "date_published": "2026-08-22T06:33:12Z",
+      "date_modified": "2026-08-22T06:33:12Z",
       "tags": [
         "palimpsest-measurement",
         "Network and Circumvention",
         "greatfire-context",
-        "missing"
+        "live"
       ],
       "attachments": [
         {
           "url": "https://palimpsest.info/readings/greatfire-context-latest.json",
           "mime_type": "application/json",
-          "title": "greatfire-context-latest.json"
+          "title": "greatfire-context-latest.json",
+          "size_in_bytes": 44357
         }
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-18d793ca1af351a9b1ae27a3",
+        "revision_id": "storyv-e74dd3f20c97b1a19f527c98",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -876,6 +879,35 @@
       "_palimpsest": {
         "kind": "instrument_measurement",
         "revision_id": "storyv-ddf1bd411c9946e408224c37",
+        "verification_status": "palimpsest_measurement"
+      }
+    },
+    {
+      "id": "palimpsest-news:baike-public-snapshot:sha256:9f00fc4d56f11fe8a32fa8b96eb87a4ec7579652294414784e84d488322580d9",
+      "url": "https://palimpsest.info/news/baike-public-snapshot/",
+      "external_url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+      "title": "[Palimpsest measurement] Public Baike HTML answered 1 of 8 watched articles",
+      "summary": "Palimpsest measurement. Topic and event pages are fetched without a login. A 403 or login wall is recorded as unreachable, never as a rewrite. The Wikipedia-fork collector stays disabled.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The public Baike snapshot fetched 1 of 8 watched articles this round.\n\nLimit: A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites.\n\nEvidence: https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+      "date_published": "2026-08-22T11:21:09Z",
+      "date_modified": "2026-08-22T11:21:09Z",
+      "tags": [
+        "palimpsest-measurement",
+        "Erasure and Distribution",
+        "baike-public-snapshot",
+        "live"
+      ],
+      "attachments": [
+        {
+          "url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+          "mime_type": "application/json",
+          "title": "baike-public-snapshot-latest.json",
+          "size_in_bytes": 11860
+        }
+      ],
+      "_palimpsest": {
+        "kind": "instrument_measurement",
+        "revision_id": "storyv-59deebc3d873da998402c976",
         "verification_status": "palimpsest_measurement"
       }
     },

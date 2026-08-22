@@ -56,6 +56,11 @@ jobs:
         # the composite below then exposes the retained reading as stale/unavailable.
         run: python -m scripts.baike_redaction_pull
 
+      - name: Refresh the public Baike article snapshot
+        # Public HTML GET only. Not the Wikipedia-fork collector. A 403 from
+        # Baidu is published as unreachable, never as a rewrite.
+        run: python -m scripts.baike_public_snapshot_pull
+
       - name: Seal current readings and publish the composite index
         run: python -m scripts.erasure_pull
 
@@ -163,6 +168,8 @@ jobs:
                    readings/readings-ledger.jsonl \
                    readings/baike-redaction-latest.json \
                    readings/baike-redaction-history.jsonl \
+                   readings/baike-public-snapshot-latest.json \
+                   readings/baike-public-snapshot-history.jsonl \
                    readings/eval-registry.jsonl \
                    readings/eval-registry-latest.json \
                    readings/eval-assurance-latest.json \
@@ -213,6 +220,8 @@ jobs:
                      readings/erasure-ledger.jsonl \
                      readings/baike-redaction-latest.json \
                      readings/baike-redaction-history.jsonl \
+                     readings/baike-public-snapshot-latest.json \
+                     readings/baike-public-snapshot-history.jsonl \
                      readings/eval-registry.jsonl \
                      readings/eval-registry-latest.json \
                      readings/refusal-drift-latest.json \
@@ -286,6 +295,8 @@ jobs:
                    readings/readings-ledger.jsonl \
                    readings/baike-redaction-latest.json \
                    readings/baike-redaction-history.jsonl \
+                   readings/baike-public-snapshot-latest.json \
+                   readings/baike-public-snapshot-history.jsonl \
                    readings/eval-registry.jsonl \
                    readings/eval-registry-latest.json \
                    readings/eval-assurance-latest.json \
@@ -333,6 +344,8 @@ jobs:
             # shared seals, and anchors stay at origin/main until rebuilt below.
             for p in readings/baike-redaction-latest.json \
                      readings/baike-redaction-history.jsonl \
+                     readings/baike-public-snapshot-latest.json \
+                     readings/baike-public-snapshot-history.jsonl \
                      readings/eval-registry.jsonl \
                      readings/eval-registry-latest.json \
                      readings/refusal-drift-latest.json \
@@ -377,6 +390,8 @@ jobs:
                      readings/readings-ledger.jsonl \
                      readings/baike-redaction-latest.json \
                      readings/baike-redaction-history.jsonl \
+                     readings/baike-public-snapshot-latest.json \
+                     readings/baike-public-snapshot-history.jsonl \
                      readings/eval-registry.jsonl \
                      readings/eval-registry-latest.json \
                      readings/eval-assurance-latest.json \

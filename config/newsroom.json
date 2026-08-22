@@ -517,6 +517,23 @@
       "related_signal_ids": ["wayback", "erasure-observatory"]
     },
     {
+      "id": "baike-public-snapshot",
+      "name": "Baike public snapshot",
+      "slug": "baike-public-snapshot",
+      "section": "erasure",
+      "order": 7,
+      "type": "measurement",
+      "priority": "background",
+      "claim_type": "observation",
+      "headline_template": "Public Baike HTML answered {value} of {denominator} watched articles",
+      "dek_template": "Topic and event pages are fetched without a login. A 403 or login wall is recorded as unreachable, never as a rewrite. The Wikipedia-fork collector stays disabled.",
+      "claim_template": "The public Baike snapshot fetched {value} of {denominator} watched articles this round.",
+      "limitations": [
+        "A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites."
+      ],
+      "related_signal_ids": ["baike-redaction", "wayback", "erasure-observatory"]
+    },
+    {
       "id": "github-refuge",
       "name": "GitHub refuge watch",
       "slug": "github-refuge-watch",

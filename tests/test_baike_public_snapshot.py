@@ -76,7 +76,7 @@ def test_login_wall_without_prior_state_emits_nothing():
     assert result["n_observations"] == 0
 
 
-def test_pull_abstains_when_walled_and_stateless(tmp_path, monkeypatch):
+def test_pull_publishes_refused_access_when_no_article_answers(tmp_path, monkeypatch):
     import scripts.baike_public_snapshot_pull as pull
 
     monkeypatch.setattr(pull, "OUT", tmp_path / "baike-public-snapshot-latest.json")
@@ -85,5 +85,85 @@ def test_pull_abstains_when_walled_and_stateless(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "READINGS", tmp_path)
     monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
 
-    assert pull.main(fetch=lambda url: (200, WALL), fetch_cdx=lambda url: "") is None
-    assert not (tmp_path / "baike-public-snapshot-latest.json").exists()
+    out = pull.main(fetch=lambda url: (403, ""), fetch_cdx=lambda url: "")
+    assert out is not None
+    assert out["n_ok"] == 0
+    assert out["n_unreachable"] == out["n_pages"]
+    assert out["status"] == "unreachable"
+    assert out["collector_status"] == "source_refused"
+    assert out["valid_for_series"] is False
+    assert (tmp_path / "baike-public-snapshot-latest.json").is_file()
+
+
+def test_pull_skips_archive_save_when_no_article_answers(tmp_path, monkeypatch):
+    import scripts.baike_public_snapshot_pull as pull
+
+    monkeypatch.setattr(pull, "OUT", tmp_path / "baike-public-snapshot-latest.json")
+    monkeypatch.setattr(pull, "HIST", tmp_path / "baike-public-snapshot-history.jsonl")
+    monkeypatch.setattr(pull, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(pull, "READINGS", tmp_path)
+    monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("unreachable pages must not request Save Page Now")
+
+    monkeypatch.setattr(pull, "attach_new_url_captures", boom)
+    out = pull.main(fetch=lambda url: (403, ""), fetch_cdx=lambda url: "")
+    assert out is not None
+    assert out["status"] == "unreachable"
+    assert (tmp_path / "baike-public-snapshot-latest.json").is_file()
+
+
+def test_pull_still_publishes_when_archive_save_raises(tmp_path, monkeypatch):
+    import scripts.baike_public_snapshot_pull as pull
+
+    monkeypatch.setattr(pull, "OUT", tmp_path / "baike-public-snapshot-latest.json")
+    monkeypatch.setattr(pull, "HIST", tmp_path / "baike-public-snapshot-history.jsonl")
+    monkeypatch.setattr(pull, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(pull, "READINGS", tmp_path)
+    monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
+    def boom(*_args, **_kwargs):
+        raise pull.FetchError("http status 523")
+
+    monkeypatch.setattr(pull, "attach_new_url_captures", boom)
+    url = "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8"
+    pages = [{"url": url, "term": "白纸运动", "domain": "UNREST", "kind": "event", "why": "x"}]
+    monkeypatch.setattr(pull, "load_pages", lambda: pages)
+    out = pull.main(fetch=lambda _url: (200, ARTICLE), fetch_cdx=lambda _url: CDX)
+    assert out is not None
+    assert out["n_ok"] == 1
+    assert out["status"] == "ok"
+    assert (tmp_path / "baike-public-snapshot-latest.json").is_file()
+
+
+def test_save_text_turns_fetch_error_into_transport_failure(monkeypatch):
+    import scripts.baike_public_snapshot_pull as pull
+
+    def boom(*_args, **_kwargs):
+        raise pull.FetchError("http status 523")
+
+    monkeypatch.setattr(pull, "safe_fetch", boom)
+    try:
+        pull._save_text("https://web.archive.org/save/https://example.com/")
+    except OSError as exc:
+        assert "523" in str(exc)
+    else:
+        raise AssertionError("expected OSError")
+
+
+def test_pull_publishes_login_wall_as_unreachable_not_rewrite(tmp_path, monkeypatch):
+    import scripts.baike_public_snapshot_pull as pull
+
+    monkeypatch.setattr(pull, "OUT", tmp_path / "baike-public-snapshot-latest.json")
+    monkeypatch.setattr(pull, "HIST", tmp_path / "baike-public-snapshot-history.jsonl")
+    monkeypatch.setattr(pull, "STATE", tmp_path / "state.json")
+    monkeypatch.setattr(pull, "READINGS", tmp_path)
+    monkeypatch.setattr(pull, "KillSwitch", lambda: _Live())
+
+    out = pull.main(fetch=lambda url: (200, WALL), fetch_cdx=lambda url: "")
+    assert out is not None
+    assert out["n_ok"] == 0
+    assert out["n_login_walled"] == out["n_pages"]
+    assert out["status"] == "unreachable"
+    assert out["valid_for_series"] is False
+    assert (tmp_path / "baike-public-snapshot-latest.json").is_file()

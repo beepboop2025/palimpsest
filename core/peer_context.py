@@ -511,6 +511,17 @@ def rows_for_hosts(
     return rows[:MAX_PEERS_PER_EVENT]
 
 
+def _publication_clock(*values: Any) -> datetime | None:
+    """Parse the first canonical UTC stamp. Miss rows must not use wall clock."""
+
+    for raw in values:
+        stamped = iso_z(raw)
+        if not stamped:
+            continue
+        return datetime.strptime(stamped, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return None
+
+
 def peer_context_for_event(
     event: Mapping[str, Any],
     peer: Mapping[str, Any] | None,
@@ -526,13 +537,20 @@ def peer_context_for_event(
         for item in (wire or {}).get("items", [])
         if isinstance(item, Mapping) and item.get("item_id")
     }
+    now = _publication_clock(
+        peer.get("generated_at"),
+        event.get("updated_at"),
+        event.get("published_at"),
+    )
+    if now is None:
+        raise ValueError("peer_context_for_event needs the warehouse or event clock")
     return rows_for_hosts(
         _event_hosts(event),
         greatfire=peer.get("greatfire") if isinstance(peer.get("greatfire"), Mapping) else None,
         ooni=peer.get("ooni") if isinstance(peer.get("ooni"), Mapping) else None,
         cdt_items=peer.get("cdt_items") if isinstance(peer.get("cdt_items"), list) else [],
         include_weiboscope=True,
-        now=datetime.now(timezone.utc),
+        now=now,
         event=event,
         wire_items=items,
     )

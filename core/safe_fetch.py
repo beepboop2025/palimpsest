@@ -19,10 +19,12 @@ untrusted data. Standard-library only. See SECURITY-HARDENING.md for the full th
 
 STATUS: WIRED AT NARROW PUBLICATION BOUNDARIES. The optional Nemesis snapshot importer uses
 this path with redirects disabled before accepting a configured external HTTPS document; the
-fixed-origin BLEEDTHROUGH importer does the same for the prober's coarse public aggregate; and
-the closed RSS/Atom evidence wire uses the byte interface for every reviewed feed. Other live
-observatory collectors still use their declared legacy clients. This module protects those
-named imports while remaining the migration target for the collector inventory.
+fixed-origin BLEEDTHROUGH importer does the same for the prober's coarse public aggregate; the
+host-snapshot importer does the same for Hetzner-published peer-context, GreatFire cache,
+public-deletion ledgers, and public Baike HTML snapshots; and the closed RSS/Atom evidence
+wire uses the byte interface for every reviewed feed. Other live observatory collectors still
+use their declared legacy clients. This module protects those named imports while remaining
+the migration target for the collector inventory.
 
 The inventory of what still has to move includes every un-hardened egress call site, each with the
 honest reason it has not moved yet (async-only paths, POST bodies this GET-only fetch cannot
