@@ -9,6 +9,7 @@ corroborate itself.
 import json
 import random
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from processors.board_alarm import (
     FDR_ALPHA,
@@ -19,6 +20,21 @@ from processors.board_alarm import (
     layer_evalues,
 )
 from processors.conformal_events import merge_e
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_refresh_installs_the_pinned_test_environment_before_validation():
+    workflow = (
+        ROOT / ".github" / "workflows" / "board-alarm-refresh.yml"
+    ).read_text(encoding="utf-8")
+    install = workflow.index("- name: Install the pinned offline test runner")
+    build = workflow.index("- name: Recompute the board alarm")
+
+    assert install < build
+    assert "python -m pip install --quiet --require-hashes" in workflow[install:build]
+    assert "-r .github/osint-china-ci-requirements.txt" in workflow[install:build]
 
 
 # ── e-BH selection ──────────────────────────────────────────────────────────────
