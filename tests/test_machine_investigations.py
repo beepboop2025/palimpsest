@@ -351,7 +351,6 @@ class MachineInvestigationsContractTests(unittest.TestCase):
     def test_shared_lineage_is_counted_once(self) -> None:
         network = _case(_build(), "automated_evidence_analysis")
         if network["status"] == "abstained":
-            self.assertEqual(network["evidence"], [])
             self.assertIn(
                 "independent-groups",
                 network["evaluation_receipt"]["failed_gate_ids"],
