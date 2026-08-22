@@ -361,6 +361,15 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
         "trainer": "prequential-robust-mad/v1",
         "side": "high",
     },
+    "peer-context-rank": {
+        "history": "peer-context-rank-history.jsonl",
+        "extract": _field("n_peer_series_scored"),
+        "field": "n_peer_series_scored",
+        "meaning": "scored peer series vs this instrument's own past",
+        "min_history": MAD_MIN_HISTORY,
+        "trainer": "prequential-robust-mad/v1",
+        "side": "high",
+    },
     "apple-censorship": {
         "history": "apple-censorship-history.jsonl",
         "extract": _field("unavailable_pct"),
