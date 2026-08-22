@@ -136,20 +136,20 @@ def _s(
 # tests/test_osint_china.py ratchets this list against the committed *-latest.json inventory.
 SIGNALS: tuple[SignalSpec, ...] = (
     # Board-level synthesis and its safeguards.
-    _s("board-alarm", "Board alarm", "command", "board-alarm-latest.json", 6, 14,
+    _s("board-alarm", "Board alarm", "command", "board-alarm-latest.json", 1, 3,
        "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
        "board e-value", ("board_e_value",), "e-value"),
     _s("event-flags", "Event flags", "command", "event-flags-latest.json", 6, 14,
        "Per-signal conformal event states, including non-reporting and stale series.",
        "signals reporting", ("n_reporting",), "count", "signals configured", ("n_signals",)),
-    _s("coverage-guard", "Coverage guard", "command", "coverage-guard-latest.json", 6, 14,
+    _s("coverage-guard", "Coverage guard", "command", "coverage-guard-latest.json", 1, 3,
        "Checks whether apparent movement is confounded by changing measurement coverage.",
        "confounded signals", ("confounded",), "count"),
-    _s("forecast-ledger", "Forecast ledger", "command", "forecast-ledger-latest.json", 6, 14,
+    _s("forecast-ledger", "Forecast ledger", "command", "forecast-ledger-latest.json", 1, 3,
        "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
        "empirical coverage", ("pooled_empirical_coverage",), "ratio",
        "forecasts", ("n_forecasts",)),
-    _s("cross-layer", "Cross-layer lead/lag", "command", "cross-layer-latest.json", 6, 14,
+    _s("cross-layer", "Cross-layer lead/lag", "command", "cross-layer-latest.json", 1, 3,
        "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
        "confirmed pairs", ("n_confirmed",), "count", "pairs tested", ("n_pairs_tested",)),
 
@@ -162,10 +162,10 @@ SIGNALS: tuple[SignalSpec, ...] = (
        "Contrasts DDTI terms with global GDELT coverage without treating absence as proof.",
        "terms with global data", ("n_with_global_data",), "count",
        "terms compared", ("n_terms",)),
-    _s("weibo-hotsearch", "Weibo hot-search join", "attention", "weibo-hotsearch-latest.json", 6, 14,
+    _s("weibo-hotsearch", "Weibo hot-search join", "attention", "weibo-hotsearch-latest.json", 1, 3,
        "Joins deletion-stream terms to archived Weibo hot-search board captures.",
        "board entries", ("board_entries",), "count"),
-    _s("silence-index", "Silence index", "attention", "silence-index-latest.json", 6, 14,
+    _s("silence-index", "Silence index", "attention", "silence-index-latest.json", 1, 3,
        "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
        "blackout topics", ("n_blackout",), "count", "topics considered", ("n_topics_considered",)),
     _s("blocklist", "Platform blocklist archaeology", "attention", "blocklist-latest.json", 168, 192,
@@ -340,8 +340,11 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # ledger is attributed publisher context rather than a measurement; the Situation index
 # consumes this roll-up and therefore cannot be fed back into it; live-watch and
 # rumour-board are public-vantage coverage receipts, not OSINT China measurements;
-# and the remaining files are generic model evaluation surfaces. Research-corpus
-# metadata is a first-party China-adjacent input and is listed in SIGNALS.
+# weekly-situation, collector-health and gazetteer-phylogeny are derived fusion and
+# ops surfaces over inputs already counted here; weibo-hotsearch-terms is the
+# title-union dump of the already-counted hot-search board; and the remaining files are generic
+# model evaluation surfaces. Research-corpus metadata is a first-party China-adjacent
+# input and is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset({
     "china-article-stream-latest.json",
     "china-censorship-analysis-latest.json",
@@ -380,6 +383,10 @@ EXCLUDED_LATEST_FILES = frozenset({
     "telegram-public-channels-latest.json",
     "reading-analysis-latest.json",
     "peer-context-rank-latest.json",
+    "weekly-situation-latest.json",
+    "collector-health-latest.json",
+    "gazetteer-phylogeny-latest.json",
+    "weibo-hotsearch-terms-latest.json",
 })
 
 

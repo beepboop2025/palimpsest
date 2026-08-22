@@ -611,12 +611,19 @@ def discover_history_instruments(readings_dir: Path | str) -> list[str]:
 
 
 def list_public_history_files(readings_dir: Path | str) -> list[str]:
-    """Every ``*-history.jsonl`` except the GFI concept log and unnamed dump."""
+    """Every ``*-history.jsonl`` except fusion/ops logs and the unnamed dump."""
 
     root = Path(readings_dir)
     names = []
+    skip = {
+        "reading-analysis-history.jsonl",
+        "peer-context-history.jsonl",
+        "weekly-situation-history.jsonl",
+        "collector-health-history.jsonl",
+        "weibo-hotsearch-terms-history.jsonl",
+    }
     for path in sorted(root.glob("*-history.jsonl")):
-        if path.name in {"reading-analysis-history.jsonl", "peer-context-history.jsonl"}:
+        if path.name in skip:
             continue
         names.append(path.name)
     return names

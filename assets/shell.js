@@ -756,6 +756,31 @@
     document.head.appendChild(beacon);
   }
 
+  /* ---------------------------------------------------- freshness lease ---- */
+  /* GitHub Pages can publish a new edition while a reader keeps an old tab
+     open indefinitely. Renew that tab after one hour, but never destroy text a
+     reader is entering into a form. Returning to a backgrounded tab also
+     performs the check immediately instead of waiting for the next timer tick. */
+  function initFreshnessLease() {
+    var loadedAt = Date.now();
+    var leaseMs = 60 * 60 * 1000;
+    var formIsDirty = false;
+
+    document.addEventListener("input", function (event) {
+      if (event.target && event.target.closest && event.target.closest("form")) {
+        formIsDirty = true;
+      }
+    });
+
+    function renewIfDue() {
+      if (document.hidden || formIsDirty || Date.now() - loadedAt < leaseMs) return;
+      window.location.reload();
+    }
+
+    window.setInterval(renewIfDue, 60 * 1000);
+    document.addEventListener("visibilitychange", renewIfDue);
+  }
+
   function init() {
     initNav();
     initStagger();
@@ -763,6 +788,7 @@
     initPageShare();
     initCardShare();
     initWebAnalytics();
+    initFreshnessLease();
   }
 
   if (document.readyState === "loading") {

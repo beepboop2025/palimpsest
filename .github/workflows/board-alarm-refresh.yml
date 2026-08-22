@@ -1,6 +1,6 @@
 name: Refresh board-level judgements
 
-# The four board-level judgements, all pure local recomputation over the signal
+# The public derived edition, all pure local recomputation over the signal
 # history JSONLs (no network, stdlib-only, deterministic):
 #
 #   board alarm    — e-BH selection across all monitored signals plus per-layer
@@ -17,18 +17,22 @@ name: Refresh board-level judgements
 #                    a circular-shift null on differenced series (a naive correlation
 #                    test on these autocorrelated signals is confidently wrong).
 #
-# Runs after the conformal event flags, which run after the signal pulls.
+# Runs hourly after the evidence wire. Event flags retain their source-driven
+# cadence; an hourly edition republishes their explicit age rather than
+# pretending an unchanged upstream signal was measured again.
 
 on:
   schedule:
-    - cron: "53 */6 * * *"     # every 6 hours, after event-flags at :47
+    - cron: "53 * * * *"       # hourly public edition, after event-flags/newswire at :47
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: board-alarm-refresh
+  # These files summarize almost every other collector. Serialize them with
+  # the newswire and OSINT publishers so main never exposes a half-built graph.
+  group: derived-graph-publish
   cancel-in-progress: false
 
 jobs:
@@ -55,6 +59,27 @@ jobs:
       - name: Recompute cross-layer lead/lag
         run: python -m scripts.cross_layer_pull
 
+      - name: Seal the weekly situation report
+        run: python -m scripts.weekly_situation_pull
+
+      - name: Publish collector health
+        run: python -m scripts.collector_health_pull
+
+      - name: Publish gazetteer phylogeny
+        run: python -m scripts.gazetteer_phylogeny_pull
+
+      - name: Validate the complete public edition
+        run: >-
+          python -m pytest -q
+          tests/test_board_alarm.py
+          tests/test_coverage_guard.py
+          tests/test_forecast_ledger.py
+          tests/test_cross_layer.py
+          tests/test_weekly_situation.py
+          tests/test_collector_health.py
+          tests/test_gazetteer_phylogeny.py
+          tests/test_publication_contract.py
+
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
@@ -75,7 +100,11 @@ jobs:
           git add readings/board-alarm-latest.json readings/board-alarm-history.jsonl \
                   readings/coverage-guard-latest.json readings/coverage-guard-history.jsonl \
                   readings/forecast-ledger-latest.json readings/forecast-ledger-history.jsonl \
-                  readings/cross-layer-latest.json readings/cross-layer-history.jsonl 2>/dev/null || true
+                  readings/cross-layer-latest.json readings/cross-layer-history.jsonl \
+                  readings/weekly-situation-latest.json readings/weekly-situation-history.jsonl \
+                  readings/collector-health-latest.json readings/collector-health-history.jsonl \
+                  readings/gazetteer-phylogeny-latest.json \
+                  weekly-situation.html 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else
@@ -85,6 +114,9 @@ jobs:
               --rebuild-module scripts.coverage_guard_pull \
               --rebuild-module scripts.forecast_ledger_pull \
               --rebuild-module scripts.cross_layer_pull \
+              --rebuild-module scripts.weekly_situation_pull \
+              --rebuild-module scripts.collector_health_pull \
+              --rebuild-module scripts.gazetteer_phylogeny_pull \
               --stage readings/board-alarm-latest.json \
               --stage readings/board-alarm-history.jsonl \
               --stage readings/coverage-guard-latest.json \
@@ -92,5 +124,11 @@ jobs:
               --stage readings/forecast-ledger-latest.json \
               --stage readings/forecast-ledger-history.jsonl \
               --stage readings/cross-layer-latest.json \
-              --stage readings/cross-layer-history.jsonl
+              --stage readings/cross-layer-history.jsonl \
+              --stage readings/weekly-situation-latest.json \
+              --stage readings/weekly-situation-history.jsonl \
+              --stage readings/collector-health-latest.json \
+              --stage readings/collector-health-history.jsonl \
+              --stage readings/gazetteer-phylogeny-latest.json \
+              --stage weekly-situation.html
           fi

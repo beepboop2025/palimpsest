@@ -6,6 +6,15 @@
 UNDERTEXT is the **active** measurement layer of Palimpsest. Where the passive legs (China
 Digital Times, FreeWeibo) *witness* censorship after the fact, UNDERTEXT *measures* it.
 
+## What is public today
+
+Outside-the-wall public paths already in production: public deletion ledgers,
+official first-seen polls, news-wire live projections, Wikipedia gazetteer
+recent-changes, public Baike snapshots, public hot boards, and public Telegram
+channel previews. Multi-vantage active queries of in-country surfaces stay
+gated. The safer public method is retroactive Wayback plus those public
+surfaces, not a live in-country actor. Limits below still apply in full.
+
 ## 1. The problem
 
 China's true information state is opaque. The highest-value signals — official misconduct

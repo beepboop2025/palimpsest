@@ -10,6 +10,15 @@ UNDERTEXT (the content-apparatus layer). Both are "the censor as sensor" — but
 UNDERTEXT fingerprints *what content diverges*, BLEEDTHROUGH fingerprints *the fleet of
 machines doing the censoring*.
 
+## What is public today
+
+The public reading is the Hetzner-probed import at
+`readings/bleedthrough-latest.json`: forged-response pool statistics from dark
+IPs, pulled through the public snapshot path. Raw-socket TTL legs and stateful
+add-ons stay governance-gated. Target IPs are not published. A missing import
+is an abstention. It is never a demo badge treated as a live zero. Limits in
+section 8 still apply in full.
+
 ## 1. The problem every other observatory leaves open
 
 OONI, Censored Planet, and GFWatch all answer one question: **"what is blocked?"** — the

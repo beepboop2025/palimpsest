@@ -10,7 +10,7 @@ name: Refresh Silence Index
 
 on:
   schedule:
-    - cron: "33 */6 * * *"     # every 6 hours, offset from the other signals
+    - cron: "33 * * * *"       # hourly, after the hourly Weibo archive read
   workflow_dispatch: {}
 
 permissions:
@@ -35,6 +35,13 @@ jobs:
 
       - name: Score pre-emptive silence and publish the silence-index signal
         run: python -m scripts.silence_index_pull
+
+      - name: Validate schema compatibility and publication honesty
+        run: >-
+          python -m pytest -q
+          tests/test_silence_index.py
+          tests/test_silence_index_pull_publish.py
+          tests/test_publication_contract.py
 
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication

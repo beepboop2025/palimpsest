@@ -144,7 +144,17 @@ def test_json_schema_accepts_a_live_dump():
     jsonschema.Draft202012Validator(schema).validate(document)
 
 
-def test_repo_does_not_commit_a_fake_terms_latest():
-    assert not Path(__file__).resolve().parent.parent.joinpath(
+def test_repo_commits_a_measured_terms_latest_not_a_fixture():
+    path = Path(__file__).resolve().parent.parent.joinpath(
         "readings", "weibo-hotsearch-terms-latest.json"
-    ).exists()
+    )
+    document = json.loads(path.read_text(encoding="utf-8"))
+
+    assert document["schema_version"] == SCHEMA_VERSION
+    assert document["job_name"] == JOB_NAME
+    assert document["status"] == "live"
+    assert document["generated_at"].endswith("Z")
+    assert document["window_days"]
+    assert document["n_titles"] == len(document["terms"])
+    assert document["n_titles"] > 0
+    assert all(row.get("title") and row.get("title_sha256") for row in document["terms"])

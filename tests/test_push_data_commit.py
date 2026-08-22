@@ -639,8 +639,15 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     }
 
     board = (workflow_root / "board-alarm-refresh.yml").read_text(encoding="utf-8")
-    assert board.count("--rebuild-module") == 4
-    assert board.count("--stage") == 8
+    assert board.count("--rebuild-module") == 7
+    assert board.count("--stage") == 14
+    assert "--rebuild-module scripts.weekly_situation_pull" in board
+    assert "--rebuild-module scripts.collector_health_pull" in board
+    assert "--rebuild-module scripts.gazetteer_phylogeny_pull" in board
+    assert "--stage readings/weekly-situation-latest.json" in board
+    assert "--stage readings/collector-health-latest.json" in board
+    assert "--stage readings/gazetteer-phylogeny-latest.json" in board
+    assert "--stage weekly-situation.html" in board
     vantage = (workflow_root / "vantage-fusion-refresh.yml").read_text(encoding="utf-8")
     assert "--rebuild-module scripts.vantage_fusion_pull" in vantage
     events = (workflow_root / "event-flags-refresh.yml").read_text(encoding="utf-8")

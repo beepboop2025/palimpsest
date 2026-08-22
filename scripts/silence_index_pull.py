@@ -96,7 +96,15 @@ def _domestic_map(now: datetime) -> dict | None:
         t = t.replace(tzinfo=timezone.utc)
     if now - t > timedelta(hours=WEIBO_MAX_AGE_H):
         return None
-    window = w.get("window_days") or 7
+    raw_window = w.get("window_days", 7)
+    if isinstance(raw_window, list):
+        window = len(raw_window)
+    elif isinstance(raw_window, int) and not isinstance(raw_window, bool):
+        window = raw_window
+    else:
+        return None
+    if window <= 0:
+        return None
     out = {}
     for row in w.get("join") or []:
         term = row.get("term")
@@ -187,14 +195,14 @@ def main() -> None:
             "and the processor's per-term gazetteer gate is deliberately "
             "bypassed for them (it still guards any non-DDTI deployment). "
             "A blind round (nothing scored) records null blackout counts in "
-            "the history, never zeros"
+            "both the latest reading and the history, never zeros"
         ),
         "n_topics_considered": len(terms),
         "n_scored": len(scored),
         "n_abstained": sum(1 for r in readings if r.get("abstained")),
         "n_out_of_scope": n_out_of_scope,
-        "n_blackout": len(blackouts),
-        "n_containment": len(containment),
+        "n_blackout": len(blackouts) if scored else None,
+        "n_containment": len(containment) if scored else None,
         "domestic_proxy_live": domestic is not None,
         "top": [
             {k: r.get(k) for k in

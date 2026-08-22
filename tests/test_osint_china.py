@@ -145,6 +145,10 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "telegram-public-channels-latest.json",
         "reading-analysis-latest.json",
         "peer-context-rank-latest.json",
+        "weekly-situation-latest.json",
+        "collector-health-latest.json",
+        "gazetteer-phylogeny-latest.json",
+        "weibo-hotsearch-terms-latest.json",
     }
 
 

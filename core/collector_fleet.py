@@ -136,8 +136,8 @@ _STANDARD = {
     "ddti": Cadence(17, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "ooni-gfw": Cadence(23, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "ioda-outages": Cadence(29, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
-    "weibo-hotsearch": Cadence(41, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
-    "weibo-hotsearch-terms": Cadence(43, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "weibo-hotsearch": Cadence(21, "*", expires_s=45 * 60, interval_s=3600),
+    "weibo-hotsearch-terms": Cadence(21, "*", expires_s=45 * 60, interval_s=3600),
     "app-storefront": Cadence(53, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "china-econ": Cadence(41, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "in-path-interference": Cadence(29, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
@@ -174,7 +174,7 @@ _STANDARD = {
         31, "*/12", expires_s=8 * 3600, interval_s=12 * 3600,
     ),
     "primary-documents": Cadence(37, 2, expires_s=12 * 3600),
-    "silence-index": Cadence(53, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
+    "silence-index": Cadence(33, "*", expires_s=45 * 60, interval_s=3600),
     "vantage-fusion": Cadence(7, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "erasure-observatory": Cadence(19, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
     "undertext": Cadence(44, "*/6", expires_s=4 * 3600, interval_s=6 * 3600),
@@ -248,7 +248,7 @@ _VIGOROUS = {
     # Official release/catalog pages update at most daily. More frequent reads
     # would add upstream traffic without producing an additional vintage.
     "primary-documents": Cadence(37, 2, expires_s=12 * 3600),
-    "silence-index": Cadence(53, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
+    "silence-index": Cadence(33, "*", expires_s=45 * 60, interval_s=3600),
     "vantage-fusion": Cadence(7, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "erasure-observatory": Cadence(19, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),
     "undertext": Cadence(44, "*/3", expires_s=2 * 3600, interval_s=3 * 3600),

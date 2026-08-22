@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:forecast-ledger",
+  "slug": "forecast-ledger",
+  "url": "https://palimpsest.info/news/forecast-ledger/",
+  "signal_id": "forecast-ledger",
+  "headline": "Forecast bands covered 84.3% of 1,566 scored readings",
+  "dek": "Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
+  "section": "command",
+  "order": 4,
+  "type": "methodology",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-22T13:23:50Z",
+  "modified_at": "2026-08-22T13:23:50Z",
+  "claim_fingerprint": "sha256:484eaee88eee3507a11e8d09da86f000a889aee6ad2d960829f6935947915049",
+  "metric": {
+    "label": "empirical coverage",
+    "value": 0.843,
+    "unit": "ratio",
+    "denominator": {
+      "label": "forecasts",
+      "value": 1566
+    }
+  },
+  "claims": [
+    {
+      "type": "method",
+      "statement": "Empirical forecast coverage is 84.3% across 1,566 scored forecasts."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
+    "input": {
+      "filename": "forecast-ledger-latest.json",
+      "sha256": "56f84bff10df0938bf2be29d966d777439d413f3e6f11bd2f48b74b42c04e999",
+      "bytes": 13964
+    },
+    "source_timestamp": "2026-08-22T13:23:50Z"
+  },
+  "method": {
+    "summary": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
+    "version": null
+  },
+  "limitations": [
+    "Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band."
+  ],
+  "related_signal_ids": [
+    "event-flags",
+    "cross-layer"
+  ]
+}

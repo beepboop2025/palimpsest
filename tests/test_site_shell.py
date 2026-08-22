@@ -43,6 +43,7 @@ import sync_nav  # noqa: E402
 # byte-identical stamped block — their nav is rendered at build time.
 GENERATED = {
     "china-brief.html",
+    "weekly-situation.html",
     "news/china/situation/index.html",
     "news/china/rumour/index.html",
     "readings/generative-firewall-index.html",

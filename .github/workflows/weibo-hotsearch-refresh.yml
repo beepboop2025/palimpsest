@@ -9,7 +9,7 @@ name: Refresh Weibo hot-search signal
 
 on:
   schedule:
-    - cron: "41 */6 * * *"
+    - cron: "21 * * * *"      # the upstream archive publishes hourly
   workflow_dispatch: {}
 
 permissions:
@@ -34,6 +34,16 @@ jobs:
       - name: Pull the hot-search archive and publish the join signal
         run: python -m scripts.weibo_hotsearch_pull
 
+      - name: Validate the signal and every downstream registration
+        run: >-
+          python -m pytest -q
+          tests/test_weibo_hotsearch.py
+          tests/test_weibo_hotsearch_pull_publish.py
+          tests/test_weibo_hotsearch_terms.py
+          tests/test_osint_china.py::test_manifest_covers_the_current_china_latest_feed_inventory
+          tests/test_reading_analysis.py::test_every_committed_public_history_is_registered
+          tests/test_publication_contract.py
+
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
@@ -49,12 +59,19 @@ jobs:
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
-          git add readings/weibo-hotsearch-latest.json readings/weibo-hotsearch-history.jsonl 2>/dev/null || true
-          git add -A -- readings
+          git add readings/weibo-hotsearch-latest.json \
+                  readings/weibo-hotsearch-history.jsonl \
+                  readings/weibo-hotsearch-terms-latest.json \
+                  readings/weibo-hotsearch-terms-history.jsonl
           if git diff --cached --quiet; then
             echo "no change"
           else
             git commit -m "data: weibo hot-search signal refresh ($(date -u +%FT%TZ)) [skip pytest]"
             python scripts/push_data_commit.py \
+              --rebuild-module scripts.weibo_hotsearch_pull \
+              --stage readings/weibo-hotsearch-latest.json \
+              --stage readings/weibo-hotsearch-history.jsonl \
+              --stage readings/weibo-hotsearch-terms-latest.json \
+              --stage readings/weibo-hotsearch-terms-history.jsonl \
               --input-path readings/ddti-latest.json
           fi

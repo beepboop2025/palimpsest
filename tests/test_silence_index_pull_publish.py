@@ -32,13 +32,13 @@ import scripts.silence_index_pull as pull
 
 
 class _Clock:
-    """Advances six hours per round, matching the collector's cron cadence."""
+    """Advances one hour per round, matching the collector's cron cadence."""
 
     def __init__(self) -> None:
         self.t = datetime(2026, 8, 1, 0, 33, 0, tzinfo=timezone.utc)
 
     def now(self, tz=None) -> datetime:
-        self.t += timedelta(hours=6)
+        self.t += timedelta(hours=1)
         return self.t
 
 
@@ -172,6 +172,23 @@ def test_presence_scales_with_days_on_board(publish):
     assert fn("高考") == pytest.approx(2 / 7)
 
 
+def test_presence_accepts_the_explicit_window_date_schema(publish):
+    run, _ = publish
+    window = [f"2026-07-{day:02d}" for day in range(25, 33)]
+    run(ddti=_ddti("高考"), weibo=_weibo([TREND], window_days=window))
+
+    fn = _StubProcessor.instances[-1].domestic_volume_fn
+    assert fn("高考") == pytest.approx(2 / 8)
+
+
+def test_an_empty_explicit_window_abstains_instead_of_fabricating_zero(publish):
+    run, _ = publish
+    run(ddti=_ddti("彭帅"), weibo=_weibo([PENG], window_days=[]))
+
+    fn = _StubProcessor.instances[-1].domestic_volume_fn
+    assert fn("彭帅") is None
+
+
 def test_abstention_is_published_as_abstention(publish):
     run, tmp_path = publish
     got = run(ddti=_ddti("彭帅", "新词"), weibo=_weibo([PENG]))
@@ -223,6 +240,9 @@ def test_a_blind_round_records_null_counts_never_zeros(publish):
     assert rows[0]["n_scored"] == 0 and rows[0]["n_abstained"] == 1
     assert rows[0]["n_blackout"] is None
     assert rows[0]["n_containment"] is None
+    latest = _reading(tmp_path)
+    assert latest["n_blackout"] is None
+    assert latest["n_containment"] is None
 
 
 def test_every_round_appends_its_own_history_row(publish):

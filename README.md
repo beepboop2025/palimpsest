@@ -72,6 +72,14 @@ prove a model maker's motive; every claim stays scoped to its named panel, suite
 
 ```bash
 git clone https://github.com/beepboop2025/palimpsest && cd palimpsest
+python3 scripts/reproduce_all.py
+```
+
+That wrapper runs the sealed-chain verifiers and rebuilds the weekly situation,
+gazetteer phylogeny and collector-health scorecards from committed files. Exit 0
+means they still match. The individual commands remain:
+
+```bash
 python3 scripts/verify_eval_registry.py   # the eval chain + the pre-registration rule
 python3 scripts/verify_refusal_transcripts.py  # current frontier text -> seal -> labels
 python3 -m scripts.build_eval_assurance --check # the claim ceiling matches the evidence
