@@ -50,7 +50,7 @@ def test_launch_edition_is_evidence_bound_and_scoped():
             assert receipt["bytes"] == len(payload)
 
 
-def test_live_context_never_calls_staged_gfi_v2_a_completed_run():
+def test_gfi_article_and_live_context_match_the_published_v2_state():
     journal = eval_journal.build_journal(ROOT)
     gfi = next(
         article for article in journal["articles"]
@@ -59,7 +59,29 @@ def test_live_context_never_calls_staged_gfi_v2_a_completed_run():
 
     protocol = ROOT / "readings/gfi-evaluation-protocol-v2.json"
     transcripts = ROOT / "readings/gfi-transcripts-latest.json"
-    if not (protocol.exists() and transcripts.exists()):
+    if protocol.exists() and transcripts.exists():
+        prose = " ".join(
+            [gfi["dek"], gfi["status"], gfi["claim"]]
+            + [
+                paragraph
+                for section in gfi["sections"]
+                for paragraph in section["paragraphs"]
+            ]
+            + gfi["limitations"]
+        )
+        assert gfi["live_context"]["value"] == "sealed evidence live"
+        assert "660 sampled responses" in prose
+        assert "not just infrastructure" in prose
+        for stale_claim in (
+            "The next Generative Firewall run",
+            "first sealed run pending",
+            "not live evidence until",
+            "artifact is still v1",
+            "current reading remains legacy v1",
+            "first public GFI v2 protocol and transcript do not exist",
+        ):
+            assert stale_claim not in prose
+    else:
         assert gfi["live_context"]["value"] == "staged for next collection"
         assert "current public GFI remains legacy v1" in gfi["live_context"]["detail"]
 
