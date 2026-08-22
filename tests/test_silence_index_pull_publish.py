@@ -240,6 +240,9 @@ def test_a_blind_round_records_null_counts_never_zeros(publish):
     assert rows[0]["n_scored"] == 0 and rows[0]["n_abstained"] == 1
     assert rows[0]["n_blackout"] is None
     assert rows[0]["n_containment"] is None
+    latest = _reading(tmp_path)
+    assert latest["n_blackout"] is None
+    assert latest["n_containment"] is None
 
 
 def test_every_round_appends_its_own_history_row(publish):

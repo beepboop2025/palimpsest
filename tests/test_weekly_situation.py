@@ -10,6 +10,7 @@ from processors.weekly_situation import (
     render_html,
     substance,
 )
+from scripts.weekly_situation_pull import append_history_if_changed
 
 
 def _write(path: Path, payload: dict) -> None:
@@ -145,3 +146,19 @@ def test_html_is_a_rendering_not_a_second_score(tmp_path: Path) -> None:
     assert "not a newspaper" in html.lower()
     assert "—" not in html
     assert "–" not in html
+
+
+def test_hourly_reseal_does_not_duplicate_unchanged_history(tmp_path: Path) -> None:
+    history = tmp_path / "weekly-situation-history.jsonl"
+    first = {
+        "generated_at": "2026-08-22T13:00:00Z",
+        "payload_sha256": "a" * 64,
+    }
+    later_look = {**first, "generated_at": "2026-08-22T14:00:00Z"}
+    changed = {**later_look, "payload_sha256": "b" * 64}
+
+    assert append_history_if_changed(history, first) is True
+    assert append_history_if_changed(history, later_look) is False
+    assert append_history_if_changed(history, changed) is True
+    rows = [json.loads(line) for line in history.read_text().splitlines()]
+    assert [row["payload_sha256"] for row in rows] == ["a" * 64, "b" * 64]

@@ -1,4 +1,5 @@
 """The public observatory must produce and display a coherent hourly edition."""
+import json
 from pathlib import Path
 
 
@@ -36,6 +37,40 @@ def test_hourly_silence_publisher_runs_compatibility_tests_before_publish() -> N
     assert 'cron: "33 * * * *"' in workflow
     assert "Validate schema compatibility and publication honesty" in workflow
     assert "tests/test_silence_index_pull_publish.py" in workflow
+
+
+def test_every_hourly_artifact_declares_the_same_cadence_to_readers() -> None:
+    catalog = json.loads(_read("config/public_data_catalog.json"))
+    by_id = {dataset["id"]: dataset for dataset in catalog["datasets"]}
+    for dataset_id in (
+        "weibo-hotsearch",
+        "silence-index",
+        "board-alarm",
+        "coverage-guard",
+        "forecast-ledger",
+        "cross-layer",
+        "weekly-situation",
+        "collector-health",
+        "gazetteer-phylogeny",
+    ):
+        assert by_id[dataset_id]["cadence"] == "PT1H"
+
+    osint = _read("scripts/build_osint_china.py")
+    for signal_id in (
+        "board-alarm",
+        "coverage-guard",
+        "forecast-ledger",
+        "cross-layer",
+        "weibo-hotsearch",
+        "silence-index",
+    ):
+        assert f'_s("{signal_id}"' in osint
+        declaration = osint.split(f'_s("{signal_id}"', 1)[1].split("\n", 1)[0]
+        assert ", 1, 3," in declaration
+
+    fleet = _read("core/collector_fleet.py")
+    assert '"weibo-hotsearch": Cadence(21, "*", expires_s=45 * 60, interval_s=3600)' in fleet
+    assert '"silence-index": Cadence(33, "*", expires_s=45 * 60, interval_s=3600)' in fleet
 
 
 def test_open_browser_renews_after_an_hour_without_destroying_form_input() -> None:

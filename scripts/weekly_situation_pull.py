@@ -29,6 +29,20 @@ HIST = READINGS / "weekly-situation-history.jsonl"
 HTML = ROOT / "weekly-situation.html"
 
 
+def append_history_if_changed(path: Path, entry: dict) -> bool:
+    """Append only a new sealed substance; look-time alone is not history."""
+    previous_seal = None
+    if path.is_file():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                previous_seal = json.loads(line).get("payload_sha256")
+    if previous_seal == entry["payload_sha256"]:
+        return False
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -73,8 +87,8 @@ def main(argv: list[str] | None = None) -> int:
         "payload_sha256": report["seal"]["payload_sha256"],
         "n_abstentions": len(report.get("abstentions") or []),
     }
-    with HIST.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    if not append_history_if_changed(HIST, entry):
+        print("weekly situation seal unchanged; history not duplicated")
     print(report["headline"])
     return 0
 

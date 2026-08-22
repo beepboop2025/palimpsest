@@ -240,7 +240,7 @@ def test_vigorous_profile_really_samples_fast_sources_more_often():
     standard = build_collector_schedule("standard")
 
     assert "* *" in str(vigorous["collect-snapshot-weibo-hotsearch"]["schedule"])
-    assert "*/6" in str(standard["collect-snapshot-weibo-hotsearch"]["schedule"])
+    assert "* *" in str(standard["collect-snapshot-weibo-hotsearch"]["schedule"])
     assert "5,35" in str(vigorous["collect-ddti-feed-head"]["schedule"])
     assert "*/3" in str(standard["collect-ddti-feed-head"]["schedule"])
     assert "2,17,32,47" in str(vigorous["collect-snapshot-gdelt"]["schedule"])
@@ -256,7 +256,9 @@ def test_vigorous_profile_really_samples_fast_sources_more_often():
     assert "* *" in str(vigorous["collect-snapshot-social-spread"]["schedule"])
     assert "*/6" in str(standard["collect-snapshot-social-spread"]["schedule"])
     assert "* *" in str(vigorous["collect-snapshot-weibo-hotsearch-terms"]["schedule"])
-    assert "*/6" in str(standard["collect-snapshot-weibo-hotsearch-terms"]["schedule"])
+    assert "* *" in str(standard["collect-snapshot-weibo-hotsearch-terms"]["schedule"])
+    assert "* *" in str(vigorous["collect-snapshot-silence-index"]["schedule"])
+    assert "* *" in str(standard["collect-snapshot-silence-index"]["schedule"])
     assert "* *" in str(vigorous["collect-snapshot-public-board-terms"]["schedule"])
     assert "*/6" in str(standard["collect-snapshot-public-board-terms"]["schedule"])
     assert "*/6" in str(vigorous["collect-snapshot-censored-planet"]["schedule"])
@@ -454,8 +456,10 @@ def test_china_live_jobs_have_conservative_standard_and_faster_vigorous_cadences
     assert spec("vigorous", "telegram-public-channels")["cadence_seconds"] == 3600
     assert spec("standard", "social-spread")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "social-spread")["cadence_seconds"] == 3600
-    assert spec("standard", "weibo-hotsearch-terms")["cadence_seconds"] == 6 * 3600
+    assert spec("standard", "weibo-hotsearch-terms")["cadence_seconds"] == 3600
     assert spec("vigorous", "weibo-hotsearch-terms")["cadence_seconds"] == 3600
+    assert spec("standard", "silence-index")["cadence_seconds"] == 3600
+    assert spec("vigorous", "silence-index")["cadence_seconds"] == 3600
     assert spec("standard", "public-board-terms")["cadence_seconds"] == 6 * 3600
     assert spec("vigorous", "public-board-terms")["cadence_seconds"] == 3600
     assert spec("standard", "censored-planet")["cadence_seconds"] == 24 * 3600

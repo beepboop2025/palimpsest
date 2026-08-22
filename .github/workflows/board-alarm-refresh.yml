@@ -1,6 +1,6 @@
 name: Refresh board-level judgements
 
-# The four board-level judgements, all pure local recomputation over the signal
+# The public derived edition, all pure local recomputation over the signal
 # history JSONLs (no network, stdlib-only, deterministic):
 #
 #   board alarm    — e-BH selection across all monitored signals plus per-layer
@@ -17,7 +17,9 @@ name: Refresh board-level judgements
 #                    a circular-shift null on differenced series (a naive correlation
 #                    test on these autocorrelated signals is confidently wrong).
 #
-# Runs after the conformal event flags, which run after the signal pulls.
+# Runs hourly after the evidence wire. Event flags retain their source-driven
+# cadence; an hourly edition republishes their explicit age rather than
+# pretending an unchanged upstream signal was measured again.
 
 on:
   schedule:

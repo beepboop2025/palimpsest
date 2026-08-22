@@ -195,14 +195,14 @@ def main() -> None:
             "and the processor's per-term gazetteer gate is deliberately "
             "bypassed for them (it still guards any non-DDTI deployment). "
             "A blind round (nothing scored) records null blackout counts in "
-            "the history, never zeros"
+            "both the latest reading and the history, never zeros"
         ),
         "n_topics_considered": len(terms),
         "n_scored": len(scored),
         "n_abstained": sum(1 for r in readings if r.get("abstained")),
         "n_out_of_scope": n_out_of_scope,
-        "n_blackout": len(blackouts),
-        "n_containment": len(containment),
+        "n_blackout": len(blackouts) if scored else None,
+        "n_containment": len(containment) if scored else None,
         "domestic_proxy_live": domestic is not None,
         "top": [
             {k: r.get(k) for k in
