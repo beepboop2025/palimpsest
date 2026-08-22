@@ -1,39 +1,39 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-a75e04449e9c550626f50279",
+  "analysis_id": "instrumentv-8c16880574dfc183c87d3a9d",
   "signal_id": "ioda-outages",
   "story_url": "https://palimpsest.info/news/ioda-china-outage-monitor/",
   "url": "https://palimpsest.info/news/ioda-china-outage-monitor/analysis.json",
   "reading_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/ioda-outages-analysis.json",
-  "generated_at": "2026-08-21T02:05:59Z",
-  "disposition": "availability-brief",
-  "status": "stale",
-  "position": "Palimpsest withholds a current finding for ioda-outages: the source status is stale. This is an availability brief, not a measurement.",
+  "generated_at": "2026-08-22T07:08:16Z",
+  "disposition": "live-reading",
+  "status": "live",
+  "position": "Palimpsest's view: ioda-outages is live. The current number is 0 over declared denominator not reported. This is the instrument reading, not a national censorship rate.",
   "key_numbers": [
     {
-      "value": "withheld",
-      "label": "headline metric",
-      "note": "withheld because the source is not live",
+      "value": "0",
+      "label": "instruments firing",
+      "note": "declared denominator not reported",
       "citation_ids": [
-        "instrumentevidence-e2542d44b2f48fc2c3da"
+        "instrumentevidence-691e0cd88360d1e773b0"
       ]
     }
   ],
   "brief": {
     "current_number": {
-      "status": "abstained",
+      "status": "present",
       "sentences": [
         {
-          "text": "No current number is published for ioda-outages because the newsroom status is stale. The retained metric is withheld.",
+          "text": "The current instruments firing is 0 over declared denominator not reported.",
           "citation_ids": [
-            "instrumentevidence-e2542d44b2f48fc2c3da"
+            "instrumentevidence-691e0cd88360d1e773b0"
           ]
         },
         {
-          "text": "No current finding is published for IODA outage monitor because the source status is stale.",
+          "text": "The current IODA country reading has 0 outage instruments firing.",
           "citation_ids": [
-            "instrumentevidence-e2542d44b2f48fc2c3da"
+            "instrumentevidence-691e0cd88360d1e773b0"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, censored-planet, wayback, app-storefront, apple-censorship, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, ooni-gfw, in-path-interference, censored-planet, inside-view, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, generative-firewall.",
           "citation_ids": [
-            "instrumentevidence-e2542d44b2f48fc2c3da"
+            "instrumentevidence-691e0cd88360d1e773b0"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-e2542d44b2f48fc2c3da"
+            "instrumentevidence-691e0cd88360d1e773b0"
           ]
         }
       ]
@@ -59,21 +59,21 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Current finding withheld: freshness deadline has passed",
+          "text": "No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable.",
           "citation_ids": [
-            "instrumentevidence-e2542d44b2f48fc2c3da"
+            "instrumentevidence-691e0cd88360d1e773b0"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-e2542d44b2f48fc2c3da"
+            "instrumentevidence-691e0cd88360d1e773b0"
           ]
         },
         {
           "text": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
           "citation_ids": [
-            "instrumentevidence-e2542d44b2f48fc2c3da"
+            "instrumentevidence-691e0cd88360d1e773b0"
           ]
         }
       ]
@@ -83,27 +83,27 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-e2542d44b2f48fc2c3da"
+        "instrumentevidence-691e0cd88360d1e773b0"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-e2542d44b2f48fc2c3da"
+        "instrumentevidence-691e0cd88360d1e773b0"
       ]
     }
   ],
   "limitations": [
     {
-      "text": "Current finding withheld: freshness deadline has passed",
+      "text": "No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable.",
       "citation_ids": [
-        "instrumentevidence-e2542d44b2f48fc2c3da"
+        "instrumentevidence-691e0cd88360d1e773b0"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-e2542d44b2f48fc2c3da"
+        "instrumentevidence-691e0cd88360d1e773b0"
       ]
     }
   ],
@@ -139,10 +139,40 @@
       "priority": "high"
     },
     {
+      "signal_id": "ooni-gfw",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "in-path-interference",
+      "section": "network",
+      "status": "live",
+      "priority": "high"
+    },
+    {
       "signal_id": "censored-planet",
       "section": "network",
       "status": "live",
       "priority": "high"
+    },
+    {
+      "signal_id": "inside-view",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "vantage-fusion",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "erasure-observatory",
+      "section": "erasure",
+      "status": "live",
+      "priority": "lead"
     },
     {
       "signal_id": "wayback",
@@ -177,17 +207,17 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-e2542d44b2f48fc2c3da",
+      "evidence_id": "instrumentevidence-691e0cd88360d1e773b0",
       "kind": "newsroom-story",
       "signal_id": "ioda-outages",
-      "headline": "IODA outage monitor: no current finding",
-      "status": "stale",
-      "claim": "No current finding is published for IODA outage monitor because the source status is stale.",
+      "headline": "0 independent IODA instruments are firing for China",
+      "status": "live",
+      "claim": "The current IODA country reading has 0 outage instruments firing.",
       "story_url": "https://palimpsest.info/news/ioda-china-outage-monitor/",
       "reading_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
-      "source_timestamp": "2026-08-21T02:05:59Z",
-      "input_sha256": "95b310a0527f71a0258be551f096bab3f599a59ec86f72050e07c09d5692457e",
-      "interpretation_limit": "Current finding withheld: freshness deadline has passed"
+      "source_timestamp": "2026-08-22T07:08:16Z",
+      "input_sha256": "3eddc19d7b2db8b9023414bcf3255354fc9784742ae9be3fb26234c0f096ff92",
+      "interpretation_limit": "No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable."
     }
   ],
   "publication_receipt": {
@@ -196,9 +226,7 @@
     "automatic_publication": false,
     "citation_coverage": 1.0,
     "human_review_required": true,
-    "availability_warnings": [
-      "ioda-outages"
-    ],
+    "availability_warnings": [],
     "gates": [
       {
         "gate_id": "closed-source-set",
@@ -210,7 +238,7 @@
         "gate_id": "availability-honesty",
         "label": "Non-live instruments publish availability, not retained findings",
         "passed": true,
-        "detail": "Story status is stale; metric publication is withheld."
+        "detail": "Story status is live; metric publication is 0."
       },
       {
         "gate_id": "sentence-citations",

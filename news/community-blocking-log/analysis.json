@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-bc13fe5f6f209d01c21273a1",
+  "analysis_id": "instrumentv-b453bf26fe49a69c28b82548",
   "signal_id": "net4people",
   "story_url": "https://palimpsest.info/news/community-blocking-log/",
   "url": "https://palimpsest.info/news/community-blocking-log/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, censored-planet, circumvention-demand, wayback, app-storefront, apple-censorship, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, circumvention-demand, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship.",
           "citation_ids": [
             "instrumentevidence-2583810955f3fd08047d"
           ]
@@ -139,7 +139,31 @@
       "priority": "high"
     },
     {
+      "signal_id": "ooni-gfw",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "in-path-interference",
+      "section": "network",
+      "status": "live",
+      "priority": "high"
+    },
+    {
       "signal_id": "censored-planet",
+      "section": "network",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "inside-view",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "ioda-outages",
       "section": "network",
       "status": "live",
       "priority": "high"
@@ -149,6 +173,18 @@
       "section": "network",
       "status": "live",
       "priority": "standard"
+    },
+    {
+      "signal_id": "vantage-fusion",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "erasure-observatory",
+      "section": "erasure",
+      "status": "live",
+      "priority": "lead"
     },
     {
       "signal_id": "wayback",
@@ -167,12 +203,6 @@
       "section": "erasure",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "generative-firewall",
-      "section": "models",
-      "status": "live",
-      "priority": "lead"
     }
   ],
   "review_rank": {

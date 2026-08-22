@@ -1,13 +1,13 @@
 {
  "artifact": {
-  "bytes": 1449901,
+  "bytes": 1719467,
   "media_type": "application/x-ndjson",
   "path": "readings/china-econ-observations.jsonl",
-  "records": 1651,
-  "sha256": "6b3118d4b7de403bafa93d18af273869a198e6861aa98cdeab1a62e80e67a188",
+  "records": 1958,
+  "sha256": "507c98e3ad92df70f926617444daded9820fde6ae2093b274ff2079ef3edf9b8",
   "url": "https://palimpsest.info/readings/china-econ-observations.jsonl"
  },
- "as_of": "2026-08-16T15:32:28.785540Z",
+ "as_of": "2026-08-22T07:38:19.988058Z",
  "contract": {
   "aggregate_only": true,
   "bitemporal": true,
@@ -34,15 +34,15 @@
    "CN"
   ],
   "geography_count": 1,
-  "last_collected_at": "2026-08-16T15:32:28.785540Z",
-  "last_released_at": "2026-08-16T15:32:28.785540Z",
+  "last_collected_at": "2026-08-22T07:38:19.988058Z",
+  "last_released_at": "2026-08-22T07:38:19.988058Z",
   "ownership_count": 1,
   "ownerships": [
    "all"
   ],
-  "period_end": "2026-08-14",
+  "period_end": "2026-08-21",
   "period_start": "2026-07-06",
-  "provenance_only_vintages": 1216,
+  "provenance_only_vintages": 1448,
   "sector_count": 1,
   "sectors": [
    "all"
@@ -75,7 +75,7 @@
   ],
   "value_revision_events": 0
  },
- "generated_at": "2026-08-16T15:32:28.785540Z",
+ "generated_at": "2026-08-22T07:38:19.988058Z",
  "integrity": {
   "exact_byte_digest": true,
   "monotonic_source_revisions": true,
@@ -89,7 +89,7 @@
   "Where a source omits a release timestamp, released_at may be a conservative first-observed upper bound declared in row metadata."
  ],
  "method": "Validate every aggregate observation and observation_id, enforce append order and source revision invariants, then hash the exact published JSONL bytes.",
- "n_observations": 1651,
+ "n_observations": 1958,
  "schema_version": "palimpsest-economic-observation-manifest.v1",
  "scope": "Aggregate China economic observations actually collected by Palimpsest; this is a bitemporal evidence ledger, not a GDP estimate or a claim of complete source coverage.",
  "source": "Palimpsest aggregate collectors; each observation retains its own source_id, evidence_url, and raw response digest"

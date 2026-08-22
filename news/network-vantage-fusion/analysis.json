@@ -1,39 +1,39 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-1df6d8d4470508a93404fdb0",
+  "analysis_id": "instrumentv-1a02b565ef2d756b2493b44a",
   "signal_id": "vantage-fusion",
   "story_url": "https://palimpsest.info/news/network-vantage-fusion/",
   "url": "https://palimpsest.info/news/network-vantage-fusion/analysis.json",
   "reading_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/vantage-fusion-analysis.json",
-  "generated_at": "2026-08-20T19:23:05Z",
-  "disposition": "availability-brief",
-  "status": "stale",
-  "position": "Palimpsest withholds a current finding for vantage-fusion: the source status is stale. This is an availability brief, not a measurement.",
+  "generated_at": "2026-08-22T07:22:18Z",
+  "disposition": "live-reading",
+  "status": "live",
+  "position": "Palimpsest's view: vantage-fusion is live. The current number is 28.7% over declared denominator not reported. This is the instrument reading, not a national censorship rate.",
   "key_numbers": [
     {
-      "value": "withheld",
-      "label": "headline metric",
-      "note": "withheld because the source is not live",
+      "value": "28.7%",
+      "label": "fused network index",
+      "note": "declared denominator not reported",
       "citation_ids": [
-        "instrumentevidence-85399ec37b4d526f6c62"
+        "instrumentevidence-a807761d3ddb1b0a45c8"
       ]
     }
   ],
   "brief": {
     "current_number": {
-      "status": "abstained",
+      "status": "present",
       "sentences": [
         {
-          "text": "No current number is published for vantage-fusion because the newsroom status is stale. The retained metric is withheld.",
+          "text": "The current fused network index is 28.7% over declared denominator not reported.",
           "citation_ids": [
-            "instrumentevidence-85399ec37b4d526f6c62"
+            "instrumentevidence-a807761d3ddb1b0a45c8"
           ]
         },
         {
-          "text": "No current finding is published for Network vantage fusion because the source status is stale.",
+          "text": "The current coverage-weighted fusion of reporting vantages is 28.7%.",
           "citation_ids": [
-            "instrumentevidence-85399ec37b4d526f6c62"
+            "instrumentevidence-a807761d3ddb1b0a45c8"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, net4people, censored-planet, wayback, app-storefront, apple-censorship, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, net4people, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, erasure-observatory, wayback, app-storefront, apple-censorship, generative-firewall.",
           "citation_ids": [
-            "instrumentevidence-85399ec37b4d526f6c62"
+            "instrumentevidence-a807761d3ddb1b0a45c8"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-85399ec37b4d526f6c62"
+            "instrumentevidence-a807761d3ddb1b0a45c8"
           ]
         }
       ]
@@ -59,21 +59,21 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Current finding withheld: freshness deadline has passed",
+          "text": "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.",
           "citation_ids": [
-            "instrumentevidence-85399ec37b4d526f6c62"
+            "instrumentevidence-a807761d3ddb1b0a45c8"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-85399ec37b4d526f6c62"
+            "instrumentevidence-a807761d3ddb1b0a45c8"
           ]
         },
         {
           "text": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
           "citation_ids": [
-            "instrumentevidence-85399ec37b4d526f6c62"
+            "instrumentevidence-a807761d3ddb1b0a45c8"
           ]
         }
       ]
@@ -83,27 +83,27 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-85399ec37b4d526f6c62"
+        "instrumentevidence-a807761d3ddb1b0a45c8"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-85399ec37b4d526f6c62"
+        "instrumentevidence-a807761d3ddb1b0a45c8"
       ]
     }
   ],
   "limitations": [
     {
-      "text": "Current finding withheld: freshness deadline has passed",
+      "text": "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.",
       "citation_ids": [
-        "instrumentevidence-85399ec37b4d526f6c62"
+        "instrumentevidence-a807761d3ddb1b0a45c8"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-85399ec37b4d526f6c62"
+        "instrumentevidence-a807761d3ddb1b0a45c8"
       ]
     }
   ],
@@ -145,10 +145,40 @@
       "priority": "standard"
     },
     {
+      "signal_id": "ooni-gfw",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "in-path-interference",
+      "section": "network",
+      "status": "live",
+      "priority": "high"
+    },
+    {
       "signal_id": "censored-planet",
       "section": "network",
       "status": "live",
       "priority": "high"
+    },
+    {
+      "signal_id": "inside-view",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "ioda-outages",
+      "section": "network",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "erasure-observatory",
+      "section": "erasure",
+      "status": "live",
+      "priority": "lead"
     },
     {
       "signal_id": "wayback",
@@ -183,17 +213,17 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-85399ec37b4d526f6c62",
+      "evidence_id": "instrumentevidence-a807761d3ddb1b0a45c8",
       "kind": "newsroom-story",
       "signal_id": "vantage-fusion",
-      "headline": "Network vantage fusion: no current finding",
-      "status": "stale",
-      "claim": "No current finding is published for Network vantage fusion because the source status is stale.",
+      "headline": "Reporting network vantages combine to a 28.7% interference index",
+      "status": "live",
+      "claim": "The current coverage-weighted fusion of reporting vantages is 28.7%.",
       "story_url": "https://palimpsest.info/news/network-vantage-fusion/",
       "reading_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
-      "source_timestamp": "2026-08-20T19:23:05Z",
-      "input_sha256": "65ac12f0c3863f910ceb358c0bb0f54fbccd603d3c9cd7008a13d20d87fd497f",
-      "interpretation_limit": "Current finding withheld: freshness deadline has passed"
+      "source_timestamp": "2026-08-22T07:22:18Z",
+      "input_sha256": "5e2fb1f118ceeb7c5876c2e66f26419efddcbeee4e7109557d68eac5295cce60",
+      "interpretation_limit": "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic."
     }
   ],
   "publication_receipt": {
@@ -202,9 +232,7 @@
     "automatic_publication": false,
     "citation_coverage": 1.0,
     "human_review_required": true,
-    "availability_warnings": [
-      "vantage-fusion"
-    ],
+    "availability_warnings": [],
     "gates": [
       {
         "gate_id": "closed-source-set",
@@ -216,7 +244,7 @@
         "gate_id": "availability-honesty",
         "label": "Non-live instruments publish availability, not retained findings",
         "passed": true,
-        "detail": "Story status is stale; metric publication is withheld."
+        "detail": "Story status is live; metric publication is 28.7%."
       },
       {
         "gate_id": "sentence-citations",

@@ -1,39 +1,39 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-5a16f63bd71eecbb5abaafba",
+  "analysis_id": "instrumentv-e6cc57830e52d3756acebb40",
   "signal_id": "inside-view",
   "story_url": "https://palimpsest.info/news/inside-china-view/",
   "url": "https://palimpsest.info/news/inside-china-view/analysis.json",
   "reading_url": "https://palimpsest.info/readings/inside-view-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/inside-view-analysis.json",
-  "generated_at": "2026-08-20T19:16:50Z",
-  "disposition": "availability-brief",
-  "status": "stale",
-  "position": "Palimpsest withholds a current finding for inside-view: the source status is stale. This is an availability brief, not a measurement.",
+  "generated_at": "2026-08-22T07:16:57Z",
+  "disposition": "live-reading",
+  "status": "live",
+  "position": "Palimpsest's view: inside-view is live. The current number is 100% over 5 qualifying answered measurement domains. This is the instrument reading, not a national censorship rate.",
   "key_numbers": [
     {
-      "value": "withheld",
-      "label": "headline metric",
-      "note": "withheld because the source is not live",
+      "value": "100%",
+      "label": "blocked share",
+      "note": "5 qualifying answered measurement domains",
       "citation_ids": [
-        "instrumentevidence-bccece2d1d1d5ed2a84b"
+        "instrumentevidence-7d115de9c4859ad3ca15"
       ]
     }
   ],
   "brief": {
     "current_number": {
-      "status": "abstained",
+      "status": "present",
       "sentences": [
         {
-          "text": "No current number is published for inside-view because the newsroom status is stale. The retained metric is withheld.",
+          "text": "The current blocked share is 100% over 5 qualifying answered measurement domains.",
           "citation_ids": [
-            "instrumentevidence-bccece2d1d1d5ed2a84b"
+            "instrumentevidence-7d115de9c4859ad3ca15"
           ]
         },
         {
-          "text": "No current finding is published for Inside-China view because the source status is stale.",
+          "text": "The current controlled panel reports 100% blocked responses across 5 tested domains.",
           "citation_ids": [
-            "instrumentevidence-bccece2d1d1d5ed2a84b"
+            "instrumentevidence-7d115de9c4859ad3ca15"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, censored-planet, wayback, app-storefront, apple-censorship, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, silence-index, ooni-gfw, in-path-interference, censored-planet, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, generative-firewall.",
           "citation_ids": [
-            "instrumentevidence-bccece2d1d1d5ed2a84b"
+            "instrumentevidence-7d115de9c4859ad3ca15"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-bccece2d1d1d5ed2a84b"
+            "instrumentevidence-7d115de9c4859ad3ca15"
           ]
         }
       ]
@@ -59,21 +59,21 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Current finding withheld: freshness deadline has passed",
+          "text": "The volunteer panel is small and availability varies by region; it does not represent every mainland network.",
           "citation_ids": [
-            "instrumentevidence-bccece2d1d1d5ed2a84b"
+            "instrumentevidence-7d115de9c4859ad3ca15"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-bccece2d1d1d5ed2a84b"
+            "instrumentevidence-7d115de9c4859ad3ca15"
           ]
         },
         {
           "text": "a CN answer is forged when it shares no address with the control arm's answer set; no forged-IP list is hardcoded, because the injector pool rotates",
           "citation_ids": [
-            "instrumentevidence-bccece2d1d1d5ed2a84b"
+            "instrumentevidence-7d115de9c4859ad3ca15"
           ]
         }
       ]
@@ -83,27 +83,27 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-bccece2d1d1d5ed2a84b"
+        "instrumentevidence-7d115de9c4859ad3ca15"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-bccece2d1d1d5ed2a84b"
+        "instrumentevidence-7d115de9c4859ad3ca15"
       ]
     }
   ],
   "limitations": [
     {
-      "text": "Current finding withheld: freshness deadline has passed",
+      "text": "The volunteer panel is small and availability varies by region; it does not represent every mainland network.",
       "citation_ids": [
-        "instrumentevidence-bccece2d1d1d5ed2a84b"
+        "instrumentevidence-7d115de9c4859ad3ca15"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-bccece2d1d1d5ed2a84b"
+        "instrumentevidence-7d115de9c4859ad3ca15"
       ]
     }
   ],
@@ -139,10 +139,40 @@
       "priority": "high"
     },
     {
+      "signal_id": "ooni-gfw",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "in-path-interference",
+      "section": "network",
+      "status": "live",
+      "priority": "high"
+    },
+    {
       "signal_id": "censored-planet",
       "section": "network",
       "status": "live",
       "priority": "high"
+    },
+    {
+      "signal_id": "ioda-outages",
+      "section": "network",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "vantage-fusion",
+      "section": "network",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "erasure-observatory",
+      "section": "erasure",
+      "status": "live",
+      "priority": "lead"
     },
     {
       "signal_id": "wayback",
@@ -177,17 +207,17 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-bccece2d1d1d5ed2a84b",
+      "evidence_id": "instrumentevidence-7d115de9c4859ad3ca15",
       "kind": "newsroom-story",
       "signal_id": "inside-view",
-      "headline": "Inside-China view: no current finding",
-      "status": "stale",
-      "claim": "No current finding is published for Inside-China view because the source status is stale.",
+      "headline": "100% of the 5-domain mainland panel is blocked",
+      "status": "live",
+      "claim": "The current controlled panel reports 100% blocked responses across 5 tested domains.",
       "story_url": "https://palimpsest.info/news/inside-china-view/",
       "reading_url": "https://palimpsest.info/readings/inside-view-latest.json",
-      "source_timestamp": "2026-08-20T19:16:50Z",
-      "input_sha256": "1fc5df1d5ac5f87c2c86608fc85f6daa6dca9f75932850681963b19ad1227f8d",
-      "interpretation_limit": "Current finding withheld: freshness deadline has passed"
+      "source_timestamp": "2026-08-22T07:16:57Z",
+      "input_sha256": "f70ac47962374e9534b54653db29fcd25a98f5baf13c9a45ecaa1449bcff8277",
+      "interpretation_limit": "The volunteer panel is small and availability varies by region; it does not represent every mainland network."
     }
   ],
   "publication_receipt": {
@@ -196,9 +226,7 @@
     "automatic_publication": false,
     "citation_coverage": 1.0,
     "human_review_required": true,
-    "availability_warnings": [
-      "inside-view"
-    ],
+    "availability_warnings": [],
     "gates": [
       {
         "gate_id": "closed-source-set",
@@ -210,7 +238,7 @@
         "gate_id": "availability-honesty",
         "label": "Non-live instruments publish availability, not retained findings",
         "passed": true,
-        "detail": "Story status is stale; metric publication is withheld."
+        "detail": "Story status is live; metric publication is 100%."
       },
       {
         "gate_id": "sentence-citations",
