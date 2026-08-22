@@ -137,6 +137,53 @@ def test_html_desk_is_usable_without_javascript(tmp_path):
     assert "/readings/erasure-trail.csv" in page
 
 
+def test_history_is_idempotent_and_keeps_distinct_states(tmp_path, monkeypatch):
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    _write(inputs / "undertext-latest.json", {
+        "generated_at": "2026-08-01T00:00:00Z",
+        "observations": [{
+            "title": "row",
+            "url": "https://www.gov.cn/",
+            "source": "undertext",
+            "first_seen": "2026-08-01T00:00:00Z",
+            "last_seen": "2026-08-01T00:00:00Z",
+        }],
+    })
+    document = trail.build_document(readings_dir=inputs)
+    readings = tmp_path / "readings"
+    page_dir = tmp_path / "news" / "china" / "erasure"
+    monkeypatch.setattr(trail, "ROOT", tmp_path)
+    monkeypatch.setattr(trail, "READINGS", readings)
+    monkeypatch.setattr(trail, "PAGE_DIR", page_dir)
+    monkeypatch.setattr(trail, "JSON_OUT", readings / "erasure-trail-latest.json")
+    monkeypatch.setattr(trail, "CSV_OUT", readings / "erasure-trail.csv")
+    monkeypatch.setattr(trail, "HIST", readings / "erasure-trail-history.jsonl")
+    monkeypatch.setattr(trail, "HTML_OUT", page_dir / "index.html")
+
+    readings.mkdir(parents=True)
+    trail.HIST.write_text(
+        '{"generated_at": "2026-08-01T00:00:00Z", "n_rows": 0}\n'
+        '{"generated_at": "2026-08-01T00:00:00Z", "n_rows": 0}\n',
+        encoding="utf-8",
+    )
+    trail.write_outputs(document)
+    trail.write_outputs(document)
+
+    rows = [json.loads(line) for line in trail.HIST.read_text().splitlines()]
+    assert rows == [
+        {"generated_at": "2026-08-01T00:00:00Z", "n_rows": 0},
+        {"generated_at": "2026-08-01T00:00:00Z", "n_rows": 1},
+    ]
+    assert trail.check_outputs(document) == []
+
+    with trail.HIST.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(rows[-1], sort_keys=True) + "\n")
+    assert trail.check_outputs(document) == [
+        "stale readings/erasure-trail-history.jsonl"
+    ]
+
+
 def test_committed_outputs_match_the_builder():
     assert trail.main(["--check"]) == 0
 
