@@ -55,6 +55,15 @@ jobs:
       - name: Recompute cross-layer lead/lag
         run: python -m scripts.cross_layer_pull
 
+      - name: Seal the weekly situation report
+        run: python -m scripts.weekly_situation_pull
+
+      - name: Publish collector health
+        run: python -m scripts.collector_health_pull
+
+      - name: Publish gazetteer phylogeny
+        run: python -m scripts.gazetteer_phylogeny_pull
+
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
@@ -75,7 +84,11 @@ jobs:
           git add readings/board-alarm-latest.json readings/board-alarm-history.jsonl \
                   readings/coverage-guard-latest.json readings/coverage-guard-history.jsonl \
                   readings/forecast-ledger-latest.json readings/forecast-ledger-history.jsonl \
-                  readings/cross-layer-latest.json readings/cross-layer-history.jsonl 2>/dev/null || true
+                  readings/cross-layer-latest.json readings/cross-layer-history.jsonl \
+                  readings/weekly-situation-latest.json readings/weekly-situation-history.jsonl \
+                  readings/collector-health-latest.json readings/collector-health-history.jsonl \
+                  readings/gazetteer-phylogeny-latest.json \
+                  weekly-situation.html 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no change"
           else
@@ -85,6 +98,9 @@ jobs:
               --rebuild-module scripts.coverage_guard_pull \
               --rebuild-module scripts.forecast_ledger_pull \
               --rebuild-module scripts.cross_layer_pull \
+              --rebuild-module scripts.weekly_situation_pull \
+              --rebuild-module scripts.collector_health_pull \
+              --rebuild-module scripts.gazetteer_phylogeny_pull \
               --stage readings/board-alarm-latest.json \
               --stage readings/board-alarm-history.jsonl \
               --stage readings/coverage-guard-latest.json \
@@ -92,5 +108,11 @@ jobs:
               --stage readings/forecast-ledger-latest.json \
               --stage readings/forecast-ledger-history.jsonl \
               --stage readings/cross-layer-latest.json \
-              --stage readings/cross-layer-history.jsonl
+              --stage readings/cross-layer-history.jsonl \
+              --stage readings/weekly-situation-latest.json \
+              --stage readings/weekly-situation-history.jsonl \
+              --stage readings/collector-health-latest.json \
+              --stage readings/collector-health-history.jsonl \
+              --stage readings/gazetteer-phylogeny-latest.json \
+              --stage weekly-situation.html
           fi

@@ -20,6 +20,13 @@ would make the platform more capable but could put a person at risk, the answer 
   tests highly.
 - Documentation, methodology critique, and bias analysis.
 - Re-measurements of decade-old academic baselines.
+- New **region packs**: a human gazetteer plus a `config/regions.json` row.
+  See [config/regions/README.md](config/regions/README.md). Iran already proves
+  the abstraction. China remains the default.
+- New collectors that emit the uniform sealed envelope in
+  `core/collector_artifact.py` (source receipt, freshness, coverage,
+  abstention, payload hash). Existing latest files can be projected through
+  that envelope; new collectors should emit it natively.
 
 ## What will be declined
 

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forecast scorecard · Palimpsest</title>
+<meta name="description" content="Public Weighted Interval Score card for Palimpsest signals. Misses stay in the record.">
+<link rel="canonical" href="https://palimpsest.info/forecast-scorecard.html">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  .fc { padding-bottom: 72px; }
+  .fc-lede { color: var(--tk-text-2); max-width: 76ch; font-size: 15px; line-height: 1.65; }
+  .fc table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .fc th, .fc td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--ps-edge-1); }
+  .fc a { color: var(--tk-live, #06d6e0); }
+  .fc .err { color: #ff8a8a; }
+</style>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/journal/">Findings</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Source index</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">Open a current measurement. Each page shows the result, source receipt, freshness and limit.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Current results</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>See reporting status and current evidence</span></a>
+            <a href="/news/china/situation/"><b>China situation desk<span class="ps-tag">new</span></b><span>Combine publisher reports, social context and measurements</span></a>
+            <a href="/news/china/rumour/"><b>Public vantages</b><span>Join public streams. Rumour stays context, never proof</span></a>
+            <a href="/osint-china.html"><b>Signal board</b><span>Inspect every signal and its freshness</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>Read the current six-hour measurement brief</span></a>
+            <a href="/weekly-situation.html"><b>Weekly situation report<span class="ps-tag">new</span></b><span>Sealed multi-layer fusion of what the censor is working on</span></a>
+            <a href="/news/china/analysis/"><b>Censorship analysis</b><span>Open the latest cross-instrument result</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Inspect the record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Check access, rights, readiness and limits</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Check publication clocks and revisions</span></a>
+            <a href="/news/china/erasure/"><b>Find a deleted post<span class="ps-tag">new</span></b><span>Open the evidence trail, export and cite</span></a>
+            <a href="/status.html"><b>Collector health</b><span>Last successful seal, and every abstention</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live deletion monitor</b><span>Open the deletion tracker</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3" data-within="">Tools + feeds<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
+        <p class="ps-flyout__lede">Go directly to something usable. These links open a tool, data file, feed or verification surface.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use a tool</p>
+            <a href="/guides/telegram-scam-message-checker/"><b>Check a scam message</b><span>Open the Telegram checker and privacy guide</span></a>
+            <a href="/readings/eval-registry.html"><b>Verify an AI eval</b><span>Inspect preregistrations, run seals and chain roots</span></a>
+            <a href="/evidence-capsules.html"><b>Verify a claim offline</b><span>Download a claim with its exact supporting bytes</span></a>
+            <a href="/cite.html"><b>Cite a signal</b><span>Build a dataset or day citation from the atlas</span></a>
+            <a href="/challenge.html"><b>Challenge a number</b><span>Reproduce the seal and file a method or source error</span></a>
+            <a href="/forecast-scorecard.html" aria-current="page"><b>Forecast scorecard</b><span>Weighted Interval Scores, with the misses kept</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Subscribe or build</p>
+            <a href="/feeds/"><b>Feeds directory<span class="ps-tag">new</span></b><span>Choose the RSS or JSON feed for your task</span></a>
+            <a href="/evals/"><b>Eval methods journal</b><span>Read method changes, failures and falsifiers</span></a>
+            <a href="/data.html"><b>Download data</b><span>Open every public dataset and licence</span></a>
+            <a href="/developers.html"><b>API + MCP</b><span>Call the read-only tools and inspect the contracts</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Method</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-5">
+        <p class="ps-flyout__lede">See what changed after feedback, inspect the source, or support the public work.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Project</p>
+            <a href="/updates/2026-08-17-listening-pass/"><b>What changed after feedback<span class="ps-tag">new</span></b><span>Read the criticism-to-change ledger</span></a>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall and no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main" class="ps-wrap fc">
+  <header class="ps-pagehead">
+    <p class="ps-kicker">Prequential WIS</p>
+    <h1 class="ps-h1">Which signals actually lead</h1>
+    <p class="fc-lede" id="headline">Loading the forecast ledger.</p>
+  </header>
+  <p class="fc-lede">Each signal is forecast one step ahead from only its own past, then scored with a Weighted Interval Score. Lower WIS is better. Misses stay published. Calibration is the claim, not sharpness.</p>
+  <table>
+    <thead><tr><th>Signal</th><th>WIS</th><th>Coverage</th><th>Beats baseline</th><th>Forecasts</th><th>Misses</th></tr></thead>
+    <tbody id="rows"><tr><td colspan="6">Loading.</td></tr></tbody>
+  </table>
+  <p>Canonical JSON: <a href="/readings/forecast-ledger-latest.json">readings/forecast-ledger-latest.json</a>. Method: <a href="/docs/NEW-METHODS.md">NEW-METHODS.md</a>.</p>
+</main>
+<script>
+(function () {
+  var headline = document.getElementById("headline");
+  var rows = document.getElementById("rows");
+  function clearRows() { while (rows.firstChild) rows.removeChild(rows.firstChild); }
+  function addRow(cells, colspan) {
+    var tr = document.createElement("tr");
+    if (colspan) {
+      var td = document.createElement("td");
+      td.colSpan = colspan;
+      td.textContent = cells[0];
+      tr.appendChild(td);
+    } else {
+      cells.forEach(function (text) {
+        var td = document.createElement("td");
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+    }
+    rows.appendChild(tr);
+  }
+  function fail(msg) {
+    headline.textContent = msg;
+    headline.className = "err";
+    clearRows();
+    addRow(["not reported"], 6);
+  }
+  fetch("/readings/forecast-ledger-latest.json", { cache: "no-store" }).then(function (res) {
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }).then(function (data) {
+    if (!data || !data.headline) { fail("Forecast ledger has no headline."); return; }
+    headline.textContent = data.headline;
+    headline.className = "fc-lede";
+    var signals = data.signals || {};
+    var names = Object.keys(signals).sort();
+    clearRows();
+    if (!names.length) {
+      addRow(["No signal has enough history to score."], 6);
+      return;
+    }
+    names.forEach(function (name) {
+      var row = signals[name] || {};
+      addRow([
+        name,
+        row.wis != null ? String(row.wis) : "not reported",
+        row.empirical_coverage != null ? String(row.empirical_coverage) : "not reported",
+        row.beats_baseline ? "yes" : "no",
+        row.n_forecasts != null ? String(row.n_forecasts) : "not reported",
+        row.n_misses != null ? String(row.n_misses) : "not reported"
+      ]);
+    });
+  }).catch(function (err) {
+    fail("Could not load the forecast ledger: " + err.message);
+  });
+})();
+</script>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>

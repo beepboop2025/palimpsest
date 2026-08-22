@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly situation report · Palimpsest</title>
+<meta name="description" content="Sealed weekly fusion of DDTI, Weibo, GDELT, GitHub-refuge, board alarm and forecast skill. Frozen template. No model prose.">
+<link rel="canonical" href="https://palimpsest.info/weekly-situation.html">
+<meta name="robots" content="index, follow, max-snippet:-1">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/dashboards/assets/tikto.css">
+<link rel="stylesheet" href="/assets/shell.css">
+<style>
+  .ws { padding-bottom: 72px; }
+  .ws-head { padding: clamp(34px, 7vw, 64px) 0 8px; }
+  .ws-lede { color: var(--tk-text-2); max-width: 76ch; font-size: 15px; line-height: 1.65; }
+  .ws table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .ws th, .ws td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--ps-edge-1); vertical-align: top; }
+  .ws th { color: var(--tk-text-3); font-weight: 600; }
+  .ws code { font-family: var(--tk-font-mono), ui-monospace, Menlo, monospace; font-size: 12px; }
+  .ws a { color: var(--tk-live, #06d6e0); }
+  .ws-note { padding: 14px 16px; border-left: 3px solid var(--tk-live, #06d6e0); margin: 18px 0; }
+  .ws pre { overflow-x: auto; padding: 14px 16px; border: 1px solid var(--ps-edge-1); }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Dataset",
+  "name": "Palimpsest weekly situation report",
+  "url": "https://palimpsest.info/weekly-situation.html",
+  "dateModified": "2026-08-22T12:15:12.780717+00:00",
+  "identifier": "85a46846e6edb566573d8ad9",
+  "creator": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"}
+}
+</script>
+</head>
+<body class="ps">
+<!--PS_NAV-->
+<a class="ps-skip" href="#main">Skip to content</a>
+<nav class="ps-nav" aria-label="Primary">
+  <a class="ps-nav__brand" href="/"><img src="/brand/palimpsest-icon.svg" width="20" height="20" alt="">PALIMPSEST</a>
+  <div class="ps-nav__spacer"></div>
+  <div class="ps-nav__items">
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/journal/">Findings</a></div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/news/">Source index</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-2" data-within="">Observatory<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-2">
+        <p class="ps-flyout__lede">Open a current measurement. Each page shows the result, source receipt, freshness and limit.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Current results</p>
+            <a href="/china/"><b>China Observatory<span class="ps-tag">new</span></b><span>See reporting status and current evidence</span></a>
+            <a href="/news/china/situation/"><b>China situation desk<span class="ps-tag">new</span></b><span>Combine publisher reports, social context and measurements</span></a>
+            <a href="/news/china/rumour/"><b>Public vantages</b><span>Join public streams. Rumour stays context, never proof</span></a>
+            <a href="/osint-china.html"><b>Signal board</b><span>Inspect every signal and its freshness</span></a>
+            <a href="/china-brief.html"><b>China Brief</b><span>Read the current six-hour measurement brief</span></a>
+            <a href="/weekly-situation.html" aria-current="page"><b>Weekly situation report<span class="ps-tag">new</span></b><span>Sealed multi-layer fusion of what the censor is working on</span></a>
+            <a href="/news/china/analysis/"><b>Censorship analysis</b><span>Open the latest cross-instrument result</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Inspect the record</p>
+            <a href="/china/sources/"><b>Source ledger</b><span>Check access, rights, readiness and limits</span></a>
+            <a href="/china/releases/"><b>Release monitors</b><span>Check publication clocks and revisions</span></a>
+            <a href="/news/china/erasure/"><b>Find a deleted post<span class="ps-tag">new</span></b><span>Open the evidence trail, export and cite</span></a>
+            <a href="/status.html"><b>Collector health</b><span>Last successful seal, and every abstention</span></a>
+            <a href="/dashboards/ddti_dashboard.html"><b>Live deletion monitor</b><span>Open the deletion tracker</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-3">Tools + feeds<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout ps-flyout--wide" id="ps-fly-3">
+        <p class="ps-flyout__lede">Go directly to something usable. These links open a tool, data file, feed or verification surface.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Use a tool</p>
+            <a href="/guides/telegram-scam-message-checker/"><b>Check a scam message</b><span>Open the Telegram checker and privacy guide</span></a>
+            <a href="/readings/eval-registry.html"><b>Verify an AI eval</b><span>Inspect preregistrations, run seals and chain roots</span></a>
+            <a href="/evidence-capsules.html"><b>Verify a claim offline</b><span>Download a claim with its exact supporting bytes</span></a>
+            <a href="/cite.html"><b>Cite a signal</b><span>Build a dataset or day citation from the atlas</span></a>
+            <a href="/challenge.html"><b>Challenge a number</b><span>Reproduce the seal and file a method or source error</span></a>
+            <a href="/forecast-scorecard.html"><b>Forecast scorecard</b><span>Weighted Interval Scores, with the misses kept</span></a>
+          </div>
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Subscribe or build</p>
+            <a href="/feeds/"><b>Feeds directory<span class="ps-tag">new</span></b><span>Choose the RSS or JSON feed for your task</span></a>
+            <a href="/evals/"><b>Eval methods journal</b><span>Read method changes, failures and falsifiers</span></a>
+            <a href="/data.html"><b>Download data</b><span>Open every public dataset and licence</span></a>
+            <a href="/developers.html"><b>API + MCP</b><span>Call the read-only tools and inspect the contracts</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ps-nav__item"><a class="ps-nav__link" href="/for-researchers.html">Method</a></div>
+    <div class="ps-nav__item">
+      <button class="ps-nav__link" type="button" aria-expanded="false" aria-controls="ps-fly-5">About<i class="ps-nav__chev" aria-hidden="true"></i></button>
+      <div class="ps-flyout" id="ps-fly-5">
+        <p class="ps-flyout__lede">See what changed after feedback, inspect the source, or support the public work.</p>
+        <div class="ps-flyout__cols">
+          <div class="ps-flyout__col">
+            <p class="ps-flyout__head">Project</p>
+            <a href="/updates/2026-08-17-listening-pass/"><b>What changed after feedback<span class="ps-tag">new</span></b><span>Read the criticism-to-change ledger</span></a>
+            <a href="/fund.html"><b>Fund the work</b><span>No paywall and no supporter-only evidence</span></a>
+            <a href="https://github.com/beepboop2025/palimpsest" target="_blank" rel="noopener"><b>Source repository</b><span>Clone, verify and inspect the complete record</span></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu"><i></i><i></i><i></i></button>
+  <div class="ps-nav__scrim" aria-hidden="true"></div>
+</nav>
+<!--/PS_NAV-->
+<main id="main" class="ps-wrap ws">
+  <header class="ws-head">
+    <p class="ps-kicker">Sealed weekly situation · trigger scheduled</p>
+    <h1 class="ps-h1">What the censor is working hardest on</h1>
+    <p class="ws-lede">211 DDTI terms from 84 CDT observations. 9 of 9 fused layers present. 1 layer(s) elevated (network). GFI 17.0 (interval 6.3 to 38.3).</p>
+    <p class="ws-lede">Generated 2026-08-22T12:15:12.780717+00:00. Seal <code>85a46846e6edb566573d8ad974d7e0667e5e1d4de23731446788b8df14b6804a</code>. Frozen template <code>weekly-situation-v1</code>. This is not a newspaper.</p>
+  </header>
+  <section>
+    <h2 class="ps-section-head">Ranked terms</h2>
+    <p class="ws-lede">Order is DDTI threat. Other layers only join. A blank join is a miss, not a negative.</p>
+    <table>
+      <thead><tr><th>Term</th><th>Domain</th><th>Threat</th><th>GDELT</th><th>Weibo</th><th>Layers</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">Chinese opera</a></td><td>OTHER</td><td>0.813</td><td>containment</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">Cultural Revolution</a></td><td>OTHER</td><td>0.813</td><td>containment</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">Red</a></td><td>OTHER</td><td>0.813</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">The Cultural Revolution Never Ended</a></td><td>OTHER</td><td>0.813</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">cross-talk</a></td><td>OTHER</td><td>0.813</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">cultural policy</a></td><td>OTHER</td><td>0.813</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">insulting heroes and martyrs</a></td><td>OTHER</td><td>0.813</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">revolutionary films</a></td><td>OTHER</td><td>0.813</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">wuhan</a></td><td>OTHER</td><td>0.813</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">freedom of expression</a></td><td>OTHER</td><td>0.7743</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">netizen comments</a></td><td>OTHER</td><td>0.743</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+<tr><td><a href="https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/">arts censorship</a></td><td>OTHER</td><td>0.6969</td><td>unknown</td><td>no join</td><td>content, global-news</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section>
+    <h2 class="ps-section-head">Social differential</h2>
+    <p>contained-visible: 1. suppressed-invisible: 0.</p>
+  </section>
+  <section>
+    <h2 class="ps-section-head">CDT campaigns</h2>
+    <ul><li>21 terms in <a href='https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/'>Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”</a></li><li>13 terms in <a href='https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/'>Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers</a></li><li>19 terms in <a href='https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/'>Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”</a></li><li>10 terms in <a href='https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/'>Translation: “How Do These Comments Break the Rules?”</a></li><li>16 terms in <a href='https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/'>Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat</a></li><li>15 terms in <a href='https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/'>Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On</a></li><li>20 terms in <a href='https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/'>Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News</a></li><li>11 terms in <a href='https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/'>Translation: No Scaling the Great Firewall in the Library</a></li><li>9 terms in <a href='https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/'>Translation: The Deluge of Blocked Words Online - Why We Feel We “Cannot Speak Openly”</a></li><li>17 terms in <a href='https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/'>Translation: “AI Has Determined That My Press Card Is a Fake”</a></li><li>37 terms in <a href='https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/'>CDT’s “404 Deleted Content Archive” Summary for June 2026</a></li><li>12 terms in <a href='https://chinadigitaltimes.net/2026/07/everything-is-sensitive-foreign-correspondents-club-survey-echoes-netizen-frustration-at-unpredictable-red-lines/'>“Everything Is Sensitive”: Foreign Correspondents’ Club Survey Echoes Netizen Frustration at Unpredictable Red Lines</a></li><li>2 terms in <a href='https://chinadigitaltimes.net/2026/07/photo-%e5%b9%bf%e5%9c%ba%e9%b8%bd%e5%ad%90-by-costi/'>Photo: 广场鸽子, by Costi</a></li><li>2 terms in <a href='https://chinadigitaltimes.net/2026/07/photo-xanadu-by-xiquinho-silva/'>Photo: Xanadu, by Xiquinho Silva</a></li><li>2 terms in <a href='https://freedomhouse.org/article/tnr-watch-cyberattacks-tactic-digital-transnational-repression#new_tab'>Freedom House - TNR Watch: Cyberattacks as a Tactic of Digital Transnational Repression</a></li><li>31 terms in <a href='https://chinadigitaltimes.net/2026/07/minitrue-718-leaked-directives-from-video-platform-letv/'>Minitrue: 718 Leaked Directives from Video Platform LeTV</a></li><li>22 terms in <a href='https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/'>Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”</a></li><li>8 terms in <a href='https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/'>Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints</a></li><li>18 terms in <a href='https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/'>Translation: “Education for Migrant Workers’ Children Can’t Wait Any Longer”</a></li></ul>
+  </section>
+  <section>
+    <h2 class="ps-section-head">Forecast scorecard</h2>
+    <p class="ws-lede">8 signals scored over 1559 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8</p>
+    <table>
+      <thead><tr><th>Signal</th><th>WIS (lower better)</th><th>Coverage</th><th>Beats baseline</th><th>Misses</th></tr></thead>
+      <tbody><tr><td>censored_planet</td><td>0.0208</td><td>0.737</td><td>no</td><td>5</td></tr><tr><td>ddti_threat</td><td>0.1158</td><td>0.835</td><td>yes</td><td>54</td></tr><tr><td>ddti_novelty</td><td>0.416</td><td>0.96</td><td>yes</td><td>13</td></tr><tr><td>ooni_gfw</td><td>0.444</td><td>0.793</td><td>yes</td><td>34</td></tr><tr><td>github_refuge</td><td>0.5519</td><td>0.877</td><td>no</td><td>10</td></tr><tr><td>refusal_drift</td><td>1.1412</td><td>0.786</td><td>no</td><td>15</td></tr><tr><td>gdelt_containment</td><td>1.2218</td><td>0.81</td><td>no</td><td>33</td></tr><tr><td>tor_bridge_cn</td><td>54.2791</td><td>0.796</td><td>no</td><td>81</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2 class="ps-section-head">Abstentions</h2>
+    <ul><li>No fused layer abstained.</li></ul>
+  </section>
+  <section>
+    <h2 class="ps-section-head">Limits</h2>
+    <ul><li>The ranking is censor attention allocation from China Digital Times, not a deletion rate.</li><li>A missing layer is an abstention, never a zero and never calm.</li><li>GDELT and Weibo joins are exact-term matches against the current DDTI list.</li><li>The Generative Firewall Index is a named-panel refusal reading, not a motive claim.</li><li>Cross-layer coincidence counts elevated layers; it does not identify a common cause.</li><li>GitHub-as-Refuge reports pressure against persisted prior-presence baselines only.</li></ul>
+  </section>
+  <div class="ws-note">
+    <p>Reproduce: <code>python3 scripts/reproduce_all.py</code>. Cite this file: <a href="/cite.html#weekly-situation">cite a specific signal</a>. Challenge a number: <a href="/challenge.html">how to challenge</a>.</p>
+  </div>
+  <p>Canonical JSON: <a href="/readings/weekly-situation-latest.json"><code>readings/weekly-situation-latest.json</code></a>.</p>
+</main>
+<script src="/assets/shell.js" defer></script>
+</body>
+</html>
