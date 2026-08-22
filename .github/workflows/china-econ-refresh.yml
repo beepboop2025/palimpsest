@@ -147,7 +147,11 @@ jobs:
             datapackage.json \
             china/ \
             news/
-          git add -- readings/*-analysis.json readings/*-analysis.html || true
+          git add -A -- readings china news datapackage.json
+          if git status --porcelain=v1 --untracked-files=all | grep -q .; then
+            echo "unstaged after git add:"
+            git status --porcelain=v1 --untracked-files=all | head -80
+          fi
           if git diff --cached --quiet; then
             echo "no change"
           else
