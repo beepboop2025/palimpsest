@@ -685,17 +685,21 @@ def test_default_analysis_has_empty_peer_context_and_outside_remit_stays_empty()
 
 
 def test_no_fake_latest_peer_files_are_committed():
-    # Warehouse and peer-cache files stay off git. The review ranker is the
-    # public product and writes readings/peer-context-rank-latest.json.
+    # Intermediate peer-cache files stay off git. The Hetzner warehouse
+    # snapshots (peer-context, greatfire-context) are imported onto Pages.
+    # The review ranker is a separate public product.
     for name in (
-        "greatfire-context-latest.json",
-        "peer-context-latest.json",
         "ooni-peer-context-latest.json",
         "cdt-context-latest.json",
         "weiboscope-context-latest.json",
         "peer-context-features.jsonl",
     ):
         assert not (ROOT / "readings" / name).exists()
+    imported = ROOT / "readings" / "peer-context-latest.json"
+    if imported.is_file():
+        document = json.loads(imported.read_text(encoding="utf-8"))
+        assert document.get("generated_at")
+        assert document.get("n_hosts")
 
 
 def test_feature_table_emits_ranker_rows_and_silent_peers_fail_closed():

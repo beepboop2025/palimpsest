@@ -438,7 +438,6 @@ def test_no_fake_live_latest_files_were_committed() -> None:
     ).splitlines()
     forbidden = {
         "readings/official-first-seen-latest.json",
-        "readings/public-deletion-ledgers-latest.json",
         "readings/news-wire-live-latest.json",
         "readings/archive-news-context-latest.json",
     }
