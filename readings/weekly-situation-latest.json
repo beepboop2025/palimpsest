@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-weekly-situation.v1",
-  "generated_at": "2026-08-22T13:05:26.746631+00:00",
+  "generated_at": "2026-08-22T13:29:17.951547+00:00",
   "template": {
     "id": "weekly-situation-v1",
     "version": 1,
@@ -223,8 +223,8 @@
     "social": {
       "status": "ok",
       "source": "weibo",
-      "generated_at": "2026-08-22T12:57:00Z",
-      "sha256": "2553a10f2978486005998765854a2510fc83232085e2bda51f85bf42ffd47a55"
+      "generated_at": "2026-08-22T13:17:47Z",
+      "sha256": "fd39bb6ab48f3598cddc4084687629f3e13846de5f767e3ba442fb62518a2178"
     },
     "global-news": {
       "status": "ok",
@@ -235,14 +235,14 @@
     "platform": {
       "status": "ok",
       "source": "github_refuge",
-      "generated_at": "2026-08-22T02:00:24.972007+00:00",
-      "sha256": "8a93bb8227713ad3ada4dcc7441a9a6b628a5f3a33b8f6282da3fee2550f10c4"
+      "generated_at": "2026-08-22T13:10:55.900834+00:00",
+      "sha256": "da3013b5aaa109331bdfe18ed83302764b8f697990e6d460f9e740870c8c75f6"
     },
     "network-board": {
       "status": "ok",
       "source": "board_alarm",
-      "generated_at": "2026-08-22T07:23:38.406415+00:00",
-      "sha256": "0a65ce045d6cfaa85415c1386b896a829e3da74f9688f6b5f8f62329bdf9f7fc"
+      "generated_at": "2026-08-22T13:23:49.916925+00:00",
+      "sha256": "c1ab6a661d1c5755f4fc98861bd8c66ce8536cbb41af95b329dd7661d19f97d3"
     },
     "model": {
       "status": "ok",
@@ -253,8 +253,8 @@
     "forecast": {
       "status": "ok",
       "source": "forecast_ledger",
-      "generated_at": "2026-08-22T07:23:38.527445+00:00",
-      "sha256": "931074ff039bd96b40495b6261d7f9edac169fe7c19a3b645628f4435635a6d5"
+      "generated_at": "2026-08-22T13:23:50.037302+00:00",
+      "sha256": "56f84bff10df0938bf2be29d966d777439d413f3e6f11bd2f48b74b42c04e999"
     }
   },
   "social_differential": {
@@ -270,7 +270,7 @@
       "2026-08-21",
       "2026-08-22"
     ],
-    "generated_at": "2026-08-22T12:57:00Z",
+    "generated_at": "2026-08-22T13:17:47Z",
     "note": "contained_visible: DDTI term still trends. suppressed_invisible: DDTI term never appears on the public hot-search board."
   },
   "campaigns": {
@@ -717,12 +717,12 @@
     "method": "exact CDT article URL; a campaign is an article that names two or more current DDTI terms. Title fuzzy-matching is refused."
   },
   "forecast_skill": {
-    "headline": "8 signals scored over 1559 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
+    "headline": "8 signals scored over 1566 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
     "pooled_empirical_coverage": 0.843,
     "nominal_coverage": 0.8,
     "n_signals_scored": 8,
     "n_beating_baseline": 3,
-    "n_forecasts": 1559,
+    "n_forecasts": 1566,
     "signals": [
       {
         "signal": "censored_planet",
@@ -734,34 +734,34 @@
       },
       {
         "signal": "ddti_threat",
-        "wis": 0.1158,
-        "empirical_coverage": 0.835,
+        "wis": 0.1152,
+        "empirical_coverage": 0.836,
         "beats_baseline": true,
-        "n_forecasts": 327,
+        "n_forecasts": 329,
         "n_misses": 54
       },
       {
         "signal": "ddti_novelty",
-        "wis": 0.416,
+        "wis": 0.4135,
         "empirical_coverage": 0.96,
         "beats_baseline": true,
-        "n_forecasts": 327,
+        "n_forecasts": 329,
         "n_misses": 13
       },
       {
         "signal": "ooni_gfw",
-        "wis": 0.444,
-        "empirical_coverage": 0.793,
+        "wis": 0.4421,
+        "empirical_coverage": 0.794,
         "beats_baseline": true,
-        "n_forecasts": 164,
+        "n_forecasts": 165,
         "n_misses": 34
       },
       {
         "signal": "github_refuge",
-        "wis": 0.5519,
-        "empirical_coverage": 0.877,
+        "wis": 0.5462,
+        "empirical_coverage": 0.878,
         "beats_baseline": false,
-        "n_forecasts": 81,
+        "n_forecasts": 82,
         "n_misses": 10
       },
       {
@@ -774,10 +774,10 @@
       },
       {
         "signal": "gdelt_containment",
-        "wis": 1.2218,
-        "empirical_coverage": 0.81,
+        "wis": 1.217,
+        "empirical_coverage": 0.811,
         "beats_baseline": false,
-        "n_forecasts": 174,
+        "n_forecasts": 175,
         "n_misses": 33
       },
       {
@@ -811,43 +811,43 @@
       "source": "weibo",
       "path": "weibo-hotsearch-latest.json",
       "status": "ok",
-      "sha256": "2553a10f2978486005998765854a2510fc83232085e2bda51f85bf42ffd47a55",
-      "generated_at": "2026-08-22T12:57:00Z"
+      "sha256": "fd39bb6ab48f3598cddc4084687629f3e13846de5f767e3ba442fb62518a2178",
+      "generated_at": "2026-08-22T13:17:47Z"
     },
     "github_refuge": {
       "source": "github_refuge",
       "path": "github-refuge-latest.json",
       "status": "ok",
-      "sha256": "8a93bb8227713ad3ada4dcc7441a9a6b628a5f3a33b8f6282da3fee2550f10c4",
-      "generated_at": "2026-08-22T02:00:24.972007+00:00"
+      "sha256": "da3013b5aaa109331bdfe18ed83302764b8f697990e6d460f9e740870c8c75f6",
+      "generated_at": "2026-08-22T13:10:55.900834+00:00"
     },
     "board_alarm": {
       "source": "board_alarm",
       "path": "board-alarm-latest.json",
       "status": "ok",
-      "sha256": "0a65ce045d6cfaa85415c1386b896a829e3da74f9688f6b5f8f62329bdf9f7fc",
-      "generated_at": "2026-08-22T07:23:38.406415+00:00"
+      "sha256": "c1ab6a661d1c5755f4fc98861bd8c66ce8536cbb41af95b329dd7661d19f97d3",
+      "generated_at": "2026-08-22T13:23:49.916925+00:00"
     },
     "coverage_guard": {
       "source": "coverage_guard",
       "path": "coverage-guard-latest.json",
       "status": "ok",
-      "sha256": "5ce9ba4f70e18ca02cb01ae8f609615700be7c0b3d5a60dbd5eb0697f695a27b",
-      "generated_at": "2026-08-22T07:23:38.493439+00:00"
+      "sha256": "989286d1c8072dae1fb3cd0d567569b521987370aeb18befe4a070003d03a66a",
+      "generated_at": "2026-08-22T13:23:50.002583+00:00"
     },
     "forecast_ledger": {
       "source": "forecast_ledger",
       "path": "forecast-ledger-latest.json",
       "status": "ok",
-      "sha256": "931074ff039bd96b40495b6261d7f9edac169fe7c19a3b645628f4435635a6d5",
-      "generated_at": "2026-08-22T07:23:38.527445+00:00"
+      "sha256": "56f84bff10df0938bf2be29d966d777439d413f3e6f11bd2f48b74b42c04e999",
+      "generated_at": "2026-08-22T13:23:50.037302+00:00"
     },
     "cross_layer": {
       "source": "cross_layer",
       "path": "cross-layer-latest.json",
       "status": "ok",
-      "sha256": "a7ac35852010a756325561d48fabaccb91979f9658becb9368a86103fb217b30",
-      "generated_at": "2026-08-22T07:23:38.600576+00:00"
+      "sha256": "ae842620b61d2eec743e513c670d411785891d6a084066c82449f112a013048a",
+      "generated_at": "2026-08-22T13:23:50.112273+00:00"
     },
     "gfi": {
       "source": "gfi",
@@ -868,7 +868,7 @@
   ],
   "method_version": 1,
   "seal": {
-    "payload_sha256": "24c1fe3b03b6c93f9e19094db0a4763a6a185633e9b7908dbee7433851732b3e",
+    "payload_sha256": "8ca52a23d6c0a3271442fe9dae565f36e9f8ac334f1033aa0d826b26067ea524",
     "schema_version": "palimpsest-weekly-situation.v1",
     "template_id": "weekly-situation-v1"
   }
