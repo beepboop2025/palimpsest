@@ -65,28 +65,20 @@
       "title": "Baike redaction: degraded"
     },
     {
-      "id": "health-cny-fix-gap",
-      "kind": "health",
-      "severity": "warning",
-      "source_id": "cny-fix-gap",
-      "summary": "freshness deadline has passed",
-      "title": "CNY fix gap: stale"
-    },
-    {
-      "id": "health-data-darkness",
-      "kind": "health",
-      "severity": "warning",
-      "source_id": "data-darkness",
-      "summary": "freshness deadline has passed",
-      "title": "Official-data darkness: stale"
-    },
-    {
       "id": "health-believability",
       "kind": "health",
       "severity": "notice",
       "source_id": "believability",
       "summary": "upstream status is abstain",
       "title": "Believability read: degraded"
+    },
+    {
+      "id": "health-generative-firewall",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "generative-firewall",
+      "summary": "freshness deadline has passed",
+      "title": "Generative Firewall Index: stale"
     },
     {
       "id": "health-anchors",
@@ -105,24 +97,24 @@
       "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-22T07:39:08Z",
-  "headline": "Upstream board reports: single layer elevated: network. 35 of 38 configured sources report; 26 are live. Health qualifiers: 3 degraded, 6 stale, 3 missing.",
+  "generated_at": "2026-08-22T09:47:32Z",
+  "headline": "Upstream board reports: single layer elevated: network. 35 of 38 configured sources report; 27 are live. Health qualifiers: 3 degraded, 5 stale, 3 missing.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 3,
-      "live": 26,
+      "live": 27,
       "missing": 3,
-      "stale": 6
+      "stale": 5
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 26,
+    "required_live": 27,
     "required_reporting": 31,
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "c58c2c11fcf059dc47ff2d50d57191c53c766ad1",
+  "input_commit": "1456e1668baa6b1cccadf588544b07592f40cf94",
   "layers": [
     {
       "id": "command",
@@ -200,8 +192,8 @@
     },
     {
       "id": "economy",
-      "n_degraded": 3,
-      "n_live": 2,
+      "n_degraded": 1,
+      "n_live": 4,
       "n_reporting": 5,
       "n_total": 5,
       "signal_ids": [
@@ -216,14 +208,14 @@
     },
     {
       "id": "models",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "generative-firewall"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Generative firewall"
     },
     {
@@ -253,7 +245,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Source payloads that fit the public embed bound are retained in full; larger source files keep health, metrics and a compact prefix, with complete bytes at raw_url matching input.sha256. Freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 26,
+  "n_signals_live": 27,
   "n_signals_reporting": 35,
   "n_signals_total": 38,
   "schema_version": "osint-china.v1",
@@ -263,7 +255,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:23:38Z",
       "health": {
-        "age_hours": 0.258,
+        "age_hours": 2.398,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -570,7 +562,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:19:25Z",
       "health": {
-        "age_hours": 0.328,
+        "age_hours": 2.468,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -793,7 +785,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:23:38Z",
       "health": {
-        "age_hours": 0.258,
+        "age_hours": 2.398,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -932,7 +924,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:23:38Z",
       "health": {
-        "age_hours": 0.258,
+        "age_hours": 2.398,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1512,7 +1504,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:23:38Z",
       "health": {
-        "age_hours": 0.258,
+        "age_hours": 2.398,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1897,9 +1889,9 @@
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-22T13:59:07Z",
+      "freshness_deadline": "2026-08-22T16:42:37Z",
       "health": {
-        "age_hours": 0.667,
+        "age_hours": 0.082,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1909,9 +1901,9 @@
       },
       "id": "ddti",
       "input": {
-        "bytes": 167688,
+        "bytes": 167665,
         "filename": "ddti-latest.json",
-        "sha256": "ba7bf8c8fb118e1f6bb57e32750ad04bbf27432885c6c56f0fcd49c2dc8ebf71"
+        "sha256": "052dd42b9555d9d8b08c2ad4fd2268039dd09a427ec8005b11d611ab3d5cfca9"
       },
       "layer": "attention",
       "live": true,
@@ -1933,7 +1925,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 193.2,
+          "days_covered": 193.3,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1947,12 +1939,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-22T06:59:07.917892+00:00",
+        "generated_at": "2026-08-22T09:42:37.880262+00:00",
         "n_observations": 84,
         "n_terms": 211,
         "ranked": [
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -1970,10 +1962,10 @@
               }
             ],
             "term": "Chinese opera",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -1991,10 +1983,10 @@
               }
             ],
             "term": "Cultural Revolution",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2012,10 +2004,10 @@
               }
             ],
             "term": "Red",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2033,10 +2025,10 @@
               }
             ],
             "term": "The Cultural Revolution Never Ended",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2054,10 +2046,10 @@
               }
             ],
             "term": "cross-talk",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2075,10 +2067,10 @@
               }
             ],
             "term": "cultural policy",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2096,10 +2088,10 @@
               }
             ],
             "term": "insulting heroes and martyrs",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2117,10 +2109,10 @@
               }
             ],
             "term": "revolutionary films",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2138,10 +2130,10 @@
               }
             ],
             "term": "wuhan",
-            "threat": 0.8457
+            "threat": 0.813
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-24T06:17:30+00:00",
@@ -2163,10 +2155,10 @@
               }
             ],
             "term": "freedom of expression",
-            "threat": 0.8054
+            "threat": 0.7743
           },
           {
-            "attention": 0.5621,
+            "attention": 0.5404,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -2192,10 +2184,10 @@
               }
             ],
             "term": "netizen comments",
-            "threat": 0.7729
+            "threat": 0.743
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-02-28T01:56:40+00:00",
@@ -2213,10 +2205,10 @@
               }
             ],
             "term": "arts censorship",
-            "threat": 0.7248
+            "threat": 0.6969
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-03-07T23:18:13+00:00",
@@ -2234,10 +2226,10 @@
               }
             ],
             "term": "comedy",
-            "threat": 0.7248
+            "threat": 0.6969
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-06-25T05:15:19+00:00",
@@ -2255,10 +2247,10 @@
               }
             ],
             "term": "free expression",
-            "threat": 0.7248
+            "threat": 0.6969
           },
           {
-            "attention": 0.4832,
+            "attention": 0.4646,
             "burst_ratio": 3.0,
             "domain": "OTHER",
             "first_seen": "2026-07-06T06:26:18+00:00",
@@ -2276,10 +2268,10 @@
               }
             ],
             "term": "party history",
-            "threat": 0.7248
+            "threat": 0.6969
           },
           {
-            "attention": 0.3454,
+            "attention": 0.332,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-07-27T20:03:29+00:00",
@@ -2301,7 +2293,7 @@
               }
             ],
             "term": "subway",
-            "threat": 0.6907
+            "threat": 0.6641
           }
         ],
         "source_feeds": {
@@ -2324,7 +2316,7 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-22T06:59:07Z",
+      "source_timestamp": "2026-08-22T09:42:37Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 211 count.",
       "title": "Deletion-directive term index"
@@ -2333,7 +2325,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:24:01Z",
       "health": {
-        "age_hours": 0.252,
+        "age_hours": 2.392,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2634,7 +2626,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-20T21:26:43Z",
       "health": {
-        "age_hours": 48.207,
+        "age_hours": 50.347,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -3379,7 +3371,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:10:51Z",
       "health": {
-        "age_hours": 0.471,
+        "age_hours": 2.611,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3687,7 +3679,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-25T05:08:57Z",
       "health": {
-        "age_hours": 122.503,
+        "age_hours": 124.643,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -3999,7 +3991,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T04:03:11Z",
       "health": {
-        "age_hours": 5.599,
+        "age_hours": 7.739,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4388,7 +4380,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-20T17:58:30Z",
       "health": {
-        "age_hours": 51.677,
+        "age_hours": 53.817,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4793,7 +4785,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T09:12:23Z",
       "health": {
-        "age_hours": 0.446,
+        "age_hours": 2.586,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5033,7 +5025,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:05:19Z",
       "health": {
-        "age_hours": 0.563,
+        "age_hours": 2.703,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5364,7 +5356,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:07:20Z",
       "health": {
-        "age_hours": 0.53,
+        "age_hours": 2.67,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5536,7 +5528,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:29Z",
       "health": {
-        "age_hours": 1.694,
+        "age_hours": 3.834,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5713,7 +5705,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:16:57Z",
       "health": {
-        "age_hours": 0.37,
+        "age_hours": 2.51,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8154,7 +8146,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:08:16Z",
       "health": {
-        "age_hours": 0.514,
+        "age_hours": 2.654,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8205,7 +8197,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:41:02Z",
       "health": {
-        "age_hours": 1.968,
+        "age_hours": 4.108,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8279,7 +8271,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:22:18Z",
       "health": {
-        "age_hours": 0.281,
+        "age_hours": 2.421,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8358,7 +8350,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-17T14:57:15Z",
       "health": {
-        "age_hours": 126.698,
+        "age_hours": 128.838,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8480,7 +8472,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:11Z",
       "health": {
-        "age_hours": 4.449,
+        "age_hours": 6.589,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8606,7 +8598,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T04:03:06Z",
       "health": {
-        "age_hours": 5.601,
+        "age_hours": 7.741,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9387,7 +9379,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 539.131,
+        "age_hours": 541.271,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -9542,7 +9534,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T04:00:24Z",
       "health": {
-        "age_hours": 5.645,
+        "age_hours": 7.785,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10205,7 +10197,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:20:25Z",
       "health": {
-        "age_hours": 0.312,
+        "age_hours": 2.452,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10382,7 +10374,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-24T07:57:21Z",
       "health": {
-        "age_hours": 1.696,
+        "age_hours": 3.836,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10487,7 +10479,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T21:38:19Z",
       "health": {
-        "age_hours": 0.014,
+        "age_hours": 2.154,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10553,62 +10545,62 @@
     },
     {
       "cadence_hours": 24,
-      "freshness_deadline": "2026-08-18T19:26:16Z",
+      "freshness_deadline": "2026-08-24T11:37:04Z",
       "health": {
-        "age_hours": 134.214,
+        "age_hours": 0.174,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "cny-fix-gap",
       "input": {
-        "bytes": 1433,
+        "bytes": 1434,
         "filename": "cny-fix-gap-latest.json",
-        "sha256": "49195da3307b463d0d7187ae1ccfe09bda8052ece7180b9667caccb34e2d8ac9"
+        "sha256": "ac1417d74bbaeab9b5b6c75c1dc1de339910acd8ee9c7d4f22361ea4897a6abb"
       },
       "layer": "economy",
-      "live": false,
+      "live": true,
       "method": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
       "method_version": 1,
       "metric": {
         "denominator": null,
         "label": "fix gap",
         "unit": "percent",
-        "value": -0.6846
+        "value": -0.9013
       },
       "optional": false,
       "payload": {
-        "asof": "2026-08-14",
+        "asof": "2026-08-21",
         "band_pct": 2.0,
-        "cross_check_diff": 0.00065,
-        "gap": -0.046467,
-        "gap_pct": -0.6846,
-        "generated_at": "2026-08-16T17:26:16Z",
-        "history_days": 10,
+        "cross_check_diff": 0.001458,
+        "gap": -0.061126,
+        "gap_pct": -0.9013,
+        "generated_at": "2026-08-22T09:37:04Z",
+        "history_days": 11,
         "method_note": "two prices for one currency: the state's 09:15 Beijing fix vs an independent same-day market reference (ECB concertation, 14:15 CET = 20:15 Beijing). gap_pct > 0 means the market prices the yuan weaker than the fix; the band is ±2%, so gap_pct is read against that scale. Computed only on days a fix exists — ECB prints CNY on Chinese holidays and a gap against an unset fix would be fiction. Onshore only: no licence-clean keyless CNH source exists (the TMA fixing is licensed), stated rather than worked around. cross_check_diff is the ECB-vs-BoC derivation disagreement, published so a silent break in either source is visible; it is null on rounds where the Bank of Canada leg did not answer. Economic backdrop, not censorship — deliberately off the alarm board",
         "method_version": 1,
         "note": "persistent one-sided gaps are the market disputing the state's price; the fix itself is the policy statement",
         "source": "PBOC USD/CNY central parity (via this repo's china-econ history, CFETS-published) vs ECB euro foreign exchange reference rates (USD/CNY derived as EURCNY/EURUSD; source: ECB), cross-checked against Bank of Canada Valet noon rates (source: Bank of Canada)",
-        "usdcny_parity": 6.7878,
-        "usdcny_spot_ecb": 6.741333
+        "usdcny_parity": 6.7817,
+        "usdcny_spot_ecb": 6.720574
       },
       "payload_complete": true,
       "raw_url": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
       "scope": "Compares the official PBOC central parity with independent reference-rate cross-checks.",
       "source": "PBOC USD/CNY central parity (via this repo's china-econ history, CFETS-published) vs ECB euro foreign exchange reference rates (USD/CNY derived as EURCNY/EURUSD; source: ECB), cross-checked against Bank of Canada Valet noon rates (source: Bank of Canada)",
-      "source_timestamp": "2026-08-16T17:26:16Z",
-      "status": "stale",
-      "summary": "Compares the official PBOC central parity with independent reference-rate cross-checks. The retained payload is stale: source timestamp 2026-08-16T17:26:16Z passed its freshness deadline 2026-08-18T19:26:16Z, so it is not labelled live. Upstream reading: persistent one-sided gaps are the market disputing the state's price; the fix itself is the policy statement. Latest payload reports fix gap at -0.6846 percent.",
+      "source_timestamp": "2026-08-22T09:37:04Z",
+      "status": "live",
+      "summary": "Compares the official PBOC central parity with independent reference-rate cross-checks. Upstream reading: persistent one-sided gaps are the market disputing the state's price; the fix itself is the policy statement. Latest payload reports fix gap at -0.9013 percent.",
       "title": "CNY fix gap"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 17.597,
+        "age_hours": 19.737,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10665,24 +10657,24 @@
     },
     {
       "cadence_hours": 24,
-      "freshness_deadline": "2026-08-18T12:31:35Z",
+      "freshness_deadline": "2026-08-24T11:37:09Z",
       "health": {
-        "age_hours": 141.126,
+        "age_hours": 0.173,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "data-darkness",
       "input": {
-        "bytes": 3437,
+        "bytes": 3882,
         "filename": "data-darkness-latest.json",
-        "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df"
+        "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d"
       },
       "layer": "economy",
-      "live": false,
+      "live": true,
       "method": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
       "method_version": 1,
       "metric": {
@@ -10692,16 +10684,16 @@
         },
         "label": "darkness index",
         "unit": "index",
-        "value": 0.5968
+        "value": 0.1889
       },
       "optional": false,
       "payload": {
-        "asof": "2026-08-16",
-        "darkness_index": 0.5968,
-        "generated_at": "2026-08-16T10:31:35Z",
+        "asof": "2026-08-22",
+        "darkness_index": 0.1889,
+        "generated_at": "2026-08-22T09:37:09Z",
         "method_note": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
         "method_version": 1,
-        "n_series_reporting": 6,
+        "n_series_reporting": 7,
         "n_series_watched": 7,
         "note": "high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md",
         "series": {
@@ -10709,21 +10701,21 @@
             "basis": "business",
             "days_since": 0,
             "families": {
-              "central_parity": "2026-08-14",
-              "repo_fixing": "2026-08-14",
-              "shibor": "2026-08-14"
+              "central_parity": "2026-08-21",
+              "repo_fixing": "2026-08-21",
+              "shibor": "2026-08-21"
             },
-            "latest_publication": "2026-08-14",
+            "latest_publication": "2026-08-21",
             "nominal_interval_days": 1,
-            "our_last_look": "2026-08-16T01:23:31Z",
+            "our_last_look": "2026-08-22T07:38:19Z",
             "staleness_ratio": 0.0
           },
-          "nbs_industrial": {
+          "nbs_energy": {
             "basis": "calendar",
             "days_past_promise": 0,
-            "days_since": 32,
-            "latest_period": "2026-06",
-            "latest_publication": "2026-07-15",
+            "days_since": 5,
+            "latest_period": "2026-07",
+            "latest_publication": "2026-08-17",
             "n_listed": 1,
             "nominal_interval_days": 31,
             "periods_behind": 0,
@@ -10741,67 +10733,90 @@
               "9": 15
             },
             "promised_day": 17,
-            "staleness_ratio": 1.0323
+            "staleness_ratio": 0.1613
+          },
+          "nbs_industrial": {
+            "basis": "calendar",
+            "days_past_promise": 0,
+            "days_since": 5,
+            "latest_period": "2026-07",
+            "latest_publication": "2026-08-17",
+            "n_listed": 1,
+            "nominal_interval_days": 31,
+            "periods_behind": 0,
+            "promise_calendar": {
+              "1": 19,
+              "10": 19,
+              "11": 16,
+              "12": 15,
+              "3": 16,
+              "4": 16,
+              "5": 18,
+              "6": 16,
+              "7": 15,
+              "8": 17,
+              "9": 15
+            },
+            "promised_day": 17,
+            "staleness_ratio": 0.1613
           },
           "nra_rail": {
             "basis": "calendar",
-            "days_since": 33,
-            "latest_period": "2026-06",
-            "latest_publication": "2026-07-14",
+            "days_since": 4,
+            "latest_period": "2026-07",
+            "latest_publication": "2026-08-18",
             "nominal_interval_days": 31,
-            "staleness_ratio": 1.0645
+            "staleness_ratio": 0.129
           },
           "pboc_mb_stats": {
             "basis": "calendar",
-            "days_since": 16,
+            "days_since": 22,
             "latest_period": "2026-06",
             "latest_publication": "2026-07-31",
             "months_listed": 6,
             "nominal_interval_days": 31,
-            "staleness_ratio": 0.5161
+            "staleness_ratio": 0.7097
           },
           "pboc_omo": {
             "announcement_year": 2026,
             "basis": "business",
             "days_since": 0,
-            "first_listed": "2026-07-20",
-            "latest_announcement_no": 157,
-            "latest_publication": "2026-08-14",
+            "first_listed": "2026-07-27",
+            "latest_announcement_no": 162,
+            "latest_publication": "2026-08-21",
             "n_listed": 20,
             "n_listed_latest_year": 20,
             "nominal_interval_days": 1,
-            "numbers_listed_max": 157,
-            "numbers_listed_min": 138,
+            "numbers_listed_max": 162,
+            "numbers_listed_min": 143,
             "staleness_ratio": 0.0
           },
           "safe_settlement": {
             "basis": "calendar",
-            "days_since": 30,
-            "latest_publication": "2026-07-17",
+            "days_since": 5,
+            "latest_publication": "2026-08-17",
             "n_files": 8,
             "nominal_interval_days": 31,
-            "staleness_ratio": 0.9677
+            "staleness_ratio": 0.1613
           }
         },
         "source": "official Chinese publication surfaces, read keyless: pbc.gov.cn (OMO announcements; Money & Banking Statistics directory), safe.gov.cn (bank FX settlement page), stats.gov.cn (最新发布 firehose for the energy and industrial monthlies, plus the release calendar), nra.gov.cn (rail freight monthly), and this repo's own committed CFETS benchmark history",
-        "unreachable": [
-          "nbs_energy"
-        ]
+        "unreachable": []
       },
       "payload_complete": true,
       "raw_url": "https://palimpsest.info/readings/data-darkness-latest.json",
       "scope": "Checks official Chinese economic series against their own publication rhythms.",
       "source": "official Chinese publication surfaces, read keyless: pbc.gov.cn (OMO announcements; Money & Banking Statistics directory), safe.gov.cn (bank FX settlement page), stats.gov.cn (最新发布 firehose for the energy and industrial monthlies, plus the release calendar), nra.gov.cn (rail freight monthly), and this repo's own committed CFETS benchmark history",
-      "source_timestamp": "2026-08-16T10:31:35Z",
-      "status": "stale",
-      "summary": "Checks official Chinese economic series against their own publication rhythms. The retained payload is stale: source timestamp 2026-08-16T10:31:35Z passed its freshness deadline 2026-08-18T12:31:35Z, so it is not labelled live. Upstream reading: high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md. Latest payload reports darkness index at 0.5968 index across 7 series watched.",
+      "source_timestamp": "2026-08-22T09:37:09Z",
+      "status": "live",
+      "summary": "Checks official Chinese economic series against their own publication rhythms. Upstream reading: high = China's official money-market and FX data surfaces going quiet against their own publication rhythm; the withholding complement to the deletion signals, scoped in docs/VALIDATION.md. Latest payload reports darkness index at 0.1889 index across 7 series watched.",
       "title": "Official-data darkness"
     },
     {
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 96.266,
+        "age_hours": 98.406,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -10869,12 +10884,12 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-22T09:32:12Z",
       "health": {
-        "age_hours": 48.116,
+        "age_hours": 50.256,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "generative-firewall",
@@ -10884,7 +10899,7 @@
         "sha256": "54a1c8fe351952eb1d667cb4da8f41e1ab5d2bf9d6a3f71c90108fc446d53a3e"
       },
       "layer": "models",
-      "live": true,
+      "live": false,
       "method": "k5-wilson95",
       "method_version": 4,
       "metric": {
@@ -13138,15 +13153,15 @@
       "scope": "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank.",
       "source": "Palimpsest Generative Firewall controlled model evaluation",
       "source_timestamp": "2026-08-20T07:32:12Z",
-      "status": "live",
-      "summary": "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank. Latest payload reports GFI at 17 index across 20 evaluated cells.",
+      "status": "stale",
+      "summary": "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank. The retained payload is stale: source timestamp 2026-08-20T07:32:12Z passed its freshness deadline 2026-08-22T09:32:12Z, so it is not labelled live. Latest payload reports GFI at 17 index across 20 evaluated cells.",
       "title": "Generative Firewall Index"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-22T17:12:23Z",
       "health": {
-        "age_hours": 4.446,
+        "age_hours": 6.586,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -13193,7 +13208,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-17T06:14:16Z",
       "health": {
-        "age_hours": 122.414,
+        "age_hours": 124.554,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,

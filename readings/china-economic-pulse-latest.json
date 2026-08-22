@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-08-22T07:38:19Z",
+  "as_of": "2026-08-22T09:37:09Z",
   "comparisons": [
     {
       "baseline_observations": 1,
@@ -219,9 +219,11 @@
           "viirs_radiance"
         ],
         "domain": "commodities",
-        "observed_groups": [],
+        "observed_groups": [
+          "nbs_official_statistics"
+        ],
         "registered_live_groups": [],
-        "status": "adapter_ready"
+        "status": "observed"
       },
       {
         "adapter_ready_groups": [
@@ -387,6 +389,7 @@
       "cfets_benchmarks",
       "external_cny_reference",
       "hkex_stock_connect",
+      "nbs-energy-release",
       "nbs-industrial-release",
       "nra-rail-release",
       "pboc-money-banking-release",
@@ -468,7 +471,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -504,7 +507,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -540,7 +543,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -576,7 +579,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -612,7 +615,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -648,7 +651,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -684,7 +687,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -720,7 +723,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -756,7 +759,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -792,7 +795,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -828,7 +831,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -864,7 +867,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -900,7 +903,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -936,7 +939,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -972,7 +975,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 0.0,
+            "age_hours": 1.981,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -996,28 +999,28 @@
           "value": 6.7817
         },
         {
-          "collected_at": "2026-08-16T17:26:16Z",
+          "collected_at": "2026-08-22T09:37:04Z",
           "comparability": {
             "basis": "Absolute CNY-per-USD difference between two external official derivations.",
             "concept": "Chinese yuan per US dollar",
             "concept_id": "usd-cny-rate"
           },
           "evidence": {
-            "sha256": "49195da3307b463d0d7187ae1ccfe09bda8052ece7180b9667caccb34e2d8ac9",
+            "sha256": "ac1417d74bbaeab9b5b6c75c1dc1de339910acd8ee9c7d4f22361ea4897a6abb",
             "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 134.201,
+            "age_hours": 0.001,
             "budget_hours": 120.0,
-            "status": "stale"
+            "status": "current"
           },
           "independence_group": "external_fx_reference",
           "label": "ECB versus Bank of Canada derived-rate difference",
           "limitation": "A null cross-check is not converted to zero and this value does not add an independent China source.",
           "metric_id": "cn-fx-external-cross-check-difference",
-          "period_end": "2026-08-14",
-          "period_start": "2026-08-14",
+          "period_end": "2026-08-21",
+          "period_start": "2026-08-21",
           "released_at": null,
           "revision": {
             "delta": null,
@@ -1029,31 +1032,31 @@
           "source_id": "external_cny_reference",
           "status": "derived",
           "unit": "CNY per USD",
-          "value": 0.00065
+          "value": 0.001458
         },
         {
-          "collected_at": "2026-08-16T17:26:16Z",
+          "collected_at": "2026-08-22T09:37:04Z",
           "comparability": {
             "basis": "Percent gap; positive means the market reference prices the yuan weaker than the fix.",
             "concept": "Official-reference FX divergence",
             "concept_id": "usd-cny-reference-gap"
           },
           "evidence": {
-            "sha256": "49195da3307b463d0d7187ae1ccfe09bda8052ece7180b9667caccb34e2d8ac9",
+            "sha256": "ac1417d74bbaeab9b5b6c75c1dc1de339910acd8ee9c7d4f22361ea4897a6abb",
             "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 134.201,
+            "age_hours": 0.001,
             "budget_hours": 120.0,
-            "status": "stale"
+            "status": "current"
           },
           "independence_group": "external_fx_reference",
           "label": "Official fix minus external reference gap",
           "limitation": "The official fix and external reference are same-day but not simultaneous; the comparison is onshore and does not supply a license-clean CNH leg.",
           "metric_id": "cn-fx-official-reference-gap-percent",
-          "period_end": "2026-08-14",
-          "period_start": "2026-08-14",
+          "period_end": "2026-08-21",
+          "period_start": "2026-08-21",
           "released_at": null,
           "revision": {
             "delta": null,
@@ -1065,31 +1068,31 @@
           "source_id": "external_cny_reference",
           "status": "derived",
           "unit": "percent",
-          "value": -0.6846
+          "value": -0.9013
         },
         {
-          "collected_at": "2026-08-16T17:26:16Z",
+          "collected_at": "2026-08-22T09:37:04Z",
           "comparability": {
             "basis": "CNY per USD; higher means a weaker yuan.",
             "concept": "Chinese yuan per US dollar",
             "concept_id": "usd-cny-rate"
           },
           "evidence": {
-            "sha256": "49195da3307b463d0d7187ae1ccfe09bda8052ece7180b9667caccb34e2d8ac9",
+            "sha256": "ac1417d74bbaeab9b5b6c75c1dc1de339910acd8ee9c7d4f22361ea4897a6abb",
             "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 134.201,
+            "age_hours": 0.001,
             "budget_hours": 120.0,
-            "status": "stale"
+            "status": "current"
           },
           "independence_group": "cfets_benchmarks",
           "label": "Official USD/CNY central parity",
           "limitation": "The official fix and external reference are same-day but not simultaneous; the comparison is onshore and does not supply a license-clean CNH leg.",
           "metric_id": "cn-fx-usdcny-parity",
-          "period_end": "2026-08-14",
-          "period_start": "2026-08-14",
+          "period_end": "2026-08-21",
+          "period_start": "2026-08-21",
           "released_at": null,
           "revision": {
             "delta": null,
@@ -1101,31 +1104,31 @@
           "source_id": "cfets_benchmarks",
           "status": "observed",
           "unit": "CNY per USD",
-          "value": 6.7878
+          "value": 6.7817
         },
         {
-          "collected_at": "2026-08-16T17:26:16Z",
+          "collected_at": "2026-08-22T09:37:04Z",
           "comparability": {
             "basis": "CNY per USD; higher means a weaker yuan.",
             "concept": "Chinese yuan per US dollar",
             "concept_id": "usd-cny-rate"
           },
           "evidence": {
-            "sha256": "49195da3307b463d0d7187ae1ccfe09bda8052ece7180b9667caccb34e2d8ac9",
+            "sha256": "ac1417d74bbaeab9b5b6c75c1dc1de339910acd8ee9c7d4f22361ea4897a6abb",
             "url": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 134.201,
+            "age_hours": 0.001,
             "budget_hours": 120.0,
-            "status": "stale"
+            "status": "current"
           },
           "independence_group": "external_fx_reference",
           "label": "ECB-derived USD/CNY reference",
           "limitation": "The official fix and external reference are same-day but not simultaneous; the comparison is onshore and does not supply a license-clean CNH leg.",
           "metric_id": "cn-fx-usdcny-spot-ecb",
-          "period_end": "2026-08-14",
-          "period_start": "2026-08-14",
+          "period_end": "2026-08-21",
+          "period_start": "2026-08-21",
           "released_at": null,
           "revision": {
             "delta": null,
@@ -1137,7 +1140,7 @@
           "source_id": "external_cny_reference",
           "status": "observed",
           "unit": "CNY per USD",
-          "value": 6.741333
+          "value": 6.720574
         }
       ],
       "n_metrics": 19,
@@ -1169,7 +1172,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 17.583,
+            "age_hours": 19.564,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1205,7 +1208,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 17.583,
+            "age_hours": 19.564,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1241,7 +1244,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 17.583,
+            "age_hours": 19.564,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1277,7 +1280,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 17.583,
+            "age_hours": 19.564,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1313,7 +1316,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 17.583,
+            "age_hours": 19.564,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1349,7 +1352,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 17.583,
+            "age_hours": 19.564,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1402,7 +1405,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 96.253,
+            "age_hours": 98.233,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1453,28 +1456,28 @@
       ],
       "metrics": [
         {
-          "collected_at": "2026-08-16T10:31:35Z",
+          "collected_at": "2026-08-22T09:37:09Z",
           "comparability": {
             "basis": "Mean days-since divided by each reporting surface's nominal interval.",
             "concept": "Mean cadence-relative release staleness",
             "concept_id": "publication-darkness-ratio"
           },
           "evidence": {
-            "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+            "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
             "url": "https://palimpsest.info/readings/data-darkness-latest.json"
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 141.112,
+            "age_hours": 0.0,
             "budget_hours": 50.0,
-            "status": "stale"
+            "status": "current"
           },
           "independence_group": "palimpsest_derived",
           "label": "Official publication darkness index",
           "limitation": "A high ratio establishes late publication surfaces, not intent or data falsity.",
           "metric_id": "cn-data-publication-darkness-index",
-          "period_end": "2026-08-16",
-          "period_start": "2026-08-16",
+          "period_end": "2026-08-22",
+          "period_start": "2026-08-22",
           "released_at": null,
           "revision": {
             "delta": null,
@@ -1486,7 +1489,7 @@
           "source_id": "palimpsest-data-darkness",
           "status": "derived",
           "unit": "ratio",
-          "value": 0.5968
+          "value": 0.1889
         }
       ],
       "n_metrics": 1,
@@ -1508,7 +1511,7 @@
     ],
     "status": "warming_up"
   },
-  "generated_at": "2026-08-22T07:38:19Z",
+  "generated_at": "2026-08-22T09:37:09Z",
   "input_integrity": [
     {
       "check_id": "cfets-wide-ledger-alignment",
@@ -1550,20 +1553,20 @@
       "used": true
     },
     {
-      "bytes": 1433,
+      "bytes": 1434,
       "filename": "cny-fix-gap-latest.json",
-      "generated_at": "2026-08-16T17:26:16Z",
+      "generated_at": "2026-08-22T09:37:04Z",
       "input_id": "cny-fix-gap",
-      "sha256": "49195da3307b463d0d7187ae1ccfe09bda8052ece7180b9667caccb34e2d8ac9",
+      "sha256": "ac1417d74bbaeab9b5b6c75c1dc1de339910acd8ee9c7d4f22361ea4897a6abb",
       "status": "used",
       "used": true
     },
     {
-      "bytes": 3437,
+      "bytes": 3882,
       "filename": "data-darkness-latest.json",
-      "generated_at": "2026-08-16T10:31:35Z",
+      "generated_at": "2026-08-22T09:37:09Z",
       "input_id": "data-darkness",
-      "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+      "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
       "status": "used",
       "used": true
     },
@@ -1578,7 +1581,7 @@
     }
   ],
   "method": "Deterministic no-network join using release and collection clocks, latest-as-of revision selection, source-independence groups, explicit units, and abstention gates.",
-  "n_metrics": 33,
+  "n_metrics": 34,
   "pulse_id": "palimpsest-china-economic-pulse",
   "readiness": {
     "abstention_reason": "Coverage and revision history do not yet support a broad state-of-economy composite.",
@@ -1623,7 +1626,7 @@
     "entries": [
       {
         "basis": "business",
-        "collected_at": "2026-08-16T10:31:35Z",
+        "collected_at": "2026-08-22T09:37:09Z",
         "comparability": {
           "basis": "business days against a nominal 1 day interval.",
           "concept": "Days since latest visible official publication",
@@ -1631,24 +1634,24 @@
         },
         "days_past_promise": null,
         "evidence": {
-          "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
           "url": "https://palimpsest.info/readings/data-darkness-latest.json"
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 141.112,
+          "age_hours": 0.0,
           "budget_hours": 50.0,
-          "status": "stale"
+          "status": "current"
         },
         "independence_group": "cfets_benchmarks",
         "label": "Cfets Benchmarks release age",
         "latest_period": null,
-        "latest_publication_date": "2026-08-14",
+        "latest_publication_date": "2026-08-21",
         "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
         "metric_id": "cn-release-lag-cfets-benchmarks",
         "nominal_interval_days": 1,
-        "period_end": "2026-08-14",
-        "period_start": "2026-08-14",
+        "period_end": "2026-08-21",
+        "period_start": "2026-08-21",
         "periods_behind": null,
         "released_at": null,
         "revision": {
@@ -1666,7 +1669,7 @@
       },
       {
         "basis": "calendar",
-        "collected_at": "2026-08-16T10:31:35Z",
+        "collected_at": "2026-08-22T09:37:09Z",
         "comparability": {
           "basis": "calendar days against a nominal 31 day interval.",
           "concept": "Days since latest visible official publication",
@@ -1674,24 +1677,67 @@
         },
         "days_past_promise": 0,
         "evidence": {
-          "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
           "url": "https://palimpsest.info/readings/data-darkness-latest.json"
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 141.112,
+          "age_hours": 0.0,
           "budget_hours": 50.0,
-          "status": "stale"
+          "status": "current"
+        },
+        "independence_group": "nbs_official_statistics",
+        "label": "Nbs Energy release age",
+        "latest_period": "2026-07",
+        "latest_publication_date": "2026-08-17",
+        "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
+        "metric_id": "cn-release-lag-nbs-energy",
+        "nominal_interval_days": 31,
+        "period_end": "2026-07-31",
+        "period_start": "2026-07-01",
+        "periods_behind": 0,
+        "released_at": null,
+        "revision": {
+          "delta": null,
+          "number": null,
+          "previous_value": null,
+          "status": "not_available"
+        },
+        "source_class": "official",
+        "source_id": "nbs-energy-release",
+        "status": "observed",
+        "unit": "days",
+        "value": 5.0,
+        "watch_id": "nbs_energy"
+      },
+      {
+        "basis": "calendar",
+        "collected_at": "2026-08-22T09:37:09Z",
+        "comparability": {
+          "basis": "calendar days against a nominal 31 day interval.",
+          "concept": "Days since latest visible official publication",
+          "concept_id": "official-publication-age-days"
+        },
+        "days_past_promise": 0,
+        "evidence": {
+          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
+          "url": "https://palimpsest.info/readings/data-darkness-latest.json"
+        },
+        "frequency": "M",
+        "freshness": {
+          "age_hours": 0.0,
+          "budget_hours": 50.0,
+          "status": "current"
         },
         "independence_group": "nbs_official_statistics",
         "label": "Nbs Industrial release age",
-        "latest_period": "2026-06",
-        "latest_publication_date": "2026-07-15",
+        "latest_period": "2026-07",
+        "latest_publication_date": "2026-08-17",
         "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
         "metric_id": "cn-release-lag-nbs-industrial",
         "nominal_interval_days": 31,
-        "period_end": "2026-06-30",
-        "period_start": "2026-06-01",
+        "period_end": "2026-07-31",
+        "period_start": "2026-07-01",
         "periods_behind": 0,
         "released_at": null,
         "revision": {
@@ -1704,12 +1750,12 @@
         "source_id": "nbs-industrial-release",
         "status": "observed",
         "unit": "days",
-        "value": 32.0,
+        "value": 5.0,
         "watch_id": "nbs_industrial"
       },
       {
         "basis": "calendar",
-        "collected_at": "2026-08-16T10:31:35Z",
+        "collected_at": "2026-08-22T09:37:09Z",
         "comparability": {
           "basis": "calendar days against a nominal 31 day interval.",
           "concept": "Days since latest visible official publication",
@@ -1717,24 +1763,24 @@
         },
         "days_past_promise": null,
         "evidence": {
-          "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
           "url": "https://palimpsest.info/readings/data-darkness-latest.json"
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 141.112,
+          "age_hours": 0.0,
           "budget_hours": 50.0,
-          "status": "stale"
+          "status": "current"
         },
         "independence_group": "nra_rail_statistics",
         "label": "Nra Rail release age",
-        "latest_period": "2026-06",
-        "latest_publication_date": "2026-07-14",
+        "latest_period": "2026-07",
+        "latest_publication_date": "2026-08-18",
         "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
         "metric_id": "cn-release-lag-nra-rail",
         "nominal_interval_days": 31,
-        "period_end": "2026-06-30",
-        "period_start": "2026-06-01",
+        "period_end": "2026-07-31",
+        "period_start": "2026-07-01",
         "periods_behind": null,
         "released_at": null,
         "revision": {
@@ -1747,12 +1793,12 @@
         "source_id": "nra-rail-release",
         "status": "observed",
         "unit": "days",
-        "value": 33.0,
+        "value": 4.0,
         "watch_id": "nra_rail"
       },
       {
         "basis": "calendar",
-        "collected_at": "2026-08-16T10:31:35Z",
+        "collected_at": "2026-08-22T09:37:09Z",
         "comparability": {
           "basis": "calendar days against a nominal 31 day interval.",
           "concept": "Days since latest visible official publication",
@@ -1760,14 +1806,14 @@
         },
         "days_past_promise": null,
         "evidence": {
-          "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
           "url": "https://palimpsest.info/readings/data-darkness-latest.json"
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 141.112,
+          "age_hours": 0.0,
           "budget_hours": 50.0,
-          "status": "stale"
+          "status": "current"
         },
         "independence_group": "pboc_credit_statistics",
         "label": "Pboc Mb Stats release age",
@@ -1790,12 +1836,12 @@
         "source_id": "pboc-money-banking-release",
         "status": "observed",
         "unit": "days",
-        "value": 16.0,
+        "value": 22.0,
         "watch_id": "pboc_mb_stats"
       },
       {
         "basis": "business",
-        "collected_at": "2026-08-16T10:31:35Z",
+        "collected_at": "2026-08-22T09:37:09Z",
         "comparability": {
           "basis": "business days against a nominal 1 day interval.",
           "concept": "Days since latest visible official publication",
@@ -1803,24 +1849,24 @@
         },
         "days_past_promise": null,
         "evidence": {
-          "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
           "url": "https://palimpsest.info/readings/data-darkness-latest.json"
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 141.112,
+          "age_hours": 0.0,
           "budget_hours": 50.0,
-          "status": "stale"
+          "status": "current"
         },
         "independence_group": "pboc_open_market_operations",
         "label": "Pboc Omo release age",
         "latest_period": null,
-        "latest_publication_date": "2026-08-14",
+        "latest_publication_date": "2026-08-21",
         "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
         "metric_id": "cn-release-lag-pboc-omo",
         "nominal_interval_days": 1,
-        "period_end": "2026-08-14",
-        "period_start": "2026-08-14",
+        "period_end": "2026-08-21",
+        "period_start": "2026-08-21",
         "periods_behind": null,
         "released_at": null,
         "revision": {
@@ -1838,7 +1884,7 @@
       },
       {
         "basis": "calendar",
-        "collected_at": "2026-08-16T10:31:35Z",
+        "collected_at": "2026-08-22T09:37:09Z",
         "comparability": {
           "basis": "calendar days against a nominal 31 day interval.",
           "concept": "Days since latest visible official publication",
@@ -1846,24 +1892,24 @@
         },
         "days_past_promise": null,
         "evidence": {
-          "sha256": "e2ea84f5ce99c238b10ab86ce5f6d6aa45da48561fd6451b58973d2a6a5817df",
+          "sha256": "7ddf2ee7102f806fac0a4d20d45b0d3acfb42a406bf3aa804ec8d608fa67967d",
           "url": "https://palimpsest.info/readings/data-darkness-latest.json"
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 141.112,
+          "age_hours": 0.0,
           "budget_hours": 50.0,
-          "status": "stale"
+          "status": "current"
         },
         "independence_group": "safe_external_statistics",
         "label": "Safe Settlement release age",
         "latest_period": null,
-        "latest_publication_date": "2026-07-17",
+        "latest_publication_date": "2026-08-17",
         "limitation": "Latest publication time-of-day is unavailable; only the source's calendar date is retained.",
         "metric_id": "cn-release-lag-safe-settlement",
         "nominal_interval_days": 31,
-        "period_end": "2026-07-17",
-        "period_start": "2026-07-17",
+        "period_end": "2026-08-17",
+        "period_start": "2026-08-17",
         "periods_behind": null,
         "released_at": null,
         "revision": {
@@ -1876,15 +1922,13 @@
         "source_id": "safe-settlement-release",
         "status": "observed",
         "unit": "days",
-        "value": 30.0,
+        "value": 5.0,
         "watch_id": "safe_settlement"
       }
     ],
     "limitation": "Publication dates have day precision; absent intraday release times remain null. Unreachable surfaces are excluded rather than labelled late.",
-    "reporting": 6,
-    "unreachable": [
-      "nbs_energy"
-    ],
+    "reporting": 7,
+    "unreachable": [],
     "watched": 7
   },
   "revisions": [],
