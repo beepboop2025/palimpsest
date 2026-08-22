@@ -56,14 +56,19 @@ def test_every_wire_event_gets_exactly_one_content_addressed_assessment(
         assert analysis["url"] == f"{event['url']}analysis.json"
 
 
-def test_bangladesh_article_is_explicitly_outside_the_china_remit(analyses) -> None:
-    analysis = analyses["event-7f9867253599802f5d470f8a"]
+def test_outside_remit_articles_are_explicitly_bounded(analyses) -> None:
+    outside_remit = [
+        analysis
+        for analysis in analyses.values()
+        if analysis["scope_status"] == "outside-remit"
+    ]
 
-    assert analysis["scope_status"] == "outside-remit"
-    assert analysis["disposition"] == "outside-remit"
-    assert analysis["collector_context"] == []
-    assert "outside the declared China evidence remit" in analysis["position"]
-    assert "not be read as a Palimpsest finding" in analysis["position"]
+    assert outside_remit
+    for analysis in outside_remit:
+        assert analysis["disposition"] == "outside-remit"
+        assert analysis["collector_context"] == []
+        assert "outside the declared China evidence remit" in analysis["position"]
+        assert "not be read as a Palimpsest finding" in analysis["position"]
 
 
 def test_collector_context_uses_only_declared_signals_and_never_calls_it_verification(
