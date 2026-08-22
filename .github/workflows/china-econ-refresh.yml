@@ -139,6 +139,7 @@ jobs:
             readings/editorial-readiness-latest.json \
             readings/newsroom-latest.json \
             readings/china-article-stream-latest.json \
+            readings/china-situation-latest.json \
             readings/china-censorship-analysis-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
@@ -146,6 +147,7 @@ jobs:
             datapackage.json \
             china/ \
             news/
+          git add -- readings/*-analysis.json readings/*-analysis.html || true
           if git diff --cached --quiet; then
             echo "no change"
           else
