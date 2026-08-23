@@ -17,8 +17,13 @@ name: Tests
 #
 # No secrets, no network reads: nothing here collects data. The suites are offline.
 
+# Feature heads are tested by the pull_request event. Restricting push runs to
+# main prevents the same commit from consuming two full CI runs while preserving
+# the post-merge and scheduled-refresh contract gate.
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
