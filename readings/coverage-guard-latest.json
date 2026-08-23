@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T02:45:14.880434+00:00",
+  "generated_at": "2026-08-23T05:19:18.825680+00:00",
   "signals": {
     "ooni_gfw": {
       "n_pairs": 178,
@@ -13,10 +13,10 @@
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 344,
-      "metric_now": 0.6427,
+      "n_pairs": 345,
+      "metric_now": 0.6242,
       "denominator_now": 211.0,
-      "metric_robust_z": -1.0,
+      "metric_robust_z": -1.01,
       "denominator_robust_z": 1.35,
       "denominator_change_pct": 20.6,
       "verdict": "NO_MOVE",
@@ -24,19 +24,19 @@
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 344,
+      "n_pairs": 345,
       "metric_now": 119.0,
       "denominator_now": 211.0,
       "metric_robust_z": 6.74,
       "denominator_robust_z": 1.35,
       "denominator_change_pct": 20.6,
       "fit": {
-        "slope": 0.152859,
-        "intercept": 1.3938,
-        "correlation": 0.135
+        "slope": 0.169062,
+        "intercept": -1.2889,
+        "correlation": 0.147
       },
       "verdict": "CONFIRMED",
-      "note": "the measurement base does not track this metric historically (r=0.14), so coverage does not explain the move",
+      "note": "the measurement base does not track this metric historically (r=0.15), so coverage does not explain the move",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
@@ -73,7 +73,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 136,
+      "n_pairs": 140,
       "metric_now": 0.0,
       "denominator_now": 1.0,
       "metric_robust_z": null,

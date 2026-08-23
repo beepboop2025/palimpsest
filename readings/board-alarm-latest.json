@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-23T02:45:14.812053+00:00",
-  "board_e_value": 4.507,
+  "generated_at": "2026-08-23T05:19:18.740571+00:00",
+  "board_e_value": 4.534,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [],
@@ -26,14 +26,14 @@
       ]
     },
     "content": {
-      "e": 5.711,
+      "e": 5.756,
       "n_signals": 6,
       "state": "calm",
       "corroborated": true,
       "signals": {
         "data_darkness": 16.031,
-        "ddti_novelty": 4.276,
-        "ddti_threat": 5.066,
+        "ddti_novelty": 3.736,
+        "ddti_threat": 5.877,
         "gdelt_containment": 5.578,
         "github_refuge": 2.314,
         "weibo_suppression": 1.0
@@ -70,23 +70,23 @@
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 5.0665,
-      "n": 344,
+      "e": 5.8774,
+      "n": 345,
       "direction": "down",
-      "robust_z": -1.0,
+      "robust_z": -1.01,
       "driver_side": "down",
-      "readings_since_alarm": 105,
+      "readings_since_alarm": 106,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 4.2763,
-      "n": 344,
+      "e": 3.7361,
+      "n": 345,
       "direction": "up",
       "robust_z": 6.74,
       "driver_side": "up",
-      "readings_since_alarm": 21,
+      "readings_since_alarm": 22,
       "n_alarms_in_history": 3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -133,9 +133,9 @@
       "state": "stale",
       "n": 1,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
-      "age_hours": 240.4,
+      "age_hours": 242.9,
       "bound_hours": 168.0,
-      "reason": "newest row is 240.4h old, past the 168h bound"
+      "reason": "newest row is 242.9h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "calm",
@@ -162,7 +162,7 @@
     "weibo_suppression": {
       "state": "calm",
       "e": 1.0,
-      "n": 136,
+      "n": 140,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -244,7 +244,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 25.0,
+      "age_hours": 27.5,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 10 of 21 adjacent-run pairs"
