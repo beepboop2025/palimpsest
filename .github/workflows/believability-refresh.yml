@@ -43,8 +43,9 @@ jobs:
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
-        # workflow marks the commit [skip pytest] so Tests/pytest skips; Tests/contract still runs. GitHub does not skip the
-        # whole run rather than one job. Without the rule list configured this reports and
+        # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
+        # the exact accepted SHA because action-token pushes emit no ordinary push event.
+        # Without the rule list configured this reports and
         # exits 0, on purpose: a check that stops the refresh when a secret is absent
         # stops the observatory, and stops it silently.
         env:
@@ -60,5 +61,5 @@ jobs:
             echo "no change"
           else
             git commit -m "data: believability refresh ($(date -u +%FT%TZ)) [skip pytest]"
-            python scripts/push_data_commit.py
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py
           fi

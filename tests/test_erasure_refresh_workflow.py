@@ -117,7 +117,9 @@ def test_each_retry_discards_stale_derived_bytes_before_rebuilding():
     scrub = retry.index("python scripts/verify_public_surface.py", anchor)
     commit = retry.index('git commit -C "$measurement_commit"', scrub)
     push = retry.index(
-        "if python scripts/push_data_commit.py --base-locked; then", commit
+        'PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" '
+        "python scripts/push_data_commit.py --base-locked",
+        commit,
     )
     assert loop < refresh < reset < legacy_ingest < retained_ingest < rebuild
     assert rebuild < seal < verify_ledger

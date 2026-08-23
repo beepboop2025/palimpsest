@@ -541,7 +541,7 @@ def test_workflow_scopes_secrets_pins_tools_and_rebuilds_after_each_race():
     ) == 2
     assert text.index("git rebase origin/main") < text.index(
         "python -m scripts.import_nemesis_snapshot")
-    assert "if: steps.push_attempt.outcome == 'failure'" in text
+    assert "if: steps.push_attempt.outputs.exit_code == '75'" in text
     race_import = text.rindex("python -m scripts.import_nemesis_snapshot")
     race_build = text.rindex("python -m scripts.build_osint_china")
     race_seal = text.rindex("python scripts/seal_readings.py")

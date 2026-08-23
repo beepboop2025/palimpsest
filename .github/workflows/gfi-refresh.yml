@@ -61,7 +61,7 @@ jobs:
             echo "current protocol was already public"
           else
             git commit -m "eval: preregister GFI v2 protocol ($(date -u +%FT%TZ)) [skip pytest]"
-            python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
           fi
 
       - name: Run the generative-firewall reading
@@ -123,8 +123,9 @@ jobs:
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
-        # workflow marks the commit [skip pytest] so Tests/pytest skips; Tests/contract still runs. GitHub does not skip the
-        # whole run rather than one job. Without the rule list configured this reports and
+        # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
+        # the exact accepted SHA because action-token pushes emit no ordinary push event.
+        # Without the rule list configured this reports and
         # exits 0, on purpose: a check that stops the refresh when a secret is absent
         # stops the observatory, and stops it silently.
         env:
@@ -184,10 +185,33 @@ jobs:
         if: steps.candidate.outputs.changed == 'true'
         id: push_attempt
         continue-on-error: true
-        run: python scripts/push_data_commit.py --base-locked
+        run: |
+          set +e
+          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          publish_rc=$?
+          set -e
+          printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
+          exit "$publish_rc"
+
+      - name: Refuse a non-race publication failure
+        if: >-
+          steps.push_attempt.outcome == 'failure' &&
+          steps.push_attempt.outputs.exit_code != '75' &&
+          steps.push_attempt.outputs.exit_code != '76'
+        run: |
+          echo "FATAL: GFI publication failed for a reason that is not a base advance"
+          exit 1
+
+      - name: Retry the exact contract event without rebuilding
+        if: >-
+          steps.push_attempt.outcome == 'failure' &&
+          steps.push_attempt.outputs.exit_code == '76'
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
 
       - name: Reseal the measured bytes after a publication race
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: |
@@ -299,10 +323,20 @@ jobs:
               exit 0
             fi
             git commit -C "$measurement_commit"
-            if python scripts/push_data_commit.py --base-locked; then
-              exit 0
-            fi
-            sleep $((attempt * 5))
+            set +e
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+            publish_rc=$?
+            set -e
+            case "$publish_rc" in
+              0) exit 0 ;;
+              75) sleep $((attempt * 5)) ;;
+              76)
+                PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
+                  python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+                exit 0
+                ;;
+              *) exit "$publish_rc" ;;
+            esac
           done
           echo "FATAL: GFI publication exhausted four verified reseal retries"
           exit 1

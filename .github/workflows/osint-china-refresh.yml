@@ -400,13 +400,35 @@ jobs:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
           basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
+          set +e
           GIT_CONFIG_COUNT=1 \
           GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
           GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
-            python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          publish_rc=$?
+          set -e
+          printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
+          exit "$publish_rc"
+
+      - name: Refuse a non-race publication failure
+        if: >-
+          steps.push_attempt.outcome == 'failure' &&
+          steps.push_attempt.outputs.exit_code != '75' &&
+          steps.push_attempt.outputs.exit_code != '76'
+        run: |
+          echo "FATAL: OSINT publication failed for a reason that is not a base advance"
+          exit 1
+
+      - name: Retry the exact contract event without rebuilding
+        if: >-
+          steps.push_attempt.outcome == 'failure' &&
+          steps.push_attempt.outputs.exit_code == '76'
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
 
       - name: Synchronize after a push race
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         run: |
           git fetch origin main
           if ! git rebase origin/main; then
@@ -415,7 +437,7 @@ jobs:
           fi
 
       - name: Re-import external aggregates after a push race
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         env:
           NEMESIS_SNAPSHOT_URL: ${{ vars.NEMESIS_SNAPSHOT_URL }}
           NEMESIS_SNAPSHOT_HMAC_KEY: ${{ secrets.NEMESIS_SNAPSHOT_HMAC_KEY }}
@@ -439,7 +461,7 @@ jobs:
           python -m scripts.instagram_pull
 
       - name: Rebuild and reseal after a push race
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         run: |
           python -m scripts.build_economic_pulse
           python -m scripts.build_china_econ_manifest
@@ -466,7 +488,7 @@ jobs:
           python scripts/seal_readings.py
 
       - name: Retest after a push race
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         run: |
           python -m pytest -q \
             tests/test_import_bleedthrough_snapshot.py \
@@ -508,13 +530,13 @@ jobs:
             tests/test_public_surface_scrub.py
 
       - name: Rescrub after a push race
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
       - name: Commit the race-safe rebuilt bytes
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         run: |
           git add \
             readings/china-economic-pulse-latest.json \
@@ -571,12 +593,21 @@ jobs:
           fi
 
       - name: Push the race-safe rebuilt commit
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         env:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
           basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
+          set +e
           GIT_CONFIG_COUNT=1 \
           GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
           GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
-            python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          publish_rc=$?
+          set -e
+          if [ "$publish_rc" = '76' ]; then
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
+              python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+            exit 0
+          fi
+          exit "$publish_rc"

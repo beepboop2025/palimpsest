@@ -399,10 +399,33 @@ jobs:
         if: steps.candidate.outputs.changed == 'true'
         id: push_attempt
         continue-on-error: true
-        run: python scripts/push_data_commit.py --base-locked
+        run: |
+          set +e
+          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          publish_rc=$?
+          set -e
+          printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
+          exit "$publish_rc"
+
+      - name: Refuse a non-race publication failure
+        if: >-
+          steps.push_attempt.outcome == 'failure' &&
+          steps.push_attempt.outputs.exit_code != '75' &&
+          steps.push_attempt.outputs.exit_code != '76'
+        run: |
+          echo "FATAL: erasure publication failed for a reason that is not a base advance"
+          exit 1
+
+      - name: Retry the exact contract event without rebuilding
+        if: >-
+          steps.push_attempt.outcome == 'failure' &&
+          steps.push_attempt.outputs.exit_code == '76'
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
 
       - name: Reattest, reverify, and retry after a push race
-        if: steps.push_attempt.outcome == 'failure'
+        if: steps.push_attempt.outputs.exit_code == '75'
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
           PALIMPSEST_WAYBACK_ACCESS_KEY: ${{ secrets.PALIMPSEST_WAYBACK_ACCESS_KEY }}
@@ -497,11 +520,23 @@ jobs:
             fi
             git commit -C "$measurement_commit"
 
-            if python scripts/push_data_commit.py --base-locked; then
-              exit 0
-            fi
-            echo "publication retry $attempt/4 lost another race"
-            sleep $((attempt * 5))
+            set +e
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+            publish_rc=$?
+            set -e
+            case "$publish_rc" in
+              0) exit 0 ;;
+              75)
+                echo "publication retry $attempt/4 lost another race"
+                sleep $((attempt * 5))
+                ;;
+              76)
+                PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
+                  python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+                exit 0
+                ;;
+              *) exit "$publish_rc" ;;
+            esac
           done
           echo "FATAL: erasure publication exhausted four verified rebuild retries"
           exit 1

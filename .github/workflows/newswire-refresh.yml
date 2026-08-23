@@ -336,6 +336,12 @@ jobs:
             git commit --amend --no-edit
           fi
 
+      - name: Preflight publication contract dispatch
+        if: steps.candidate.outputs.changed == 'true'
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: python scripts/dispatch_publication_contract.py --check-environment
+
       - name: Attempt the verified push
         if: steps.candidate.outputs.changed == 'true'
         id: push_attempt
@@ -479,9 +485,18 @@ jobs:
 
       - name: Push the race-safe rebuilt commit
         if: steps.push_attempt.outcome == 'failure'
+        id: retry_push
         env:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
           basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
           git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
             push origin HEAD:main
+
+      - name: Dispatch the exact publication contract
+        if: >-
+          ${{ always() && (steps.push_attempt.outcome == 'success' ||
+          steps.retry_push.outcome == 'success') }}
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"

@@ -54,7 +54,7 @@ jobs:
             echo "no change"
           else
             git commit -m "data: reading analysis refresh ($(date -u +%FT%TZ)) [skip pytest]"
-            python scripts/push_data_commit.py \
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py \
               --rebuild-module scripts.reading_analysis_pull \
               --stage readings/reading-analysis-latest.json \
               --stage readings/reading-analysis-history.jsonl

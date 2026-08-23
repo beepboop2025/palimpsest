@@ -743,7 +743,7 @@ def test_workflow_imports_tests_and_stages_the_artifacts_in_every_race_path():
         (
             "- name: Re-import external aggregates after a push race",
             "- name: Push the race-safe rebuilt commit",
-            "if: steps.push_attempt.outcome == 'failure'",
+            "if: steps.push_attempt.outputs.exit_code == '75'",
         ),
     )
     for start_marker, end_marker, condition in boundaries:

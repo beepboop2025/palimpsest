@@ -55,6 +55,9 @@ _SINKS = re.compile(
 #   push_data_commit.py: invokes only the fixed git executable, the current Python
 #   interpreter with a module name constrained to scripts.<identifier>, and the fixed
 #   public-surface verifier. It never places collected bytes in an argv or a shell.
+#   dispatch_publication_contract.py: invokes only fixed `git rev-parse HEAD` to bind
+#   the dispatch payload to the current worktree commit. No fetched bytes, repository
+#   names, tokens, or event payload fields enter argv, and no shell is involved.
 #   network_lane.py: invokes only the pinned cc-downloader, the revision-bundled
 #   BLEEDTHROUGH prober, and each tool's fixed --version command. Root-owned plans
 #   supply bounded path arguments; fetched bytes never become argv or shell text.
@@ -79,6 +82,7 @@ _ALLOWED = {
     ("ops/network-lane/network_lane.py", "subprocess."),
     ("ops/osint-sync/public_osint_sync.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
+    ("scripts/dispatch_publication_contract.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
     ("scripts/reproduce_all.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
@@ -134,6 +138,15 @@ def test_data_publisher_keeps_a_fixed_subprocess_boundary():
     assert "MODULE_RE.fullmatch(module)" in text
 
 
+def test_contract_dispatch_keeps_a_fixed_head_lookup_boundary():
+    text = (ROOT / "scripts" / "dispatch_publication_contract.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "shell=True" not in text
+    assert '["git", "rev-parse", "HEAD"]' in text
+
+
 def test_network_lane_keeps_fixed_no_shell_process_boundaries():
     lane = (ROOT / "ops/network-lane/network_lane.py").read_text(encoding="utf-8")
     local_filter = (ROOT / "ops/common-crawl/run_duckdb_filter.py").read_text(
@@ -164,7 +177,9 @@ def test_public_osint_sync_keeps_fixed_no_shell_git_boundary():
 
     tree = ast.parse(sync)
     calls: list[tuple[int, str]] = []
-    for function in (node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)):
+    for function in (
+        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    ):
         for node in ast.walk(function):
             if (
                 isinstance(node, ast.Call)
@@ -190,7 +205,9 @@ def test_reproduce_all_keeps_a_fixed_no_shell_python_boundary():
     assert '"PYTHONPATH": str(ROOT)' in text
     tree = ast.parse(text)
     calls: list[str] = []
-    for function in (node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)):
+    for function in (
+        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    ):
         for node in ast.walk(function):
             if (
                 isinstance(node, ast.Call)
