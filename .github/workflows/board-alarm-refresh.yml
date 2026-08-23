@@ -73,6 +73,58 @@ jobs:
       - name: Publish gazetteer phylogeny
         run: python -m scripts.gazetteer_phylogeny_pull
 
+      - name: Rebuild and seal every downstream derived surface
+        run: |
+          publish_clock=$(date -u +%FT%TZ)
+          base_commit=$(git rev-parse HEAD)
+          python -m scripts.build_economic_pulse --as-of "$publish_clock"
+          python -m scripts.build_china_econ_manifest
+          python -m scripts.build_china_econ_forecast
+          python -m scripts.build_china_site
+          python -m scripts.undertext_pull
+          python -m scripts.build_erasure_trail
+          python -m scripts.build_osint_china --now "$publish_clock" --input-commit "$base_commit"
+          python -m scripts.build_investigations --as-of "$publish_clock"
+          python -m scripts.build_network_rounds
+          python -m scripts.build_corroboration
+          python -m scripts.build_editorial_readiness
+          python -m scripts.sync_narcoscope --check
+          python -m core.evidence_mesh --now "$publish_clock"
+          python -m core.machine_investigations --as-of "$publish_clock"
+          python -m scripts.build_newsroom
+          python -m scripts.build_china_situation
+          python -m scripts.build_data_catalog --now "$publish_clock"
+          python scripts/seal_readings.py
+
+      - name: Verify the complete downstream graph before publication
+        run: |
+          publish_clock=$(python -c 'import json; print(json.load(open("readings/osint-china-latest.json"))["generated_at"])')
+          base_commit=$(python -c 'import json; print(json.load(open("readings/osint-china-latest.json"))["input_commit"])')
+          python -m scripts.build_economic_pulse --check --as-of "$publish_clock"
+          python -m scripts.build_china_econ_manifest --check
+          python -m scripts.build_china_econ_forecast --check
+          python -m scripts.build_china_site --check
+          python -m scripts.build_erasure_trail --check
+          sha256sum readings/osint-china-latest.json > "$RUNNER_TEMP/osint-before.sha256"
+          python -m scripts.build_osint_china --now "$publish_clock" --input-commit "$base_commit"
+          sha256sum readings/osint-china-latest.json > "$RUNNER_TEMP/osint-after.sha256"
+          cmp "$RUNNER_TEMP/osint-before.sha256" "$RUNNER_TEMP/osint-after.sha256"
+          python -m scripts.build_investigations --check --as-of "$publish_clock"
+          python -m scripts.build_network_rounds --check
+          python -m scripts.build_corroboration --check
+          python -m scripts.build_editorial_readiness --check
+          python -m core.evidence_mesh --check
+          python -m core.machine_investigations --check
+          python -m scripts.build_newsroom --check
+          python -m scripts.build_china_situation --check
+          python -m scripts.build_data_catalog --check
+          catalog_clock=$(python -c 'import json; print(json.load(open("readings/catalog.json"))["generated_at"])')
+          sha256sum readings/catalog.json readings/catalog.jsonld datapackage.json > "$RUNNER_TEMP/catalog-before.sha256"
+          python -m scripts.build_data_catalog --now "$catalog_clock"
+          sha256sum readings/catalog.json readings/catalog.jsonld datapackage.json > "$RUNNER_TEMP/catalog-after.sha256"
+          cmp "$RUNNER_TEMP/catalog-before.sha256" "$RUNNER_TEMP/catalog-after.sha256"
+          python scripts/seal_readings.py --check
+
       - name: Validate the complete public edition
         run: >-
           python -m pytest -q
@@ -83,6 +135,13 @@ jobs:
           tests/test_weekly_situation.py
           tests/test_collector_health.py
           tests/test_gazetteer_phylogeny.py
+          tests/test_economic_pulse.py
+          tests/test_undertext.py
+          tests/test_osint_china.py
+          tests/test_investigations.py
+          tests/test_network_rounds.py
+          tests/test_corroboration.py
+          tests/test_editorial_readiness.py
           tests/test_publication_contract.py
 
       - name: Read the public surface before pushing it
@@ -102,38 +161,13 @@ jobs:
         run: |
           git config user.name  "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
-          git add readings/board-alarm-latest.json readings/board-alarm-history.jsonl \
-                  readings/coverage-guard-latest.json readings/coverage-guard-history.jsonl \
-                  readings/forecast-ledger-latest.json readings/forecast-ledger-history.jsonl \
-                  readings/cross-layer-latest.json readings/cross-layer-history.jsonl \
-                  readings/weekly-situation-latest.json readings/weekly-situation-history.jsonl \
-                  readings/collector-health-latest.json readings/collector-health-history.jsonl \
-                  readings/gazetteer-phylogeny-latest.json \
-                  weekly-situation.html 2>/dev/null || true
+          git add -A -- readings china news datapackage.json weekly-situation.html
           if git diff --cached --quiet; then
             echo "no change"
           else
             git commit -m "data: board alarm + coverage guard refresh ($(date -u +%FT%TZ)) [skip pytest]"
-            python scripts/push_data_commit.py \
-              --rebuild-module scripts.board_alarm_pull \
-              --rebuild-module scripts.coverage_guard_pull \
-              --rebuild-module scripts.forecast_ledger_pull \
-              --rebuild-module scripts.cross_layer_pull \
-              --rebuild-module scripts.weekly_situation_pull \
-              --rebuild-module scripts.collector_health_pull \
-              --rebuild-module scripts.gazetteer_phylogeny_pull \
-              --stage readings/board-alarm-latest.json \
-              --stage readings/board-alarm-history.jsonl \
-              --stage readings/coverage-guard-latest.json \
-              --stage readings/coverage-guard-history.jsonl \
-              --stage readings/forecast-ledger-latest.json \
-              --stage readings/forecast-ledger-history.jsonl \
-              --stage readings/cross-layer-latest.json \
-              --stage readings/cross-layer-history.jsonl \
-              --stage readings/weekly-situation-latest.json \
-              --stage readings/weekly-situation-history.jsonl \
-              --stage readings/collector-health-latest.json \
-              --stage readings/collector-health-history.jsonl \
-              --stage readings/gazetteer-phylogeny-latest.json \
-              --stage weekly-situation.html
+            # The candidate graph is valid only for its exact parent. A concurrent
+            # main advance must fail closed so the next serialized run rebuilds it;
+            # rebasing stale derived bytes would create a mixed-time publication.
+            python scripts/push_data_commit.py --base-locked
           fi

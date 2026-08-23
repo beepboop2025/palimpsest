@@ -18,6 +18,48 @@ def test_public_edition_is_hourly_and_serialized_with_other_derived_writers() ->
     assert "tests/test_publication_contract.py" in workflow
 
 
+def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
+    workflow = _read(".github/workflows/board-alarm-refresh.yml")
+    ordered = (
+        "python -m scripts.board_alarm_pull",
+        "python -m scripts.coverage_guard_pull",
+        "python -m scripts.build_economic_pulse",
+        "python -m scripts.build_china_econ_manifest",
+        "python -m scripts.build_china_econ_forecast",
+        "python -m scripts.build_china_site",
+        "python -m scripts.undertext_pull",
+        "python -m scripts.build_erasure_trail",
+        "python -m scripts.build_osint_china",
+        "python -m scripts.build_investigations",
+        "python -m scripts.build_network_rounds",
+        "python -m scripts.build_corroboration",
+        "python -m scripts.build_editorial_readiness",
+        "python -m core.evidence_mesh",
+        "python -m core.machine_investigations",
+        "python -m scripts.build_newsroom",
+        "python -m scripts.build_china_situation",
+        "python -m scripts.build_data_catalog",
+        "python scripts/seal_readings.py",
+        "python scripts/verify_public_surface.py",
+        "git add -A -- readings china news datapackage.json weekly-situation.html",
+        "python scripts/push_data_commit.py --base-locked",
+    )
+    positions = [workflow.index(command) for command in ordered]
+    assert positions == sorted(positions)
+    assert "Verify the complete downstream graph before publication" in workflow
+    assert '--input-commit "$base_commit"' in workflow
+    assert 'python -m scripts.build_investigations --check --as-of "$publish_clock"' in workflow
+    assert "osint-before.sha256" in workflow
+    assert "osint-after.sha256" in workflow
+    assert "python -m core.evidence_mesh --check" in workflow
+    assert 'python -m scripts.build_data_catalog --now "$catalog_clock"' in workflow
+    assert "catalog-before.sha256" in workflow
+    assert "catalog-after.sha256" in workflow
+    assert 'cmp "$RUNNER_TEMP/catalog-before.sha256"' in workflow
+    assert "python scripts/seal_readings.py --check" in workflow
+    assert "--rebuild-module" not in workflow
+
+
 def test_hourly_weibo_publisher_declares_and_validates_every_output() -> None:
     workflow = _read(".github/workflows/weibo-hotsearch-refresh.yml")
     assert 'cron: "21 * * * *"' in workflow
