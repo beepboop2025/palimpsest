@@ -1,13 +1,13 @@
 {
  "artifact": {
-  "bytes": 1719467,
+  "bytes": 1983774,
   "media_type": "application/x-ndjson",
   "path": "readings/china-econ-observations.jsonl",
-  "records": 1958,
-  "sha256": "507c98e3ad92df70f926617444daded9820fde6ae2093b274ff2079ef3edf9b8",
+  "records": 2259,
+  "sha256": "f27a6ed72c05bb705d3e357a1c52d8eef5f558f756f658c129caddc5955804f5",
   "url": "https://palimpsest.info/readings/china-econ-observations.jsonl"
  },
- "as_of": "2026-08-22T07:38:19.988058Z",
+ "as_of": "2026-08-23T01:47:39.298387Z",
  "contract": {
   "aggregate_only": true,
   "bitemporal": true,
@@ -34,15 +34,15 @@
    "CN"
   ],
   "geography_count": 1,
-  "last_collected_at": "2026-08-22T07:38:19.988058Z",
-  "last_released_at": "2026-08-22T07:38:19.988058Z",
+  "last_collected_at": "2026-08-23T01:47:39.298387Z",
+  "last_released_at": "2026-08-23T01:47:39.298387Z",
   "ownership_count": 1,
   "ownerships": [
    "all"
   ],
   "period_end": "2026-08-21",
   "period_start": "2026-07-06",
-  "provenance_only_vintages": 1448,
+  "provenance_only_vintages": 1749,
   "sector_count": 1,
   "sectors": [
    "all"
@@ -75,7 +75,7 @@
   ],
   "value_revision_events": 0
  },
- "generated_at": "2026-08-22T07:38:19.988058Z",
+ "generated_at": "2026-08-23T01:47:39.298387Z",
  "integrity": {
   "exact_byte_digest": true,
   "monotonic_source_revisions": true,
@@ -89,7 +89,7 @@
   "Where a source omits a release timestamp, released_at may be a conservative first-observed upper bound declared in row metadata."
  ],
  "method": "Validate every aggregate observation and observation_id, enforce append order and source revision invariants, then hash the exact published JSONL bytes.",
- "n_observations": 1958,
+ "n_observations": 2259,
  "schema_version": "palimpsest-economic-observation-manifest.v1",
  "scope": "Aggregate China economic observations actually collected by Palimpsest; this is a bitemporal evidence ledger, not a GDP estimate or a claim of complete source coverage.",
  "source": "Palimpsest aggregate collectors; each observation retains its own source_id, evidence_url, and raw response digest"
