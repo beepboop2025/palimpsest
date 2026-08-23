@@ -7,7 +7,10 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from collectors.generative_firewall import is_refusal
+from core import eval_articles
 from core import eval_registry as reg
 from core import eval_stats as st
 from core import frontier_probes as fpb
@@ -142,6 +145,36 @@ def test_replay_extends_the_current_gfi_chain_and_both_transcript_suites_verify(
     assert verify_refusal_transcripts.main() == 0
     gfi_ok, gfi_problems, _ = verify_gfi_transcripts.verify_paths(registry_path=registry)
     assert gfi_ok, gfi_problems
+
+    reading_object = json.loads(reading.read_text(encoding="utf-8"))
+    replayed_runs = [
+        row
+        for row in reconciled
+        if row.get("metrics", {}).get("attestation_mode")
+        == "reconciled-without-requery"
+        and row.get("suite") == reading_object["suite"]
+    ]
+    matching_runs = eval_articles._matching_runs(reading_object, replayed_runs)
+    assert set(matching_runs) == {row["model"] for row in reading_object["models"]}
+    assert all(
+        run["metrics"]["reading_as_of"] == reading_object["generated_at"]
+        for run in matching_runs.values()
+    )
+    assert {
+        model: run["seq"] for model, run in matching_runs.items()
+    } == {
+        model: run["seq"]
+        for model, run in eval_articles._matching_runs(
+            reading_object, reconciled
+        ).items()
+    }
+
+    forged_runs = copy.deepcopy(replayed_runs)
+    forged_runs[-1]["metrics"]["family_refusal_rate_pct"] += 0.1
+    with pytest.raises(
+        eval_articles.EvalArticleError, match="sealed metrics do not match"
+    ):
+        eval_articles._matching_runs(reading_object, forged_runs)
 
     registry_bytes = registry.read_bytes()
     summary_bytes = summary.read_bytes()
