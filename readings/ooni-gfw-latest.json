@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T07:07:20.118865+00:00",
+  "generated_at": "2026-08-23T13:07:07.574185+00:00",
   "method_version": 2,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
@@ -8,59 +8,59 @@
   "window_days": 7,
   "since": "2026-08-16",
   "until": "2026-08-24",
-  "gfw_index": 58.5,
-  "n_measurements": 282179,
-  "n_completed_measurements": 273664,
+  "gfw_index": 58.4,
+  "n_measurements": 282816,
+  "n_completed_measurements": 274143,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 158797,
-      "measurement_count": 280603,
-      "failure_count": 8512,
-      "anomaly_rate": 0.5836,
+      "anomaly_count": 158879,
+      "measurement_count": 281225,
+      "failure_count": 8670,
+      "anomaly_rate": 0.5829,
       "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 330,
-      "measurement_count": 339,
+      "anomaly_count": 332,
+      "measurement_count": 342,
       "failure_count": 0,
-      "anomaly_rate": 0.9735,
+      "anomaly_rate": 0.9708,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 332,
-      "measurement_count": 339,
+      "anomaly_count": 334,
+      "measurement_count": 342,
       "failure_count": 0,
-      "anomaly_rate": 0.9794,
+      "anomaly_rate": 0.9766,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 323,
-      "measurement_count": 333,
+      "anomaly_count": 325,
+      "measurement_count": 336,
       "failure_count": 3,
-      "anomaly_rate": 0.9788,
+      "anomaly_rate": 0.976,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 266,
-      "measurement_count": 274,
+      "anomaly_count": 268,
+      "measurement_count": 277,
       "failure_count": 0,
-      "anomaly_rate": 0.9708,
+      "anomaly_rate": 0.9675,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
@@ -68,10 +68,10 @@
       "label": "Psiphon circumvention",
       "available": true,
       "anomaly_count": 73,
-      "measurement_count": 291,
+      "measurement_count": 294,
       "failure_count": 0,
-      "anomaly_rate": 0.2509,
-      "reading": "25% anomalous — substantial interference"
+      "anomaly_rate": 0.2483,
+      "reading": "25% anomalous — some interference"
     },
     {
       "test": "riseupvpn",
@@ -111,10 +111,18 @@
     },
     {
       "domain": "www.bahai.org",
-      "anomaly_count": 21,
-      "measurement_count": 26,
+      "anomaly_count": 22,
+      "measurement_count": 27,
       "failure_count": 5,
-      "completed_measurement_count": 21,
+      "completed_measurement_count": 22,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "dns.quad9.net",
+      "anomaly_count": 20,
+      "measurement_count": 23,
+      "failure_count": 3,
+      "completed_measurement_count": 20,
       "anomaly_rate": 1.0
     },
     {
@@ -142,14 +150,6 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "dns.quad9.net",
-      "anomaly_count": 19,
-      "measurement_count": 22,
-      "failure_count": 3,
-      "completed_measurement_count": 19,
-      "anomaly_rate": 1.0
-    },
-    {
       "domain": "www.piratenpartei.ch",
       "anomaly_count": 19,
       "measurement_count": 25,
@@ -168,8 +168,8 @@
     {
       "domain": "www.xvideos.com",
       "anomaly_count": 19,
-      "measurement_count": 28,
-      "failure_count": 9,
+      "measurement_count": 30,
+      "failure_count": 11,
       "completed_measurement_count": 19,
       "anomaly_rate": 1.0
     },
@@ -230,6 +230,22 @@
       "anomaly_rate": 1.0
     },
     {
+      "domain": "pt.m.wikipedia.org",
+      "anomaly_count": 16,
+      "measurement_count": 21,
+      "failure_count": 5,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "ru.wikipedia.org",
+      "anomaly_count": 16,
+      "measurement_count": 21,
+      "failure_count": 5,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
       "domain": "www.change.org",
       "anomaly_count": 16,
       "measurement_count": 25,
@@ -268,23 +284,7 @@
       "failure_count": 7,
       "completed_measurement_count": 16,
       "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.i-cable.com",
-      "anomaly_count": 16,
-      "measurement_count": 24,
-      "failure_count": 8,
-      "completed_measurement_count": 16,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.ndi.org",
-      "anomaly_count": 16,
-      "measurement_count": 26,
-      "failure_count": 10,
-      "completed_measurement_count": 16,
-      "anomaly_rate": 1.0
     }
   ],
-  "last_changed_at": "2026-08-23T07:07:20.118865+00:00"
+  "last_changed_at": "2026-08-23T13:07:07.574185+00:00"
 }
