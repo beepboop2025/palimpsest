@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 NEWSWIRE_WORKFLOW = ROOT / ".github" / "workflows" / "newswire-refresh.yml"
 OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+DDTI_WORKFLOW = ROOT / ".github" / "workflows" / "ddti-refresh.yml"
 TESTS_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 OSINT_PUBLISHER_WORKFLOWS = tuple(
     path
@@ -493,12 +494,15 @@ def test_mutable_machine_reports_are_network_only_but_revisions_are_not():
 
 def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
+    ddti_workflow = DDTI_WORKFLOW.read_text(encoding="utf-8")
     assert 'cron: "17,47 * * * *"' in workflow
     assert "workflow_dispatch" in workflow
     # Same derived graph as the OSINT hourly roll-up. One group serializes both
     # publishers so a push race cannot interleave two official rebuilds.
     assert "group: derived-graph-publish" in workflow
+    assert "group: derived-graph-publish" in ddti_workflow
     assert "cancel-in-progress: false" in workflow
+    assert "cancel-in-progress: false" in ddti_workflow
     assert workflow.count("python -m scripts.newswire_pull") == 3
 
     build_graph = re.findall(

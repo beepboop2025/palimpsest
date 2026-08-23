@@ -15,7 +15,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: ddti-refresh
+  # DDTI feeds the OSINT/newsroom graph and shares newswire's :17 schedule.
+  # One cross-workflow mutex keeps its commit out of a full-graph scrub/push.
+  group: derived-graph-publish
   cancel-in-progress: false
 
 jobs:
