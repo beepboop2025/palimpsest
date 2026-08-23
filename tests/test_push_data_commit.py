@@ -79,6 +79,19 @@ def _candidate(repo: Path, value: str = '{"version":2}\n') -> None:
     _git(repo, "commit", "-qm", "data: source refresh [skip pytest]")
 
 
+def _fake_publication_closure(repo: Path, _subject: str) -> tuple[str, ...]:
+    closure = repo / "closure.txt"
+    closure.write_text(
+        (repo / "source.json").read_text(encoding="utf-8")
+        + (repo / "unrelated.txt").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    _git(repo, "add", "closure.txt")
+    if _git(repo, "diff", "--cached", "--name-only"):
+        _git(repo, "commit", "--amend", "--no-edit", "-q")
+    return ("closure.txt",)
+
+
 def test_publish_rebases_byte_identical_candidate_after_unrelated_race(
     tmp_path: Path,
 ) -> None:
@@ -114,6 +127,94 @@ def test_publish_refuses_a_same_path_conflict_and_aborts_rebase(tmp_path: Path) 
     assert not (publisher / ".git/rebase-merge").exists()
 
 
+def test_publication_closure_rebuilds_against_an_unrelated_winning_parent(
+    tmp_path: Path,
+) -> None:
+    remote, publisher, racer = _repositories(tmp_path)
+    _candidate(publisher)
+    expected_blob = _git(publisher, "rev-parse", "HEAD:source.json")
+    (racer / "unrelated.txt").write_text("advanced\n", encoding="utf-8")
+    _git(racer, "add", "unrelated.txt")
+    _git(racer, "commit", "-qm", "advance unrelated closure input")
+    _git(racer, "push", "-q", "origin", "main")
+
+    assert (
+        push_data_commit.publish(
+            publisher,
+            publication_closure=_fake_publication_closure,
+        )
+        is True
+    )
+
+    assert _git(remote, "rev-parse", "main:source.json") == expected_blob
+    assert _git(remote, "show", "main:closure.txt") == '{"version":2}\nadvanced'
+    changed = set(
+        _git(
+            remote, "diff-tree", "--no-commit-id", "--name-only", "-r", "main"
+        ).splitlines()
+    )
+    assert changed == {"closure.txt", "source.json"}
+
+
+def test_publication_closure_refuses_to_overwrite_a_newer_source(
+    tmp_path: Path,
+) -> None:
+    remote, publisher, racer = _repositories(tmp_path)
+    _candidate(publisher, '{"version":"candidate"}\n')
+    _candidate(racer, '{"version":"newer"}\n')
+    _git(racer, "push", "-q", "origin", "main")
+    remote_before = _git(remote, "rev-parse", "main")
+
+    with pytest.raises(push_data_commit.PublishError, match="source paths changed"):
+        push_data_commit.publish(
+            publisher,
+            publication_closure=_fake_publication_closure,
+        )
+
+    assert _git(remote, "rev-parse", "main") == remote_before
+
+
+def test_palimpsest_closure_amends_catalog_and_seal_into_one_commit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _, publisher, _ = _repositories(tmp_path)
+    readings = publisher / "readings"
+    readings.mkdir()
+    (readings / "signal-latest.json").write_text('{"value":2}\n', encoding="utf-8")
+    _git(publisher, "add", "readings/signal-latest.json")
+    _git(publisher, "commit", "-qm", "data: signal refresh [skip pytest]")
+    before = _git(publisher, "rev-parse", "HEAD")
+    subject = _git(publisher, "show", "-s", "--format=%s", "HEAD")
+
+    def build_closure(repo: Path, *arguments: str) -> None:
+        if "scripts.build_data_catalog" in arguments:
+            (repo / "readings/catalog.json").write_text("{}\n", encoding="utf-8")
+            (repo / "readings/catalog.jsonld").write_text("{}\n", encoding="utf-8")
+            (repo / "datapackage.json").write_text("{}\n", encoding="utf-8")
+        else:
+            (repo / "readings/readings-ledger.jsonl").write_text(
+                '{"sealed":true}\n',
+                encoding="utf-8",
+            )
+
+    monkeypatch.setattr(push_data_commit, "_run_python", build_closure)
+
+    owned = push_data_commit._publication_closure(publisher, subject)  # noqa: SLF001
+
+    assert owned == push_data_commit.PUBLICATION_CLOSURE_PATHS
+    assert _git(publisher, "rev-parse", "HEAD") != before
+    assert _git(publisher, "show", "-s", "--format=%s", "HEAD") == subject
+    assert set(_git(publisher, "diff", "HEAD^", "--name-only").splitlines()) == {
+        "datapackage.json",
+        "readings/catalog.json",
+        "readings/catalog.jsonld",
+        "readings/readings-ledger.jsonl",
+        "readings/signal-latest.json",
+    }
+    assert _git(publisher, "status", "--porcelain") == ""
+
+
 def test_publish_rebuilds_derived_candidate_from_the_winning_input(
     tmp_path: Path,
 ) -> None:
@@ -132,12 +233,14 @@ def test_publish_rebuilds_derived_candidate_from_the_winning_input(
             publisher,
             rebuild=rebuild,
             rebuild_paths=rebuild_paths,
+            publication_closure=_fake_publication_closure,
         )
         is True
     )
 
     _git(racer, "pull", "-q", "--ff-only")
     assert (racer / "source.json").read_text(encoding="utf-8") == "input-v2\n"
+    assert (racer / "closure.txt").read_text(encoding="utf-8") == "input-v2\nbase\n"
 
 
 def test_publish_fails_closed_when_a_guarded_input_changes(tmp_path: Path) -> None:
@@ -383,11 +486,13 @@ def test_cli_preflights_actions_authority_then_dispatches_the_published_head(
         "_run_contract_dispatch",
         lambda _repo, *parts: events.append(("dispatch", *parts)),
     )
-    monkeypatch.setattr(
-        push_data_commit,
-        "publish",
-        lambda **_kwargs: events.append(("publish",)) or True,
-    )
+
+    def publish(**kwargs: object) -> bool:
+        assert kwargs["publication_closure"] is push_data_commit._publication_closure
+        events.append(("publish",))
+        return True
+
+    monkeypatch.setattr(push_data_commit, "publish", publish)
     monkeypatch.setattr(
         push_data_commit,
         "_capture",
