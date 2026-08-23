@@ -1,12 +1,12 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-e1beff79d0b88854cd44516d",
+  "analysis_id": "instrumentv-1904c33d49eb975907c00d69",
   "signal_id": "vantage-fusion",
   "story_url": "https://palimpsest.info/news/network-vantage-fusion/",
   "url": "https://palimpsest.info/news/network-vantage-fusion/analysis.json",
   "reading_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/vantage-fusion-analysis.json",
-  "generated_at": "2026-08-23T13:33:36Z",
+  "generated_at": "2026-08-23T19:11:44Z",
   "disposition": "live-reading",
   "status": "live",
   "position": "Palimpsest's view: vantage-fusion is live. The current number is 28.7% over declared denominator not reported. This is the instrument reading, not a national censorship rate.",
@@ -16,7 +16,7 @@
       "label": "fused network index",
       "note": "declared denominator not reported",
       "citation_ids": [
-        "instrumentevidence-57ecbc4331c26786376c"
+        "instrumentevidence-73970dbf7990c02076d4"
       ]
     }
   ],
@@ -27,13 +27,13 @@
         {
           "text": "The current fused network index is 28.7% over declared denominator not reported.",
           "citation_ids": [
-            "instrumentevidence-57ecbc4331c26786376c"
+            "instrumentevidence-73970dbf7990c02076d4"
           ]
         },
         {
           "text": "The current coverage-weighted fusion of reporting vantages is 28.7%.",
           "citation_ids": [
-            "instrumentevidence-57ecbc4331c26786376c"
+            "instrumentevidence-73970dbf7990c02076d4"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, net4people, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, net4people, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, erasure-observatory, wayback, app-storefront, apple-censorship.",
           "citation_ids": [
-            "instrumentevidence-57ecbc4331c26786376c"
+            "instrumentevidence-73970dbf7990c02076d4"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-57ecbc4331c26786376c"
+            "instrumentevidence-73970dbf7990c02076d4"
           ]
         }
       ]
@@ -61,19 +61,19 @@
         {
           "text": "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.",
           "citation_ids": [
-            "instrumentevidence-57ecbc4331c26786376c"
+            "instrumentevidence-73970dbf7990c02076d4"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-57ecbc4331c26786376c"
+            "instrumentevidence-73970dbf7990c02076d4"
           ]
         },
         {
           "text": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
           "citation_ids": [
-            "instrumentevidence-57ecbc4331c26786376c"
+            "instrumentevidence-73970dbf7990c02076d4"
           ]
         }
       ]
@@ -83,13 +83,13 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-57ecbc4331c26786376c"
+        "instrumentevidence-73970dbf7990c02076d4"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-57ecbc4331c26786376c"
+        "instrumentevidence-73970dbf7990c02076d4"
       ]
     }
   ],
@@ -97,17 +97,23 @@
     {
       "text": "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.",
       "citation_ids": [
-        "instrumentevidence-57ecbc4331c26786376c"
+        "instrumentevidence-73970dbf7990c02076d4"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-57ecbc4331c26786376c"
+        "instrumentevidence-73970dbf7990c02076d4"
       ]
     }
   ],
   "elevated_peers": [
+    {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
     {
       "signal_id": "event-flags",
       "section": "command",
@@ -115,7 +121,19 @@
       "priority": "high"
     },
     {
+      "signal_id": "coverage-guard",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
       "signal_id": "ddti",
+      "section": "attention",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "weibo-hotsearch",
       "section": "attention",
       "status": "live",
       "priority": "high"
@@ -185,24 +203,6 @@
       "section": "erasure",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "cny-fix-gap",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "data-darkness",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "generative-firewall",
-      "section": "models",
-      "status": "live",
-      "priority": "lead"
     }
   ],
   "review_rank": {
@@ -213,7 +213,7 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-57ecbc4331c26786376c",
+      "evidence_id": "instrumentevidence-73970dbf7990c02076d4",
       "kind": "newsroom-story",
       "signal_id": "vantage-fusion",
       "headline": "Reporting network vantages combine to a 28.7% interference index",
@@ -221,8 +221,8 @@
       "claim": "The current coverage-weighted fusion of reporting vantages is 28.7%.",
       "story_url": "https://palimpsest.info/news/network-vantage-fusion/",
       "reading_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
-      "source_timestamp": "2026-08-23T13:33:36Z",
-      "input_sha256": "2f18298d93f2f7ff6f1ce2ce73c5bf9e146d52cbf04c9233b3d50d076db81379",
+      "source_timestamp": "2026-08-23T19:11:44Z",
+      "input_sha256": "a896e205533003b050819270a104af58a5fa5e4a20c506027227ff5eb72aee05",
       "interpretation_limit": "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic."
     }
   ],

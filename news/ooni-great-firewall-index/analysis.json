@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-906db894da09ef68c38d2beb",
+  "analysis_id": "instrumentv-a38cffd550b59c2f5f418ee5",
   "signal_id": "ooni-gfw",
   "story_url": "https://palimpsest.info/news/ooni-great-firewall-index/",
   "url": "https://palimpsest.info/news/ooni-great-firewall-index/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, undertext, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, undertext, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap.",
           "citation_ids": [
             "instrumentevidence-12f7f4833e1b3eeca1ed"
           ]
@@ -109,13 +109,31 @@
   ],
   "elevated_peers": [
     {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "event-flags",
       "section": "command",
       "status": "live",
       "priority": "high"
     },
     {
+      "signal_id": "coverage-guard",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
       "signal_id": "ddti",
+      "section": "attention",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "weibo-hotsearch",
       "section": "attention",
       "status": "live",
       "priority": "high"
@@ -185,18 +203,6 @@
       "section": "economy",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "data-darkness",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "generative-firewall",
-      "section": "models",
-      "status": "live",
-      "priority": "lead"
     }
   ],
   "review_rank": {

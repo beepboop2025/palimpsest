@@ -3,20 +3,20 @@
   "slug": "board-alarm",
   "url": "https://palimpsest.info/news/board-alarm/",
   "signal_id": "board-alarm",
-  "headline": "Board alarm: no current finding",
-  "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "headline": "Network layer elevated in the latest board synthesis",
+  "dek": "The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
   "section": "command",
   "order": 1,
   "type": "analysis",
   "priority": "lead",
-  "status": "stale",
-  "published_at": "2026-08-23T12:52:40Z",
-  "modified_at": "2026-08-23T12:52:40Z",
-  "claim_fingerprint": "sha256:c0788ccc78f46090c692b48e8a79ab4fe10aa4b662dd8568d548e79d718f59bb",
+  "status": "live",
+  "published_at": "2026-08-23T19:48:19Z",
+  "modified_at": "2026-08-23T19:48:19Z",
+  "claim_fingerprint": "sha256:68cf82b37a60ca50ff6f7b7a72ecf1a2d9029e971bd58e9141259b74d6e44aef",
   "metric": {
-    "label": null,
-    "value": null,
-    "unit": null,
+    "label": "board e-value",
+    "value": 9.534,
+    "unit": "e-value",
     "denominator": {
       "label": null,
       "value": null
@@ -24,25 +24,24 @@
   },
   "claims": [
     {
-      "type": "availability",
-      "statement": "No current finding is published for Board alarm because the source status is stale."
+      "type": "observation",
+      "statement": "Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 30 are live. Health qualifiers: 4 degraded, 5 stale. The board-wide e-value is 9.534; the predeclared board alarm threshold is 20."
     }
   ],
   "evidence": {
     "url": "https://palimpsest.info/readings/board-alarm-latest.json",
     "input": {
       "filename": "board-alarm-latest.json",
-      "sha256": "a2efa58524b4f67a08c1144ed7415864830cfae507dee3baff81dcfc9e499750",
-      "bytes": 10183
+      "sha256": "05d66cc487bc3918a713bdbd825156a157372bb7c254de99c512b1e713e502cb",
+      "bytes": 10191
     },
-    "source_timestamp": "2026-08-23T12:52:40Z"
+    "source_timestamp": "2026-08-23T19:48:19Z"
   },
   "method": {
     "summary": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
     "version": null
   },
   "limitations": [
-    "Current finding withheld: freshness deadline has passed",
     "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement."
   ],
   "related_signal_ids": [

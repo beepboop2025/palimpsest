@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-23T12:52:41.060178+00:00",
+  "generated_at": "2026-08-23T19:48:20.020784+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
@@ -9,9 +9,9 @@
       "overlap_days": 43,
       "lag_days": 7,
       "correlation": 0.675,
-      "p_value": 0.1034,
+      "p_value": 0.0345,
       "n_shifts": 28,
-      "null_median_abs_r": 0.344,
+      "null_median_abs_r": 0.349,
       "pair": [
         "github_refuge",
         "ooni_gfw"
@@ -55,7 +55,7 @@
       "correlation": -0.241,
       "p_value": 0.4483,
       "n_shifts": 28,
-      "null_median_abs_r": 0.203,
+      "null_median_abs_r": 0.202,
       "pair": [
         "ddti_novelty",
         "ooni_gfw"
@@ -74,10 +74,10 @@
       "ok": true,
       "overlap_days": 43,
       "lag_days": 0,
-      "correlation": -0.311,
+      "correlation": -0.313,
       "p_value": 0.5172,
       "n_shifts": 28,
-      "null_median_abs_r": 0.324,
+      "null_median_abs_r": 0.33,
       "pair": [
         "gdelt_containment",
         "ooni_gfw"
@@ -165,7 +165,7 @@
       "correlation": 0.233,
       "p_value": 1.0,
       "n_shifts": 28,
-      "null_median_abs_r": 0.423,
+      "null_median_abs_r": 0.422,
       "pair": [
         "ddti_threat",
         "ooni_gfw"
@@ -308,7 +308,7 @@
         "ooni_gfw",
         "weibo_suppression"
       ],
-      "reason": "no usable lag (a series is constant)"
+      "reason": "19 admissible shifts: smallest attainable p is 0.050, above alpha=0.05. Needs about 36d of overlapping daily history (has 34d)"
     },
     {
       "pair": [

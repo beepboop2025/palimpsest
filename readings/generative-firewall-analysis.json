@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-d3dad965637c50c6b1475be1",
+  "analysis_id": "instrumentv-f119b5e991fb2d9814285ad6",
   "signal_id": "generative-firewall",
   "story_url": "https://palimpsest.info/news/generative-firewall-index/",
   "url": "https://palimpsest.info/news/generative-firewall-index/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness.",
+          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, forecast-ledger, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront.",
           "citation_ids": [
             "instrumentevidence-13cf717f471b554a2e19"
           ]
@@ -109,13 +109,37 @@
   ],
   "elevated_peers": [
     {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "event-flags",
       "section": "command",
       "status": "live",
       "priority": "high"
     },
     {
+      "signal_id": "coverage-guard",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "forecast-ledger",
+      "section": "command",
+      "status": "live",
+      "priority": "standard"
+    },
+    {
       "signal_id": "ddti",
+      "section": "attention",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "weibo-hotsearch",
       "section": "attention",
       "status": "live",
       "priority": "high"
@@ -177,24 +201,6 @@
     {
       "signal_id": "app-storefront",
       "section": "erasure",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "apple-censorship",
-      "section": "erasure",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "cny-fix-gap",
-      "section": "economy",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "data-darkness",
-      "section": "economy",
       "status": "live",
       "priority": "high"
     }
