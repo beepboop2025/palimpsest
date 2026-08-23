@@ -1,39 +1,17 @@
 {
-  "generated_at": "2026-08-23T05:19:18.934292+00:00",
+  "generated_at": "2026-08-23T12:25:43.894683+00:00",
   "headline": "8 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
   "n_pairs_tested": 8,
   "n_confirmed": 0,
   "pairs": [
     {
       "ok": true,
-      "overlap_days": 45,
-      "lag_days": -3,
-      "correlation": -0.399,
-      "p_value": 0.0645,
-      "n_shifts": 30,
-      "null_median_abs_r": 0.348,
-      "pair": [
-        "ddti_threat",
-        "tor_bridge_cn"
-      ],
-      "layers": [
-        "content",
-        "network"
-      ],
-      "first_day": "2026-07-05",
-      "last_day": "2026-08-19",
-      "reading": "tor_bridge_cn moves 3d BEFORE ddti_threat",
-      "holm_threshold": 0.00625,
-      "survives_multiplicity": false
-    },
-    {
-      "ok": true,
       "overlap_days": 43,
       "lag_days": 7,
-      "correlation": 0.676,
+      "correlation": 0.675,
       "p_value": 0.1034,
       "n_shifts": 28,
-      "null_median_abs_r": 0.343,
+      "null_median_abs_r": 0.344,
       "pair": [
         "github_refuge",
         "ooni_gfw"
@@ -45,36 +23,36 @@
       "first_day": "2026-07-11",
       "last_day": "2026-08-23",
       "reading": "github_refuge moves 7d BEFORE ooni_gfw",
-      "holm_threshold": 0.00714,
+      "holm_threshold": 0.00625,
       "survives_multiplicity": false
     },
     {
       "ok": true,
-      "overlap_days": 44,
-      "lag_days": -4,
-      "correlation": 0.403,
-      "p_value": 0.2333,
-      "n_shifts": 29,
-      "null_median_abs_r": 0.369,
+      "overlap_days": 46,
+      "lag_days": -3,
+      "correlation": -0.392,
+      "p_value": 0.3438,
+      "n_shifts": 31,
+      "null_median_abs_r": 0.339,
       "pair": [
-        "github_refuge",
+        "ddti_threat",
         "tor_bridge_cn"
       ],
       "layers": [
         "content",
         "network"
       ],
-      "first_day": "2026-07-06",
-      "last_day": "2026-08-19",
-      "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
-      "holm_threshold": 0.00833,
+      "first_day": "2026-07-05",
+      "last_day": "2026-08-20",
+      "reading": "tor_bridge_cn moves 3d BEFORE ddti_threat",
+      "holm_threshold": 0.00714,
       "survives_multiplicity": false
     },
     {
       "ok": true,
       "overlap_days": 43,
       "lag_days": 7,
-      "correlation": -0.24,
+      "correlation": -0.241,
       "p_value": 0.4483,
       "n_shifts": 28,
       "null_median_abs_r": 0.203,
@@ -89,17 +67,17 @@
       "first_day": "2026-07-11",
       "last_day": "2026-08-23",
       "reading": "ddti_novelty moves 7d BEFORE ooni_gfw",
-      "holm_threshold": 0.01,
+      "holm_threshold": 0.00833,
       "survives_multiplicity": false
     },
     {
       "ok": true,
       "overlap_days": 43,
       "lag_days": 0,
-      "correlation": -0.318,
+      "correlation": -0.311,
       "p_value": 0.5172,
       "n_shifts": 28,
-      "null_median_abs_r": 0.335,
+      "null_median_abs_r": 0.324,
       "pair": [
         "gdelt_containment",
         "ooni_gfw"
@@ -111,17 +89,39 @@
       "first_day": "2026-07-11",
       "last_day": "2026-08-23",
       "reading": "gdelt_containment and ooni_gfw move the same day",
+      "holm_threshold": 0.01,
+      "survives_multiplicity": false
+    },
+    {
+      "ok": true,
+      "overlap_days": 45,
+      "lag_days": -4,
+      "correlation": 0.399,
+      "p_value": 0.6774,
+      "n_shifts": 30,
+      "null_median_abs_r": 0.431,
+      "pair": [
+        "github_refuge",
+        "tor_bridge_cn"
+      ],
+      "layers": [
+        "content",
+        "network"
+      ],
+      "first_day": "2026-07-06",
+      "last_day": "2026-08-20",
+      "reading": "tor_bridge_cn moves 4d BEFORE github_refuge",
       "holm_threshold": 0.0125,
       "survives_multiplicity": false
     },
     {
       "ok": true,
-      "overlap_days": 44,
+      "overlap_days": 45,
       "lag_days": -4,
-      "correlation": -0.254,
-      "p_value": 0.9667,
-      "n_shifts": 29,
-      "null_median_abs_r": 0.41,
+      "correlation": -0.253,
+      "p_value": 0.9355,
+      "n_shifts": 30,
+      "null_median_abs_r": 0.394,
       "pair": [
         "gdelt_containment",
         "tor_bridge_cn"
@@ -131,19 +131,19 @@
         "network"
       ],
       "first_day": "2026-07-06",
-      "last_day": "2026-08-19",
+      "last_day": "2026-08-20",
       "reading": "tor_bridge_cn moves 4d BEFORE gdelt_containment",
       "holm_threshold": 0.01667,
       "survives_multiplicity": false
     },
     {
       "ok": true,
-      "overlap_days": 45,
+      "overlap_days": 46,
       "lag_days": 3,
-      "correlation": -0.172,
+      "correlation": -0.167,
       "p_value": 1.0,
-      "n_shifts": 30,
-      "null_median_abs_r": 0.234,
+      "n_shifts": 31,
+      "null_median_abs_r": 0.314,
       "pair": [
         "ddti_novelty",
         "tor_bridge_cn"
@@ -153,7 +153,7 @@
         "network"
       ],
       "first_day": "2026-07-05",
-      "last_day": "2026-08-19",
+      "last_day": "2026-08-20",
       "reading": "ddti_novelty moves 3d BEFORE tor_bridge_cn",
       "holm_threshold": 0.025,
       "survives_multiplicity": false
@@ -162,7 +162,7 @@
       "ok": true,
       "overlap_days": 43,
       "lag_days": 7,
-      "correlation": 0.232,
+      "correlation": 0.233,
       "p_value": 1.0,
       "n_shifts": 28,
       "null_median_abs_r": 0.423,

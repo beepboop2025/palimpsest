@@ -1,49 +1,49 @@
 {
-  "generated_at": "2026-08-23T05:19:18.825680+00:00",
+  "generated_at": "2026-08-23T12:25:43.743457+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 178,
-      "metric_now": 58.6,
-      "denominator_now": 281414.0,
-      "metric_robust_z": -0.58,
-      "denominator_robust_z": 0.39,
-      "denominator_change_pct": 3.7,
+      "n_pairs": 179,
+      "metric_now": 58.5,
+      "denominator_now": 282179.0,
+      "metric_robust_z": -0.67,
+      "denominator_robust_z": 0.42,
+      "denominator_change_pct": 4.0,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 345,
-      "metric_now": 0.6242,
+      "n_pairs": 347,
+      "metric_now": 0.5749,
       "denominator_now": 211.0,
-      "metric_robust_z": -1.01,
-      "denominator_robust_z": 1.35,
-      "denominator_change_pct": 20.6,
+      "metric_robust_z": -1.06,
+      "denominator_robust_z": 1.57,
+      "denominator_change_pct": 17.5,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 345,
+      "n_pairs": 347,
       "metric_now": 119.0,
       "denominator_now": 211.0,
       "metric_robust_z": 6.74,
-      "denominator_robust_z": 1.35,
-      "denominator_change_pct": 20.6,
+      "denominator_robust_z": 1.57,
+      "denominator_change_pct": 17.5,
       "fit": {
-        "slope": 0.169062,
-        "intercept": -1.2889,
-        "correlation": 0.147
+        "slope": 0.200644,
+        "intercept": -6.5178,
+        "correlation": 0.169
       },
       "verdict": "CONFIRMED",
-      "note": "the measurement base does not track this metric historically (r=0.15), so coverage does not explain the move",
+      "note": "the measurement base does not track this metric historically (r=0.17), so coverage does not explain the move",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 189,
-      "metric_now": 3.0,
+      "n_pairs": 190,
+      "metric_now": 1.0,
       "denominator_now": 25.0,
-      "metric_robust_z": -0.67,
+      "metric_robust_z": -1.35,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -51,19 +51,14 @@
       "denominator_is": "terms carried into the GDELT cross-signal"
     },
     "data_darkness": {
-      "n_pairs": 16,
-      "metric_now": 0.1889,
+      "n_pairs": 17,
+      "metric_now": 0.212,
       "denominator_now": 7.0,
-      "metric_robust_z": -2.09,
+      "metric_robust_z": -1.63,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
-      "fit": {
-        "slope": 0.025222,
-        "intercept": 0.2904,
-        "correlation": 0.123
-      },
-      "verdict": "CONFIRMED",
-      "note": "the measurement base does not track this metric historically (r=0.12), so coverage does not explain the move",
+      "verdict": "NO_MOVE",
+      "note": "the metric has not departed from its own history",
       "denominator_is": "official surfaces reachable from this vantage this round — the index is a mean over whichever surfaces answered, so a vantage losing one surface shifts composition and the guard must own that"
     },
     "silence_blackouts": {
@@ -73,7 +68,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 140,
+      "n_pairs": 141,
       "metric_now": 0.0,
       "denominator_now": 1.0,
       "metric_robust_z": null,
