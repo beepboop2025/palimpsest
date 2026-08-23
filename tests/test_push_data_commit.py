@@ -362,6 +362,118 @@ def test_cli_does_not_retry_an_ordinary_publication_refusal(
     assert push_data_commit.main() == 1
 
 
+def test_cli_preflights_actions_authority_then_dispatches_the_published_head(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = SimpleNamespace(
+        rebuild_module=[],
+        stage=[],
+        input_path=[],
+        check_module=[],
+        base_locked=False,
+    )
+    revision = "a" * 40
+    events: list[tuple[str, ...]] = []
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
+    monkeypatch.setattr(
+        push_data_commit,
+        "_run_contract_dispatch",
+        lambda _repo, *parts: events.append(("dispatch", *parts)),
+    )
+    monkeypatch.setattr(
+        push_data_commit,
+        "publish",
+        lambda **_kwargs: events.append(("publish",)) or True,
+    )
+    monkeypatch.setattr(
+        push_data_commit,
+        "_capture",
+        lambda _repo, *_parts: revision,
+    )
+
+    assert push_data_commit.main() == 0
+    assert events == [
+        ("dispatch", "--check-environment"),
+        ("publish",),
+        ("dispatch", revision),
+    ]
+
+
+def test_cli_does_not_dispatch_when_no_commit_was_published(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = SimpleNamespace(
+        rebuild_module=[],
+        stage=[],
+        input_path=[],
+        check_module=[],
+        base_locked=False,
+    )
+    dispatches: list[tuple[str, ...]] = []
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
+    monkeypatch.setattr(push_data_commit, "publish", lambda **_kwargs: False)
+    monkeypatch.setattr(
+        push_data_commit,
+        "_run_contract_dispatch",
+        lambda _repo, *parts: dispatches.append(parts),
+    )
+
+    assert push_data_commit.main() == 0
+    assert dispatches == []
+
+
+def test_cli_returns_distinct_exit_when_a_published_commit_needs_dispatch_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = SimpleNamespace(
+        rebuild_module=[],
+        stage=[],
+        input_path=[],
+        check_module=[],
+        base_locked=False,
+    )
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
+    monkeypatch.setattr(push_data_commit, "publish", lambda **_kwargs: True)
+    monkeypatch.setattr(
+        push_data_commit,
+        "_capture",
+        lambda _repo, *_parts: "a" * 40,
+    )
+
+    def dispatch_failed(_repo: Path, *_parts: str) -> None:
+        raise push_data_commit.ContractDispatchError("retry exact SHA")
+
+    monkeypatch.setattr(
+        push_data_commit,
+        "_run_contract_dispatch",
+        dispatch_failed,
+    )
+
+    assert push_data_commit.main() == push_data_commit.CONTRACT_DISPATCH_EXIT
+
+
+def test_dispatch_helper_classifies_preflight_and_post_push_failures_differently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        push_data_commit.subprocess,
+        "run",
+        lambda *_args, **_kwargs: SimpleNamespace(returncode=1),
+    )
+
+    with pytest.raises(push_data_commit.PublishError) as preflight:
+        push_data_commit._run_contract_dispatch(  # noqa: SLF001
+            Path("."), "--check-environment"
+        )
+    assert type(preflight.value) is push_data_commit.PublishError
+
+    with pytest.raises(push_data_commit.ContractDispatchError):
+        push_data_commit._run_contract_dispatch(Path("."), "a" * 40)  # noqa: SLF001
+
+
 def test_candidate_check_repeats_after_main_advances_and_candidate_rebases(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -719,6 +831,20 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
         "wayback-refresh.yml",
         "weibo-hotsearch-refresh.yml",
     }
+    for workflow_name in migrated:
+        source = (workflow_root / workflow_name).read_text(encoding="utf-8")
+        publisher_lines = [
+            line.strip()
+            for line in source.splitlines()
+            if "python scripts/push_data_commit.py" in line
+        ]
+        assert publisher_lines, workflow_name
+        assert all(
+            line.startswith('PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" ')
+            or line.startswith('if PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" ')
+            or line.startswith('run: PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" ')
+            for line in publisher_lines
+        ), workflow_name
 
     board = (workflow_root / "board-alarm-refresh.yml").read_text(encoding="utf-8")
     assert "--rebuild-module" not in board
@@ -763,3 +889,104 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "--input-path readings/wayback-latest.json" in (
         workflow_root / "ddti-refresh.yml"
     ).read_text(encoding="utf-8")
+
+
+def test_custom_push_workflows_preflight_and_dispatch_only_a_successful_push() -> None:
+    workflow_root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+    for workflow_name in (
+        "data-darkness-refresh.yml",
+        "newswire-refresh.yml",
+        "research-corpus-refresh.yml",
+    ):
+        workflow = yaml.safe_load(
+            (workflow_root / workflow_name).read_text(encoding="utf-8")
+        )
+        job = next(iter(workflow["jobs"].values()))
+        steps = job["steps"]
+        push_indexes = [
+            index
+            for index, step in enumerate(steps)
+            if isinstance(step, dict) and "push origin HEAD:main" in step.get("run", "")
+        ]
+        assert len(push_indexes) == 2, workflow_name
+        preflights = [
+            (index, step)
+            for index, step in enumerate(steps)
+            if isinstance(step, dict)
+            and step.get("run")
+            == "python scripts/dispatch_publication_contract.py --check-environment"
+        ]
+        dispatches = [
+            (index, step)
+            for index, step in enumerate(steps)
+            if isinstance(step, dict)
+            and step.get("run")
+            == 'python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"'
+        ]
+        assert len(preflights) == len(dispatches) == 1, workflow_name
+        preflight_index, preflight = preflights[0]
+        dispatch_index, dispatch = dispatches[0]
+        assert preflight_index < min(push_indexes), workflow_name
+        assert dispatch_index > max(push_indexes), workflow_name
+        assert preflight["env"]["PALIMPSEST_ACTIONS_TOKEN"] == "${{ github.token }}"
+        assert dispatch["env"]["PALIMPSEST_ACTIONS_TOKEN"] == "${{ github.token }}"
+        assert "always()" in dispatch["if"]
+        assert "steps.push_attempt.outcome == 'success'" in dispatch["if"]
+        assert "steps.retry_push.outcome == 'success'" in dispatch["if"]
+        assert steps[push_indexes[1]]["id"] == "retry_push"
+
+
+def test_tests_workflow_checks_out_and_proves_the_dispatched_publication_sha() -> None:
+    workflow = (
+        Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tests.yml"
+    ).read_text(encoding="utf-8")
+    assert "repository_dispatch:\n    types:\n      - publication_contract" in workflow
+    assert "github.event_name != 'repository_dispatch'" in workflow
+    validation = workflow.index("- name: Validate the dispatched publication identity")
+    checkout = workflow.index("- uses: actions/checkout", validation)
+    proof = workflow.index("- name: Prove the dispatched commit is published on main")
+    assert validation < checkout < proof
+    assert (
+        "ref: ${{ github.event_name == 'repository_dispatch' && "
+        "github.event.client_payload.sha || github.sha }}"
+    ) in workflow
+    assert 'test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"' in workflow
+    assert 'git merge-base --is-ancestor "$PUBLICATION_SHA" origin/main' in workflow
+
+
+def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -> None:
+    workflow_root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+    controllers = {
+        "board-alarm-refresh.yml": "publish",
+        "erasure-refresh.yml": "push_attempt",
+        "gfi-refresh.yml": "push_attempt",
+        "osint-china-refresh.yml": "push_attempt",
+    }
+    for workflow_name, step_id in controllers.items():
+        source = (workflow_root / workflow_name).read_text(encoding="utf-8")
+        workflow = yaml.safe_load(source)
+        job = next(iter(workflow["jobs"].values()))
+        steps = job["steps"]
+        attempt = next(step for step in steps if step.get("id") == step_id)
+        assert attempt["continue-on-error"] is True, workflow_name
+        assert "printf 'exit_code=%s\\n'" in attempt["run"], workflow_name
+        assert f"steps.{step_id}.outputs.exit_code == '76'" in source
+        assert f"steps.{step_id}.outputs.exit_code != '76'" in source
+        dispatch_retries = [
+            step
+            for step in steps
+            if step.get("name") == "Retry the exact contract event without rebuilding"
+        ]
+        assert len(dispatch_retries) == 1, workflow_name
+        assert (
+            dispatch_retries[0]["run"]
+            == 'python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"'
+        )
+        for step in steps:
+            if "publication race" in step.get("name", "") or "push race" in step.get(
+                "name", ""
+            ):
+                assert "outputs.exit_code == '75'" in step["if"], (
+                    workflow_name,
+                    step["name"],
+                )

@@ -134,8 +134,9 @@ jobs:
       - name: Read the public surface before pushing it
         # This repository is served in full by Pages, so the push below is the publication
         # act and this is the last point at which a match can still be stopped. The test
-        # workflow marks the commit [skip pytest] so Tests/pytest skips; Tests/contract still runs. GitHub does not skip the
-        # whole run rather than one job. Without the rule list configured this reports and
+        # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
+        # the exact accepted SHA because action-token pushes emit no ordinary push event.
+        # Without the rule list configured this reports and
         # exits 0, on purpose: a check that stops the refresh when a secret is absent
         # stops the observatory, and stops it silently.
         env:
@@ -311,6 +312,12 @@ jobs:
             git commit --amend --no-edit
           fi
 
+      - name: Preflight publication contract dispatch
+        if: steps.candidate.outputs.changed == 'true'
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: python scripts/dispatch_publication_contract.py --check-environment
+
       - name: Attempt the verified push
         if: steps.candidate.outputs.changed == 'true'
         id: push_attempt
@@ -437,4 +444,13 @@ jobs:
 
       - name: Push the race-safe rebuilt commit
         if: steps.push_attempt.outcome == 'failure'
+        id: retry_push
         run: git push origin HEAD:main
+
+      - name: Dispatch the exact publication contract
+        if: >-
+          ${{ always() && (steps.push_attempt.outcome == 'success' ||
+          steps.retry_push.outcome == 'success') }}
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"

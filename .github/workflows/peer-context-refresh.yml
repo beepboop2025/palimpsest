@@ -55,7 +55,7 @@ jobs:
             echo "no change"
           else
             git commit -m "data: peer context refresh ($(date -u +%FT%TZ)) [skip pytest]"
-            python scripts/push_data_commit.py \
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py \
               --rebuild-module scripts.peer_context_pull \
               --stage readings/peer-context-latest.json \
               --stage readings/peer-context-history.jsonl

@@ -11,6 +11,7 @@ inputs changed and preserve candidate bytes across unrelated-main races.
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -24,7 +25,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MAX_PUSH_ATTEMPTS = 8
 MAX_RETRY_DELAY_SECONDS = 25.0
 BASE_ADVANCED_EXIT = 75
+CONTRACT_DISPATCH_EXIT = 76
 MODULE_RE = re.compile(r"scripts\.[a-z][a-z0-9_]*\Z")
+DISPATCH_HELPER = ROOT / "scripts" / "dispatch_publication_contract.py"
 
 
 class PublishError(RuntimeError):
@@ -33,6 +36,10 @@ class PublishError(RuntimeError):
 
 class BaseAdvancedError(PublishError):
     """A base-locked candidate must be rebuilt from the latest public main."""
+
+
+class ContractDispatchError(PublishError):
+    """The commit landed, but its exact-SHA contract event was not accepted."""
 
 
 def _capture(repo: Path, *arguments: str) -> str:
@@ -56,6 +63,23 @@ def _run(repo: Path, *arguments: str, check: bool = True) -> int:
             f"git {' '.join(arguments)} failed with {completed.returncode}"
         )
     return completed.returncode
+
+
+def _run_contract_dispatch(repo: Path, *arguments: str) -> None:
+    completed = subprocess.run(
+        [sys.executable, "-B", str(DISPATCH_HELPER), *arguments],
+        cwd=repo,
+        check=False,
+    )
+    if completed.returncode != 0:
+        error_type = (
+            PublishError
+            if "--check-environment" in arguments
+            else ContractDispatchError
+        )
+        raise error_type(
+            f"publication contract dispatch failed with {completed.returncode}"
+        )
 
 
 def _changed_paths(repo: Path, revision: str) -> tuple[str, ...]:
@@ -267,7 +291,7 @@ def publish(
         )
     ):
         raise PublishError(
-            "candidate commit uses a GitHub-native skip token; use [skip pytest] so contract still runs"
+            "candidate commit uses a GitHub-native skip token; use [skip pytest] so only the full suite skips"
         )
     if "[skip pytest]" not in subject:
         raise PublishError(
@@ -374,6 +398,10 @@ def _arguments() -> argparse.Namespace:
 def main() -> int:
     try:
         arguments = _arguments()
+        if os.environ.get("GITHUB_ACTIONS") == "true":
+            # Fail before the irreversible push if this workflow cannot create the
+            # explicit contract event that action-token pushes otherwise suppress.
+            _run_contract_dispatch(ROOT, "--check-environment")
         rebuild = None
         rebuild_paths: Sequence[str] = ()
         if arguments.rebuild_module or arguments.stage:
@@ -383,16 +411,21 @@ def main() -> int:
         candidate_check = (
             _module_checker(arguments.check_module) if arguments.check_module else None
         )
-        publish(
+        published = publish(
             rebuild=rebuild,
             rebuild_paths=rebuild_paths,
             input_paths=arguments.input_path,
             candidate_check=candidate_check,
             base_locked=arguments.base_locked,
         )
+        if published:
+            _run_contract_dispatch(ROOT, _capture(ROOT, "rev-parse", "HEAD"))
     except BaseAdvancedError as error:
         print(f"data publication deferred: {error}", file=sys.stderr)
         return BASE_ADVANCED_EXIT
+    except ContractDispatchError as error:
+        print(f"data publication needs contract retry: {error}", file=sys.stderr)
+        return CONTRACT_DISPATCH_EXIT
     except (OSError, PublishError, subprocess.SubprocessError, ValueError) as error:
         print(f"data publication refused: {error}", file=sys.stderr)
         return 1
