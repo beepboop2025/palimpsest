@@ -20,6 +20,13 @@ def _article(collection, slug):
 
 def _sources_with_failed_prior():
     sources = copy.deepcopy(eval_articles.load_sources(root=ROOT))
+    # This helper models a clean current run after an earlier control failure.
+    # Normalize the mutable public reading so a newly published control failure
+    # cannot silently turn the fixture into the separate "current run failed"
+    # editorial scenario.
+    for model in sources["reading"]["models"]:
+        model["controls_clean"] = True
+        model["control_refusals"] = []
     for model in sources["previous_full_sweep"]["models"].values():
         model["controls_clean"] = True
     failed = copy.deepcopy(sources["previous_full_sweep"])
