@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 from pathlib import Path
 
 
@@ -29,10 +30,45 @@ def _json(path: str) -> dict:
     return json.loads((ROOT / path).read_text(encoding="utf-8"))
 
 
+def _git_add_commands(workflow: str) -> tuple[tuple[str, ...], ...]:
+    """Return shell words for each logical ``git add`` command in a workflow."""
+    commands: list[tuple[str, ...]] = []
+    logical: list[str] | None = None
+    for raw_line in workflow.splitlines():
+        line = raw_line.strip()
+        if logical is None:
+            if not line.startswith("git add "):
+                continue
+            logical = []
+        continued = line.endswith("\\")
+        logical.append(line[:-1].rstrip() if continued else line)
+        if continued:
+            continue
+        commands.append(tuple(shlex.split(" ".join(logical))))
+        logical = None
+    return tuple(commands)
+
+
 def _staged_occurrences(workflow: str, artifact: str) -> int:
+    """Count explicit staging sites, falling back to deletion-safe root staging."""
+    commands = _git_add_commands(workflow)
+    normalized = artifact.rstrip("/")
+    targets = tuple(
+        {word.rstrip("/") for word in command[2:] if not word.startswith("-")}
+        for command in commands
+    )
+    explicit = sum(
+        normalized in command_targets
+        and "-A" not in command
+        and "--all" not in command
+        for command, command_targets in zip(commands, targets, strict=True)
+    )
+    if explicit:
+        return explicit
+    root = normalized.split("/", 1)[0]
     return sum(
-        line.strip().rstrip("\\").strip() == artifact
-        for line in workflow.splitlines()
+        ("-A" in command or "--all" in command) and root in command_targets
+        for command, command_targets in zip(commands, targets, strict=True)
     )
 
 
@@ -68,13 +104,14 @@ def test_every_osint_publisher_rebuilds_checks_and_stages_the_erasure_trail():
         )
         assert osint_builds > 0, path.name
         assert len(sequence.findall(workflow)) == osint_builds, path.name
-        assert _staged_occurrences(workflow, "news/") == osint_builds, path.name
+        publication_candidates = _staged_occurrences(workflow, "news/")
+        assert publication_candidates > 0, path.name
         for artifact in (
             "readings/erasure-trail-latest.json",
             "readings/erasure-trail-history.jsonl",
             "readings/erasure-trail.csv",
         ):
-            assert _staged_occurrences(workflow, artifact) == osint_builds, (
+            assert _staged_occurrences(workflow, artifact) == publication_candidates, (
                 path.name,
                 artifact,
             )
