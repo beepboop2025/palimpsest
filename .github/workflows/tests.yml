@@ -30,7 +30,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: tests-${{ github.ref }}
+  # A publication-only commit must not cancel a long-running product suite.
+  # Keep both lanes self-cancelling, but isolate contract-only refreshes from
+  # pull-request and ordinary mainline verification.
+  group: >-
+    tests-${{ github.ref }}-${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[skip pytest]') && 'contract-only' || 'full' }}
   cancel-in-progress: true
 
 jobs:
