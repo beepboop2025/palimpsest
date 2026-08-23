@@ -3,9 +3,10 @@
 This helper is deliberately narrower than the OSINT/newsroom publisher.  It is
 for workflows whose commit owns a distinct output set and has already run its
 collector and public-surface check. Direct observations retain byte-identical
-candidate blobs; derived jobs may declare exact modules and paths to rebuild.
-When those jobs also declare guarded inputs, they rebuild only when one of those
-inputs changed and preserve candidate bytes across unrelated-main races.
+candidate blobs while catalog and seal closure is rebuilt against the winning
+parent. Derived jobs may declare exact modules and paths to rebuild. When those
+jobs also declare guarded inputs, they rebuild only when one of those inputs
+changed and preserve candidate bytes across unrelated-main races.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Callable, Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 from pathlib import PurePosixPath
 
@@ -28,6 +30,16 @@ BASE_ADVANCED_EXIT = 75
 CONTRACT_DISPATCH_EXIT = 76
 MODULE_RE = re.compile(r"scripts\.[a-z][a-z0-9_]*\Z")
 DISPATCH_HELPER = ROOT / "scripts" / "dispatch_publication_contract.py"
+CATALOG_CLOSURE_PATHS = (
+    "readings/catalog.json",
+    "readings/catalog.jsonld",
+    "datapackage.json",
+)
+PUBLICATION_CLOSURE_PATHS = (
+    *CATALOG_CLOSURE_PATHS,
+    "readings/readings-ledger.jsonl",
+)
+PublicationClosure = Callable[[Path, str], Sequence[str]]
 
 
 class PublishError(RuntimeError):
@@ -82,6 +94,18 @@ def _run_contract_dispatch(repo: Path, *arguments: str) -> None:
         )
 
 
+def _run_python(repo: Path, *arguments: str) -> None:
+    completed = subprocess.run(
+        [sys.executable, "-B", *arguments],
+        cwd=repo,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise PublishError(
+            f"python {' '.join(arguments)} failed with {completed.returncode}"
+        )
+
+
 def _changed_paths(repo: Path, revision: str) -> tuple[str, ...]:
     raw = subprocess.run(
         [
@@ -126,6 +150,50 @@ def _candidate_entries(repo: Path) -> dict[str, str | None]:
     }
 
 
+def _publication_closure(repo: Path, _subject: str) -> tuple[str, ...]:
+    """Amend catalog and seal derivatives into one source-owned candidate."""
+
+    changed = set(_changed_paths(repo, "HEAD"))
+    if not any(path.startswith("readings/") for path in changed):
+        return ()
+
+    catalog_changes = changed.intersection(CATALOG_CLOSURE_PATHS)
+    if catalog_changes != set(CATALOG_CLOSURE_PATHS):
+        clock = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        _run_python(
+            repo,
+            "-m",
+            "scripts.build_data_catalog",
+            "--now",
+            clock,
+        )
+    _run_python(repo, "scripts/seal_readings.py")
+    _run(repo, "add", "--", *PUBLICATION_CLOSURE_PATHS)
+
+    unstaged = _capture(repo, "diff", "--name-only")
+    if unstaged:
+        raise PublishError(
+            "publication closure modified undeclared paths: "
+            + ", ".join(unstaged.splitlines())
+        )
+    untracked = _capture(repo, "ls-files", "--others", "--exclude-standard")
+    if untracked:
+        raise PublishError(
+            "publication closure created undeclared paths: "
+            + ", ".join(untracked.splitlines())
+        )
+    staged = set(_capture(repo, "diff", "--cached", "--name-only").splitlines())
+    unexpected = sorted(staged.difference(PUBLICATION_CLOSURE_PATHS))
+    if unexpected:
+        raise PublishError(
+            "publication closure staged undeclared paths: " + ", ".join(unexpected)
+        )
+    if staged:
+        _run(repo, "commit", "--amend", "--no-edit")
+        print("amended catalog and seal closure into the publication candidate")
+    return PUBLICATION_CLOSURE_PATHS
+
+
 def _fetch_main(repo: Path) -> None:
     shallow = _capture(repo, "rev-parse", "--is-shallow-repository")
     if shallow == "true":
@@ -140,9 +208,27 @@ def _fetch_main(repo: Path) -> None:
     )
 
 
+def _is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
+    result = _run(
+        repo,
+        "merge-base",
+        "--is-ancestor",
+        ancestor,
+        descendant,
+        check=False,
+    )
+    if result not in (0, 1):
+        raise PublishError(
+            f"could not compare publication ancestry ({ancestor}, {descendant})"
+        )
+    return result == 0
+
+
 def _verify_candidate_bytes(
     repo: Path,
     expected: dict[str, str | None],
+    *,
+    allowed_paths: Sequence[str] = (),
 ) -> int:
     for path, entry in expected.items():
         if _tree_entry(repo, "HEAD", path) != entry:
@@ -153,12 +239,57 @@ def _verify_candidate_bytes(
         raise PublishError(f"expected zero or one candidate commit, found {ahead}")
     if ahead == 1:
         rebased_paths = set(_changed_paths(repo, "HEAD"))
-        unexpected = sorted(rebased_paths.difference(expected))
+        unexpected = sorted(
+            rebased_paths.difference(expected).difference(allowed_paths)
+        )
         if unexpected:
             raise PublishError(
                 "rebase introduced unexpected candidate paths: " + ", ".join(unexpected)
             )
     return ahead
+
+
+def _restore_source_candidate(
+    repo: Path,
+    revision: str,
+    expected: dict[str, str | None],
+    subject: str,
+) -> bool:
+    """Apply exact source blobs to current origin/main without stale derivatives."""
+
+    _run(repo, "switch", "--detach", "origin/main")
+    for raw_path, entry in expected.items():
+        path = _validate_relative_path(raw_path)
+        if entry is None:
+            _run(repo, "rm", "-f", "--ignore-unmatch", "--", path)
+        else:
+            _run(repo, "checkout", revision, "--", path)
+            _run(repo, "add", "--", path)
+    if _run(repo, "diff", "--cached", "--quiet", check=False) == 0:
+        print("candidate source bytes are already present on main")
+        return False
+    if _capture(repo, "diff", "--name-only"):
+        raise PublishError("source restoration left undeclared unstaged paths")
+    if _capture(repo, "ls-files", "--others", "--exclude-standard"):
+        raise PublishError("source restoration left undeclared untracked paths")
+    _run(repo, "commit", "-m", subject)
+    return True
+
+
+def _apply_publication_closure(
+    repo: Path,
+    subject: str,
+    publication_closure: PublicationClosure,
+    expected_paths: Sequence[str] | None = None,
+) -> tuple[str, ...]:
+    paths = tuple(
+        _validate_relative_path(path) for path in publication_closure(repo, subject)
+    )
+    if len(paths) != len(set(paths)):
+        raise PublishError("publication closure paths contain duplicates")
+    if expected_paths is not None and set(paths) != set(expected_paths):
+        raise PublishError("publication closure changed its owned path set")
+    return paths
 
 
 def _retry_delay(attempt: int, revision: str) -> float:
@@ -264,6 +395,7 @@ def publish(
     rebuild_paths: Sequence[str] = (),
     input_paths: Sequence[str] = (),
     candidate_check: Callable[[Path], None] | None = None,
+    publication_closure: PublicationClosure | None = None,
     base_locked: bool = False,
     sleeper: Callable[[float], None] = time.sleep,
 ) -> bool:
@@ -298,6 +430,14 @@ def publish(
             "candidate commit is missing the required [skip pytest] marker"
         )
 
+    closure_paths: tuple[str, ...] = ()
+    if publication_closure is not None:
+        closure_paths = _apply_publication_closure(
+            repo,
+            subject,
+            publication_closure,
+        )
+
     guarded_inputs = tuple(_validate_relative_path(path) for path in input_paths)
     if len(guarded_inputs) != len(set(guarded_inputs)):
         raise PublishError("guarded input paths contain duplicates")
@@ -311,7 +451,12 @@ def publish(
     if rebuild is not None and not declared_rebuild_paths:
         raise PublishError("rebuild mode has no declared output paths")
 
-    expected = _candidate_entries(repo)
+    all_entries = _candidate_entries(repo)
+    expected = {
+        path: entry for path, entry in all_entries.items() if path not in closure_paths
+    }
+    if not expected:
+        raise PublishError("candidate contains only publication closure paths")
     undeclared = sorted(set(expected).difference(declared_rebuild_paths))
     if rebuild is not None and undeclared:
         raise PublishError(
@@ -322,43 +467,93 @@ def publish(
     for attempt in range(1, attempts + 1):
         _fetch_main(repo)
         latest_base = _capture(repo, "rev-parse", "origin/main")
-        if latest_base == _capture(repo, "rev-parse", "HEAD"):
+        current_head = _capture(repo, "rev-parse", "HEAD")
+        if latest_base == current_head:
             print("candidate bytes are already present on main")
             return False
         if latest_base != candidate_base:
-            if base_locked:
-                raise BaseAdvancedError(
-                    "main advanced beyond the candidate base; a verified rebuild is required"
-                )
             changed_inputs = [
                 path
                 for path in guarded_inputs
                 if _tree_entry(repo, candidate_base, path)
                 != _tree_entry(repo, "origin/main", path)
             ]
+            requires_rebuild = rebuild is not None and (
+                not guarded_inputs or changed_inputs
+            )
+            if _is_ancestor(repo, current_head, "origin/main") and not requires_rebuild:
+                print("candidate bytes are already present in main history")
+                return False
+            if base_locked:
+                raise BaseAdvancedError(
+                    "main advanced beyond the candidate base; a verified rebuild is required"
+                )
             # Without guarded inputs a rebuild job conservatively depends on
             # the whole public tree. With guarded inputs, only a dependency
             # change invalidates the candidate; unrelated races retain the
             # measured bytes through an ordinary rebase.
-            if rebuild is not None and (not guarded_inputs or changed_inputs):
+            if requires_rebuild:
                 _run(repo, "switch", "--detach", "origin/main")
                 if not rebuild(repo, subject):
                     return False
-                expected = _candidate_entries(repo)
+                if publication_closure is not None:
+                    _apply_publication_closure(
+                        repo,
+                        subject,
+                        publication_closure,
+                        closure_paths,
+                    )
+                all_entries = _candidate_entries(repo)
+                expected = {
+                    path: entry
+                    for path, entry in all_entries.items()
+                    if path not in closure_paths
+                }
             else:
                 if changed_inputs:
                     raise PublishError(
                         "guarded inputs changed while publishing: "
                         + ", ".join(changed_inputs)
                     )
-                if _run(repo, "rebase", "origin/main", check=False) != 0:
-                    _run(repo, "rebase", "--abort", check=False)
-                    raise PublishError(
-                        "candidate conflicts with the latest public main"
+                if publication_closure is None:
+                    if _run(repo, "rebase", "origin/main", check=False) != 0:
+                        _run(repo, "rebase", "--abort", check=False)
+                        raise PublishError(
+                            "candidate conflicts with the latest public main"
+                        )
+                else:
+                    conflicting_sources = [
+                        path
+                        for path in expected
+                        if _tree_entry(repo, candidate_base, path)
+                        != _tree_entry(repo, "origin/main", path)
+                    ]
+                    if conflicting_sources:
+                        raise PublishError(
+                            "candidate source paths changed while publishing: "
+                            + ", ".join(conflicting_sources)
+                        )
+                    candidate_revision = current_head
+                    if not _restore_source_candidate(
+                        repo,
+                        candidate_revision,
+                        expected,
+                        subject,
+                    ):
+                        return False
+                    _apply_publication_closure(
+                        repo,
+                        subject,
+                        publication_closure,
+                        closure_paths,
                     )
             candidate_base = _capture(repo, "rev-parse", "HEAD^")
 
-        ahead = _verify_candidate_bytes(repo, expected)
+        ahead = _verify_candidate_bytes(
+            repo,
+            expected,
+            allowed_paths=closure_paths,
+        )
         if ahead == 0:
             print("candidate bytes are already present on main")
             return False
@@ -416,6 +611,7 @@ def main() -> int:
             rebuild_paths=rebuild_paths,
             input_paths=arguments.input_path,
             candidate_check=candidate_check,
+            publication_closure=_publication_closure,
             base_locked=arguments.base_locked,
         )
         if published:
