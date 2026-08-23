@@ -877,7 +877,7 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-463c923fcf3f2a22c2d612d3",
+        "analysis_id": "analysisv-9315211970443755375510e0",
         "url": "https://palimpsest.info/news/wire/event-f40ebc8392ba0b19b4dae21d/analysis.json",
         "disposition": "source-assessment",
         "scope_status": "in-scope",
@@ -897,8 +897,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -907,7 +907,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -916,7 +916,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -18969,14 +18969,14 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-14650b3a99daac2fb39d7b15",
+        "analysis_id": "analysisv-a15a410e752285ed52bb708d",
         "url": "https://palimpsest.info/news/wire/event-5806cab8ba29510020174502/analysis.json",
-        "disposition": "collector-context",
+        "disposition": "collector-abstention",
         "scope_status": "in-scope",
-        "position": "Palimpsest's view: current collectors add relevant measured context, but they do not independently verify or refute this article. No archive-news-context row matches this event_id. 126 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. No interconnection peer met an exact join key.",
+        "position": "Palimpsest withholds a collector-backed conclusion because one or more declared measurement surfaces are not current. No archive-news-context row matches this event_id. 126 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. No interconnection peer met an exact join key.",
         "rationale": [
           "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.",
-          "All 4 declared collector surfaces are live. Their normalized findings are published below as topical context, not article-specific confirmation."
+          "1 of 4 declared collector surfaces are not live, so Palimpsest does not issue a collector-backed view."
         ],
         "evidence_assessment": {
           "strength": "single-primary-source",
@@ -18987,11 +18987,11 @@
         "collector_context": [
           {
             "signal_id": "china-econ",
-            "status": "live",
-            "headline": "3 official money-market benchmark families are reporting",
-            "finding": "The current CFETS reading contains 3 reporting benchmark families.",
+            "status": "stale",
+            "headline": "China money-market benchmarks: no current finding",
+            "finding": "No current finding is published for China money-market benchmarks because the source status is stale.",
             "relation": "topic-surface-only",
-            "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+            "interpretation": "Collector status is stale; retained values are not treated as a current finding.",
             "story_url": "https://palimpsest.info/news/china-money-market-benchmarks/",
             "evidence_url": "https://palimpsest.info/readings/china-econ-latest.json"
           },
@@ -19030,8 +19030,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -19040,7 +19040,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -19049,7 +19049,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -24130,7 +24130,7 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-bcf803bd4e047652ce7ba4bd",
+        "analysis_id": "analysisv-90bf5a39011999c1185b3b1c",
         "url": "https://palimpsest.info/news/wire/event-46bfc668354505fa95f43f22/analysis.json",
         "disposition": "source-assessment",
         "scope_status": "in-scope",
@@ -24150,8 +24150,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -24160,7 +24160,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -24169,7 +24169,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -25853,7 +25853,7 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-5e5677f8cdfa9e2a3b7a6fc7",
+        "analysis_id": "analysisv-c9a5f2b355666e2d57e17d41",
         "url": "https://palimpsest.info/news/wire/event-dbdacacb4972e64fa462ca94/analysis.json",
         "disposition": "source-assessment",
         "scope_status": "in-scope",
@@ -25873,8 +25873,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -25883,7 +25883,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -25892,7 +25892,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -26642,7 +26642,7 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-00b7e7130a87ff2067c11b29",
+        "analysis_id": "analysisv-4df99fc257b52af7e7a18a71",
         "url": "https://palimpsest.info/news/wire/event-7b33c285d06d6eae5e5f03b9/analysis.json",
         "disposition": "source-assessment",
         "scope_status": "in-scope",
@@ -26662,8 +26662,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -26672,7 +26672,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -26681,7 +26681,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -30855,14 +30855,14 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-14650b3a99daac2fb39d7b15",
+        "analysis_id": "analysisv-a15a410e752285ed52bb708d",
         "url": "https://palimpsest.info/news/wire/event-5806cab8ba29510020174502/analysis.json",
-        "disposition": "collector-context",
+        "disposition": "collector-abstention",
         "scope_status": "in-scope",
-        "position": "Palimpsest's view: current collectors add relevant measured context, but they do not independently verify or refute this article. No archive-news-context row matches this event_id. 126 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. No interconnection peer met an exact join key.",
+        "position": "Palimpsest withholds a collector-backed conclusion because one or more declared measurement surfaces are not current. No archive-news-context row matches this event_id. 126 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. No interconnection peer met an exact join key.",
         "rationale": [
           "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.",
-          "All 4 declared collector surfaces are live. Their normalized findings are published below as topical context, not article-specific confirmation."
+          "1 of 4 declared collector surfaces are not live, so Palimpsest does not issue a collector-backed view."
         ],
         "evidence_assessment": {
           "strength": "single-primary-source",
@@ -30873,11 +30873,11 @@
         "collector_context": [
           {
             "signal_id": "china-econ",
-            "status": "live",
-            "headline": "3 official money-market benchmark families are reporting",
-            "finding": "The current CFETS reading contains 3 reporting benchmark families.",
+            "status": "stale",
+            "headline": "China money-market benchmarks: no current finding",
+            "finding": "No current finding is published for China money-market benchmarks because the source status is stale.",
             "relation": "topic-surface-only",
-            "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+            "interpretation": "Collector status is stale; retained values are not treated as a current finding.",
             "story_url": "https://palimpsest.info/news/china-money-market-benchmarks/",
             "evidence_url": "https://palimpsest.info/readings/china-econ-latest.json"
           },
@@ -30916,8 +30916,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -30926,7 +30926,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -30935,7 +30935,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -32609,7 +32609,7 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-dc56f3b270f1441d34a4153b",
+        "analysis_id": "analysisv-d239b774a4f4c93603217e65",
         "url": "https://palimpsest.info/news/wire/event-68f92bfeb213287c198c7e60/analysis.json",
         "disposition": "collector-abstention",
         "scope_status": "in-scope",
@@ -32628,8 +32628,8 @@
           {
             "signal_id": "ddti",
             "status": "live",
-            "headline": "The directive index now tracks 211 censorship terms",
-            "finding": "The current deletion-directive index ranks 211 terms with documented censorship provenance.",
+            "headline": "The directive index now tracks 212 censorship terms",
+            "finding": "The current deletion-directive index ranks 212 terms with documented censorship provenance.",
             "relation": "topic-surface-only",
             "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
             "story_url": "https://palimpsest.info/news/deletion-directive-term-index/",
@@ -32670,7 +32670,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -32706,7 +32706,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -39409,14 +39409,14 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-14650b3a99daac2fb39d7b15",
+        "analysis_id": "analysisv-a15a410e752285ed52bb708d",
         "url": "https://palimpsest.info/news/wire/event-5806cab8ba29510020174502/analysis.json",
-        "disposition": "collector-context",
+        "disposition": "collector-abstention",
         "scope_status": "in-scope",
-        "position": "Palimpsest's view: current collectors add relevant measured context, but they do not independently verify or refute this article. No archive-news-context row matches this event_id. 126 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. No interconnection peer met an exact join key.",
+        "position": "Palimpsest withholds a collector-backed conclusion because one or more declared measurement surfaces are not current. No archive-news-context row matches this event_id. 126 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. No interconnection peer met an exact join key.",
         "rationale": [
           "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.",
-          "All 4 declared collector surfaces are live. Their normalized findings are published below as topical context, not article-specific confirmation."
+          "1 of 4 declared collector surfaces are not live, so Palimpsest does not issue a collector-backed view."
         ],
         "evidence_assessment": {
           "strength": "single-primary-source",
@@ -39427,11 +39427,11 @@
         "collector_context": [
           {
             "signal_id": "china-econ",
-            "status": "live",
-            "headline": "3 official money-market benchmark families are reporting",
-            "finding": "The current CFETS reading contains 3 reporting benchmark families.",
+            "status": "stale",
+            "headline": "China money-market benchmarks: no current finding",
+            "finding": "No current finding is published for China money-market benchmarks because the source status is stale.",
             "relation": "topic-surface-only",
-            "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+            "interpretation": "Collector status is stale; retained values are not treated as a current finding.",
             "story_url": "https://palimpsest.info/news/china-money-market-benchmarks/",
             "evidence_url": "https://palimpsest.info/readings/china-econ-latest.json"
           },
@@ -39470,8 +39470,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -39480,7 +39480,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -39489,7 +39489,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -41112,7 +41112,7 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-d417ab72b95cd20a9b6bb79e",
+        "analysis_id": "analysisv-34a1cc60d19da19a45fd96d9",
         "url": "https://palimpsest.info/news/wire/event-542707113f9777c76560a70f/analysis.json",
         "disposition": "collector-abstention",
         "scope_status": "in-scope",
@@ -41131,8 +41131,8 @@
           {
             "signal_id": "ddti",
             "status": "live",
-            "headline": "The directive index now tracks 211 censorship terms",
-            "finding": "The current deletion-directive index ranks 211 terms with documented censorship provenance.",
+            "headline": "The directive index now tracks 212 censorship terms",
+            "finding": "The current deletion-directive index ranks 212 terms with documented censorship provenance.",
             "relation": "topic-surface-only",
             "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
             "story_url": "https://palimpsest.info/news/deletion-directive-term-index/",
@@ -41173,7 +41173,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -41209,7 +41209,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -45341,7 +45341,7 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-c91d4ca470cffafa132f9172",
+        "analysis_id": "analysisv-f5f846ae18d8576ec18534e2",
         "url": "https://palimpsest.info/news/wire/event-65dc25efe4a3e5f2c45beab2/analysis.json",
         "disposition": "collector-abstention",
         "scope_status": "in-scope",
@@ -45360,8 +45360,8 @@
           {
             "signal_id": "ddti",
             "status": "live",
-            "headline": "The directive index now tracks 211 censorship terms",
-            "finding": "The current deletion-directive index ranks 211 terms with documented censorship provenance.",
+            "headline": "The directive index now tracks 212 censorship terms",
+            "finding": "The current deletion-directive index ranks 212 terms with documented censorship provenance.",
             "relation": "topic-surface-only",
             "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
             "story_url": "https://palimpsest.info/news/deletion-directive-term-index/",
@@ -45392,8 +45392,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -45402,7 +45402,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -45411,7 +45411,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -46255,14 +46255,14 @@
         }
       },
       "analysis": {
-        "analysis_id": "analysisv-f4a33c57ed80aed3c4bd4068",
+        "analysis_id": "analysisv-09efa2c9767f9e32f5576ff1",
         "url": "https://palimpsest.info/news/wire/event-251648f35711aea030ddf009/analysis.json",
         "disposition": "collector-abstention",
         "scope_status": "in-scope",
         "position": "Palimpsest withholds a collector-backed conclusion because one or more declared measurement surfaces are not current. No archive-news-context row matches this event_id. 59 same-window events share a declared topic. Official-page corroboration coverage is none-reviewed. Declared receipts: public-deletion-ledgers. No interconnection peer met an exact join key.",
         "rationale": [
           "The dossier contains one independent source group. Palimpsest treats it as an attributed report, not independent corroboration.",
-          "1 of 5 declared collector surfaces are not live, so Palimpsest does not issue a collector-backed view."
+          "2 of 5 declared collector surfaces are not live, so Palimpsest does not issue a collector-backed view."
         ],
         "evidence_assessment": {
           "strength": "single-source",
@@ -46283,11 +46283,11 @@
           },
           {
             "signal_id": "china-econ",
-            "status": "live",
-            "headline": "3 official money-market benchmark families are reporting",
-            "finding": "The current CFETS reading contains 3 reporting benchmark families.",
+            "status": "stale",
+            "headline": "China money-market benchmarks: no current finding",
+            "finding": "No current finding is published for China money-market benchmarks because the source status is stale.",
             "relation": "topic-surface-only",
-            "interpretation": "Current aggregate collector reading. It is relevant context only; the wire declares no timed, claim-specific verification join.",
+            "interpretation": "Collector status is stale; retained values are not treated as a current finding.",
             "story_url": "https://palimpsest.info/news/china-money-market-benchmarks/",
             "evidence_url": "https://palimpsest.info/readings/china-econ-latest.json"
           },
@@ -46326,8 +46326,8 @@
           {
             "peer": "greatfire",
             "status": "miss",
-            "sentence": "GreatFire has no cached 90-day verdict for this host as of 2026-08-23.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "sentence": "GreatFire has no cached 90-day verdict for this host in the current peer warehouse.",
+            "as_of": null,
             "peer_url": null,
             "attribution": "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -46336,7 +46336,7 @@
             "peer": "ooni",
             "status": "miss",
             "sentence": "OONI has no China measurements on this host in the local warehouse or ooni-gfw-latest reading.",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": null,
             "attribution": "OONI Probe / OONI data. Palimpsest is not the origin of these measurements.",
             "relation": "peer-context-not-palimpsest-capture"
@@ -46345,7 +46345,7 @@
             "peer": "weiboscope",
             "status": "abstain",
             "sentence": "Historical Weiboscope volume is not on this node (Fu, Chan, Chau 2013; doi:10.25442/hku.16674565).",
-            "as_of": "2026-08-23T00:48:00Z",
+            "as_of": null,
             "peer_url": "https://doi.org/10.25442/hku.16674565",
             "attribution": "Weiboscope / HKU Journalism and Media Studies Centre. Historical 2012 volume is not stored on this node.",
             "relation": "peer-context-not-palimpsest-capture"

@@ -1,12 +1,12 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-942bc155e851e96334dc9a5b",
+  "analysis_id": "instrumentv-817d4c3e895b4081d48c11db",
   "signal_id": "cross-layer",
   "story_url": "https://palimpsest.info/news/cross-layer-lead-lag/",
   "url": "https://palimpsest.info/news/cross-layer-lead-lag/analysis.json",
   "reading_url": "https://palimpsest.info/readings/cross-layer-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/cross-layer-analysis.json",
-  "generated_at": "2026-08-23T05:19:18Z",
+  "generated_at": "2026-08-23T12:52:41Z",
   "disposition": "availability-brief",
   "status": "stale",
   "position": "Palimpsest withholds a current finding for cross-layer: the source status is stale. This is an availability brief, not a measurement.",
@@ -16,7 +16,7 @@
       "label": "headline metric",
       "note": "withheld because the source is not live",
       "citation_ids": [
-        "instrumentevidence-78217b1f02c70268a5b2"
+        "instrumentevidence-24db885d6ee6c3af7587"
       ]
     }
   ],
@@ -27,13 +27,13 @@
         {
           "text": "No current number is published for cross-layer because the newsroom status is stale. The retained metric is withheld.",
           "citation_ids": [
-            "instrumentevidence-78217b1f02c70268a5b2"
+            "instrumentevidence-24db885d6ee6c3af7587"
           ]
         },
         {
           "text": "No current finding is published for Cross-layer lead and lag because the source status is stale.",
           "citation_ids": [
-            "instrumentevidence-78217b1f02c70268a5b2"
+            "instrumentevidence-24db885d6ee6c3af7587"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
           "citation_ids": [
-            "instrumentevidence-78217b1f02c70268a5b2"
+            "instrumentevidence-24db885d6ee6c3af7587"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-78217b1f02c70268a5b2"
+            "instrumentevidence-24db885d6ee6c3af7587"
           ]
         }
       ]
@@ -61,19 +61,19 @@
         {
           "text": "Current finding withheld: freshness deadline has passed",
           "citation_ids": [
-            "instrumentevidence-78217b1f02c70268a5b2"
+            "instrumentevidence-24db885d6ee6c3af7587"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-78217b1f02c70268a5b2"
+            "instrumentevidence-24db885d6ee6c3af7587"
           ]
         },
         {
           "text": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
           "citation_ids": [
-            "instrumentevidence-78217b1f02c70268a5b2"
+            "instrumentevidence-24db885d6ee6c3af7587"
           ]
         }
       ]
@@ -83,13 +83,13 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-78217b1f02c70268a5b2"
+        "instrumentevidence-24db885d6ee6c3af7587"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-78217b1f02c70268a5b2"
+        "instrumentevidence-24db885d6ee6c3af7587"
       ]
     }
   ],
@@ -97,13 +97,13 @@
     {
       "text": "Current finding withheld: freshness deadline has passed",
       "citation_ids": [
-        "instrumentevidence-78217b1f02c70268a5b2"
+        "instrumentevidence-24db885d6ee6c3af7587"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-78217b1f02c70268a5b2"
+        "instrumentevidence-24db885d6ee6c3af7587"
       ]
     }
   ],
@@ -116,12 +116,6 @@
     },
     {
       "signal_id": "ddti",
-      "section": "attention",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "weibo-hotsearch",
       "section": "attention",
       "status": "live",
       "priority": "high"
@@ -203,6 +197,12 @@
       "section": "economy",
       "status": "live",
       "priority": "high"
+    },
+    {
+      "signal_id": "generative-firewall",
+      "section": "models",
+      "status": "live",
+      "priority": "lead"
     }
   ],
   "review_rank": {
@@ -213,7 +213,7 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-78217b1f02c70268a5b2",
+      "evidence_id": "instrumentevidence-24db885d6ee6c3af7587",
       "kind": "newsroom-story",
       "signal_id": "cross-layer",
       "headline": "Cross-layer lead and lag: no current finding",
@@ -221,8 +221,8 @@
       "claim": "No current finding is published for Cross-layer lead and lag because the source status is stale.",
       "story_url": "https://palimpsest.info/news/cross-layer-lead-lag/",
       "reading_url": "https://palimpsest.info/readings/cross-layer-latest.json",
-      "source_timestamp": "2026-08-23T05:19:18Z",
-      "input_sha256": "c0ce5e356d38ccb24d1de2e67d10bbcad80214487d237bf5bdc2073df10499e9",
+      "source_timestamp": "2026-08-23T12:52:41Z",
+      "input_sha256": "a0f4de30c79c5869d5d1283ba0528d8c89986e5ca9f7552c5c55ee1c64c3d6b4",
       "interpretation_limit": "Current finding withheld: freshness deadline has passed"
     }
   ],
