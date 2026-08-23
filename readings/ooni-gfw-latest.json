@@ -1,66 +1,66 @@
 {
-  "generated_at": "2026-08-22T18:53:22.427803+00:00",
+  "generated_at": "2026-08-23T02:04:41.862256+00:00",
   "method_version": 2,
   "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
   "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
   "method": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
   "china_caveat": "the GFW blocks via RST/DNS injection without a block page, so OONI 'confirmed' is near-zero for CN; we track anomaly rate, not confirmed",
   "window_days": 7,
-  "since": "2026-08-15",
-  "until": "2026-08-23",
-  "gfw_index": 59.4,
-  "n_measurements": 312457,
-  "n_completed_measurements": 304489,
+  "since": "2026-08-16",
+  "until": "2026-08-24",
+  "gfw_index": 58.6,
+  "n_measurements": 281414,
+  "n_completed_measurements": 273143,
   "n_tests_with_data": 6,
   "tests": [
     {
       "test": "web_connectivity",
       "label": "website / URL blocking",
       "available": true,
-      "anomaly_count": 179557,
-      "measurement_count": 310824,
-      "failure_count": 7966,
-      "anomaly_rate": 0.5929,
-      "reading": "59% anomalous — substantial interference"
+      "anomaly_count": 158693,
+      "measurement_count": 279866,
+      "failure_count": 8268,
+      "anomaly_rate": 0.5843,
+      "reading": "58% anomalous — substantial interference"
     },
     {
       "test": "telegram",
       "label": "Telegram reachability",
       "available": true,
-      "anomaly_count": 342,
-      "measurement_count": 351,
+      "anomaly_count": 323,
+      "measurement_count": 332,
       "failure_count": 0,
-      "anomaly_rate": 0.9744,
+      "anomaly_rate": 0.9729,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
       "test": "whatsapp",
       "label": "WhatsApp reachability",
       "available": true,
-      "anomaly_count": 348,
-      "measurement_count": 355,
+      "anomaly_count": 326,
+      "measurement_count": 333,
       "failure_count": 0,
-      "anomaly_rate": 0.9803,
+      "anomaly_rate": 0.979,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "signal",
       "label": "Signal reachability",
       "available": true,
-      "anomaly_count": 339,
-      "measurement_count": 348,
-      "failure_count": 2,
-      "anomaly_rate": 0.9798,
+      "anomaly_count": 316,
+      "measurement_count": 326,
+      "failure_count": 3,
+      "anomaly_rate": 0.9783,
       "reading": "98% anomalous — heavily interfered with"
     },
     {
       "test": "tor",
       "label": "Tor reachability",
       "available": true,
-      "anomaly_count": 280,
-      "measurement_count": 289,
+      "anomaly_count": 263,
+      "measurement_count": 271,
       "failure_count": 0,
-      "anomaly_rate": 0.9689,
+      "anomaly_rate": 0.9705,
       "reading": "97% anomalous — heavily interfered with"
     },
     {
@@ -68,10 +68,10 @@
       "label": "Psiphon circumvention",
       "available": true,
       "anomaly_count": 72,
-      "measurement_count": 290,
+      "measurement_count": 286,
       "failure_count": 0,
-      "anomaly_rate": 0.2483,
-      "reading": "25% anomalous — some interference"
+      "anomaly_rate": 0.2517,
+      "reading": "25% anomalous — substantial interference"
     },
     {
       "test": "riseupvpn",
@@ -86,22 +86,6 @@
   ],
   "top_blocked": [
     {
-      "domain": "www.hrichina.org",
-      "anomaly_count": 32,
-      "measurement_count": 60,
-      "failure_count": 28,
-      "completed_measurement_count": 32,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.hrw.org",
-      "anomaly_count": 27,
-      "measurement_count": 50,
-      "failure_count": 23,
-      "completed_measurement_count": 27,
-      "anomaly_rate": 1.0
-    },
-    {
       "domain": "www.economist.com",
       "anomaly_count": 26,
       "measurement_count": 42,
@@ -110,63 +94,31 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "studentsforafreetibet.org",
+      "domain": "www.hrichina.org",
       "anomaly_count": 24,
-      "measurement_count": 44,
-      "failure_count": 20,
+      "measurement_count": 52,
+      "failure_count": 28,
       "completed_measurement_count": 24,
       "anomaly_rate": 1.0
     },
     {
       "domain": "beyondexgay.com",
-      "anomaly_count": 23,
-      "measurement_count": 29,
-      "failure_count": 6,
-      "completed_measurement_count": 23,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.falundafa.org",
       "anomaly_count": 22,
-      "measurement_count": 30,
-      "failure_count": 8,
+      "measurement_count": 28,
+      "failure_count": 6,
       "completed_measurement_count": 22,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "miliao.com",
-      "anomaly_count": 21,
-      "measurement_count": 29,
-      "failure_count": 8,
-      "completed_measurement_count": 21,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.bahai.org",
       "anomaly_count": 21,
-      "measurement_count": 25,
-      "failure_count": 4,
+      "measurement_count": 26,
+      "failure_count": 5,
       "completed_measurement_count": 21,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.dit-inc.us",
-      "anomaly_count": 21,
-      "measurement_count": 25,
-      "failure_count": 4,
-      "completed_measurement_count": 21,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.piratenpartei.ch",
-      "anomaly_count": 20,
-      "measurement_count": 24,
-      "failure_count": 4,
-      "completed_measurement_count": 20,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.xvideos.com",
+      "domain": "miliao.com",
       "anomaly_count": 20,
       "measurement_count": 29,
       "failure_count": 9,
@@ -174,117 +126,165 @@
       "anomaly_rate": 1.0
     },
     {
-      "domain": "imgur.com",
-      "anomaly_count": 19,
-      "measurement_count": 24,
-      "failure_count": 5,
-      "completed_measurement_count": 19,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.cato.org",
-      "anomaly_count": 19,
-      "measurement_count": 29,
+      "domain": "www.falundafa.org",
+      "anomaly_count": 20,
+      "measurement_count": 30,
       "failure_count": 10,
-      "completed_measurement_count": 19,
+      "completed_measurement_count": 20,
       "anomaly_rate": 1.0
     },
     {
-      "domain": "www.dalailama.com",
-      "anomaly_count": 19,
-      "measurement_count": 28,
-      "failure_count": 9,
-      "completed_measurement_count": 19,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.gayscape.com",
-      "anomaly_count": 19,
-      "measurement_count": 24,
-      "failure_count": 5,
-      "completed_measurement_count": 19,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.jihadwatch.org",
-      "anomaly_count": 19,
-      "measurement_count": 29,
-      "failure_count": 10,
-      "completed_measurement_count": 19,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "archive.ph",
-      "anomaly_count": 18,
-      "measurement_count": 24,
-      "failure_count": 6,
-      "completed_measurement_count": 18,
+      "domain": "www.hrw.org",
+      "anomaly_count": 20,
+      "measurement_count": 43,
+      "failure_count": 23,
+      "completed_measurement_count": 20,
       "anomaly_rate": 1.0
     },
     {
       "domain": "dns.quad9.net",
-      "anomaly_count": 18,
-      "measurement_count": 21,
-      "failure_count": 3,
-      "completed_measurement_count": 18,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "unwatch.org",
-      "anomaly_count": 18,
-      "measurement_count": 29,
-      "failure_count": 11,
-      "completed_measurement_count": 18,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.dailymail.co.uk",
-      "anomaly_count": 18,
-      "measurement_count": 28,
-      "failure_count": 10,
-      "completed_measurement_count": 18,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.i-cable.com",
-      "anomaly_count": 18,
-      "measurement_count": 26,
-      "failure_count": 8,
-      "completed_measurement_count": 18,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.ndi.org",
-      "anomaly_count": 18,
-      "measurement_count": 27,
-      "failure_count": 9,
-      "completed_measurement_count": 18,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "womany.net",
-      "anomaly_count": 17,
-      "measurement_count": 27,
-      "failure_count": 10,
-      "completed_measurement_count": 17,
-      "anomaly_rate": 1.0
-    },
-    {
-      "domain": "www.dogpile.com",
-      "anomaly_count": 17,
+      "anomaly_count": 19,
       "measurement_count": 22,
+      "failure_count": 3,
+      "completed_measurement_count": 19,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.piratenpartei.ch",
+      "anomaly_count": 19,
+      "measurement_count": 25,
+      "failure_count": 6,
+      "completed_measurement_count": 19,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.victimsofcommunism.org",
+      "anomaly_count": 19,
+      "measurement_count": 37,
+      "failure_count": 18,
+      "completed_measurement_count": 19,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.xvideos.com",
+      "anomaly_count": 19,
+      "measurement_count": 28,
+      "failure_count": 9,
+      "completed_measurement_count": 19,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.dit-inc.us",
+      "anomaly_count": 18,
+      "measurement_count": 22,
+      "failure_count": 4,
+      "completed_measurement_count": 18,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.gayscape.com",
+      "anomaly_count": 18,
+      "measurement_count": 23,
       "failure_count": 5,
+      "completed_measurement_count": 18,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.dalailama.com",
+      "anomaly_count": 17,
+      "measurement_count": 26,
+      "failure_count": 9,
       "completed_measurement_count": 17,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.jihadwatch.org",
+      "anomaly_count": 17,
+      "measurement_count": 28,
+      "failure_count": 11,
+      "completed_measurement_count": 17,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "lens.google.com",
+      "anomaly_count": 16,
+      "measurement_count": 20,
+      "failure_count": 4,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "mail.google.com",
+      "anomaly_count": 16,
+      "measurement_count": 20,
+      "failure_count": 4,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "photos.google.com",
+      "anomaly_count": 16,
+      "measurement_count": 20,
+      "failure_count": 4,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.change.org",
+      "anomaly_count": 16,
+      "measurement_count": 25,
+      "failure_count": 9,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.dwnews.com",
+      "anomaly_count": 16,
+      "measurement_count": 24,
+      "failure_count": 8,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.euronews.com",
+      "anomaly_count": 16,
+      "measurement_count": 24,
+      "failure_count": 8,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.expressvpn.com",
+      "anomaly_count": 16,
+      "measurement_count": 23,
+      "failure_count": 7,
+      "completed_measurement_count": 16,
       "anomaly_rate": 1.0
     },
     {
       "domain": "www.foreignaffairs.com",
-      "anomaly_count": 17,
-      "measurement_count": 24,
+      "anomaly_count": 16,
+      "measurement_count": 23,
       "failure_count": 7,
-      "completed_measurement_count": 17,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.i-cable.com",
+      "anomaly_count": 16,
+      "measurement_count": 24,
+      "failure_count": 8,
+      "completed_measurement_count": 16,
+      "anomaly_rate": 1.0
+    },
+    {
+      "domain": "www.ndi.org",
+      "anomaly_count": 16,
+      "measurement_count": 26,
+      "failure_count": 10,
+      "completed_measurement_count": 16,
       "anomaly_rate": 1.0
     }
   ],
-  "last_changed_at": "2026-08-22T18:53:22.427803+00:00"
+  "last_changed_at": "2026-08-23T02:04:41.862256+00:00"
 }
