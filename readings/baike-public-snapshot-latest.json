@@ -1,1 +1,98 @@
-{"generated_at":"2026-08-22T11:21:09Z","method_version":1,"source":"Public Baike article HTML + Wayback CDX (topic/event pages only)","scope":"First-seen public encyclopedia text, content hashes, last-confirmed-alive, and disappearance/rewrite trails. No logged-in API. No person pages. The Wikipedia-fork baike-redaction collector stays disabled.","method":"Keyless GET of reviewed public Baike article URLs; extract_baike facets; hash comparison against node-local state; CDX digest attached when IA answers.","n_pages":8,"n_ok":1,"n_unreachable":7,"n_login_walled":2,"n_observations":1,"status":"ok","collector_status":"observed","valid_for_series":true,"pages":{"https://baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87":{"content_sha256":null,"first_seen":null,"last_confirmed_alive":null,"last_status":200,"last_event":"login_walled","interstitial":null,"term":"青年失业率","cdx_digest":null},"https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC":{"content_sha256":null,"first_seen":null,"last_confirmed_alive":null,"last_status":200,"last_event":"login_walled","interstitial":null,"term":"烂尾楼","cdx_digest":"3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ"},"https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8":{"content_sha256":null,"first_seen":null,"last_confirmed_alive":null,"last_status":404,"last_event":"unreachable","interstitial":null,"term":"白纸运动","cdx_digest":null},"https://baike.baidu.com/item/%E5%85%AD%E5%9B%9B%E4%BA%8B%E4%BB%B6":{"content_sha256":null,"first_seen":null,"last_confirmed_alive":null,"last_status":404,"last_event":"unreachable","interstitial":null,"term":"六四事件","cdx_digest":"POPLDWWERZ2PUX2BRPCFNS2BB6ELQHMY"},"https://baike.baidu.com/item/%E6%B3%95%E8%BD%AE%E5%8A%9F":{"content_sha256":null,"first_seen":null,"last_confirmed_alive":null,"last_status":404,"last_event":"unreachable","interstitial":null,"term":"法轮功","cdx_digest":null},"https://baike.baidu.com/item/%E6%96%B0%E7%96%86%E5%86%8D%E6%95%99%E8%82%B2%E8%90%A5":{"content_sha256":null,"first_seen":null,"last_confirmed_alive":null,"last_status":404,"last_event":"unreachable","interstitial":null,"term":"新疆再教育营","cdx_digest":null},"https://baike.baidu.com/item/709%E5%A4%A7%E6%8A%93%E6%8D%95":{"content_sha256":"2d5b268d75d0b854a7e9b6b8bcfe13587c7d89f44432e30039345d11dfb587f6","first_seen":"2026-08-22T11:21:09Z","last_confirmed_alive":"2026-08-22T11:21:09Z","last_status":200,"last_event":"first_seen","interstitial":null,"term":"709大抓捕","cdx_digest":null},"https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E9%9D%A9%E5%91%BD":{"content_sha256":null,"first_seen":null,"last_confirmed_alive":null,"last_status":404,"last_event":"unreachable","interstitial":null,"term":"白纸革命","cdx_digest":null}},"observations":[{"terms":["709大抓捕"],"detected_at":"2026-08-22T11:21:09Z","title":"[baike:first_seen] 709大抓捕","text":"!DOCTYPE html html lang=\"zh-CN\" head meta charset=\"utf-8\" / meta name=\"viewport\" content=\"width=device-width,initial-scale=1,user-scalable=no\" / title百度百科/title script window.__PARIS_CHALLENGE_START__ = (function () { var perf = window.performance; if (perf && perf.timing && perf.timing.navigationStart) { return perf.timing.navigationStart; } if (perf && perf.timeOrigin) { return Math.round(perf.timeOrigin); } return Date.now(); })(); window.__CHALLENGE_CONFIG__ = { sid: '#', acsUrlBaseTpl: 'https://dlswbr.baidu.com/heicha/mm/{sid}/acs-{sid}.js' }; // 仅把参数写入当前 URL（不跳转、不刷新），供 bst / acs-token 复用 window.__setUrlParam__ = function (name, value) { if (!window.history || !history.replaceState) { return false; } var loc = window.location; var query = loc.search; var pair = name + '=' + encodeURIComponent(value); var re = new RegExp('([?&])' + name + '=[^&]*'); if (re.test(query)) { query = query.replace(re, '$1' + pair); } else { query += (query.indexOf('?')  -1 ? '&' : '?') + pair; } history.replaceState(null, '', loc.pathname + query + loc.hash); return true; }; /script script (function () { // 服务端读取本文档后，会把下面的占位符替换为真实的 baike-safe-token 值 var bstToken = '#.f2dc0c1b#a7dc7'; // 用拼接方式重建占位符再比较：服务端只会替换连续的 #.f2dc0c1b#a7dc7， // 拼接后的字符串不会被替换，从而可判断服务端是否成功替换过。 var placeholder = '{' + 'baike-safe-token' + '}'; if (!bstToken || bstToken === placeholder) { return; } window.__setUrlParam__('bst', bstToken); })(); /script script function preloadHref(href, preloadTTLMin) { if (!preloadTTLMin) { preloadTTLMin = #; } if (preloadTTLMin) { let bucketStamp = Math.floor(+new Date() / (# * 60 * preloadTTLMin)); let sepChar = href.indexOf('?')  -1 ? '&' : '?'; href = href + sepChar + '_=' + bucketStamp; } let linkEl = document.createElement('link'); linkEl.rel = 'preload'; linkEl.as = 'script'; linkEl.href = href; document.head.appendChild(linkEl); return href; } var cfg = window.__CHALLENGE_CONFIG__; window.__ACS_PRELOAD_HREF__ = preloadHref(cfg.acsUrlBaseTpl.split('{sid}').join(cfg.sid)); /script script src=\"https://bkssl.bdimg.com/resource/common/antispam/middle/paris.challenge.min.js\"/script /head body div style=\"display:flex;height:#vh;align-items:center;justify-content:center;\" div style=\"text-align:center;font-family:sans-serif;color:##;\" !-- h2安全校验中…/h2 -- /div /div script src=\"https://bkssl.bdimg.com/resource/common/antispam/middle/paris.min.js\"/script script (function () { 'use strict'; var CFG = window.__CHALLENGE_CONFIG__; // 写入 acs-token：优先 cookie，失败则回退到 URL 参数（不跳转） function saveAcsToken(code) { var token = String(code); var written = false; // 快速预判：cookie 被禁用时直接跳过写入，省去无谓的写+回读 if (navigator.cookieEnabled) { document.cookie = 'acs-token=' + encodeURIComponent(token) + '; path=/'; written = document.cookie.split('; ').some(function (item) { return item.indexOf('acs-token=') === 0; }); } if (!written) { window.__setUrlParam__('acs-token', token); } } CFG.handlerError = saveAcsToken; // SDK 未加载成功时，写入状态码（# 可按业务约定调整） if (typeof window.ParisChallenge === 'undefined' || !window.ParisChallenge) { saveAcsToken(#); return; } window.ParisChallenge.startChallengeFlow(CFG); })(); /script /body /html","url":"https://baike.baidu.com/item/709%E5%A4%A7%E6%8A%93%E6%8D%95","source":"baike_public_snapshot","deletion_signal":"first_seen","domain":"RIGHTS","text_zh":"[baike:first_seen] 709大抓捕\n!DOCTYPE html html lang=\"zh-CN\" head meta charset=\"utf-8\" / meta name=\"viewport\" content=\"width=device-width,initial-scale=1,user-scalable=no\" / title百度百科/title script window.__PARIS_CHALLENGE_START__ = (function () { var perf = window.performance; if (perf && perf.timing && perf.timing.navigationStart) { return perf.timing.navigationStart; } if (perf && perf.timeOrigin) { return Math.round(perf.timeOrigin); } return Date.now(); })(); window.__CHALLENGE_CONFIG__ = { sid: '#', acsUrlBaseTpl: 'https://dlswbr.baidu.com/heicha/mm/{sid}/acs-{sid}.js' }; // 仅把参数写入当前 URL（不跳转、不刷新），供 bst / acs-token 复用 window.__setUrlParam__ = function (name, value) { if (!window.history || !history.replaceState) { return false; } var loc = window.location; var query = loc.search; var pair = name + '=' + encodeURIComponent(value); var re = new RegExp('([?&])' + name + '=[^&]*'); if (re.test(query)) { query = query.replace(re, '$1' + pair); } else { query += (query.indexOf('?')  -1 ? '&' : '?') + pair; } history.replaceState(null, '', loc.pathname + query + loc.hash); return true; }; /script script (function () { // 服务端读取本文档后，会把下面的占位符替换为真实的 baike-safe-token 值 var bstToken = '#.f2dc0c1b#a7dc7'; // 用拼接方式重建占位符再比较：服务端只会替换连续的 #.f2dc0c1b#a7dc7， // 拼接后的字符串不会被替换，从而可判断服务端是否成功替换过。 var placeholder = '{' + 'baike-safe-token' + '}'; if (!bstToken || bstToken === placeholder) { return; } window.__setUrlParam__('bst', bstToken); })(); /script script function preloadHref(href, preloadTTLMin) { if (!preloadTTLMin) { preloadTTLMin = #; } if (preloadTTLMin) { let bucketStamp = Math.floor(+new Date() / (# * 60 * preloadTTLMin)); let sepChar = href.indexOf('?')  -1 ? '&' : '?'; href = href + sepChar + '_=' + bucketStamp; } let linkEl = document.createElement('link'); linkEl.rel = 'preload'; linkEl.as = 'script'; linkEl.href = href; document.head.appendChild(linkEl); return href; } var cfg = window.__CHALLENGE_CONFIG__; window.__ACS_PRELOAD_HREF__ = preloadHref(cfg.acsUrlBaseTpl.split('{sid}').join(cfg.sid)); /script script src=\"https://bkssl.bdimg.com/resource/common/antispam/middle/paris.challenge.min.js\"/script /head body div style=\"display:flex;height:#vh;align-items:center;justify-content:center;\" div style=\"text-align:center;font-family:sans-serif;color:##;\" !-- h2安全校验中…/h2 -- /div /div script src=\"https://bkssl.bdimg.com/resource/common/antispam/middle/paris.min.js\"/script script (function () { 'use strict'; var CFG = window.__CHALLENGE_CONFIG__; // 写入 acs-token：优先 cookie，失败则回退到 URL 参数（不跳转） function saveAcsToken(code) { var token = String(code); var written = false; // 快速预判：cookie 被禁用时直接跳过写入，省去无谓的写+回读 if (navigator.cookieEnabled) { document.cookie = 'acs-token=' + encodeURIComponent(token) + '; path=/'; written = document.cookie.split('; ').some(function (item) { return item.indexOf('acs-token=') === 0; }); } if (!written) { window.__setUrlParam__('acs-token', token); } } CFG.handlerError = saveAcsToken; // SDK 未加载成功时，写入状态码（# 可按业务约定调整） if (typeof window.ParisChallenge === 'undefined' || !window.ParisChallenge) { saveAcsToken(#); return; } window.ParisChallenge.startChallengeFlow(CFG); })(); /script /body /html","text_en":"","language":"zh","source_url":"https://baike.baidu.com/item/709%E5%A4%A7%E6%8A%93%E6%8D%95","mirror_urls":[],"content_sha256":"4b50445bd51edd85c463330c41d55ddbdb1015521adab9c4c7b3914626dd0fd9","gazetteer_hits":[{"zh":"709","en":"709 crackdown (on rights lawyers)","category":"repression_triggers","first_seen":""}],"first_seen":"2026-08-22T11:21:09Z","last_seen":"2026-08-22T11:21:09Z","last_confirmed_alive":"2026-08-22T11:21:09Z","deletion_confirmation":[{"status":"first-seen","observed_at":"2026-08-22T11:21:09Z","source":"baike_public_snapshot","note":"First successful public HTML fetch of this Baike article"}],"archive":{"wayback_lookup":"https://web.archive.org/web/*/https://baike.baidu.com/item/709%25E5%25A4%25A7%25E6%258A%2593%25E6%258D%2595","wayback_snapshot":null,"wayback_raw":null,"archive_today_lookup":"https://archive.today/https://baike.baidu.com/item/709%25E5%25A4%25A7%25E6%258A%2593%25E6%258D%2595","ghostarchive_lookup":"https://ghostarchive.org/search?term=https://baike.baidu.com/item/709%25E5%25A4%25A7%25E6%258A%2593%25E6%258D%2595","post_event_snapshot":null,"timestamp_bracket":{"last_live":null,"post_event":null},"save_note":"Save Page Now transport failed (OSError); lookup only"},"cross_links":{"cdt":null,"gdelt":null,"ooni":null,"greatfire":null,"weibo":null,"undertext":null,"bleedthrough":null,"common_crawl":null},"provenance":{"collector":"baike_public_snapshot","method":"public Baike HTML + Wayback CDX; no login API; no person pages","vantage":"outside-china-public-source","http_status":200,"interstitial":null,"cdx_digest":null,"schema_version":"palimpsest-china-observation.v1","method_version":1},"uncertainty":["no witnessed Wayback snapshot; lookup is an address to try","no China Digital Times ledger join"]}]}
+{
+  "generated_at": "2026-08-23T06:28:20Z",
+  "method_version": 1,
+  "source": "Public Baike article HTML + Wayback CDX (topic/event pages only)",
+  "scope": "First-seen public encyclopedia text, content hashes, last-confirmed-alive, and disappearance/rewrite trails. No logged-in API. No person pages. The Wikipedia-fork baike-redaction collector stays disabled.",
+  "method": "Keyless GET of reviewed public Baike article URLs; extract_baike facets; hash comparison against node-local state; CDX digest attached when IA answers.",
+  "n_pages": 8,
+  "n_ok": 0,
+  "n_unreachable": 8,
+  "n_login_walled": 0,
+  "n_observations": 0,
+  "status": "unreachable",
+  "collector_status": "source_refused",
+  "valid_for_series": false,
+  "pages": {
+    "https://baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "青年失业率",
+      "cdx_digest": null
+    },
+    "https://baike.baidu.com/item/%E7%83%82%E5%B0%BE%E6%A5%BC": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "烂尾楼",
+      "cdx_digest": "3I42H3S6NNFQ2MSVX7XZKYAYSCX5QBYJ"
+    },
+    "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "白纸运动",
+      "cdx_digest": null
+    },
+    "https://baike.baidu.com/item/%E5%85%AD%E5%9B%9B%E4%BA%8B%E4%BB%B6": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "六四事件",
+      "cdx_digest": null
+    },
+    "https://baike.baidu.com/item/%E6%B3%95%E8%BD%AE%E5%8A%9F": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "法轮功",
+      "cdx_digest": null
+    },
+    "https://baike.baidu.com/item/%E6%96%B0%E7%96%86%E5%86%8D%E6%95%99%E8%82%B2%E8%90%A5": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "新疆再教育营",
+      "cdx_digest": null
+    },
+    "https://baike.baidu.com/item/709%E5%A4%A7%E6%8A%93%E6%8D%95": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "709大抓捕",
+      "cdx_digest": null
+    },
+    "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E9%9D%A9%E5%91%BD": {
+      "content_sha256": null,
+      "first_seen": null,
+      "last_confirmed_alive": null,
+      "last_status": 403,
+      "last_event": "unreachable",
+      "interstitial": null,
+      "term": "白纸革命",
+      "cdx_digest": null
+    }
+  },
+  "observations": []
+}
