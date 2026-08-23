@@ -1,4 +1,5 @@
 """Adversarial filesystem checks for the generated machine-analysis desk."""
+
 from __future__ import annotations
 
 import copy
@@ -90,6 +91,214 @@ def _history_independent_case(slug: str, *, title: str) -> dict:
     return case
 
 
+def _wire_history_fixture_outputs() -> dict[Path, bytes]:
+    source_root = build_newsroom.ROOT
+    alias_path = sorted((source_root / "news/wire").glob("event-*/analysis.json"))[0]
+    alias = alias_path.relative_to(source_root)
+    analysis_raw = alias_path.read_bytes()
+    analysis = json.loads(analysis_raw)
+    analysis_revision = (
+        alias.parent / "analysis" / "revisions" / f"{analysis['analysis_id']}.json"
+    )
+    event_revision = alias.parent / "revisions" / f"{analysis['event_version_id']}.json"
+    return {
+        alias: analysis_raw,
+        analysis_revision: (source_root / analysis_revision).read_bytes(),
+        event_revision: (source_root / event_revision).read_bytes(),
+    }
+
+
+def _attach_wire_history_receipt(
+    outputs: dict[Path, bytes], *, root: Path
+) -> dict[Path, bytes]:
+    verified = dict(outputs)
+    receipt = build_newsroom._wire_history_integrity_receipt(verified, root=root)
+    verified[build_newsroom._WIRE_HISTORY_INTEGRITY_PATH] = build_newsroom._pretty_json(
+        receipt
+    )
+    return verified
+
+
+def test_wire_history_receipt_closes_both_revision_families(tmp_path: Path) -> None:
+    outputs = _wire_history_fixture_outputs()
+    receipt = build_newsroom._wire_history_integrity_receipt(outputs, root=tmp_path)
+
+    assert receipt["n_revisions"] == 2
+    assert receipt["n_event_revisions"] == 1
+    assert receipt["n_analysis_revisions"] == 1
+    assert receipt["n_current_analysis_aliases"] == 1
+    assert receipt["new_revisions"] == 2
+    assert len(receipt["history_tree_sha256"]) == 64
+    assert receipt["validation_status"] == "full-history-validated"
+    assert receipt["referential_closure"] == "all-analysis-event-versions-present"
+
+
+def test_publish_rejects_revision_mutated_after_receipt_generation(
+    tmp_path: Path,
+) -> None:
+    outputs = _attach_wire_history_receipt(
+        _wire_history_fixture_outputs(), root=tmp_path
+    )
+    analysis_revision = next(
+        path for path in outputs if path.parts[-3:-1] == ("analysis", "revisions")
+    )
+    outputs[analysis_revision] = b"{}\n"
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="was not verified for this publication",
+    ):
+        build_newsroom.publish(outputs, root=tmp_path)
+    assert not (tmp_path / build_newsroom._WIRE_HISTORY_INTEGRITY_PATH).exists()
+
+
+def test_check_rejects_retained_history_tampered_after_receipt_generation(
+    tmp_path: Path,
+) -> None:
+    fixture = _wire_history_fixture_outputs()
+    revision_payloads = {
+        path: raw
+        for path, raw in fixture.items()
+        if build_newsroom._is_wire_history_revision_path(path)
+    }
+    for relative, raw in revision_payloads.items():
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+    outputs = _attach_wire_history_receipt(fixture, root=tmp_path)
+    retained = next(iter(revision_payloads))
+    original = (tmp_path / retained).read_bytes()
+    replacement = bytes([original[0] ^ 1]) + original[1:]
+    assert len(replacement) == len(original)
+    (tmp_path / retained).write_bytes(replacement)
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="changed after its integrity receipt was verified",
+    ):
+        build_newsroom.check(outputs, root=tmp_path)
+
+
+def test_verified_wire_receipt_cannot_be_replayed_with_different_outputs(
+    tmp_path: Path,
+) -> None:
+    outputs = _attach_wire_history_receipt(
+        _wire_history_fixture_outputs(), root=tmp_path
+    )
+    replay = dict(outputs)
+    alias = next(
+        path for path in replay if build_newsroom._is_current_wire_analysis_path(path)
+    )
+    replay[alias] = replay[alias] + b" "
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="was not verified for this publication",
+    ):
+        build_newsroom.check(replay, root=tmp_path)
+
+
+def test_wire_history_receipt_parses_each_revision_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    labels: list[str] = []
+    strict_json_loads = build_newsroom.newswire_model.strict_json_loads
+
+    def counted(raw: bytes, *, label: str):
+        if label.startswith("wire history revision "):
+            labels.append(label)
+        return strict_json_loads(raw, label=label)
+
+    monkeypatch.setattr(build_newsroom.newswire_model, "strict_json_loads", counted)
+    build_newsroom._wire_history_integrity_receipt(
+        _wire_history_fixture_outputs(), root=tmp_path
+    )
+
+    assert len(labels) == 2
+    assert len(labels) == len(set(labels))
+
+
+def test_second_wire_receipt_does_not_reuse_a_stale_scan(tmp_path: Path) -> None:
+    fixture = _wire_history_fixture_outputs()
+    outputs = _attach_wire_history_receipt(fixture, root=tmp_path)
+    build_newsroom.publish(outputs, root=tmp_path)
+    retained = next(
+        path for path in fixture if build_newsroom._is_wire_history_revision_path(path)
+    )
+    (tmp_path / retained).write_bytes(b"{}\n")
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="invalid immutable wire-history revision",
+    ):
+        build_newsroom._wire_history_integrity_receipt({}, root=tmp_path)
+
+
+def test_wire_receipt_is_scoped_to_its_publication_root(
+    tmp_path: Path,
+) -> None:
+    first_root = tmp_path / "first"
+    second_root = tmp_path / "second"
+    outputs = _attach_wire_history_receipt(
+        _wire_history_fixture_outputs(), root=first_root
+    )
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="was not verified for this publication",
+    ):
+        build_newsroom.check(outputs, root=second_root)
+
+
+def test_wire_history_refuses_an_analysis_without_its_event_revision(
+    tmp_path: Path,
+) -> None:
+    outputs = _wire_history_fixture_outputs()
+    event_revision = next(
+        path
+        for path in outputs
+        if path.parts[-2] == "revisions" and path.name.startswith("eventv-")
+    )
+    del outputs[event_revision]
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="references missing event revisions",
+    ):
+        build_newsroom._wire_history_integrity_receipt(outputs, root=tmp_path)
+
+
+def test_wire_history_growth_bound_blocks_revision_fanout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outputs = _wire_history_fixture_outputs()
+    monkeypatch.setattr(build_newsroom, "MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION", 1)
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="growth exceeds the automatic publication bound",
+    ):
+        build_newsroom._wire_history_integrity_receipt(outputs, root=tmp_path)
+
+
+def test_wire_history_detects_tampered_retained_bytes(tmp_path: Path) -> None:
+    outputs = _wire_history_fixture_outputs()
+    for relative, raw in outputs.items():
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+    analysis_revision = next(
+        path for path in outputs if path.parts[-3:-1] == ("analysis", "revisions")
+    )
+    (tmp_path / analysis_revision).write_bytes(b"{}\n")
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="invalid immutable wire-history revision",
+    ):
+        build_newsroom._wire_history_integrity_receipt({}, root=tmp_path)
+
+
 def test_check_rejects_a_stale_unmanifested_revision_but_ignores_manual_assets(
     tmp_path: Path,
 ) -> None:
@@ -154,10 +363,7 @@ def test_publish_removes_only_stale_generated_analysis_files(
 
     orphaned_case = _machine_case("retired-case", title="Older retired case")
     unmanifested_revision = (
-        tmp_path
-        / old_base
-        / "revisions"
-        / f"{orphaned_case['revision_id']}.json"
+        tmp_path / old_base / "revisions" / f"{orphaned_case['revision_id']}.json"
     )
     unmanifested_revision.write_bytes(_case_bytes(orphaned_case))
     manual_assets = {
@@ -253,11 +459,14 @@ def test_history_independent_development_revision_is_proven_for_cleanup(
     stale_path.parent.mkdir(parents=True, exist_ok=True)
     stale_path.write_bytes(_case_bytes(stale_case))
 
-    assert build_newsroom._generated_machine_case(
-        stale_path.read_bytes(),
-        slug="retired-development-case",
-        revision_filename=stale_path.name,
-    ) == stale_case
+    assert (
+        build_newsroom._generated_machine_case(
+            stale_path.read_bytes(),
+            slug="retired-development-case",
+            revision_filename=stale_path.name,
+        )
+        == stale_case
+    )
 
     assert build_newsroom.check(outputs, root=tmp_path) == [f"extra {relative}"]
     build_newsroom.publish(outputs, root=tmp_path)
@@ -342,8 +551,7 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
     changed_digest = hashlib.sha256(changed_input_raw).hexdigest()
     changed_evidence["artifact_sha256"] = changed_digest
     changed_evidence["artifact_url"] = (
-        "https://palimpsest.info/news/analysis/evidence/"
-        f"sha256-{changed_digest}.json"
+        f"https://palimpsest.info/news/analysis/evidence/sha256-{changed_digest}.json"
     )
     # A later synthetic edition must be later than the complete input cohort,
     # not merely later than the selected case. Data refreshes can advance an
@@ -354,12 +562,16 @@ def test_later_generation_retains_revision_and_every_capsule_byte_for_byte(
         *(receipt["generated_at"] for receipt in first_machine["input_receipts"]),
     ]
     next_time = (
-        max(
-            datetime.fromisoformat(clock.replace("Z", "+00:00"))
-            for clock in bound_clocks
+        (
+            max(
+                datetime.fromisoformat(clock.replace("Z", "+00:00"))
+                for clock in bound_clocks
+            )
+            + timedelta(seconds=1)
         )
-        + timedelta(seconds=1)
-    ).isoformat().replace("+00:00", "Z")
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
     refreshed_case["updated_at"] = next_time
     refreshed_case["evaluation_receipt"]["evaluated_at"] = next_time
     refreshed_machine["cases"][case_index] = machine_investigations._finalize_case(

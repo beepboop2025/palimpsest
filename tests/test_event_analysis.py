@@ -217,7 +217,9 @@ def test_collector_context_uses_only_declared_signals_and_never_calls_it_verific
         for row in analysis["collector_context"]:
             assert row["relation"] == "topic-surface-only"
             assert "context only" in row["interpretation"] or row["status"] != "live"
-            assert "verification join" in row["interpretation"] or row["status"] != "live"
+            assert (
+                "verification join" in row["interpretation"] or row["status"] != "live"
+            )
 
 
 def test_dispositions_follow_scope_and_collector_freshness(inputs, analyses) -> None:
@@ -262,7 +264,9 @@ def test_non_live_declared_collector_forces_an_explicit_abstention() -> None:
     assert analysis["collector_context"][0]["status"] == "stale"
 
 
-def test_analysis_is_deterministic_and_changes_when_bound_collector_evidence_changes() -> None:
+def test_analysis_is_deterministic_and_changes_when_bound_collector_evidence_changes() -> (
+    None
+):
     event = _fixed_event(linked=True)
     wire = _fixed_wire(event)
     feed = _fixed_feed("live")
@@ -279,9 +283,7 @@ def test_analysis_is_deterministic_and_changes_when_bound_collector_evidence_cha
     story["claims"][0]["statement"] += " Updated normalized finding."
     story["claim_fingerprint"] = "sha256:" + "a" * 64
 
-    changed = event_analysis.build_event_analysis(
-        event, wire=wire, feed=modified_feed
-    )
+    changed = event_analysis.build_event_analysis(event, wire=wire, feed=modified_feed)
     assert changed["analysis_id"] != first["analysis_id"]
     assert changed["collector_context"][0]["finding"].endswith(
         "Updated normalized finding."
@@ -334,11 +336,23 @@ def test_peer_miss_rows_use_the_warehouse_clock_not_wall_clock() -> None:
         "title": "example",
         "items": [],
     }
-    peer = {"generated_at": "2026-08-22T09:48:00Z", "greatfire": {}, "ooni": {}, "cdt_items": []}
+    peer = {
+        "generated_at": "2026-08-22T09:48:00Z",
+        "greatfire": {},
+        "ooni": {},
+        "cdt_items": [],
+    }
     first = peer_context_for_event(event, peer)
     second = peer_context_for_event(event, peer)
     assert first == second
-    assert all(row["as_of"] in {"2026-08-22T09:48:00Z", "2026-08-20T00:00:00Z"} or row["as_of"] is None or row["status"] == "live" for row in first)
-    miss_or_silent = [row for row in first if row["status"] in {"miss", "silent", "abstain"}]
+    assert all(
+        row["as_of"] in {"2026-08-22T09:48:00Z", "2026-08-20T00:00:00Z"}
+        or row["as_of"] is None
+        or row["status"] == "live"
+        for row in first
+    )
+    miss_or_silent = [
+        row for row in first if row["status"] in {"miss", "silent", "abstain"}
+    ]
     assert miss_or_silent
-    assert all(row["as_of"] == "2026-08-22T09:48:00Z" for row in miss_or_silent)
+    assert all(row["as_of"] is None for row in miss_or_silent)

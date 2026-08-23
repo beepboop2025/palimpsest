@@ -54,8 +54,7 @@ SLOT_NAMES = {
     "public-board": "public board",
 }
 WAREHOUSE_FILENAMES = {
-    slot: (f"{slot}-warehouse.json", f"{slot}-latest.json")
-    for slot in SLOT_IDS
+    slot: (f"{slot}-warehouse.json", f"{slot}-latest.json") for slot in SLOT_IDS
 }
 WAREHOUSE_FILENAMES["ooni"] = ("ooni-warehouse.json", "ooni-gfw-warehouse.json")
 
@@ -163,14 +162,22 @@ def canonical_json_bytes(value: Any) -> bytes:
             + "\n"
         ).encode("utf-8")
     except (TypeError, ValueError) as exc:
-        raise InterconnectionError("interconnection payload is not canonical JSON") from exc
+        raise InterconnectionError(
+            "interconnection payload is not canonical JSON"
+        ) from exc
 
 
 def _exact(value: Any, fields: frozenset[str], path: str) -> Mapping[str, Any]:
     if type(value) is not dict or set(value) != fields:
-        missing = sorted(fields - set(value)) if isinstance(value, Mapping) else sorted(fields)
+        missing = (
+            sorted(fields - set(value))
+            if isinstance(value, Mapping)
+            else sorted(fields)
+        )
         extra = sorted(set(value) - fields) if isinstance(value, Mapping) else []
-        raise InterconnectionError(f"{path} fields differ (missing={missing}, extra={extra})")
+        raise InterconnectionError(
+            f"{path} fields differ (missing={missing}, extra={extra})"
+        )
     return value
 
 
@@ -299,9 +306,7 @@ def _record_keys(record: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _shared_exact_keys(
-    left: Mapping[str, Any], right: Mapping[str, Any]
-) -> list[str]:
+def _shared_exact_keys(left: Mapping[str, Any], right: Mapping[str, Any]) -> list[str]:
     keys: list[str] = []
     if set(left["hosts"]) & set(right["hosts"]):
         keys.append("host")
@@ -314,7 +319,9 @@ def _shared_exact_keys(
     return keys
 
 
-def _why_joined(join_keys: Sequence[str], left: Mapping[str, Any], right: Mapping[str, Any]) -> str:
+def _why_joined(
+    join_keys: Sequence[str], left: Mapping[str, Any], right: Mapping[str, Any]
+) -> str:
     parts: list[str] = []
     for key in join_keys:
         if key == "host":
@@ -409,7 +416,7 @@ def _joined_row(
         "denominator_value": _finite_or_none(record.get("denominator_value")),
         "citation": f"{name}, {day}" if day else name,
         "reading_url": warehouse.get("reading_url"),
-        "input_sha256": warehouse.get("input_sha256"),
+        "input_sha256": hashlib.sha256(canonical_json_bytes(record)).hexdigest(),
         "relation": RELATION,
     }
 
@@ -425,9 +432,15 @@ def validate_peer_warehouse(document: Any) -> Mapping[str, Any]:
         raise InterconnectionError("warehouse.status is invalid")
     if type(document["peer_name"]) is not str or not document["peer_name"].strip():
         raise InterconnectionError("warehouse.peer_name is invalid")
-    if type(document["independence_group"]) is not str or _IDENTIFIER.fullmatch(document["independence_group"]) is None:
+    if (
+        type(document["independence_group"]) is not str
+        or _IDENTIFIER.fullmatch(document["independence_group"]) is None
+    ):
         raise InterconnectionError("warehouse.independence_group is invalid")
-    if type(document["generated_at"]) is not str or _TIMESTAMP.fullmatch(document["generated_at"]) is None:
+    if (
+        type(document["generated_at"]) is not str
+        or _TIMESTAMP.fullmatch(document["generated_at"]) is None
+    ):
         raise InterconnectionError("warehouse.generated_at is invalid")
     peers = document["peers"]
     if type(peers) is not list or len(peers) > 4096:
@@ -435,29 +448,48 @@ def validate_peer_warehouse(document: Any) -> Mapping[str, Any]:
     seen: set[str] = set()
     for index, row in enumerate(peers):
         item = _exact(row, _RECORD_FIELDS, f"warehouse.peers[{index}]")
-        if type(item["record_id"]) is not str or _IDENTIFIER.fullmatch(item["record_id"]) is None:
+        if (
+            type(item["record_id"]) is not str
+            or _IDENTIFIER.fullmatch(item["record_id"]) is None
+        ):
             raise InterconnectionError(f"warehouse.peers[{index}].record_id is invalid")
         if item["record_id"] in seen:
             raise InterconnectionError("warehouse.peers record_id is not unique")
         seen.add(item["record_id"])
-        if type(item["observed_at"]) is not str or _TIMESTAMP.fullmatch(item["observed_at"]) is None:
-            raise InterconnectionError(f"warehouse.peers[{index}].observed_at is invalid")
+        if (
+            type(item["observed_at"]) is not str
+            or _TIMESTAMP.fullmatch(item["observed_at"]) is None
+        ):
+            raise InterconnectionError(
+                f"warehouse.peers[{index}].observed_at is invalid"
+            )
         _finite_or_none(item["count"])
         _finite_or_none(item["denominator_value"])
         for field in ("hosts", "url_paths", "terms"):
             values = item[field]
-            if type(values) is not list or any(type(value) is not str or not value for value in values):
-                raise InterconnectionError(f"warehouse.peers[{index}].{field} is invalid")
+            if type(values) is not list or any(
+                type(value) is not str or not value for value in values
+            ):
+                raise InterconnectionError(
+                    f"warehouse.peers[{index}].{field} is invalid"
+                )
         asns = item["asns"]
-        if type(asns) is not list or any(type(value) is not int or isinstance(value, bool) or value < 1 for value in asns):
+        if type(asns) is not list or any(
+            type(value) is not int or isinstance(value, bool) or value < 1
+            for value in asns
+        ):
             raise InterconnectionError(f"warehouse.peers[{index}].asns is invalid")
     digest = document.get("input_sha256")
-    if digest is not None and (type(digest) is not str or _SHA256.fullmatch(digest) is None):
+    if digest is not None and (
+        type(digest) is not str or _SHA256.fullmatch(digest) is None
+    ):
         raise InterconnectionError("warehouse.input_sha256 is invalid")
     return document
 
 
-def _normalize_warehouse(slot: str, raw: Mapping[str, Any] | None) -> dict[str, Any] | None:
+def _normalize_warehouse(
+    slot: str, raw: Mapping[str, Any] | None
+) -> dict[str, Any] | None:
     if raw is None:
         return None
     if type(raw) is not dict:
@@ -544,9 +576,12 @@ def build_interconnection(
                     slot,
                     skip_reason="no_key",
                     why_skipped="event is outside the China remit; no interconnection peer is attached",
-                    reading_url=(warehouse or {}).get("reading_url") if warehouse else None,
-                    input_sha256=(warehouse or {}).get("input_sha256") if warehouse else None,
-                    independence_group=(warehouse or {}).get("independence_group") if warehouse else slot,
+                    reading_url=(warehouse or {}).get("reading_url")
+                    if warehouse
+                    else None,
+                    independence_group=(warehouse or {}).get("independence_group")
+                    if warehouse
+                    else slot,
                     peer_name=(warehouse or {}).get("peer_name") if warehouse else None,
                 )
             )
@@ -567,7 +602,6 @@ def build_interconnection(
                     skip_reason="silent",
                     why_skipped="peer warehouse is present but silent; no extractable join keys",
                     reading_url=warehouse.get("reading_url"),
-                    input_sha256=warehouse.get("input_sha256"),
                     independence_group=warehouse["independence_group"],
                     peer_name=warehouse["peer_name"],
                 )
@@ -580,7 +614,6 @@ def build_interconnection(
                     skip_reason="warming_up",
                     why_skipped="peer warehouse anomaly_state is warming_up; no peer is published as a finding",
                     reading_url=warehouse.get("reading_url"),
-                    input_sha256=warehouse.get("input_sha256"),
                     independence_group=warehouse["independence_group"],
                     peer_name=warehouse["peer_name"],
                 )
@@ -620,7 +653,6 @@ def build_interconnection(
                             "event.published_at missed; no cross-day story is invented"
                         ),
                         reading_url=warehouse.get("reading_url"),
-                        input_sha256=warehouse.get("input_sha256"),
                         independence_group=warehouse["independence_group"],
                         peer_name=warehouse["peer_name"],
                     )
@@ -632,7 +664,6 @@ def build_interconnection(
                         skip_reason="no_key",
                         why_skipped="no exact host, url_path, term, or ASN is shared with this event",
                         reading_url=warehouse.get("reading_url"),
-                        input_sha256=warehouse.get("input_sha256"),
                         independence_group=warehouse["independence_group"],
                         peer_name=warehouse["peer_name"],
                     )
@@ -641,7 +672,9 @@ def build_interconnection(
     groups = {
         group.get("group_id")
         for group in (event.get("evidence_groups") or [])
-        if type(group) is dict and type(group.get("group_id")) is str and group["group_id"]
+        if type(group) is dict
+        and type(group.get("group_id")) is str
+        and group["group_id"]
     }
     group_count = len(groups)
     peers = [*joined, *skipped]
@@ -670,7 +703,9 @@ def interconnection_position_clause(block: Mapping[str, Any]) -> str:
     if not joined:
         return "No interconnection peer met an exact join key."
     cites = ", ".join(
-        row["citation"] for row in joined if type(row.get("citation")) is str and row["citation"]
+        row["citation"]
+        for row in joined
+        if type(row.get("citation")) is str and row["citation"]
     )
     bar = (
         "Quality bar two-independent-source-groups is met."
@@ -710,29 +745,49 @@ def validate_interconnection(
     if document["schema_version"] != SCHEMA_VERSION:
         raise InterconnectionError("interconnection.schema_version is unsupported")
     if document["relation"] != RELATION:
-        raise InterconnectionError("interconnection relation may not imply verification")
+        raise InterconnectionError(
+            "interconnection relation may not imply verification"
+        )
     if document["quality_bar"] != QUALITY_BAR:
         raise InterconnectionError("interconnection quality bar drifted")
-    if type(document["independent_source_groups"]) is not int or document["independent_source_groups"] < 0:
-        raise InterconnectionError("interconnection.independent_source_groups is invalid")
+    if (
+        type(document["independent_source_groups"]) is not int
+        or document["independent_source_groups"] < 0
+    ):
+        raise InterconnectionError(
+            "interconnection.independent_source_groups is invalid"
+        )
     if type(document["meets_quality_bar"]) is not bool:
         raise InterconnectionError("interconnection.meets_quality_bar is invalid")
-    if document["meets_quality_bar"] is not (document["independent_source_groups"] >= 2):
-        raise InterconnectionError("interconnection quality-bar flag does not match group count")
+    if document["meets_quality_bar"] is not (
+        document["independent_source_groups"] >= 2
+    ):
+        raise InterconnectionError(
+            "interconnection quality-bar flag does not match group count"
+        )
     if document["required_exact_keys"] != list(EXACT_KEYS):
         raise InterconnectionError("interconnection.required_exact_keys drifted")
     window = _exact(document["window"], _WINDOW_FIELDS, "interconnection.window")
-    if window != {"unit": "hours", "radius_hours": WINDOW_HOURS, "anchor": "event.published_at"}:
+    if window != {
+        "unit": "hours",
+        "radius_hours": WINDOW_HOURS,
+        "anchor": "event.published_at",
+    }:
         raise InterconnectionError("interconnection.window drifted")
-    keys = _exact(document["event_keys"], _EVENT_KEY_FIELDS, "interconnection.event_keys")
+    keys = _exact(
+        document["event_keys"], _EVENT_KEY_FIELDS, "interconnection.event_keys"
+    )
     if keys["calendar_day"] is not None and (
-        type(keys["calendar_day"]) is not str or _DAY.fullmatch(keys["calendar_day"]) is None
+        type(keys["calendar_day"]) is not str
+        or _DAY.fullmatch(keys["calendar_day"]) is None
     ):
         raise InterconnectionError("interconnection.event_keys.calendar_day is invalid")
     if event is not None:
         expected = event_join_keys(event)
         if keys != expected:
-            raise InterconnectionError("interconnection.event_keys do not match the event")
+            raise InterconnectionError(
+                "interconnection.event_keys do not match the event"
+            )
     peers = document["peers"]
     if type(peers) is not list or len(peers) > 64:
         raise InterconnectionError("interconnection.peers is invalid")
@@ -741,39 +796,69 @@ def validate_interconnection(
     for index, row in enumerate(peers):
         item = _exact(row, _PEER_FIELDS, f"interconnection.peers[{index}]")
         if item["peer_id"] not in SLOT_IDS:
-            raise InterconnectionError(f"interconnection.peers[{index}].peer_id is undeclared")
+            raise InterconnectionError(
+                f"interconnection.peers[{index}].peer_id is undeclared"
+            )
         if item["status"] not in PEER_STATUSES:
-            raise InterconnectionError(f"interconnection.peers[{index}].status is invalid")
+            raise InterconnectionError(
+                f"interconnection.peers[{index}].status is invalid"
+            )
         if item["relation"] != RELATION:
-            raise InterconnectionError("interconnection peer relation may not imply verification")
+            raise InterconnectionError(
+                "interconnection peer relation may not imply verification"
+            )
         if any(key not in EXACT_KEYS for key in item["join_keys"]):
-            raise InterconnectionError(f"interconnection.peers[{index}].join_keys is invalid")
+            raise InterconnectionError(
+                f"interconnection.peers[{index}].join_keys is invalid"
+            )
         if item["status"] == "joined":
             joined += 1
-            if not item["join_keys"] or item["why_joined"] is None or item["skip_reason"] is not None:
-                raise InterconnectionError("joined peer is missing an exact key receipt")
+            if (
+                not item["join_keys"]
+                or item["why_joined"] is None
+                or item["skip_reason"] is not None
+            ):
+                raise InterconnectionError(
+                    "joined peer is missing an exact key receipt"
+                )
             if type(item["citation"]) is not str or not item["citation"]:
-                raise InterconnectionError("joined peer is missing a name-and-date citation")
-            if item["peer_date"] is None or _DAY.fullmatch(str(item["peer_date"])) is None:
+                raise InterconnectionError(
+                    "joined peer is missing a name-and-date citation"
+                )
+            if (
+                item["peer_date"] is None
+                or _DAY.fullmatch(str(item["peer_date"])) is None
+            ):
                 raise InterconnectionError("joined peer is missing its own date")
         else:
             if item["skip_reason"] not in SKIP_REASONS or item["why_skipped"] is None:
-                raise InterconnectionError("skipped peer is missing a fail-closed reason")
+                raise InterconnectionError(
+                    "skipped peer is missing a fail-closed reason"
+                )
             if item["why_joined"] is not None:
                 raise InterconnectionError("skipped peer claimed a join")
         if item["record_id"] is None:
             seen_slots.add(item["peer_id"])
         if item["input_sha256"] is not None and (
-            type(item["input_sha256"]) is not str or _SHA256.fullmatch(item["input_sha256"]) is None
+            type(item["input_sha256"]) is not str
+            or _SHA256.fullmatch(item["input_sha256"]) is None
         ):
             raise InterconnectionError("interconnection peer hash is invalid")
     if document["joined_count"] != joined:
-        raise InterconnectionError("interconnection.joined_count does not match joined peers")
-    if set(SLOT_IDS) - seen_slots - {row["peer_id"] for row in peers if row["status"] == "joined"}:
+        raise InterconnectionError(
+            "interconnection.joined_count does not match joined peers"
+        )
+    if (
+        set(SLOT_IDS)
+        - seen_slots
+        - {row["peer_id"] for row in peers if row["status"] == "joined"}
+    ):
         # Every slot must appear as a joined peer or a slot-level / record-level skip.
         covered = {row["peer_id"] for row in peers}
         if covered != set(SLOT_IDS):
-            raise InterconnectionError("interconnection does not account for every declared slot")
+            raise InterconnectionError(
+                "interconnection does not account for every declared slot"
+            )
 
 
 def warehouse_fixture(

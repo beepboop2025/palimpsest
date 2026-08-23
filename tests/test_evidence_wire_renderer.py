@@ -347,3 +347,10 @@ def test_generated_manifest_is_an_exact_inventory(publication) -> None:
     assert manifest["immutable_revision_paths"]
     assert all("/revisions/" in path for path in manifest["immutable_revision_paths"])
     assert set(manifest["immutable_revision_paths"]).isdisjoint(manifest["mutable_paths"])
+    closure = manifest["immutable_history_closures"]
+    assert len(closure) == 1
+    assert closure[0]["path"] == "news/wire-history-integrity.json"
+    assert closure[0]["n_revisions"] >= len(
+        [path for path in manifest["immutable_revision_paths"] if path.startswith("news/wire/")]
+    )
+    assert len(closure[0]["history_tree_sha256"]) == 64

@@ -9,6 +9,7 @@ when current collector evidence is unavailable.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import math
@@ -38,6 +39,12 @@ METHOD_V1 = (
     "declared by that event. Collector joins remain topic-surface-only: no "
     "article body is fetched, no generative model is used, and no current "
     "measurement is represented as article-specific verification or causation."
+)
+METHOD_V1_WITH_PEERS = (
+    METHOD_V1
+    + " Optional peer_context rows name GreatFire, OONI, CDT, or Weiboscope and "
+    "the date of that peer's verdict; they are attributed context, not "
+    "Palimpsest capture, and never share a denominator with Palimpsest."
 )
 METHOD = event_brief.METHOD
 
@@ -73,6 +80,7 @@ _TOP_FIELDS_V1 = frozenset(
         "method",
     }
 )
+_TOP_FIELDS_V1_WITH_PEERS = _TOP_FIELDS_V1 | {"peer_context"}
 _TOP_FIELDS = _TOP_FIELDS_V1 | event_brief._TOP_V2_EXTRA
 _EVIDENCE_FIELDS = frozenset(
     {"strength", "independent_groups", "source_count", "conclusion"}
@@ -131,9 +139,108 @@ def canonical_json_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
+def semantic_assessment_seed(analysis: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the event-relevant assessment, excluding edition-only receipts.
+
+    ``analysis_id`` continues to bind the exact published JSON bytes.  This
+    projection has a different purpose: it decides whether a newly observed
+    edition deserves another immutable revision.  Whole-input hashes and
+    source clocks are provenance for the mutable edition, while the cited
+    claims, joins, dispositions, conclusions, and availability states are the
+    semantic assessment.
+    """
+
+    if type(analysis) is not dict:
+        raise EventAnalysisError("analysis fields differ (missing=[], extra=[])")
+    projected = copy.deepcopy(analysis)
+    projected.pop("analysis_id", None)
+    projected.pop("generated_at", None)
+
+    replacements: dict[str, str] = {}
+    collector_ids = {
+        row.get("signal_id")
+        for row in projected.get("collector_context") or []
+        if type(row) is dict and type(row.get("signal_id")) is str
+    }
+    evidence = projected.get("evidence")
+    if isinstance(evidence, list):
+        for index, row in enumerate(evidence):
+            if type(row) is not dict:
+                continue
+            identifier = row.get("evidence_id")
+            token = f"semantic-evidence-{index:04d}"
+            if type(identifier) is str:
+                replacements[identifier] = token
+            row["evidence_id"] = token
+            if row.get("kind") == "newsroom-collector":
+                row.clear()
+                row.update(
+                    {
+                        "evidence_id": token,
+                        "kind": "newsroom-collector-edition",
+                        "surface_id": analysis["evidence"][index].get("surface_id"),
+                    }
+                )
+
+    if collector_ids:
+        projected["collector_context"] = [
+            {"signal_id": signal_id, "relation": "topic-surface-only"}
+            for signal_id in sorted(collector_ids)
+        ]
+        projected["disposition"] = "collector-edition"
+        rationale = projected.get("rationale")
+        if isinstance(rationale, list) and rationale:
+            projected["rationale"] = [
+                rationale[0],
+                "Declared topic-only collector state belongs to the mutable edition.",
+            ]
+        brief = projected.get("brief")
+        if isinstance(brief, dict):
+            declared_pipe = sorted(collector_ids & event_brief.PIPE_SIGNAL_IDS)
+            brief["pipe_context"] = {"edition_only_declared_signal_ids": declared_pipe}
+
+    for row in projected.get("peer_context") or []:
+        if type(row) is dict and row.get("status") != "live":
+            row["as_of"] = None
+            row["sentence"] = (
+                f"{row.get('peer')} has no live event-matched peer record."
+            )
+
+    def normalize(value: Any) -> Any:
+        if isinstance(value, dict):
+            normalized = {}
+            for key, child in value.items():
+                if key in {"input_sha256", "source_timestamp"}:
+                    normalized[key] = None
+                elif key == "refresh_status":
+                    normalized[key] = "edition-observation"
+                else:
+                    normalized[key] = normalize(child)
+            return normalized
+        if isinstance(value, list):
+            return [normalize(child) for child in value]
+        if isinstance(value, str):
+            return replacements.get(value, value)
+        return value
+
+    return normalize(projected)
+
+
+def semantically_equivalent(left: Mapping[str, Any], right: Mapping[str, Any]) -> bool:
+    """Return whether two valid editions express the same event assessment."""
+
+    validate_event_analysis(left)
+    validate_event_analysis(right)
+    return semantic_assessment_seed(left) == semantic_assessment_seed(right)
+
+
 def _exact(value: Any, fields: frozenset[str], path: str) -> Mapping[str, Any]:
     if type(value) is not dict or set(value) != fields:
-        missing = sorted(fields - set(value)) if isinstance(value, Mapping) else sorted(fields)
+        missing = (
+            sorted(fields - set(value))
+            if isinstance(value, Mapping)
+            else sorted(fields)
+        )
         extra = sorted(set(value) - fields) if isinstance(value, Mapping) else []
         raise EventAnalysisError(
             f"{path} fields differ (missing={missing}, extra={extra})"
@@ -144,7 +251,9 @@ def _exact(value: Any, fields: frozenset[str], path: str) -> Mapping[str, Any]:
 def _text(value: Any, path: str, *, maximum: int = 4_000) -> str:
     if type(value) is not str or not value.strip() or len(value) > maximum:
         raise EventAnalysisError(f"{path} must be non-empty bounded text")
-    if any(unicodedata.category(character) in {"Cc", "Cf", "Cs"} for character in value):
+    if any(
+        unicodedata.category(character) in {"Cc", "Cf", "Cs"} for character in value
+    ):
         raise EventAnalysisError(f"{path} contains unsafe Unicode")
     return value
 
@@ -239,7 +348,9 @@ def structural_quorum(event: Mapping[str, Any]) -> bool:
         return False
     return has_quorum(
         refs,
-        lambda item: item.get("independence_group") if isinstance(item, Mapping) else None,
+        lambda item: (
+            item.get("independence_group") if isinstance(item, Mapping) else None
+        ),
         minimum=2,
     )
 
@@ -326,7 +437,10 @@ def _named_declared_receipts(
         if surface in declared:
             names.append(surface)
     for row in live_surfaces:
-        if row.get("surface_id") == "public-deletion-ledgers" and row.get("status") == "live":
+        if (
+            row.get("surface_id") == "public-deletion-ledgers"
+            and row.get("status") == "live"
+        ):
             names.append("public-deletion-ledgers")
     return list(dict.fromkeys(names))
 
@@ -376,9 +490,7 @@ def _compose_position(
             "independently established fact."
         )
     if archive_state == "warming_up":
-        archive_clause = (
-            "Archive-news-context anomaly_state is warming_up; no anomaly score is published."
-        )
+        archive_clause = "Archive-news-context anomaly_state is warming_up; no anomaly score is published."
     elif archive_state:
         archive_clause = f"Archive-news-context anomaly_state is {archive_state}."
     elif archive_matched is False:
@@ -413,7 +525,9 @@ def window_peers_for(
 ) -> dict[str, Any]:
     """Count events that share a topic inside the interconnection ±24h window."""
 
-    topics = {topic for topic in (event.get("topics") or []) if type(topic) is str and topic}
+    topics = {
+        topic for topic in (event.get("topics") or []) if type(topic) is str and topic
+    }
     shared_topics: list[str] = []
     peer_source_ids: list[str] = []
     peer_groups: list[str] = []
@@ -427,7 +541,9 @@ def window_peers_for(
         if anchor is None or other_clock is None or abs(other_clock - anchor) > radius:
             continue
         other_topics = {
-            topic for topic in (other.get("topics") or []) if type(topic) is str and topic
+            topic
+            for topic in (other.get("topics") or [])
+            if type(topic) is str and topic
         }
         overlap = sorted(topics & other_topics)
         if not overlap:
@@ -435,10 +551,18 @@ def window_peers_for(
         count += 1
         shared_topics.extend(overlap)
         for ref in other.get("evidence_refs") or []:
-            if type(ref) is dict and type(ref.get("source_id")) is str and ref["source_id"]:
+            if (
+                type(ref) is dict
+                and type(ref.get("source_id")) is str
+                and ref["source_id"]
+            ):
                 peer_source_ids.append(ref["source_id"])
         for group in other.get("evidence_groups") or []:
-            if type(group) is dict and type(group.get("group_id")) is str and group["group_id"]:
+            if (
+                type(group) is dict
+                and type(group.get("group_id")) is str
+                and group["group_id"]
+            ):
                 peer_groups.append(group["group_id"])
     return {
         "same_window_peer_count": count,
@@ -511,7 +635,9 @@ def build_event_analysis(
             f"event {event['event_id']} declares unknown collector signals: {unknown}"
         )
     collector_context = [
-        _collector_row(stories[signal_id]) if signal_id in stories else _missing_collector_row(signal_id)
+        _collector_row(stories[signal_id])
+        if signal_id in stories
+        else _missing_collector_row(signal_id)
         for signal_id in linked_ids
     ]
     collector_statuses = [row["status"] for row in collector_context]
@@ -637,12 +763,13 @@ def build_event_analysis(
     )
     archive_block = v2.get("archive_news_context") or {}
     corroboration_block = v2.get("corroboration") or {}
-    if isinstance(peer, Mapping) and peer.get("generated_at"):
-        from core.china_observation import iso_z
-
-        stamped = iso_z(peer["generated_at"])
-        if stamped:
-            generated_candidates.append(stamped)
+    generated_candidates.extend(
+        row["as_of"]
+        for row in peer_rows
+        if row.get("status") == "live"
+        and type(row.get("as_of")) is str
+        and _TIMESTAMP_RE.fullmatch(row["as_of"])
+    )
     core = {
         "schema_version": SCHEMA_VERSION,
         "event_id": event["event_id"],
@@ -686,7 +813,11 @@ def build_event_analysis(
     analysis = {
         "schema_version": analysis["schema_version"],
         "analysis_id": analysis["analysis_id"],
-        **{key: value for key, value in analysis.items() if key not in {"schema_version", "analysis_id"}},
+        **{
+            key: value
+            for key, value in analysis.items()
+            if key not in {"schema_version", "analysis_id"}
+        },
     }
     validate_event_analysis(analysis, event=event)
     return analysis
@@ -715,8 +846,14 @@ def build_event_analyses(
         raise EventAnalysisError("collector feed is not palimpsest-news.v1")
     if type(feed.get("stories")) is not list:
         raise EventAnalysisError("collector feed stories are missing")
-    signal_ids = [story.get("signal_id") for story in feed["stories"] if isinstance(story, Mapping)]
-    if len(signal_ids) != len(feed["stories"]) or len(signal_ids) != len(set(signal_ids)):
+    signal_ids = [
+        story.get("signal_id")
+        for story in feed["stories"]
+        if isinstance(story, Mapping)
+    ]
+    if len(signal_ids) != len(feed["stories"]) or len(signal_ids) != len(
+        set(signal_ids)
+    ):
         raise EventAnalysisError("collector feed signal IDs are invalid or duplicated")
     analyses = {
         event["event_id"]: build_event_analysis(
@@ -776,7 +913,9 @@ def _validate_peer(value: Any, path: str) -> None:
     sentence = _text(row["sentence"], f"{path}.sentence", maximum=600)
     lowered = sentence.casefold()
     if any(token in lowered for token in _FORBIDDEN_PEER_CLAIMS):
-        raise EventAnalysisError(f"{path}.sentence collapses a peer verdict into Palimpsest capture")
+        raise EventAnalysisError(
+            f"{path}.sentence collapses a peer verdict into Palimpsest capture"
+        )
     if row["peer"] == "greatfire" and "greatfire" not in lowered:
         raise EventAnalysisError(f"{path}.sentence must name GreatFire")
     if row["peer"] == "ooni" and "ooni" not in lowered:
@@ -813,7 +952,10 @@ def _validate_peer(value: Any, path: str) -> None:
 
 def _validate_collector(value: Any, path: str) -> None:
     row = _exact(value, _COLLECTOR_FIELDS, path)
-    if type(row["signal_id"]) is not str or _IDENTIFIER_RE.fullmatch(row["signal_id"]) is None:
+    if (
+        type(row["signal_id"]) is not str
+        or _IDENTIFIER_RE.fullmatch(row["signal_id"]) is None
+    ):
         raise EventAnalysisError(f"{path}.signal_id is invalid")
     if row["status"] not in _COLLECTOR_STATUSES:
         raise EventAnalysisError(f"{path}.status is invalid")
@@ -838,7 +980,11 @@ def _validate_collector(value: Any, path: str) -> None:
     if not (
         method_version is None
         or (type(method_version) is int and method_version > 0)
-        or (type(method_version) is str and method_version and len(method_version) <= 100)
+        or (
+            type(method_version) is str
+            and method_version
+            and len(method_version) <= 100
+        )
     ):
         raise EventAnalysisError(f"{path}.method_version is invalid")
     if row["status"] == "missing":
@@ -864,7 +1010,12 @@ def validate_event_analysis(
         raise EventAnalysisError("analysis fields differ (missing=[], extra=[])")
     version = analysis.get("schema_version")
     if version == SCHEMA_VERSION_V1:
-        document = _exact(analysis, _TOP_FIELDS_V1, "analysis")
+        v1_fields = (
+            _TOP_FIELDS_V1_WITH_PEERS
+            if set(analysis) == _TOP_FIELDS_V1_WITH_PEERS
+            else _TOP_FIELDS_V1
+        )
+        document = _exact(analysis, v1_fields, "analysis")
     elif version == SCHEMA_VERSION:
         document = _exact(analysis, _TOP_FIELDS, "analysis")
     else:
@@ -876,7 +1027,10 @@ def validate_event_analysis(
         or _ANALYSIS_ID_RE.fullmatch(document["analysis_id"]) is None
     ):
         raise EventAnalysisError("analysis.analysis_id is invalid")
-    if type(document["event_id"]) is not str or _EVENT_ID_RE.fullmatch(document["event_id"]) is None:
+    if (
+        type(document["event_id"]) is not str
+        or _EVENT_ID_RE.fullmatch(document["event_id"]) is None
+    ):
         raise EventAnalysisError("analysis.event_id is invalid")
     if (
         type(document["event_version_id"]) is not str
@@ -894,12 +1048,17 @@ def validate_event_analysis(
     if document["scope_status"] not in _SCOPE_STATUSES:
         raise EventAnalysisError("analysis.scope_status is invalid")
     _text(document["position"], "analysis.position", maximum=1_000)
-    if type(document["rationale"]) is not list or not 1 <= len(document["rationale"]) <= 6:
+    if (
+        type(document["rationale"]) is not list
+        or not 1 <= len(document["rationale"]) <= 6
+    ):
         raise EventAnalysisError("analysis.rationale must contain 1 to 6 statements")
     for index, statement in enumerate(document["rationale"]):
         _text(statement, f"analysis.rationale[{index}]", maximum=2_000)
     evidence = _exact(
-        document["evidence_assessment"], _EVIDENCE_FIELDS, "analysis.evidence_assessment"
+        document["evidence_assessment"],
+        _EVIDENCE_FIELDS,
+        "analysis.evidence_assessment",
     )
     if evidence["strength"] not in {
         "measurement-corroborated",
@@ -954,16 +1113,24 @@ def validate_event_analysis(
     if document["disposition"] != expected_disposition:
         raise EventAnalysisError("analysis disposition does not match evidence state")
     if document["scope_status"] == "outside-remit" and context:
-        raise EventAnalysisError("outside-remit analysis may not imply collector support")
+        raise EventAnalysisError(
+            "outside-remit analysis may not imply collector support"
+        )
 
-    if type(document["limitations"]) is not list or not 1 <= len(document["limitations"]) <= 10:
+    if (
+        type(document["limitations"]) is not list
+        or not 1 <= len(document["limitations"]) <= 10
+    ):
         raise EventAnalysisError("analysis.limitations must contain 1 to 10 statements")
     if len(document["limitations"]) != len(set(document["limitations"])):
         raise EventAnalysisError("analysis.limitations contains duplicates")
     for index, limitation in enumerate(document["limitations"]):
         _text(limitation, f"analysis.limitations[{index}]", maximum=2_000)
     if document["schema_version"] == SCHEMA_VERSION_V1:
-        if document["method"] != METHOD_V1:
+        expected_method = (
+            METHOD_V1_WITH_PEERS if "peer_context" in document else METHOD_V1
+        )
+        if document["method"] != expected_method:
             raise EventAnalysisError("analysis.method does not match the v1 method")
     else:
         event_brief.validate_v2_blocks(document, event=event)
@@ -979,7 +1146,9 @@ def validate_event_analysis(
         ):
             raise EventAnalysisError("analysis does not match its event receipt")
     seed = {key: value for key, value in document.items() if key != "analysis_id"}
-    expected_id = "analysisv-" + hashlib.sha256(canonical_json_bytes(seed)).hexdigest()[:24]
+    expected_id = (
+        "analysisv-" + hashlib.sha256(canonical_json_bytes(seed)).hexdigest()[:24]
+    )
     if document["analysis_id"] != expected_id:
         raise EventAnalysisError("analysis.analysis_id does not match its content")
 
@@ -988,11 +1157,14 @@ __all__ = [
     "EventAnalysisError",
     "METHOD",
     "METHOD_V1",
+    "METHOD_V1_WITH_PEERS",
     "SCHEMA_VERSION",
     "SCHEMA_VERSION_V1",
     "build_event_analysis",
     "build_event_analyses",
     "canonical_json_bytes",
+    "semantic_assessment_seed",
+    "semantically_equivalent",
     "load_optional_archive_context",
     "load_optional_corroboration",
     "load_optional_live_families",

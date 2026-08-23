@@ -50,15 +50,12 @@ PEER_FIELDS = frozenset(
 )
 
 GREATFIRE_ATTRIBUTION = (
-    "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these "
-    "measurements."
+    "GreatFire Analyzer, CC BY 4.0. Palimpsest is not the origin of these measurements."
 )
 OONI_ATTRIBUTION = (
     "OONI Probe / OONI data. Palimpsest is not the origin of these measurements."
 )
-CDT_ATTRIBUTION = (
-    "China Digital Times. Palimpsest did not write that piece."
-)
+CDT_ATTRIBUTION = "China Digital Times. Palimpsest did not write that piece."
 
 READING_URL_FILES = (
     "official-first-seen-latest.json",
@@ -88,8 +85,8 @@ def greatfire_sentence(verdict: str | None, as_of: str | None, *, status: str) -
         )
     if status != "live" or not verdict:
         return (
-            f"GreatFire has no cached 90-day verdict for this host as of "
-            f"{_date_only(as_of)}."
+            "GreatFire has no cached 90-day verdict for this host in the "
+            "current peer warehouse."
         )
     return (
         f"GreatFire's 90-day verdict for this host is {verdict} as of "
@@ -148,13 +145,17 @@ def peer_row(
         "peer": peer,
         "status": status,
         "sentence": public_text(sentence, limit=600),
-        "as_of": iso_z(as_of) if as_of else None,
+        "as_of": iso_z(as_of) if status == "live" and as_of else None,
         "peer_url": public_text(peer_url, limit=2048) or None,
         "title": public_text(title, limit=240) or None,
         "excerpt": excerpt_text,
         "host": public_text(host, limit=253) or None,
-        "measurement_count": measurement_count if type(measurement_count) is int else None,
-        "anomaly_rate": anomaly_rate if isinstance(anomaly_rate, (int, float)) else None,
+        "measurement_count": measurement_count
+        if type(measurement_count) is int
+        else None,
+        "anomaly_rate": anomaly_rate
+        if isinstance(anomaly_rate, (int, float))
+        else None,
         "verdict": public_text(verdict, limit=64) or None,
         "window_days": window_days if type(window_days) is int else None,
         "attribution": public_text(attribution, limit=400),
@@ -296,13 +297,17 @@ def cdt_items_from_readings(
             title = public_text(obs.get("title"), limit=240)
             if not title or not url.startswith("https://"):
                 continue
-            items.append({
-                "title": title,
-                "url": url,
-                "excerpt": bound_cdt_excerpt(obs.get("text") or obs.get("excerpt")),
-                "published_at": iso_z(obs.get("first_seen") or obs.get("detected_at")),
-                "source": "cdt",
-            })
+            items.append(
+                {
+                    "title": title,
+                    "url": url,
+                    "excerpt": bound_cdt_excerpt(obs.get("text") or obs.get("excerpt")),
+                    "published_at": iso_z(
+                        obs.get("first_seen") or obs.get("detected_at")
+                    ),
+                    "source": "cdt",
+                }
+            )
     if wire is None and readings is not None:
         loaded = _load_json(Path(readings) / "newswire-latest.json")
         wire = loaded if isinstance(loaded, dict) else None
@@ -316,13 +321,15 @@ def cdt_items_from_readings(
             title = public_text(item.get("title"), limit=240)
             if not title or not url.startswith("https://"):
                 continue
-            items.append({
-                "title": title,
-                "url": url,
-                "excerpt": bound_cdt_excerpt(item.get("excerpt")),
-                "published_at": iso_z(item.get("published_at")),
-                "source": "cdt",
-            })
+            items.append(
+                {
+                    "title": title,
+                    "url": url,
+                    "excerpt": bound_cdt_excerpt(item.get("excerpt")),
+                    "published_at": iso_z(item.get("published_at")),
+                    "source": "cdt",
+                }
+            )
     unique: list[dict[str, Any]] = []
     seen: set[str] = set()
     for item in items:
@@ -346,7 +353,9 @@ def _event_hosts(event: Mapping[str, Any]) -> list[str]:
     return hosts
 
 
-def _event_haystack(event: Mapping[str, Any], items: Mapping[str, Mapping[str, Any]]) -> str:
+def _event_haystack(
+    event: Mapping[str, Any], items: Mapping[str, Mapping[str, Any]]
+) -> str:
     parts = [str(event.get("headline") or ""), str(event.get("dek") or "")]
     parts.extend(str(topic) for topic in event.get("topics") or [])
     for ref in event.get("evidence_refs") or []:
@@ -422,89 +431,113 @@ def rows_for_hosts(
     primary = hosts[0] if hosts else None
 
     if greatfire is None:
-        rows.append(peer_row(
-            peer="greatfire",
-            status="silent",
-            sentence=greatfire_sentence(None, stamp, status="silent"),
-            as_of=stamp,
-            host=primary,
-            attribution=GREATFIRE_ATTRIBUTION,
-            window_days=90,
-        ))
+        rows.append(
+            peer_row(
+                peer="greatfire",
+                status="silent",
+                sentence=greatfire_sentence(None, stamp, status="silent"),
+                as_of=stamp,
+                host=primary,
+                attribution=GREATFIRE_ATTRIBUTION,
+                window_days=90,
+            )
+        )
     elif primary and primary in gf_index and gf_index[primary].get("verdict"):
         hit = gf_index[primary]
-        rows.append(peer_row(
-            peer="greatfire",
-            status="live",
-            sentence=greatfire_sentence(hit.get("verdict"), hit.get("as_of") or hit.get("last_tested"), status="live"),
-            as_of=hit.get("as_of") or hit.get("last_tested"),
-            peer_url=hit.get("source_url"),
-            title=hit.get("path"),
-            host=primary,
-            verdict=hit.get("verdict"),
-            window_days=hit.get("window_days") or 90,
-            attribution=GREATFIRE_ATTRIBUTION,
-        ))
+        rows.append(
+            peer_row(
+                peer="greatfire",
+                status="live",
+                sentence=greatfire_sentence(
+                    hit.get("verdict"),
+                    hit.get("as_of") or hit.get("last_tested"),
+                    status="live",
+                ),
+                as_of=hit.get("as_of") or hit.get("last_tested"),
+                peer_url=hit.get("source_url"),
+                title=hit.get("path"),
+                host=primary,
+                verdict=hit.get("verdict"),
+                window_days=hit.get("window_days") or 90,
+                attribution=GREATFIRE_ATTRIBUTION,
+            )
+        )
     else:
-        rows.append(peer_row(
-            peer="greatfire",
-            status="miss",
-            sentence=greatfire_sentence(None, stamp, status="miss"),
-            as_of=stamp,
-            host=primary,
-            window_days=90,
-            attribution=GREATFIRE_ATTRIBUTION,
-        ))
+        rows.append(
+            peer_row(
+                peer="greatfire",
+                status="miss",
+                sentence=greatfire_sentence(None, stamp, status="miss"),
+                as_of=stamp,
+                host=primary,
+                window_days=90,
+                attribution=GREATFIRE_ATTRIBUTION,
+            )
+        )
 
     if ooni is None:
-        rows.append(peer_row(
-            peer="ooni",
-            status="miss",
-            sentence=ooni_sentence(None, status="miss"),
-            as_of=stamp,
-            host=primary,
-            attribution=OONI_ATTRIBUTION,
-        ))
-    elif primary and primary in ooni_index and ooni_index[primary].get("status") == "live":
+        rows.append(
+            peer_row(
+                peer="ooni",
+                status="miss",
+                sentence=ooni_sentence(None, status="miss"),
+                as_of=stamp,
+                host=primary,
+                attribution=OONI_ATTRIBUTION,
+            )
+        )
+    elif (
+        primary
+        and primary in ooni_index
+        and ooni_index[primary].get("status") == "live"
+    ):
         hit = ooni_index[primary]
-        rows.append(peer_row(
-            peer="ooni",
-            status="live",
-            sentence=ooni_sentence(
-                hit.get("measurement_count") or hit.get("completed_measurement_count"),
-                anomaly_rate=hit.get("anomaly_rate"),
-                as_of=hit.get("last_measurement"),
+        rows.append(
+            peer_row(
+                peer="ooni",
                 status="live",
-            ),
-            as_of=hit.get("last_measurement"),
-            host=primary,
-            measurement_count=hit.get("measurement_count") or hit.get("completed_measurement_count"),
-            anomaly_rate=hit.get("anomaly_rate"),
-            attribution=OONI_ATTRIBUTION,
-        ))
+                sentence=ooni_sentence(
+                    hit.get("measurement_count")
+                    or hit.get("completed_measurement_count"),
+                    anomaly_rate=hit.get("anomaly_rate"),
+                    as_of=hit.get("last_measurement"),
+                    status="live",
+                ),
+                as_of=hit.get("last_measurement"),
+                host=primary,
+                measurement_count=hit.get("measurement_count")
+                or hit.get("completed_measurement_count"),
+                anomaly_rate=hit.get("anomaly_rate"),
+                attribution=OONI_ATTRIBUTION,
+            )
+        )
     else:
-        rows.append(peer_row(
-            peer="ooni",
-            status="miss",
-            sentence=ooni_sentence(None, status="miss"),
-            as_of=stamp,
-            host=primary,
-            attribution=OONI_ATTRIBUTION,
-        ))
+        rows.append(
+            peer_row(
+                peer="ooni",
+                status="miss",
+                sentence=ooni_sentence(None, status="miss"),
+                as_of=stamp,
+                host=primary,
+                attribution=OONI_ATTRIBUTION,
+            )
+        )
 
     if event is not None and cdt_items:
         for item in match_cdt_items(event, cdt_items, wire_items=wire_items):
-            rows.append(peer_row(
-                peer="cdt",
-                status="live",
-                sentence=cdt_sentence(item["title"], item["url"]),
-                as_of=item.get("published_at") or stamp,
-                peer_url=item["url"],
-                title=item["title"],
-                excerpt=item.get("excerpt"),
-                host=host_of(item["url"]),
-                attribution=CDT_ATTRIBUTION,
-            ))
+            rows.append(
+                peer_row(
+                    peer="cdt",
+                    status="live",
+                    sentence=cdt_sentence(item["title"], item["url"]),
+                    as_of=item.get("published_at") or stamp,
+                    peer_url=item["url"],
+                    title=item["title"],
+                    excerpt=item.get("excerpt"),
+                    host=host_of(item["url"]),
+                    attribution=CDT_ATTRIBUTION,
+                )
+            )
 
     if include_weiboscope:
         rows.append(weiboscope_row(now=now))
@@ -518,7 +551,9 @@ def _publication_clock(*values: Any) -> datetime | None:
         stamped = iso_z(raw)
         if not stamped:
             continue
-        return datetime.strptime(stamped, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        return datetime.strptime(stamped, "%Y-%m-%dT%H:%M:%SZ").replace(
+            tzinfo=timezone.utc
+        )
     return None
 
 
@@ -546,9 +581,13 @@ def peer_context_for_event(
         raise ValueError("peer_context_for_event needs the warehouse or event clock")
     return rows_for_hosts(
         _event_hosts(event),
-        greatfire=peer.get("greatfire") if isinstance(peer.get("greatfire"), Mapping) else None,
+        greatfire=peer.get("greatfire")
+        if isinstance(peer.get("greatfire"), Mapping)
+        else None,
         ooni=peer.get("ooni") if isinstance(peer.get("ooni"), Mapping) else None,
-        cdt_items=peer.get("cdt_items") if isinstance(peer.get("cdt_items"), list) else [],
+        cdt_items=peer.get("cdt_items")
+        if isinstance(peer.get("cdt_items"), list)
+        else [],
         include_weiboscope=True,
         now=now,
         event=event,
@@ -585,11 +624,15 @@ def build_peer_document(
                 hosts.append(host)
     ooni = join_hosts(hosts, gfw_path=gfw_path, warehouse=warehouse, now=now)
     ooni["generated_at"] = iso_z(ooni.get("generated_at") or now)
-    weibo = weiboscope if isinstance(weiboscope, Mapping) else {
-        "abstention": documented_abstention(now=now),
-        "dump_on_node": False,
-        "doi": documented_abstention()["doi"],
-    }
+    weibo = (
+        weiboscope
+        if isinstance(weiboscope, Mapping)
+        else {
+            "abstention": documented_abstention(now=now),
+            "dump_on_node": False,
+            "doi": documented_abstention()["doi"],
+        }
+    )
     cdt = list(cdt_items or [])
     return {
         "schema_version": SCHEMA_VERSION,
@@ -612,7 +655,9 @@ def build_peer_document(
         ),
         "n_hosts": len(hosts),
         "n_greatfire": (
-            int(greatfire.get("n_verdicts") or 0) if isinstance(greatfire, Mapping) else 0
+            int(greatfire.get("n_verdicts") or 0)
+            if isinstance(greatfire, Mapping)
+            else 0
         ),
         "n_ooni": ooni["n_hits"],
         "n_cdt": len(cdt),
@@ -632,7 +677,11 @@ def disk_estimate(
 ) -> dict[str, Any]:
     """Honest bytes: peer cache is small; the 33G OONI warehouse is already on box."""
 
-    gf_rows = len((greatfire or {}).get("verdicts") or []) if isinstance(greatfire, Mapping) else 0
+    gf_rows = (
+        len((greatfire or {}).get("verdicts") or [])
+        if isinstance(greatfire, Mapping)
+        else 0
+    )
     ooni_rows = len((ooni or {}).get("hosts") or []) if isinstance(ooni, Mapping) else 0
     return {
         "greatfire_context_json": "~32-256 KiB cached verdicts (not the 700k catalog)",
