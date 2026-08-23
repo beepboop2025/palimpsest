@@ -24,24 +24,44 @@ name: Refresh board-level judgements
 on:
   schedule:
     - cron: "53 * * * *"       # hourly public edition, after event-flags/newswire at :47
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      publication_retry:
+        description: Base-advance retry number
+        required: false
+        default: "0"
+      publication_request:
+        description: Original scheduled run ID
+        required: false
+        default: ""
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
-  # These files summarize almost every other collector. Serialize them with
-  # the newswire and OSINT publishers so main never exposes a half-built graph.
-  group: derived-graph-publish
-  cancel-in-progress: false
+  # Retain pending board editions instead of letting other derived writers
+  # evict them before a runner is allocated. Exact-parent locking below still
+  # protects main from mixed-time graph publication.
+  group: board-derived-graph-publish
+  queue: max
 
 jobs:
   board-alarm:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+
+      - name: Synchronize the edition base
+        run: |
+          git config user.name "palimpsest-bot"
+          git config user.email "bot@palimpsest.info"
+          git fetch --no-tags --prune origin \
+            "+refs/heads/main:refs/remotes/origin/main"
+          git switch --detach origin/main
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -104,6 +124,7 @@ jobs:
           python -m scripts.build_china_econ_manifest --check
           python -m scripts.build_china_econ_forecast --check
           python -m scripts.build_china_site --check
+          python -m scripts.undertext_pull --check
           python -m scripts.build_erasure_trail --check
           sha256sum readings/osint-china-latest.json > "$RUNNER_TEMP/osint-before.sha256"
           python -m scripts.build_osint_china --now "$publish_clock" --input-commit "$base_commit"
@@ -137,6 +158,10 @@ jobs:
           tests/test_gazetteer_phylogeny.py
           tests/test_economic_pulse.py
           tests/test_undertext.py
+          tests/test_undertext_pull_publish.py
+          tests/test_event_analysis.py
+          tests/test_event_analysis_v2.py
+          tests/test_newsroom_publication_integrity.py
           tests/test_osint_china.py
           tests/test_investigations.py
           tests/test_network_rounds.py
@@ -155,19 +180,81 @@ jobs:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
-      - name: Commit & push if any judgement changed
+      - name: Create the exact-parent publication candidate
+        id: candidate
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: |
-          git config user.name  "palimpsest-bot"
-          git config user.email "bot@palimpsest.info"
           git add -A -- readings china news datapackage.json weekly-situation.html
           if git diff --cached --quiet; then
             echo "no change"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git commit -m "data: board alarm + coverage guard refresh ($(date -u +%FT%TZ)) [skip pytest]"
-            # The candidate graph is valid only for its exact parent. A concurrent
-            # main advance must fail closed so the next serialized run rebuilds it;
-            # rebasing stale derived bytes would create a mixed-time publication.
-            python scripts/push_data_commit.py --base-locked
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Attempt the base-locked publication
+        if: steps.candidate.outputs.changed == 'true'
+        id: publish
+        continue-on-error: true
+        run: |
+          set +e
+          python scripts/push_data_commit.py --base-locked
+          publish_rc=$?
+          set -e
+          printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
+          exit "$publish_rc"
+
+      - name: Refuse a non-race publication failure
+        if: >-
+          steps.publish.outcome == 'failure' &&
+          steps.publish.outputs.exit_code != '75'
+        run: |
+          echo "FATAL: board publication failed for a reason that is not a base advance"
+          exit 1
+
+      - name: Queue a bounded rebuild from the latest main
+        if: >-
+          steps.publish.outcome == 'failure' &&
+          steps.publish.outputs.exit_code == '75'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RETRY_ATTEMPT: ${{ inputs.publication_retry || '0' }}
+          REQUEST_RUN_ID: ${{ inputs.publication_request || github.run_id }}
+          MAX_RETRIES: "3"
+        run: |
+          set -euo pipefail
+
+          case "$RETRY_ATTEMPT" in
+            ''|*[!0-9]*)
+              echo "FATAL: invalid publication retry number"
+              exit 2
+              ;;
+          esac
+
+          case "$REQUEST_RUN_ID" in
+            ''|*[!0-9]*)
+              REQUEST_RUN_ID="$GITHUB_RUN_ID"
+              ;;
+          esac
+
+          if [ "$RETRY_ATTEMPT" -ge "$MAX_RETRIES" ]; then
+            echo "FATAL: board publication exhausted its bounded rebuild dispatches"
+            exit 75
+          fi
+
+          next_attempt=$((RETRY_ATTEMPT + 1))
+          gh workflow run board-alarm-refresh.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f publication_retry="$next_attempt" \
+            -f publication_request="$REQUEST_RUN_ID"
+
+          {
+            echo "Base-advance race detected."
+            echo "Queued retry $next_attempt/$MAX_RETRIES for request $REQUEST_RUN_ID."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # This run did not publish; the accepted retry is a separate run.
+          exit 75

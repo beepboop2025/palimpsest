@@ -1,4 +1,5 @@
 """The public observatory must produce and display a coherent hourly edition."""
+
 import json
 from pathlib import Path
 
@@ -10,10 +11,13 @@ def _read(relative: str) -> str:
     return (ROOT / relative).read_text(encoding="utf-8")
 
 
-def test_public_edition_is_hourly_and_serialized_with_other_derived_writers() -> None:
+def test_public_edition_is_hourly_and_keeps_a_bounded_board_queue() -> None:
     workflow = _read(".github/workflows/board-alarm-refresh.yml")
     assert 'cron: "53 * * * *"' in workflow
-    assert "group: derived-graph-publish" in workflow
+    assert "group: board-derived-graph-publish" in workflow
+    assert "queue: max" in workflow
+    assert "cancel-in-progress: true" not in workflow
+    assert "timeout-minutes: 90" in workflow
     assert "Validate the complete public edition" in workflow
     assert "tests/test_publication_contract.py" in workflow
 
@@ -48,9 +52,13 @@ def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
     assert positions == sorted(positions)
     assert "Verify the complete downstream graph before publication" in workflow
     assert '--input-commit "$base_commit"' in workflow
-    assert 'python -m scripts.build_investigations --check --as-of "$publish_clock"' in workflow
+    assert (
+        'python -m scripts.build_investigations --check --as-of "$publish_clock"'
+        in workflow
+    )
     assert "osint-before.sha256" in workflow
     assert "osint-after.sha256" in workflow
+    assert "python -m scripts.undertext_pull --check" in workflow
     assert "python -m core.evidence_mesh --check" in workflow
     assert 'python -m scripts.build_data_catalog --now "$catalog_clock"' in workflow
     assert "catalog-before.sha256" in workflow
@@ -58,6 +66,26 @@ def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
     assert 'cmp "$RUNNER_TEMP/catalog-before.sha256"' in workflow
     assert "python scripts/seal_readings.py --check" in workflow
     assert "--rebuild-module" not in workflow
+
+
+def test_board_retry_is_latest_main_scoped_and_only_retries_a_base_race() -> None:
+    workflow = _read(".github/workflows/board-alarm-refresh.yml")
+
+    synchronize = workflow.index("Synchronize the edition base")
+    board_build = workflow.index("python -m scripts.board_alarm_pull")
+    assert synchronize < board_build
+    assert "git switch --detach origin/main" in workflow
+    assert "actions: write" in workflow
+    assert "publication_retry:" in workflow
+    assert "publication_request:" in workflow
+    assert "printf 'exit_code=%s\\n'" in workflow
+    assert "steps.publish.outputs.exit_code != '75'" in workflow
+    assert "steps.publish.outputs.exit_code == '75'" in workflow
+    assert workflow.count("gh workflow run board-alarm-refresh.yml") == 1
+    assert 'MAX_RETRIES: "3"' in workflow
+    assert "--ref main" in workflow
+    assert '-f publication_request="$REQUEST_RUN_ID"' in workflow
+    assert "exit 75" in workflow
 
 
 def test_hourly_weibo_publisher_declares_and_validates_every_output() -> None:
@@ -123,8 +151,13 @@ def test_every_hourly_artifact_declares_the_same_cadence_to_readers() -> None:
         assert ", 1, 3," in declaration
 
     fleet = _read("core/collector_fleet.py")
-    assert '"weibo-hotsearch": Cadence(21, "*", expires_s=45 * 60, interval_s=3600)' in fleet
-    assert '"silence-index": Cadence(33, "*", expires_s=45 * 60, interval_s=3600)' in fleet
+    assert (
+        '"weibo-hotsearch": Cadence(21, "*", expires_s=45 * 60, interval_s=3600)'
+        in fleet
+    )
+    assert (
+        '"silence-index": Cadence(33, "*", expires_s=45 * 60, interval_s=3600)' in fleet
+    )
 
 
 def test_open_browser_renews_after_an_hour_without_destroying_form_input() -> None:
