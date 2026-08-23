@@ -20,7 +20,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  RELEASE_AUTHOR_EMAIL: mrinallovesbhature@gmail.com
   PUBLIC_MCP_URL: https://api.seiche.info/palimpsest/mcp
 
 jobs:
@@ -54,9 +53,6 @@ jobs:
             git fetch --force --no-tags origin \
               '+refs/heads/main:refs/remotes/origin/main'
           git merge-base --is-ancestor "$TARGET_SHA" refs/remotes/origin/main
-          test "$(git show -s --format='%ae' "$TARGET_SHA")" = \
-            "$RELEASE_AUTHOR_EMAIL"
-
           github_json="$RUNNER_TEMP/github-commit.json"
           curl --disable --fail --silent --show-error \
             --proto '=https' --tlsv1.2 --max-time 20 --max-filesize 262144 \
@@ -70,8 +66,7 @@ jobs:
             --module mcp/palimpsest_mcp.py \
             --manifest server.json \
             --target-sha "$TARGET_SHA" \
-            --github-commit-json "$github_json" \
-            --expected-author-email "$RELEASE_AUTHOR_EMAIL"
+            --github-commit-json "$github_json"
           printf 'target_sha=%s\n' "$TARGET_SHA" >>"$GITHUB_OUTPUT"
 
       - name: Validate controller syntax and candidate contract

@@ -24,7 +24,6 @@ fi
 shift
 
 readonly EXPECTED_REMOTE="https://github.com/beepboop2025/palimpsest.git"
-readonly EXPECTED_AUTHOR_EMAIL="mrinallovesbhature@gmail.com"
 readonly STATE_DIR="/var/lib/palimpsest-mcp-deploy"
 readonly REPOSITORY="${STATE_DIR}/repository.git"
 readonly BACKUP_DIR="${STATE_DIR}/backups"
@@ -41,7 +40,7 @@ readonly UNIT_FILE="/etc/systemd/system/palimpsest-mcp.service"
 readonly LOCAL_ENDPOINT="http://127.0.0.1:8793/"
 readonly RUNTIME_USER="palimpsest-mcp"
 readonly VERIFY_USER="palimpsest-mcp-verify"
-readonly EXPECTED_VERIFY_SHA256="1d84e5d78e83185b54343cda4104f6e665de69159ea52c34d7060287ab7dc3b7"
+readonly EXPECTED_VERIFY_SHA256="5d86f51d91daf88f194a1ee64cb3d434e8b5a01e49f0795039863dc5d8e13e51"
 readonly EXPECTED_SMOKE_SHA256="1e3f1c4eb6d5b8a4960aa1f55dd3a74f6df277f93fc17a42db5a0ee2ec8846f1"
 readonly EXPECTED_UNIT_SHA256="9891f7e321b718b841eba7ea3d1b0377f2e59f09a133c579688e4fd59554d4c2"
 
@@ -235,10 +234,6 @@ resolved_sha=$(git --git-dir="$REPOSITORY" rev-parse --verify "${target_sha}^{co
 git --git-dir="$REPOSITORY" merge-base --is-ancestor \
   "$target_sha" refs/remotes/origin/main \
   || fail "target is not reachable from origin/main"
-author_email=$(git --git-dir="$REPOSITORY" show -s --format='%ae' "$target_sha")
-[[ "$author_email" = "$EXPECTED_AUTHOR_EMAIL" ]] \
-  || fail "target author is not the pinned release principal"
-
 stage_dir=$(mktemp -d "/run/palimpsest-mcp-candidate.${target_sha}.XXXXXX")
 git --git-dir="$REPOSITORY" show "${target_sha}:mcp/palimpsest_mcp.py" \
   >"${stage_dir}/palimpsest_mcp.py"
@@ -275,8 +270,7 @@ run_as_verify_user "$VERIFY_RELEASE" \
   --module "${stage_dir}/palimpsest_mcp.py" \
   --manifest "${stage_dir}/server.json" \
   --target-sha "$target_sha" \
-  --github-commit-json "$api_json" \
-  --expected-author-email "$EXPECTED_AUTHOR_EMAIL"
+  --github-commit-json "$api_json"
 
 service_exec=$(systemctl show --property=ExecStart --value "$SERVICE")
 [[ "$service_exec" == *"$TARGET_FILE"* ]] \

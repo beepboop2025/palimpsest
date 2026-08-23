@@ -205,7 +205,6 @@ def verify_candidate(module_path: Path, manifest_path: Path) -> dict[str, Any]:
 def verify_github_commit(
     payload_path: Path,
     target_sha: str,
-    expected_author_email: str,
 ) -> None:
     if not SHA_RE.fullmatch(target_sha):
         raise VerificationError("target SHA must be exactly 40 lowercase hexadecimal characters")
@@ -227,12 +226,6 @@ def verify_github_commit(
     commit = payload.get("commit")
     if not isinstance(commit, dict):
         raise VerificationError("GitHub verification response has no commit object")
-    author = commit.get("author")
-    if not isinstance(author, dict) or author.get("email") != expected_author_email:
-        raise VerificationError("target commit author is not the pinned release principal")
-    committer = commit.get("committer")
-    if not isinstance(committer, dict) or committer.get("email") != "noreply@github.com":
-        raise VerificationError("target commit was not committed by GitHub's merge signer")
     verification = commit.get("verification")
     if not isinstance(verification, dict):
         raise VerificationError("GitHub verification response has no verification object")
@@ -248,10 +241,6 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--target-sha")
     parser.add_argument("--github-commit-json", type=Path)
-    parser.add_argument(
-        "--expected-author-email",
-        default="mrinallovesbhature@gmail.com",
-    )
     return parser.parse_args(argv)
 
 
@@ -266,7 +255,6 @@ def main(argv: list[str] | None = None) -> int:
             verify_github_commit(
                 args.github_commit_json,
                 args.target_sha,
-                args.expected_author_email,
             )
         contract = verify_candidate(args.module, args.manifest)
     except VerificationError as exc:

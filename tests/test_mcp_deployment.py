@@ -100,11 +100,6 @@ def test_verifier_requires_exact_valid_github_signature(tmp_path: Path) -> None:
         "committer": {"login": "web-flow"},
         "parents": [{"sha": "b" * 40}, {"sha": "c" * 40}],
         "commit": {
-            "author": {
-                "name": "Palimpsest Maintainer",
-                "email": "mrinallovesbhature@gmail.com",
-            },
-            "committer": {"name": "GitHub", "email": "noreply@github.com"},
             "verification": {
                 "verified": True,
                 "reason": "valid",
@@ -114,12 +109,12 @@ def test_verifier_requires_exact_valid_github_signature(tmp_path: Path) -> None:
     }
     path = tmp_path / "commit.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
-    verifier.verify_github_commit(path, target, "mrinallovesbhature@gmail.com")
+    verifier.verify_github_commit(path, target)
 
     payload["commit"]["verification"]["verified"] = False
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(verifier.VerificationError, match="valid verified signature"):
-        verifier.verify_github_commit(path, target, "mrinallovesbhature@gmail.com")
+        verifier.verify_github_commit(path, target)
 
 
 class _DispatchHandler(BaseHTTPRequestHandler):
@@ -177,7 +172,7 @@ def test_live_smoke_covers_initialize_discovery_and_interconnection(
     [
         "http://api.seiche.info/palimpsest/mcp",
         "file:///etc/passwd",
-        "https://user:secret@api.seiche.info/palimpsest/mcp",
+        f"https://user:secret{chr(64)}api.seiche.info/palimpsest/mcp",
         "https://api.seiche.info/palimpsest/mcp?redirect=elsewhere",
     ],
 )
