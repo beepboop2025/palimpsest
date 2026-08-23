@@ -1,7 +1,7 @@
 {
   "schema_version": "palimpsest-peer-context-rank/v1",
   "job": "peer-context-rank",
-  "generated_at": "2026-08-22T18:34:47Z",
+  "generated_at": "2026-08-23T01:36:53Z",
   "source": "Cached GreatFire verdicts, OONI host/ASN or on-disk ooni-gfw history, and bounded CDT titles. Warehouse files are optional.",
   "method": "Per-peer robust MAD (prequential-robust-mad/v1) against that peer series' own history, then a fail-closed join onto a Palimpsest object by term/host/ASN/day. Review rank only. No generative brief. Weiboscope is cited as a literature pointer only; the 2012 dump is not loaded or trained on",
   "scope": "Per-peer unusualness vs that peer series' own history, plus a fail-closed join onto Palimpsest objects. No causal attribution. No Weiboscope dump. No GreatFire catalog crawl.",
@@ -13,7 +13,7 @@
   "n_peer_series_warming_up": 42,
   "n_cdt_items": 19,
   "n_joins": 0,
-  "n_objects_considered": 735,
+  "n_objects_considered": 726,
   "peer_series": [
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -111,7 +111,7 @@
       "host": "gov.cn",
       "window_days": 90,
       "blocked": false,
-      "tested": 118,
+      "tested": 119,
       "source": "cached-verdicts-only",
       "public_copy": "GreatFire 2026-08-22: this series is warming up vs its own 0 prior points"
     },
@@ -571,11 +571,11 @@
       "series_id": "cn-aggregate",
       "field": "gfw_index",
       "peer_date": "2026-08-22",
-      "current_value": 58.3,
-      "n_history": 175,
+      "current_value": 59.4,
+      "n_history": 176,
       "minimum_prior": 6,
       "state": "scored",
-      "unusualness": 0.0,
+      "unusualness": 0.179864,
       "unusual": false,
       "label": null,
       "label_source": "human-editorial-review-required",
@@ -585,7 +585,7 @@
       "citation": null,
       "kind": "country",
       "probe_cc": "CN",
-      "public_copy": "OONI 2026-08-22: this series is within its own 175 prior points"
+      "public_copy": "OONI 2026-08-22: this series is within its own 176 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -1869,13 +1869,13 @@
           "peer": "OONI",
           "series_id": "cn-aggregate",
           "field": "gfw_index",
-          "n": 176,
-          "n_prior": 141,
+          "n": 177,
+          "n_prior": 142,
           "state": "scored",
           "holdout": {
             "split": "time",
-            "n_extracted": 176,
-            "n_prior": 141,
+            "n_extracted": 177,
+            "n_prior": 142,
             "n_holdout": 35,
             "n_holdout_scored": 35,
             "n_holdout_unusual": 0,
@@ -1935,31 +1935,31 @@
         "same_day_diff_host"
       ],
       "split": "time",
-      "n_examples": 5983,
-      "n_train": 4432,
-      "n_holdout": 1551,
+      "n_examples": 6064,
+      "n_train": 2474,
+      "n_holdout": 3590,
       "n_days": 22,
       "n_train_days": 18,
       "n_holdout_days": 4,
       "reason": null,
       "train": {
-        "n_objects": 563,
-        "n_positive": 1516,
-        "n_negative": 2916,
-        "n_pairs": 10334,
-        "n_correct": 10334,
+        "n_objects": 381,
+        "n_positive": 884,
+        "n_negative": 1590,
+        "n_pairs": 5539,
+        "n_correct": 5539,
         "pairwise_accuracy": 1.0,
-        "n_negatives_fail_closed": 2916,
+        "n_negatives_fail_closed": 1590,
         "n_negatives_leaked": 0
       },
       "holdout": {
-        "n_objects": 172,
-        "n_positive": 539,
-        "n_negative": 1012,
-        "n_pairs": 3780,
-        "n_correct": 3780,
+        "n_objects": 345,
+        "n_positive": 1216,
+        "n_negative": 2374,
+        "n_pairs": 9253,
+        "n_correct": 9253,
         "pairwise_accuracy": 1.0,
-        "n_negatives_fail_closed": 1012,
+        "n_negatives_fail_closed": 2374,
         "n_negatives_leaked": 0
       },
       "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
@@ -1976,5 +1976,5 @@
     "generative_model": "prohibited",
     "event_analysis_prose": "unchanged"
   },
-  "analysis_sha256": "d27ae81691d8ff04bee5df532d8e31746c8ba4e393ccd9a5d02e8b677656f391"
+  "analysis_sha256": "39ee6754a8b7a15383a1cb3cfc14ebe267632c8280155e30ddd5cbb47223744c"
 }
