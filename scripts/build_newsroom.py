@@ -5359,8 +5359,8 @@ def _wire_history_integrity_receipt(
         "history_tree_sha256": tree.hexdigest(),
         "n_current_analysis_aliases": len(aliases),
         "current_analysis_tree_sha256": alias_tree.hexdigest(),
-        "new_revisions": len(new_paths),
         "automatic_growth_limit": MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION,
+        "automatic_growth_status": "within-limit",
         "validation_status": "full-history-validated",
         "referential_closure": "all-analysis-event-versions-present",
     }

@@ -127,7 +127,8 @@ def test_wire_history_receipt_closes_both_revision_families(tmp_path: Path) -> N
     assert receipt["n_event_revisions"] == 1
     assert receipt["n_analysis_revisions"] == 1
     assert receipt["n_current_analysis_aliases"] == 1
-    assert receipt["new_revisions"] == 2
+    assert receipt["automatic_growth_limit"] == 128
+    assert receipt["automatic_growth_status"] == "within-limit"
     assert len(receipt["history_tree_sha256"]) == 64
     assert receipt["validation_status"] == "full-history-validated"
     assert receipt["referential_closure"] == "all-analysis-event-versions-present"
