@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 29 are live. Health qualifiers: 4 degraded, 6 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 28 are live. Health qualifiers: 4 degraded, 7 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-23T08:28:59Z",
+  "generated_at": "2026-08-23T11:31:30Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "b69970b5bb63498acda6e0e61cf9d05809e87c74",
+  "source_commit": "c44fa7f46efe7a36e17ccecef28bd38106386a25",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 29,
+    "live": 28,
     "status": "degraded",
     "counts": {
-      "live": 29,
+      "live": 28,
       "degraded": 4,
-      "stale": 6,
+      "stale": 7,
       "missing": 0,
       "corrupt": 0
     }
@@ -348,8 +348,8 @@
       "type": "measurement",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-23T07:00:54Z",
-      "modified_at": "2026-08-23T07:00:54Z",
+      "published_at": "2026-08-23T09:42:49Z",
+      "modified_at": "2026-08-23T09:42:49Z",
       "claim_fingerprint": "sha256:fae204427a58740a4135abd6dcdaf2a6b33492d9e8d226507a1b2626916b13d7",
       "metric": {
         "label": "terms ranked",
@@ -370,10 +370,10 @@
         "url": "https://palimpsest.info/readings/ddti-latest.json",
         "input": {
           "filename": "ddti-latest.json",
-          "sha256": "3ecc83a107091d3f7b5e9353465b24b27892bc4b45f4b72a2d03227438c04c08",
-          "bytes": 167646
+          "sha256": "c6c62ba0a694f13a181e1b0a71094874b3281284b25880c64e2f084406f85783",
+          "bytes": 167658
         },
-        "source_timestamp": "2026-08-23T07:00:54Z"
+        "source_timestamp": "2026-08-23T09:42:49Z"
       },
       "method": {
         "summary": "See the complete embedded upstream payload and its raw feed",
@@ -446,20 +446,20 @@
       "slug": "weibo-hot-search-join",
       "url": "https://palimpsest.info/news/weibo-hot-search-join/",
       "signal_id": "weibo-hotsearch",
-      "headline": "The latest Weibo archive contains 2,921 hot-search board entries",
-      "dek": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
+      "headline": "Weibo hot-search join: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 3,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-23T05:46:45Z",
       "modified_at": "2026-08-23T05:46:45Z",
-      "claim_fingerprint": "sha256:518266c1aaa8e2ff7996f4680c01d825f051a7e17cbaa2762b94500749f6647a",
+      "claim_fingerprint": "sha256:fbbd796714a27d8701bf89d250b4dc110fa7b57d5d236815f0693f5547448d69",
       "metric": {
-        "label": "board entries",
-        "value": 2921,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -467,8 +467,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current archive window contains 2,921 Weibo hot-search board entries available for joining."
+          "type": "availability",
+          "statement": "No current finding is published for Weibo hot-search join because the source status is stale."
         }
       ],
       "evidence": {
@@ -485,6 +485,7 @@
         "version": 2
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention."
       ],
       "related_signal_ids": [
@@ -505,8 +506,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "degraded",
-      "published_at": "2026-08-23T07:58:20Z",
-      "modified_at": "2026-08-23T07:58:20Z",
+      "published_at": "2026-08-23T10:53:19Z",
+      "modified_at": "2026-08-23T10:53:19Z",
       "claim_fingerprint": "sha256:0aaa02fcf26cf2cb3f6a9bc1cbc9d5cd42cf48a141926be5afdeb224c4e6e529",
       "metric": {
         "label": null,
@@ -527,10 +528,10 @@
         "url": "https://palimpsest.info/readings/silence-index-latest.json",
         "input": {
           "filename": "silence-index-latest.json",
-          "sha256": "074ff1762d39aec36db256c141a0a33e70c2080ad407ff2be3578671dd3e356b",
-          "bytes": 6677
+          "sha256": "118554f1c1e0a8d51cdc22b434cb3b1d8fb075865db5893419b89f659612c027",
+          "bytes": 6676
         },
-        "source_timestamp": "2026-08-23T07:58:20Z"
+        "source_timestamp": "2026-08-23T10:53:19Z"
       },
       "method": {
         "summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in both the latest reading and the history, never zeros",
@@ -1851,19 +1852,19 @@
       "slug": "official-data-darkness",
       "url": "https://palimpsest.info/news/official-data-darkness/",
       "signal_id": "data-darkness",
-      "headline": "The official-data darkness index is 0.1889 across 7 watched series",
+      "headline": "The official-data darkness index is 0.212 across 7 watched series",
       "dek": "Each official surface is judged against its own declared or observed publication rhythm, with unreachable sources kept separate.",
       "section": "economy",
       "order": 4,
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-22T10:32:24Z",
-      "modified_at": "2026-08-22T10:32:24Z",
-      "claim_fingerprint": "sha256:972a60dac730dec17b446bc2e826c3c1a03314f19f3ebcaf514e61768fafec97",
+      "published_at": "2026-08-23T10:32:44Z",
+      "modified_at": "2026-08-23T10:32:44Z",
+      "claim_fingerprint": "sha256:08804ae5eef2691d64645f6ce8612b255b2c572fde39a9f71f3c7d2d222910be",
       "metric": {
         "label": "darkness index",
-        "value": 0.1889,
+        "value": 0.212,
         "unit": "index",
         "denominator": {
           "label": "series watched",
@@ -1873,17 +1874,17 @@
       "claims": [
         {
           "type": "finding",
-          "statement": "The current publication-cadence darkness index is 0.1889 across 7 watched official series."
+          "statement": "The current publication-cadence darkness index is 0.212 across 7 watched official series."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/data-darkness-latest.json",
         "input": {
           "filename": "data-darkness-latest.json",
-          "sha256": "9204999fcdc67705a4957557b4f704bdd8d0740e17183c5363f2117331056329",
+          "sha256": "28966221cc28b86763a0d977559f3992bc6401ad120881aa4f13b169286a03de",
           "bytes": 3882
         },
-        "source_timestamp": "2026-08-22T10:32:24Z"
+        "source_timestamp": "2026-08-23T10:32:44Z"
       },
       "method": {
         "summary": "publication-cadence watch: each surface reports the latest release visible from this vantage, scored as days-since against its own nominal cadence (business-day basis for daily series, so weekends are not darkness; Chinese public holidays are not modelled and appear as short recurring spikes the detector's reference learns). NBS series additionally carry days_past_promise, scored against the state's own published release calendar — a promise date is sharper than a learned rhythm. darkness_index is the mean staleness ratio over surfaces that answered. A surface that could not be fetched is listed as unreachable and excluded — vantage trouble is not withholding (nra.gov.cn in particular is known to gate some foreign vantages). A high index states that official surfaces are late against their own rhythm; it does not establish intent",
