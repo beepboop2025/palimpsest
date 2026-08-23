@@ -30,46 +30,64 @@ def _json(path: str) -> dict:
     return json.loads((ROOT / path).read_text(encoding="utf-8"))
 
 
-def _git_add_commands(workflow: str) -> tuple[tuple[str, ...], ...]:
-    """Return shell words for each logical ``git add`` command in a workflow."""
-    commands: list[tuple[str, ...]] = []
-    logical: list[str] | None = None
-    for raw_line in workflow.splitlines():
+def _git_add_command_spans(
+    workflow: str,
+) -> tuple[tuple[int, int, tuple[str, ...]], ...]:
+    """Return line spans and shell words for logical ``git add`` commands."""
+    commands: list[tuple[int, int, tuple[str, ...]]] = []
+    logical: list[str] = []
+    logical_start: int | None = None
+    for line_number, raw_line in enumerate(workflow.splitlines()):
         line = raw_line.strip()
-        if logical is None:
+        if logical_start is None:
             if not line.startswith("git add "):
                 continue
-            logical = []
+            logical_start = line_number
         continued = line.endswith("\\")
         logical.append(line[:-1].rstrip() if continued else line)
         if continued:
             continue
-        commands.append(tuple(shlex.split(" ".join(logical))))
-        logical = None
+        commands.append(
+            (logical_start, line_number, tuple(shlex.split(" ".join(logical))))
+        )
+        logical = []
+        logical_start = None
     return tuple(commands)
 
 
-def _staged_occurrences(workflow: str, artifact: str) -> int:
-    """Count explicit staging sites, falling back to deletion-safe root staging."""
-    commands = _git_add_commands(workflow)
+def _git_add_commands(workflow: str) -> tuple[tuple[str, ...], ...]:
+    """Return shell words for each logical ``git add`` command in a workflow."""
+    return tuple(command for _start, _end, command in _git_add_command_spans(workflow))
+
+
+def _staging_spans(workflow: str, artifact: str) -> tuple[tuple[int, int], ...]:
+    """Locate explicit staging, or deletion-safe root staging when it is implicit."""
     normalized = artifact.rstrip("/")
+    spans = _git_add_command_spans(workflow)
     targets = tuple(
         {word.rstrip("/") for word in command[2:] if not word.startswith("-")}
-        for command in commands
+        for _start, _end, command in spans
     )
-    explicit = sum(
-        normalized in command_targets
+    explicit = tuple(
+        (start, end)
+        for (start, end, command), command_targets in zip(spans, targets, strict=True)
+        if normalized in command_targets
         and "-A" not in command
         and "--all" not in command
-        for command, command_targets in zip(commands, targets, strict=True)
     )
     if explicit:
         return explicit
     root = normalized.split("/", 1)[0]
-    return sum(
-        ("-A" in command or "--all" in command) and root in command_targets
-        for command, command_targets in zip(commands, targets, strict=True)
+    return tuple(
+        (start, end)
+        for (start, end, command), command_targets in zip(spans, targets, strict=True)
+        if ("-A" in command or "--all" in command) and root in command_targets
     )
+
+
+def _staged_occurrences(workflow: str, artifact: str) -> int:
+    """Count explicit staging sites, falling back to deletion-safe root staging."""
+    return len(_staging_spans(workflow, artifact))
 
 
 def test_every_newsroom_publisher_stages_both_china_article_heads():
@@ -118,21 +136,54 @@ def test_every_osint_publisher_rebuilds_checks_and_stages_the_erasure_trail():
 
 
 def test_every_newsroom_publisher_rebuilds_the_china_situation_before_catalog():
-    sequence = re.compile(
-        r"python -m scripts\.build_newsroom\n"
-        r"\s*python -m scripts\.build_newsroom --check\n"
-        r"\s*python -m scripts\.build_china_situation\n"
-        r"\s*python -m scripts\.build_china_situation --check\n"
-        r"\s*python -m scripts\.build_data_catalog"
-    )
     for path in OSINT_PUBLISHER_WORKFLOWS:
         workflow = path.read_text(encoding="utf-8")
-        newsroom_builds = sum(
-            line.strip() == "python -m scripts.build_newsroom"
-            for line in workflow.splitlines()
-        )
-        assert newsroom_builds > 0, path.name
-        assert len(sequence.findall(workflow)) == newsroom_builds, path.name
+        lines = [line.strip() for line in workflow.splitlines()]
+        candidates = _staging_spans(workflow, "readings/newsroom-latest.json")
+        assert candidates, path.name
+        start = 0
+        for stage_start, stage_end in candidates:
+            candidate = lines[start:stage_start]
+            newsroom_builds = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_newsroom"
+            ]
+            newsroom_checks = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_newsroom --check"
+            ]
+            situation_builds = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_china_situation"
+            ]
+            situation_checks = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_china_situation --check"
+            ]
+            catalog_builds = [
+                index
+                for index, line in enumerate(candidate)
+                if line.startswith("python -m scripts.build_data_catalog")
+                and "--check" not in line
+            ]
+            assert len(newsroom_builds) == 1, path.name
+            assert len(newsroom_checks) == 1, path.name
+            assert len(situation_builds) == 1, path.name
+            assert len(situation_checks) == 1, path.name
+            assert catalog_builds, path.name
+            newsroom = newsroom_builds[0]
+            newsroom_check = newsroom_checks[0]
+            situation = situation_builds[0]
+            situation_check = situation_checks[0]
+            catalog = catalog_builds[0]
+            assert newsroom < situation < catalog, path.name
+            assert newsroom < newsroom_check, path.name
+            assert situation < situation_check, path.name
+            start = stage_end + 1
 
 
 def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():

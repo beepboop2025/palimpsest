@@ -113,9 +113,7 @@ jobs:
           python -m core.evidence_mesh --now "$publish_clock"
           python -m core.machine_investigations --as-of "$publish_clock"
           python -m scripts.build_newsroom
-          python -m scripts.build_newsroom --check
           python -m scripts.build_china_situation
-          python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog --now "$publish_clock"
           python scripts/seal_readings.py
 
