@@ -334,6 +334,7 @@ def test_cli_returns_retryable_exit_only_for_a_base_advance(
         check_module=[],
         base_locked=True,
     )
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
 
     def base_advanced(**_kwargs: object) -> bool:
@@ -353,6 +354,7 @@ def test_cli_does_not_retry_an_ordinary_publication_refusal(
         check_module=[],
         base_locked=True,
     )
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
 
     def refused(**_kwargs: object) -> bool:
