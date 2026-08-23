@@ -1,7 +1,7 @@
 {
   "schema_version": "palimpsest-peer-context-rank/v1",
   "job": "peer-context-rank",
-  "generated_at": "2026-08-23T01:36:53Z",
+  "generated_at": "2026-08-23T12:46:16Z",
   "source": "Cached GreatFire verdicts, OONI host/ASN or on-disk ooni-gfw history, and bounded CDT titles. Warehouse files are optional.",
   "method": "Per-peer robust MAD (prequential-robust-mad/v1) against that peer series' own history, then a fail-closed join onto a Palimpsest object by term/host/ASN/day. Review rank only. No generative brief. Weiboscope is cited as a literature pointer only; the 2012 dump is not loaded or trained on",
   "scope": "Per-peer unusualness vs that peer series' own history, plus a fail-closed join onto Palimpsest objects. No causal attribution. No Weiboscope dump. No GreatFire catalog crawl.",
@@ -570,12 +570,12 @@
       "peer": "OONI",
       "series_id": "cn-aggregate",
       "field": "gfw_index",
-      "peer_date": "2026-08-22",
-      "current_value": 59.4,
-      "n_history": 176,
+      "peer_date": "2026-08-23",
+      "current_value": 58.5,
+      "n_history": 178,
       "minimum_prior": 6,
       "state": "scored",
-      "unusualness": 0.179864,
+      "unusualness": 0.0,
       "unusual": false,
       "label": null,
       "label_source": "human-editorial-review-required",
@@ -585,7 +585,7 @@
       "citation": null,
       "kind": "country",
       "probe_cc": "CN",
-      "public_copy": "OONI 2026-08-22: this series is within its own 176 prior points"
+      "public_copy": "OONI 2026-08-23: this series is within its own 178 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -1869,13 +1869,13 @@
           "peer": "OONI",
           "series_id": "cn-aggregate",
           "field": "gfw_index",
-          "n": 177,
-          "n_prior": 142,
+          "n": 179,
+          "n_prior": 144,
           "state": "scored",
           "holdout": {
             "split": "time",
-            "n_extracted": 177,
-            "n_prior": 142,
+            "n_extracted": 179,
+            "n_prior": 144,
             "n_holdout": 35,
             "n_holdout_scored": 35,
             "n_holdout_unusual": 0,
@@ -1976,5 +1976,5 @@
     "generative_model": "prohibited",
     "event_analysis_prose": "unchanged"
   },
-  "analysis_sha256": "39ee6754a8b7a15383a1cb3cfc14ebe267632c8280155e30ddd5cbb47223744c"
+  "analysis_sha256": "2c5f072bf416dc127bb21e5e2adf4ab6ae72d052a5af8318b3e716f2804f045e"
 }
