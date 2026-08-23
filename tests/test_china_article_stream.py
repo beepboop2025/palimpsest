@@ -359,9 +359,12 @@ def test_event_revision_keeps_first_published_mutation_bytes(publication, tmp_pa
     event = wire["events"][0]
     base = Path("news/wire") / event["event_id"]
     revision = base / "revisions" / f"{event['version_id']}.json"
-    destination = tmp_path / revision
-    destination.parent.mkdir(parents=True)
-    destination.write_bytes(first[revision])
+    for relative, payload in first.items():
+        if not build_newsroom._is_wire_history_revision_path(relative):
+            continue
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(payload)
 
     next_wire = copy.deepcopy(wire)
     next_event = next(
