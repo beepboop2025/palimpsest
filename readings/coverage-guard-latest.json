@@ -1,49 +1,49 @@
 {
-  "generated_at": "2026-08-23T00:29:00.735564+00:00",
+  "generated_at": "2026-08-23T02:45:14.880434+00:00",
   "signals": {
     "ooni_gfw": {
-      "n_pairs": 177,
-      "metric_now": 59.4,
-      "denominator_now": 312457.0,
-      "metric_robust_z": 0.18,
-      "denominator_robust_z": 1.62,
-      "denominator_change_pct": 15.2,
+      "n_pairs": 178,
+      "metric_now": 58.6,
+      "denominator_now": 281414.0,
+      "metric_robust_z": -0.58,
+      "denominator_robust_z": 0.39,
+      "denominator_change_pct": 3.7,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "OONI probe measurements in the rolling window"
     },
     "ddti_threat": {
-      "n_pairs": 343,
-      "metric_now": 0.6848,
+      "n_pairs": 344,
+      "metric_now": 0.6427,
       "denominator_now": 211.0,
-      "metric_robust_z": -0.96,
-      "denominator_robust_z": 1.33,
-      "denominator_change_pct": 20.9,
+      "metric_robust_z": -1.0,
+      "denominator_robust_z": 1.35,
+      "denominator_change_pct": 20.6,
       "verdict": "NO_MOVE",
       "note": "the metric has not departed from its own history",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "ddti_novelty": {
-      "n_pairs": 343,
+      "n_pairs": 344,
       "metric_now": 119.0,
       "denominator_now": 211.0,
       "metric_robust_z": 6.74,
-      "denominator_robust_z": 1.33,
-      "denominator_change_pct": 20.9,
+      "denominator_robust_z": 1.35,
+      "denominator_change_pct": 20.6,
       "fit": {
-        "slope": 0.136371,
-        "intercept": 4.1237,
-        "correlation": 0.123
+        "slope": 0.152859,
+        "intercept": 1.3938,
+        "correlation": 0.135
       },
       "verdict": "CONFIRMED",
-      "note": "the measurement base does not track this metric historically (r=0.12), so coverage does not explain the move",
+      "note": "the measurement base does not track this metric historically (r=0.14), so coverage does not explain the move",
       "denominator_is": "distinct terms extracted from the CDT deletion stream"
     },
     "gdelt_containment": {
-      "n_pairs": 188,
-      "metric_now": 1.0,
+      "n_pairs": 189,
+      "metric_now": 3.0,
       "denominator_now": 25.0,
-      "metric_robust_z": -1.35,
+      "metric_robust_z": -0.67,
       "denominator_robust_z": null,
       "denominator_change_pct": 0.0,
       "verdict": "NO_MOVE",
@@ -73,7 +73,7 @@
       "denominator_is": "topics actually scored this round (not abstained, not out of scope)"
     },
     "weibo_suppression": {
-      "n_pairs": 135,
+      "n_pairs": 136,
       "metric_now": 0.0,
       "denominator_now": 1.0,
       "metric_robust_z": null,
@@ -84,7 +84,7 @@
       "denominator_is": "DDTI terms available to join against the hot-search board"
     },
     "github_refuge": {
-      "n_pairs": 93,
+      "n_pairs": 94,
       "metric_now": 2.0,
       "denominator_now": 7.0,
       "metric_robust_z": 0.67,
