@@ -259,6 +259,7 @@ def test_eval_article_scenarios_gate_reconciliation_and_every_race_retry():
         "tests/test_eval_journal.py",
         "tests/test_eval_articles.py",
         "tests/test_eval_journal_renderer.py",
+        "tests/test_data_catalog.py::test_checked_in_catalog_views_do_not_drift_from_source_and_readings",
     ):
         assert text.count(test_path) == 2, test_path
 
@@ -273,3 +274,31 @@ def test_eval_article_scenarios_gate_reconciliation_and_every_race_retry():
     retry_tests = text.index(command, retry_check)
     retry_anchor = text.index("python -m scripts.anchor_roots", retry_tests)
     assert retry < retry_check < retry_tests < retry_anchor
+
+
+def test_catalog_is_rebuilt_staged_and_gated_before_every_shared_seal():
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert text.count("python -m scripts.build_data_catalog") == 3
+    for output in (
+        "readings/catalog.json",
+        "readings/catalog.jsonld",
+        "datapackage.json",
+    ):
+        assert sum(
+            line.strip().rstrip("\\").strip() == output
+            for line in text.splitlines()
+        ) == 3, output
+
+    initial_catalog = text.index("python -m scripts.build_data_catalog")
+    initial_seal = text.index("Seal every published reading", initial_catalog)
+    rebuild = text.index("Rebuild the aggregate and shared seal after an input change")
+    rebuild_catalog = text.index("python -m scripts.build_data_catalog", rebuild)
+    rebuild_seal = text.index("python3 scripts/seal_readings.py", rebuild_catalog)
+    retry = text.index("Reattest, reverify, and retry after a push race")
+    retry_catalog = text.index("python -m scripts.build_data_catalog", retry)
+    retry_seal = text.index("python3 scripts/seal_readings.py", retry_catalog)
+
+    assert initial_catalog < initial_seal
+    assert rebuild < rebuild_catalog < rebuild_seal
+    assert retry < retry_catalog < retry_seal

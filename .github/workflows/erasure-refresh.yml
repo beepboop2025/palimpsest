@@ -164,6 +164,7 @@ jobs:
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
           python -m scripts.build_eval_findings
+          python -m scripts.build_data_catalog
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
           python -m scripts.build_eval_findings --check
@@ -235,6 +236,9 @@ jobs:
                    readings/eval-assurance-latest.json \
                    readings/eval-journal-latest.json \
                    readings/eval-articles-latest.json \
+                   readings/catalog.json \
+                   readings/catalog.jsonld \
+                   datapackage.json \
                    evals/ \
                    journal/ \
                    readings/refusal-drift-latest.json \
@@ -308,6 +312,7 @@ jobs:
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
           python -m scripts.build_eval_findings
+          python -m scripts.build_data_catalog
           python3 scripts/seal_readings.py || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
@@ -329,7 +334,8 @@ jobs:
             tests/test_eval_assurance.py \
             tests/test_eval_journal.py \
             tests/test_eval_articles.py \
-            tests/test_eval_journal_renderer.py
+            tests/test_eval_journal_renderer.py \
+            tests/test_data_catalog.py::test_checked_in_catalog_views_do_not_drift_from_source_and_readings
 
       - name: Anchor only the reconciled roots
         if: steps.candidate.outputs.changed == 'true'
@@ -367,6 +373,9 @@ jobs:
                    readings/eval-assurance-latest.json \
                    readings/eval-journal-latest.json \
                    readings/eval-articles-latest.json \
+                   readings/catalog.json \
+                   readings/catalog.jsonld \
+                   datapackage.json \
                    evals/ \
                    journal/ \
                    readings/refusal-drift-latest.json \
@@ -428,6 +437,7 @@ jobs:
             python -m scripts.build_eval_assurance
             python -m scripts.build_eval_journal
             python -m scripts.build_eval_findings
+            python -m scripts.build_data_catalog
             python3 scripts/seal_readings.py || rc=$?
             if [ "${rc:-0}" = "1" ]; then exit 1; fi
             unset rc
@@ -447,7 +457,8 @@ jobs:
               tests/test_eval_assurance.py \
               tests/test_eval_journal.py \
               tests/test_eval_articles.py \
-              tests/test_eval_journal_renderer.py
+              tests/test_eval_journal_renderer.py \
+              tests/test_data_catalog.py::test_checked_in_catalog_views_do_not_drift_from_source_and_readings
             python -m scripts.anchor_roots
             python scripts/verify_public_surface.py
 
@@ -464,6 +475,9 @@ jobs:
                      readings/eval-assurance-latest.json \
                      readings/eval-journal-latest.json \
                      readings/eval-articles-latest.json \
+                     readings/catalog.json \
+                     readings/catalog.jsonld \
+                     datapackage.json \
                      evals/ \
                      journal/ \
                      readings/refusal-drift-latest.json \
