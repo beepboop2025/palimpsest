@@ -56,7 +56,7 @@ and a request carrying any other web origin is rejected before JSON-RPC dispatch
 | --- | --- |
 | `list_signals` | What is measured at all — every signal's name, one-line description, and source URL. Call this first. |
 | `get_signal(name, max_rows=25)` | One signal's latest reading, with its `generated_at`, denominators and upstream sources. This is also the door to the model-evaluation side: `eval-registry`, `eval-assurance`, `eval-journal`, `eval-findings`, `gfi-transcripts` and `refusal-drift`. Long arrays and the keyed GFI transcript matrix are bounded by `max_rows`, with true totals and the complete source URL returned whenever a cap applies. Read assurance before promoting chain integrity into a validity claim. |
-| `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, deterministic machine-analysis desk, investigations desk, or editorial-readiness gate. Analysis, abstention and draft states remain distinct; citations, counterevidence, limitations and right-to-reply metadata stay attached. |
+| `get_newsroom(view="newsroom", limit=10)` | The evidence newsroom, wire, economic pulse, deterministic machine-analysis desk, investigations desk, editorial-readiness gate, or `interconnection` view over the public China-situation joins. Analysis, abstention and draft states remain distinct; citations, counterevidence, limitations and right-to-reply metadata stay attached. |
 | `query_economic_observations(…, revision_view="latest-as-of", limit=25, cursor=null)` | A bounded point-in-time query over the fixed public China-economic JSONL ledger. Its fixed manifest is fetched first; exact bytes, SHA-256 and record count must match before any row is parsed. Exact slice filters, inclusive period/release ranges, both-clock `as_of` visibility, revision selection and opaque pagination are available without accepting a URL from the caller. |
 | `whats_happening` | The censorship board's own cross-signal verdict: is anything actually happening right now, with multiplicity paid for and coverage confounds flagged as artifacts rather than findings. |
 | `gfw_reading` | The Great Firewall at both layers in one call — network blocking measured inside China (OONI) beside model-layer censorship (the Generative Firewall Index). |
@@ -180,3 +180,18 @@ curl -sS -X POST http://127.0.0.1:8793/ \
 It fetches from `palimpsest.info` like anyone else, so a self-hosted copy sees precisely what
 the public copy sees. Running your own is the honest way to check that the hosted endpoint is
 not editorialising: call both, diff the payloads.
+
+## Production release control
+
+Production is not updated by copying this file out of an arbitrary checkout. The manual
+[`deploy-mcp.yml`](../.github/workflows/deploy-mcp.yml) workflow accepts an exact reviewed
+commit SHA reachable from `origin/main`, requires GitHub's valid signature verification for
+the pinned release principal, and passes only that SHA to a forced-command controller. The
+controller atomically replaces the one runtime file, restarts `palimpsest-mcp.service`, then
+requires loopback initialize, tool/prompt discovery, `list_signals`, and an
+`interconnection` newsroom call before advancing its deployed-SHA receipt. The workflow then
+repeats the same smoke at the public URL, covering the reverse proxy as well as the service.
+
+Host bootstrap, rollback behavior, environment secrets, and receipt paths are documented in
+[`ops/mcp-deploy/README.md`](../ops/mcp-deploy/README.md). Registry publication remains a
+separate, later transaction: a green deploy does not run `registry-publish.yml`.

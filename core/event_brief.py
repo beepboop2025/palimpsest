@@ -42,6 +42,10 @@ METHOD = (
     "or motive. The v2 brief copies retained metadata into a closed article "
     "shape with sentence-level citations. A missing surface abstains."
 )
+METHOD_LEGACY_CALENDAR_WINDOW = METHOD.replace(
+    "plus a UTC ±24h window from event.published_at",
+    "plus a UTC calendar-day ±24h window",
+)
 
 LIVE_FAMILY_IDS = (
     "official-first-seen",
@@ -439,10 +443,14 @@ def causal_hits(value: Any) -> list[str]:
     return [token for token in FORBIDDEN_CAUSAL if token in blob]
 
 
-def load_optional_live_families(readings_dir: Path | str | None) -> dict[str, dict[str, Any] | None]:
+def load_optional_live_families(
+    readings_dir: Path | str | None,
+) -> dict[str, dict[str, Any] | None]:
     """Load PR82 readings when present. Missing files abstain; nothing is invented."""
 
-    families: dict[str, dict[str, Any] | None] = {family: None for family in LIVE_FAMILY_IDS}
+    families: dict[str, dict[str, Any] | None] = {
+        family: None for family in LIVE_FAMILY_IDS
+    }
     for root in live_paths.readings_search_dirs(preferred=readings_dir):
         for family, filename in LIVE_FAMILY_FILES.items():
             if families[family] is not None:
@@ -456,7 +464,9 @@ def load_optional_live_families(readings_dir: Path | str | None) -> dict[str, di
     return families
 
 
-def load_optional_archive_context(readings_dir: Path | str | None) -> dict[str, Any] | None:
+def load_optional_archive_context(
+    readings_dir: Path | str | None,
+) -> dict[str, Any] | None:
     candidates: list[Path] = []
     if readings_dir is not None:
         candidates.append(Path(readings_dir) / "archive-news-context-latest.json")
@@ -472,7 +482,9 @@ def load_optional_archive_context(readings_dir: Path | str | None) -> dict[str, 
     return None
 
 
-def load_optional_corroboration(readings_dir: Path | str | None) -> dict[str, Any] | None:
+def load_optional_corroboration(
+    readings_dir: Path | str | None,
+) -> dict[str, Any] | None:
     for root in live_paths.readings_search_dirs(preferred=readings_dir):
         value = live_paths.load_json_if_present(root / "corroboration-latest.json")
         if value is not None:
@@ -480,25 +492,81 @@ def load_optional_corroboration(readings_dir: Path | str | None) -> dict[str, An
     return None
 
 
-def corroboration_coverage(document: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Emit official_page: none-reviewed even when the corroboration file is empty."""
+def corroboration_coverage(
+    document: Mapping[str, Any] | None, *, event_id: str | None = None
+) -> dict[str, Any]:
+    """Return review coverage for one event, never document-wide totals.
+
+    The optional global fallback is retained for callers that summarize the
+    corroboration document itself. Event briefs always pass ``event_id`` so a
+    review on one dossier cannot revise every other dossier.
+    """
 
     accepted = primary = reviewed = 0
     if type(document) is dict:
-        accepted = document.get("n_accepted_edges") if type(document.get("n_accepted_edges")) is int else 0
-        primary = (
-            document.get("n_events_with_primary_documents")
-            if type(document.get("n_events_with_primary_documents")) is int
-            else 0
-        )
-        reviewed = document.get("n_reviewed_edges") if type(document.get("n_reviewed_edges")) is int else 0
+        if event_id is None:
+            accepted = (
+                document.get("n_accepted_edges")
+                if type(document.get("n_accepted_edges")) is int
+                else 0
+            )
+            primary = (
+                document.get("n_events_with_primary_documents")
+                if type(document.get("n_events_with_primary_documents")) is int
+                else 0
+            )
+            reviewed = (
+                document.get("n_reviewed_edges")
+                if type(document.get("n_reviewed_edges")) is int
+                else 0
+            )
+        else:
+            event_rows = [
+                row
+                for row in document.get("events") or []
+                if type(row) is dict and row.get("event_id") == event_id
+            ]
+            if len(event_rows) > 1:
+                raise ValueError(
+                    f"corroboration contains duplicate event rows for {event_id}"
+                )
+            if event_rows:
+                event_row = event_rows[0]
+                candidate_ids = {
+                    value
+                    for value in event_row.get("candidate_ids") or []
+                    if type(value) is str
+                }
+                accepted_ids = {
+                    value
+                    for value in event_row.get("accepted_candidate_ids") or []
+                    if type(value) is str
+                }
+                accepted = len(accepted_ids)
+                primary = len(
+                    {
+                        value
+                        for value in event_row.get("accepted_document_ids") or []
+                        if type(value) is str
+                    }
+                )
+                reviewed = sum(
+                    1
+                    for row in document.get("candidates") or []
+                    if type(row) is dict
+                    and row.get("candidate_id") in candidate_ids
+                    and type(row.get("review")) is dict
+                    and row["review"].get("status") in {"accepted", "rejected"}
+                )
     official_page = "none-reviewed" if reviewed == 0 else "reviewed"
     return {
         "accepted_edges": accepted,
         "primary_docs": primary,
         "reviewed": reviewed,
         "official_page": official_page,
-        "status": "empty" if reviewed == 0 and accepted == 0 and primary == 0 else "present",
+        "status": "empty"
+        if reviewed == 0 and accepted == 0 and primary == 0
+        else "present",
         "relation": "coverage-fact-only",
     }
 
@@ -507,9 +575,7 @@ def _public_archive_receipts(row: Mapping[str, Any] | None) -> list[dict[str, An
     receipts = []
     for item in _archive_receipts(row or {}):
         public = {
-            field: item[field]
-            for field in _ARCHIVE_RECEIPT_FIELDS
-            if field in item
+            field: item[field] for field in _ARCHIVE_RECEIPT_FIELDS if field in item
         }
         if public.get("anomaly_state") == "warming_up":
             public.pop("anomaly_score", None)
@@ -633,7 +699,17 @@ def _missing_surface(surface_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
     return surface, evidence
 
 
-def _unmatched_surface(surface_id: str, reason: str, digest: str | None, timestamp: str | None) -> tuple[dict[str, Any], dict[str, Any]]:
+def _unmatched_surface(
+    surface_id: str, reason: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Return an abstention without attaching unrelated edition receipts.
+
+    A live reading that does not join this event is useful coverage state, but
+    its changing clock and whole-file digest are not evidence about the event.
+    Keeping those values out of the event document prevents an unrelated
+    collector refresh from manufacturing a new immutable event assessment.
+    """
+
     evidence = _evidence_row(
         kind="surface-unmatched",
         surface_id=surface_id,
@@ -641,8 +717,8 @@ def _unmatched_surface(surface_id: str, reason: str, digest: str | None, timesta
         headline=f"{surface_id}: no join",
         claim=reason,
         reading_url=READING_URLS[surface_id],
-        source_timestamp=timestamp,
-        input_sha256=digest,
+        source_timestamp=None,
+        input_sha256=None,
         interpretation_limit="A live reading without an exact URL or declared-topic join is not attached.",
     )
     surface = _surface_row(
@@ -651,9 +727,9 @@ def _unmatched_surface(surface_id: str, reason: str, digest: str | None, timesta
         match_kind=None,
         headline=f"{surface_id}: no join",
         finding=reason,
-        source_timestamp=timestamp,
+        source_timestamp=None,
         reading_url=READING_URLS[surface_id],
-        input_sha256=digest,
+        input_sha256=None,
         interpretation="The reading exists, but this event does not match it. The layer abstains.",
     )
     return surface, evidence
@@ -774,7 +850,9 @@ def _metric_phrase(row: Mapping[str, Any]) -> str:
         number = f"{100 * value:.1f}%".replace(".0%", "%")
     else:
         number = str(value)
-    denominator = metric.get("denominator") if type(metric.get("denominator")) is dict else {}
+    denominator = (
+        metric.get("denominator") if type(metric.get("denominator")) is dict else {}
+    )
     denom_label = denominator.get("label")
     denom_value = denominator.get("value")
     if denom_label and denom_value is not None:
@@ -802,7 +880,7 @@ def build_v2_blocks(
         for family in LIVE_FAMILY_IDS:
             payload = live_families.get(family)
             families[family] = payload if type(payload) is dict else None
-    coverage = corroboration_coverage(corroboration)
+    coverage = corroboration_coverage(corroboration, event_id=event["event_id"])
     peers = (
         dict(window_peers)
         if type(window_peers) is dict
@@ -839,7 +917,11 @@ def build_v2_blocks(
         first_item = items.get(ref["item_id"])
         if first_item is not None:
             break
-    feed_sha = first_item["feed_sha256"] if first_item and first_item.get("feed_sha256") else None
+    feed_sha = (
+        first_item["feed_sha256"]
+        if first_item and first_item.get("feed_sha256")
+        else None
+    )
     source_claim = (
         f"{publisher} published “{event['headline']}” at {event['published_at']}."
     )
@@ -851,7 +933,9 @@ def build_v2_blocks(
         claim=source_claim,
         reading_url=event["url"],
         source_timestamp=event["published_at"],
-        input_sha256=feed_sha if type(feed_sha) is str and _SHA256_RE.fullmatch(feed_sha) else None,
+        input_sha256=feed_sha
+        if type(feed_sha) is str and _SHA256_RE.fullmatch(feed_sha)
+        else None,
         interpretation_limit=(
             "Feed title, canonical link, publication time, and a bounded excerpt only."
         ),
@@ -882,10 +966,17 @@ def build_v2_blocks(
             ),
         )
         evidence.append(peer_evidence)
-        eid[f"interconnection:{row['peer_id']}:{row['record_id']}"] = peer_evidence["evidence_id"]
+        eid[f"interconnection:{row['peer_id']}:{row['record_id']}"] = peer_evidence[
+            "evidence_id"
+        ]
 
+    has_corroboration = coverage["status"] != "empty"
     corr_timestamp = None
-    if type(corroboration) is dict and type(corroboration.get("generated_at")) is str:
+    if (
+        has_corroboration
+        and type(corroboration) is dict
+        and type(corroboration.get("generated_at")) is str
+    ):
         corr_timestamp = corroboration["generated_at"]
     corr_claim = (
         f"Official-page corroboration coverage is {coverage['official_page']}: "
@@ -901,8 +992,10 @@ def build_v2_blocks(
         claim=corr_claim,
         reading_url=READING_URLS.get("corroboration")
         or "https://palimpsest.info/readings/corroboration-latest.json",
-        source_timestamp=corr_timestamp if corr_timestamp and _TIMESTAMP_RE.fullmatch(corr_timestamp) else None,
-        input_sha256=_sha256_bytes(corroboration) if type(corroboration) is dict else None,
+        source_timestamp=corr_timestamp
+        if corr_timestamp and _TIMESTAMP_RE.fullmatch(corr_timestamp)
+        else None,
+        input_sha256=_sha256_bytes(coverage) if has_corroboration else None,
         interpretation_limit=(
             "Coverage fact only. Empty review is not a deletion or official-movement finding."
         ),
@@ -948,8 +1041,6 @@ def build_v2_blocks(
         surface, row = _unmatched_surface(
             "official-first-seen",
             "Official-page movement is not attached outside the China remit.",
-            None,
-            None,
         )
         surface["status"] = "not-applicable"
         row["status"] = "not-applicable"
@@ -966,7 +1057,9 @@ def build_v2_blocks(
         evidence.append(row)
         eid["official-first-seen"] = row["evidence_id"]
         official_layer = _layer(
-            "none-reviewed" if coverage["official_page"] == "none-reviewed" else "abstained",
+            "none-reviewed"
+            if coverage["official_page"] == "none-reviewed"
+            else "abstained",
             _sentence(row["claim"], row["evidence_id"]),
             _sentence(
                 "Official-page first-seen, last-alive, and hash values are withheld.",
@@ -975,14 +1068,9 @@ def build_v2_blocks(
             _sentence(corr_claim, eid["corroboration"]),
         )
     elif not official_url_list:
-        digest = _sha256_bytes(families["official-first-seen"])
-        timestamp = families["official-first-seen"].get("generated_at")
-        timestamp = timestamp if type(timestamp) is str else None
         surface, row = _unmatched_surface(
             "official-first-seen",
             "No official .cn, Xinhua, People's Daily, MFA, or NBS URL is on this event.",
-            digest,
-            timestamp,
         )
         surfaces.append(surface)
         evidence.append(row)
@@ -996,7 +1084,7 @@ def build_v2_blocks(
         official_url = official_url_list[0]
         official_state = _official_page_state(payload, official_url)
         official_match, official_obs = _select_observation(payload, event=event)
-        digest = _sha256_bytes(payload)
+        digest = _sha256_bytes(official_state or official_obs or {})
         timestamp = (
             (official_state or {}).get("first_seen")
             or _observation_time(official_obs or {})
@@ -1007,14 +1095,14 @@ def build_v2_blocks(
             surface, row = _unmatched_surface(
                 "official-first-seen",
                 "The official-first-seen reading does not contain this official URL.",
-                digest,
-                timestamp,
             )
             surfaces.append(surface)
             evidence.append(row)
             eid["official-first-seen"] = row["evidence_id"]
             official_layer = _layer(
-                "none-reviewed" if coverage["official_page"] == "none-reviewed" else "abstained",
+                "none-reviewed"
+                if coverage["official_page"] == "none-reviewed"
+                else "abstained",
                 _sentence(row["claim"], row["evidence_id"]),
                 _sentence(corr_claim, eid["corroboration"]),
             )
@@ -1079,15 +1167,15 @@ def build_v2_blocks(
         surface, row = _unmatched_surface(
             "public-deletion-ledgers",
             "Deletion-ledger context is not attached outside the China remit.",
-            None,
-            None,
         )
         surface["status"] = "not-applicable"
         row["status"] = "not-applicable"
         surfaces.append(surface)
         evidence.append(row)
         eid["public-deletion-ledgers"] = row["evidence_id"]
-        ledger_layer = _layer("not-applicable", _sentence(row["claim"], row["evidence_id"]))
+        ledger_layer = _layer(
+            "not-applicable", _sentence(row["claim"], row["evidence_id"])
+        )
         ledger_obs = None
         ledger_match = "none"
     elif families["public-deletion-ledgers"] is None:
@@ -1108,20 +1196,20 @@ def build_v2_blocks(
     else:
         payload = families["public-deletion-ledgers"]
         ledger_match, ledger_obs = _select_observation(payload, event=event)
-        digest = _sha256_bytes(payload)
+        digest = _sha256_bytes(ledger_obs) if ledger_obs is not None else None
         timestamp = _observation_time(ledger_obs or {}) or payload.get("generated_at")
         timestamp = timestamp if type(timestamp) is str else None
         if ledger_obs is None:
             surface, row = _unmatched_surface(
                 "public-deletion-ledgers",
                 "No public-deletion-ledger item matches this URL or a declared topic surface.",
-                digest,
-                timestamp,
             )
             surfaces.append(surface)
             evidence.append(row)
             eid["public-deletion-ledgers"] = row["evidence_id"]
-            ledger_layer = _layer("abstained", _sentence(row["claim"], row["evidence_id"]))
+            ledger_layer = _layer(
+                "abstained", _sentence(row["claim"], row["evidence_id"])
+            )
         else:
             kind = _ledger_kind(ledger_obs)
             match_label = "URL" if ledger_match == "url" else "declared topic surface"
@@ -1175,8 +1263,6 @@ def build_v2_blocks(
         surface, row = _unmatched_surface(
             "news-wire-live",
             "News-wire-live context is not attached outside the China remit.",
-            None,
-            None,
         )
         surface["status"] = "not-applicable"
         row["status"] = "not-applicable"
@@ -1199,15 +1285,13 @@ def build_v2_blocks(
         wire_match, wire_obs = _select_observation(
             payload, event=event, prefer_event_id=True
         )
-        digest = _sha256_bytes(payload)
+        digest = _sha256_bytes(wire_obs) if wire_obs is not None else None
         wire_time = _observation_time(wire_obs or {}) or payload.get("generated_at")
         wire_time = wire_time if type(wire_time) is str else None
         if wire_obs is None:
             surface, row = _unmatched_surface(
                 "news-wire-live",
                 "The news-wire-live reading does not contain this event id or publisher URL.",
-                digest,
-                wire_time,
             )
             surfaces.append(surface)
             evidence.append(row)
@@ -1248,8 +1332,6 @@ def build_v2_blocks(
         surface, row = _unmatched_surface(
             "undertext",
             "Undertext context is not attached outside the China remit.",
-            None,
-            None,
         )
         surface["status"] = "not-applicable"
         row["status"] = "not-applicable"
@@ -1264,15 +1346,13 @@ def build_v2_blocks(
     else:
         payload = families["undertext"]
         under_match, under_obs = _select_observation(payload, event=event)
-        digest = _sha256_bytes(payload)
+        digest = _sha256_bytes(under_obs) if under_obs is not None else None
         timestamp = _observation_time(under_obs or {}) or payload.get("generated_at")
         timestamp = timestamp if type(timestamp) is str else None
         if under_obs is None:
             surface, row = _unmatched_surface(
                 "undertext",
                 "The undertext reading does not match this URL or a declared topic surface.",
-                digest,
-                timestamp,
             )
             surfaces.append(surface)
             evidence.append(row)
@@ -1315,15 +1395,15 @@ def build_v2_blocks(
         surface, row = _unmatched_surface(
             ARCHIVE_SURFACE_ID,
             "Archive-derived context is not attached outside the China remit.",
-            None,
-            None,
         )
         surface["status"] = "not-applicable"
         row["status"] = "not-applicable"
         surfaces.append(surface)
         evidence.append(row)
         eid[ARCHIVE_SURFACE_ID] = row["evidence_id"]
-        archive_layer = _layer("not-applicable", _sentence(row["claim"], row["evidence_id"]))
+        archive_layer = _layer(
+            "not-applicable", _sentence(row["claim"], row["evidence_id"])
+        )
         archive_receipts: list[dict[str, Any]] = []
     elif archive_context is None:
         surface, row = _missing_surface(ARCHIVE_SURFACE_ID)
@@ -1340,14 +1420,9 @@ def build_v2_blocks(
         )
         archive_receipts = []
     elif archive_row is None or not _archive_receipts(archive_row):
-        digest = _sha256_bytes(archive_context)
-        timestamp = archive_context.get("generated_at")
-        timestamp = timestamp if type(timestamp) is str else None
         surface, row = _unmatched_surface(
             ARCHIVE_SURFACE_ID,
             "No archive-news-context feature row matches this event id, URL, or declared topic surface.",
-            digest,
-            timestamp,
         )
         surfaces.append(surface)
         evidence.append(row)
@@ -1356,8 +1431,10 @@ def build_v2_blocks(
         archive_receipts = []
     else:
         archive_receipts = _archive_receipts(archive_row)
-        digest = _sha256_bytes(archive_context)
-        timestamp = archive_row.get("published_at") or archive_context.get("generated_at")
+        digest = _sha256_bytes(archive_row)
+        timestamp = archive_row.get("published_at") or archive_context.get(
+            "generated_at"
+        )
         timestamp = timestamp if type(timestamp) is str else None
         receipt = archive_receipts[0]
         host = receipt.get("host") or "the matched host"
@@ -1416,9 +1493,7 @@ def build_v2_blocks(
         archive_layer = _layer("present", *sentences)
 
     declared_pipe = [
-        row
-        for row in collector_context
-        if row["signal_id"] in PIPE_SIGNAL_IDS
+        row for row in collector_context if row["signal_id"] in PIPE_SIGNAL_IDS
     ]
     if not declared_pipe:
         pipe_layer = _layer(
@@ -1682,9 +1757,7 @@ def build_v2_blocks(
         "archive_context": archive_layer,
     }
     sentence_nodes = [
-        sentence
-        for layer in brief.values()
-        for sentence in layer["sentences"]
+        sentence for layer in brief.values() for sentence in layer["sentences"]
     ]
     sentence_count = len(sentence_nodes)
     cited_count = sum(bool(sentence["citation_ids"]) for sentence in sentence_nodes)
@@ -1759,17 +1832,13 @@ def build_v2_blocks(
         "human_interviews": "none",
         "freeform_model_generation": "none",
     }
-    extra_clocks: list[str] = []
-    for family, payload in families.items():
-        if type(payload) is dict and type(payload.get("generated_at")) is str:
-            extra_clocks.append(payload["generated_at"])
-    if type(archive_context) is dict and type(archive_context.get("generated_at")) is str:
-        extra_clocks.append(archive_context["generated_at"])
-    if type(corroboration) is dict and type(corroboration.get("generated_at")) is str:
-        extra_clocks.append(corroboration["generated_at"])
-    for payload in (peer_warehouses or {}).values():
-        if type(payload) is dict and type(payload.get("generated_at")) is str:
-            extra_clocks.append(payload["generated_at"])
+    extra_clocks = [
+        row["source_timestamp"]
+        for row in evidence
+        if row["status"] == "live"
+        and type(row.get("source_timestamp")) is str
+        and _TIMESTAMP_RE.fullmatch(row["source_timestamp"])
+    ]
 
     return {
         "brief": brief,
@@ -1816,7 +1885,13 @@ def validate_v2_blocks(
 ) -> None:
     """Fail closed on citation gaps, causal language, or invented publication."""
 
-    from core.event_analysis import EventAnalysisError, _exact, _https_url, _text, _timestamp
+    from core.event_analysis import (
+        EventAnalysisError,
+        _exact,
+        _https_url,
+        _text,
+        _timestamp,
+    )
 
     brief = _exact(analysis["brief"], _BRIEF_FIELDS, "analysis.brief")
     evidence = analysis["evidence"]
@@ -1825,8 +1900,13 @@ def validate_v2_blocks(
     evidence_ids: set[str] = set()
     for index, row in enumerate(evidence):
         item = _exact(row, _EVIDENCE_FIELDS, f"analysis.evidence[{index}]")
-        if type(item["evidence_id"]) is not str or _EVIDENCE_RE.fullmatch(item["evidence_id"]) is None:
-            raise EventAnalysisError(f"analysis.evidence[{index}].evidence_id is invalid")
+        if (
+            type(item["evidence_id"]) is not str
+            or _EVIDENCE_RE.fullmatch(item["evidence_id"]) is None
+        ):
+            raise EventAnalysisError(
+                f"analysis.evidence[{index}].evidence_id is invalid"
+            )
         if item["evidence_id"] in evidence_ids:
             raise EventAnalysisError("analysis.evidence contains duplicate ids")
         evidence_ids.add(item["evidence_id"])
@@ -1848,12 +1928,16 @@ def validate_v2_blocks(
         if item["reading_url"] is not None:
             _https_url(item["reading_url"], f"analysis.evidence[{index}].reading_url")
         if item["source_timestamp"] is not None:
-            _timestamp(item["source_timestamp"], f"analysis.evidence[{index}].source_timestamp")
+            _timestamp(
+                item["source_timestamp"], f"analysis.evidence[{index}].source_timestamp"
+            )
         if item["input_sha256"] is not None and (
             type(item["input_sha256"]) is not str
             or _SHA256_RE.fullmatch(item["input_sha256"]) is None
         ):
-            raise EventAnalysisError(f"analysis.evidence[{index}].input_sha256 is invalid")
+            raise EventAnalysisError(
+                f"analysis.evidence[{index}].input_sha256 is invalid"
+            )
 
     def _validate_cited(record: Mapping[str, Any], path: str) -> None:
         _exact(record, _RECORD_FIELDS, path)
@@ -1876,7 +1960,9 @@ def validate_v2_blocks(
         if type(sentences) is not list or not sentences:
             raise EventAnalysisError(f"analysis.brief.{name}.sentences is invalid")
         for index, sentence in enumerate(sentences):
-            _exact(sentence, _SENTENCE_FIELDS, f"analysis.brief.{name}.sentences[{index}]")
+            _exact(
+                sentence, _SENTENCE_FIELDS, f"analysis.brief.{name}.sentences[{index}]"
+            )
             _text(sentence["text"], f"analysis.brief.{name}.sentences[{index}].text")
             citations = sentence["citation_ids"]
             if (
@@ -1901,20 +1987,32 @@ def validate_v2_blocks(
             raise EventAnalysisError("analysis.surface_context is not unique")
         seen_surfaces.add(item["surface_id"])
         if item["status"] not in _SURFACE_STATUSES:
-            raise EventAnalysisError(f"analysis.surface_context[{index}].status is invalid")
+            raise EventAnalysisError(
+                f"analysis.surface_context[{index}].status is invalid"
+            )
         if item["match_kind"] not in {None, "url", "topic", "event-id"}:
-            raise EventAnalysisError(f"analysis.surface_context[{index}].match_kind is invalid")
-        _text(item["headline"], f"analysis.surface_context[{index}].headline", maximum=300)
-        _text(item["finding"], f"analysis.surface_context[{index}].finding", maximum=2_000)
+            raise EventAnalysisError(
+                f"analysis.surface_context[{index}].match_kind is invalid"
+            )
+        _text(
+            item["headline"], f"analysis.surface_context[{index}].headline", maximum=300
+        )
+        _text(
+            item["finding"], f"analysis.surface_context[{index}].finding", maximum=2_000
+        )
         _text(
             item["interpretation"],
             f"analysis.surface_context[{index}].interpretation",
             maximum=1_000,
         )
         if item["relation"] != "topic-surface-only":
-            raise EventAnalysisError("analysis.surface_context relation may not imply verification")
+            raise EventAnalysisError(
+                "analysis.surface_context relation may not imply verification"
+            )
         if item["reading_url"] is not None:
-            _https_url(item["reading_url"], f"analysis.surface_context[{index}].reading_url")
+            _https_url(
+                item["reading_url"], f"analysis.surface_context[{index}].reading_url"
+            )
         if item["source_timestamp"] is not None:
             _timestamp(
                 item["source_timestamp"],
@@ -1924,7 +2022,9 @@ def validate_v2_blocks(
             type(item["input_sha256"]) is not str
             or _SHA256_RE.fullmatch(item["input_sha256"]) is None
         ):
-            raise EventAnalysisError(f"analysis.surface_context[{index}].input_sha256 is invalid")
+            raise EventAnalysisError(
+                f"analysis.surface_context[{index}].input_sha256 is invalid"
+            )
 
     for field in ("counterreadings", "unknowns"):
         records = analysis[field]
@@ -1947,19 +2047,34 @@ def validate_v2_blocks(
             or not citations
             or any(value not in evidence_ids for value in citations)
         ):
-            raise EventAnalysisError(f"analysis.key_numbers[{index}] citations are invalid")
+            raise EventAnalysisError(
+                f"analysis.key_numbers[{index}] citations are invalid"
+            )
 
-    peers = _exact(analysis["window_peers"], _WINDOW_PEER_FIELDS, "analysis.window_peers")
-    if type(peers["same_window_peer_count"]) is not int or peers["same_window_peer_count"] < 0:
-        raise EventAnalysisError("analysis.window_peers.same_window_peer_count is invalid")
+    peers = _exact(
+        analysis["window_peers"], _WINDOW_PEER_FIELDS, "analysis.window_peers"
+    )
+    if (
+        type(peers["same_window_peer_count"]) is not int
+        or peers["same_window_peer_count"] < 0
+    ):
+        raise EventAnalysisError(
+            "analysis.window_peers.same_window_peer_count is invalid"
+        )
     if peers["relation"] != "topic-surface-only":
-        raise EventAnalysisError("analysis.window_peers relation may not imply verification")
+        raise EventAnalysisError(
+            "analysis.window_peers relation may not imply verification"
+        )
     for field in ("shared_topics", "peer_source_ids", "peer_independence_groups"):
         values = peers[field]
-        if type(values) is not list or any(type(item) is not str or not item for item in values):
+        if type(values) is not list or any(
+            type(item) is not str or not item for item in values
+        ):
             raise EventAnalysisError(f"analysis.window_peers.{field} is invalid")
 
-    coverage = _exact(analysis["corroboration"], _CORROBORATION_FIELDS, "analysis.corroboration")
+    coverage = _exact(
+        analysis["corroboration"], _CORROBORATION_FIELDS, "analysis.corroboration"
+    )
     for field in ("accepted_edges", "primary_docs", "reviewed"):
         if type(coverage[field]) is not int or coverage[field] < 0:
             raise EventAnalysisError(f"analysis.corroboration.{field} is invalid")
@@ -1970,7 +2085,9 @@ def validate_v2_blocks(
     if coverage["relation"] != "coverage-fact-only":
         raise EventAnalysisError("analysis.corroboration relation is invalid")
     if coverage["reviewed"] == 0 and coverage["official_page"] != "none-reviewed":
-        raise EventAnalysisError("empty corroboration must emit official_page none-reviewed")
+        raise EventAnalysisError(
+            "empty corroboration must emit official_page none-reviewed"
+        )
 
     archive_block = _exact(
         analysis["archive_news_context"],
@@ -1984,23 +2101,43 @@ def validate_v2_blocks(
     if archive_block["event_id"] != analysis["event_id"]:
         raise EventAnalysisError("analysis.archive_news_context.event_id drifted")
     if archive_block["relation"] != "topic-surface-only":
-        raise EventAnalysisError("analysis.archive_news_context relation may not imply verification")
-    if archive_block["refresh_status"] not in {"unknown", "ok", "revision_pin_mismatch"}:
-        raise EventAnalysisError("analysis.archive_news_context.refresh_status is invalid")
+        raise EventAnalysisError(
+            "analysis.archive_news_context relation may not imply verification"
+        )
+    if archive_block["refresh_status"] not in {
+        "unknown",
+        "ok",
+        "revision_pin_mismatch",
+    }:
+        raise EventAnalysisError(
+            "analysis.archive_news_context.refresh_status is invalid"
+        )
     if type(archive_block["anomaly_score_published"]) is not bool:
-        raise EventAnalysisError("analysis.archive_news_context.anomaly_score_published is invalid")
-    if archive_block["anomaly_state"] == "warming_up" and archive_block["anomaly_score_published"]:
-        raise EventAnalysisError("warming_up archive context may not publish an anomaly score")
+        raise EventAnalysisError(
+            "analysis.archive_news_context.anomaly_score_published is invalid"
+        )
+    if (
+        archive_block["anomaly_state"] == "warming_up"
+        and archive_block["anomaly_score_published"]
+    ):
+        raise EventAnalysisError(
+            "warming_up archive context may not publish an anomaly score"
+        )
     try:
         event_interconnection.validate_interconnection(
             analysis["interconnection"], event=event
         )
     except event_interconnection.InterconnectionError as exc:
         raise EventAnalysisError(str(exc)) from exc
-    if type(archive_block["receipts"]) is not list or len(archive_block["receipts"]) > 16:
+    if (
+        type(archive_block["receipts"]) is not list
+        or len(archive_block["receipts"]) > 16
+    ):
         raise EventAnalysisError("analysis.archive_news_context.receipts is invalid")
 
-    links = _exact(analysis["declared_links"], _DECLARED_FIELDS, "analysis.declared_links")
+    links = _exact(
+        analysis["declared_links"], _DECLARED_FIELDS, "analysis.declared_links"
+    )
     if links["relation"] != "topic-surface-only":
         raise EventAnalysisError("analysis.declared_links relation is invalid")
     for field in ("scan_signal_ids", "economic_signal_ids", "live_family_ids"):
@@ -2008,15 +2145,25 @@ def validate_v2_blocks(
         if type(values) is not list or any(type(item) is not str for item in values):
             raise EventAnalysisError(f"analysis.declared_links.{field} is invalid")
         if field != "live_family_ids" and values != sorted(set(values)):
-            raise EventAnalysisError(f"analysis.declared_links.{field} is not unique and sorted")
+            raise EventAnalysisError(
+                f"analysis.declared_links.{field} is not unique and sorted"
+            )
         if field == "live_family_ids" and values != list(dict.fromkeys(values)):
-            raise EventAnalysisError("analysis.declared_links.live_family_ids is not unique")
+            raise EventAnalysisError(
+                "analysis.declared_links.live_family_ids is not unique"
+            )
     if event is not None:
         if links["scan_signal_ids"] != list(event["declared_links"]["scan_signal_ids"]):
             raise EventAnalysisError("analysis.declared_links.scan_signal_ids drifted")
-        if links["economic_signal_ids"] != list(event["declared_links"]["economic_signal_ids"]):
-            raise EventAnalysisError("analysis.declared_links.economic_signal_ids drifted")
-        expected_families = list(LIVE_FAMILY_IDS) if analysis["scope_status"] == "in-scope" else []
+        if links["economic_signal_ids"] != list(
+            event["declared_links"]["economic_signal_ids"]
+        ):
+            raise EventAnalysisError(
+                "analysis.declared_links.economic_signal_ids drifted"
+            )
+        expected_families = (
+            list(LIVE_FAMILY_IDS) if analysis["scope_status"] == "in-scope" else []
+        )
         if links["live_family_ids"] != expected_families:
             raise EventAnalysisError("analysis.declared_links.live_family_ids drifted")
 
@@ -2030,7 +2177,9 @@ def validate_v2_blocks(
     if receipt["citation_coverage"] != 1.0 or cited_count != sentence_count:
         raise EventAnalysisError("analysis citation coverage is not complete")
     if receipt["publishable"] is not True or receipt["status"] != "passed":
-        raise EventAnalysisError("analysis publication receipt does not match its gates")
+        raise EventAnalysisError(
+            "analysis publication receipt does not match its gates"
+        )
     if type(receipt["availability_warnings"]) is not list:
         raise EventAnalysisError("analysis availability warnings are invalid")
     gates = receipt["gates"]
@@ -2038,7 +2187,9 @@ def validate_v2_blocks(
         raise EventAnalysisError("analysis publication gates are missing")
     gate_ids: set[str] = set()
     for index, gate in enumerate(gates):
-        item = _exact(gate, _GATE_FIELDS, f"analysis.publication_receipt.gates[{index}]")
+        item = _exact(
+            gate, _GATE_FIELDS, f"analysis.publication_receipt.gates[{index}]"
+        )
         _text(item["gate_id"], f"gate[{index}].gate_id", maximum=80)
         if item["gate_id"] in gate_ids or item["passed"] is not True:
             raise EventAnalysisError("analysis gate is invalid or failed")
@@ -2056,7 +2207,9 @@ def validate_v2_blocks(
     if not required_gates.issubset(gate_ids):
         raise EventAnalysisError("analysis is missing a required publication gate")
 
-    authorship = _exact(analysis["authorship"], _AUTHORSHIP_FIELDS, "analysis.authorship")
+    authorship = _exact(
+        analysis["authorship"], _AUTHORSHIP_FIELDS, "analysis.authorship"
+    )
     if authorship != {
         "byline": "Palimpsest China Desk",
         "mode": PUBLICATION_MODE,
@@ -2066,7 +2219,7 @@ def validate_v2_blocks(
         raise EventAnalysisError("analysis authorship boundary changed")
     if analysis["disclosure"] != DISCLOSURE:
         raise EventAnalysisError("analysis disclosure changed")
-    if analysis["method"] != METHOD:
+    if analysis["method"] not in {METHOD, METHOD_LEGACY_CALENDAR_WINDOW}:
         raise EventAnalysisError("analysis.method does not match the v2 method")
     hits = causal_hits(
         {
@@ -2079,7 +2232,9 @@ def validate_v2_blocks(
         }
     )
     if hits:
-        raise EventAnalysisError("analysis emits forbidden causal language: " + ", ".join(hits))
+        raise EventAnalysisError(
+            "analysis emits forbidden causal language: " + ", ".join(hits)
+        )
 
 
 __all__ = [

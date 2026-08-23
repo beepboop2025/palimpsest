@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
 import pytest
 
 from core import event_analysis, event_brief
+from scripts import build_newsroom
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -25,6 +27,8 @@ def _protocol_validator(schema_path: Path):
     registry = referencing.Registry().with_resources(resources)
     schema = json.loads(schema_path.read_text())
     return jsonschema.Draft202012Validator(schema, registry=registry)
+
+
 EVENT_ID = "event-" + "aa" * 12
 ITEM_ID = "item-" + "cc" * 12
 OFFICIAL_URL = "https://www.stats.gov.cn/sj/zxfb/202608/t20260820_1.html"
@@ -51,7 +55,10 @@ def _story(signal_id: str, statement: str) -> dict:
             "input": {"sha256": "cd" * 32},
             "source_timestamp": "2026-08-20T01:55:29Z",
         },
-        "method": {"summary": "Aggregate collector reading used as topical context only.", "version": 1},
+        "method": {
+            "summary": "Aggregate collector reading used as topical context only.",
+            "version": 1,
+        },
     }
 
 
@@ -288,17 +295,30 @@ def test_thick_brief_when_all_surfaces_present() -> None:
 
     event_analysis.validate_event_analysis(analysis, event=_event())
     assert analysis["schema_version"] == "palimpsest-event-analysis.v2"
-    assert analysis["url"] == f"https://palimpsest.info/news/wire/{EVENT_ID}/analysis.json"
-    assert analysis["declared_links"]["live_family_ids"] == list(event_brief.LIVE_FAMILY_IDS)
+    assert (
+        analysis["url"] == f"https://palimpsest.info/news/wire/{EVENT_ID}/analysis.json"
+    )
+    assert analysis["declared_links"]["live_family_ids"] == list(
+        event_brief.LIVE_FAMILY_IDS
+    )
     assert analysis["brief"]["lead"]["status"] == "present"
     assert analysis["brief"]["timeline"]["status"] == "present"
     assert analysis["brief"]["official_page"]["status"] == "present"
     assert analysis["brief"]["deletion_ledger"]["status"] == "present"
     assert analysis["brief"]["pipe_context"]["status"] == "present"
     assert analysis["brief"]["archive_context"]["status"] == "present"
-    assert "China Digital Times published" in analysis["brief"]["lead"]["sentences"][0]["text"]
-    assert "peer observation" in analysis["brief"]["deletion_ledger"]["sentences"][0]["text"]
-    assert "not a Palimpsest-verified deletion" in analysis["brief"]["deletion_ledger"]["sentences"][0]["text"]
+    assert (
+        "China Digital Times published"
+        in analysis["brief"]["lead"]["sentences"][0]["text"]
+    )
+    assert (
+        "peer observation"
+        in analysis["brief"]["deletion_ledger"]["sentences"][0]["text"]
+    )
+    assert (
+        "not a Palimpsest-verified deletion"
+        in analysis["brief"]["deletion_ledger"]["sentences"][0]["text"]
+    )
     assert "does not state why the page changed" in " ".join(
         item["text"] for item in analysis["brief"]["official_page"]["sentences"]
     )
@@ -354,6 +374,123 @@ def test_layers_abstain_when_lake_ledger_and_official_are_missing() -> None:
     assert "withheld" in blob or "missing" in blob
     assert "first_seen=" not in blob
     assert analysis["disposition"] == "collector-context"
+
+
+def test_unmatched_refresh_is_not_an_event_revision() -> None:
+    first_undertext = _undertext_reading()
+    first_undertext["observations"] = [
+        {
+            "title": "Unrelated archive observation",
+            "url": "https://example.net/unrelated",
+            "source": "undertext:fusion",
+            "topics": ["unrelated"],
+            "detected_at": "2026-08-20T05:00:00Z",
+        }
+    ]
+    second_undertext = copy.deepcopy(first_undertext)
+    second_undertext["generated_at"] = "2026-08-21T05:00:00Z"
+    second_undertext["observations"].append(
+        {
+            "title": "Another unrelated observation",
+            "url": "https://example.org/elsewhere",
+            "source": "undertext:fusion",
+            "topics": ["unrelated"],
+            "detected_at": "2026-08-21T05:00:00Z",
+        }
+    )
+
+    first = _build(live_families={"undertext": first_undertext})
+    second = _build(live_families={"undertext": second_undertext})
+
+    assert first == second
+    undertext = next(
+        row for row in first["surface_context"] if row["surface_id"] == "undertext"
+    )
+    assert undertext["status"] == "unmatched"
+    assert undertext["source_timestamp"] is None
+    assert undertext["input_sha256"] is None
+
+
+def test_topic_only_collector_refresh_is_edition_only() -> None:
+    event = _event()
+    first_feed = _feed()
+    second_feed = copy.deepcopy(first_feed)
+    second_feed["stories"][0]["claims"][0]["statement"] += " New edition."
+    second_feed["stories"][0]["claim_fingerprint"] = "sha256:" + "99" * 32
+    first = event_analysis.build_event_analysis(
+        event, wire=_wire(event), feed=first_feed
+    )
+    second = event_analysis.build_event_analysis(
+        event, wire=_wire(event), feed=second_feed
+    )
+
+    assert first["analysis_id"] != second["analysis_id"]
+    assert event_analysis.semantically_equivalent(first, second)
+
+
+def test_lazy_migration_reuses_the_prior_exact_byte_revision(tmp_path: Path) -> None:
+    event = _event()
+    first_feed = _feed()
+    second_feed = copy.deepcopy(first_feed)
+    second_feed["stories"][0]["claims"][0]["statement"] += " New edition."
+    second_feed["stories"][0]["claim_fingerprint"] = "sha256:" + "99" * 32
+    previous = event_analysis.build_event_analysis(
+        event, wire=_wire(event), feed=first_feed
+    )
+    candidate = event_analysis.build_event_analysis(
+        event, wire=_wire(event), feed=second_feed
+    )
+    base = tmp_path / "news" / "wire" / event["event_id"]
+    revision = base / "analysis" / "revisions" / f"{previous['analysis_id']}.json"
+    revision.parent.mkdir(parents=True)
+    raw = build_newsroom._pretty_json(previous)
+    revision.write_bytes(raw)
+    (base / "analysis.json").write_bytes(raw)
+
+    retained = build_newsroom._retain_semantically_unchanged_event_analysis(
+        event, candidate, archive_root=tmp_path
+    )
+
+    assert retained == previous
+
+
+def test_corroboration_coverage_is_scoped_to_one_event() -> None:
+    other_event = "event-" + "ef" * 12
+    candidate_id = "candidate-" + "12" * 12
+    document = {
+        "events": [
+            {
+                "event_id": EVENT_ID,
+                "candidate_ids": [],
+                "accepted_candidate_ids": [],
+                "accepted_document_ids": [],
+            },
+            {
+                "event_id": other_event,
+                "candidate_ids": [candidate_id],
+                "accepted_candidate_ids": [candidate_id],
+                "accepted_document_ids": ["document-elsewhere"],
+            },
+        ],
+        "candidates": [
+            {
+                "candidate_id": candidate_id,
+                "review": {"status": "accepted"},
+            }
+        ],
+        "n_accepted_edges": 1,
+        "n_events_with_primary_documents": 1,
+        "n_reviewed_edges": 1,
+    }
+
+    assert event_brief.corroboration_coverage(document, event_id=EVENT_ID) == {
+        "accepted_edges": 0,
+        "primary_docs": 0,
+        "reviewed": 0,
+        "official_page": "none-reviewed",
+        "status": "empty",
+        "relation": "coverage-fact-only",
+    }
 
 
 def test_emitted_text_has_no_causal_or_motive_verbs() -> None:
@@ -423,7 +560,9 @@ def test_generated_v2_conforms_to_public_schema() -> None:
         live_families=_all_families(),
         archive_context=_archive_context(),
     )
-    _protocol_validator(ROOT / "protocol/event-analysis-v2.schema.json").validate(analysis)
+    _protocol_validator(ROOT / "protocol/event-analysis-v2.schema.json").validate(
+        analysis
+    )
 
 
 def test_no_fake_live_latest_files_were_committed() -> None:
@@ -510,9 +649,7 @@ def test_same_window_peers_are_counts_and_names_only() -> None:
     peer["headline"] = "Peer economy note"
     wire = _wire(event)
     wire["events"].append(peer)
-    analysis = event_analysis.build_event_analysis(
-        event, wire=wire, feed=_feed()
-    )
+    analysis = event_analysis.build_event_analysis(event, wire=wire, feed=_feed())
     peers = analysis["window_peers"]
     assert peers["same_window_peer_count"] == 1
     assert peers["shared_topics"] == ["economy"]
@@ -535,9 +672,7 @@ def test_same_topic_outside_interconnection_window_is_not_a_window_peer() -> Non
     far["published_at"] = "2026-08-18T00:00:00Z"
     wire = _wire(event)
     wire["events"].append(far)
-    analysis = event_analysis.build_event_analysis(
-        event, wire=wire, feed=_feed()
-    )
+    analysis = event_analysis.build_event_analysis(event, wire=wire, feed=_feed())
     peers = analysis["window_peers"]
     assert peers["same_window_peer_count"] == 0
     assert peers["shared_topics"] == []

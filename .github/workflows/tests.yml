@@ -17,15 +17,24 @@ name: Tests
 #
 # No secrets, no network reads: nothing here collects data. The suites are offline.
 
+# Feature heads are tested by the pull_request event. Restricting push runs to
+# main prevents the same commit from consuming two full CI runs while preserving
+# the post-merge and scheduled-refresh contract gate.
 on:
   push:
+    branches:
+      - main
   pull_request:
 
 permissions:
   contents: read
 
 concurrency:
-  group: tests-${{ github.ref }}
+  # A publication-only commit must not cancel a long-running product suite.
+  # Keep both lanes self-cancelling, but isolate contract-only refreshes from
+  # pull-request and ordinary mainline verification.
+  group: >-
+    tests-${{ github.ref }}-${{ github.event_name == 'push' && contains(github.event.head_commit.message, '[skip pytest]') && 'contract-only' || 'full' }}
   cancel-in-progress: true
 
 jobs:
@@ -109,7 +118,8 @@ jobs:
             tests/test_china_site.py::test_json_schema_is_valid_and_validates_the_index \
             tests/test_china_situation.py \
             tests/test_erasure_trail.py \
-            tests/test_event_interconnection.py
+            tests/test_event_interconnection.py \
+            tests/test_mcp_deployment.py
 
       - name: Check the committed deterministic machine-newsroom graph
         run: |

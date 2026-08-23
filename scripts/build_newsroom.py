@@ -129,6 +129,7 @@ CHINA_STREAM_PAGE_SIZE = 40
 CHINA_ANALYSIS_READING = ROOT / "readings" / "china-censorship-analysis-latest.json"
 
 _GENERATED_MANIFEST_PATH = Path("news/generated-manifest.json")
+_WIRE_HISTORY_INTEGRITY_PATH = Path("news/wire-history-integrity.json")
 _ANALYSIS_ROOT = Path("news/analysis")
 _PAGINATION_LAYOUTS = {
     Path("news/wire/page"): b'<body class="ps newsroom-page newsroom-page--archive">',
@@ -141,6 +142,9 @@ _EVENT_REVISION_FILENAME = re.compile(r"eventv-[0-9a-f]{24}\.json")
 _WIRE_EVENT_DIRECTORY = re.compile(r"event-[0-9a-f]{24}")
 _MACHINE_EVIDENCE_FILENAME = re.compile(r"sha256-[0-9a-f]{64}\.json")
 _ANALYSIS_CASE_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+MAX_WIRE_HISTORY_FILES = 100_000
+MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION = 128
+_VERIFIED_WIRE_HISTORY_RECEIPTS: dict[tuple[str, str, str], str] = {}
 _MACHINE_EVIDENCE_CAPSULE_SCHEMA = "palimpsest-machine-evidence-capsule.v1"
 _MACHINE_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
 _MACHINE_PHONE = re.compile(r"(?<!\d)(?:\+?\d[\s().-]*){9,}(?!\d)")
@@ -150,13 +154,28 @@ _MACHINE_SOURCE_DOMAIN = re.compile(
     r"(?<![A-Za-z0-9.-])(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}(?![A-Za-z0-9.-])"
 )
 _MACHINE_CAPSULE_FIELDS = {
-    "schema_version", "capsule_type", "content_address", "original_input",
-    "citations", "privacy",
+    "schema_version",
+    "capsule_type",
+    "content_address",
+    "original_input",
+    "citations",
+    "privacy",
 }
 _MACHINE_CAPSULE_CITATION_FIELDS = {
-    "evidence_id", "title", "role", "source_class", "source_id", "selector",
-    "source_timestamp", "independence_group", "upstream_groups", "value",
-    "denominator", "interpretation_limit", "freshness", "rights",
+    "evidence_id",
+    "title",
+    "role",
+    "source_class",
+    "source_id",
+    "selector",
+    "source_timestamp",
+    "independence_group",
+    "upstream_groups",
+    "value",
+    "denominator",
+    "interpretation_limit",
+    "freshness",
+    "rights",
     "attribution",
 }
 _MACHINE_PROVIDER_LINKS = {
@@ -261,7 +280,9 @@ def _json_script(value: object) -> str:
 
 
 def _pretty_json(value: object) -> bytes:
-    return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode()
+    return (
+        json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
+    ).encode()
 
 
 def _machine_exact_mapping(
@@ -440,11 +461,13 @@ def _machine_attribution_metadata(
             "name": name,
             "source_url": (
                 _machine_https_url(source_url, f"{source_id}.{name}.source_url")
-                if source_url else None
+                if source_url
+                else None
             ),
             "terms_url": (
                 _machine_https_url(terms_url, f"{source_id}.{name}.terms_url")
-                if terms_url else None
+                if terms_url
+                else None
             ),
         }
         providers.append(provider_metadata)
@@ -473,12 +496,11 @@ def _machine_attribution_metadata(
         "name": _machine_safe_public_string(
             license_value["name"], f"{source_id}.license.name"
         ),
-        "url": _machine_https_url(
-            license_value["url"], f"{source_id}.license.url"
-        ),
+        "url": _machine_https_url(license_value["url"], f"{source_id}.license.url"),
     }
     rights = _machine_exact_mapping(
-        resource["rights"], {"redistribution", "reuse", "training"},
+        resource["rights"],
+        {"redistribution", "reuse", "training"},
         f"{source_id}.rights",
     )
     upstream_groups = [
@@ -490,16 +512,13 @@ def _machine_attribution_metadata(
             "redistribution": _machine_safe_public_string(
                 rights["redistribution"], f"{source_id}.redistribution"
             ),
-            "reuse": _machine_safe_public_string(
-                rights["reuse"], f"{source_id}.reuse"
-            ),
+            "reuse": _machine_safe_public_string(rights["reuse"], f"{source_id}.reuse"),
             "training": _machine_safe_public_string(
                 rights["training"], f"{source_id}.training"
             ),
         },
         "attribution": {
-            "attribution_required": rights["redistribution"]
-            == "ATTRIBUTION_REQUIRED",
+            "attribution_required": rights["redistribution"] == "ATTRIBUTION_REQUIRED",
             "providers": providers,
             "upstream_groups": upstream_groups,
             "public_source_url": _machine_https_url(
@@ -512,7 +531,9 @@ def _machine_attribution_metadata(
     }
 
 
-def _machine_read_cited_input(evidence: Mapping[str, Any]) -> tuple[bytes, Mapping[str, Any]]:
+def _machine_read_cited_input(
+    evidence: Mapping[str, Any],
+) -> tuple[bytes, Mapping[str, Any]]:
     artifact_id = evidence.get("artifact_id")
     if (
         not isinstance(artifact_id, str)
@@ -678,7 +699,8 @@ def _validate_machine_evidence_capsule(
     ):
         raise newsroom.NewsroomError("unknown machine evidence capsule schema")
     address = _machine_exact_mapping(
-        capsule["content_address"], {"algorithm", "scope", "sha256"},
+        capsule["content_address"],
+        {"algorithm", "scope", "sha256"},
         "machine evidence content address",
     )
     if address != {
@@ -711,8 +733,11 @@ def _validate_machine_evidence_capsule(
     privacy = _machine_exact_mapping(
         capsule["privacy"],
         {
-            "aggregate_only", "raw_input_included", "person_level_data_included",
-            "contact_data_included", "ip_addresses_included",
+            "aggregate_only",
+            "raw_input_included",
+            "person_level_data_included",
+            "contact_data_included",
+            "ip_addresses_included",
         },
         "machine evidence privacy receipt",
     )
@@ -735,7 +760,8 @@ def _validate_machine_evidence_capsule(
     seen: set[str] = set()
     for position, citation_value in enumerate(citations):
         citation = _machine_exact_mapping(
-            citation_value, _MACHINE_CAPSULE_CITATION_FIELDS,
+            citation_value,
+            _MACHINE_CAPSULE_CITATION_FIELDS,
             f"machine evidence citation {position}",
         )
         evidence_id = _machine_safe_public_string(
@@ -745,8 +771,14 @@ def _validate_machine_evidence_capsule(
             raise newsroom.NewsroomError("machine evidence capsule repeats a citation")
         seen.add(evidence_id)
         for field in (
-            "title", "role", "source_class", "source_id", "selector",
-            "source_timestamp", "independence_group", "interpretation_limit",
+            "title",
+            "role",
+            "source_class",
+            "source_id",
+            "selector",
+            "source_timestamp",
+            "independence_group",
+            "interpretation_limit",
             "freshness",
         ):
             _machine_safe_public_string(
@@ -762,7 +794,8 @@ def _validate_machine_evidence_capsule(
                     item, f"capsule.citations[{position}].{field}[]"
                 )
         typed_value = _machine_exact_mapping(
-            citation["value"], {"type", "value"},
+            citation["value"],
+            {"type", "value"},
             f"capsule.citations[{position}].value",
         )
         _machine_safe_public_string(
@@ -777,7 +810,8 @@ def _validate_machine_evidence_capsule(
         denominator = citation["denominator"]
         if denominator is not None:
             denominator = _machine_exact_mapping(
-                denominator, {"type", "label", "value"},
+                denominator,
+                {"type", "label", "value"},
                 f"capsule.citations[{position}].denominator",
             )
             if denominator["type"] != "aggregate-count" or type(
@@ -789,7 +823,8 @@ def _validate_machine_evidence_capsule(
                 f"capsule.citations[{position}].denominator.label",
             )
         rights = _machine_exact_mapping(
-            citation["rights"], {"redistribution", "reuse", "training"},
+            citation["rights"],
+            {"redistribution", "reuse", "training"},
             f"capsule.citations[{position}].rights",
         )
         for field in rights:
@@ -799,8 +834,12 @@ def _validate_machine_evidence_capsule(
         attribution = _machine_exact_mapping(
             citation["attribution"],
             {
-                "attribution_required", "providers", "upstream_groups",
-                "public_source_url", "upstream_source_urls", "source_statement",
+                "attribution_required",
+                "providers",
+                "upstream_groups",
+                "public_source_url",
+                "upstream_source_urls",
+                "source_statement",
                 "license",
             },
             f"capsule.citations[{position}].attribution",
@@ -827,7 +866,8 @@ def _validate_machine_evidence_capsule(
             )
         for provider_value in attribution["providers"]:
             provider = _machine_exact_mapping(
-                provider_value, {"name", "source_url", "terms_url"},
+                provider_value,
+                {"name", "source_url", "terms_url"},
                 f"capsule.citations[{position}].attribution.provider",
             )
             _machine_safe_public_string(
@@ -845,7 +885,8 @@ def _validate_machine_evidence_capsule(
                     f"capsule.citations[{position}].attribution.provider.terms_url",
                 )
         license_value = _machine_exact_mapping(
-            attribution["license"], {"name", "url"},
+            attribution["license"],
+            {"name", "url"},
             f"capsule.citations[{position}].attribution.license",
         )
         _machine_safe_public_string(
@@ -953,7 +994,11 @@ def _load_dragon_whispers(
 
 def _revision_id(value: Mapping[str, Any], prefix: str = "revision") -> str:
     payload = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
     ).encode("utf-8")
     return f"{prefix}-{hashlib.sha256(payload).hexdigest()[:24]}"
 
@@ -1110,17 +1155,17 @@ def _receipt(story: Mapping[str, Any]) -> str:
   <p class="nw-receipt__label">Evidence receipt</p>
   <dl>
     <dt>Status</dt>
-    <dd><span class="nw-receipt__state{status_class}"><span class="nw-dot" aria-hidden="true"></span>{_h(_status_label(story['status']))}</span></dd>
+    <dd><span class="nw-receipt__state{status_class}"><span class="nw-dot" aria-hidden="true"></span>{_h(_status_label(story["status"]))}</span></dd>
     <dt>Observed</dt>
     <dd>{_h(_human_time(source_time))}</dd>
     <dt>Source file</dt>
-    <dd><a href="{_h(evidence['url'])}">{_h(filename)}</a></dd>
+    <dd><a href="{_h(evidence["url"])}">{_h(filename)}</a></dd>
     <dt>Source size</dt>
     <dd>{_h(size)}</dd>
     <dt>SHA-256</dt>
     <dd><code>{_h(sha)}</code></dd>
     <dt>Claim seal</dt>
-    <dd><code>{_h(story['claim_fingerprint'])}</code></dd>
+    <dd><code>{_h(story["claim_fingerprint"])}</code></dd>
   </dl>
 </aside>"""
 
@@ -1144,7 +1189,12 @@ def _story_json_ld(story: Mapping[str, Any], section_title: str) -> dict[str, An
         "image": [OG_IMAGE],
         "isBasedOn": evidence["url"],
         "citation": evidence["url"],
-        "keywords": [story["section"], story["signal_id"], "China", "open source intelligence"],
+        "keywords": [
+            story["section"],
+            story["signal_id"],
+            "China",
+            "open source intelligence",
+        ],
     }
 
 
@@ -1184,12 +1234,12 @@ def _story_card(story: Mapping[str, Any], section_title: str) -> str:
     digest = evidence["input"]["sha256"]
     short_hash = digest[:12] if digest else "no-source-hash"
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
-    return f"""<article class="nw-card" data-status="{_h(story['status'])}">
-  <p class="nw-card__kicker{status_class}">{_h(section_title)} · {_h(_status_label(story['status']))}</p>
-  <h3><a class="nw-card__link" href="/{_h(story['url'].removeprefix(SITE).lstrip('/'))}">{_h(story['headline'])}</a></h3>
-  <p class="nw-card__dek">{_h(story['dek'])}</p>
+    return f"""<article class="nw-card" data-status="{_h(story["status"])}">
+  <p class="nw-card__kicker{status_class}">{_h(section_title)} · {_h(_status_label(story["status"]))}</p>
+  <h3><a class="nw-card__link" href="/{_h(story["url"].removeprefix(SITE).lstrip("/"))}">{_h(story["headline"])}</a></h3>
+  <p class="nw-card__dek">{_h(story["dek"])}</p>
   <p class="nw-card__metric"><strong>{_h(_metric_value(story))}</strong>{_h(_metric_caption(story))}</p>
-  <p class="nw-card__meta"><time datetime="{_h(story['published_at'])}">{_h(_human_time(story['published_at']))}</time><span class="nw-card__hash">sha {short_hash}</span></p>
+  <p class="nw-card__meta"><time datetime="{_h(story["published_at"])}">{_h(_human_time(story["published_at"]))}</time><span class="nw-card__hash">sha {short_hash}</span></p>
 </article>"""
 
 
@@ -1207,12 +1257,12 @@ def _lead(
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
     return f"""<section class="nw-lead" aria-labelledby="{_h(heading_id)}">
   <div>
-    <p class="nw-kicker{status_class}">Palimpsest measurement · {_h(section_title)} · {_h(_status_label(story['status']))}</p>
-    <{heading} id="{_h(heading_id)}">{_h(story['headline'])}</{heading}>
-    <p class="nw-lead__dek">{_h(story['dek'])}</p>
+    <p class="nw-kicker{status_class}">Palimpsest measurement · {_h(section_title)} · {_h(_status_label(story["status"]))}</p>
+    <{heading} id="{_h(heading_id)}">{_h(story["headline"])}</{heading}>
+    <p class="nw-lead__dek">{_h(story["dek"])}</p>
     <p class="nw-lead__qualifier"><strong>Read with this qualifier:</strong> {_h(qualifier)}</p>
     <div class="nw-actions">
-      <a class="nw-actions__primary" href="/{_h(story['url'].removeprefix(SITE).lstrip('/'))}">Open result and receipt</a>
+      <a class="nw-actions__primary" href="/{_h(story["url"].removeprefix(SITE).lstrip("/"))}">Open result and receipt</a>
       <a href="/readings/newsroom-latest.json">Structured edition</a>
       <a href="/news/instruments/feed.xml">Measurements-only RSS</a>
     </div>
@@ -1243,12 +1293,8 @@ def _wire_index_json_ld(
     feed: Mapping[str, Any], wire: Mapping[str, Any]
 ) -> dict[str, Any]:
     entries = [
-        {"url": event["url"], "name": event["headline"]}
-        for event in wire["events"]
-    ] + [
-        {"url": story["url"], "name": story["headline"]}
-        for story in feed["stories"]
-    ]
+        {"url": event["url"], "name": event["headline"]} for event in wire["events"]
+    ] + [{"url": story["url"], "name": story["headline"]} for story in feed["stories"]]
     return {
         "@context": "https://schema.org",
         "@graph": [
@@ -1296,11 +1342,11 @@ def _event_braid(
         item = items[ref["item_id"]]
         digest = item["feed_sha256"][:12]
         title_language = _text_language(ref["title"], source_id=ref["source_id"])
-        rows.append(f"""<li class="nw-braid__node" data-role="{_h(ref['role'])}">
-  <p class="nw-braid__role">{_h(ref['role'])} · {_h(ref['independence_group'])}</p>
-  <p class="nw-braid__source"><a href="{_h(ref['url'])}">{_h(ref['source_name'])}</a></p>
-  <p class="nw-braid__title" lang="{_h(title_language)}">{_h(ref['title'])}</p>
-  <p class="nw-braid__time"><time datetime="{_h(ref['published_at'])}">{_h(_human_time(ref['published_at']))}</time> · feed sha {_h(digest)}</p>
+        rows.append(f"""<li class="nw-braid__node" data-role="{_h(ref["role"])}">
+  <p class="nw-braid__role">{_h(ref["role"])} · {_h(ref["independence_group"])}</p>
+  <p class="nw-braid__source"><a href="{_h(ref["url"])}">{_h(ref["source_name"])}</a></p>
+  <p class="nw-braid__title" lang="{_h(title_language)}">{_h(ref["title"])}</p>
+  <p class="nw-braid__time"><time datetime="{_h(ref["published_at"])}">{_h(_human_time(ref["published_at"]))}</time> · feed sha {_h(digest)}</p>
 </li>""")
     scan_ids = event["declared_links"]["scan_signal_ids"]
     economic_ids = event["declared_links"]["economic_signal_ids"]
@@ -1310,7 +1356,7 @@ def _event_braid(
         ]
         rows.append(f"""<li class="nw-braid__node nw-braid__node--link" data-role="topic-link">
   <p class="nw-braid__role">Declared topic surfaces · not a causal match</p>
-  <p class="nw-braid__title">{_h(' · '.join(linked))}</p>
+  <p class="nw-braid__title">{_h(" · ".join(linked))}</p>
   <p class="nw-braid__time">A timed measurement join has not been asserted by this dossier.</p>
 </li>""")
     return '<ol class="nw-braid" aria-label="Evidence braid">' + "".join(rows) + "</ol>"
@@ -1340,7 +1386,9 @@ def _event_source_boundary(event: Mapping[str, Any]) -> str:
 def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
     groups = len(event["evidence_groups"])
     coverage = wire["coverage"]
-    coverage_class = "" if coverage["status"] == "healthy" else " nw-receipt__state--warning"
+    coverage_class = (
+        "" if coverage["status"] == "healthy" else " nw-receipt__state--warning"
+    )
     language = _event_language(event)
     dek_language = _text_language(
         event["dek"], source_id=event["evidence_refs"][0]["source_id"]
@@ -1348,12 +1396,12 @@ def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
     return f"""<section class="nw-wire-lead" id="source-index" aria-labelledby="source-index-headline">
   <div class="nw-wire-lead__copy">
     <p class="nw-kicker">Source index · {_h(_event_source_label(event))}</p>
-    <h2 id="source-index-headline" lang="{_h(language)}">{_h(event['headline'])}</h2>
-    <p class="nw-lead__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
+    <h2 id="source-index-headline" lang="{_h(language)}">{_h(event["headline"])}</h2>
+    <p class="nw-lead__dek" lang="{_h(dek_language)}">{_h(event["dek"])}</p>
     <p class="nw-lead__qualifier"><strong>Verification status:</strong> {_h(_event_source_boundary(event))}</p>
     <div class="nw-actions">
-      <a class="nw-actions__primary" href="{_h(event['evidence_refs'][0]['url'])}">Read the original report</a>
-      <a href="{_h(_site_path(event['url']))}">Open Palimpsest source record</a>
+      <a class="nw-actions__primary" href="{_h(event["evidence_refs"][0]["url"])}">Read the original report</a>
+      <a href="{_h(_site_path(event["url"]))}">Open Palimpsest source record</a>
       <a href="/readings/newswire-latest.json">Structured source index</a>
     </div>
   </div>
@@ -1362,10 +1410,10 @@ def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
       <p class="nw-receipt__label">Source index receipt</p>
       <dl>
         <dt>Record</dt><dd>{_h(_event_source_label(event))}</dd>
-        <dt>Groups</dt><dd>{groups} independent evidence group{'s' if groups != 1 else ''}</dd>
-        <dt>Published</dt><dd>{_h(_human_time(event['published_at']))}</dd>
-        <dt>Version</dt><dd><code>{_h(event['version_id'])}</code></dd>
-        <dt>Intake</dt><dd><span class="nw-receipt__state{coverage_class}"><span class="nw-dot" aria-hidden="true"></span>{_h(coverage['status'])}</span></dd>
+        <dt>Groups</dt><dd>{groups} independent evidence group{"s" if groups != 1 else ""}</dd>
+        <dt>Published</dt><dd>{_h(_human_time(event["published_at"]))}</dd>
+        <dt>Version</dt><dd><code>{_h(event["version_id"])}</code></dd>
+        <dt>Intake</dt><dd><span class="nw-receipt__state{coverage_class}"><span class="nw-dot" aria-hidden="true"></span>{_h(coverage["status"])}</span></dd>
       </dl>
     </div>
   </aside>
@@ -1375,21 +1423,23 @@ def _event_lead(event: Mapping[str, Any], wire: Mapping[str, Any]) -> str:
 
 def _event_card(event: Mapping[str, Any]) -> str:
     group_count = len(event["evidence_groups"])
-    state = "multiple source groups" if group_count > 1 else "not independently verified"
+    state = (
+        "multiple source groups" if group_count > 1 else "not independently verified"
+    )
     language = _event_language(event)
     dek_language = _text_language(
         event["dek"], source_id=event["evidence_refs"][0]["source_id"]
     )
-    return f"""<article class="nw-event-card" data-strength="{_h(event['evidence_strength'])}" data-lead="{_h(str(event['lead']).lower())}">
+    return f"""<article class="nw-event-card" data-strength="{_h(event["evidence_strength"])}" data-lead="{_h(str(event["lead"]).lower())}">
   <p class="nw-card__kicker">{_h(_event_source_label(event))}</p>
-  <h3 lang="{_h(language)}"><a class="nw-card__link" href="{_h(_site_path(event['url']))}">{_h(event['headline'])}</a></h3>
-  <p class="nw-card__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
+  <h3 lang="{_h(language)}"><a class="nw-card__link" href="{_h(_site_path(event["url"]))}">{_h(event["headline"])}</a></h3>
+  <p class="nw-card__dek" lang="{_h(dek_language)}">{_h(event["dek"])}</p>
   <div class="nw-event-card__facts">
-    <span>{len(event['evidence_refs'])} source receipt{'s' if len(event['evidence_refs']) != 1 else ''}</span>
-    <span>{group_count} independent group{'s' if group_count != 1 else ''}</span>
+    <span>{len(event["evidence_refs"])} source receipt{"s" if len(event["evidence_refs"]) != 1 else ""}</span>
+    <span>{group_count} independent group{"s" if group_count != 1 else ""}</span>
     <span>{_h(state)}</span>
   </div>
-  <p class="nw-card__meta"><time datetime="{_h(event['updated_at'])}">{_h(_human_time(event['updated_at']))}</time><span class="nw-card__hash">{_h(event['version_id'])}</span></p>
+  <p class="nw-card__meta"><time datetime="{_h(event["updated_at"])}">{_h(_human_time(event["updated_at"]))}</time><span class="nw-card__hash">{_h(event["version_id"])}</span></p>
 </article>"""
 
 
@@ -1425,14 +1475,13 @@ def _select_lead(entries: Sequence[Mapping[str, Any]]) -> Mapping[str, Any]:
     return _select_instrument_lead(entries)
 
 
-def _event_sections(
-    wire: Mapping[str, Any], *, lead_event_id: str
-) -> tuple[str, str]:
+def _event_sections(wire: Mapping[str, Any], *, lead_event_id: str) -> tuple[str, str]:
     navigation = []
     blocks = []
     for order, (desk_id, title) in enumerate(EVENT_DESKS.items(), 1):
         events = [
-            event for event in wire["events"]
+            event
+            for event in wire["events"]
             if event["desk"] == desk_id and event["event_id"] != lead_event_id
         ]
         if not events:
@@ -1444,7 +1493,7 @@ def _event_sections(
         if len(events) > len(visible_events):
             archive_link = (
                 '<p class="nw-section__more"><a href="/news/wire/">'
-                f'View all {len(events)} { _h(title).lower() } source records →</a></p>'
+                f"View all {len(events)} {_h(title).lower()} source records →</a></p>"
             )
         blocks.append(f"""<section class="nw-section nw-section--events" id="wire-{_h(desk_id)}">
   <div class="nw-section__head">
@@ -1460,25 +1509,25 @@ def _economic_panel(pulse: Mapping[str, Any] | None) -> str:
     if pulse is None:
         return """<section class="nw-econ" id="economy"><div><p class="nw-kicker nw-kicker--warning">Economic state unavailable</p><h2>No validated economic pulse was published</h2></div><p>The instrument newsroom remains available, but no state-of-economy synthesis is shown without its structured evidence contract.</p></section>"""
     gates = "".join(
-        f"""<li data-passed="{_h(str(gate['passed']).lower())}"><span>{_h(gate['label'])}</span><strong>{gate['observed']} / {gate['minimum']}</strong></li>"""
+        f"""<li data-passed="{_h(str(gate["passed"]).lower())}"><span>{_h(gate["label"])}</span><strong>{gate["observed"]} / {gate["minimum"]}</strong></li>"""
         for gate in pulse["readiness"]["gates"]
     )
     desks = "".join(
-        f"""<div class="nw-econ__desk"><span>{_h(desk['title'])}</span><strong>{desk['n_metrics']}</strong><small>{len(desk['independent_group_ids'])} groups · {_h(desk['status'])}</small></div>"""
+        f"""<div class="nw-econ__desk"><span>{_h(desk["title"])}</span><strong>{desk["n_metrics"]}</strong><small>{len(desk["independent_group_ids"])} groups · {_h(desk["status"])}</small></div>"""
         for desk in pulse["desks"]
     )
     coverage = pulse["coverage"]
     return f"""<section class="nw-econ" id="economy" aria-labelledby="economy-title">
   <div class="nw-econ__statement">
-    <p class="nw-kicker nw-kicker--economic">China economic state · {_h(pulse['economic_state']['status'])}</p>
+    <p class="nw-kicker nw-kicker--economic">China economic state · {_h(pulse["economic_state"]["status"])}</p>
     <h2 id="economy-title">The evidence is broadening. The composite still abstains.</h2>
-    <p>{_h(pulse['economic_state']['claim'])}</p>
+    <p>{_h(pulse["economic_state"]["claim"])}</p>
     <a class="nw-text-link" href="/news/economy/">Open all metrics, releases and revision receipts →</a>
   </div>
   <div class="nw-econ__readiness">
     <p class="nw-receipt__label">Composite readiness gates</p>
     <ul>{gates}</ul>
-    <p>{len(coverage['observed_independent_group_ids'])} observed independent groups · {coverage['registered_sources']} registered sources · {_h(pulse['readiness']['abstention_reason'])}</p>
+    <p>{len(coverage["observed_independent_group_ids"])} observed independent groups · {coverage["registered_sources"]} registered sources · {_h(pulse["readiness"]["abstention_reason"])}</p>
   </div>
   <div class="nw-econ__desks">{desks}</div>
 </section>"""
@@ -1620,10 +1669,10 @@ def _investigation_card(case: Mapping[str, Any]) -> str:
     n_groups = len({evidence["independence_group"] for evidence in case["evidence"]})
     return f"""<article class="nw-investigation-card" data-publication-state="{_h(state)}">
   <p class="nw-investigation-card__status"><span class="nw-dot" aria-hidden="true"></span>{_h(kind)} · {_h(status)}</p>
-  <h3 lang="{_h(language)}"><a href="{_h(case['url'])}">{_h(case['title'])}</a></h3>
-  <p class="nw-investigation-card__question" lang="{_h(question_language)}"><strong>Question under test:</strong> {_h(case['testable_question'])}</p>
-  <p>{_h(case['status_reason'])}</p>
-  <p class="nw-investigation-card__meta">{len(case['claims'])} claim record{'s' if len(case['claims']) != 1 else ''} · {len(case['evidence'])} evidence receipt{'s' if len(case['evidence']) != 1 else ''} · {n_groups} upstream group{'s' if n_groups != 1 else ''}<br>Updated <time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></p>
+  <h3 lang="{_h(language)}"><a href="{_h(case["url"])}">{_h(case["title"])}</a></h3>
+  <p class="nw-investigation-card__question" lang="{_h(question_language)}"><strong>Question under test:</strong> {_h(case["testable_question"])}</p>
+  <p>{_h(case["status_reason"])}</p>
+  <p class="nw-investigation-card__meta">{len(case["claims"])} claim record{"s" if len(case["claims"]) != 1 else ""} · {len(case["evidence"])} evidence receipt{"s" if len(case["evidence"]) != 1 else ""} · {n_groups} upstream group{"s" if n_groups != 1 else ""}<br>Updated <time datetime="{_h(case["updated_at"])}">{_h(_human_time(case["updated_at"]))}</time></p>
 </article>"""
 
 
@@ -1655,7 +1704,8 @@ def _investigations_feature(
     cases = investigations["cases"]
     published = [case for case in cases if case["status"] == "published"]
     open_cases = [
-        case for case in cases
+        case
+        for case in cases
         if case["status"] in {"evidence_gathering", "review_ready"}
     ]
     abstained = [case for case in cases if case["status"] == "abstained"]
@@ -1664,10 +1714,10 @@ def _investigations_feature(
     if featured is not None:
         kind, status = _case_status_label(featured)
         featured_case = f"""<p class="nw-case-status" data-publication-state="{_h(_case_publication_state(featured))}">{_h(kind)} · {_h(status)}</p>
-    <h3 lang="{_h(_case_language(featured))}">{_h(featured['title'])}</h3>
-    <p><strong>Question under test:</strong> {_h(featured['testable_question'])}</p>"""
-    return f"""<section class="nw-investigations-feature" id="investigations" aria-labelledby="investigations-feature-title" data-file-code="INV / {investigations['n_cases']:03d}">
-  <div class="nw-investigations-feature__rail"><p class="nw-section__label">Investigations desk</p><strong>{investigations['n_cases']}</strong><span>{len(published)} published · {len(open_cases)} open · {len(abstained)} abstained</span></div>
+    <h3 lang="{_h(_case_language(featured))}">{_h(featured["title"])}</h3>
+    <p><strong>Question under test:</strong> {_h(featured["testable_question"])}</p>"""
+    return f"""<section class="nw-investigations-feature" id="investigations" aria-labelledby="investigations-feature-title" data-file-code="INV / {investigations["n_cases"]:03d}">
+  <div class="nw-investigations-feature__rail"><p class="nw-section__label">Investigations desk</p><strong>{investigations["n_cases"]}</strong><span>{len(published)} published · {len(open_cases)} open · {len(abstained)} abstained</span></div>
   <div><h2 id="investigations-feature-title">The evidence threshold is part of the story</h2>
     <p>An investigation is a reviewed evidence synthesis, not a truth score. Open automated work remains a research lead and cannot borrow the authority of a published investigation.</p>
     {featured_case}
@@ -1689,11 +1739,11 @@ def _machine_analysis_feature(
     featured = next(iter(published), cases[0] if cases else None)
     feature = ""
     if featured is not None:
-        feature = f"""<p class="nw-case-status" data-publication-state="{_h(featured['status'])}">Deterministic machine analysis · {_h(featured['report_type'])}</p>
-    <h3 lang="{_h(_text_language(featured['title']))}">{_h(featured['title'])}</h3>
-    <p>{_h(featured['dek'])}</p>"""
-    return f"""<section class="nw-analysis-feature" id="machine-analysis" aria-labelledby="machine-analysis-title" data-file-code="MACHINE / {analyses['n_cases']:03d}">
-  <div class="nw-analysis-feature__rail"><p class="nw-section__label">Analysis desk</p><strong>{analyses['n_cases']}</strong><span>{len(published)} analyses · {len(abstained)} abstentions</span></div>
+        feature = f"""<p class="nw-case-status" data-publication-state="{_h(featured["status"])}">Deterministic machine analysis · {_h(featured["report_type"])}</p>
+    <h3 lang="{_h(_text_language(featured["title"]))}">{_h(featured["title"])}</h3>
+    <p>{_h(featured["dek"])}</p>"""
+    return f"""<section class="nw-analysis-feature" id="machine-analysis" aria-labelledby="machine-analysis-title" data-file-code="MACHINE / {analyses["n_cases"]:03d}">
+  <div class="nw-analysis-feature__rail"><p class="nw-section__label">Analysis desk</p><strong>{analyses["n_cases"]}</strong><span>{len(published)} analyses · {len(abstained)} abstentions</span></div>
   <div><h2 id="machine-analysis-title">The machine can analyse. It cannot interview.</h2>
     <p><strong>Deterministic machine analysis · no human interview.</strong> Every sentence is bound to named evidence receipts. Source-lineage de-duplication, countercases, limits, falsifiers and evaluation gates stay visible; a failed gate publishes an abstention, not synthetic certainty.</p>
     {feature}
@@ -1706,12 +1756,12 @@ def _accountability_tape(wire: Mapping[str, Any]) -> str:
     coverage = wire["coverage"]
     counts = coverage["counts"]
     source_rows = "".join(
-        f"""<li data-status="{_h(source['status'])}"><strong>{_h(source['source_name'])}</strong><span>{_h(source['status'])}</span><small>{source['accepted_items']} accepted · {source['rejected_items']} rejected</small></li>"""
+        f"""<li data-status="{_h(source["status"])}"><strong>{_h(source["source_name"])}</strong><span>{_h(source["status"])}</span><small>{source["accepted_items"]} accepted · {source["rejected_items"]} rejected</small></li>"""
         for source in coverage["sources"]
     )
     return f"""<aside class="nw-tape" aria-labelledby="tape-title">
   <div class="nw-tape__head"><div><p class="nw-kicker">Accountability tape</p><h2 id="tape-title">Every feed answered for</h2></div>
-  <p>{coverage['accepted_items']} accepted items · {coverage['rejected_items']} rejected or out-of-window · {counts['fetch_error']} fetch failures · {counts['parse_error']} malformed feeds · {counts['stale']} stale feeds.</p></div>
+  <p>{coverage["accepted_items"]} accepted items · {coverage["rejected_items"]} rejected or out-of-window · {counts["fetch_error"]} fetch failures · {counts["parse_error"]} malformed feeds · {counts["stale"]} stale feeds.</p></div>
   <ul>{source_rows}</ul>
 </aside>"""
 
@@ -1722,17 +1772,18 @@ def _instrument_sections(
     blocks = []
     for section in feed["sections"]:
         stories = [
-            story for story in feed["stories"]
+            story
+            for story in feed["stories"]
             if story["section"] == section["id"]
             and story["signal_id"] != exclude_signal_id
         ]
         if not stories:
             continue
         cards = "".join(_story_card(story, section["title"]) for story in stories)
-        blocks.append(f"""<section class="nw-section nw-section--instruments" id="instrument-{_h(section['id'])}">
+        blocks.append(f"""<section class="nw-section nw-section--instruments" id="instrument-{_h(section["id"])}">
   <div class="nw-section__head">
-    <div><p class="nw-section__label">Palimpsest measurements</p><h2>{_h(section['title'])}</h2></div>
-    <p class="nw-section__dek">{_h(section['dek'])}</p>
+    <div><p class="nw-section__label">Palimpsest measurements</p><h2>{_h(section["title"])}</h2></div>
+    <p class="nw-section__dek">{_h(section["dek"])}</p>
   </div>
   <div class="nw-grid">{cards}</div>
 </section>""")
@@ -1759,46 +1810,50 @@ def render_evidence_index(
     instrument_coverage = feed["coverage"]
     investigations_nav = (
         '<li><a href="#investigations">Investigations</a></li>'
-        if investigations is not None else ""
+        if investigations is not None
+        else ""
     )
     investigations_count = (
         f" · {investigations['n_cases']} investigation case files"
-        if investigations is not None else ""
+        if investigations is not None
+        else ""
     )
     analysis_nav = (
         '<li><a href="#machine-analysis">Machine analysis</a></li>'
-        if machine_analyses is not None else ""
+        if machine_analyses is not None
+        else ""
     )
     analysis_count = (
         f" · {machine_analyses['n_cases']} machine reports"
-        if machine_analyses is not None else ""
+        if machine_analyses is not None
+        else ""
     )
     body = f"""<body class="ps newsroom-page newsroom-page--evidence-wire">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <header class="nw-masthead">
     <div class="nw-masthead__top">
       <p class="nw-wordmark">Palimpsest <span>Evidence desk</span></p>
-      <p class="nw-edition"><strong>Current edition</strong>{_h(_human_time(wire['generated_at']))}<br>{feed['n_stories']} measurements · {wire['n_events']} source records{investigations_count}{analysis_count}</p>
+      <p class="nw-edition"><strong>Current edition</strong>{_h(_human_time(wire["generated_at"]))}<br>{feed["n_stories"]} measurements · {wire["n_events"]} source records{investigations_count}{analysis_count}</p>
     </div>
     <h1 class="nw-masthead__headline">Measurements first. Source reports clearly labeled.</h1>
     <p class="nw-masthead__dek">This is not a replacement newspaper. Palimpsest publishes its own measured results, then keeps publisher reports in a separate source index with attribution, source structure, revisions and unknowns visible.</p>
   </header>
-  <div class="nw-meta-line"><span>Results · source index · investigations</span><span>Window {_h(_human_time(wire['window']['from']))} → {_h(_human_time(wire['window']['to']))}</span><a href="/news/instruments/feed.xml">Measurements-only RSS</a><a href="/feeds/">All feeds</a><a href="/readings/newswire-latest.json">Structured source index</a></div>
+  <div class="nw-meta-line"><span>Results · source index · investigations</span><span>Window {_h(_human_time(wire["window"]["from"]))} → {_h(_human_time(wire["window"]["to"]))}</span><a href="/news/instruments/feed.xml">Measurements-only RSS</a><a href="/feeds/">All feeds</a><a href="/readings/newswire-latest.json">Structured source index</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
-    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{instrument_coverage['live']}/{instrument_coverage['total']}</strong> measurements live</span>
-    <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage['successful_sources']}/{coverage['registry_sources']}</strong> feeds answered</span>
-    <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage['rejected_items']}</strong> rejected / out-of-window</span>
-    <span><strong>{wire['n_events']}</strong> attributed source records</span>
+    <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{instrument_coverage["live"]}/{instrument_coverage["total"]}</strong> measurements live</span>
+    <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{coverage["successful_sources"]}/{coverage["registry_sources"]}</strong> feeds answered</span>
+    <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{coverage["rejected_items"]}</strong> rejected / out-of-window</span>
+    <span><strong>{wire["n_events"]}</strong> attributed source records</span>
   </div>
   <nav class="nw-task-strip" aria-label="Start with a task"><a href="#latest-measurement"><strong>See a Palimpsest result</strong><span>Measurement + receipt + limit</span></a><a href="#source-index"><strong>Look up a publisher report</strong><span>Attributed source index</span></a><a href="/feeds/"><strong>Choose a feed</strong><span>Purpose and boundary first</span></a><a href="/developers.html"><strong>Use the data</strong><span>API + MCP + files</span></a></nav>
   <nav aria-label="Evidence desk sections"><ul class="nw-section-nav"><li><a href="#latest-measurement">Latest measurement</a></li><li><a href="#economy">Economic state</a></li>{analysis_nav}{investigations_nav}<li><a href="#instruments">More measurements</a></li><li><a href="#source-index">Source index</a></li>{event_navigation}<li><a href="#tape-title">Feed coverage</a></li></ul></nav>
-  <div id="latest-measurement">{_lead(instrument_lead, sections[instrument_lead['section']]['title'], heading_level=2, heading_id='latest-measurement-title')}</div>
+  <div id="latest-measurement">{_lead(instrument_lead, sections[instrument_lead["section"]]["title"], heading_level=2, heading_id="latest-measurement-title")}</div>
   {_economic_panel(pulse)}
   {_machine_analysis_feature(machine_analyses)}
   {_investigations_feature(investigations)}
   <div id="instruments" class="nw-instrument-heading"><p class="nw-kicker">Palimpsest results</p><h2>More current measurements</h2><p>These are Palimpsest's own mutable latest-state briefs. Each one names its source bytes, freshness, denominator and limitation.</p></div>
-  {_instrument_sections(feed, exclude_signal_id=instrument_lead['signal_id'])}
+  {_instrument_sections(feed, exclude_signal_id=instrument_lead["signal_id"])}
   {_event_lead(source_lead, wire)}
   {event_blocks}
   {_accountability_tape(wire)}
@@ -1808,61 +1863,70 @@ def render_evidence_index(
 </body>
 </html>
 """
-    return _head(
-        title="Palimpsest evidence desk · measurements and attributed source reports",
-        description="Palimpsest measurements first, plus a clearly labeled publisher source index with receipts, revisions, source independence and limits.",
-        canonical=feed["url"],
-        page_type="website",
-        modified_at=max(feed["generated_at"], wire["generated_at"]),
-        json_ld=_wire_index_json_ld(feed, wire),
-    ) + "\n" + body
+    return (
+        _head(
+            title="Palimpsest evidence desk · measurements and attributed source reports",
+            description="Palimpsest measurements first, plus a clearly labeled publisher source index with receipts, revisions, source independence and limits.",
+            canonical=feed["url"],
+            page_type="website",
+            modified_at=max(feed["generated_at"], wire["generated_at"]),
+            json_ld=_wire_index_json_ld(feed, wire),
+        )
+        + "\n"
+        + body
+    )
 
 
 def render_investigations_index(investigations: Mapping[str, Any]) -> str:
     cases = investigations["cases"]
     published = [case for case in cases if case["status"] == "published"]
     open_cases = [
-        case for case in cases
+        case
+        for case in cases
         if case["status"] in {"evidence_gathering", "review_ready"}
     ]
     abstained = [case for case in cases if case["status"] == "abstained"]
     body = f"""<body class="ps newsroom-page newsroom-page--investigations">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <header class="nw-investigations-head">
     <p class="nw-section__label">Public case register</p>
     <h1>Investigations and research leads</h1>
     <p class="nw-investigations-head__dek">Reviewed reporting, open evidence gathering and editorial abstention remain separate public states. Every case shows the question, receipts, counterevidence, falsifiers and unresolved collection targets.</p>
   </header>
-  <div class="nw-meta-line"><span>Aggregate public evidence · no person-level records</span><span>Updated <time datetime="{_h(investigations['generated_at'])}">{_h(_human_time(investigations['generated_at']))}</time></span><a href="/readings/investigations-latest.json">Structured desk</a><a href="/docs/INVESTIGATIONS.md">Publication method</a></div>
+  <div class="nw-meta-line"><span>Aggregate public evidence · no person-level records</span><span>Updated <time datetime="{_h(investigations["generated_at"])}">{_h(_human_time(investigations["generated_at"]))}</time></span><a href="/readings/investigations-latest.json">Structured desk</a><a href="/docs/INVESTIGATIONS.md">Publication method</a></div>
   <div class="nw-status-strip" role="status" aria-label="Investigation publication states">
     <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{len(published)}</strong> published</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{len(open_cases)}</strong> open research leads</span>
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{len(abstained)}</strong> abstained</span>
-    <span><strong>{investigations['n_cases']}</strong> total case files</span>
+    <span><strong>{investigations["n_cases"]}</strong> total case files</span>
   </div>
   <nav aria-label="Investigation registers"><ul class="nw-section-nav"><li><a href="#published-investigations">Published</a></li><li><a href="#open-research">Open research</a></li><li><a href="#editorial-abstentions">Abstentions</a></li></ul></nav>
   <p class="nw-investigation-notice"><strong>Publication boundary.</strong> An investigation is a reviewed evidence synthesis, not a truth score. Each finding shows supporting evidence, disconfirming evidence, a falsification test and limits. Automated work is labelled <strong>RESEARCH LEAD</strong>, never presented as a completed investigation.</p>
-  {_investigation_register(title='Published investigations', label='Reviewed publication', description='Only cases that passed the structured publication gate and editorial review appear here.', cases=published, section_id='published-investigations')}
-  {_investigation_register(title='Open research leads', label='Evidence gathering', description='Questions and draft claims remain under test. These cases are not published findings.', cases=open_cases, section_id='open-research')}
-  {_investigation_register(title='Editorial abstentions', label='Threshold not met', description='The desk records why available evidence cannot support publication and what would be needed to revisit the question.', cases=abstained, section_id='editorial-abstentions')}
+  {_investigation_register(title="Published investigations", label="Reviewed publication", description="Only cases that passed the structured publication gate and editorial review appear here.", cases=published, section_id="published-investigations")}
+  {_investigation_register(title="Open research leads", label="Evidence gathering", description="Questions and draft claims remain under test. These cases are not published findings.", cases=open_cases, section_id="open-research")}
+  {_investigation_register(title="Editorial abstentions", label="Threshold not met", description="The desk records why available evidence cannot support publication and what would be needed to revisit the question.", cases=abstained, section_id="editorial-abstentions")}
 </main>
 <footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/news/standards/">Reporting standards</a> · <a href="/readings/investigations-latest.json">Structured investigations desk</a> · <a href="/docs/INVESTIGATIONS.md">Method and safety boundary</a></div></footer>
 {site_nav.FOOT}
 </body>
 </html>
 """
-    return _head(
-        title="Palimpsest Investigations · public evidence case files",
-        description=(
-            "Reviewed investigations and open research leads with claims, "
-            "counterevidence, falsification tests, limitations and revision receipts."
-        ),
-        canonical=f"{SITE}/news/investigations/",
-        page_type="website",
-        modified_at=investigations["generated_at"],
-        json_ld=_investigations_index_json_ld(investigations),
-    ) + "\n" + body
+    return (
+        _head(
+            title="Palimpsest Investigations · public evidence case files",
+            description=(
+                "Reviewed investigations and open research leads with claims, "
+                "counterevidence, falsification tests, limitations and revision receipts."
+            ),
+            canonical=f"{SITE}/news/investigations/",
+            page_type="website",
+            modified_at=investigations["generated_at"],
+            json_ld=_investigations_index_json_ld(investigations),
+        )
+        + "\n"
+        + body
+    )
 
 
 def _investigation_value(evidence: Mapping[str, Any]) -> str:
@@ -1885,16 +1949,16 @@ def _investigation_evidence_table(case: Mapping[str, Any]) -> str:
             else "No source URL recorded"
         )
         rows.append(f"""<tr>
-  <td><span class="nw-evidence-relation" data-relation="{_h(evidence['role'])}">{_h(evidence['role'])}</span><small>{_h(evidence['source_class'])}</small></td>
-  <td><strong lang="{_h(_text_language(evidence['label']))}">{_h(evidence['label'])}</strong><small><code>{_h(evidence['evidence_id'])}</code> · {_h(evidence['independence_group'])}</small></td>
-  <td><strong>{_h(_investigation_value(evidence))}</strong><small>Selector <code>{_h(evidence['selector'])}</code></small></td>
-  <td>{_h(evidence['interpretation_limit'])}</td>
-  <td>{source_link}<small><a href="{_h(_investigation_href(evidence['artifact_url']))}">Artifact</a> · <time datetime="{_h(evidence['source_timestamp'])}">{_h(_human_time(evidence['source_timestamp']))}</time> · sha {_h(evidence['artifact_sha256'][:12])} · {_h(evidence['freshness'])}</small></td>
+  <td><span class="nw-evidence-relation" data-relation="{_h(evidence["role"])}">{_h(evidence["role"])}</span><small>{_h(evidence["source_class"])}</small></td>
+  <td><strong lang="{_h(_text_language(evidence["label"]))}">{_h(evidence["label"])}</strong><small><code>{_h(evidence["evidence_id"])}</code> · {_h(evidence["independence_group"])}</small></td>
+  <td><strong>{_h(_investigation_value(evidence))}</strong><small>Selector <code>{_h(evidence["selector"])}</code></small></td>
+  <td>{_h(evidence["interpretation_limit"])}</td>
+  <td>{source_link}<small><a href="{_h(_investigation_href(evidence["artifact_url"]))}">Artifact</a> · <time datetime="{_h(evidence["source_timestamp"])}">{_h(_human_time(evidence["source_timestamp"]))}</time> · sha {_h(evidence["artifact_sha256"][:12])} · {_h(evidence["freshness"])}</small></td>
 </tr>""")
     if not rows:
         return '<div class="nw-empty-register"><strong>No evidence receipt is recorded.</strong></div>'
     return f"""<p class="nw-table-cue" id="investigation-evidence-cue">Scroll horizontally to inspect every evidence field.</p>
-<div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="case-evidence-title" aria-describedby="investigation-evidence-cue"><table class="nw-evidence-table"><caption>Evidence receipts for this case file</caption><thead><tr><th scope="col">Relation / class</th><th scope="col">Receipt / upstream group</th><th scope="col">Recorded value</th><th scope="col">Interpretation limit</th><th scope="col">Provenance / integrity</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>"""
+<div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="case-evidence-title" aria-describedby="investigation-evidence-cue"><table class="nw-evidence-table"><caption>Evidence receipts for this case file</caption><thead><tr><th scope="col">Relation / class</th><th scope="col">Receipt / upstream group</th><th scope="col">Recorded value</th><th scope="col">Interpretation limit</th><th scope="col">Provenance / integrity</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div>"""
 
 
 def _investigation_claims(case: Mapping[str, Any]) -> str:
@@ -1904,27 +1968,34 @@ def _investigation_claims(case: Mapping[str, Any]) -> str:
     counter_by_id = {
         item["counterevidence_id"]: item for item in case["counterevidence"]
     }
-    limitation_by_id = {
-        item["limitation_id"]: item for item in case["limitations"]
-    }
+    limitation_by_id = {item["limitation_id"]: item for item in case["limitations"]}
     rows = []
     for claim in case["claims"]:
-        linked_evidence = "".join(
-            f"<li><code>{_h(evidence_id)}</code> · {_h(evidence_by_id[evidence_id]['label'])} · {_h(evidence_by_id[evidence_id]['role'])}</li>"
-            for evidence_id in claim["evidence_ids"]
-        ) or "<li>No evidence receipt is linked.</li>"
-        linked_counter = "".join(
-            f"<li><code>{_h(counter_id)}</code> · {_h(counter_by_id[counter_id]['statement'])} · {_h(counter_by_id[counter_id]['disposition'])}</li>"
-            for counter_id in claim["counterevidence_ids"]
-        ) or "<li>No counterevidence record is linked.</li>"
-        linked_limits = "".join(
-            f"<li><strong>{_h(limitation_by_id[limit_id]['statement'])}</strong> {_h(limitation_by_id[limit_id]['consequence'])}</li>"
-            for limit_id in claim["limitation_ids"]
-        ) or "<li>No claim-specific limitation is linked.</li>"
+        linked_evidence = (
+            "".join(
+                f"<li><code>{_h(evidence_id)}</code> · {_h(evidence_by_id[evidence_id]['label'])} · {_h(evidence_by_id[evidence_id]['role'])}</li>"
+                for evidence_id in claim["evidence_ids"]
+            )
+            or "<li>No evidence receipt is linked.</li>"
+        )
+        linked_counter = (
+            "".join(
+                f"<li><code>{_h(counter_id)}</code> · {_h(counter_by_id[counter_id]['statement'])} · {_h(counter_by_id[counter_id]['disposition'])}</li>"
+                for counter_id in claim["counterevidence_ids"]
+            )
+            or "<li>No counterevidence record is linked.</li>"
+        )
+        linked_limits = (
+            "".join(
+                f"<li><strong>{_h(limitation_by_id[limit_id]['statement'])}</strong> {_h(limitation_by_id[limit_id]['consequence'])}</li>"
+                for limit_id in claim["limitation_ids"]
+            )
+            or "<li>No claim-specific limitation is linked.</li>"
+        )
         noun = "Finding" if case["status"] == "published" else "Claim under test"
-        rows.append(f"""<li class="nw-finding" data-confidence="{_h(claim['confidence'])}">
-  <p class="nw-finding__label">{_h(noun)} · {_h(claim['type'].replace('_', ' '))} · {_h(claim['confidence'])} · {_h(claim['publication_state'])}</p>
-  <h3 lang="{_h(_text_language(claim['statement']))}">{_h(claim['statement'])}</h3>
+        rows.append(f"""<li class="nw-finding" data-confidence="{_h(claim["confidence"])}">
+  <p class="nw-finding__label">{_h(noun)} · {_h(claim["type"].replace("_", " "))} · {_h(claim["confidence"])} · {_h(claim["publication_state"])}</p>
+  <h3 lang="{_h(_text_language(claim["statement"]))}">{_h(claim["statement"])}</h3>
   <div class="nw-case-columns"><div class="nw-case-panel"><h4>Linked evidence receipts</h4><ul>{linked_evidence}</ul></div><div class="nw-case-panel nw-case-panel--counter"><h4>Linked counterevidence</h4><ul>{linked_counter}</ul></div></div>
   <div class="nw-finding__boundary"><strong>Claim limits.</strong><ul>{linked_limits}</ul></div>
 </li>""")
@@ -1935,38 +2006,47 @@ def _investigation_claims(case: Mapping[str, Any]) -> str:
 
 
 def _hypotheses_panel(case: Mapping[str, Any]) -> str:
-    rows = "".join(
-        f"""<li><strong lang="{_h(_text_language(item['statement']))}">{_h(item['statement'])}</strong><span>{_h(item['status'])} · <code>{_h(item['hypothesis_id'])}</code></span><p><strong>Linked falsification tests:</strong> {_h(', '.join(item['falsification_condition_ids']) or 'none linked')}</p></li>"""
-        for item in case["hypotheses"]
-    ) or "<li>No hypothesis is recorded. The case therefore cannot advance beyond evidence gathering.</li>"
+    rows = (
+        "".join(
+            f"""<li><strong lang="{_h(_text_language(item["statement"]))}">{_h(item["statement"])}</strong><span>{_h(item["status"])} · <code>{_h(item["hypothesis_id"])}</code></span><p><strong>Linked falsification tests:</strong> {_h(", ".join(item["falsification_condition_ids"]) or "none linked")}</p></li>"""
+            for item in case["hypotheses"]
+        )
+        or "<li>No hypothesis is recorded. The case therefore cannot advance beyond evidence gathering.</li>"
+    )
     return f"""<div class="nw-case-panel"><h3>Hypotheses under test</h3><ul class="nw-case-record-list">{rows}</ul></div>"""
 
 
 def _counterevidence_panel(case: Mapping[str, Any]) -> str:
-    rows = "".join(
-        f"""<li><strong lang="{_h(_text_language(item['statement']))}">{_h(item['statement'])}</strong><span>{_h(item['review_status'])} · {_h(item['disposition'])} · evidence {_h(', '.join(item['evidence_ids']) or 'none linked')}</span></li>"""
-        for item in case["counterevidence"]
-    ) or "<li>No counterevidence record is currently available.</li>"
+    rows = (
+        "".join(
+            f"""<li><strong lang="{_h(_text_language(item["statement"]))}">{_h(item["statement"])}</strong><span>{_h(item["review_status"])} · {_h(item["disposition"])} · evidence {_h(", ".join(item["evidence_ids"]) or "none linked")}</span></li>"""
+            for item in case["counterevidence"]
+        )
+        or "<li>No counterevidence record is currently available.</li>"
+    )
     return f"""<div class="nw-case-panel nw-case-panel--counter"><h3>Counterevidence and competing records</h3><ul class="nw-case-record-list">{rows}</ul></div>"""
 
 
 def _falsification_panel(case: Mapping[str, Any]) -> str:
-    rows = "".join(
-        f"""<li><strong lang="{_h(_text_language(item['statement']))}">{_h(item['statement'])}</strong><span>Status: {_h(item['status'])}</span><p><strong>Evidence needed:</strong> {_h(item['evidence_needed'])}</p></li>"""
-        for item in case["falsification_conditions"]
-    ) or "<li>No falsification condition is recorded; the publication gate must remain blocked.</li>"
+    rows = (
+        "".join(
+            f"""<li><strong lang="{_h(_text_language(item["statement"]))}">{_h(item["statement"])}</strong><span>Status: {_h(item["status"])}</span><p><strong>Evidence needed:</strong> {_h(item["evidence_needed"])}</p></li>"""
+            for item in case["falsification_conditions"]
+        )
+        or "<li>No falsification condition is recorded; the publication gate must remain blocked.</li>"
+    )
     return f"""<div class="nw-case-panel nw-case-panel--target"><h3>Falsification tests</h3><ul class="nw-case-record-list">{rows}</ul></div>"""
 
 
 def _publication_gate(case: Mapping[str, Any]) -> str:
     gate = case["publication_gate"]
     rows = "".join(
-        f"""<tr><td><strong>{_h(check['label'])}</strong><small><code>{_h(check['check_id'])}</code></small></td><td>{_h(check['minimum'])}</td><td>{_h(check['observed'])}</td><td>{'Passed' if check['passed'] else 'Not passed'}</td><td>{_h(check['detail'])}</td></tr>"""
+        f"""<tr><td><strong>{_h(check["label"])}</strong><small><code>{_h(check["check_id"])}</code></small></td><td>{_h(check["minimum"])}</td><td>{_h(check["observed"])}</td><td>{"Passed" if check["passed"] else "Not passed"}</td><td>{_h(check["detail"])}</td></tr>"""
         for check in gate["checks"]
     )
     return f"""<p class="nw-table-cue" id="publication-gate-cue">Scroll horizontally to inspect every publication check.</p>
 <div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="publication-gate-title" aria-describedby="publication-gate-cue"><table class="nw-evidence-table"><caption>Structured publication-gate checks</caption><thead><tr><th scope="col">Check</th><th scope="col">Minimum</th><th scope="col">Observed</th><th scope="col">Result</th><th scope="col">Detail</th></tr></thead><tbody>{rows}</tbody></table></div>
-<p class="nw-method-note"><strong>Gate {_h(gate['status'])}.</strong> Publishable: {_h(str(gate['publishable']).lower())}. Failed checks: {_h(', '.join(gate['failed_check_ids']) or 'none')}.</p>"""
+<p class="nw-method-note"><strong>Gate {_h(gate["status"])}.</strong> Publishable: {_h(str(gate["publishable"]).lower())}. Failed checks: {_h(", ".join(gate["failed_check_ids"]) or "none")}.</p>"""
 
 
 def _collection_targets(case: Mapping[str, Any]) -> str:
@@ -1978,30 +2058,40 @@ def _collection_targets(case: Mapping[str, Any]) -> str:
             else "No evidence URL recorded"
         )
         blocker = target["blocker"] or "No blocker recorded"
-        rows.append(f"""<div class="nw-case-panel nw-case-panel--target"><p class="nw-finding__label">{_h(target['status'])} · {_h(target['data_level'])}</p><h3>{_h(target['source_id'])}</h3><p>{_h(target['question_answered'])}</p><p><strong>Blocker:</strong> {_h(blocker)}</p><p>{evidence_link}</p></div>""")
+        rows.append(
+            f"""<div class="nw-case-panel nw-case-panel--target"><p class="nw-finding__label">{_h(target["status"])} · {_h(target["data_level"])}</p><h3>{_h(target["source_id"])}</h3><p>{_h(target["question_answered"])}</p><p><strong>Blocker:</strong> {_h(blocker)}</p><p>{evidence_link}</p></div>"""
+        )
     return "".join(rows) or (
         '<div class="nw-empty-register"><strong>No collection target is recorded.</strong></div>'
     )
 
 
 def _methodology_steps(case: Mapping[str, Any]) -> str:
-    return "".join(
-        f"""<li><strong>{_h(step['step_id'])}</strong><span>{_h(step['description'])}</span><small>Reproducible: {_h(str(step['reproducible']).lower())}</small></li>"""
-        for step in case["methodology"]
-    ) or "<li>No methodology step is recorded.</li>"
+    return (
+        "".join(
+            f"""<li><strong>{_h(step["step_id"])}</strong><span>{_h(step["description"])}</span><small>Reproducible: {_h(str(step["reproducible"]).lower())}</small></li>"""
+            for step in case["methodology"]
+        )
+        or "<li>No methodology step is recorded.</li>"
+    )
 
 
 def _safety_lists(case: Mapping[str, Any]) -> str:
     safety = case["safety"]
-    prohibited = "".join(
-        f"<li>{_h(value)}</li>" for value in safety["prohibited_interpretations"]
-    ) or "<li>No prohibited interpretation is recorded.</li>"
-    allegations = "".join(
-        f"<li>{_h(value)}</li>" for value in safety["allegations"]
-    ) or "<li>No allegation is made.</li>"
-    motives = "".join(
-        f"<li>{_h(value)}</li>" for value in safety["inferred_motives"]
-    ) or "<li>No motive is inferred.</li>"
+    prohibited = (
+        "".join(
+            f"<li>{_h(value)}</li>" for value in safety["prohibited_interpretations"]
+        )
+        or "<li>No prohibited interpretation is recorded.</li>"
+    )
+    allegations = (
+        "".join(f"<li>{_h(value)}</li>" for value in safety["allegations"])
+        or "<li>No allegation is made.</li>"
+    )
+    motives = (
+        "".join(f"<li>{_h(value)}</li>" for value in safety["inferred_motives"])
+        or "<li>No motive is inferred.</li>"
+    )
     return f"""<div class="nw-case-columns"><div class="nw-case-panel nw-case-panel--safety"><h3>Prohibited interpretations</h3><ul>{prohibited}</ul></div><div class="nw-case-panel"><h3>Allegations and motives</h3><ul>{allegations}{motives}</ul></div></div>"""
 
 
@@ -2015,16 +2105,23 @@ def render_investigation_case(case: Mapping[str, Any]) -> str:
     safety = case["safety"]
     correction_time = (
         _human_time(correction["last_corrected_at"])
-        if correction["last_corrected_at"] else "No correction timestamp"
+        if correction["last_corrected_at"]
+        else "No correction timestamp"
     )
-    reply_parties = "".join(
-        f"<li><strong>{_h(party['display_name'])}</strong> · {_h(party['party_type'])} · {_h(party['disposition'])}</li>"
-        for party in reply["parties"]
-    ) or "<li>No institution is recorded for reply.</li>"
-    limits = "".join(
-        f"<li><strong>{_h(item['statement'])}</strong><span>{_h(item['consequence'])}</span></li>"
-        for item in case["limitations"]
-    ) or "<li>No case-level limitation is recorded.</li>"
+    reply_parties = (
+        "".join(
+            f"<li><strong>{_h(party['display_name'])}</strong> · {_h(party['party_type'])} · {_h(party['disposition'])}</li>"
+            for party in reply["parties"]
+        )
+        or "<li>No institution is recorded for reply.</li>"
+    )
+    limits = (
+        "".join(
+            f"<li><strong>{_h(item['statement'])}</strong><span>{_h(item['consequence'])}</span></li>"
+            for item in case["limitations"]
+        )
+        or "<li>No case-level limitation is recorded.</li>"
+    )
     open_notice = ""
     if case["status"] != "published":
         open_notice = (
@@ -2033,22 +2130,22 @@ def render_investigation_case(case: Mapping[str, Any]) -> str:
             "must not be read as findings.</p>"
         )
     body = f"""<body class="ps newsroom-page newsroom-page--investigation-case">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <article class="nw-case-file" data-publication-state="{_h(state)}">
     <header class="nw-case-file__header">
       <p class="nw-case-status" data-publication-state="{_h(state)}"><span class="nw-dot" aria-hidden="true"></span>{_h(kind)} · {_h(status)}</p>
-      <h1 lang="{_h(_case_language(case))}">{_h(case['title'])}</h1>
-      <p class="nw-case-file__question" lang="{_h(_text_language(case['testable_question']))}"><strong>Testable question:</strong> {_h(case['testable_question'])}</p>
-      <p>{_h(case['dek'])}</p>
-      <p><strong>Current status:</strong> {_h(case['status_reason'])}</p>
+      <h1 lang="{_h(_case_language(case))}">{_h(case["title"])}</h1>
+      <p class="nw-case-file__question" lang="{_h(_text_language(case["testable_question"]))}"><strong>Testable question:</strong> {_h(case["testable_question"])}</p>
+      <p>{_h(case["dek"])}</p>
+      <p><strong>Current status:</strong> {_h(case["status_reason"])}</p>
     </header>
     {open_notice}
     <div class="nw-case-file__meta">
-      <div><dl><dt>Opened</dt><dd><time datetime="{_h(case['opened_at'])}">{_h(_human_time(case['opened_at']))}</time></dd></dl></div>
-      <div><dl><dt>Updated</dt><dd><time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></dd></dl></div>
+      <div><dl><dt>Opened</dt><dd><time datetime="{_h(case["opened_at"])}">{_h(_human_time(case["opened_at"]))}</time></dd></dl></div>
+      <div><dl><dt>Updated</dt><dd><time datetime="{_h(case["updated_at"])}">{_h(_human_time(case["updated_at"]))}</time></dd></dl></div>
       <div><dl><dt>Published</dt><dd>{_h(published_display)}</dd></dl></div>
-      <div><dl><dt>Version receipt</dt><dd><code>{_h(case['version_id'])}</code><br><a href="revisions/{_h(case['version_id'])}.json">Immutable revision JSON</a></dd></dl></div>
+      <div><dl><dt>Version receipt</dt><dd><code>{_h(case["version_id"])}</code><br><a href="revisions/{_h(case["version_id"])}.json">Immutable revision JSON</a></dd></dl></div>
     </div>
     <section class="nw-case-section" aria-labelledby="case-findings-title">
       <header><p class="nw-section__label">Claims and challenges</p><h2 id="case-findings-title">What is asserted—and what could overturn it</h2><p>Claim wording is reproduced from the structured record. Confidence and review state are not probability scores.</p></header>
@@ -2079,10 +2176,10 @@ def render_investigation_case(case: Mapping[str, Any]) -> str:
     <section class="nw-case-section" aria-labelledby="editorial-state-title">
       <header><p class="nw-section__label">Accountability</p><h2 id="editorial-state-title">Correction, reply and safety state</h2></header>
       <div class="nw-case-state-grid">
-        <div><dl><dt>Correction</dt><dd>{_h(correction['status'])}<br>{_h(correction['note'])}<br>{_h(correction_time)}<br><a href="{_h(_investigation_href(correction['policy_url']))}">Correction policy</a></dd></dl></div>
-        <div><dl><dt>Right to reply</dt><dd>{_h(reply['status'])}<br>{_h(reply['applicability_reason'])}<br>{len(reply['parties'])} institution{'s' if len(reply['parties']) != 1 else ''} recorded</dd></dl></div>
-        <div><dl><dt>Safety</dt><dd>{_h(safety['data_level'])}<br>Person-level data: {_h(str(safety['person_level_data']).lower())}</dd></dl></div>
-        <div><dl><dt>Current structured record</dt><dd><a href="case.json">case.json</a><br><code>{_h(case['case_id'])}</code></dd></dl></div>
+        <div><dl><dt>Correction</dt><dd>{_h(correction["status"])}<br>{_h(correction["note"])}<br>{_h(correction_time)}<br><a href="{_h(_investigation_href(correction["policy_url"]))}">Correction policy</a></dd></dl></div>
+        <div><dl><dt>Right to reply</dt><dd>{_h(reply["status"])}<br>{_h(reply["applicability_reason"])}<br>{len(reply["parties"])} institution{"s" if len(reply["parties"]) != 1 else ""} recorded</dd></dl></div>
+        <div><dl><dt>Safety</dt><dd>{_h(safety["data_level"])}<br>Person-level data: {_h(str(safety["person_level_data"]).lower())}</dd></dl></div>
+        <div><dl><dt>Current structured record</dt><dd><a href="case.json">case.json</a><br><code>{_h(case["case_id"])}</code></dd></dl></div>
       </div>
       <div class="nw-case-columns"><div class="nw-case-panel"><h3>Right-to-reply boundary</h3><p>No response is not evidence that a finding is true.</p></div><div class="nw-case-panel"><h3>Correction boundary</h3><p>Corrections append an immutable revision and preserve the previous public version.</p></div></div>
       <div class="nw-case-panel"><h3>Institutional reply register</h3><ul>{reply_parties}</ul></div>
@@ -2097,15 +2194,19 @@ def render_investigation_case(case: Mapping[str, Any]) -> str:
 </html>
 """
     is_published = case["status"] == "published"
-    return _head(
-        title=f"{case['title']} · Palimpsest Investigations",
-        description=case["dek"],
-        canonical=_case_public_url(case),
-        page_type="article" if is_published else "website",
-        published_at=case["published_at"] if is_published else None,
-        modified_at=case["updated_at"],
-        json_ld=_investigation_case_json_ld(case),
-    ) + "\n" + body
+    return (
+        _head(
+            title=f"{case['title']} · Palimpsest Investigations",
+            description=case["dek"],
+            canonical=_case_public_url(case),
+            page_type="article" if is_published else "website",
+            published_at=case["published_at"] if is_published else None,
+            modified_at=case["updated_at"],
+            json_ld=_investigation_case_json_ld(case),
+        )
+        + "\n"
+        + body
+    )
 
 
 def _machine_case_public_url(case: Mapping[str, Any]) -> str:
@@ -2120,16 +2221,11 @@ def _machine_case_public_url(case: Mapping[str, Any]) -> str:
 def _machine_is_article(case: Mapping[str, Any]) -> bool:
     """Only a successful analysis may receive article discovery metadata."""
 
-    return (
-        case["status"] == "published"
-        and case["report_type"] == "AnalysisReport"
-    )
+    return case["status"] == "published" and case["report_type"] == "AnalysisReport"
 
 
 def _machine_evidence_id(evidence: Mapping[str, Any]) -> str:
-    for key in (
-        "evidence_id", "citation_id", "resource_id", "receipt_id", "id"
-    ):
+    for key in ("evidence_id", "citation_id", "resource_id", "receipt_id", "id"):
         value = evidence.get(key)
         if isinstance(value, str) and value:
             return value
@@ -2266,10 +2362,10 @@ def _machine_case_card(case: Mapping[str, Any]) -> str:
     label = "ANALYSIS REPORT" if is_article else "ABSTENTION REPORT"
     return f"""<article class="nw-investigation-card nw-analysis-card" data-publication-state="{state}">
   <p class="nw-investigation-card__status"><span class="nw-dot" aria-hidden="true"></span>Deterministic machine analysis · {label}</p>
-  <h3 lang="{_h(_text_language(case['title']))}"><a href="{_h(case['url'])}">{_h(case['title'])}</a></h3>
-  <p>{_h(case['dek'])}</p>
-  <p><strong>Gate result:</strong> {_h(case['status_reason'])}</p>
-  <p class="nw-investigation-card__meta">{len(case['claim_blocks'])} cited block{'s' if len(case['claim_blocks']) != 1 else ''} · {len(case['evidence'])} evidence receipt{'s' if len(case['evidence']) != 1 else ''}<br>Updated <time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></p>
+  <h3 lang="{_h(_text_language(case["title"]))}"><a href="{_h(case["url"])}">{_h(case["title"])}</a></h3>
+  <p>{_h(case["dek"])}</p>
+  <p><strong>Gate result:</strong> {_h(case["status_reason"])}</p>
+  <p class="nw-investigation-card__meta">{len(case["claim_blocks"])} cited block{"s" if len(case["claim_blocks"]) != 1 else ""} · {len(case["evidence"])} evidence receipt{"s" if len(case["evidence"]) != 1 else ""}<br>Updated <time datetime="{_h(case["updated_at"])}">{_h(_human_time(case["updated_at"]))}</time></p>
 </article>"""
 
 
@@ -2285,7 +2381,7 @@ def render_machine_analysis_index(analyses: Mapping[str, Any]) -> str:
         "edition.</strong></div>"
     )
     body = f"""<body class="ps newsroom-page newsroom-page--analysis">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <header class="nw-investigations-head nw-analysis-head">
     <p class="nw-section__label">Deterministic analysis register</p>
@@ -2293,11 +2389,11 @@ def render_machine_analysis_index(analyses: Mapping[str, Any]) -> str:
     <p class="nw-investigations-head__dek">Evidence-linked analysis generated by a deterministic program from checked-in aggregate records. This desk conducts no human interviews and cannot fill reporting gaps with inference.</p>
   </header>
   <p class="nw-analysis-disclosure" role="note"><strong>DETERMINISTIC MACHINE ANALYSIS · NO HUMAN INTERVIEW.</strong> An AnalysisReport is a reproducible synthesis, not human-reported journalism. An AbstentionReport is a public record that the evidence gate did not pass; it is never marked as a NewsArticle.</p>
-  <div class="nw-meta-line"><span>Public aggregate evidence · no person-level records</span><span>Updated <time datetime="{_h(analyses['generated_at'])}">{_h(_human_time(analyses['generated_at']))}</time></span><a href="/readings/machine-investigations-latest.json">Structured desk</a><a href="/readings/evidence-mesh-latest.json">Evidence mesh</a></div>
+  <div class="nw-meta-line"><span>Public aggregate evidence · no person-level records</span><span>Updated <time datetime="{_h(analyses["generated_at"])}">{_h(_human_time(analyses["generated_at"]))}</time></span><a href="/readings/machine-investigations-latest.json">Structured desk</a><a href="/readings/evidence-mesh-latest.json">Evidence mesh</a></div>
   <div class="nw-status-strip" role="status" aria-label="Machine analysis publication states">
     <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{len(published)}</strong> analysis reports</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{len(abstained)}</strong> abstention reports</span>
-    <span><strong>{analyses['n_cases']}</strong> deterministic case files</span>
+    <span><strong>{analyses["n_cases"]}</strong> deterministic case files</span>
   </div>
   <nav aria-label="Analysis registers"><ul class="nw-section-nav"><li><a href="#analysis-reports">Analysis reports</a></li><li><a href="#abstention-reports">Abstentions</a></li><li><a href="/news/investigations/">Human-reviewed investigations</a></li></ul></nav>
   <section class="nw-investigation-register" aria-labelledby="analysis-reports"><header><div><p class="nw-section__label">Gate passed</p><h2 id="analysis-reports">Analysis reports</h2></div><p>Published only when the configured evidence, citation, lineage, safety and evaluation checks pass.</p></header><div class="nw-investigation-grid">{reports}</div></section>
@@ -2308,24 +2404,39 @@ def render_machine_analysis_index(analyses: Mapping[str, Any]) -> str:
 </body>
 </html>
 """
-    return _head(
-        title="Palimpsest Machine Analysis · deterministic evidence reports",
-        description=(
-            "Deterministic machine analyses and abstentions with sentence-level "
-            "citations, countercases, limits, falsifiers and evaluation receipts."
-        ),
-        canonical=f"{SITE}/news/analysis/",
-        page_type="website",
-        modified_at=analyses["generated_at"],
-        json_ld=_machine_index_json_ld(analyses),
-    ) + "\n" + body
+    return (
+        _head(
+            title="Palimpsest Machine Analysis · deterministic evidence reports",
+            description=(
+                "Deterministic machine analyses and abstentions with sentence-level "
+                "citations, countercases, limits, falsifiers and evaluation receipts."
+            ),
+            canonical=f"{SITE}/news/analysis/",
+            page_type="website",
+            modified_at=analyses["generated_at"],
+            json_ld=_machine_index_json_ld(analyses),
+        )
+        + "\n"
+        + body
+    )
 
 
 def _machine_record_title(record: Mapping[str, Any], fallback: str) -> str:
     for key in (
-        "title", "statement", "hypothesis", "label", "name", "text",
-        "step", "description", "finding", "observation", "test", "condition",
-        "countercase", "limitation",
+        "title",
+        "statement",
+        "hypothesis",
+        "label",
+        "name",
+        "text",
+        "step",
+        "description",
+        "finding",
+        "observation",
+        "test",
+        "condition",
+        "countercase",
+        "limitation",
     ):
         value = record.get(key)
         if isinstance(value, str) and value:
@@ -2400,10 +2511,10 @@ def _machine_claim_blocks(case: Mapping[str, Any]) -> str:
             ),
         )
         blocks.append(f"""<article class="nw-analysis-claim-block">
-  <p class="nw-finding__label">Claim block {position} · <code>{_h(block.get('block_id', position))}</code></p>
+  <p class="nw-finding__label">Claim block {position} · <code>{_h(block.get("block_id", position))}</code></p>
   <h3>{_h(paragraph)}</h3>
-  <ol class="nw-analysis-sentences">{''.join(rendered_sentences)}</ol>
-  <p class="nw-analysis-block-receipt"><strong>Block evidence union:</strong> {_machine_citation_links(block_ids)}<br><strong>Independent lineage groups:</strong> {_h(', '.join(map(str, groups)) if groups else 'none recorded')}</p>
+  <ol class="nw-analysis-sentences">{"".join(rendered_sentences)}</ol>
+  <p class="nw-analysis-block-receipt"><strong>Block evidence union:</strong> {_machine_citation_links(block_ids)}<br><strong>Independent lineage groups:</strong> {_h(", ".join(map(str, groups)) if groups else "none recorded")}</p>
 </article>""")
     return "".join(blocks)
 
@@ -2436,21 +2547,21 @@ def _machine_attribution_html(metadata: Mapping[str, Any]) -> str:
         else "No additional attribution flag in the mesh."
     )
     source_statement = (
-        f'<span>Source statement: {_h(attribution["source_statement"])}</span>'
+        f"<span>Source statement: {_h(attribution['source_statement'])}</span>"
         if attribution["source_statement"]
         else ""
     )
     return (
         '<div class="nw-analysis-attribution">'
-        f'<strong>{_h(requirement)}</strong>'
-        f'<span>Redistribution: <code>{_h(rights["redistribution"])}</code> · '
-        f'Reuse: <code>{_h(rights["reuse"])}</code> · '
-        f'Training: <code>{_h(rights["training"])}</code></span>'
-        f'<span>Provider(s): {", ".join(providers)}</span>'
-        f'<span>Upstream lineage: {_h(", ".join(attribution["upstream_groups"]))}</span>'
+        f"<strong>{_h(requirement)}</strong>"
+        f"<span>Redistribution: <code>{_h(rights['redistribution'])}</code> · "
+        f"Reuse: <code>{_h(rights['reuse'])}</code> · "
+        f"Training: <code>{_h(rights['training'])}</code></span>"
+        f"<span>Provider(s): {', '.join(providers)}</span>"
+        f"<span>Upstream lineage: {_h(', '.join(attribution['upstream_groups']))}</span>"
         f'<span>License / provider terms: <a href="{_h(attribution["license"]["url"])}">'
-        f'{_h(attribution["license"]["name"])}</a></span>'
-        f'<span>{" · ".join(source_links)}</span>{source_statement}'
+        f"{_h(attribution['license']['name'])}</a></span>"
+        f"<span>{' · '.join(source_links)}</span>{source_statement}"
         "</div>"
     )
 
@@ -2498,7 +2609,10 @@ def _machine_evidence_table(
         role = evidence.get(
             "role", evidence.get("relation", evidence.get("allowed_role", "supports"))
         )
-        value = evidence.get("value", evidence.get("summary", evidence.get("claim", "Receipt metadata only")))
+        value = evidence.get(
+            "value",
+            evidence.get("summary", evidence.get("claim", "Receipt metadata only")),
+        )
         value_type = evidence.get("value_type", evidence.get("unit"))
         denominator = evidence.get("denominator")
         value_detail = _machine_display_value(value)
@@ -2531,22 +2645,24 @@ def _machine_evidence_table(
             else "No public evidence capsule recorded"
         )
         attribution_html = _machine_attribution_html(attributions[evidence_id])
-        artifact = evidence.get("artifact_id", evidence.get("input_id", "artifact not recorded"))
+        artifact = evidence.get(
+            "artifact_id", evidence.get("input_id", "artifact not recorded")
+        )
         artifact_sha = evidence.get("artifact_sha256", evidence.get("sha256"))
         receipt = _h(str(artifact))
         if artifact_sha:
             receipt += f" · sha256 <code>{_h(str(artifact_sha))}</code>"
-        rows.append(f"""<tr id="{_machine_fragment('evidence', evidence_id)}">
+        rows.append(f"""<tr id="{_machine_fragment("evidence", evidence_id)}">
   <td><span class="nw-evidence-relation" data-relation="{_h(role)}">{_h(role)}</span><small>{_h(source_class)}</small></td>
   <td><strong>{_h(label)}</strong><small><code>{_h(evidence_id)}</code> · {_h(group)}</small><small>{receipt}</small></td>
   <td>{_h(value_detail)}</td>
-  <td>{_h(_machine_human_time(timestamp) if timestamp else 'not dated')}</td>
+  <td>{_h(_machine_human_time(timestamp) if timestamp else "not dated")}</td>
   <td>{_h(_machine_display_value(limit))}<small>{capsule_link}</small>{attribution_html}</td>
 </tr>""")
     return f"""<div class="nw-table-wrap" role="region" tabindex="0" aria-label="Machine-analysis evidence receipts"><table class="nw-evidence-table">
 <caption>Evidence receipts cited sentence by sentence in this report</caption>
 <thead><tr><th scope="col">Relation</th><th scope="col">Evidence / lineage</th><th scope="col">Value or summary</th><th scope="col">Observed</th><th scope="col">Interpretation limit</th></tr></thead>
-<tbody>{''.join(rows)}</tbody></table></div>"""
+<tbody>{"".join(rows)}</tbody></table></div>"""
 
 
 def _machine_evidence_timeline(case: Mapping[str, Any]) -> str:
@@ -2581,7 +2697,8 @@ def _machine_evidence_timeline(case: Mapping[str, Any]) -> str:
         timestamp = None if timestamp_sort == "9999" else timestamp_sort
         when = (
             f'<time datetime="{_h(timestamp)}">{_h(_machine_human_time(timestamp))}</time>'
-            if timestamp else f"Evidence order {position}"
+            if timestamp
+            else f"Evidence order {position}"
         )
         group = evidence.get(
             "independence_group",
@@ -2593,18 +2710,23 @@ def _machine_evidence_timeline(case: Mapping[str, Any]) -> str:
                 ),
             ),
         )
-        points.append(f"""<li><span class="nw-analysis-timeline__marker" aria-hidden="true">{position}</span><div><p>{when}</p><strong>{_h(_machine_record_title(evidence, evidence_id))}</strong><span>{_h(evidence.get('role', evidence.get('relation', evidence.get('allowed_role', 'evidence'))))} · {_h(group)}</span><a href="#{_machine_fragment('evidence', evidence_id)}">Inspect receipt</a></div></li>""")
+        points.append(
+            f"""<li><span class="nw-analysis-timeline__marker" aria-hidden="true">{position}</span><div><p>{when}</p><strong>{_h(_machine_record_title(evidence, evidence_id))}</strong><span>{_h(evidence.get("role", evidence.get("relation", evidence.get("allowed_role", "evidence"))))} · {_h(group)}</span><a href="#{_machine_fragment("evidence", evidence_id)}">Inspect receipt</a></div></li>"""
+        )
     return f"""<figure class="nw-analysis-timeline" aria-labelledby="analysis-timeline-title">
   <figcaption id="analysis-timeline-title"><strong>Evidence chronology and source lineage</strong><span>Ordering exposes which observations predate the report and which receipts share a lineage. It is descriptive, not a causal sequence.</span></figcaption>
-  <ol>{''.join(points)}</ol>
+  <ol>{"".join(points)}</ol>
 </figure>"""
 
 
 def _machine_record_cards(value: object, *, empty: str) -> str:
     if isinstance(value, Mapping):
         records = [
-            ({"name": key, **item} if isinstance(item, Mapping)
-             else {"name": key, "value": item})
+            (
+                {"name": key, **item}
+                if isinstance(item, Mapping)
+                else {"name": key, "value": item}
+            )
             for key, item in value.items()
         ]
     else:
@@ -2617,12 +2739,25 @@ def _machine_record_cards(value: object, *, empty: str) -> str:
             citation_ids: Sequence[object] = []
             for key, field_value in item.items():
                 if key in {
-                    "title", "statement", "hypothesis", "label", "name", "text",
-                    "step", "description", "finding", "observation", "test",
-                    "condition", "countercase", "limitation",
+                    "title",
+                    "statement",
+                    "hypothesis",
+                    "label",
+                    "name",
+                    "text",
+                    "step",
+                    "description",
+                    "finding",
+                    "observation",
+                    "test",
+                    "condition",
+                    "countercase",
+                    "limitation",
                 }:
                     continue
-                if key in {"citation_ids", "evidence_ids"} and isinstance(field_value, list):
+                if key in {"citation_ids", "evidence_ids"} and isinstance(
+                    field_value, list
+                ):
                     citation_ids = field_value
                     continue
                 details.append(
@@ -2630,13 +2765,16 @@ def _machine_record_cards(value: object, *, empty: str) -> str:
                 )
             citations = (
                 f'<p class="nw-analysis-citations"><strong>Evidence:</strong> {_machine_citation_links(citation_ids)}</p>'
-                if citation_ids else ""
+                if citation_ids
+                else ""
             )
             cards.append(
                 f"<li><strong>{_h(title)}</strong><dl>{''.join(details)}</dl>{citations}</li>"
             )
         else:
-            cards.append(f"<li><strong>{_h(_machine_display_value(item))}</strong></li>")
+            cards.append(
+                f"<li><strong>{_h(_machine_display_value(item))}</strong></li>"
+            )
     return "".join(cards) if cards else f"<li>{_h(empty)}</li>"
 
 
@@ -2651,18 +2789,22 @@ def _machine_correction_history(case: Mapping[str, Any]) -> str:
         revision_id = revision.get("revision_id", f"revision-{position}")
         published_at = revision.get("published_at")
         rows.append(f"""<li>
-  <strong>{_h(revision.get('summary', revision.get('change_type', 'Revision')))}</strong>
-  <dl><dt>Revision</dt><dd><code>{_h(revision_id)}</code></dd><dt>Change type</dt><dd>{_h(revision.get('change_type', 'not recorded'))}</dd><dt>Published</dt><dd>{_h(_machine_human_time(published_at) if published_at else 'not dated')}</dd></dl>
+  <strong>{_h(revision.get("summary", revision.get("change_type", "Revision")))}</strong>
+  <dl><dt>Revision</dt><dd><code>{_h(revision_id)}</code></dd><dt>Change type</dt><dd>{_h(revision.get("change_type", "not recorded"))}</dd><dt>Published</dt><dd>{_h(_machine_human_time(published_at) if published_at else "not dated")}</dd></dl>
 </li>""")
     if not rows:
         rows.append("<li>No revision history recorded.</li>")
     corrected = correction.get("last_corrected_at")
-    corrected_text = _machine_human_time(corrected) if corrected else "No material correction recorded"
+    corrected_text = (
+        _machine_human_time(corrected)
+        if corrected
+        else "No material correction recorded"
+    )
     return f"""<div class="nw-analysis-receipt"><dl>
-  <dt>Correction status</dt><dd>{_h(correction.get('status', 'not recorded'))}</dd>
+  <dt>Correction status</dt><dd>{_h(correction.get("status", "not recorded"))}</dd>
   <dt>Last corrected</dt><dd>{_h(corrected_text)}</dd>
-  <dt>Policy</dt><dd>{_h(correction.get('policy', 'No correction policy recorded.'))}</dd>
-</dl></div><ol class="nw-case-record-list">{''.join(rows)}</ol>"""
+  <dt>Policy</dt><dd>{_h(correction.get("policy", "No correction policy recorded."))}</dd>
+</dl></div><ol class="nw-case-record-list">{"".join(rows)}</ol>"""
 
 
 def _machine_evaluation_receipt(case: Mapping[str, Any]) -> str:
@@ -2670,8 +2812,11 @@ def _machine_evaluation_receipt(case: Mapping[str, Any]) -> str:
     checks = receipt.get("checks", receipt.get("gates", []))
     if isinstance(checks, Mapping):
         checks = [
-            ({"check_id": check_id, **value} if isinstance(value, Mapping)
-             else {"check_id": check_id, "status": value})
+            (
+                {"check_id": check_id, **value}
+                if isinstance(value, Mapping)
+                else {"check_id": check_id, "status": value}
+            )
             for check_id, value in checks.items()
         ]
     summary_rows = []
@@ -2694,18 +2839,23 @@ def _machine_evaluation_receipt(case: Mapping[str, Any]) -> str:
             required = check.get("required", check.get("minimum"))
             threshold = (
                 f"{_machine_display_value(observed)} / {_machine_display_value(required)}"
-                if observed is not None or required is not None else "not recorded"
+                if observed is not None or required is not None
+                else "not recorded"
             )
         else:
             check_id, label, result, threshold, detail = (
-                f"check-{position}", f"Check {position}", check, "not recorded", ""
+                f"check-{position}",
+                f"Check {position}",
+                check,
+                "not recorded",
+                "",
             )
         check_rows.append(
             f"<tr><td><strong>{_h(label)}</strong><small><code>{_h(check_id)}</code></small></td><td>{_h(_machine_display_value(result))}</td><td>{_h(threshold)}</td><td>{_h(detail)}</td></tr>"
         )
     checks_table = ""
     if check_rows:
-        checks_table = f"""<div class="nw-table-wrap" role="region" tabindex="0" aria-label="Machine-analysis evaluation checks"><table class="nw-evidence-table"><caption>Deterministic evaluation and publication-gate checks</caption><thead><tr><th scope="col">Gate</th><th scope="col">Result</th><th scope="col">Observed / required</th><th scope="col">Receipt detail</th></tr></thead><tbody>{''.join(check_rows)}</tbody></table></div>"""
+        checks_table = f"""<div class="nw-table-wrap" role="region" tabindex="0" aria-label="Machine-analysis evaluation checks"><table class="nw-evidence-table"><caption>Deterministic evaluation and publication-gate checks</caption><thead><tr><th scope="col">Gate</th><th scope="col">Result</th><th scope="col">Observed / required</th><th scope="col">Receipt detail</th></tr></thead><tbody>{"".join(check_rows)}</tbody></table></div>"""
     return f'<div class="nw-analysis-receipt"><dl>{"".join(summary_rows)}</dl>{checks_table}</div>'
 
 
@@ -2713,33 +2863,35 @@ def render_machine_analysis_case(case: Mapping[str, Any]) -> str:
     is_article = _machine_is_article(case)
     state = "published" if is_article else "abstained"
     report_label = "ANALYSIS REPORT" if is_article else "ABSTENTION REPORT"
-    published_display = _human_time(case["published_at"]) if case["published_at"] else "Not published"
+    published_display = (
+        _human_time(case["published_at"]) if case["published_at"] else "Not published"
+    )
     attributions = _machine_case_attributions(case)
     body = f"""<body class="ps newsroom-page newsroom-page--analysis-case">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
-  <article class="nw-case-file nw-analysis-file" data-publication-state="{state}" data-report-type="{_h(case['report_type'])}">
+  <article class="nw-case-file nw-analysis-file" data-publication-state="{state}" data-report-type="{_h(case["report_type"])}">
     <header class="nw-case-file__header">
       <p class="nw-case-status" data-publication-state="{state}"><span class="nw-dot" aria-hidden="true"></span>Deterministic machine analysis · {report_label}</p>
-      <h1 lang="{_h(_text_language(case['title']))}">{_h(case['title'])}</h1>
-      <p class="nw-case-file__question">{_h(case['dek'])}</p>
-      <p><strong>Current gate result:</strong> {_h(case['status_reason'])}</p>
+      <h1 lang="{_h(_text_language(case["title"]))}">{_h(case["title"])}</h1>
+      <p class="nw-case-file__question">{_h(case["dek"])}</p>
+      <p><strong>Current gate result:</strong> {_h(case["status_reason"])}</p>
     </header>
     <p class="nw-analysis-disclosure" role="note"><strong>DETERMINISTIC MACHINE ANALYSIS · NO HUMAN INTERVIEW.</strong> This report uses checked-in aggregate evidence only. It cannot add testimony, observe private conduct or treat missing reporting as confirmation.</p>
     <div class="nw-case-file__meta">
-      <div><dl><dt>Report type</dt><dd>{_h(case['report_type'])}<br>{_h(case['profile'])}</dd></dl></div>
-      <div><dl><dt>Updated</dt><dd><time datetime="{_h(case['updated_at'])}">{_h(_human_time(case['updated_at']))}</time></dd></dl></div>
+      <div><dl><dt>Report type</dt><dd>{_h(case["report_type"])}<br>{_h(case["profile"])}</dd></dl></div>
+      <div><dl><dt>Updated</dt><dd><time datetime="{_h(case["updated_at"])}">{_h(_human_time(case["updated_at"]))}</time></dd></dl></div>
       <div><dl><dt>Published</dt><dd>{_h(published_display)}</dd></dl></div>
-      <div><dl><dt>Revision receipt</dt><dd><code>{_h(case['revision_id'])}</code><br><a href="revisions/{_h(case['revision_id'])}.json">Immutable revision JSON</a></dd></dl></div>
+      <div><dl><dt>Revision receipt</dt><dd><code>{_h(case["revision_id"])}</code><br><a href="revisions/{_h(case["revision_id"])}.json">Immutable revision JSON</a></dd></dl></div>
     </div>
     <section class="nw-case-section" aria-labelledby="analysis-claims-title"><header><p class="nw-section__label">Sentence-level provenance</p><h2 id="analysis-claims-title">Analysis with citations attached</h2><p>The paragraph is the published unit; the ledger beneath it shows the exact evidence IDs attached to each sentence and the de-duplicated lineage union for the block.</p></header><div class="nw-finding-list">{_machine_claim_blocks(case)}</div></section>
     <section class="nw-case-section" aria-labelledby="analysis-timeline-section"><header><p class="nw-section__label">Explanatory view</p><h2 id="analysis-timeline-section">When the evidence arrived—and which sources travel together</h2></header>{_machine_evidence_timeline(case)}</section>
     <section class="nw-case-section" aria-labelledby="analysis-evidence-title"><header><p class="nw-section__label">Evidence ledger</p><h2 id="analysis-evidence-title">Receipts, values, rights and interpretation limits</h2><p>Each public archive is a redacted aggregate capsule bound to the original input hash. Raw readings, IP-valued answers, contact data and person-level records are not copied into the archive.</p></header>{_machine_evidence_table(case, attributions)}</section>
-    <section class="nw-case-section" aria-labelledby="analysis-challenges-title"><header><p class="nw-section__label">Adversarial reading</p><h2 id="analysis-challenges-title">Countercases, limitations and falsifiers</h2><p>These records are part of the report, not caveats hidden after the conclusion.</p></header><div class="nw-analysis-record-grid"><div class="nw-case-panel nw-case-panel--counter"><h3>Countercases</h3><ul class="nw-case-record-list">{_machine_record_cards(case['countercases'], empty='No countercase recorded.')}</ul></div><div class="nw-case-panel"><h3>Limitations</h3><ul class="nw-case-record-list">{_machine_record_cards(case['limitations'], empty='No limitation recorded.')}</ul></div><div class="nw-case-panel nw-case-panel--target"><h3>Falsifiers</h3><ul class="nw-case-record-list">{_machine_record_cards(case['falsifiers'], empty='No falsifier recorded.')}</ul></div><div class="nw-case-panel"><h3>Hypotheses tested</h3><ul class="nw-case-record-list">{_machine_record_cards(case['hypotheses'], empty='No hypothesis recorded.')}</ul></div></div></section>
-    <section class="nw-case-section" aria-labelledby="analysis-gate-title"><header><p class="nw-section__label">Evaluation receipt</p><h2 id="analysis-gate-title">Why this became {_h(case['report_type'])}</h2><p>The report type is the result of declared deterministic checks. Passing a gate does not imply human reporting occurred.</p></header>{_machine_evaluation_receipt(case)}</section>
-    <section class="nw-case-section" aria-labelledby="analysis-method-title"><header><p class="nw-section__label">Reproducibility</p><h2 id="analysis-method-title">Methodology</h2></header><ol class="nw-case-record-list">{_machine_record_cards(case['methodology'], empty='No methodology step recorded.')}</ol></section>
-    <section class="nw-case-section" aria-labelledby="analysis-revisions-title"><header><p class="nw-section__label">Correction and revision history</p><h2 id="analysis-revisions-title">Current head and preserved revisions</h2><p>The mutable report JSON points at the current case; this revision stays addressable even after a correction.</p></header>{_machine_correction_history(case)}<div class="nw-case-state-grid"><div><dl><dt>Current report</dt><dd><a href="report.json">report.json</a></dd></dl></div><div><dl><dt>Current revision</dt><dd><a href="revisions/{_h(case['revision_id'])}.json"><code>{_h(case['revision_id'])}</code></a></dd></dl></div><div><dl><dt>Source case</dt><dd><code>{_h(case['source_case_id'])}</code></dd></dl></div><div><dl><dt>Source revision</dt><dd><code>{_h(case['source_revision_id'])}</code></dd></dl></div></div></section>
-    <section class="nw-case-section" aria-labelledby="analysis-safety-title"><header><p class="nw-section__label">Safety boundary</p><h2 id="analysis-safety-title">What the machine was not allowed to use</h2></header><ul class="nw-case-record-list">{_machine_record_cards(case['safety'], empty='No safety record.')}</ul></section>
+    <section class="nw-case-section" aria-labelledby="analysis-challenges-title"><header><p class="nw-section__label">Adversarial reading</p><h2 id="analysis-challenges-title">Countercases, limitations and falsifiers</h2><p>These records are part of the report, not caveats hidden after the conclusion.</p></header><div class="nw-analysis-record-grid"><div class="nw-case-panel nw-case-panel--counter"><h3>Countercases</h3><ul class="nw-case-record-list">{_machine_record_cards(case["countercases"], empty="No countercase recorded.")}</ul></div><div class="nw-case-panel"><h3>Limitations</h3><ul class="nw-case-record-list">{_machine_record_cards(case["limitations"], empty="No limitation recorded.")}</ul></div><div class="nw-case-panel nw-case-panel--target"><h3>Falsifiers</h3><ul class="nw-case-record-list">{_machine_record_cards(case["falsifiers"], empty="No falsifier recorded.")}</ul></div><div class="nw-case-panel"><h3>Hypotheses tested</h3><ul class="nw-case-record-list">{_machine_record_cards(case["hypotheses"], empty="No hypothesis recorded.")}</ul></div></div></section>
+    <section class="nw-case-section" aria-labelledby="analysis-gate-title"><header><p class="nw-section__label">Evaluation receipt</p><h2 id="analysis-gate-title">Why this became {_h(case["report_type"])}</h2><p>The report type is the result of declared deterministic checks. Passing a gate does not imply human reporting occurred.</p></header>{_machine_evaluation_receipt(case)}</section>
+    <section class="nw-case-section" aria-labelledby="analysis-method-title"><header><p class="nw-section__label">Reproducibility</p><h2 id="analysis-method-title">Methodology</h2></header><ol class="nw-case-record-list">{_machine_record_cards(case["methodology"], empty="No methodology step recorded.")}</ol></section>
+    <section class="nw-case-section" aria-labelledby="analysis-revisions-title"><header><p class="nw-section__label">Correction and revision history</p><h2 id="analysis-revisions-title">Current head and preserved revisions</h2><p>The mutable report JSON points at the current case; this revision stays addressable even after a correction.</p></header>{_machine_correction_history(case)}<div class="nw-case-state-grid"><div><dl><dt>Current report</dt><dd><a href="report.json">report.json</a></dd></dl></div><div><dl><dt>Current revision</dt><dd><a href="revisions/{_h(case["revision_id"])}.json"><code>{_h(case["revision_id"])}</code></a></dd></dl></div><div><dl><dt>Source case</dt><dd><code>{_h(case["source_case_id"])}</code></dd></dl></div><div><dl><dt>Source revision</dt><dd><code>{_h(case["source_revision_id"])}</code></dd></dl></div></div></section>
+    <section class="nw-case-section" aria-labelledby="analysis-safety-title"><header><p class="nw-section__label">Safety boundary</p><h2 id="analysis-safety-title">What the machine was not allowed to use</h2></header><ul class="nw-case-record-list">{_machine_record_cards(case["safety"], empty="No safety record.")}</ul></section>
   </article>
 </main>
 <footer class="nw-footer"><div class="nw-shell"><a href="/news/analysis/">← Machine-analysis desk</a> · <a href="report.json">Current report JSON</a> · <a href="/readings/machine-investigations-latest.json">Structured desk</a> · <a href="/readings/evidence-mesh-latest.json">Evidence mesh</a></div></footer>
@@ -2747,15 +2899,19 @@ def render_machine_analysis_case(case: Mapping[str, Any]) -> str:
 </body>
 </html>
 """
-    return _head(
-        title=f"{case['title']} · Palimpsest Machine Analysis",
-        description=case["dek"],
-        canonical=_machine_case_public_url(case),
-        page_type="article" if is_article else "website",
-        published_at=case["published_at"] if is_article else None,
-        modified_at=case["updated_at"],
-        json_ld=_machine_case_json_ld(case, attributions),
-    ) + "\n" + body
+    return (
+        _head(
+            title=f"{case['title']} · Palimpsest Machine Analysis",
+            description=case["dek"],
+            canonical=_machine_case_public_url(case),
+            page_type="article" if is_article else "website",
+            published_at=case["published_at"] if is_article else None,
+            modified_at=case["updated_at"],
+            json_ld=_machine_case_json_ld(case, attributions),
+        )
+        + "\n"
+        + body
+    )
 
 
 def render_index(feed: Mapping[str, Any]) -> str:
@@ -2773,44 +2929,50 @@ def render_index(feed: Mapping[str, Any]) -> str:
     section_blocks = []
     for section in feed["sections"]:
         section_stories = [
-            story for story in stories
+            story
+            for story in stories
             if story["section"] == section["id"] and story["id"] != lead["id"]
         ]
         if not section_stories:
             continue
-        cards = "\n".join(_story_card(story, section["title"]) for story in section_stories)
-        section_blocks.append(f"""<section class="nw-section" id="{_h(section['id'])}">
+        cards = "\n".join(
+            _story_card(story, section["title"]) for story in section_stories
+        )
+        section_blocks.append(f"""<section class="nw-section" id="{_h(section["id"])}">
   <div class="nw-section__head">
-    <div><p class="nw-section__label">{section['order']:02d} / Desk</p><h2>{_h(section['title'])}</h2></div>
-    <p class="nw-section__dek">{_h(section['dek'])}</p>
+    <div><p class="nw-section__label">{section["order"]:02d} / Desk</p><h2>{_h(section["title"])}</h2></div>
+    <p class="nw-section__dek">{_h(section["dek"])}</p>
   </div>
   <div class="nw-grid">{cards}</div>
 </section>""")
     gaps = [story for story in stories if story["status"] != "live"]
-    gap_items = "\n".join(
-        f"""<div class="nw-coverage__item"><strong>{_h(story['headline'])}</strong><p>{_h(story['limitations'][0])}</p></div>"""
-        for story in gaps
-    ) or '<div class="nw-coverage__item"><strong>All sources are current</strong><p>No coverage qualifier is active in this edition.</p></div>'
+    gap_items = (
+        "\n".join(
+            f"""<div class="nw-coverage__item"><strong>{_h(story["headline"])}</strong><p>{_h(story["limitations"][0])}</p></div>"""
+            for story in gaps
+        )
+        or '<div class="nw-coverage__item"><strong>All sources are current</strong><p>No coverage qualifier is active in this edition.</p></div>'
+    )
     body = f"""<body class="ps newsroom-page">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <header class="nw-masthead">
     <div class="nw-masthead__top">
       <p class="nw-wordmark">Palimpsest <span>Wire</span></p>
-      <p class="nw-edition"><strong>Verified edition</strong>{_h(_human_time(feed['generated_at']))}<br>{feed['n_stories']} evidence-linked dispatches</p>
+      <p class="nw-edition"><strong>Verified edition</strong>{_h(_human_time(feed["generated_at"]))}<br>{feed["n_stories"]} evidence-linked dispatches</p>
     </div>
     <p class="nw-masthead__dek">Measurements become readable reports without losing their source, denominator, freshness or limits. Automated wording; no causal inference.</p>
   </header>
-  <div class="nw-meta-line"><span>China · open-source evidence</span><span>Updated <time datetime="{_h(feed['generated_at'])}">{_h(_human_time(feed['generated_at']))}</time></span><a href="/news/feed.xml">RSS</a><a href="/news/feed.json">JSON Feed</a><a href="/readings/newsroom-latest.json">Full structured edition</a></div>
+  <div class="nw-meta-line"><span>China · open-source evidence</span><span>Updated <time datetime="{_h(feed["generated_at"])}">{_h(_human_time(feed["generated_at"]))}</time></span><a href="/news/feed.xml">RSS</a><a href="/news/feed.json">JSON Feed</a><a href="/readings/newsroom-latest.json">Full structured edition</a></div>
   <div class="nw-status-strip" role="status" aria-label="Edition coverage">
     <span><i class="nw-dot nw-dot--live" aria-hidden="true"></i><strong>{live}</strong> live</span>
     <span><i class="nw-dot nw-dot--warning" aria-hidden="true"></i><strong>{reporting}</strong> reporting</span>
     <span><i class="nw-dot nw-dot--missing" aria-hidden="true"></i><strong>{warnings}</strong> qualified</span>
-    <span><strong>{coverage['total']}</strong> total instruments</span>
+    <span><strong>{coverage["total"]}</strong> total instruments</span>
   </div>
   <nav aria-label="News desks"><ul class="nw-section-nav">{navigation}</ul></nav>
-  {_lead(lead, sections[lead['section']]['title'])}
-  {''.join(section_blocks)}
+  {_lead(lead, sections[lead["section"]]["title"])}
+  {"".join(section_blocks)}
   <aside class="nw-coverage" aria-labelledby="coverage-title">
     <div><p class="nw-kicker nw-kicker--warning">Coverage desk</p><h2 id="coverage-title">What we cannot currently claim</h2></div>
     <div class="nw-coverage__items">{gap_items}</div>
@@ -2822,14 +2984,18 @@ def render_index(feed: Mapping[str, Any]) -> str:
 </html>
 """
     title = "Palimpsest Wire · evidence-linked China intelligence"
-    return _head(
-        title=title,
-        description=DESCRIPTION,
-        canonical=feed["url"],
-        page_type="website",
-        modified_at=feed["generated_at"],
-        json_ld=_index_json_ld(feed),
-    ) + "\n" + body
+    return (
+        _head(
+            title=title,
+            description=DESCRIPTION,
+            canonical=feed["url"],
+            page_type="website",
+            modified_at=feed["generated_at"],
+            json_ld=_index_json_ld(feed),
+        )
+        + "\n"
+        + body
+    )
 
 
 def _site_path(url: str) -> str:
@@ -2855,17 +3021,21 @@ def render_instrument_analysis(
         ("does_not_show", "What this reading does not show"),
     ):
         sentences = "".join(
-            f"<li>{_h(item['text'])}</li>" for item in analysis["brief"][name]["sentences"]
+            f"<li>{_h(item['text'])}</li>"
+            for item in analysis["brief"][name]["sentences"]
         )
         layers.append(
-            f"<h3 class=\"nw-assessment__subhead\">{_h(heading)}</h3>"
-            f"<ul class=\"nw-assessment__rationale\">{sentences}</ul>"
+            f'<h3 class="nw-assessment__subhead">{_h(heading)}</h3>'
+            f'<ul class="nw-assessment__rationale">{sentences}</ul>'
         )
-    counters = "".join(f"<li>{_h(item['text'])}</li>" for item in analysis["counterreadings"])
+    counters = "".join(
+        f"<li>{_h(item['text'])}</li>" for item in analysis["counterreadings"]
+    )
     limits = "".join(f"<li>{_h(item['text'])}</li>" for item in analysis["limitations"])
     peers = analysis["elevated_peers"]
     peer_line = (
-        ", ".join(f"{row['signal_id']} ({row['section']})" for row in peers) or "none named"
+        ", ".join(f"{row['signal_id']} ({row['section']})" for row in peers)
+        or "none named"
     )
     if surface == "reading":
         story_analysis = _h(_site_path(str(analysis["url"])))
@@ -2883,11 +3053,11 @@ def render_instrument_analysis(
             f'<a href="analysis.json">structured assessment</a> · '
             f'<a href="{_h(analysis["reading_analysis_url"])}">reading companion</a>'
         )
-    return f"""<section class="nw-assessment" data-disposition="{_h(analysis['disposition'])}" aria-labelledby="instrument-analysis-title">
+    return f"""<section class="nw-assessment" data-disposition="{_h(analysis["disposition"])}" aria-labelledby="instrument-analysis-title">
   <p class="nw-section__label">Palimpsest addition</p>
   <h2 id="instrument-analysis-title">Instrument brief</h2>
-  <p class="nw-assessment__status">{_h(analysis['disposition'])} · {_h(_status_label(analysis['status']))}</p>
-  <p class="nw-assessment__position">{_h(analysis['position'])}</p>
+  <p class="nw-assessment__status">{_h(analysis["disposition"])} · {_h(_status_label(analysis["status"]))}</p>
+  <p class="nw-assessment__position">{_h(analysis["position"])}</p>
   <h3 class="nw-assessment__subhead">Key number</h3>
   <ul class="nw-assessment__rationale">{numbers}</ul>
   {"".join(layers)}
@@ -2952,41 +3122,44 @@ def render_story(
     analysis: Mapping[str, Any] | None = None,
 ) -> str:
     claim_items = "\n".join(
-        f'<p><strong>{_h(claim["type"].replace("_", " ").title())}.</strong> {_h(claim["statement"])}</p>'
+        f"<p><strong>{_h(claim['type'].replace('_', ' ').title())}.</strong> {_h(claim['statement'])}</p>"
         for claim in story["claims"]
     )
     limitations = "\n".join(f"<li>{_h(item)}</li>" for item in story["limitations"])
-    related = "\n".join(
-        f'<a href="/{_h(by_id[signal_id]["url"].removeprefix(SITE).lstrip("/"))}">{_h(by_id[signal_id]["headline"])}</a>'
-        for signal_id in story["related_signal_ids"]
-        if signal_id in by_id
-    ) or "<p>No related dispatch is declared for this instrument.</p>"
+    related = (
+        "\n".join(
+            f'<a href="/{_h(by_id[signal_id]["url"].removeprefix(SITE).lstrip("/"))}">{_h(by_id[signal_id]["headline"])}</a>'
+            for signal_id in story["related_signal_ids"]
+            if signal_id in by_id
+        )
+        or "<p>No related dispatch is declared for this instrument.</p>"
+    )
     metric = ""
     if story["metric"]["value"] is not None:
         metric = f"""<div class="nw-metric-block" aria-label="Headline metric"><strong>{_h(_metric_value(story))}</strong><span>{_h(_metric_caption(story))}</span></div>"""
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
     body = f"""<body class="ps newsroom-page">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <article class="nw-article">
     <header class="nw-article__header">
-      <p class="nw-article__kicker{status_class}">{_h(section['title'])} · {_h(_status_label(story['status']))}</p>
-      <h1>{_h(story['headline'])}</h1>
-      <p class="nw-article__dek">{_h(story['dek'])}</p>
-      <p class="nw-article__meta"><span>By {PUBLISHER}</span><time datetime="{_h(story['published_at'])}">{_h(_human_time(story['published_at']))}</time><span>Automated evidence brief</span></p>
+      <p class="nw-article__kicker{status_class}">{_h(section["title"])} · {_h(_status_label(story["status"]))}</p>
+      <h1>{_h(story["headline"])}</h1>
+      <p class="nw-article__dek">{_h(story["dek"])}</p>
+      <p class="nw-article__meta"><span>By {PUBLISHER}</span><time datetime="{_h(story["published_at"])}">{_h(_human_time(story["published_at"]))}</time><span>Automated evidence brief</span></p>
     </header>
     <div class="nw-article__layout">
       <div class="nw-article__body">
 {metric}        <h2>What the record says</h2>
         {claim_items}
-        <p>This report is scoped to <strong>{_h(story['signal_id'])}</strong>. It does not merge unlike instruments or infer a cause from co-movement.</p>
+        <p>This report is scoped to <strong>{_h(story["signal_id"])}</strong>. It does not merge unlike instruments or infer a cause from co-movement.</p>
         <h2>How it was measured</h2>
-        <p>{_h(story['method']['summary'])}</p>
+        <p>{_h(story["method"]["summary"])}</p>
         <h2>What this cannot establish</h2>
         <ul class="nw-limitations">{limitations}</ul>
         {render_instrument_analysis(analysis) if analysis is not None else ""}
         <h2>Read the evidence</h2>
-        <p>The exact source reading is <a href="{_h(story['evidence']['url'])}">{_h(story['evidence']['input']['filename'])}</a>. The structured version of this dispatch is <a href="story.json">published beside the article</a>.</p>
+        <p>The exact source reading is <a href="{_h(story["evidence"]["url"])}">{_h(story["evidence"]["input"]["filename"])}</a>. The structured version of this dispatch is <a href="story.json">published beside the article</a>.</p>
       </div>
       <aside class="nw-article__rail">
         {_receipt(story)}
@@ -3000,15 +3173,19 @@ def render_story(
 </body>
 </html>
 """
-    return _head(
-        title=f"{story['headline']} · Palimpsest Wire",
-        description=story["dek"],
-        canonical=story["url"],
-        page_type="article",
-        published_at=story["published_at"],
-        modified_at=story["modified_at"],
-        json_ld=_story_json_ld(story, section["title"]),
-    ) + "\n" + body
+    return (
+        _head(
+            title=f"{story['headline']} · Palimpsest Wire",
+            description=story["dek"],
+            canonical=story["url"],
+            page_type="article",
+            published_at=story["published_at"],
+            modified_at=story["modified_at"],
+            json_ld=_story_json_ld(story, section["title"]),
+        )
+        + "\n"
+        + body
+    )
 
 
 def _event_json_ld(
@@ -3052,7 +3229,11 @@ def _event_brief_html(analysis: Mapping[str, Any]) -> str:
     brief = analysis.get("brief")
     if not isinstance(brief, Mapping):
         return ""
-    receipt = analysis.get("publication_receipt") if isinstance(analysis.get("publication_receipt"), Mapping) else {}
+    receipt = (
+        analysis.get("publication_receipt")
+        if isinstance(analysis.get("publication_receipt"), Mapping)
+        else {}
+    )
     sections: list[str] = []
     headings = {
         "lead": "Lead",
@@ -3073,8 +3254,8 @@ def _event_brief_html(analysis: Mapping[str, Any]) -> str:
         )
         status = layer.get("status") or "abstained"
         sections.append(
-            f"<h4 class=\"nw-assessment__subhead\">{_h(heading)} · {_h(str(status))}</h4>"
-            f"<ul class=\"nw-assessment__rationale\">{sentences}</ul>"
+            f'<h4 class="nw-assessment__subhead">{_h(heading)} · {_h(str(status))}</h4>'
+            f'<ul class="nw-assessment__rationale">{sentences}</ul>'
         )
     counters = "".join(
         f"<li>{_h(item['text'])}</li>"
@@ -3089,18 +3270,18 @@ def _event_brief_html(analysis: Mapping[str, Any]) -> str:
     auto = receipt.get("automatic_publication")
     coverage = receipt.get("citation_coverage")
     footer = (
-        f"<p class=\"nw-method-note\">Cited brief · citation coverage {coverage} · "
+        f'<p class="nw-method-note">Cited brief · citation coverage {coverage} · '
         f"automatic publication {'prohibited' if auto is False else 'not granted'} · "
         "human review required.</p>"
     )
     return (
-        "<div class=\"nw-assessment__brief\">"
-        "<h3 class=\"nw-assessment__subhead\">Cited newsroom brief</h3>"
+        '<div class="nw-assessment__brief">'
+        '<h3 class="nw-assessment__subhead">Cited newsroom brief</h3>'
         + "".join(sections)
-        + "<h4 class=\"nw-assessment__subhead\">Counterreadings</h4>"
-        + f"<ul class=\"nw-assessment__rationale\">{counters}</ul>"
-        + "<h4 class=\"nw-assessment__subhead\">What this brief does not know</h4>"
-        + f"<ul class=\"nw-assessment__rationale\">{unknowns}</ul>"
+        + '<h4 class="nw-assessment__subhead">Counterreadings</h4>'
+        + f'<ul class="nw-assessment__rationale">{counters}</ul>'
+        + '<h4 class="nw-assessment__subhead">What this brief does not know</h4>'
+        + f'<ul class="nw-assessment__rationale">{unknowns}</ul>'
         + footer
         + "</div>"
     )
@@ -3129,12 +3310,12 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
             else "No source timestamp"
         )
         digest = row["input_sha256"] or "no current evidence hash"
-        collector_cards.append(f"""<article class="nw-assessment-card" data-status="{_h(row['status'])}">
-  <p class="nw-assessment-card__state">{_h(_status_label(row['status']))} · {_h(row['signal_id'])}</p>
-  <h3><a href="{_h(_site_path(row['story_url']))}">{_h(row['headline'])}</a></h3>
-  <p>{_h(row['finding'])}</p>
-{metric_block}  <p class="nw-assessment-card__limit">{_h(row['interpretation'])}</p>
-  <details><summary>Method and receipt</summary><p>{_h(row['method_summary'])}</p><dl><dt>Observed</dt><dd>{_h(observed)}</dd><dt>Evidence</dt><dd><a href="{_h(row['evidence_url'])}">{_h(row['evidence_url'].rsplit('/', 1)[-1])}</a></dd><dt>SHA-256</dt><dd><code>{_h(digest)}</code></dd></dl></details>
+        collector_cards.append(f"""<article class="nw-assessment-card" data-status="{_h(row["status"])}">
+  <p class="nw-assessment-card__state">{_h(_status_label(row["status"]))} · {_h(row["signal_id"])}</p>
+  <h3><a href="{_h(_site_path(row["story_url"]))}">{_h(row["headline"])}</a></h3>
+  <p>{_h(row["finding"])}</p>
+{metric_block}  <p class="nw-assessment-card__limit">{_h(row["interpretation"])}</p>
+  <details><summary>Method and receipt</summary><p>{_h(row["method_summary"])}</p><dl><dt>Observed</dt><dd>{_h(observed)}</dd><dt>Evidence</dt><dd><a href="{_h(row["evidence_url"])}">{_h(row["evidence_url"].rsplit("/", 1)[-1])}</a></dd><dt>SHA-256</dt><dd><code>{_h(digest)}</code></dd></dl></details>
 </article>""")
     collector_context = (
         '<div class="nw-assessment-grid">' + "".join(collector_cards) + "</div>"
@@ -3156,7 +3337,11 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
         if peer_items
         else ""
     )
-    interconnection = analysis.get("interconnection") if isinstance(analysis.get("interconnection"), dict) else {}
+    interconnection = (
+        analysis.get("interconnection")
+        if isinstance(analysis.get("interconnection"), dict)
+        else {}
+    )
     joined = [
         row
         for row in (interconnection.get("peers") or [])
@@ -3183,7 +3368,13 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
         )
     else:
         skip_note = ", ".join(
-            sorted({str(row.get("skip_reason")) for row in skipped if row.get("skip_reason")})
+            sorted(
+                {
+                    str(row.get("skip_reason"))
+                    for row in skipped
+                    if row.get("skip_reason")
+                }
+            )
         )
         interconnection_html = (
             '<h3 class="nw-assessment__subhead">Named-key interconnection</h3>'
@@ -3201,13 +3392,13 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
             "Palimpsest adds attribution, independent-source grouping, a revision "
             "receipt and follow-up boundaries. It adds no independent factual finding."
         )
-    return f"""<section class="nw-dossier__section nw-assessment" data-disposition="{_h(analysis['disposition'])}" aria-labelledby="assessment-title">
+    return f"""<section class="nw-dossier__section nw-assessment" data-disposition="{_h(analysis["disposition"])}" aria-labelledby="assessment-title">
   <p class="nw-section__label">Palimpsest addition</p><h2 id="assessment-title">What Palimpsest adds to this source report</h2>
   <div class="nw-assessment__verdict">
-    <p class="nw-assessment__status">{_h(_ANALYSIS_DISPOSITION_LABELS[analysis['disposition']])} · as of <time datetime="{_h(analysis['generated_at'])}">{_h(_human_time(analysis['generated_at']))}</time></p>
+    <p class="nw-assessment__status">{_h(_ANALYSIS_DISPOSITION_LABELS[analysis["disposition"]])} · as of <time datetime="{_h(analysis["generated_at"])}">{_h(_human_time(analysis["generated_at"]))}</time></p>
     <p class="nw-assessment__position"><strong>Added value:</strong> {_h(added_value)}</p>
-    <p><strong>Verification status:</strong> {_h(analysis['position'])}</p>
-    <p><strong>Source structure:</strong> {_h(evidence['conclusion'])}</p>
+    <p><strong>Verification status:</strong> {_h(analysis["position"])}</p>
+    <p><strong>Source structure:</strong> {_h(evidence["conclusion"])}</p>
   </div>
   <h3 class="nw-assessment__subhead">Why this is the bounded position</h3>
   <ul class="nw-assessment__rationale">{rationale}</ul>
@@ -3216,7 +3407,7 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
   {collector_context}
   {peer_context}
   {interconnection_html}
-  <p class="nw-assessment__receipt">Analysis <code>{_h(analysis['analysis_id'])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis['analysis_id'])}.json">immutable revision</a></p>
+  <p class="nw-assessment__receipt">Analysis <code>{_h(analysis["analysis_id"])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis["analysis_id"])}.json">immutable revision</a></p>
 </section>"""
 
 
@@ -3247,7 +3438,7 @@ def render_event(
     items = _wire_items(wire)
     stories = {story["signal_id"]: story for story in feed["stories"]}
     facts = "".join(
-        f"""<li><strong>{_h(fact['attribution'])}.</strong> <span lang="{_h(_text_language(fact['statement'], source_id=event['evidence_refs'][0]['source_id']))}">{_h(fact['statement'])}</span> <time datetime="{_h(fact['published_at'])}">{_h(_human_time(fact['published_at']))}</time></li>"""
+        f"""<li><strong>{_h(fact["attribution"])}.</strong> <span lang="{_h(_text_language(fact["statement"], source_id=event["evidence_refs"][0]["source_id"]))}">{_h(fact["statement"])}</span> <time datetime="{_h(fact["published_at"])}">{_h(_human_time(fact["published_at"]))}</time></li>"""
         for fact in event["reported_facts"]
     )
     evidence_rows = []
@@ -3256,14 +3447,14 @@ def render_event(
         title_language = _text_language(ref["title"], source_id=ref["source_id"])
         excerpt_language = _text_language(item["excerpt"], source_id=ref["source_id"])
         evidence_rows.append(f"""<tr>
-  <td><span class="nw-role" data-role="{_h(ref['role'])}">{_h(ref['role'])}</span></td>
-  <td><a href="{_h(ref['url'])}">{_h(ref['source_name'])}</a><small>{_h(ref['independence_group'])}</small></td>
-  <td><span lang="{_h(title_language)}">{_h(ref['title'])}</span><small lang="{_h(excerpt_language)}">{_h(item['excerpt'] or 'No feed excerpt supplied.')}</small></td>
-  <td><time datetime="{_h(ref['published_at'])}">{_h(_human_time(ref['published_at']))}</time><small>feed sha {_h(item['feed_sha256'][:12])}</small></td>
+  <td><span class="nw-role" data-role="{_h(ref["role"])}">{_h(ref["role"])}</span></td>
+  <td><a href="{_h(ref["url"])}">{_h(ref["source_name"])}</a><small>{_h(ref["independence_group"])}</small></td>
+  <td><span lang="{_h(title_language)}">{_h(ref["title"])}</span><small lang="{_h(excerpt_language)}">{_h(item["excerpt"] or "No feed excerpt supplied.")}</small></td>
+  <td><time datetime="{_h(ref["published_at"])}">{_h(_human_time(ref["published_at"]))}</time><small>feed sha {_h(item["feed_sha256"][:12])}</small></td>
 </tr>""")
     limitations = "".join(f"<li>{_h(value)}</li>" for value in event["limitations"])
     scan_links = "".join(
-        f"""<a href="{_h(_site_path(stories[signal_id]['url']))}"><strong>{_h(stories[signal_id]['headline'])}</strong><span>Current instrument · topical pointer only</span></a>"""
+        f"""<a href="{_h(_site_path(stories[signal_id]["url"]))}"><strong>{_h(stories[signal_id]["headline"])}</strong><span>Current instrument · topical pointer only</span></a>"""
         for signal_id in event["declared_links"]["scan_signal_ids"]
         if signal_id in stories
     )
@@ -3277,9 +3468,9 @@ def render_event(
     )
     mutation = event["mutation"]
     previous = mutation["previous_version_id"] or "none — first retained version"
-    publisher_names = list(dict.fromkeys(
-        ref["source_name"] for ref in event["evidence_refs"]
-    ))
+    publisher_names = list(
+        dict.fromkeys(ref["source_name"] for ref in event["evidence_refs"])
+    )
     publisher_label = ", ".join(publisher_names)
     primary_ref = event["evidence_refs"][0]
     language = _event_language(event)
@@ -3287,20 +3478,20 @@ def render_event(
         event["dek"], source_id=event["evidence_refs"][0]["source_id"]
     )
     body = f"""<body class="ps newsroom-page newsroom-page--dossier">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <article class="nw-article nw-dossier">
     <header class="nw-article__header">
       <p class="nw-article__kicker">Source index record · {_h(_event_source_label(event))}</p>
-      <h1 lang="{_h(language)}">{_h(event['headline'])}</h1>
-      <p class="nw-article__dek" lang="{_h(dek_language)}">{_h(event['dek'])}</p>
-      <p class="nw-article__meta"><span>Published by {_h(publisher_label)}</span><time datetime="{_h(event['published_at'])}">{_h(_human_time(event['published_at']))}</time><span>Indexed by Palimpsest · {_h(mutation['kind'])} record version</span></p>
-      <div class="nw-source-origin"><a class="nw-actions__primary" href="{_h(primary_ref['url'])}">Read the original at {_h(primary_ref['source_name'])} ↗</a><p>Palimpsest did not write or independently verify this publisher report. The record below adds source structure, measurement context when available, revision history and limits.</p></div>
+      <h1 lang="{_h(language)}">{_h(event["headline"])}</h1>
+      <p class="nw-article__dek" lang="{_h(dek_language)}">{_h(event["dek"])}</p>
+      <p class="nw-article__meta"><span>Published by {_h(publisher_label)}</span><time datetime="{_h(event["published_at"])}">{_h(_human_time(event["published_at"]))}</time><span>Indexed by Palimpsest · {_h(mutation["kind"])} record version</span></p>
+      <div class="nw-source-origin"><a class="nw-actions__primary" href="{_h(primary_ref["url"])}">Read the original at {_h(primary_ref["source_name"])} ↗</a><p>Palimpsest did not write or independently verify this publisher report. The record below adds source structure, measurement context when available, revision history and limits.</p></div>
     </header>
     <div class="nw-dossier__summary">
       <div><p class="nw-receipt__label">Record type</p><strong>{_h(_event_source_label(event))}</strong><p>{_h(_event_source_boundary(event))}</p></div>
-      <div><p class="nw-receipt__label">What Palimpsest adds</p><p>Attribution, {len(event['evidence_groups'])} independent source group{'s' if len(event['evidence_groups']) != 1 else ''}, topic links, a revision receipt and explicit unknowns. The group count is not a truth probability.</p></div>
-      <div><p class="nw-receipt__label">Revision receipt</p><code>{_h(event['version_id'])}</code><p>Previous: <code>{_h(previous)}</code></p><a href="revisions/{_h(event['version_id'])}.json">Immutable revision JSON</a></div>
+      <div><p class="nw-receipt__label">What Palimpsest adds</p><p>Attribution, {len(event["evidence_groups"])} independent source group{"s" if len(event["evidence_groups"]) != 1 else ""}, topic links, a revision receipt and explicit unknowns. The group count is not a truth probability.</p></div>
+      <div><p class="nw-receipt__label">Revision receipt</p><code>{_h(event["version_id"])}</code><p>Previous: <code>{_h(previous)}</code></p><a href="revisions/{_h(event["version_id"])}.json">Immutable revision JSON</a></div>
     </div>
     <section class="nw-dossier__section" aria-labelledby="reported-title">
       <p class="nw-section__label">Publisher reports · attributed, not adopted</p><h2 id="reported-title">What the registered sources published</h2>
@@ -3315,7 +3506,7 @@ def render_event(
     <section class="nw-dossier__section" aria-labelledby="matrix-title">
       <p class="nw-section__label">Evidence matrix</p><h2 id="matrix-title">Inspect every receipt</h2>
       <p class="nw-table-cue" id="evidence-matrix-cue">Scroll horizontally to inspect every column.</p>
-      <div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="matrix-title" aria-describedby="evidence-matrix-cue"><table class="nw-evidence-table"><caption>Evidence receipts for this dossier</caption><thead><tr><th scope="col">Role</th><th scope="col">Source / group</th><th scope="col">Feed record</th><th scope="col">Published / hash</th></tr></thead><tbody>{''.join(evidence_rows)}</tbody></table></div>
+      <div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="matrix-title" aria-describedby="evidence-matrix-cue"><table class="nw-evidence-table"><caption>Evidence receipts for this dossier</caption><thead><tr><th scope="col">Role</th><th scope="col">Source / group</th><th scope="col">Feed record</th><th scope="col">Published / hash</th></tr></thead><tbody>{"".join(evidence_rows)}</tbody></table></div>
     </section>
     <section class="nw-dossier__section" aria-labelledby="surfaces-title">
       <p class="nw-section__label">Measurement surfaces</p><h2 id="surfaces-title">Where Palimpsest can test the topic</h2>
@@ -3327,20 +3518,24 @@ def render_event(
     </section>
   </article>
 </main>
-<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Publisher source index</a> · <a href="{_h(primary_ref['url'])}">Original report</a> · <a href="/readings/newswire-latest.json">Structured source index</a> · <a href="story.json">Current record JSON</a> · <a href="analysis.json">Palimpsest addition JSON</a></div></footer>
+<footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Publisher source index</a> · <a href="{_h(primary_ref["url"])}">Original report</a> · <a href="/readings/newswire-latest.json">Structured source index</a> · <a href="story.json">Current record JSON</a> · <a href="analysis.json">Palimpsest addition JSON</a></div></footer>
 {site_nav.FOOT}
 </body>
 </html>
 """
-    return _head(
-        title=f"{event['headline']} · attributed source record · Palimpsest",
-        description=f"Attributed source record from {publisher_label}. {_event_source_boundary(event)}",
-        canonical=event["url"],
-        page_type="website",
-        published_at=event["published_at"],
-        modified_at=max(event["updated_at"], analysis["generated_at"]),
-        json_ld=_event_json_ld(event, analysis),
-    ) + "\n" + body
+    return (
+        _head(
+            title=f"{event['headline']} · attributed source record · Palimpsest",
+            description=f"Attributed source record from {publisher_label}. {_event_source_boundary(event)}",
+            canonical=event["url"],
+            page_type="website",
+            published_at=event["published_at"],
+            modified_at=max(event["updated_at"], analysis["generated_at"]),
+            json_ld=_event_json_ld(event, analysis),
+        )
+        + "\n"
+        + body
+    )
 
 
 def render_wire_archive(
@@ -3354,28 +3549,31 @@ def render_wire_archive(
     cards = "".join(_event_card(event) for event in page_events)
     page_suffix = f" · page {page} of {n_pages}" if n_pages > 1 else ""
     previous_href = (
-        "/news/wire/" if page == 2
-        else f"/news/wire/page/{page - 1}/" if page > 2
+        "/news/wire/"
+        if page == 2
+        else f"/news/wire/page/{page - 1}/"
+        if page > 2
         else ""
     )
     next_href = f"/news/wire/page/{page + 1}/" if page < n_pages else ""
     pagination_links = []
     if previous_href:
-        pagination_links.append(f'<a rel="prev" href="{previous_href}">← Newer source records</a>')
-    pagination_links.append(f'<span>Page {page} of {n_pages}</span>')
+        pagination_links.append(
+            f'<a rel="prev" href="{previous_href}">← Newer source records</a>'
+        )
+    pagination_links.append(f"<span>Page {page} of {n_pages}</span>")
     if next_href:
-        pagination_links.append(f'<a rel="next" href="{next_href}">Older source records →</a>')
+        pagination_links.append(
+            f'<a rel="next" href="{next_href}">Older source records →</a>'
+        )
     pagination = (
         '<nav class="nw-pagination" aria-label="Source index pages">'
         + "".join(pagination_links)
         + "</nav>"
     )
-    canonical = (
-        f"{SITE}/news/wire/" if page == 1
-        else f"{SITE}/news/wire/page/{page}/"
-    )
+    canonical = f"{SITE}/news/wire/" if page == 1 else f"{SITE}/news/wire/page/{page}/"
     body = f"""<body class="ps newsroom-page newsroom-page--archive">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
   <header class="nw-article__header nw-archive-head"><p class="nw-article__kicker">Attributed publisher records{_h(page_suffix)}</p><h1>Publisher source index</h1><p class="nw-article__dek">This is not independent Palimpsest reporting. Every accepted current-window publisher item is assigned to one source record; single-source and multiple-independent-group records remain visibly different.</p></header>
   {pagination}
@@ -3386,20 +3584,24 @@ def render_wire_archive(
 <footer class="nw-footer"><div class="nw-shell"><a href="/news/#source-index">← Evidence desk</a> · <a href="/news/instruments/feed.xml">Measurements-only RSS</a> · <a href="/readings/newswire-latest.json">Structured source index</a></div></footer>
 {site_nav.FOOT}
 </body></html>"""
-    return _head(
-        title=f"Publisher source index{page_suffix} · Palimpsest",
-        description="Attributed publisher reports with source grouping, revision receipts and explicit verification boundaries.",
-        canonical=canonical,
-        page_type="website",
-        modified_at=wire["generated_at"],
-        json_ld={
-            "@context": "https://schema.org",
-            "@type": "CollectionPage",
-            "url": canonical,
-            "name": f"Publisher source index{page_suffix}",
-            "dateModified": wire["generated_at"],
-        },
-    ) + "\n" + body
+    return (
+        _head(
+            title=f"Publisher source index{page_suffix} · Palimpsest",
+            description="Attributed publisher reports with source grouping, revision receipts and explicit verification boundaries.",
+            canonical=canonical,
+            page_type="website",
+            modified_at=wire["generated_at"],
+            json_ld={
+                "@context": "https://schema.org",
+                "@type": "CollectionPage",
+                "url": canonical,
+                "name": f"Publisher source index{page_suffix}",
+                "dateModified": wire["generated_at"],
+            },
+        )
+        + "\n"
+        + body
+    )
 
 
 def _china_analysis_citations(citation_ids: Sequence[str]) -> str:
@@ -3444,7 +3646,7 @@ def _china_analysis_records(
 ) -> str:
     tag = "ol" if ordered else "ul"
     rows = "".join(
-        f'<li><p>{_h(record["text"])}</p><small>Receipts {_china_analysis_citations(record["citation_ids"])}</small></li>'
+        f"<li><p>{_h(record['text'])}</p><small>Receipts {_china_analysis_citations(record['citation_ids'])}</small></li>"
         for record in records
     )
     return f'<{tag} class="ca-records">{rows}</{tag}>'
@@ -3455,14 +3657,16 @@ def render_china_censorship_analysis(
 ) -> str:
     china_analysis_model.validate(article, feed=feed)
     numbers = "".join(
-        f'<li><strong>{_h(item["value"])}</strong><span>{_h(item["label"])}</span><small>{_h(item["note"])}</small></li>'
+        f"<li><strong>{_h(item['value'])}</strong><span>{_h(item['label'])}</span><small>{_h(item['note'])}</small></li>"
         for item in article["key_numbers"]
     )
     sections = []
     for index, section in enumerate(article["sections"], 1):
         paragraphs = []
         for paragraph in section["paragraphs"]:
-            prose = " ".join(_h(sentence["text"]) for sentence in paragraph["sentences"])
+            prose = " ".join(
+                _h(sentence["text"]) for sentence in paragraph["sentences"]
+            )
             receipts = sorted(
                 {
                     citation_id
@@ -3473,23 +3677,23 @@ def render_china_censorship_analysis(
             paragraphs.append(
                 f'<p>{prose}<span class="ca-citations"><b>Receipts</b> {_china_analysis_citations(receipts)}</span></p>'
             )
-        sections.append(f"""<section class="ca-section" id="{_h(section['section_id'])}">
-  <header><span>{index:02d}</span><h2>{_h(section['heading'])}</h2></header>
-  <div>{''.join(paragraphs)}</div>
+        sections.append(f"""<section class="ca-section" id="{_h(section["section_id"])}">
+  <header><span>{index:02d}</span><h2>{_h(section["heading"])}</h2></header>
+  <div>{"".join(paragraphs)}</div>
 </section>""")
     evidence_rows = "".join(
-        f"""<article class="ca-evidence" id="evidence-{_h(row['evidence_id'])}" data-status="{_h(row['status'])}">
-  <p><span>{_h(row['signal_id'])}</span><b>{_h(row['status'])}</b></p>
-  <h3><a href="{_h(row['story_url'])}">{_h(row['headline'])}</a></h3>
-  <blockquote>{_h(row['claim'])}</blockquote>
-  <dl><dt>Source clock</dt><dd>{_h(_human_time(row['source_timestamp'])) if row['source_timestamp'] else 'not available'}</dd><dt>Input SHA-256</dt><dd><code>{_h(row['input_sha256'])}</code></dd></dl>
-  <p class="ca-evidence__limit"><strong>Interpretation limit.</strong> {_h(row['interpretation_limit'])}</p>
-  <a href="{_h(row['reading_url'])}">Open exact reading</a>
+        f"""<article class="ca-evidence" id="evidence-{_h(row["evidence_id"])}" data-status="{_h(row["status"])}">
+  <p><span>{_h(row["signal_id"])}</span><b>{_h(row["status"])}</b></p>
+  <h3><a href="{_h(row["story_url"])}">{_h(row["headline"])}</a></h3>
+  <blockquote>{_h(row["claim"])}</blockquote>
+  <dl><dt>Source clock</dt><dd>{_h(_human_time(row["source_timestamp"])) if row["source_timestamp"] else "not available"}</dd><dt>Input SHA-256</dt><dd><code>{_h(row["input_sha256"])}</code></dd></dl>
+  <p class="ca-evidence__limit"><strong>Interpretation limit.</strong> {_h(row["interpretation_limit"])}</p>
+  <a href="{_h(row["reading_url"])}">Open exact reading</a>
 </article>"""
         for row in article["evidence"]
     )
     methods = "".join(
-        f'<li><span>{index:02d}</span><div><h3>{_h(item["step"])}</h3><p>{_h(item["detail"])}</p><small>{_china_analysis_citations(item["citation_ids"])}</small></div></li>'
+        f"<li><span>{index:02d}</span><div><h3>{_h(item['step'])}</h3><p>{_h(item['detail'])}</p><small>{_china_analysis_citations(item['citation_ids'])}</small></div></li>"
         for index, item in enumerate(article["methodology"], 1)
     )
     gates = "".join(
@@ -3504,28 +3708,28 @@ def render_china_censorship_analysis(
             + " did not publish a current finding in this edition. The article reports those gaps instead of retained values.</p>"
         )
     body = f"""<body class="ps newsroom-page china-analysis-page">
-{site_nav.render('/news/china/analysis/')}
+{site_nav.render("/news/china/analysis/")}
 <main id="main">
   <header class="ca-hero">
-    <div class="ca-shell ca-hero__meta"><span>PALIMPSEST / CHINA CENSORSHIP ANALYSIS</span><time datetime="{_h(article['generated_at'])}">{_h(_human_time(article['generated_at']))}</time></div>
-    <div class="ca-shell ca-hero__grid"><div><p class="ca-eyebrow">A current reading across ten declared instruments</p><h1>{_h(article['title'])}</h1></div><div><p>{_h(article['dek'])}</p><a href="/readings/china-censorship-analysis-latest.json">Structured article</a></div></div>
+    <div class="ca-shell ca-hero__meta"><span>PALIMPSEST / CHINA CENSORSHIP ANALYSIS</span><time datetime="{_h(article["generated_at"])}">{_h(_human_time(article["generated_at"]))}</time></div>
+    <div class="ca-shell ca-hero__grid"><div><p class="ca-eyebrow">A current reading across ten declared instruments</p><h1>{_h(article["title"])}</h1></div><div><p>{_h(article["dek"])}</p><a href="/readings/china-censorship-analysis-latest.json">Structured article</a></div></div>
     <div class="ca-shell"><ul class="ca-numbers" aria-label="Current key measurements">{numbers}</ul>{warning}</div>
   </header>
   <div class="ca-shell ca-layout">
     <article class="ca-prose">
-      <p class="ca-thesis">{_h(article['thesis'])}</p>
-      {''.join(sections)}
+      <p class="ca-thesis">{_h(article["thesis"])}</p>
+      {"".join(sections)}
     </article>
     <aside class="ca-rail" aria-label="Article publication receipt">
       <p class="ca-eyebrow">Publication receipt</p>
-      <strong>{article['publication_receipt']['live_signal_count']}/{article['publication_receipt']['required_signal_count']} instruments current</strong>
-      <dl><dt>Finding state</dt><dd>{_h(article['finding_state'])}</dd><dt>Citation coverage</dt><dd>{article['publication_receipt']['citation_coverage']:.0%}</dd><dt>Revision</dt><dd><code>{_h(article['revision_id'])}</code></dd></dl>
-      <p>{_h(article['disclosure'])}</p>
+      <strong>{article["publication_receipt"]["live_signal_count"]}/{article["publication_receipt"]["required_signal_count"]} instruments current</strong>
+      <dl><dt>Finding state</dt><dd>{_h(article["finding_state"])}</dd><dt>Citation coverage</dt><dd>{article["publication_receipt"]["citation_coverage"]:.0%}</dd><dt>Revision</dt><dd><code>{_h(article["revision_id"])}</code></dd></dl>
+      <p>{_h(article["disclosure"])}</p>
       <a href="/news/china/feed.xml">Dispatch RSS</a><a href="/news/china/analysis/feed.xml">Analysis RSS</a>
     </aside>
   </div>
   <section class="ca-challenges">
-    <div class="ca-shell"><header><p class="ca-eyebrow">Adversarial reading</p><h2>What else could explain the same observations?</h2></header><div class="ca-challenge-grid"><div><h3>Counterreadings</h3>{_china_analysis_records(article['counterreadings'])}</div><div><h3>Limits that stay attached</h3>{_china_analysis_records(article['limitations'])}</div></div></div>
+    <div class="ca-shell"><header><p class="ca-eyebrow">Adversarial reading</p><h2>What else could explain the same observations?</h2></header><div class="ca-challenge-grid"><div><h3>Counterreadings</h3>{_china_analysis_records(article["counterreadings"])}</div><div><h3>Limits that stay attached</h3>{_china_analysis_records(article["limitations"])}</div></div></div>
   </section>
   <section class="ca-evidence-ledger ca-shell" aria-labelledby="ca-evidence-title"><header><p class="ca-eyebrow">Evidence ledger</p><h2 id="ca-evidence-title">Every sentence routes back to a current aggregate receipt.</h2></header><div class="ca-evidence-grid">{evidence_rows}</div></section>
   <section class="ca-method ca-shell" aria-labelledby="ca-method-title"><header><p class="ca-eyebrow">Method</p><h2 id="ca-method-title">A closed path from instrument to article.</h2></header><ol>{methods}</ol></section>
@@ -3534,17 +3738,21 @@ def render_china_censorship_analysis(
 <footer class="nw-footer"><div class="nw-shell"><a href="/news/china/">← China dispatch stream</a> · <a href="/news/analysis/">Machine-analysis register</a> · <a href="/readings/newsroom-latest.json">Aggregate newsroom feed</a> · <a href="/docs/NEWSROOM.md">Method</a></div></footer>
 {site_nav.FOOT}
 </body></html>"""
-    return _head(
-        title=f"{article['title']} · Palimpsest",
-        description=article["dek"],
-        canonical=f"{SITE}{article['url']}",
-        page_type="article",
-        published_at=article["published_at"],
-        modified_at=article["updated_at"],
-        feed_base="/news/china/analysis",
-        extra_styles=("/assets/china-analysis.css",),
-        json_ld=_china_analysis_json_ld(article),
-    ) + "\n" + body
+    return (
+        _head(
+            title=f"{article['title']} · Palimpsest",
+            description=article["dek"],
+            canonical=f"{SITE}{article['url']}",
+            page_type="article",
+            published_at=article["published_at"],
+            modified_at=article["updated_at"],
+            feed_base="/news/china/analysis",
+            extra_styles=("/assets/china-analysis.css",),
+            json_ld=_china_analysis_json_ld(article),
+        )
+        + "\n"
+        + body
+    )
 
 
 def build_china_analysis_json_feed(article: Mapping[str, Any]) -> dict[str, Any]:
@@ -3552,7 +3760,9 @@ def build_china_analysis_json_feed(article: Mapping[str, Any]) -> dict[str, Any]
     for section in article["sections"]:
         text.append(section["heading"])
         for paragraph in section["paragraphs"]:
-            text.append(" ".join(sentence["text"] for sentence in paragraph["sentences"]))
+            text.append(
+                " ".join(sentence["text"] for sentence in paragraph["sentences"])
+            )
     return {
         "version": "https://jsonfeed.org/version/1.1",
         "title": "Palimpsest China Censorship Analysis",
@@ -3570,14 +3780,26 @@ def build_china_analysis_json_feed(article: Mapping[str, Any]) -> dict[str, Any]
                 ),
                 "date_published": article["published_at"],
                 "date_modified": article["updated_at"],
-                "authors": [{"name": article["authorship"]["byline"], "url": f"{SITE}/news/china/analysis/"}],
-                "tags": ["China", "censorship", "internet filtering", "information controls"],
+                "authors": [
+                    {
+                        "name": article["authorship"]["byline"],
+                        "url": f"{SITE}/news/china/analysis/",
+                    }
+                ],
+                "tags": [
+                    "China",
+                    "censorship",
+                    "internet filtering",
+                    "information controls",
+                ],
                 "_palimpsest": {
                     "kind": "china_censorship_analysis",
                     "article_id": article["article_id"],
                     "revision_id": article["revision_id"],
                     "finding_state": article["finding_state"],
-                    "citation_coverage": article["publication_receipt"]["citation_coverage"],
+                    "citation_coverage": article["publication_receipt"][
+                        "citation_coverage"
+                    ],
                     "verification_status": "palimpsest_bounded_analysis",
                 },
             }
@@ -3591,12 +3813,12 @@ def build_china_analysis_rss(article: Mapping[str, Any]) -> bytes:
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
   <title>Palimpsest China Censorship Analysis</title>
-  <link>{SITE}{xml_escape(article['url'])}</link>
+  <link>{SITE}{xml_escape(article["url"])}</link>
   <description>Current cross-instrument China censorship analysis with evidence receipts.</description>
   <language>en</language>
-  <lastBuildDate>{_rfc2822(article['updated_at'])}</lastBuildDate>
+  <lastBuildDate>{_rfc2822(article["updated_at"])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/analysis/feed.xml" rel="self" type="application/rss+xml" />
-  <item><title>{xml_escape('[Palimpsest analysis] ' + article['title'])}</title><link>{SITE}{xml_escape(article['url'])}</link><guid isPermaLink="false">{xml_escape(article['revision_id'])}</guid><pubDate>{_rfc2822(article['updated_at'])}</pubDate><description>{xml_escape('Palimpsest cross-instrument analysis. ' + article['dek'])}</description><category>palimpsest-analysis</category><category>China censorship analysis</category></item>
+  <item><title>{xml_escape("[Palimpsest analysis] " + article["title"])}</title><link>{SITE}{xml_escape(article["url"])}</link><guid isPermaLink="false">{xml_escape(article["revision_id"])}</guid><pubDate>{_rfc2822(article["updated_at"])}</pubDate><description>{xml_escape("Palimpsest cross-instrument analysis. " + article["dek"])}</description><category>palimpsest-analysis</category><category>China censorship analysis</category></item>
 </channel>
 </rss>
 """
@@ -3608,7 +3830,7 @@ def _china_stream_telegram_panel(stream: Mapping[str, Any]) -> str:
     if watch.get("schema_version") != telegram_watch_model.SCHEMA_VERSION:
         return f"""<aside class="cs-telegram cs-telegram--quiet" aria-labelledby="telegram-watch-title">
   <div><p class="cs-eyebrow">Telegram watch · review gate closed</p><h2 id="telegram-watch-title">No Telegram signal is being smuggled in as fact.</h2><a href="/docs/EVIDENCE-WIRE.md#telegram-and-scamshield-context">How the ScamShield boundary works</a></div>
-  <p>{_h(watch['explanation'])}</p>
+  <p>{_h(watch["explanation"])}</p>
 </aside>"""
 
     coverage = watch["coverage"]
@@ -3620,15 +3842,15 @@ def _china_stream_telegram_panel(stream: Mapping[str, Any]) -> str:
     )
     family_section = (
         f'<ul class="cs-telegram__families" aria-label="Reviewed China-relevant classifier families">{family_rows}</ul>'
-        if family_rows else
-        '<p class="cs-telegram__empty">Coverage was reviewed, but no classifier family was approved as China-desk context.</p>'
+        if family_rows
+        else '<p class="cs-telegram__empty">Coverage was reviewed, but no classifier family was approved as China-desk context.</p>'
     )
     return f"""<aside class="cs-telegram" aria-labelledby="telegram-watch-title">
-  <div class="cs-telegram__head"><div><p class="cs-eyebrow">Telegram watch · human reviewed · context only</p><h2 id="telegram-watch-title">Configured public-channel pulse</h2></div><span>{_h(_human_time(watch['window']['start']))} → {_h(_human_time(watch['window']['end']))}</span></div>
-  <div class="cs-telegram__coverage" aria-label="Telegram sampling coverage"><span><strong>{coverage['messages_observed']:,}</strong> messages observed</span><span><strong>{coverage['sources_observed']:,}</strong> sources observed</span><span><strong>{coverage['messages_flagged']:,}</strong> classifier flags</span><span><strong>{coverage['collection_errors']:,}</strong> collection errors</span></div>
+  <div class="cs-telegram__head"><div><p class="cs-eyebrow">Telegram watch · human reviewed · context only</p><h2 id="telegram-watch-title">Configured public-channel pulse</h2></div><span>{_h(_human_time(watch["window"]["start"]))} → {_h(_human_time(watch["window"]["end"]))}</span></div>
+  <div class="cs-telegram__coverage" aria-label="Telegram sampling coverage"><span><strong>{coverage["messages_observed"]:,}</strong> messages observed</span><span><strong>{coverage["sources_observed"]:,}</strong> sources observed</span><span><strong>{coverage["messages_flagged"]:,}</strong> classifier flags</span><span><strong>{coverage["collection_errors"]:,}</strong> collection errors</span></div>
   {family_section}
-  <p>{_h(watch['interpretation'])}</p>
-  <details><summary>Coverage and privacy boundary</summary><ul>{''.join(f'<li>{_h(value)}</li>' for value in watch['limitations'])}</ul><p>Reviewed by role: {_h(watch['review']['reviewer_role'])}. Source receipt: <code>{_h(watch['review']['source_summary_sha256'][:16])}…</code></p></details>
+  <p>{_h(watch["interpretation"])}</p>
+  <details><summary>Coverage and privacy boundary</summary><ul>{"".join(f"<li>{_h(value)}</li>" for value in watch["limitations"])}</ul><p>Reviewed by role: {_h(watch["review"]["reviewer_role"])}. Source receipt: <code>{_h(watch["review"]["source_summary_sha256"][:16])}…</code></p></details>
 </aside>"""
 
 
@@ -3641,22 +3863,28 @@ def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> 
         if dossier["independent_groups"] > 1
         else "Single-source report · not independently verified"
     )
-    excerpt = entry["excerpt"] or "The publisher supplied no feed excerpt. Open the original for the report itself."
+    excerpt = (
+        entry["excerpt"]
+        or "The publisher supplied no feed excerpt. Open the original for the report itself."
+    )
     topics = "".join(f"<span>{_h(topic)}</span>" for topic in entry["topics"])
     rationale = "".join(f"<li>{_h(value)}</li>" for value in analysis["rationale"])
     checks = "".join(f"<li>{_h(value)}</li>" for value in analysis["next_checks"])
     unknowns = "".join(f"<li>{_h(value)}</li>" for value in analysis["known_unknowns"])
     collector_rows = "".join(
-        f"""<li><a href="{_h(_site_path(row['story_url']))}">{_h(row['headline'])}</a><span>{_h(row['status'])} · {_h(row['relation'])}</span><p>{_h(row['interpretation'])}</p></li>"""
+        f"""<li><a href="{_h(_site_path(row["story_url"]))}">{_h(row["headline"])}</a><span>{_h(row["status"])} · {_h(row["relation"])}</span><p>{_h(row["interpretation"])}</p></li>"""
         for row in analysis["collector_context"]
     )
     collector = (
-        f"<div class=" + '"cs-analysis__collectors"><h4>Palimpsest collector context</h4><ul>' + collector_rows + "</ul></div>"
-        if collector_rows else
-        '<p class="cs-analysis__abstention"><strong>Collector abstention:</strong> no current Palimpsest measurement is declared for this event.</p>'
+        "<div class="
+        + '"cs-analysis__collectors"><h4>Palimpsest collector context</h4><ul>'
+        + collector_rows
+        + "</ul></div>"
+        if collector_rows
+        else '<p class="cs-analysis__abstention"><strong>Collector abstention:</strong> no current Palimpsest measurement is declared for this event.</p>'
     )
     peer_rows = "".join(
-        f"""<li><strong>{_h(row['peer'])}.</strong> {_h(row['sentence'])}</li>"""
+        f"""<li><strong>{_h(row["peer"])}.</strong> {_h(row["sentence"])}</li>"""
         for row in analysis.get("peer_context") or []
     )
     peer = (
@@ -3669,17 +3897,17 @@ def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> 
     search_text = " ".join(
         [entry["headline"], excerpt, publisher["name"], entry["desk"], *entry["topics"]]
     ).casefold()
-    return f"""<article class="cs-entry" id="dispatch-{_h(entry['entry_id'])}" data-desk="{_h(entry['desk'])}" data-search="{_h(search_text)}">
-  <div class="cs-entry__rail"><time datetime="{_h(entry['published_at'])}">{_h(_human_time(entry['published_at']))}</time><span>{_h(publisher['name'])}</span><i aria-hidden="true"></i></div>
+    return f"""<article class="cs-entry" id="dispatch-{_h(entry["entry_id"])}" data-desk="{_h(entry["desk"])}" data-search="{_h(search_text)}">
+  <div class="cs-entry__rail"><time datetime="{_h(entry["published_at"])}">{_h(_human_time(entry["published_at"]))}</time><span>{_h(publisher["name"])}</span><i aria-hidden="true"></i></div>
   <div class="cs-entry__body">
-    <div class="cs-entry__flags"><span data-strength="{_h(dossier['evidence_strength'])}">{_h(source_status)}</span><span>{_h(publisher['role'])}</span><span>{dossier['source_items']} item{'s' if dossier['source_items'] != 1 else ''} / {dossier['independent_groups']} independent group{'s' if dossier['independent_groups'] != 1 else ''}</span></div>
-    <h2 lang="{_h(entry['language'])}"><a href="{_h(entry['original_url'])}" rel="external">{_h(entry['headline'])}</a></h2>
-    <p class="cs-entry__excerpt" lang="{_h(entry['language'])}">{_h(excerpt)}</p>
-    <div class="cs-entry__topics"><span>{_h(EVENT_DESKS[entry['desk']])}</span>{topics}</div>
+    <div class="cs-entry__flags"><span data-strength="{_h(dossier["evidence_strength"])}">{_h(source_status)}</span><span>{_h(publisher["role"])}</span><span>{dossier["source_items"]} item{"s" if dossier["source_items"] != 1 else ""} / {dossier["independent_groups"]} independent group{"s" if dossier["independent_groups"] != 1 else ""}</span></div>
+    <h2 lang="{_h(entry["language"])}"><a href="{_h(entry["original_url"])}" rel="external">{_h(entry["headline"])}</a></h2>
+    <p class="cs-entry__excerpt" lang="{_h(entry["language"])}">{_h(excerpt)}</p>
+    <div class="cs-entry__topics"><span>{_h(EVENT_DESKS[entry["desk"]])}</span>{topics}</div>
     <details class="cs-analysis"{expanded_attr}>
-      <summary><span>What Palimpsest adds</span><strong>{_h(analysis['disposition'].replace('-', ' '))}</strong><small>Open source structure, measurement context, unknowns and next checks</small></summary>
+      <summary><span>What Palimpsest adds</span><strong>{_h(analysis["disposition"].replace("-", " "))}</strong><small>Open source structure, measurement context, unknowns and next checks</small></summary>
       <div class="cs-analysis__inside">
-        <p class="cs-analysis__position"><strong>Verification status:</strong> {_h(analysis['position'])}</p>
+        <p class="cs-analysis__position"><strong>Verification status:</strong> {_h(analysis["position"])}</p>
         <div class="cs-analysis__grid">
           <div><h3>Why this is the bounded position</h3><ol>{rationale}</ol></div>
           <div><h3>Next verification moves</h3><ol>{checks}</ol></div>
@@ -3687,8 +3915,8 @@ def _china_stream_entry(entry: Mapping[str, Any], *, expanded: bool = False) -> 
         {collector}
         {peer}
         <details class="cs-analysis__limits"><summary>Known unknowns and method limits</summary><ul>{unknowns}</ul></details>
-        <div class="cs-analysis__links"><a href="{_h(_site_path(dossier['url']))}">Open evidence dossier</a><a href="{_h(_site_path(analysis['url']))}">Structured analysis</a><a href="{_h(entry['original_url'])}" rel="external">Read at publisher ↗</a></div>
-        <p class="cs-analysis__receipt">Analysis {_h(analysis['analysis_id'])} · item {_h(entry['entry_id'])} · feed receipt {_h(publisher['feed_sha256'][:16])}…</p>
+        <div class="cs-analysis__links"><a href="{_h(_site_path(dossier["url"]))}">Open evidence dossier</a><a href="{_h(_site_path(analysis["url"]))}">Structured analysis</a><a href="{_h(entry["original_url"])}" rel="external">Read at publisher ↗</a></div>
+        <p class="cs-analysis__receipt">Analysis {_h(analysis["analysis_id"])} · item {_h(entry["entry_id"])} · feed receipt {_h(publisher["feed_sha256"][:16])}…</p>
       </div>
     </details>
   </div>
@@ -3708,15 +3936,17 @@ def render_china_article_stream(
         for index, entry in enumerate(page_entries)
     )
     previous_href = (
-        "/news/china/" if page == 2
-        else f"/news/china/page/{page - 1}/" if page > 2
+        "/news/china/"
+        if page == 2
+        else f"/news/china/page/{page - 1}/"
+        if page > 2
         else ""
     )
     next_href = f"/news/china/page/{page + 1}/" if page < n_pages else ""
     pagination = f"""<nav class="cs-pagination" aria-label="China article stream pages">
-  <span>{f'<a rel="prev" href="{previous_href}">← Newer dispatches</a>' if previous_href else '<i>Newest dispatches</i>'}</span>
+  <span>{f'<a rel="prev" href="{previous_href}">← Newer dispatches</a>' if previous_href else "<i>Newest dispatches</i>"}</span>
   <strong>Page {page} / {n_pages}</strong>
-  <span>{f'<a rel="next" href="{next_href}">Older dispatches →</a>' if next_href else '<i>End of current window</i>'}</span>
+  <span>{f'<a rel="next" href="{next_href}">Older dispatches →</a>' if next_href else "<i>End of current window</i>"}</span>
 </nav>"""
     desk_buttons = "".join(
         f'<button type="button" data-desk-filter="{_h(desk)}">{_h(label)}</button>'
@@ -3724,16 +3954,15 @@ def render_china_article_stream(
     )
     coverage = stream["coverage"]
     canonical = (
-        f"{SITE}/news/china/" if page == 1
-        else f"{SITE}/news/china/page/{page}/"
+        f"{SITE}/news/china/" if page == 1 else f"{SITE}/news/china/page/{page}/"
     )
     suffix = f" · page {page} of {n_pages}" if n_pages > 1 else ""
     body = f"""<body class="ps newsroom-page china-stream-page">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main">
   <header class="cs-hero">
     <div class="cs-hero__grid"><div><p class="cs-eyebrow">Palimpsest / China publisher index{_h(suffix)}</p><h1>Publisher reports.<br><em>Our additions<br>labeled.</em></h1></div><p class="cs-hero__dek">A chronological index of China/Hong Kong items retained from the monitored publisher registry. Read the publisher for the report; open Palimpsest's panel for source structure, measurement context, unknowns and next verification moves.</p></div>
-    <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage['china_entries']}</strong> China entries</span><span><strong>{coverage['successful_sources']}/{coverage['registered_sources']}</strong> feeds answered</span><span><strong>{coverage['excluded_global_feed_items']}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream['generated_at']))}</strong> rebuilt</span></div>
+    <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage["china_entries"]}</strong> China entries</span><span><strong>{coverage["successful_sources"]}/{coverage["registered_sources"]}</strong> feeds answered</span><span><strong>{coverage["excluded_global_feed_items"]}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream["generated_at"]))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
     <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/rumour/">Public vantages</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
@@ -3746,31 +3975,35 @@ def render_china_article_stream(
     {pagination}
     <section class="cs-stream" aria-label="China publisher source records">{articles}<p class="cs-no-results" id="china-stream-empty" hidden>No source records on this page match that filter.</p></section>
     {pagination}
-    <aside class="cs-method"><p class="cs-eyebrow">What “every” means here</p><h2>Complete across the declared feeds—not the entire internet.</h2><div><p>{_h(stream['scope'])}</p><p>{_h(stream['method']['analysis'])} {_h(stream['method']['rights'])}</p></div></aside>
+    <aside class="cs-method"><p class="cs-eyebrow">What “every” means here</p><h2>Complete across the declared feeds—not the entire internet.</h2><div><p>{_h(stream["scope"])}</p><p>{_h(stream["method"]["analysis"])} {_h(stream["method"]["rights"])}</p></div></aside>
   </div>
 </main>
 <footer class="nw-footer"><div class="nw-shell">Publisher reports remain attributed and are not converted into Palimpsest findings. Telegram aggregates remain unverified context. <a href="/news/china/situation/">Combine reports with Observatory measurements</a> · <a href="/feeds/">Feed directory</a> · <a href="/news/standards/">Standards</a> · <a href="/config/news_sources.json">Source registry</a>.</div></footer>
 <script src="/assets/china-stream.js" defer></script>
 {site_nav.FOOT}
 </body></html>"""
-    return _head(
-        title=f"China publisher source index{suffix} · Palimpsest",
-        description="Attributed China and Hong Kong publisher reports with Palimpsest source structure, measurement context, unknowns and next checks clearly labeled.",
-        canonical=canonical,
-        page_type="website",
-        modified_at=stream["generated_at"],
-        feed_base="/news/china",
-        extra_styles=("/assets/china-stream.css",),
-        json_ld={
-            "@context": "https://schema.org",
-            "@type": "CollectionPage",
-            "url": canonical,
-            "name": f"Palimpsest China publisher source index{suffix}",
-            "dateModified": stream["generated_at"],
-            "numberOfItems": len(page_entries),
-            "isPartOf": {"@type": "WebSite", "url": f"{SITE}/news/"},
-        },
-    ) + "\n" + body
+    return (
+        _head(
+            title=f"China publisher source index{suffix} · Palimpsest",
+            description="Attributed China and Hong Kong publisher reports with Palimpsest source structure, measurement context, unknowns and next checks clearly labeled.",
+            canonical=canonical,
+            page_type="website",
+            modified_at=stream["generated_at"],
+            feed_base="/news/china",
+            extra_styles=("/assets/china-stream.css",),
+            json_ld={
+                "@context": "https://schema.org",
+                "@type": "CollectionPage",
+                "url": canonical,
+                "name": f"Palimpsest China publisher source index{suffix}",
+                "dateModified": stream["generated_at"],
+                "numberOfItems": len(page_entries),
+                "isPartOf": {"@type": "WebSite", "url": f"{SITE}/news/"},
+            },
+        )
+        + "\n"
+        + body
+    )
 
 
 def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
@@ -3792,48 +4025,58 @@ def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
             "Known unknowns: " + " ".join(analysis["known_unknowns"]),
             "Read the original: " + entry["original_url"],
         ]
-        items.append({
-            "id": entry["entry_id"],
-            "url": dossier["url"],
-            "external_url": entry["original_url"],
-            "title": "[Source report] " + entry["headline"],
-            "summary": source_label + ". " + analysis["position"],
-            "content_text": "\n\n".join(content),
-            "date_published": entry["published_at"],
-            "date_modified": entry["collected_at"],
-            "language": entry["language"],
-            "authors": [{"name": entry["publisher"]["name"]}],
-            "tags": [
-                "source-report",
-                (
-                    "multiple-independent-source-groups"
-                    if dossier["independent_groups"] > 1
-                    else "not-independently-verified"
-                ),
-                entry["desk"],
-                *entry["topics"],
-            ],
-            "attachments": [
-                {"url": dossier["url"], "mime_type": "text/html", "title": "Palimpsest evidence dossier"},
-                {"url": analysis["url"], "mime_type": "application/json", "title": "Palimpsest structured analysis"},
-            ],
-            "_palimpsest": {
-                "kind": "publisher_source_record_with_analysis",
-                "item_version_id": entry["version_id"],
-                "event_id": dossier["event_id"],
-                "event_version_id": dossier["version_id"],
-                "analysis_id": analysis["analysis_id"],
-                "evidence_strength": dossier["evidence_strength"],
-                "independent_groups": dossier["independent_groups"],
-                "position": analysis["position"],
-                "next_checks": analysis["next_checks"],
-                "verification_status": (
-                    "multiple_independent_source_groups"
-                    if dossier["independent_groups"] > 1
-                    else "not_independently_verified"
-                ),
-            },
-        })
+        items.append(
+            {
+                "id": entry["entry_id"],
+                "url": dossier["url"],
+                "external_url": entry["original_url"],
+                "title": "[Source report] " + entry["headline"],
+                "summary": source_label + ". " + analysis["position"],
+                "content_text": "\n\n".join(content),
+                "date_published": entry["published_at"],
+                "date_modified": entry["collected_at"],
+                "language": entry["language"],
+                "authors": [{"name": entry["publisher"]["name"]}],
+                "tags": [
+                    "source-report",
+                    (
+                        "multiple-independent-source-groups"
+                        if dossier["independent_groups"] > 1
+                        else "not-independently-verified"
+                    ),
+                    entry["desk"],
+                    *entry["topics"],
+                ],
+                "attachments": [
+                    {
+                        "url": dossier["url"],
+                        "mime_type": "text/html",
+                        "title": "Palimpsest evidence dossier",
+                    },
+                    {
+                        "url": analysis["url"],
+                        "mime_type": "application/json",
+                        "title": "Palimpsest structured analysis",
+                    },
+                ],
+                "_palimpsest": {
+                    "kind": "publisher_source_record_with_analysis",
+                    "item_version_id": entry["version_id"],
+                    "event_id": dossier["event_id"],
+                    "event_version_id": dossier["version_id"],
+                    "analysis_id": analysis["analysis_id"],
+                    "evidence_strength": dossier["evidence_strength"],
+                    "independent_groups": dossier["independent_groups"],
+                    "position": analysis["position"],
+                    "next_checks": analysis["next_checks"],
+                    "verification_status": (
+                        "multiple_independent_source_groups"
+                        if dossier["independent_groups"] > 1
+                        else "not_independently_verified"
+                    ),
+                },
+            }
+        )
     return {
         "version": "https://jsonfeed.org/version/1.1",
         "title": "Palimpsest China publisher source index",
@@ -3859,33 +4102,35 @@ def build_china_stream_rss(stream: Mapping[str, Any]) -> bytes:
             if dossier["independent_groups"] > 1
             else "Single-source report not independently verified by Palimpsest"
         )
-        description = "\n\n".join([
-            "Item type: " + source_label,
-            "Published by: " + entry["publisher"]["name"],
-            "Palimpsest verification status: " + analysis["position"],
-            "Palimpsest adds: " + " ".join(analysis["rationale"]),
-            "Next checks: " + " ".join(analysis["next_checks"]),
-            "Known unknowns: " + " ".join(analysis["known_unknowns"]),
-            "Read original: " + entry["original_url"],
-            "Palimpsest source record: " + dossier["url"],
-        ])
+        description = "\n\n".join(
+            [
+                "Item type: " + source_label,
+                "Published by: " + entry["publisher"]["name"],
+                "Palimpsest verification status: " + analysis["position"],
+                "Palimpsest adds: " + " ".join(analysis["rationale"]),
+                "Next checks: " + " ".join(analysis["next_checks"]),
+                "Known unknowns: " + " ".join(analysis["known_unknowns"]),
+                "Read original: " + entry["original_url"],
+                "Palimpsest source record: " + dossier["url"],
+            ]
+        )
         rows.append(f"""  <item>
-    <title>{xml_escape('[Source report] ' + entry['headline'])}</title>
-    <link>{xml_escape(dossier['url'])}</link>
-    <guid isPermaLink="false">{xml_escape(entry['entry_id'])}</guid>
-    <pubDate>{_rfc2822(entry['published_at'])}</pubDate>
+    <title>{xml_escape("[Source report] " + entry["headline"])}</title>
+    <link>{xml_escape(dossier["url"])}</link>
+    <guid isPermaLink="false">{xml_escape(entry["entry_id"])}</guid>
+    <pubDate>{_rfc2822(entry["published_at"])}</pubDate>
     <description>{xml_escape(description)}</description>
-    <category>{xml_escape(entry['desk'])}</category>
-    <source url={xml_quoteattr(entry['original_url'])}>{xml_escape(entry['publisher']['name'])}</source>
+    <category>{xml_escape(entry["desk"])}</category>
+    <source url={xml_quoteattr(entry["original_url"])}>{xml_escape(entry["publisher"]["name"])}</source>
   </item>""")
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
   <title>Palimpsest China publisher source index</title>
-  <link>{xml_escape(stream['url'])}</link>
+  <link>{xml_escape(stream["url"])}</link>
   <description>Attributed China and Hong Kong publisher reports with Palimpsest source structure, measurement context, unknowns and next checks. Publisher reports are not converted into Palimpsest findings.</description>
   <language>en</language>
-  <lastBuildDate>{_rfc2822(stream['generated_at'])}</lastBuildDate>
+  <lastBuildDate>{_rfc2822(stream["generated_at"])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/feed.xml" rel="self" type="application/rss+xml" />
 {chr(10).join(rows)}
 </channel>
@@ -3899,47 +4144,60 @@ def _whisper_label(value: str) -> str:
 
 
 def _dragon_whisper_entry(
-    entry: Mapping[str, Any], *, sequence: int, expanded: bool = False,
+    entry: Mapping[str, Any],
+    *,
+    sequence: int,
+    expanded: bool = False,
 ) -> str:
     analysis = entry["analysis"]
     signal = entry["signal"]
     review = entry["review"]
-    families = "".join(
-        f"<span>{_h(_whisper_label(value))}</span>" for value in signal["families"]
-    ) or "<span>Pattern family withheld</span>"
-    counts = "".join(
-        f"<li><strong>{count}</strong><span>{_h(_whisper_label(kind))} observed</span></li>"
-        for kind, count in sorted(signal["ioc_counts"].items())
-    ) or "<li><strong>0</strong><span>Exact indicators exposed</span></li>"
+    families = (
+        "".join(
+            f"<span>{_h(_whisper_label(value))}</span>" for value in signal["families"]
+        )
+        or "<span>Pattern family withheld</span>"
+    )
+    counts = (
+        "".join(
+            f"<li><strong>{count}</strong><span>{_h(_whisper_label(kind))} observed</span></li>"
+            for kind, count in sorted(signal["ioc_counts"].items())
+        )
+        or "<li><strong>0</strong><span>Exact indicators exposed</span></li>"
+    )
     checks = "".join(f"<li>{_h(value)}</li>" for value in analysis["next_checks"])
     limitations = "".join(f"<li>{_h(value)}</li>" for value in entry["limitations"])
     scripts = ", ".join(_whisper_label(value) for value in signal["script_hints"])
     search_text = " ".join(
         [
-            analysis["headline"], analysis["summary"], analysis["why_it_matters"],
-            signal["tier"], *signal["families"], *signal["script_hints"],
+            analysis["headline"],
+            analysis["summary"],
+            analysis["why_it_matters"],
+            signal["tier"],
+            *signal["families"],
+            *signal["script_hints"],
         ]
     ).casefold()
     open_attr = " open" if expanded else ""
-    return f"""<article class="dw-entry" id="{_h(entry['whisper_id'])}" data-tier="{_h(signal['tier'])}" data-search="{_h(search_text)}">
+    return f"""<article class="dw-entry" id="{_h(entry["whisper_id"])}" data-tier="{_h(signal["tier"])}" data-search="{_h(search_text)}">
   <div class="dw-entry__rail" aria-hidden="true"><span>{sequence:03d}</span><i></i></div>
   <div class="dw-entry__body">
     <header class="dw-entry__header">
-      <div><p class="dw-stamp">Unverified / context only</p><p class="dw-entry__time">Reviewed <time datetime="{_h(entry['published_at'])}">{_h(_human_time(entry['published_at']))}</time> · observed {_h(_human_time(entry['observed_at']))}</p></div>
-      <span class="dw-tier" data-tier="{_h(signal['tier'])}">{_h(_whisper_label(signal['tier']))}</span>
+      <div><p class="dw-stamp">Unverified / context only</p><p class="dw-entry__time">Reviewed <time datetime="{_h(entry["published_at"])}">{_h(_human_time(entry["published_at"]))}</time> · observed {_h(_human_time(entry["observed_at"]))}</p></div>
+      <span class="dw-tier" data-tier="{_h(signal["tier"])}">{_h(_whisper_label(signal["tier"]))}</span>
     </header>
-    <h2>{_h(analysis['headline'])}</h2>
-    <p class="dw-entry__summary">{_h(analysis['summary'])}</p>
+    <h2>{_h(analysis["headline"])}</h2>
+    <p class="dw-entry__summary">{_h(analysis["summary"])}</p>
     <div class="dw-families" aria-label="Reviewed classifier families">{families}</div>
     <details class="dw-analysis"{open_attr}>
       <summary><span>Open the analytical read</span><small>Significance, uncertainty, checks, and receipt</small></summary>
       <div class="dw-analysis__inside">
-        <section aria-labelledby="why-{_h(entry['whisper_id'])}"><p class="dw-label">Why it matters</p><h3 id="why-{_h(entry['whisper_id'])}">Pattern-level significance</h3><p>{_h(analysis['why_it_matters'])}</p></section>
-        <section class="dw-uncertainty" aria-labelledby="unknown-{_h(entry['whisper_id'])}"><p class="dw-label">Uncertainty</p><h3 id="unknown-{_h(entry['whisper_id'])}">What this does not establish</h3><p>{_h(analysis['uncertainty'])}</p></section>
-        <section aria-labelledby="checks-{_h(entry['whisper_id'])}"><p class="dw-label">Verification queue</p><h3 id="checks-{_h(entry['whisper_id'])}">What to check next</h3><ol>{checks}</ol></section>
-        <section aria-labelledby="counts-{_h(entry['whisper_id'])}"><p class="dw-label">Redacted structure</p><h3 id="counts-{_h(entry['whisper_id'])}">Counts, never values</h3><ul class="dw-counts">{counts}</ul><p class="dw-script">Script hints: {_h(scripts or 'not recorded')}.</p></section>
-        <details class="dw-limits"><summary>Review note and publication limits</summary><p>{_h(review['note'])}</p><ul>{limitations}</ul></details>
-        <p class="dw-receipt">{_h(entry['whisper_id'])} · reviewer role {_h(review['reviewer_role'])} · capsule <code>{_h(review['source_capsule_sha256'][:16])}…</code></p>
+        <section aria-labelledby="why-{_h(entry["whisper_id"])}"><p class="dw-label">Why it matters</p><h3 id="why-{_h(entry["whisper_id"])}">Pattern-level significance</h3><p>{_h(analysis["why_it_matters"])}</p></section>
+        <section class="dw-uncertainty" aria-labelledby="unknown-{_h(entry["whisper_id"])}"><p class="dw-label">Uncertainty</p><h3 id="unknown-{_h(entry["whisper_id"])}">What this does not establish</h3><p>{_h(analysis["uncertainty"])}</p></section>
+        <section aria-labelledby="checks-{_h(entry["whisper_id"])}"><p class="dw-label">Verification queue</p><h3 id="checks-{_h(entry["whisper_id"])}">What to check next</h3><ol>{checks}</ol></section>
+        <section aria-labelledby="counts-{_h(entry["whisper_id"])}"><p class="dw-label">Redacted structure</p><h3 id="counts-{_h(entry["whisper_id"])}">Counts, never values</h3><ul class="dw-counts">{counts}</ul><p class="dw-script">Script hints: {_h(scripts or "not recorded")}.</p></section>
+        <details class="dw-limits"><summary>Review note and publication limits</summary><p>{_h(review["note"])}</p><ul>{limitations}</ul></details>
+        <p class="dw-receipt">{_h(entry["whisper_id"])} · reviewer role {_h(review["reviewer_role"])} · capsule <code>{_h(review["source_capsule_sha256"][:16])}…</code></p>
       </div>
     </details>
   </div>
@@ -3949,13 +4207,11 @@ def _dragon_whisper_entry(
 def render_dragon_whispers(document: Mapping[str, Any]) -> str:
     dragon_whispers_model.validate_dragon_whispers(document)
     entries = document["entries"]
-    family_count = len({
-        family for entry in entries for family in entry["signal"]["families"]
-    })
+    family_count = len(
+        {family for entry in entries for family in entry["signal"]["families"]}
+    )
     indicator_count = sum(
-        count
-        for entry in entries
-        for count in entry["signal"]["ioc_counts"].values()
+        count for entry in entries for count in entry["signal"]["ioc_counts"].values()
     )
     ledger = "".join(
         _dragon_whisper_entry(entry, sequence=index, expanded=index == 1)
@@ -3976,7 +4232,7 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
   <p>The raw Telegram companion is active, but nothing from it appears here until a public-channel ScamShield capsule is human-reviewed, made China-relevant, stripped of identifiers and exact indicators, and approved as context only.</p>
 </section>"""
     body = f"""<body class="ps newsroom-page dragon-whispers-page">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main">
   <header class="dw-hero">
     <div class="dw-shell dw-hero__grid">
@@ -3995,11 +4251,11 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
       <div class="dw-companion__routes" aria-label="Raw Dragon Den Telegram destinations">{routes}</div>
       <p class="dw-companion__boundary"><strong>Raw stays on Telegram.</strong><span>Only reviewed, identifier-free analysis can cross into this ledger.</span></p>
     </aside>
-    <section class="dw-stats" aria-label="Reviewed Whispers coverage"><span><strong>{len(entries)}</strong> reviewed whispers</span><span><strong>{family_count}</strong> pattern families</span><span><strong>{indicator_count}</strong> indicators counted, zero exposed</span><span><strong>{_h(_human_time(document['generated_at']))}</strong> ledger rebuilt</span></section>
+    <section class="dw-stats" aria-label="Reviewed Whispers coverage"><span><strong>{len(entries)}</strong> reviewed whispers</span><span><strong>{family_count}</strong> pattern families</span><span><strong>{indicator_count}</strong> indicators counted, zero exposed</span><span><strong>{_h(_human_time(document["generated_at"]))}</strong> ledger rebuilt</span></section>
     <section class="dw-controls" aria-label="Filter reviewed whispers">
       <label><span>Search the sanitized analysis</span><input id="dragon-whispers-search" type="search" placeholder="pattern, significance, uncertainty…" autocomplete="off"></label>
       <div role="group" aria-label="Filter by classifier tier"><button class="is-active" type="button" data-whisper-tier="all" aria-pressed="true">All tiers</button><button type="button" data-whisper-tier="WATCH" aria-pressed="false">Watch</button><button type="button" data-whisper-tier="LIKELY_SCAM" aria-pressed="false">Likely scam</button><button type="button" data-whisper-tier="CONFIRMED_PATTERN" aria-pressed="false">Confirmed pattern</button></div>
-      <p id="dragon-whispers-count" role="status" aria-live="polite">Showing {len(entries)} reviewed whisper{'s' if len(entries) != 1 else ''}</p>
+      <p id="dragon-whispers-count" role="status" aria-live="polite">Showing {len(entries)} reviewed whisper{"s" if len(entries) != 1 else ""}</p>
     </section>
     <section class="dw-ledger" aria-label="Reviewed sanitized Telegram context">{ledger}<p class="dw-no-results" id="dragon-whispers-empty-filter" hidden>No reviewed whisper matches this filter.</p></section>
     <aside class="dw-method"><p class="dw-kicker">Two lanes, one hard wall</p><h2>Raw on Telegram.<br>Reviewed here.</h2><div><p>The authenticated monitor native-forwards every delivered post from its explicit public-source registry. The dedicated bot adds a mandatory warning. Palimpsest does not ingest that raw feed.</p><p>This page can be built only from the smaller <code>{_h(dragon_whispers_model.SCHEMA_VERSION)}</code> artifact. Human review is mandatory; raw messages, identifiers, exact IOCs, named allegations, and corroboration claims are prohibited by schema and runtime validation.</p></div></aside>
@@ -4009,25 +4265,29 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
 <script src="/assets/dragon-whispers.js" defer></script>
 {site_nav.FOOT}
 </body></html>"""
-    return _head(
-        title="Whispers from the Dragon Den · Palimpsest China",
-        description=document["scope"],
-        canonical=f"{SITE}/news/china/whispers/",
-        page_type="website",
-        modified_at=document["generated_at"],
-        feed_base="/news/china/whispers",
-        extra_styles=("/assets/dragon-whispers.css",),
-        json_ld={
-            "@context": "https://schema.org",
-            "@type": "CollectionPage",
-            "url": f"{SITE}/news/china/whispers/",
-            "name": "Whispers from the Dragon Den",
-            "description": document["scope"],
-            "dateModified": document["generated_at"],
-            "numberOfItems": len(entries),
-            "isPartOf": {"@type": "WebSite", "url": f"{SITE}/news/"},
-        },
-    ) + "\n" + body
+    return (
+        _head(
+            title="Whispers from the Dragon Den · Palimpsest China",
+            description=document["scope"],
+            canonical=f"{SITE}/news/china/whispers/",
+            page_type="website",
+            modified_at=document["generated_at"],
+            feed_base="/news/china/whispers",
+            extra_styles=("/assets/dragon-whispers.css",),
+            json_ld={
+                "@context": "https://schema.org",
+                "@type": "CollectionPage",
+                "url": f"{SITE}/news/china/whispers/",
+                "name": "Whispers from the Dragon Den",
+                "description": document["scope"],
+                "dateModified": document["generated_at"],
+                "numberOfItems": len(entries),
+                "isPartOf": {"@type": "WebSite", "url": f"{SITE}/news/"},
+            },
+        )
+        + "\n"
+        + body
+    )
 
 
 def build_dragon_whispers_json_feed(document: Mapping[str, Any]) -> dict[str, Any]:
@@ -4039,28 +4299,37 @@ def build_dragon_whispers_json_feed(document: Mapping[str, Any]) -> dict[str, An
     items = []
     for entry in document["entries"]:
         analysis = entry["analysis"]
-        items.append({
-            "id": entry["whisper_id"],
-            "url": f"{SITE}/news/china/whispers/#{entry['whisper_id']}",
-            "title": "[Unverified context] " + analysis["headline"],
-            "summary": "Unverified context only; not evidence or corroboration. " + analysis["summary"],
-            "content_text": "\n\n".join([
-                disclaimer,
-                analysis["summary"],
-                "Why it matters: " + analysis["why_it_matters"],
-                "Uncertainty: " + analysis["uncertainty"],
-                "Next checks: " + " ".join(analysis["next_checks"]),
-            ]),
-            "date_published": entry["published_at"],
-            "date_modified": entry["published_at"],
-            "authors": [{"name": PUBLISHER}],
-            "tags": ["unverified-context", entry["signal"]["tier"], *entry["signal"]["families"]],
-            "_palimpsest": {
-                "kind": "reviewed_sanitized_telegram_context",
-                "relation": dragon_whispers_model.RELATION,
-                "counts_as_corroboration": False,
-            },
-        })
+        items.append(
+            {
+                "id": entry["whisper_id"],
+                "url": f"{SITE}/news/china/whispers/#{entry['whisper_id']}",
+                "title": "[Unverified context] " + analysis["headline"],
+                "summary": "Unverified context only; not evidence or corroboration. "
+                + analysis["summary"],
+                "content_text": "\n\n".join(
+                    [
+                        disclaimer,
+                        analysis["summary"],
+                        "Why it matters: " + analysis["why_it_matters"],
+                        "Uncertainty: " + analysis["uncertainty"],
+                        "Next checks: " + " ".join(analysis["next_checks"]),
+                    ]
+                ),
+                "date_published": entry["published_at"],
+                "date_modified": entry["published_at"],
+                "authors": [{"name": PUBLISHER}],
+                "tags": [
+                    "unverified-context",
+                    entry["signal"]["tier"],
+                    *entry["signal"]["families"],
+                ],
+                "_palimpsest": {
+                    "kind": "reviewed_sanitized_telegram_context",
+                    "relation": dragon_whispers_model.RELATION,
+                    "counts_as_corroboration": False,
+                },
+            }
+        )
     return {
         "version": "https://jsonfeed.org/version/1.1",
         "title": "Palimpsest reviewed Telegram context",
@@ -4078,22 +4347,24 @@ def build_dragon_whispers_rss(document: Mapping[str, Any]) -> bytes:
     rows = []
     for entry in document["entries"]:
         analysis = entry["analysis"]
-        description = "\n\n".join([
-            "UNVERIFIED CONTEXT ONLY — not evidence or corroboration.",
-            analysis["summary"],
-            "Why it matters: " + analysis["why_it_matters"],
-            "Uncertainty: " + analysis["uncertainty"],
-            "Next checks: " + " ".join(analysis["next_checks"]),
-        ])
+        description = "\n\n".join(
+            [
+                "UNVERIFIED CONTEXT ONLY — not evidence or corroboration.",
+                analysis["summary"],
+                "Why it matters: " + analysis["why_it_matters"],
+                "Uncertainty: " + analysis["uncertainty"],
+                "Next checks: " + " ".join(analysis["next_checks"]),
+            ]
+        )
         url = f"{SITE}/news/china/whispers/#{entry['whisper_id']}"
         rows.append(f"""  <item>
-    <title>{xml_escape('[Unverified context] ' + analysis['headline'])}</title>
+    <title>{xml_escape("[Unverified context] " + analysis["headline"])}</title>
     <link>{xml_escape(url)}</link>
-    <guid isPermaLink="false">{xml_escape(entry['whisper_id'])}</guid>
-    <pubDate>{_rfc2822(entry['published_at'])}</pubDate>
+    <guid isPermaLink="false">{xml_escape(entry["whisper_id"])}</guid>
+    <pubDate>{_rfc2822(entry["published_at"])}</pubDate>
     <description>{xml_escape(description)}</description>
     <category>unverified-context</category>
-    <category>{xml_escape(entry['signal']['tier'])}</category>
+    <category>{xml_escape(entry["signal"]["tier"])}</category>
   </item>""")
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -4102,7 +4373,7 @@ def build_dragon_whispers_rss(document: Mapping[str, Any]) -> bytes:
   <link>{SITE}/news/china/whispers/</link>
   <description>Sanitized, human-reviewed and unverified Telegram context. Items do not count as evidence or corroboration and expose no raw messages or identifiers.</description>
   <language>en</language>
-  <lastBuildDate>{_rfc2822(document['generated_at'])}</lastBuildDate>
+  <lastBuildDate>{_rfc2822(document["generated_at"])}</lastBuildDate>
   <atom:link href="{SITE}/news/china/whispers/feed.xml" rel="self" type="application/rss+xml" />
 {chr(10).join(rows)}
 </channel>
@@ -4122,7 +4393,7 @@ def _format_economic_value(metric: Mapping[str, Any]) -> str:
 
 def render_economic_page(pulse: Mapping[str, Any]) -> str:
     gate_rows = "".join(
-        f"""<li data-passed="{_h(str(gate['passed']).lower())}"><span>{_h(gate['label'])}</span><strong>{gate['observed']} / {gate['minimum']}</strong></li>"""
+        f"""<li data-passed="{_h(str(gate["passed"]).lower())}"><span>{_h(gate["label"])}</span><strong>{gate["observed"]} / {gate["minimum"]}</strong></li>"""
         for gate in pulse["readiness"]["gates"]
     )
     desk_blocks = []
@@ -4130,50 +4401,62 @@ def render_economic_page(pulse: Mapping[str, Any]) -> str:
         cards = []
         for metric in desk["metrics"]:
             revision = metric["revision"]
-            release = _human_time(metric["released_at"]) if metric["released_at"] else "source gives date/period only"
-            cards.append(f"""<article class="nw-metric-card" id="{_h(metric['metric_id'])}" data-freshness="{_h(metric['freshness']['status'])}">
-  <p class="nw-card__kicker">{_h(metric['source_class'])} · {_h(metric['freshness']['status'])}</p>
-  <h3>{_h(metric['label'])}</h3>
+            release = (
+                _human_time(metric["released_at"])
+                if metric["released_at"]
+                else "source gives date/period only"
+            )
+            cards.append(f"""<article class="nw-metric-card" id="{_h(metric["metric_id"])}" data-freshness="{_h(metric["freshness"]["status"])}">
+  <p class="nw-card__kicker">{_h(metric["source_class"])} · {_h(metric["freshness"]["status"])}</p>
+  <h3>{_h(metric["label"])}</h3>
   <p class="nw-metric-card__value">{_h(_format_economic_value(metric))}</p>
-  <dl><dt>Period</dt><dd>{_h(metric['period_start'])} → {_h(metric['period_end'])}</dd><dt>Released</dt><dd>{_h(release)}</dd><dt>Collected</dt><dd>{_h(_human_time(metric['collected_at']))}</dd><dt>Source group</dt><dd>{_h(metric['independence_group'])}</dd><dt>Comparability</dt><dd>{_h(metric['comparability']['basis'])}</dd><dt>Revision</dt><dd>{_h(revision['status'])}</dd></dl>
-  <p class="nw-metric-card__limit">{_h(metric['limitation'])}</p>
-  <a href="{_h(metric['evidence']['url'])}">Open evidence receipt</a>
+  <dl><dt>Period</dt><dd>{_h(metric["period_start"])} → {_h(metric["period_end"])}</dd><dt>Released</dt><dd>{_h(release)}</dd><dt>Collected</dt><dd>{_h(_human_time(metric["collected_at"]))}</dd><dt>Source group</dt><dd>{_h(metric["independence_group"])}</dd><dt>Comparability</dt><dd>{_h(metric["comparability"]["basis"])}</dd><dt>Revision</dt><dd>{_h(revision["status"])}</dd></dl>
+  <p class="nw-metric-card__limit">{_h(metric["limitation"])}</p>
+  <a href="{_h(metric["evidence"]["url"])}">Open evidence receipt</a>
 </article>""")
         if not cards:
-            cards.append("<div class=\"nw-empty-desk\"><strong>No current metric</strong><p>Not collected is not zero. The source backlog remains visible in the coverage matrix.</p></div>")
-        desk_blocks.append(f"""<section class="nw-section nw-econ-desk" id="desk-{_h(desk['id'])}"><div class="nw-section__head"><div><p class="nw-section__label">Economic evidence desk</p><h2>{_h(desk['title'])}</h2></div><p class="nw-section__dek">{_h(desk['limitations'][0])}</p></div><div class="nw-metric-grid">{''.join(cards)}</div></section>""")
+            cards.append(
+                '<div class="nw-empty-desk"><strong>No current metric</strong><p>Not collected is not zero. The source backlog remains visible in the coverage matrix.</p></div>'
+            )
+        desk_blocks.append(
+            f"""<section class="nw-section nw-econ-desk" id="desk-{_h(desk["id"])}"><div class="nw-section__head"><div><p class="nw-section__label">Economic evidence desk</p><h2>{_h(desk["title"])}</h2></div><p class="nw-section__dek">{_h(desk["limitations"][0])}</p></div><div class="nw-metric-grid">{"".join(cards)}</div></section>"""
+        )
     coverage_rows = "".join(
-        f"""<tr><td>{_h(row['domain'])}</td><td>{_h(row['status'])}</td><td>{_h(', '.join(row['observed_groups']) or 'none')}</td><td>{_h(', '.join(row['adapter_ready_groups']) or 'none')}</td></tr>"""
+        f"""<tr><td>{_h(row["domain"])}</td><td>{_h(row["status"])}</td><td>{_h(", ".join(row["observed_groups"]) or "none")}</td><td>{_h(", ".join(row["adapter_ready_groups"]) or "none")}</td></tr>"""
         for row in pulse["coverage"]["matrix"]
     )
     body = f"""<body class="ps newsroom-page newsroom-page--economy">
-{site_nav.render('/news/')}
+{site_nav.render("/news/")}
 <main id="main" class="nw-shell">
-  <header class="nw-article__header nw-economy-head"><p class="nw-article__kicker">China economic evidence · {_h(pulse['economic_state']['status'])} · as known {_h(_human_time(pulse['as_of']))}</p><h1>The economic pulse abstains—and shows you exactly why.</h1><p class="nw-article__dek">{_h(pulse['economic_state']['claim'])}</p></header>
-  <section class="nw-econ-gates"><div><p class="nw-kicker nw-kicker--economic">Readiness, not rhetoric</p><h2>Composite gates</h2><p>{_h(pulse['readiness']['abstention_reason'])}</p></div><ul>{gate_rows}</ul></section>
-  {''.join(desk_blocks)}
+  <header class="nw-article__header nw-economy-head"><p class="nw-article__kicker">China economic evidence · {_h(pulse["economic_state"]["status"])} · as known {_h(_human_time(pulse["as_of"]))}</p><h1>The economic pulse abstains—and shows you exactly why.</h1><p class="nw-article__dek">{_h(pulse["economic_state"]["claim"])}</p></header>
+  <section class="nw-econ-gates"><div><p class="nw-kicker nw-kicker--economic">Readiness, not rhetoric</p><h2>Composite gates</h2><p>{_h(pulse["readiness"]["abstention_reason"])}</p></div><ul>{gate_rows}</ul></section>
+  {"".join(desk_blocks)}
   <section class="nw-dossier__section" aria-labelledby="coverage-matrix-title"><p class="nw-section__label">Coverage matrix</p><h2 id="coverage-matrix-title">Observed, adapter-ready and absent</h2><p class="nw-table-cue" id="coverage-matrix-cue">Scroll horizontally to inspect every column.</p><div class="nw-table-wrap" role="region" tabindex="0" aria-labelledby="coverage-matrix-title" aria-describedby="coverage-matrix-cue"><table class="nw-evidence-table"><caption>Economic evidence collection coverage</caption><thead><tr><th scope="col">Domain</th><th scope="col">Status</th><th scope="col">Observed groups</th><th scope="col">Adapter-ready groups</th></tr></thead><tbody>{coverage_rows}</tbody></table></div></section>
-  <aside class="nw-coverage"><div><p class="nw-kicker nw-kicker--warning">Prohibited shortcuts</p><h2>What the pulse does not claim</h2></div><div class="nw-coverage__items">{''.join(f'<div class="nw-coverage__item"><p>{_h(value)}</p></div>' for value in pulse['economic_state']['prohibited_interpretations'])}</div></aside>
+  <aside class="nw-coverage"><div><p class="nw-kicker nw-kicker--warning">Prohibited shortcuts</p><h2>What the pulse does not claim</h2></div><div class="nw-coverage__items">{"".join(f'<div class="nw-coverage__item"><p>{_h(value)}</p></div>' for value in pulse["economic_state"]["prohibited_interpretations"])}</div></aside>
 </main>
 <footer class="nw-footer"><div class="nw-shell"><a href="/news/">← Palimpsest Wire</a> · <a href="/readings/china-economic-pulse-latest.json">Structured economic pulse</a> · <a href="/data.html">Evidence Atlas</a></div></footer>
 {site_nav.FOOT}
 </body></html>"""
-    return _head(
-        title="China economic state · Palimpsest Wire",
-        description=pulse["scope"],
-        canonical=f"{SITE}/news/economy/",
-        page_type="website",
-        modified_at=pulse["generated_at"],
-        json_ld={
-            "@context": "https://schema.org",
-            "@type": "Dataset",
-            "name": "Palimpsest China Economic Pulse",
-            "description": pulse["scope"],
-            "dateModified": pulse["generated_at"],
-            "url": f"{SITE}/readings/china-economic-pulse-latest.json",
-            "creator": _organization(),
-        },
-    ) + "\n" + body
+    return (
+        _head(
+            title="China economic state · Palimpsest Wire",
+            description=pulse["scope"],
+            canonical=f"{SITE}/news/economy/",
+            page_type="website",
+            modified_at=pulse["generated_at"],
+            json_ld={
+                "@context": "https://schema.org",
+                "@type": "Dataset",
+                "name": "Palimpsest China Economic Pulse",
+                "description": pulse["scope"],
+                "dateModified": pulse["generated_at"],
+                "url": f"{SITE}/readings/china-economic-pulse-latest.json",
+                "creator": _organization(),
+            },
+        )
+        + "\n"
+        + body
+    )
 
 
 def build_json_feed(
@@ -4182,20 +4465,20 @@ def build_json_feed(
     sections = {section["id"]: section["title"] for section in feed["sections"]}
     mixed = wire is not None
     feed_url = (
-        f"{SITE}/news/feed.json" if mixed
-        else f"{SITE}/news/instruments/feed.json"
+        f"{SITE}/news/feed.json" if mixed else f"{SITE}/news/instruments/feed.json"
     )
     home_page_url = feed["url"] if mixed else f"{SITE}/news/#instruments"
     title = (
-        "Palimpsest source index + measurements" if mixed
+        "Palimpsest source index + measurements"
+        if mixed
         else "Palimpsest instrument measurements"
     )
     description = (
         "Palimpsest measurements followed by clearly labeled publisher source "
         "records. Source reports remain attributed and are not independently "
         "verified unless the item states otherwise."
-        if mixed else
-        "Only Palimpsest's own current instrument measurements, with a result, "
+        if mixed
+        else "Only Palimpsest's own current instrument measurements, with a result, "
         "source receipt, freshness state and limitation attached."
     )
     event_items = []
@@ -4209,14 +4492,18 @@ def build_json_feed(
                     "[Corroborated source report] "
                     if len(event["evidence_groups"]) > 1
                     else "[Source report] "
-                ) + event["headline"],
+                )
+                + event["headline"],
                 "summary": _event_source_boundary(event),
                 "content_text": "\n\n".join(
                     [
                         "ITEM TYPE: " + _event_source_label(event),
-                        "Published by: " + ", ".join(dict.fromkeys(
-                            ref["source_name"] for ref in event["evidence_refs"]
-                        )),
+                        "Published by: "
+                        + ", ".join(
+                            dict.fromkeys(
+                                ref["source_name"] for ref in event["evidence_refs"]
+                            )
+                        ),
                         (
                             "Palimpsest adds: source grouping, timestamps, topic "
                             "classification and a revision record."
@@ -4283,16 +4570,18 @@ def build_json_feed(
                 story["signal_id"],
                 story["status"],
             ],
-            "attachments": [{
-                "url": story["evidence"]["url"],
-                "mime_type": "application/json",
-                "title": story["evidence"]["input"]["filename"],
-                **(
-                    {"size_in_bytes": story["evidence"]["input"]["bytes"]}
-                    if story["evidence"]["input"]["bytes"] is not None
-                    else {}
-                ),
-            }],
+            "attachments": [
+                {
+                    "url": story["evidence"]["url"],
+                    "mime_type": "application/json",
+                    "title": story["evidence"]["input"]["filename"],
+                    **(
+                        {"size_in_bytes": story["evidence"]["input"]["bytes"]}
+                        if story["evidence"]["input"]["bytes"] is not None
+                        else {}
+                    ),
+                }
+            ],
             "_palimpsest": {
                 "kind": "instrument_measurement",
                 "revision_id": _revision_id(story, "storyv"),
@@ -4313,13 +4602,12 @@ def build_json_feed(
     }
 
 
-def build_rss(
-    feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None
-) -> bytes:
+def build_rss(feed: Mapping[str, Any], wire: Mapping[str, Any] | None = None) -> bytes:
     items = []
     mixed = wire is not None
     channel_title = (
-        "Palimpsest source index + measurements" if mixed
+        "Palimpsest source index + measurements"
+        if mixed
         else "Palimpsest instrument measurements"
     )
     channel_link = feed["url"] if mixed else f"{SITE}/news/#instruments"
@@ -4327,14 +4615,11 @@ def build_rss(
         "Palimpsest measurements followed by clearly labeled publisher source "
         "records. Source reports remain attributed and are not independently "
         "verified unless stated."
-        if mixed else
-        "Only Palimpsest's own current instrument measurements, each with its "
+        if mixed
+        else "Only Palimpsest's own current instrument measurements, each with its "
         "source receipt, freshness state and limitation."
     )
-    self_url = (
-        f"{SITE}/news/feed.xml" if mixed
-        else f"{SITE}/news/instruments/feed.xml"
-    )
+    self_url = f"{SITE}/news/feed.xml" if mixed else f"{SITE}/news/instruments/feed.xml"
     for story in feed["stories"]:
         description = (
             "Item type: Palimpsest measurement. Result: "
@@ -4346,13 +4631,13 @@ def build_rss(
         )
         guid = story["id"] + ":" + story["claim_fingerprint"]
         items.append(f"""  <item>
-    <title>{xml_escape('[Palimpsest measurement] ' + story['headline'])}</title>
-    <link>{xml_escape(story['url'])}</link>
+    <title>{xml_escape("[Palimpsest measurement] " + story["headline"])}</title>
+    <link>{xml_escape(story["url"])}</link>
     <guid isPermaLink="false">{xml_escape(guid)}</guid>
-    <pubDate>{_rfc2822(story['published_at'])}</pubDate>
+    <pubDate>{_rfc2822(story["published_at"])}</pubDate>
     <description>{xml_escape(description)}</description>
-    <category>{xml_escape(story['section'])}</category>
-    <source url={xml_quoteattr(story['evidence']['url'])}>{xml_escape(story['signal_id'])}</source>
+    <category>{xml_escape(story["section"])}</category>
+    <source url={xml_quoteattr(story["evidence"]["url"])}>{xml_escape(story["signal_id"])}</source>
   </item>""")
     if wire is not None:
         for event in wire["events"]:
@@ -4361,9 +4646,9 @@ def build_rss(
                 if len(event["evidence_groups"]) > 1
                 else "[Source report] "
             )
-            publishers = ", ".join(dict.fromkeys(
-                ref["source_name"] for ref in event["evidence_refs"]
-            ))
+            publishers = ", ".join(
+                dict.fromkeys(ref["source_name"] for ref in event["evidence_refs"])
+            )
             description = (
                 "Item type: "
                 + _event_source_label(event)
@@ -4376,14 +4661,14 @@ def build_rss(
                 + event["evidence_refs"][0]["url"]
             )
             items.append(f"""  <item>
-    <title>{xml_escape(prefix + event['headline'])}</title>
-    <link>{xml_escape(event['url'])}</link>
-    <guid isPermaLink="false">{xml_escape(event['event_id'])}</guid>
-    <pubDate>{_rfc2822(event['published_at'])}</pubDate>
+    <title>{xml_escape(prefix + event["headline"])}</title>
+    <link>{xml_escape(event["url"])}</link>
+    <guid isPermaLink="false">{xml_escape(event["event_id"])}</guid>
+    <pubDate>{_rfc2822(event["published_at"])}</pubDate>
     <description>{xml_escape(description)}</description>
     <category>source-report</category>
-    <category>{xml_escape(event['desk'])}</category>
-    <source url={xml_quoteattr(event['evidence_refs'][0]['url'])}>{xml_escape(event['evidence_refs'][0]['source_name'])}</source>
+    <category>{xml_escape(event["desk"])}</category>
+    <source url={xml_quoteattr(event["evidence_refs"][0]["url"])}>{xml_escape(event["evidence_refs"][0]["source_name"])}</source>
   </item>""")
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
@@ -4392,7 +4677,7 @@ def build_rss(
   <link>{xml_escape(channel_link)}</link>
   <description>{xml_escape(channel_description)}</description>
   <language>en</language>
-  <lastBuildDate>{_rfc2822(max(feed['generated_at'], wire['generated_at']) if wire is not None else feed['generated_at'])}</lastBuildDate>
+  <lastBuildDate>{_rfc2822(max(feed["generated_at"], wire["generated_at"]) if wire is not None else feed["generated_at"])}</lastBuildDate>
   <atom:link href="{self_url}" rel="self" type="application/rss+xml" />
 {chr(10).join(items)}
 </channel>
@@ -4428,11 +4713,13 @@ def build_sitemap(
         return timedelta(0) <= age <= timedelta(days=2)
 
     urls = [
-        f"""  <url><loc>{SITE}/news/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
-        f"""  <url><loc>{SITE}/news/standards/</loc><lastmod>{xml_escape(feed['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
+        f"""  <url><loc>{SITE}/news/</loc><lastmod>{xml_escape(feed["generated_at"])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
+        f"""  <url><loc>{SITE}/news/standards/</loc><lastmod>{xml_escape(feed["generated_at"])}</lastmod><changefreq>hourly</changefreq><priority>1.0</priority></url>""",
     ]
     if wire is not None:
-        archive_pages = max(1, (len(wire["events"]) + WIRE_PAGE_SIZE - 1) // WIRE_PAGE_SIZE)
+        archive_pages = max(
+            1, (len(wire["events"]) + WIRE_PAGE_SIZE - 1) // WIRE_PAGE_SIZE
+        )
         urls.append(
             f"  <url><loc>{SITE}/news/wire/</loc><lastmod>{xml_escape(wire['generated_at'])}</lastmod><changefreq>hourly</changefreq></url>"
         )
@@ -4443,7 +4730,7 @@ def build_sitemap(
         for event in wire["events"]:
             news_markup = ""
             if news_eligible(event["published_at"]):
-                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(event['published_at'])}</news:publication_date><news:title>{xml_escape(event['headline'])}</news:title></news:news>"""
+                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(event["published_at"])}</news:publication_date><news:title>{xml_escape(event["headline"])}</news:title></news:news>"""
             urls.append(
                 f"  <url><loc>{xml_escape(event['url'])}</loc><lastmod>{xml_escape(event['updated_at'])}</lastmod>{news_markup}</url>"
             )
@@ -4470,7 +4757,7 @@ def build_sitemap(
             f"  <url><loc>{SITE}/news/china/erasure/</loc><lastmod>{xml_escape(china_stream['generated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.9</priority></url>"
         )
     if china_analysis is not None:
-        news_markup = f"""<news:news><news:publication><news:name>Palimpsest China Desk</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(china_analysis['published_at'])}</news:publication_date><news:title>{xml_escape(china_analysis['title'])}</news:title></news:news>"""
+        news_markup = f"""<news:news><news:publication><news:name>Palimpsest China Desk</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(china_analysis["published_at"])}</news:publication_date><news:title>{xml_escape(china_analysis["title"])}</news:title></news:news>"""
         urls.append(
             f"  <url><loc>{SITE}/news/china/analysis/</loc><lastmod>{xml_escape(china_analysis['updated_at'])}</lastmod><changefreq>hourly</changefreq><priority>0.95</priority>{news_markup}</url>"
         )
@@ -4485,7 +4772,7 @@ def build_sitemap(
         for case in investigations["cases"]:
             news_markup = ""
             if case["status"] == "published" and news_eligible(case["published_at"]):
-                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Investigations</news:name><news:language>{xml_escape(_case_language(case))}</news:language></news:publication><news:publication_date>{xml_escape(case['published_at'])}</news:publication_date><news:title>{xml_escape(case['title'])}</news:title></news:news>"""
+                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Investigations</news:name><news:language>{xml_escape(_case_language(case))}</news:language></news:publication><news:publication_date>{xml_escape(case["published_at"])}</news:publication_date><news:title>{xml_escape(case["title"])}</news:title></news:news>"""
             urls.append(
                 f"  <url><loc>{xml_escape(_case_public_url(case))}</loc><lastmod>{xml_escape(case['updated_at'])}</lastmod>{news_markup}</url>"
             )
@@ -4496,14 +4783,14 @@ def build_sitemap(
         for case in machine_analyses["cases"]:
             news_markup = ""
             if _machine_is_article(case) and news_eligible(case["published_at"]):
-                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Machine Analysis</news:name><news:language>{xml_escape(_text_language(case['title']))}</news:language></news:publication><news:publication_date>{xml_escape(case['published_at'])}</news:publication_date><news:title>{xml_escape(case['title'])}</news:title></news:news>"""
+                news_markup = f"""<news:news><news:publication><news:name>Palimpsest Machine Analysis</news:name><news:language>{xml_escape(_text_language(case["title"]))}</news:language></news:publication><news:publication_date>{xml_escape(case["published_at"])}</news:publication_date><news:title>{xml_escape(case["title"])}</news:title></news:news>"""
             urls.append(
                 f"  <url><loc>{xml_escape(_machine_case_public_url(case))}</loc><lastmod>{xml_escape(case['updated_at'])}</lastmod>{news_markup}</url>"
             )
     for story in feed["stories"]:
         news_markup = ""
         if story["status"] == "live" and news_eligible(story["published_at"]):
-            news_markup = f"""<news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(story['published_at'])}</news:publication_date><news:title>{xml_escape(story['headline'])}</news:title></news:news>"""
+            news_markup = f"""<news:news><news:publication><news:name>Palimpsest Wire</news:name><news:language>en</news:language></news:publication><news:publication_date>{xml_escape(story["published_at"])}</news:publication_date><news:title>{xml_escape(story["headline"])}</news:title></news:news>"""
         urls.append(
             f"  <url><loc>{xml_escape(story['url'])}</loc><lastmod>{xml_escape(story['modified_at'])}</lastmod>{news_markup}</url>"
         )
@@ -4520,9 +4807,10 @@ def _machine_evidence_archive_path(evidence: Mapping[str, Any]) -> Path:
 
     digest = evidence.get("artifact_sha256")
     filename = f"sha256-{digest}.json"
-    if not isinstance(digest, str) or _MACHINE_EVIDENCE_FILENAME.fullmatch(
-        filename
-    ) is None:
+    if (
+        not isinstance(digest, str)
+        or _MACHINE_EVIDENCE_FILENAME.fullmatch(filename) is None
+    ):
         raise newsroom.NewsroomError("machine evidence has an invalid archive hash")
     expected_url = f"{SITE}/news/analysis/evidence/{filename}"
     if evidence.get("artifact_url") != expected_url:
@@ -4623,9 +4911,7 @@ def _validated_archived_machine_revision(
     return record
 
 
-def _read_immutable_analysis_file(
-    relative: Path, *, root: Path
-) -> bytes:
+def _read_immutable_analysis_file(relative: Path, *, root: Path) -> bytes:
     """Read a bounded archive file through no-follow directory descriptors."""
 
     if not _is_immutable_analysis_path(relative):
@@ -4650,9 +4936,7 @@ def _read_immutable_analysis_file(
             os.close(directory_fd)
             directory_fd = child_fd
         file_flags = (
-            os.O_RDONLY
-            | getattr(os, "O_CLOEXEC", 0)
-            | getattr(os, "O_NOFOLLOW", 0)
+            os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
         )
         try:
             descriptor = os.open(relative.name, file_flags, dir_fd=directory_fd)
@@ -4664,7 +4948,9 @@ def _read_immutable_analysis_file(
             metadata = os.fstat(descriptor)
             if (
                 not stat.S_ISREG(metadata.st_mode)
-                or not 1 <= metadata.st_size <= machine_investigations_model.MAX_OUTPUT_BYTES
+                or not 1
+                <= metadata.st_size
+                <= machine_investigations_model.MAX_OUTPUT_BYTES
             ):
                 raise newsroom.NewsroomError(
                     f"immutable analysis file is not a bounded regular file: {relative}"
@@ -4733,17 +5019,395 @@ def _event_revision_bytes(
         raise newsroom.NewsroomError(
             f"invalid immutable event revision: {relative}"
         ) from exc
-    archived_core = {
-        key: value for key, value in archived.items() if key != "mutation"
-    }
-    current_core = {
-        key: value for key, value in event.items() if key != "mutation"
-    }
+    archived_core = {key: value for key, value in archived.items() if key != "mutation"}
+    current_core = {key: value for key, value in event.items() if key != "mutation"}
     if archived_core != current_core:
         raise newsroom.NewsroomError(
             f"event version collides with unequal archived content: {relative}"
         )
     return raw
+
+
+def _read_current_event_analysis(relative: Path, *, root: Path) -> bytes | None:
+    """Read one mutable analysis head without following its final symlink."""
+
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(root / relative, flags)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise newsroom.NewsroomError(
+            f"cannot safely read current event analysis {relative}: {exc}"
+        ) from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or not 1
+            <= metadata.st_size
+            <= machine_investigations_model.MAX_OUTPUT_BYTES
+        ):
+            raise newsroom.NewsroomError(
+                f"current event analysis is not a bounded regular file: {relative}"
+            )
+        chunks: list[bytes] = []
+        remaining = metadata.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 64 * 1024))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        if len(raw) != metadata.st_size:
+            raise newsroom.NewsroomError(
+                f"current event analysis changed while reading: {relative}"
+            )
+        return raw
+    finally:
+        os.close(descriptor)
+
+
+def _retain_semantically_unchanged_event_analysis(
+    event: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    *,
+    archive_root: Path,
+) -> Mapping[str, Any]:
+    """Reuse a valid prior exact-byte revision when only edition receipts moved."""
+
+    base = Path("news/wire") / event["event_id"]
+    current_path = base / "analysis.json"
+    raw = _read_current_event_analysis(current_path, root=archive_root)
+    if raw is None:
+        return candidate
+    try:
+        previous = newswire_model.strict_json_loads(
+            raw, label=f"current event analysis {current_path}"
+        )
+        event_analysis_model.validate_event_analysis(previous, event=event)
+    except (TypeError, ValueError, event_analysis_model.EventAnalysisError) as exc:
+        raise newsroom.NewsroomError(
+            f"invalid current event analysis: {current_path}"
+        ) from exc
+    revision_path = base / "analysis" / "revisions" / f"{previous['analysis_id']}.json"
+    archived = _read_immutable_analysis_file(revision_path, root=archive_root)
+    if archived != raw:
+        raise newsroom.NewsroomError(
+            f"current event analysis is not its immutable revision: {current_path}"
+        )
+    if event_analysis_model.semantically_equivalent(previous, candidate):
+        return previous
+    return candidate
+
+
+def _is_wire_history_revision_path(relative: Path) -> bool:
+    return relative.parts[:2] == ("news", "wire") and _is_immutable_analysis_path(
+        relative
+    )
+
+
+def _validate_wire_history_revision(
+    relative: Path, raw: bytes
+) -> tuple[str, str, str, str | None, str | None]:
+    """Validate one historical dossier or assessment and bind it to its path."""
+
+    try:
+        document = newswire_model.strict_json_loads(
+            raw, label=f"wire history revision {relative}"
+        )
+        if _pretty_json(document) != raw:
+            raise ValueError("revision bytes are not canonical pretty JSON")
+        event_id = relative.parts[2]
+        if relative.parts[3] == "revisions":
+            newswire_model._validate_public_event(document, str(relative))
+            version_id = document["version_id"]
+            if (
+                document["event_id"] != event_id
+                or relative.name != f"{version_id}.json"
+            ):
+                raise ValueError("event revision path does not match its document")
+            return (
+                "event-dossier",
+                event_id,
+                version_id,
+                document["updated_at"],
+                None,
+            )
+        event_analysis_model.validate_event_analysis(document)
+        analysis_id = document["analysis_id"]
+        if document["event_id"] != event_id or relative.name != f"{analysis_id}.json":
+            raise ValueError("analysis revision path does not match its document")
+        return (
+            "event-analysis",
+            event_id,
+            analysis_id,
+            document["generated_at"],
+            document["event_version_id"],
+        )
+    except (KeyError, TypeError, ValueError, newswire_model.NewswireError) as exc:
+        raise newsroom.NewsroomError(
+            f"invalid immutable wire-history revision: {relative}"
+        ) from exc
+
+
+def _wire_history_payload_fingerprint(payloads: Mapping[Path, bytes]) -> str:
+    """Hash an exact path-and-byte set without trusting filesystem metadata."""
+
+    digest = hashlib.sha256()
+    for relative, raw in sorted(payloads.items(), key=lambda item: str(item[0])):
+        entry = {
+            "path": str(relative),
+            "size": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+        digest.update(
+            json.dumps(
+                entry,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+            + b"\n"
+        )
+    return digest.hexdigest()
+
+
+def _is_current_wire_analysis_path(relative: Path) -> bool:
+    return (
+        len(relative.parts) == 4
+        and relative.parts[:2] == ("news", "wire")
+        and _WIRE_EVENT_DIRECTORY.fullmatch(relative.parts[2]) is not None
+        and relative.name == "analysis.json"
+    )
+
+
+def _wire_history_candidate_fingerprint(outputs: Mapping[Path, bytes]) -> str:
+    covered = {
+        Path(candidate): payload
+        for candidate, payload in outputs.items()
+        if _is_wire_history_revision_path(Path(candidate))
+        or _is_current_wire_analysis_path(Path(candidate))
+    }
+    return _wire_history_payload_fingerprint(covered)
+
+
+def _read_wire_history_namespace(*, root: Path) -> dict[Path, bytes]:
+    paths = {
+        path.relative_to(root)
+        for pattern in (
+            "news/wire/event-*/revisions/eventv-*.json",
+            "news/wire/event-*/analysis/revisions/analysisv-*.json",
+        )
+        for path in root.glob(pattern)
+    }
+    if len(paths) > MAX_WIRE_HISTORY_FILES:
+        raise newsroom.NewsroomError(
+            "wire history exceeds its reviewed file-count bound: "
+            f"{len(paths)} > {MAX_WIRE_HISTORY_FILES}"
+        )
+    payloads: dict[Path, bytes] = {}
+    for relative in sorted(paths, key=str):
+        if not _is_wire_history_revision_path(relative):
+            raise newsroom.NewsroomError(
+                f"wire history contains an invalid reserved path: {relative}"
+            )
+        payloads[relative] = _read_immutable_analysis_file(relative, root=root)
+    return payloads
+
+
+def _wire_history_integrity_receipt(
+    outputs: Mapping[Path, bytes], *, root: Path
+) -> dict[str, Any]:
+    """Bind every retained wire revision into one bounded, reproducible root."""
+
+    existing_payloads = _read_wire_history_namespace(root=root)
+    payloads = dict(existing_payloads)
+
+    new_paths = []
+    for candidate, payload in outputs.items():
+        relative = Path(candidate)
+        if not _is_wire_history_revision_path(relative):
+            continue
+        previous = payloads.get(relative)
+        if previous is not None and previous != payload:
+            raise newsroom.NewsroomError(
+                f"wire-history revision collides with unequal bytes: {relative}"
+            )
+        if previous is None:
+            new_paths.append(relative)
+        payloads[relative] = payload
+
+    if len(payloads) > MAX_WIRE_HISTORY_FILES:
+        raise newsroom.NewsroomError(
+            "wire history would exceed its reviewed file-count bound: "
+            f"{len(payloads)} > {MAX_WIRE_HISTORY_FILES}"
+        )
+    established_namespace = (root / "news" / "wire").exists()
+    if (
+        established_namespace
+        and len(new_paths) > MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION
+    ):
+        raise newsroom.NewsroomError(
+            "wire-history growth exceeds the automatic publication bound: "
+            f"{len(new_paths)} > {MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION}"
+        )
+
+    event_versions: set[tuple[str, str]] = set()
+    analysis_event_versions: list[tuple[Path, str, str]] = []
+    entries = []
+    event_counts: dict[str, int] = {}
+    latest_clocks: list[str] = []
+    for relative, raw in sorted(payloads.items(), key=lambda item: str(item[0])):
+        kind, event_id, version_id, clock, event_version_id = (
+            _validate_wire_history_revision(relative, raw)
+        )
+        if kind == "event-dossier":
+            event_versions.add((event_id, version_id))
+        else:
+            if event_version_id is None:
+                raise newsroom.NewsroomError(
+                    f"wire analysis history has no event revision: {relative}"
+                )
+            analysis_event_versions.append((relative, event_id, event_version_id))
+        event_counts[event_id] = event_counts.get(event_id, 0) + 1
+        if clock is not None:
+            latest_clocks.append(clock)
+        entries.append(
+            {
+                "path": str(relative),
+                "kind": kind,
+                "event_id": event_id,
+                "version_id": version_id,
+                "size": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        )
+    missing_versions = [
+        str(relative)
+        for relative, event_id, version_id in analysis_event_versions
+        if (event_id, version_id) not in event_versions
+    ]
+    if missing_versions:
+        raise newsroom.NewsroomError(
+            "wire analysis history references missing event revisions: "
+            + ", ".join(missing_versions[:8])
+        )
+
+    tree = hashlib.sha256()
+    for entry in entries:
+        tree.update(
+            json.dumps(
+                entry,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+            + b"\n"
+        )
+
+    aliases = []
+    for candidate, raw in outputs.items():
+        relative = Path(candidate)
+        if not _is_current_wire_analysis_path(relative):
+            continue
+        document = newswire_model.strict_json_loads(
+            raw, label=f"current event analysis {relative}"
+        )
+        event_analysis_model.validate_event_analysis(document)
+        revision = (
+            relative.parent
+            / "analysis"
+            / "revisions"
+            / f"{document['analysis_id']}.json"
+        )
+        if payloads.get(revision) != raw:
+            raise newsroom.NewsroomError(
+                f"current event analysis is outside wire history: {relative}"
+            )
+        aliases.append(
+            {
+                "path": str(relative),
+                "analysis_id": document["analysis_id"],
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+        )
+    alias_tree = hashlib.sha256()
+    for entry in sorted(aliases, key=lambda row: row["path"]):
+        alias_tree.update(
+            json.dumps(
+                entry, sort_keys=True, separators=(",", ":"), allow_nan=False
+            ).encode("utf-8")
+            + b"\n"
+        )
+
+    receipt = {
+        "schema_version": "palimpsest-wire-history-integrity.v1",
+        "generated_at": max(latest_clocks) if latest_clocks else None,
+        "covered_paths": [
+            "news/wire/event-*/revisions/eventv-*.json",
+            "news/wire/event-*/analysis/revisions/analysisv-*.json",
+        ],
+        "entry_algorithm": "sha256(canonical-entry-json-lines)/v1",
+        "n_revisions": len(entries),
+        "n_event_revisions": sum(entry["kind"] == "event-dossier" for entry in entries),
+        "n_analysis_revisions": sum(
+            entry["kind"] == "event-analysis" for entry in entries
+        ),
+        "n_events": len(event_counts),
+        "total_bytes": sum(entry["size"] for entry in entries),
+        "max_revisions_per_event": max(event_counts.values(), default=0),
+        "history_tree_sha256": tree.hexdigest(),
+        "n_current_analysis_aliases": len(aliases),
+        "current_analysis_tree_sha256": alias_tree.hexdigest(),
+        "automatic_growth_limit": MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION,
+        "automatic_growth_policy": "max-128-after-initial-namespace-bootstrap",
+        "automatic_growth_status": "validated",
+        "validation_status": "full-history-validated",
+        "referential_closure": "all-analysis-event-versions-present",
+    }
+    receipt_bytes = _pretty_json(receipt)
+    root_key = str(root.resolve())
+    stale_keys = [key for key in _VERIFIED_WIRE_HISTORY_RECEIPTS if key[0] == root_key]
+    for key in stale_keys:
+        del _VERIFIED_WIRE_HISTORY_RECEIPTS[key]
+    _VERIFIED_WIRE_HISTORY_RECEIPTS[
+        (
+            root_key,
+            hashlib.sha256(receipt_bytes).hexdigest(),
+            _wire_history_candidate_fingerprint(outputs),
+        )
+    ] = _wire_history_payload_fingerprint(existing_payloads)
+    return receipt
+
+
+def _verify_wire_history_integrity_output(
+    outputs: Mapping[Path, bytes], *, root: Path
+) -> None:
+    payload = outputs.get(_WIRE_HISTORY_INTEGRITY_PATH)
+    if payload is None:
+        return
+    receipt_digest = hashlib.sha256(payload).hexdigest()
+    cache_key = (
+        str(root.resolve()),
+        receipt_digest,
+        _wire_history_candidate_fingerprint(outputs),
+    )
+    expected_namespace = _VERIFIED_WIRE_HISTORY_RECEIPTS.get(cache_key)
+    if expected_namespace is None:
+        raise newsroom.NewsroomError(
+            "wire-history integrity receipt was not verified for this publication"
+        )
+    current_namespace = _wire_history_payload_fingerprint(
+        _read_wire_history_namespace(root=root)
+    )
+    if current_namespace != expected_namespace:
+        raise newsroom.NewsroomError(
+            "wire history changed after its integrity receipt was verified"
+        )
 
 
 def build_outputs(
@@ -4785,20 +5449,33 @@ def build_outputs(
             if PEER_CONTEXT_READING.is_file()
             else None
         )
-        event_analyses = event_analysis_model.build_event_analyses(
+        candidates = event_analysis_model.build_event_analyses(
             wire,
             feed,
-            live_families=event_analysis_model.load_optional_live_families(readings_dir),
+            live_families=event_analysis_model.load_optional_live_families(
+                readings_dir
+            ),
             archive_context=event_analysis_model.load_optional_archive_context(
                 readings_dir
             ),
-            corroboration=event_analysis_model.load_optional_corroboration(readings_dir),
+            corroboration=event_analysis_model.load_optional_corroboration(
+                readings_dir
+            ),
             peer_warehouses=event_analysis_model.load_optional_peer_warehouses(
                 readings_dir
             ),
             peer=peer,
             archive_refresh_status=load_archive_refresh_status(),
         )
+        events_by_id = {event["event_id"]: event for event in wire["events"]}
+        event_analyses = {
+            event_id: _retain_semantically_unchanged_event_analysis(
+                events_by_id[event_id],
+                candidate,
+                archive_root=archive_root,
+            )
+            for event_id, candidate in candidates.items()
+        }
         china_stream = china_stream_model.build_china_article_stream(
             wire, event_analyses, telegram_watch=telegram_watch
         )
@@ -4810,17 +5487,20 @@ def build_outputs(
     outputs: dict[Path, bytes] = {
         Path("readings/newsroom-latest.json"): _pretty_json(feed),
         Path("news/index.html"): (
-            render_evidence_index(
-                feed, wire, pulse, investigations, machine_analyses
-            )
+            render_evidence_index(feed, wire, pulse, investigations, machine_analyses)
             if wire is not None
             else render_index(feed)
         ).encode("utf-8"),
         Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
         Path("news/feed.xml"): build_rss(feed, wire),
         Path("news/sitemap.xml"): build_sitemap(
-            feed, wire, investigations, machine_analyses, china_stream,
-            whispers_document, china_analysis,
+            feed,
+            wire,
+            investigations,
+            machine_analyses,
+            china_stream,
+            whispers_document,
+            china_analysis,
         ),
         Path("readings/china-censorship-analysis-latest.json"): (
             china_analysis_model.pretty_json_bytes(china_analysis)
@@ -4831,12 +5511,12 @@ def build_outputs(
         Path("news/china/analysis/feed.json"): _pretty_json(
             build_china_analysis_json_feed(china_analysis)
         ),
-        Path("news/china/analysis/feed.xml"): build_china_analysis_rss(
-            china_analysis
-        ),
+        Path("news/china/analysis/feed.xml"): build_china_analysis_rss(china_analysis),
     }
     if wire is not None:
-        outputs[Path("news/instruments/feed.json")] = _pretty_json(build_json_feed(feed))
+        outputs[Path("news/instruments/feed.json")] = _pretty_json(
+            build_json_feed(feed)
+        )
         outputs[Path("news/instruments/feed.xml")] = build_rss(feed)
         if china_stream is None:
             raise newsroom.NewsroomError("China stream was not built from the wire")
@@ -4852,22 +5532,23 @@ def build_outputs(
         outputs[Path("readings/dragon-whispers-latest.json")] = _pretty_json(
             whispers_document
         )
-        outputs[Path("news/china/whispers/index.html")] = (
-            render_dragon_whispers(whispers_document).encode("utf-8")
-        )
+        outputs[Path("news/china/whispers/index.html")] = render_dragon_whispers(
+            whispers_document
+        ).encode("utf-8")
         outputs[Path("news/china/whispers/feed.json")] = _pretty_json(
             build_dragon_whispers_json_feed(whispers_document)
         )
-        outputs[Path("news/china/whispers/feed.xml")] = (
-            build_dragon_whispers_rss(whispers_document)
+        outputs[Path("news/china/whispers/feed.xml")] = build_dragon_whispers_rss(
+            whispers_document
         )
         stream_pages = [
-            china_stream["entries"][offset:offset + CHINA_STREAM_PAGE_SIZE]
+            china_stream["entries"][offset : offset + CHINA_STREAM_PAGE_SIZE]
             for offset in range(0, len(china_stream["entries"]), CHINA_STREAM_PAGE_SIZE)
         ] or [[]]
         for page_number, page_entries in enumerate(stream_pages, 1):
             stream_path = (
-                Path("news/china/index.html") if page_number == 1
+                Path("news/china/index.html")
+                if page_number == 1
                 else Path("news/china/page") / str(page_number) / "index.html"
             )
             outputs[stream_path] = render_china_article_stream(
@@ -4877,12 +5558,13 @@ def build_outputs(
                 n_pages=len(stream_pages),
             ).encode("utf-8")
         event_pages = [
-            wire["events"][offset:offset + WIRE_PAGE_SIZE]
+            wire["events"][offset : offset + WIRE_PAGE_SIZE]
             for offset in range(0, len(wire["events"]), WIRE_PAGE_SIZE)
         ] or [[]]
         for page_number, page_events in enumerate(event_pages, 1):
             archive_path = (
-                Path("news/wire/index.html") if page_number == 1
+                Path("news/wire/index.html")
+                if page_number == 1
                 else Path("news/wire/page") / str(page_number) / "index.html"
             )
             outputs[archive_path] = render_wire_archive(
@@ -4912,33 +5594,37 @@ def build_outputs(
                 base / "analysis" / "revisions" / f"{analysis['analysis_id']}.json"
             ] = _pretty_json(analysis)
         for (year, month), events in sorted(archive.items()):
-            outputs[Path("news/archive") / year / month / "index.json"] = _pretty_json({
-                "schema_version": "palimpsest-news-archive.v1",
-                "year": int(year),
-                "month": int(month),
-                "generated_at": wire["generated_at"],
-                "n_events": len(events),
-                "events": events,
-            })
+            outputs[Path("news/archive") / year / month / "index.json"] = _pretty_json(
+                {
+                    "schema_version": "palimpsest-news-archive.v1",
+                    "year": int(year),
+                    "month": int(month),
+                    "generated_at": wire["generated_at"],
+                    "n_events": len(events),
+                    "events": events,
+                }
+            )
     if pulse is not None:
-        outputs[Path("news/economy/index.html")] = render_economic_page(pulse).encode("utf-8")
-    if investigations is not None:
-        outputs[Path("news/investigations/index.html")] = (
-            render_investigations_index(investigations).encode("utf-8")
+        outputs[Path("news/economy/index.html")] = render_economic_page(pulse).encode(
+            "utf-8"
         )
+    if investigations is not None:
+        outputs[Path("news/investigations/index.html")] = render_investigations_index(
+            investigations
+        ).encode("utf-8")
         for case in investigations["cases"]:
             base = Path("news/investigations") / case["slug"]
             outputs[base / "index.html"] = render_investigation_case(case).encode(
                 "utf-8"
             )
             outputs[base / "case.json"] = _pretty_json(case)
-            outputs[base / "revisions" / f"{case['version_id']}.json"] = (
-                _pretty_json(case)
+            outputs[base / "revisions" / f"{case['version_id']}.json"] = _pretty_json(
+                case
             )
     if machine_analyses is not None:
-        outputs[Path("news/analysis/index.html")] = (
-            render_machine_analysis_index(machine_analyses).encode("utf-8")
-        )
+        outputs[Path("news/analysis/index.html")] = render_machine_analysis_index(
+            machine_analyses
+        ).encode("utf-8")
         evidence_context = _load_machine_evidence_context()
         archived_evidence: dict[str, dict[str, Any]] = {}
         for case in machine_analyses["cases"]:
@@ -4962,24 +5648,19 @@ def build_outputs(
                     slug=case["slug"],
                     revision_filename=revision_path.name,
                 )
-                expected_history = case["corrections"]["history"][
-                    : history_index + 1
-                ]
+                expected_history = case["corrections"]["history"][: history_index + 1]
                 if (
                     revision_record["case_id"] != case["case_id"]
                     or revision_record["source_case_id"] != case["source_case_id"]
                     or revision_record["profile"] != case["profile"]
                     or revision_record["published_at"] != case["published_at"]
-                    or revision_record["corrections"]["history"]
-                    != expected_history
+                    or revision_record["corrections"]["history"] != expected_history
                 ):
                     raise newsroom.NewsroomError(
                         "immutable machine-analysis revision is not the exact "
                         f"history prefix: {revision_path}"
                     )
-                _retain_immutable_analysis_output(
-                    outputs, revision_path, revision_raw
-                )
+                _retain_immutable_analysis_output(outputs, revision_path, revision_raw)
 
                 # Historical revision JSON is useful only while every capsule
                 # it cites remains an addressable part of the same archive.
@@ -5021,9 +5702,7 @@ def build_outputs(
                 if evidence not in prior["evidence"]:
                     prior["evidence"].append(evidence)
         for digest, archived in archived_evidence.items():
-            capsule_path = (
-                Path("news/analysis/evidence") / f"sha256-{digest}.json"
-            )
+            capsule_path = Path("news/analysis/evidence") / f"sha256-{digest}.json"
             retained_raw = outputs.get(capsule_path)
             if retained_raw is not None:
                 retained_capsule = _machine_evidence_capsule_bytes(
@@ -5075,12 +5754,18 @@ def build_outputs(
         if wire is not None:
             revision = _revision_id(story, "storyv")
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
+    history_integrity = None
+    if wire is not None:
+        history_integrity = _wire_history_integrity_receipt(outputs, root=archive_root)
+        outputs[_WIRE_HISTORY_INTEGRITY_PATH] = _pretty_json(history_integrity)
     if wire is not None or investigations is not None or machine_analyses is not None:
         manifest_path = Path("news/generated-manifest.json")
         all_paths = sorted([str(path) for path in outputs] + [str(manifest_path)])
         immutable = [
-            path for path in all_paths
-            if "/revisions/" in path or path.startswith("news/analysis/evidence/sha256-")
+            path
+            for path in all_paths
+            if "/revisions/" in path
+            or path.startswith("news/analysis/evidence/sha256-")
         ]
         generated_times = [feed["generated_at"]]
         if wire is not None:
@@ -5092,20 +5777,38 @@ def build_outputs(
         if whispers_document is not None:
             generated_times.append(whispers_document["generated_at"])
         generated_times.append(china_analysis["generated_at"])
-        outputs[manifest_path] = _pretty_json({
-            "schema_version": "palimpsest-news-manifest.v1",
-            "generated_at": max(generated_times),
-            "n_paths": len(all_paths),
-            "paths": all_paths,
-            "immutable_revision_paths": immutable,
-            "mutable_paths": [path for path in all_paths if path not in immutable],
-        })
+        outputs[manifest_path] = _pretty_json(
+            {
+                "schema_version": "palimpsest-news-manifest.v1",
+                "generated_at": max(generated_times),
+                "n_paths": len(all_paths),
+                "paths": all_paths,
+                "immutable_revision_paths": immutable,
+                "mutable_paths": [path for path in all_paths if path not in immutable],
+                "immutable_history_closures": (
+                    []
+                    if history_integrity is None
+                    else [
+                        {
+                            "path": str(_WIRE_HISTORY_INTEGRITY_PATH),
+                            "covered_paths": history_integrity["covered_paths"],
+                            "n_revisions": history_integrity["n_revisions"],
+                            "history_tree_sha256": history_integrity[
+                                "history_tree_sha256"
+                            ],
+                        }
+                    ]
+                ),
+            }
+        )
     return outputs
 
 
 def _atomic_write(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(payload)
@@ -5143,10 +5846,10 @@ def _is_managed_analysis_path(relative: Path) -> bool:
     ):
         return True
     if len(parts) == 4 and parts[:2] == ("news", "analysis"):
-        return (
-            _ANALYSIS_CASE_SLUG.fullmatch(parts[2]) is not None
-            and parts[3] in {"index.html", "report.json"}
-        )
+        return _ANALYSIS_CASE_SLUG.fullmatch(parts[2]) is not None and parts[3] in {
+            "index.html",
+            "report.json",
+        }
     return (
         len(parts) == 5
         and parts[:2] == ("news", "analysis")
@@ -5260,21 +5963,29 @@ def _generated_machine_case(
         legacy_seed = copy.deepcopy(value)
         legacy_seed["revision_id"] = None
         legacy_seed["corrections"] = dict(corrections, history=[])
-        legacy_revision = "machinev-" + hashlib.sha256(
-            machine_investigations_model.canonical_json_bytes(legacy_seed)
-        ).hexdigest()[:24]
+        legacy_revision = (
+            "machinev-"
+            + hashlib.sha256(
+                machine_investigations_model.canonical_json_bytes(legacy_seed)
+            ).hexdigest()[:24]
+        )
         history_independent_seed = copy.deepcopy(legacy_seed)
         history_independent_seed["published_at"] = None
         history_independent_seed["updated_at"] = None
         history_independent_seed["evaluation_receipt"]["evaluated_at"] = None
-        history_independent_revision = "machinev-" + hashlib.sha256(
-            machine_investigations_model.canonical_json_bytes(
-                history_independent_seed
-            )
-        ).hexdigest()[:24]
+        history_independent_revision = (
+            "machinev-"
+            + hashlib.sha256(
+                machine_investigations_model.canonical_json_bytes(
+                    history_independent_seed
+                )
+            ).hexdigest()[:24]
+        )
         current_revision = machine_investigations_model._case_revision_id(value)
         if revision_id not in {
-            legacy_revision, history_independent_revision, current_revision
+            legacy_revision,
+            history_independent_revision,
+            current_revision,
         }:
             return None
     except (KeyError, TypeError, ValueError, newsroom.NewsroomError):
@@ -5335,9 +6046,7 @@ def _managed_analysis_inventory(*, root: Path) -> dict[Path, bool]:
                         # files so this migration can safely remove stale raw
                         # copies; build_outputs never emits that legacy form.
                         discovered[relative] = raw is not None and (
-                            _machine_evidence_capsule_bytes(
-                                raw, expected_digest=digest
-                            )
+                            _machine_evidence_capsule_bytes(raw, expected_digest=digest)
                             is not None
                             or hashlib.sha256(raw).hexdigest() == digest
                         )
@@ -5363,11 +6072,13 @@ def _managed_analysis_inventory(*, root: Path) -> dict[Path, bool]:
                     report_entry = case_entries.get("report.json")
                     index_raw = (
                         _read_scanned_file(case_fd, index_entry)
-                        if index_entry is not None else None
+                        if index_entry is not None
+                        else None
                     )
                     report_raw = (
                         _read_scanned_file(case_fd, report_entry)
-                        if report_entry is not None else None
+                        if report_entry is not None
+                        else None
                     )
                     if index_entry is not None:
                         discovered[base / "index.html"] = False
@@ -5388,9 +6099,12 @@ def _managed_analysis_inventory(*, root: Path) -> dict[Path, bool]:
                         try:
                             with os.scandir(revisions_fd) as revisions:
                                 for revision in revisions:
-                                    if _MACHINE_REVISION_FILENAME.fullmatch(
-                                        revision.name
-                                    ) is None:
+                                    if (
+                                        _MACHINE_REVISION_FILENAME.fullmatch(
+                                            revision.name
+                                        )
+                                        is None
+                                    ):
                                         continue
                                     relative = base / "revisions" / revision.name
                                     raw = _read_scanned_file(revisions_fd, revision)
@@ -5400,7 +6114,8 @@ def _managed_analysis_inventory(*, root: Path) -> dict[Path, bool]:
                                             slug=case.name,
                                             revision_filename=revision.name,
                                         )
-                                        if raw is not None else None
+                                        if raw is not None
+                                        else None
                                     )
                                     discovered[relative] = record is not None
                                     if record is not None and raw is not None:
@@ -5411,10 +6126,15 @@ def _managed_analysis_inventory(*, root: Path) -> dict[Path, bool]:
                     record = revision_records.get(report_raw) if report_raw else None
                     if record is not None and index_raw is not None:
                         try:
-                            expected_index = render_machine_analysis_case(record).encode(
-                                "utf-8"
-                            )
-                        except (KeyError, TypeError, ValueError, newsroom.NewsroomError):
+                            expected_index = render_machine_analysis_case(
+                                record
+                            ).encode("utf-8")
+                        except (
+                            KeyError,
+                            TypeError,
+                            ValueError,
+                            newsroom.NewsroomError,
+                        ):
                             expected_index = None
                         if expected_index == index_raw:
                             discovered[base / "index.html"] = True
@@ -5442,7 +6162,11 @@ def _extra_managed_analysis_paths(
 def _is_managed_pagination_path(relative: Path) -> bool:
     """Return whether ``relative`` is one reserved numbered archive page."""
 
-    if relative.is_absolute() or ".." in relative.parts or relative.name != "index.html":
+    if (
+        relative.is_absolute()
+        or ".." in relative.parts
+        or relative.name != "index.html"
+    ):
         return False
     return any(
         relative.parent.parent == archive_root
@@ -5454,13 +6178,15 @@ def _is_managed_pagination_path(relative: Path) -> bool:
 def _generated_pagination_page(raw: bytes, *, relative: Path) -> bool:
     """Prove a numbered page has this renderer's path-bound HTML identity."""
 
-    if not _is_managed_pagination_path(relative) or not raw.startswith(b"<!doctype html>\n"):
+    if not _is_managed_pagination_path(relative) or not raw.startswith(
+        b"<!doctype html>\n"
+    ):
         return False
     archive_root = relative.parent.parent
     body_marker = _PAGINATION_LAYOUTS.get(archive_root)
     if body_marker is None:
         return False
-    canonical = f'{SITE}/{relative.parent.as_posix()}/'.encode("ascii")
+    canonical = f"{SITE}/{relative.parent.as_posix()}/".encode("ascii")
     return all(
         marker in raw
         for marker in (
@@ -5491,10 +6217,9 @@ def _managed_pagination_inventory(*, root: Path) -> dict[Path, bool]:
             with os.scandir(archive_fd) as pages:
                 page_entries = list(pages)
             for page in page_entries:
-                if (
-                    _PAGINATION_PAGE_NUMBER.fullmatch(page.name) is None
-                    or not page.is_dir(follow_symlinks=False)
-                ):
+                if _PAGINATION_PAGE_NUMBER.fullmatch(
+                    page.name
+                ) is None or not page.is_dir(follow_symlinks=False):
                     continue
                 try:
                     page_fd = os.open(page.name, flags, dir_fd=archive_fd)
@@ -5506,13 +6231,17 @@ def _managed_pagination_inventory(*, root: Path) -> dict[Path, bool]:
                     ) from exc
                 try:
                     with os.scandir(page_fd) as files:
-                        index = next((entry for entry in files if entry.name == "index.html"), None)
+                        index = next(
+                            (entry for entry in files if entry.name == "index.html"),
+                            None,
+                        )
                     if index is None:
                         continue
                     relative = archive_root / page.name / "index.html"
                     raw = _read_scanned_file(page_fd, index)
-                    discovered[relative] = raw is not None and _generated_pagination_page(
-                        raw, relative=relative
+                    discovered[relative] = (
+                        raw is not None
+                        and _generated_pagination_page(raw, relative=relative)
                     )
                 finally:
                     os.close(page_fd)
@@ -5545,7 +6274,9 @@ def _safe_unlink_managed_analysis(relative: Path, *, root: Path) -> bool:
     try:
         directory_fd = os.open(root, flags)
     except OSError as exc:
-        raise newsroom.NewsroomError(f"cannot safely open publication root: {exc}") from exc
+        raise newsroom.NewsroomError(
+            f"cannot safely open publication root: {exc}"
+        ) from exc
     try:
         for component in relative.parts[:-1]:
             try:
@@ -5588,7 +6319,9 @@ def _safe_unlink_managed_pagination(relative: Path, *, root: Path) -> bool:
     try:
         directory_fd = os.open(root, flags)
     except OSError as exc:
-        raise newsroom.NewsroomError(f"cannot safely open publication root: {exc}") from exc
+        raise newsroom.NewsroomError(
+            f"cannot safely open publication root: {exc}"
+        ) from exc
     try:
         for component in relative.parts[:-1]:
             try:
@@ -5617,6 +6350,7 @@ def _safe_unlink_managed_pagination(relative: Path, *, root: Path) -> bool:
 
 
 def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, int]:
+    _verify_wire_history_integrity_output(outputs, root=root)
     changed = unchanged = 0
     stale_analysis = _extra_managed_analysis_paths(outputs, root=root)
     stale_pagination = _extra_managed_pagination_paths(outputs, root=root)
@@ -5631,8 +6365,7 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
     if unverified:
         paths = ", ".join(str(relative) for relative in unverified)
         raise newsroom.NewsroomError(
-            "refusing to remove unverified files in the managed layout: "
-            f"{paths}"
+            f"refusing to remove unverified files in the managed layout: {paths}"
         )
     ordered = sorted(
         ((Path(relative), payload) for relative, payload in outputs.items()),
@@ -5692,6 +6425,7 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
 
 
 def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
+    _verify_wire_history_integrity_output(outputs, root=root)
     drift = []
     for relative, payload in sorted(outputs.items(), key=lambda item: str(item[0])):
         destination = root / relative
@@ -5725,7 +6459,11 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--check", action="store_true", help="report generated-file drift without writing")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="report generated-file drift without writing",
+    )
     args = parser.parse_args(argv)
     feed = newsroom.build_news_feed()
     wire, pulse, investigations = _load_extension_documents()

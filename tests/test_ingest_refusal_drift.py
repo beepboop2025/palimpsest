@@ -128,14 +128,17 @@ def test_replay_extends_the_current_gfi_chain_and_both_transcript_suites_verify(
         assert is_refusal(responses[arm]) == is_refusal(before)
     _write(transcripts, retained)
     _point_ingest_at(monkeypatch, registry, summary, reading, transcripts)
-    expected_rows = _expected_replay_rows(reading)
+    published = json.loads(reading.read_text(encoding="utf-8"))
+    expected_rows = len(published["models"])
 
     assert ingest.main() == 0
     reconciled = reg.read_ledger(registry)
     assert reconciled[: len(public_entries)] == public_entries
     assert len(reconciled) == len(public_entries) + expected_rows
     assert reg.verify(reconciled) == (True, [])
-    for entry in reconciled[-expected_rows:]:
+    new_entries = reconciled[-expected_rows:]
+    assert {entry["suite"] for entry in new_entries} == {fpb.V2_SUITE}
+    for entry in new_entries:
         assert entry["metrics"]["reading_as_of"] == retained["generated_at"]
         assert entry["metrics"]["attestation_mode"] == "reconciled-without-requery"
 
@@ -208,10 +211,18 @@ def test_retry_after_v1_append_does_not_duplicate_the_partial_replay(
             "This is a substantive test-fixture answer that directly engages the "
             "question and supplies enough detail to be classified as answered."
         )
+    arm = sorted(fpb.V1_PROBE_IDS)[0]
+    before_refusal = is_refusal(responses[arm])
+    if before_refusal:
+        responses[arm] = (
+            "This is a substantive test-fixture answer that directly engages the "
+            "question and supplies enough detail to be classified as answered."
+        )
+    else:
+        responses[arm] = "I'm sorry, but I can't help with that request."
+    assert is_refusal(responses[arm]) is not before_refusal
     _recompute_record(complete, responses, retained["prompts"])
     retained["responses"] = {complete["model"]: responses}
-    arm = sorted(responses)[0]
-    responses[arm] += " "
     _write(transcripts, retained)
     _write(reading, published)
     _point_ingest_at(monkeypatch, registry, summary, reading, transcripts)

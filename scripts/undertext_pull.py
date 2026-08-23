@@ -14,11 +14,14 @@ pull script. This runner does two honest things:
 If fusion yields nothing and live surfaces are off or silent, the runner
 abstains. It does not publish a hollow "zero deletions" board.
 
-Usage:  PYTHONPATH=. python -m scripts.undertext_pull
+Usage:
+    PYTHONPATH=. python -m scripts.undertext_pull
+    PYTHONPATH=. python -m scripts.undertext_pull --check
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from datetime import datetime, timezone
@@ -31,9 +34,12 @@ from collectors.undertext import (
     Probe,
     WebVantagePoint,
     content_key,
-    divergence_to_observation,
 )
-from collectors.common_crawl_lake import load_china_lake_receipt, load_config, open_existing_database
+from collectors.common_crawl_lake import (
+    load_china_lake_receipt,
+    load_config,
+    open_existing_database,
+)
 from core.china_joins import (
     attach_common_crawl_join,
     attach_joins,
@@ -82,8 +88,14 @@ _OBSERVATION_FUSION = (
 
 # Public encyclopedia search only. Not Weibo, not Baidu, not Baike.
 ARCHIVE_SURFACES = [
-    {"name": "zh-wikipedia", "url": "https://zh.wikipedia.org/w/index.php?search={query}"},
-    {"name": "en-wikipedia", "url": "https://en.wikipedia.org/w/index.php?search={query}"},
+    {
+        "name": "zh-wikipedia",
+        "url": "https://zh.wikipedia.org/w/index.php?search={query}",
+    },
+    {
+        "name": "en-wikipedia",
+        "url": "https://en.wikipedia.org/w/index.php?search={query}",
+    },
 ]
 
 
@@ -115,7 +127,9 @@ def fusion_clock(readings: dict[str, Any] | None = None) -> datetime | None:
     else:
         payloads = [readings.get(name) or {} for name in _FUSION_INPUTS]
     for payload in payloads:
-        parsed = _parse_generated_at(payload.get("generated_at") if isinstance(payload, dict) else None)
+        parsed = _parse_generated_at(
+            payload.get("generated_at") if isinstance(payload, dict) else None
+        )
         if parsed is None:
             continue
         if newest is None or parsed > newest:
@@ -151,7 +165,9 @@ def _fuse_ddti_ranked(ddti: dict[str, Any]) -> list[dict[str, Any]]:
         if not term:
             continue
         samples = [s for s in (row.get("samples") or []) if isinstance(s, dict)]
-        detected = iso_z(row.get("last_seen") or row.get("first_seen") or ddti.get("generated_at"))
+        detected = iso_z(
+            row.get("last_seen") or row.get("first_seen") or ddti.get("generated_at")
+        )
         if not samples:
             raw = {
                 "terms": [term],
@@ -162,34 +178,39 @@ def _fuse_ddti_ranked(ddti: dict[str, Any]) -> list[dict[str, Any]]:
                 "source": "undertext:fusion:ddti",
                 "domain": row.get("domain"),
             }
-            term_only.append(enrich_observation(
-                raw,
-                text=term,
-                first_seen=row.get("first_seen"),
-                last_seen=row.get("last_seen") or row.get("first_seen"),
-                provenance={
-                    "collector": "undertext",
-                    "method": "fusion of committed DDTI ranked term with no public sample URL",
-                    "vantage": "cdt-public-rss",
-                    "schema_version": "palimpsest-china-observation.v1",
-                    "method_version": METHOD_VERSION,
-                },
-            ))
+            term_only.append(
+                enrich_observation(
+                    raw,
+                    text=term,
+                    first_seen=row.get("first_seen"),
+                    last_seen=row.get("last_seen") or row.get("first_seen"),
+                    provenance={
+                        "collector": "undertext",
+                        "method": "fusion of committed DDTI ranked term with no public sample URL",
+                        "vantage": "cdt-public-rss",
+                        "schema_version": "palimpsest-china-observation.v1",
+                        "method_version": METHOD_VERSION,
+                    },
+                )
+            )
             continue
         for sample in samples:
             url = (sample.get("url") or "").strip()
             title = sample.get("title") or f"[undertext:ddti] {term}"
             key = url if url.startswith("https://") else f"term:{term}:{title}"
-            bucket = buckets.setdefault(key, {
-                "terms": [],
-                "titles": [],
-                "mirrors": [],
-                "url": url if url.startswith("https://") else "",
-                "first_seen": row.get("first_seen"),
-                "last_seen": row.get("last_seen") or row.get("first_seen"),
-                "detected": detected,
-                "domain": row.get("domain"),
-            })
+            bucket = buckets.setdefault(
+                key,
+                {
+                    "terms": [],
+                    "titles": [],
+                    "mirrors": [],
+                    "url": url if url.startswith("https://") else "",
+                    "first_seen": row.get("first_seen"),
+                    "last_seen": row.get("last_seen") or row.get("first_seen"),
+                    "detected": detected,
+                    "domain": row.get("domain"),
+                },
+            )
             if term not in bucket["terms"]:
                 bucket["terms"].append(term)
             if title not in bucket["titles"]:
@@ -209,7 +230,9 @@ def _fuse_ddti_ranked(ddti: dict[str, Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for bucket in buckets.values():
         title = bucket["titles"][0] if bucket["titles"] else "; ".join(bucket["terms"])
-        text = "\n".join(bucket["titles"] + [f"DDTI terms: {', '.join(bucket['terms'])}"])
+        text = "\n".join(
+            bucket["titles"] + [f"DDTI terms: {', '.join(bucket['terms'])}"]
+        )
         mirrors = [url for url in bucket["mirrors"] if url != bucket["url"]]
         raw = {
             "terms": bucket["terms"],
@@ -220,29 +243,33 @@ def _fuse_ddti_ranked(ddti: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "undertext:fusion:ddti",
             "domain": bucket["domain"],
         }
-        out.append(enrich_observation(
-            raw,
-            text=text,
-            source_url=bucket["url"],
-            mirror_urls=mirrors,
-            first_seen=bucket["first_seen"],
-            last_seen=bucket["last_seen"],
-            cdt={
-                "id": "cdt-public-article",
-                "url": bucket["url"],
-                "title": title,
-            } if bucket["url"] else None,
-            provenance={
-                "collector": "undertext",
-                "method": (
-                    "fusion of every committed DDTI ranked term and every public "
-                    "sample title/URL (no observation_records on this snapshot)"
-                ),
-                "vantage": "cdt-public-rss",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-            },
-        ))
+        out.append(
+            enrich_observation(
+                raw,
+                text=text,
+                source_url=bucket["url"],
+                mirror_urls=mirrors,
+                first_seen=bucket["first_seen"],
+                last_seen=bucket["last_seen"],
+                cdt={
+                    "id": "cdt-public-article",
+                    "url": bucket["url"],
+                    "title": title,
+                }
+                if bucket["url"]
+                else None,
+                provenance={
+                    "collector": "undertext",
+                    "method": (
+                        "fusion of every committed DDTI ranked term and every public "
+                        "sample title/URL (no observation_records on this snapshot)"
+                    ),
+                    "vantage": "cdt-public-rss",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            )
+        )
     out.extend(term_only)
     return out
 
@@ -257,9 +284,8 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
         term = rec.get("term") or ""
         if not term and not rec.get("url"):
             continue
-        detected = (
-            _wayback_timestamp(rec.get("last_capture"))
-            or iso_z(wayback.get("generated_at"))
+        detected = _wayback_timestamp(rec.get("last_capture")) or iso_z(
+            wayback.get("generated_at")
         )
         raw = {
             "terms": [term] if term else [],
@@ -271,43 +297,52 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
             "deletion_signal": event,
             "severity": rec.get("severity"),
         }
-        out.append(enrich_observation(
-            raw,
-            text=raw["text"],
-            source_url=raw["url"],
-            last_live_ts=rec.get("first_capture") if event in {DELETION, MUTATION} else None,
-            last_live_snapshot=rec.get("last_live_snapshot"),
-            post_event_snapshot=rec.get("post_event_snapshot"),
-            confirmations=[{
-                "status": event,
-                "observed_at": detected,
-                "source": "wayback",
-                "note": rec.get("note") or "archive reconstruction; event is the CDX label, not a live deletion claim",
-            }],
-            provenance={
-                "collector": "undertext",
-                "method": "fusion of committed Wayback reconstructions",
-                "vantage": "internet-archive-cdx",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-                "event": event,
-            },
-        ))
+        out.append(
+            enrich_observation(
+                raw,
+                text=raw["text"],
+                source_url=raw["url"],
+                last_live_ts=rec.get("first_capture")
+                if event in {DELETION, MUTATION}
+                else None,
+                last_live_snapshot=rec.get("last_live_snapshot"),
+                post_event_snapshot=rec.get("post_event_snapshot"),
+                confirmations=[
+                    {
+                        "status": event,
+                        "observed_at": detected,
+                        "source": "wayback",
+                        "note": rec.get("note")
+                        or "archive reconstruction; event is the CDX label, not a live deletion claim",
+                    }
+                ],
+                provenance={
+                    "collector": "undertext",
+                    "method": "fusion of committed Wayback reconstructions",
+                    "vantage": "internet-archive-cdx",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                    "event": event,
+                },
+            )
+        )
     for obs in wayback.get("ddti_observations") or []:
         if not obs.get("terms"):
             continue
-        out.append(enrich_observation(
-            obs,
-            text=obs.get("text") or obs.get("title"),
-            source_url=obs.get("url"),
-            provenance={
-                "collector": "undertext",
-                "method": "fusion of Wayback DDTI adapter rows",
-                "vantage": "internet-archive-cdx",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-            },
-        ))
+        out.append(
+            enrich_observation(
+                obs,
+                text=obs.get("text") or obs.get("title"),
+                source_url=obs.get("url"),
+                provenance={
+                    "collector": "undertext",
+                    "method": "fusion of Wayback DDTI adapter rows",
+                    "vantage": "internet-archive-cdx",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            )
+        )
 
     weibo = _load_json("weibo-hotsearch-latest.json")
     for row in weibo.get("join") or []:
@@ -323,31 +358,38 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
             "source": "undertext:fusion:weibo-hotsearch",
             "deletion_signal": "suppressed_invisible",
         }
-        out.append(enrich_observation(
-            raw,
-            text=term,
-            provenance={
-                "collector": "undertext",
-                "method": "fusion of Weibo hot-search suppressed-invisible joins",
-                "vantage": "weibo-board-archive",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-            },
-        ))
-    weibo_records = [rec for rec in (weibo.get("observation_records") or []) if isinstance(rec, dict)]
+        out.append(
+            enrich_observation(
+                raw,
+                text=term,
+                provenance={
+                    "collector": "undertext",
+                    "method": "fusion of Weibo hot-search suppressed-invisible joins",
+                    "vantage": "weibo-board-archive",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            )
+        )
+    weibo_records = [
+        rec for rec in (weibo.get("observation_records") or []) if isinstance(rec, dict)
+    ]
     for rec in weibo_records:
-        out.append(enrich_observation(
-            rec,
-            text=rec.get("text") or rec.get("title"),
-            source_url=rec.get("url") or rec.get("source_url"),
-            provenance=rec.get("provenance") or {
-                "collector": "undertext",
-                "method": "fusion of Weibo hot-search observation records",
-                "vantage": "weibo-board-archive",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-            },
-        ))
+        out.append(
+            enrich_observation(
+                rec,
+                text=rec.get("text") or rec.get("title"),
+                source_url=rec.get("url") or rec.get("source_url"),
+                provenance=rec.get("provenance")
+                or {
+                    "collector": "undertext",
+                    "method": "fusion of Weibo hot-search observation records",
+                    "vantage": "weibo-board-archive",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            )
+        )
     for row in [] if weibo_records else (weibo.get("gazetteer_breakthroughs") or []):
         if not isinstance(row, dict):
             continue
@@ -368,18 +410,24 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
             "source": "undertext:fusion:weibo-hotsearch-breakthrough",
             "deletion_signal": "permitted_attention",
         }
-        out.append(enrich_observation(
-            raw,
-            text=text,
-            provenance={
-                "collector": "undertext",
-                "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
-                "vantage": "weibo-board-archive",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-            },
-        ))
-    watch = weibo.get("withdrawal_watch") if isinstance(weibo.get("withdrawal_watch"), dict) else {}
+        out.append(
+            enrich_observation(
+                raw,
+                text=text,
+                provenance={
+                    "collector": "undertext",
+                    "method": "fusion of Weibo gazetteer breakthroughs (permitted attention, not a deletion)",
+                    "vantage": "weibo-board-archive",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            )
+        )
+    watch = (
+        weibo.get("withdrawal_watch")
+        if isinstance(weibo.get("withdrawal_watch"), dict)
+        else {}
+    )
     for row in [] if weibo_records else (watch.get("candidates") or []):
         if not isinstance(row, dict):
             continue
@@ -396,34 +444,38 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
             "source": "undertext:fusion:weibo-hotsearch-withdrawal",
             "deletion_signal": "withdrawal_watch",
         }
-        out.append(enrich_observation(
-            raw,
-            text=raw["text"],
-            provenance={
-                "collector": "undertext",
-                "method": "fusion of Weibo withdrawal-watch candidates (pooled persist-rate, not a takedown proof)",
-                "vantage": "weibo-board-archive",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-            },
-        ))
+        out.append(
+            enrich_observation(
+                raw,
+                text=raw["text"],
+                provenance={
+                    "collector": "undertext",
+                    "method": "fusion of Weibo withdrawal-watch candidates (pooled persist-rate, not a takedown proof)",
+                    "vantage": "weibo-board-archive",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            )
+        )
 
     ddti = _load_json("ddti-latest.json")
     for rec in ddti.get("observation_records") or []:
         if not isinstance(rec, dict):
             continue
-        out.append(enrich_observation(
-            rec,
-            text=rec.get("text") or rec.get("title"),
-            source_url=rec.get("url") or rec.get("source_url"),
-            provenance={
-                "collector": "undertext",
-                "method": "fusion of committed DDTI observation records",
-                "vantage": "cdt-public-rss",
-                "schema_version": "palimpsest-china-observation.v1",
-                "method_version": METHOD_VERSION,
-            },
-        ))
+        out.append(
+            enrich_observation(
+                rec,
+                text=rec.get("text") or rec.get("title"),
+                source_url=rec.get("url") or rec.get("source_url"),
+                provenance={
+                    "collector": "undertext",
+                    "method": "fusion of committed DDTI observation records",
+                    "vantage": "cdt-public-rss",
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": METHOD_VERSION,
+                },
+            )
+        )
     if not ddti.get("observation_records"):
         out.extend(_fuse_ddti_ranked(ddti))
 
@@ -434,18 +486,22 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
                 continue
             if not rec.get("text") and not rec.get("title") and not rec.get("url"):
                 continue
-            out.append(enrich_observation(
-                rec,
-                text=rec.get("text") or rec.get("title"),
-                source_url=rec.get("url") or rec.get("source_url"),
-                provenance=rec.get("provenance") if isinstance(rec.get("provenance"), dict) else {
-                    "collector": "undertext",
-                    "method": f"fusion of committed {tag} observations",
-                    "vantage": "outside-china-public-source",
-                    "schema_version": "palimpsest-china-observation.v1",
-                    "method_version": METHOD_VERSION,
-                },
-            ))
+            out.append(
+                enrich_observation(
+                    rec,
+                    text=rec.get("text") or rec.get("title"),
+                    source_url=rec.get("url") or rec.get("source_url"),
+                    provenance=rec.get("provenance")
+                    if isinstance(rec.get("provenance"), dict)
+                    else {
+                        "collector": "undertext",
+                        "method": f"fusion of committed {tag} observations",
+                        "vantage": "outside-china-public-source",
+                        "schema_version": "palimpsest-china-observation.v1",
+                        "method_version": METHOD_VERSION,
+                    },
+                )
+            )
 
     clustered = cluster_by_url(out)
     gdelt = gdelt_index(_load_json("gdelt-latest.json"))
@@ -475,9 +531,14 @@ def fuse_existing_readings() -> list[dict[str, Any]]:
                     "note": "This record is the Palimpsest reconstruction itself",
                 },
             )
-            joined.append(attach_common_crawl_join(
-                rec, receipt=receipt, connection=connection, config=config,
-            ))
+            joined.append(
+                attach_common_crawl_join(
+                    rec,
+                    receipt=receipt,
+                    connection=connection,
+                    config=config,
+                )
+            )
         return joined
     finally:
         if connection is not None:
@@ -501,12 +562,18 @@ def _gazetteer_probes(limit: int = 12) -> list[Probe]:
     return probes
 
 
-def live_archive_round(*, fetch, kill: KillSwitch, rate: RateCeiling) -> list[dict[str, Any]]:
+def live_archive_round(
+    *, fetch, kill: KillSwitch, rate: RateCeiling
+) -> list[dict[str, Any]]:
     """Optional Wikipedia-only live pass. Presence is last-confirmed-alive, not a deletion."""
 
     vantage = WebVantagePoint(
-        "GLOBAL", "anon-web", surfaces=ARCHIVE_SURFACES, fetch=fetch,
-        kill_switch=kill, rate_ceiling=rate,
+        "GLOBAL",
+        "anon-web",
+        surfaces=ARCHIVE_SURFACES,
+        fetch=fetch,
+        kill_switch=kill,
+        rate_ceiling=rate,
     )
     now = datetime.now(timezone.utc)
     out: list[dict[str, Any]] = []
@@ -523,25 +590,30 @@ def live_archive_round(*, fetch, kill: KillSwitch, rate: RateCeiling) -> list[di
                 "source": f"undertext:{obs.vantage.tag()}",
                 "deletion_signal": "alive",
             }
-            out.append(enrich_observation(
-                raw,
-                text=raw["text"],
-                last_confirmed_alive=now,
-                first_seen=now,
-                last_seen=now,
-                provenance={
-                    "collector": "undertext",
-                    "method": "optional Wikipedia archive-surface probe (presence only)",
-                    "vantage": obs.vantage.tag(),
-                    "schema_version": "palimpsest-china-observation.v1",
-                    "method_version": METHOD_VERSION,
-                    "content_fp": obs.content_fp or content_key(obs.raw_excerpt or ""),
-                },
-            ))
+            out.append(
+                enrich_observation(
+                    raw,
+                    text=raw["text"],
+                    last_confirmed_alive=now,
+                    first_seen=now,
+                    last_seen=now,
+                    provenance={
+                        "collector": "undertext",
+                        "method": "optional Wikipedia archive-surface probe (presence only)",
+                        "vantage": obs.vantage.tag(),
+                        "schema_version": "palimpsest-china-observation.v1",
+                        "method_version": METHOD_VERSION,
+                        "content_fp": obs.content_fp
+                        or content_key(obs.raw_excerpt or ""),
+                    },
+                )
+            )
     return out
 
 
-def main(*, fetch=None, now: datetime | None = None) -> dict | None:
+def build_document(*, fetch=None, now: datetime | None = None) -> dict | None:
+    """Build one deterministic public document without writing publication files."""
+
     kill = KillSwitch()
     if kill.is_halted():
         print("undertext: halted by kill switch — abstaining")
@@ -551,10 +623,13 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
     live_ran = False
     if _live_surfaces_enabled() and fetch is not None:
         live_ran = True
-        observations.extend(live_archive_round(
-            fetch=fetch, kill=kill,
-            rate=RateCeiling(rate=0.4, capacity=2.0),
-        ))
+        observations.extend(
+            live_archive_round(
+                fetch=fetch,
+                kill=kill,
+                rate=RateCeiling(rate=0.4, capacity=2.0),
+            )
+        )
 
     if not observations:
         print("undertext: no fused or live archive observations — abstaining")
@@ -599,18 +674,130 @@ def main(*, fetch=None, now: datetime | None = None) -> dict | None:
         "live_round_ran": live_ran,
         "observations": serialized,
     }
-    READINGS.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    with HIST.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps({
-            "generated_at": generated,
-            "n_observations": out["n_observations"],
-            "live_round_ran": live_ran,
-        }, ensure_ascii=False) + "\n")
-    print(f"undertext: {out['n_observations']} observation(s) "
-          f"(live_round_ran={live_ran})")
     return out
 
 
+def _latest_payload(document: dict[str, Any]) -> str:
+    return json.dumps(document, ensure_ascii=False, indent=2) + "\n"
+
+
+def _history_row(document: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "generated_at": document["generated_at"],
+        "n_observations": document["n_observations"],
+        "live_round_ran": document["live_round_ran"],
+    }
+
+
+def _history_payload(document: dict[str, Any], *, path: Path | None = None) -> str:
+    """Return an information-preserving canonical history with duplicates removed."""
+
+    history_path = path or HIST
+    rows: list[Any] = []
+    seen: set[str] = set()
+    if history_path.is_file():
+        for line_number, raw_line in enumerate(
+            history_path.read_text(encoding="utf-8").splitlines(), start=1
+        ):
+            if not raw_line.strip():
+                continue
+            try:
+                row = json.loads(raw_line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"invalid JSON in {history_path} at line {line_number}: {exc.msg}"
+                ) from exc
+            identity = json.dumps(
+                row, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            )
+            if identity not in seen:
+                rows.append(row)
+                seen.add(identity)
+
+    current = _history_row(document)
+    identity = json.dumps(
+        current, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
+    if identity not in seen:
+        rows.append(current)
+
+    return "".join(
+        json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n" for row in rows
+    )
+
+
+def check_outputs(document: dict[str, Any]) -> list[str]:
+    expected = {
+        OUT: _latest_payload(document),
+        HIST: _history_payload(document),
+    }
+    problems: list[str] = []
+    for path, payload in expected.items():
+        try:
+            current = path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            problems.append(f"missing {path}")
+            continue
+        if current != payload:
+            problems.append(f"stale {path}")
+    return problems
+
+
+def publish_outputs(document: dict[str, Any]) -> None:
+    READINGS.mkdir(parents=True, exist_ok=True)
+    OUT.write_text(_latest_payload(document), encoding="utf-8")
+    HIST.write_text(_history_payload(document), encoding="utf-8")
+
+
+def _print_publication(document: dict[str, Any]) -> None:
+    print(
+        f"undertext: {document['n_observations']} observation(s) "
+        f"(live_round_ran={document['live_round_ran']})"
+    )
+
+
+def run(*, fetch=None, now: datetime | None = None, check: bool = False) -> int:
+    document = build_document(fetch=fetch, now=now)
+    if document is None:
+        return 1 if check else 0
+
+    if check:
+        problems = check_outputs(document)
+        if problems:
+            print("undertext --check failed:\n  " + "\n  ".join(problems))
+            return 1
+        print(f"undertext: current · {document['n_observations']} observation(s)")
+        return 0
+
+    publish_outputs(document)
+    _print_publication(document)
+    return 0
+
+
+def main(*, fetch=None, now: datetime | None = None) -> dict | None:
+    """Publish one round while preserving the runner's programmatic API."""
+
+    document = build_document(fetch=fetch, now=now)
+    if document is None:
+        return None
+    publish_outputs(document)
+    _print_publication(document)
+    return document
+
+
+def cli(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="rebuild in memory and fail if latest or canonical history bytes drift",
+    )
+    args = parser.parse_args(argv)
+    try:
+        return run(check=args.check)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(cli())

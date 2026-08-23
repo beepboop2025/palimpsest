@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
 NEWSWIRE_WORKFLOW = ROOT / ".github" / "workflows" / "newswire-refresh.yml"
 OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+DDTI_WORKFLOW = ROOT / ".github" / "workflows" / "ddti-refresh.yml"
 TESTS_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 OSINT_PUBLISHER_WORKFLOWS = tuple(
     path
@@ -29,11 +31,64 @@ def _json(path: str) -> dict:
     return json.loads((ROOT / path).read_text(encoding="utf-8"))
 
 
-def _staged_occurrences(workflow: str, artifact: str) -> int:
-    return sum(
-        line.strip().rstrip("\\").strip() == artifact
-        for line in workflow.splitlines()
+def _git_add_command_spans(
+    workflow: str,
+) -> tuple[tuple[int, int, tuple[str, ...]], ...]:
+    """Return line spans and shell words for logical ``git add`` commands."""
+    commands: list[tuple[int, int, tuple[str, ...]]] = []
+    logical: list[str] = []
+    logical_start: int | None = None
+    for line_number, raw_line in enumerate(workflow.splitlines()):
+        line = raw_line.strip()
+        if logical_start is None:
+            if not line.startswith("git add "):
+                continue
+            logical_start = line_number
+        continued = line.endswith("\\")
+        logical.append(line[:-1].rstrip() if continued else line)
+        if continued:
+            continue
+        commands.append(
+            (logical_start, line_number, tuple(shlex.split(" ".join(logical))))
+        )
+        logical = []
+        logical_start = None
+    return tuple(commands)
+
+
+def _git_add_commands(workflow: str) -> tuple[tuple[str, ...], ...]:
+    """Return shell words for each logical ``git add`` command in a workflow."""
+    return tuple(command for _start, _end, command in _git_add_command_spans(workflow))
+
+
+def _staging_spans(workflow: str, artifact: str) -> tuple[tuple[int, int], ...]:
+    """Locate explicit staging, or deletion-safe root staging when it is implicit."""
+    normalized = artifact.rstrip("/")
+    spans = _git_add_command_spans(workflow)
+    targets = tuple(
+        {word.rstrip("/") for word in command[2:] if not word.startswith("-")}
+        for _start, _end, command in spans
     )
+    explicit = tuple(
+        (start, end)
+        for (start, end, command), command_targets in zip(spans, targets, strict=True)
+        if normalized in command_targets
+        and "-A" not in command
+        and "--all" not in command
+    )
+    if explicit:
+        return explicit
+    root = normalized.split("/", 1)[0]
+    return tuple(
+        (start, end)
+        for (start, end, command), command_targets in zip(spans, targets, strict=True)
+        if ("-A" in command or "--all" in command) and root in command_targets
+    )
+
+
+def _staged_occurrences(workflow: str, artifact: str) -> int:
+    """Count explicit staging sites, falling back to deletion-safe root staging."""
+    return len(_staging_spans(workflow, artifact))
 
 
 def test_every_newsroom_publisher_stages_both_china_article_heads():
@@ -68,34 +123,68 @@ def test_every_osint_publisher_rebuilds_checks_and_stages_the_erasure_trail():
         )
         assert osint_builds > 0, path.name
         assert len(sequence.findall(workflow)) == osint_builds, path.name
-        assert _staged_occurrences(workflow, "news/") == osint_builds, path.name
+        publication_candidates = _staged_occurrences(workflow, "news/")
+        assert publication_candidates > 0, path.name
         for artifact in (
             "readings/erasure-trail-latest.json",
             "readings/erasure-trail-history.jsonl",
             "readings/erasure-trail.csv",
         ):
-            assert _staged_occurrences(workflow, artifact) == osint_builds, (
+            assert _staged_occurrences(workflow, artifact) == publication_candidates, (
                 path.name,
                 artifact,
             )
 
 
 def test_every_newsroom_publisher_rebuilds_the_china_situation_before_catalog():
-    sequence = re.compile(
-        r"python -m scripts\.build_newsroom\n"
-        r"\s*python -m scripts\.build_newsroom --check\n"
-        r"\s*python -m scripts\.build_china_situation\n"
-        r"\s*python -m scripts\.build_china_situation --check\n"
-        r"\s*python -m scripts\.build_data_catalog"
-    )
     for path in OSINT_PUBLISHER_WORKFLOWS:
         workflow = path.read_text(encoding="utf-8")
-        newsroom_builds = sum(
-            line.strip() == "python -m scripts.build_newsroom"
-            for line in workflow.splitlines()
-        )
-        assert newsroom_builds > 0, path.name
-        assert len(sequence.findall(workflow)) == newsroom_builds, path.name
+        lines = [line.strip() for line in workflow.splitlines()]
+        candidates = _staging_spans(workflow, "readings/newsroom-latest.json")
+        assert candidates, path.name
+        start = 0
+        for stage_start, stage_end in candidates:
+            candidate = lines[start:stage_start]
+            newsroom_builds = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_newsroom"
+            ]
+            newsroom_checks = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_newsroom --check"
+            ]
+            situation_builds = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_china_situation"
+            ]
+            situation_checks = [
+                index
+                for index, line in enumerate(candidate)
+                if line == "python -m scripts.build_china_situation --check"
+            ]
+            catalog_builds = [
+                index
+                for index, line in enumerate(candidate)
+                if line.startswith("python -m scripts.build_data_catalog")
+                and "--check" not in line
+            ]
+            assert len(newsroom_builds) == 1, path.name
+            assert len(newsroom_checks) == 1, path.name
+            assert len(situation_builds) == 1, path.name
+            assert len(situation_checks) == 1, path.name
+            assert catalog_builds, path.name
+            newsroom = newsroom_builds[0]
+            newsroom_check = newsroom_checks[0]
+            situation = situation_builds[0]
+            situation_check = situation_checks[0]
+            catalog = catalog_builds[0]
+            assert newsroom < situation < catalog, path.name
+            assert newsroom < newsroom_check, path.name
+            assert situation < situation_check, path.name
+            start = stage_end + 1
 
 
 def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
@@ -405,12 +494,15 @@ def test_mutable_machine_reports_are_network_only_but_revisions_are_not():
 
 def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
+    ddti_workflow = DDTI_WORKFLOW.read_text(encoding="utf-8")
     assert 'cron: "17,47 * * * *"' in workflow
     assert "workflow_dispatch" in workflow
     # Same derived graph as the OSINT hourly roll-up. One group serializes both
     # publishers so a push race cannot interleave two official rebuilds.
     assert "group: derived-graph-publish" in workflow
+    assert "group: derived-graph-publish" in ddti_workflow
     assert "cancel-in-progress: false" in workflow
+    assert "cancel-in-progress: false" in ddti_workflow
     assert workflow.count("python -m scripts.newswire_pull") == 3
 
     build_graph = re.findall(

@@ -1,0 +1,217 @@
+name: Deploy Palimpsest MCP
+
+# Production release is deliberately manual and SHA-addressed.  The target must
+# already be a reviewed, GitHub-verified commit reachable from origin/main.  This
+# workflow never publishes server.json to the MCP Registry; registry publication
+# remains the separate registry-publish.yml transaction after live verification.
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact reviewed and signed origin/main commit to deploy
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: palimpsest-mcp-production
+  cancel-in-progress: false
+
+env:
+  PUBLIC_MCP_URL: https://api.seiche.info/palimpsest/mcp
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      target_sha: ${{ steps.identity.outputs.target_sha }}
+      version: ${{ steps.contract.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.target_sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Prove exact reviewed main identity
+        id: identity
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          timeout --kill-after=5s 120s \
+            git fetch --force --no-tags origin \
+              '+refs/heads/main:refs/remotes/origin/main'
+          git merge-base --is-ancestor "$TARGET_SHA" refs/remotes/origin/main
+          github_json="$RUNNER_TEMP/github-commit.json"
+          curl --disable --fail --silent --show-error \
+            --proto '=https' --tlsv1.2 --max-time 20 --max-filesize 262144 \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${TARGET_SHA}" \
+            --output "$github_json"
+          unset GH_TOKEN
+          python3 ops/mcp-deploy/verify_release.py \
+            --module mcp/palimpsest_mcp.py \
+            --manifest server.json \
+            --target-sha "$TARGET_SHA" \
+            --github-commit-json "$github_json"
+          printf 'target_sha=%s\n' "$TARGET_SHA" >>"$GITHUB_OUTPUT"
+
+      - name: Validate controller syntax and candidate contract
+        run: |
+          set -euo pipefail
+          bash -n ops/mcp-deploy/palimpsest-mcp-deploy-wrapper.sh
+          python3 -m py_compile \
+            ops/mcp-deploy/verify_release.py \
+            ops/mcp-deploy/verify_registry_release.py \
+            scripts/smoke_palimpsest_mcp.py
+          python3 ops/mcp-deploy/verify_release.py \
+            --module mcp/palimpsest_mcp.py \
+            --manifest server.json
+
+      - name: Install the hash-pinned contract environment
+        run: >-
+          pip install --quiet --require-hashes
+          -r .github/osint-china-ci-requirements.txt
+
+      - name: Run MCP source and deployment contract tests
+        run: >-
+          python -m pytest -q
+          tests/test_mcp_server.py
+          tests/test_mcp_deployment.py
+
+      - name: Record reviewed candidate version
+        id: contract
+        run: |
+          version=$(python3 -c \
+            'import json; print(json.load(open("server.json", encoding="utf-8"))["version"])')
+          printf 'version=%s\n' "$version" >>"$GITHUB_OUTPUT"
+          printf 'reviewed candidate: %s version %s\n' \
+            '${{ steps.identity.outputs.target_sha }}' "$version"
+
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: palimpsest-mcp-production
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.verify.outputs.target_sha }}
+          fetch-depth: 1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Configure pinned SSH identity
+        env:
+          DEPLOY_HOST: ${{ secrets.PALIMPSEST_MCP_DEPLOY_HOST }}
+          DEPLOY_KEY: ${{ secrets.PALIMPSEST_MCP_DEPLOY_KEY }}
+          SSH_HOST_KEY: ${{ secrets.PALIMPSEST_MCP_SSH_HOST_KEY }}
+          SSH_PORT: ${{ vars.PALIMPSEST_MCP_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          [[ "$DEPLOY_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$SSH_PORT" =~ ^[0-9]{1,5}$ ]]
+          (( SSH_PORT >= 1 && SSH_PORT <= 65535 ))
+          [[ "$SSH_HOST_KEY" =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+$ ]]
+          install -d -m 0700 "$RUNNER_TEMP/palimpsest-ssh"
+          printf '%s\n' "$DEPLOY_KEY" >"$RUNNER_TEMP/palimpsest-ssh/key"
+          chmod 0600 "$RUNNER_TEMP/palimpsest-ssh/key"
+          ssh-keygen -y -f "$RUNNER_TEMP/palimpsest-ssh/key" >/dev/null
+          if [[ "$SSH_PORT" = "22" ]]; then
+            known_host="$DEPLOY_HOST"
+          else
+            known_host="[$DEPLOY_HOST]:$SSH_PORT"
+          fi
+          printf '%s %s\n' "$known_host" "$SSH_HOST_KEY" \
+            >"$RUNNER_TEMP/palimpsest-ssh/known_hosts"
+          chmod 0600 "$RUNNER_TEMP/palimpsest-ssh/known_hosts"
+
+      - name: Deploy exact SHA through forced command
+        env:
+          DEPLOY_HOST: ${{ secrets.PALIMPSEST_MCP_DEPLOY_HOST }}
+          SSH_PORT: ${{ vars.PALIMPSEST_MCP_SSH_PORT || '22' }}
+          TARGET_SHA: ${{ needs.verify.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          cleanup_ssh() {
+            rm -f -- \
+              "$RUNNER_TEMP/palimpsest-ssh/key" \
+              "$RUNNER_TEMP/palimpsest-ssh/known_hosts"
+            rmdir "$RUNNER_TEMP/palimpsest-ssh" 2>/dev/null || true
+          }
+          trap cleanup_ssh EXIT
+          ssh -p "$SSH_PORT" \
+            -i "$RUNNER_TEMP/palimpsest-ssh/key" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$RUNNER_TEMP/palimpsest-ssh/known_hosts" \
+            -o LogLevel=ERROR \
+            "root@$DEPLOY_HOST" "deploy $TARGET_SHA"
+
+      - name: Verify public initialize, discovery, and representative calls
+        run: |
+          set -euo pipefail
+          python3 scripts/smoke_palimpsest_mcp.py \
+            --url "$PUBLIC_MCP_URL" \
+            --module mcp/palimpsest_mcp.py \
+            --manifest server.json \
+            --timeout 20
+          printf 'public release verified: %s version %s\n' \
+            '${{ needs.verify.outputs.target_sha }}' \
+            '${{ needs.verify.outputs.version }}'
+
+      - name: Record immutable deployment receipt
+        env:
+          TARGET_SHA: ${{ needs.verify.outputs.target_sha }}
+          SERVER_VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          receipt_dir="$RUNNER_TEMP/palimpsest-mcp-deployment-receipt"
+          install -d -m 0700 "$receipt_dir"
+          python3 - "$receipt_dir/deployment-receipt.json" <<'PY'
+          import json
+          import os
+          import sys
+
+          receipt = {
+              "schema": "palimpsest.mcp-deployment-receipt.v1",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow": ".github/workflows/deploy-mcp.yml",
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "target_sha": os.environ["TARGET_SHA"],
+              "server_version": os.environ["SERVER_VERSION"],
+              "public_mcp_url": os.environ["PUBLIC_MCP_URL"],
+              "forced_command_deploy": "passed",
+              "public_smoke": "passed",
+          }
+          with open(sys.argv[1], "w", encoding="utf-8") as handle:
+              json.dump(receipt, handle, sort_keys=True, separators=(",", ":"))
+              handle.write("\n")
+          PY
+          chmod 0400 "$receipt_dir/deployment-receipt.json"
+
+      - name: Upload immutable deployment receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: palimpsest-mcp-deployment-${{ needs.verify.outputs.target_sha }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/palimpsest-mcp-deployment-receipt/deployment-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

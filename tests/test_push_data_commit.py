@@ -5,6 +5,7 @@ import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -167,12 +168,15 @@ def test_publish_rebuilds_when_an_explicit_derived_input_changes(
         ("scripts.fake_refresh",), ("source.json",)
     )
 
-    assert push_data_commit.publish(
-        publisher,
-        rebuild=rebuild,
-        rebuild_paths=rebuild_paths,
-        input_paths=("input.txt",),
-    ) is True
+    assert (
+        push_data_commit.publish(
+            publisher,
+            rebuild=rebuild,
+            rebuild_paths=rebuild_paths,
+            input_paths=("input.txt",),
+        )
+        is True
+    )
     assert _git(remote, "show", "main:source.json") == "input-v2"
 
 
@@ -189,12 +193,15 @@ def test_explicit_dependencies_preserve_candidate_across_unrelated_race(
         ("scripts.fake_refresh",), ("source.json",)
     )
 
-    assert push_data_commit.publish(
-        publisher,
-        rebuild=rebuild,
-        rebuild_paths=rebuild_paths,
-        input_paths=("input.txt",),
-    ) is True
+    assert (
+        push_data_commit.publish(
+            publisher,
+            rebuild=rebuild,
+            rebuild_paths=rebuild_paths,
+            input_paths=("input.txt",),
+        )
+        is True
+    )
     assert _git(remote, "show", "main:source.json") == '{"version":2}'
 
 
@@ -273,11 +280,86 @@ def test_base_locked_candidate_fails_closed_when_main_advances(tmp_path: Path) -
     _git(racer, "push", "-q", "origin", "main")
     candidate = _git(publisher, "rev-parse", "HEAD")
 
-    with pytest.raises(push_data_commit.PublishError, match="verified rebuild"):
+    with pytest.raises(push_data_commit.BaseAdvancedError, match="verified rebuild"):
         push_data_commit.publish(publisher, base_locked=True)
 
     assert _git(publisher, "rev-parse", "HEAD") == candidate
     assert _git(remote, "show", "main:unrelated.txt") == "advanced"
+
+
+def test_base_locked_race_during_push_is_classified_for_rebuild(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    remote, publisher, racer = _repositories(tmp_path)
+    _candidate(publisher)
+    candidate = _git(publisher, "rev-parse", "HEAD")
+    real_run = push_data_commit._run  # noqa: SLF001
+    raced = False
+
+    def advance_before_first_push(
+        repo: Path,
+        *arguments: str,
+        check: bool = True,
+    ) -> int:
+        nonlocal raced
+        if arguments[:2] == ("push", "origin") and not raced:
+            raced = True
+            (racer / "unrelated.txt").write_text("won race\n", encoding="utf-8")
+            _git(racer, "add", "unrelated.txt")
+            _git(racer, "commit", "-qm", "advance during base-locked push")
+            _git(racer, "push", "-q", "origin", "main")
+        return real_run(repo, *arguments, check=check)
+
+    monkeypatch.setattr(push_data_commit, "_run", advance_before_first_push)
+
+    with pytest.raises(push_data_commit.BaseAdvancedError, match="verified rebuild"):
+        push_data_commit.publish(
+            publisher,
+            base_locked=True,
+            sleeper=lambda _delay: None,
+        )
+
+    assert raced is True
+    assert _git(publisher, "rev-parse", "HEAD") == candidate
+    assert _git(remote, "show", "main:unrelated.txt") == "won race"
+
+
+def test_cli_returns_retryable_exit_only_for_a_base_advance(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = SimpleNamespace(
+        rebuild_module=[],
+        stage=[],
+        input_path=[],
+        check_module=[],
+        base_locked=True,
+    )
+    monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
+
+    def base_advanced(**_kwargs: object) -> bool:
+        raise push_data_commit.BaseAdvancedError("rebuild required")
+
+    monkeypatch.setattr(push_data_commit, "publish", base_advanced)
+    assert push_data_commit.main() == push_data_commit.BASE_ADVANCED_EXIT
+
+
+def test_cli_does_not_retry_an_ordinary_publication_refusal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = SimpleNamespace(
+        rebuild_module=[],
+        stage=[],
+        input_path=[],
+        check_module=[],
+        base_locked=True,
+    )
+    monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
+
+    def refused(**_kwargs: object) -> bool:
+        raise push_data_commit.PublishError("policy refused")
+
+    monkeypatch.setattr(push_data_commit, "publish", refused)
+    assert push_data_commit.main() == 1
 
 
 def test_candidate_check_repeats_after_main_advances_and_candidate_rebases(
@@ -639,15 +721,16 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     }
 
     board = (workflow_root / "board-alarm-refresh.yml").read_text(encoding="utf-8")
-    assert board.count("--rebuild-module") == 7
-    assert board.count("--stage") == 14
-    assert "--rebuild-module scripts.weekly_situation_pull" in board
-    assert "--rebuild-module scripts.collector_health_pull" in board
-    assert "--rebuild-module scripts.gazetteer_phylogeny_pull" in board
-    assert "--stage readings/weekly-situation-latest.json" in board
-    assert "--stage readings/collector-health-latest.json" in board
-    assert "--stage readings/gazetteer-phylogeny-latest.json" in board
-    assert "--stage weekly-situation.html" in board
+    assert "--rebuild-module" not in board
+    assert (
+        "git add -A -- readings china news datapackage.json weekly-situation.html"
+        in board
+    )
+    assert "python -m scripts.weekly_situation_pull" in board
+    assert "python -m scripts.collector_health_pull" in board
+    assert "python -m scripts.gazetteer_phylogeny_pull" in board
+    assert "python -m scripts.build_newsroom --check" in board
+    assert "python scripts/push_data_commit.py --base-locked" in board
     vantage = (workflow_root / "vantage-fusion-refresh.yml").read_text(encoding="utf-8")
     assert "--rebuild-module scripts.vantage_fusion_pull" in vantage
     events = (workflow_root / "event-flags-refresh.yml").read_text(encoding="utf-8")
@@ -670,9 +753,7 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "--input-path readings/china-econ-history.jsonl" in (
         workflow_root / "cny-fix-gap-refresh.yml"
     ).read_text(encoding="utf-8")
-    china_econ = (workflow_root / "china-econ-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    china_econ = (workflow_root / "china-econ-refresh.yml").read_text(encoding="utf-8")
     assert "python -m scripts.build_china_econ_forecast --check" in china_econ
     assert "readings/china-econ-forecast-latest.json" in china_econ
     assert (

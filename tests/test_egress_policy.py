@@ -164,6 +164,11 @@ _ALLOWED = {
     "scripts/generative_firewall_reading.py": "POST to OpenRouter carrying a bearer key and a JSON body; safe_fetch is GET-only and "
     "carries no request body today.",
     "scripts/refusal_drift_pull.py": "POST to OpenRouter, same shape and same GET-only blocker as the reading script.",
+    "scripts/smoke_palimpsest_mcp.py": "Release-only POST of bounded JSON-RPC probes to the operator-supplied MCP endpoint; it "
+    "requires HTTPS except for explicitly enabled loopback, forbids credentials, query, "
+    "fragment and redirects, checks HTTP status and content type, caps the response at 4 "
+    "MiB, and applies a caller timeout. safe_fetch is GET-only and does not expose the "
+    "HTTP response semantics this deployment smoke is specifically meant to verify.",
     # ── mcp / ops ──────────────────────────────────────────────────────────────────────────
     "mcp/palimpsest_mcp.py": "GET our OWN published readings from palimpsest.info — a first-party surface, but still "
     "worth migrating for the size cap and redirect guard.",

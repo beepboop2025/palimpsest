@@ -23,11 +23,16 @@ from pathlib import PurePosixPath
 ROOT = Path(__file__).resolve().parents[1]
 MAX_PUSH_ATTEMPTS = 8
 MAX_RETRY_DELAY_SECONDS = 25.0
+BASE_ADVANCED_EXIT = 75
 MODULE_RE = re.compile(r"scripts\.[a-z][a-z0-9_]*\Z")
 
 
 class PublishError(RuntimeError):
     """The candidate could not be proven safe to publish."""
+
+
+class BaseAdvancedError(PublishError):
+    """A base-locked candidate must be rebuilt from the latest public main."""
 
 
 def _capture(repo: Path, *arguments: str) -> str:
@@ -251,12 +256,23 @@ def publish(
         raise PublishError("candidate checkout is not clean")
     subject = _capture(repo, "show", "-s", "--format=%s", "HEAD")
     lowered = subject.casefold()
-    if any(token in lowered for token in ("[skip ci]", "[ci skip]", "[no ci]", "[skip actions]", "[actions skip]")):
+    if any(
+        token in lowered
+        for token in (
+            "[skip ci]",
+            "[ci skip]",
+            "[no ci]",
+            "[skip actions]",
+            "[actions skip]",
+        )
+    ):
         raise PublishError(
             "candidate commit uses a GitHub-native skip token; use [skip pytest] so contract still runs"
         )
     if "[skip pytest]" not in subject:
-        raise PublishError("candidate commit is missing the required [skip pytest] marker")
+        raise PublishError(
+            "candidate commit is missing the required [skip pytest] marker"
+        )
 
     guarded_inputs = tuple(_validate_relative_path(path) for path in input_paths)
     if len(guarded_inputs) != len(set(guarded_inputs)):
@@ -287,7 +303,7 @@ def publish(
             return False
         if latest_base != candidate_base:
             if base_locked:
-                raise PublishError(
+                raise BaseAdvancedError(
                     "main advanced beyond the candidate base; a verified rebuild is required"
                 )
             changed_inputs = [
@@ -374,6 +390,9 @@ def main() -> int:
             candidate_check=candidate_check,
             base_locked=arguments.base_locked,
         )
+    except BaseAdvancedError as error:
+        print(f"data publication deferred: {error}", file=sys.stderr)
+        return BASE_ADVANCED_EXIT
     except (OSError, PublishError, subprocess.SubprocessError, ValueError) as error:
         print(f"data publication refused: {error}", file=sys.stderr)
         return 1

@@ -74,6 +74,15 @@ def test_every_committed_public_history_is_registered():
     assert LIVE_INVENTORY["history_file_lines"]["cross-layer"] == 1
 
 
+def test_baike_public_snapshot_is_reachability_context_not_rewrite_evidence():
+    spec = INSTRUMENTS["baike-public-snapshot"]
+
+    assert spec["history"] == "baike-public-snapshot-history.jsonl"
+    assert spec["field"] == "n_ok"
+    assert spec["side"] == "two"
+    assert "reachability only, not rewrite evidence" in spec["meaning"]
+
+
 def test_missing_history_abstains(tmp_path):
     row = fit_instrument("wayback", tmp_path)
     assert row["state"] == "missing"
