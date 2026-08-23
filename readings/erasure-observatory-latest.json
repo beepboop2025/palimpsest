@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-23T07:33:49.391317+00:00",
+  "generated_at": "2026-08-23T13:40:05.446597+00:00",
   "method_version": 4,
   "title": "Information Erasure Observatory",
   "thesis": "The field measures access in the present tense. We measure erasure across time — what was removed or rewritten — on three layers, and we seal our own record so it cannot be quietly rewritten in turn.",
-  "erasure_index": 39.8,
+  "erasure_index": 41.7,
   "index_scale": "0-100; higher = more of the observed record removed or rewritten",
   "layers_contributing": [
     "network",
@@ -14,22 +14,22 @@
       "layer": "network",
       "title": "Network erasure",
       "detail": "reachability that disappeared — sites, messengers and tools blocked at the wire",
-      "value": 58.5,
+      "value": 58.4,
       "source": "OONI aggregation (probe_cc=CN)",
       "reading": "ooni-gfw-latest.json",
-      "as_of": "2026-08-23T07:07:20.118865+00:00",
+      "as_of": "2026-08-23T13:07:07.574185+00:00",
       "age_days": 0.02,
-      "age_hours": 0.4
+      "age_hours": 0.5
     },
     {
       "layer": "model",
       "title": "Model erasure",
       "detail": "answers a state-aligned model will no longer give — refusals and party-line substitution",
-      "value": 21.0,
+      "value": 25.0,
       "source": "Generative Firewall (aligned LLM panel)",
       "reading": "latest.json",
-      "as_of": "2026-08-22T20:20:26.025965+00:00",
-      "age_days": 0.47
+      "as_of": "2026-08-23T08:02:43.590725+00:00",
+      "age_days": 0.23
     },
     {
       "layer": "narrative",
@@ -37,13 +37,13 @@
       "value": null,
       "status": "STALE",
       "detail": "encyclopedia entries rewritten to the state line — sensitive terms excised, sourcing collapsed to state media",
-      "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 23.5 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
+      "reason": "Baike narrative layer unavailable: Baike collection is disabled pending authorized access; no new observation was made. Source path readings/baike-redaction-latest.json is 23.7 days old (as of 2026-07-30T20:31:16.856256+00:00), beyond the 36.0-hour freshness bound",
       "reading": "baike-redaction-latest.json",
       "as_of": "2026-07-30T20:31:16.856256+00:00",
-      "age_hours": 563.0,
+      "age_hours": 569.1,
       "collector_status": "disabled_no_authorized_access",
       "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
-      "pipeline_checked_at": "2026-08-23T06:51:45.586114+00:00"
+      "pipeline_checked_at": "2026-08-23T12:58:20.748758+00:00"
     }
   ],
   "cross_checks": [
@@ -52,48 +52,53 @@
       "value": 4.34,
       "unit": "%",
       "as_of": "2026-08-23T05:58:48.475561+00:00",
-      "age_hours": 1.6,
+      "age_hours": 7.7,
       "note": "independent DNS/HTTP side-channel, confirms network layer"
     },
     {
       "name": "Firewall event velocity",
       "value": 1.08,
       "unit": "x",
-      "as_of": "2026-08-23T02:12:20.419014+00:00",
-      "age_hours": 5.4,
+      "as_of": "2026-08-23T13:17:55.157964+00:00",
+      "age_hours": 0.4,
       "note": "community-logged blocking/circumvention rate vs baseline"
     }
   ],
   "cross_checks_withheld": [],
   "integrity": {
     "ledger": "readings/erasure-ledger.jsonl",
-    "entries": 241,
+    "entries": 244,
     "verified": true,
-    "merkle_root": "291bd6c3ba74819c4c7f22344c2add0107d322361c488dd53f9bd7db17bc9102",
-    "head_hash": "b570451f581c1ff923f17ac096dd288c0c689333fb06ec048327be011d103536",
+    "merkle_root": "816995afd5b9cc64597f08c5c1283819a8028546d9dae22db2c72a6ff9ce93a4",
+    "head_hash": "92cc57578bf6899251cc137fa4a0b4a3cc170d54f3ffb4b291c3ceab056fccb5",
     "first_ts": "2026-07-11T15:18:29.250178+00:00",
-    "head_ts": "2026-08-23T07:33:49.391317+00:00",
+    "head_ts": "2026-08-23T13:40:05.446597+00:00",
     "by_source": {
-      "ooni-gfw": 140,
-      "generative-firewall": 21,
+      "ooni-gfw": 141,
+      "generative-firewall": 22,
       "censored-planet": 35,
-      "baike-redaction": 45
+      "baike-redaction": 46
     },
     "sealed_this_run": [
       {
         "source": "ooni-gfw",
-        "seq": 239,
-        "entry_hash": "89692c8b2c2eb5880f5f5fa5f0836dc8fc94e357073dc42525ccb28674a3aa5b"
+        "seq": 241,
+        "entry_hash": "3295bb03f775ac9d35741ff465688484b44aa9e2f0cc57321ee2b2ed59be1ec4"
+      },
+      {
+        "source": "generative-firewall",
+        "seq": 242,
+        "entry_hash": "cf831ccd1b4480f14a6ccbe6cf94387e7819a0e3a5a2e7bfd7cf03720fdbc02f"
       },
       {
         "source": "baike-redaction",
-        "seq": 240,
-        "entry_hash": "b570451f581c1ff923f17ac096dd288c0c689333fb06ec048327be011d103536"
+        "seq": 243,
+        "entry_hash": "92cc57578bf6899251cc137fa4a0b4a3cc170d54f3ffb4b291c3ceab056fccb5"
       }
     ],
     "verify_cmd": "python3 scripts/verify_ledger.py",
     "note": "every source reading above is hash-chained into the ledger at capture time; recompute the chain yourself to prove no past reading was altered or dropped"
   },
   "vs_access_indices": "Access observatories answer 'is X reachable now'. This answers 'what did the record lose, and can you prove our measurement of the loss was not itself edited afterward'.",
-  "last_changed_at": "2026-08-23T07:33:49.391317+00:00"
+  "last_changed_at": "2026-08-23T13:40:05.446597+00:00"
 }
