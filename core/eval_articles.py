@@ -31,6 +31,8 @@ DISCLOSURE = (
     "Generated from sealed evaluation artifacts with a deterministic editorial "
     "template. No interviews and no free-form model prose were used."
 )
+_RECONCILED_ATTESTATION_MODE = "reconciled-without-requery"
+_RECONCILIATION_METRIC_FIELDS = frozenset({"reading_as_of", "attestation_mode"})
 
 ROOT = Path(__file__).resolve().parents[1]
 READING_PATH = ROOT / "readings" / "refusal-drift-latest.json"
@@ -320,18 +322,47 @@ def _matching_runs(
     models = _model_rows(reading)
     matches: dict[str, Mapping[str, Any]] = {}
     for entry in entries:
-        if (
+        if not (
             entry.get("kind") == eval_registry.RUN
             and entry.get("suite") == suite
-            and entry.get("ts") == generated_at
             and entry.get("model") in models
         ):
-            model = str(entry["model"])
-            if model in matches:
-                raise EvalArticleError(f"multiple sealed runs match {model}")
-            if entry.get("metrics") != _metric_projection(models[model], method_version):
-                raise EvalArticleError(f"sealed metrics do not match the reading for {model}")
-            matches[model] = entry
+            continue
+
+        model = str(entry["model"])
+        metrics = entry.get("metrics")
+        reconciled = (
+            isinstance(metrics, dict)
+            and metrics.get("reading_as_of") == generated_at
+            and metrics.get("attestation_mode") == _RECONCILED_ATTESTATION_MODE
+        )
+        direct = entry.get("ts") == generated_at
+        if not direct and not reconciled:
+            continue
+
+        if reconciled:
+            attested_at = _timestamp(
+                str(entry.get("ts")), "registry attestation timestamp"
+            )
+            observed_at = _timestamp(str(generated_at), "generated_at")
+            if attested_at < observed_at:
+                raise EvalArticleError(
+                    f"reconciled registry attestation predates the reading for {model}"
+                )
+            compared_metrics = {
+                key: value
+                for key, value in metrics.items()
+                if key not in _RECONCILIATION_METRIC_FIELDS
+            }
+        else:
+            compared_metrics = metrics
+        if compared_metrics != _metric_projection(models[model], method_version):
+            raise EvalArticleError(f"sealed metrics do not match the reading for {model}")
+
+        # A retained measurement can already have its original run on an older fork
+        # and then be re-attested on the winning public chain. Registry order is
+        # verified before this matcher runs, so the newest valid binding is canonical.
+        matches[model] = entry
     missing = sorted(set(models) - set(matches))
     if missing:
         raise EvalArticleError(
