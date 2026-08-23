@@ -38,11 +38,11 @@
     {
       "input_id": "eval-registry",
       "filename": "eval-registry.jsonl",
-      "sha256": "be7867563cebfe81b84ecf9622bae735362214bd8e43e22ae7c77dd3e69eee62",
-      "bytes": 362515,
+      "sha256": "130e63c71bec085173e57c76aaf0607e45dfa2482d6095596b27e389bc6647c5",
+      "bytes": 364966,
       "generated_at": "2026-08-23T06:54:58.055463+00:00",
       "public_url": "https://palimpsest.info/readings/eval-registry.jsonl",
-      "integrity": "verified-hash-chain:225e333d5efe11a56b0306bb347c981a984d53b05aeb0ce0846766d81ffc51b7"
+      "integrity": "verified-hash-chain:c53734575ed28b4fdbfd5177093fab9ed5057111869cb00bb93239b376e37868"
     }
   ],
   "n_articles": 4,
@@ -1128,24 +1128,24 @@
     {
       "schema_version": "palimpsest-eval-article.v1",
       "article_id": "evalarticle-7e2fce8bb9fd3a94cec7",
-      "revision_id": "evalarticlev-7957ba3fb216ec3bc954b56f",
-      "previous_revision_id": "evalarticlev-2a6a68fc4a9dbd691a7561cb",
+      "revision_id": "evalarticlev-8e50050891e113d43417b344",
+      "previous_revision_id": "evalarticlev-7957ba3fb216ec3bc954b56f",
       "slug": "what-the-eval-registry-can-prove-today",
       "url": "/journal/what-the-eval-registry-can-prove-today/",
       "kicker": "Eval integrity / registry status",
-      "title": "The eval registry verifies 529 attestations end to end",
-      "dek": "The current served chain contains 6 preregistrations and 523 runs across 7 model endpoints. Its hashes make revision detectable; they do not make the eval construct valid by themselves.",
+      "title": "The eval registry verifies 532 attestations end to end",
+      "dek": "The current served chain contains 6 preregistrations and 526 runs across 7 model endpoints. Its hashes make revision detectable; they do not make the eval construct valid by themselves.",
       "thesis": "Tamper evidence answers whether the served eval record changed, not whether the underlying measurement deserves a broader claim.",
       "finding_state": "bounded-finding",
       "published_at": "2026-08-15T12:55:00.684023+00:00",
       "updated_at": "2026-08-23T06:54:58.055463+00:00",
       "key_numbers": [
         {
-          "value": "529",
+          "value": "532",
           "label": "verified attestations",
-          "note": "head sequence 528",
+          "note": "head sequence 531",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c"
+            "evalevidence-41ac7bce8d31391c92db"
           ]
         },
         {
@@ -1153,15 +1153,15 @@
           "label": "preregistrations",
           "note": "probe commitments recorded before linked runs",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c"
+            "evalevidence-41ac7bce8d31391c92db"
           ]
         },
         {
-          "value": "523",
+          "value": "526",
           "label": "sealed runs",
           "note": "across 7 named endpoints",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c"
+            "evalevidence-41ac7bce8d31391c92db"
           ]
         }
       ],
@@ -1173,15 +1173,15 @@
             {
               "sentences": [
                 {
-                  "text": "The served registry verifies from genesis through 529 attestations, ending at sequence 528.",
+                  "text": "The served registry verifies from genesis through 532 attestations, ending at sequence 531.",
                   "citation_ids": [
-                    "evalevidence-f984812b4dc58c5e3c9c"
+                    "evalevidence-41ac7bce8d31391c92db"
                   ]
                 },
                 {
-                  "text": "It contains 6 preregistrations and 523 runs across 7 named model endpoints.",
+                  "text": "It contains 6 preregistrations and 526 runs across 7 named model endpoints.",
                   "citation_ids": [
-                    "evalevidence-f984812b4dc58c5e3c9c"
+                    "evalevidence-41ac7bce8d31391c92db"
                   ]
                 }
               ]
@@ -1205,7 +1205,7 @@
                   "text": "Each matched run binds its probe commitment, response digest, model label, metrics, and predecessor hash into the chain.",
                   "citation_ids": [
                     "evalevidence-f5fcbfc9a7032b466c2a",
-                    "evalevidence-f984812b4dc58c5e3c9c"
+                    "evalevidence-41ac7bce8d31391c92db"
                   ]
                 }
               ]
@@ -1221,14 +1221,14 @@
                 {
                   "text": "Hash-chain verification cannot establish that a refusal classifier measures the intended construct, that an endpoint label names fixed hidden weights, or that the panel represents all models.",
                   "citation_ids": [
-                    "evalevidence-f984812b4dc58c5e3c9c",
+                    "evalevidence-41ac7bce8d31391c92db",
                     "evalevidence-80711deb0314c9522bd2"
                   ]
                 },
                 {
                   "text": "Those questions require separate validation, provider transparency, and sampling arguments rather than a stronger hash.",
                   "citation_ids": [
-                    "evalevidence-f984812b4dc58c5e3c9c",
+                    "evalevidence-41ac7bce8d31391c92db",
                     "evalevidence-80711deb0314c9522bd2"
                   ]
                 }
@@ -1241,13 +1241,13 @@
         {
           "text": "A verified chain is meaningful evidence that the served sequence has not been quietly rewritten.",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c"
+            "evalevidence-41ac7bce8d31391c92db"
           ]
         },
         {
           "text": "An internally valid chain can still contain a poorly designed eval; integrity and measurement validity are separate gates.",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c",
+            "evalevidence-41ac7bce8d31391c92db",
             "evalevidence-80711deb0314c9522bd2"
           ]
         }
@@ -1256,7 +1256,7 @@
         {
           "text": "Without an external witness, the registry file alone cannot prove when its first unseen version was published.",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c"
+            "evalevidence-41ac7bce8d31391c92db"
           ]
         },
         {
@@ -1278,14 +1278,14 @@
           "step": "Freeze",
           "detail": "Append a probe-set commitment before its result can enter the same registry.",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c"
+            "evalevidence-41ac7bce8d31391c92db"
           ]
         },
         {
           "step": "Link",
           "detail": "Hash every attestation with its predecessor so deletion, reordering, and alteration change the head.",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c"
+            "evalevidence-41ac7bce8d31391c92db"
           ]
         },
         {
@@ -1300,21 +1300,21 @@
           "step": "Bound",
           "detail": "Keep chain integrity separate from classifier validity, model identity, and population claims.",
           "citation_ids": [
-            "evalevidence-f984812b4dc58c5e3c9c",
+            "evalevidence-41ac7bce8d31391c92db",
             "evalevidence-80711deb0314c9522bd2"
           ]
         }
       ],
       "evidence": [
         {
-          "evidence_id": "evalevidence-f984812b4dc58c5e3c9c",
+          "evidence_id": "evalevidence-41ac7bce8d31391c92db",
           "input_id": "eval-registry",
           "label": "Verified registry head and complete served-chain summary",
           "selector": "/",
           "value": {
-            "attestations": 529,
+            "attestations": 532,
             "preregistrations": 6,
-            "runs": 523,
+            "runs": 526,
             "models": [
               "anthropic/claude-3-haiku",
               "deepseek/deepseek-chat",
@@ -1324,10 +1324,10 @@
               "openai/gpt-4o-mini",
               "qwen/qwen-2.5-7b-instruct"
             ],
-            "head_seq": 528,
-            "head_ts": "2026-08-23T07:33:48.794476+00:00",
-            "head_hash": "507db5dbe1d7ad85733f2d1ccc9ef73191e871e403de9ce5c2bc7684d660a321",
-            "merkle_root": "225e333d5efe11a56b0306bb347c981a984d53b05aeb0ce0846766d81ffc51b7"
+            "head_seq": 531,
+            "head_ts": "2026-08-23T08:28:56.402435+00:00",
+            "head_hash": "ebe0cab4fb7517c83a454ab56b47b4a157209486d08428c0a66539919b4f090c",
+            "merkle_root": "c53734575ed28b4fdbfd5177093fab9ed5057111869cb00bb93239b376e37868"
           },
           "interpretation_limit": "Verification detects alteration, deletion, or reordering inside the served chain. The file alone does not prove an external wall-clock publication time.",
           "source_url": "https://palimpsest.info/readings/eval-registry.jsonl"

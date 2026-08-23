@@ -1,22 +1,22 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-c68bd3f4c66261156e736bb8",
+  "analysis_id": "instrumentv-3374a8eb4e5983963abc6c42",
   "signal_id": "in-path-interference",
   "story_url": "https://palimpsest.info/news/in-path-interference/",
   "url": "https://palimpsest.info/news/in-path-interference/analysis.json",
   "reading_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/in-path-interference-analysis.json",
-  "generated_at": "2026-08-23T02:07:23Z",
+  "generated_at": "2026-08-23T07:09:20Z",
   "disposition": "live-reading",
   "status": "live",
-  "position": "Palimpsest's view: in-path-interference is live. The current number is 1.4% over 9,385 completed middlebox tests. This is the instrument reading, not a national censorship rate.",
+  "position": "Palimpsest's view: in-path-interference is live. The current number is 1.4% over 9,401 completed middlebox tests. This is the instrument reading, not a national censorship rate.",
   "key_numbers": [
     {
       "value": "1.4%",
       "label": "middlebox index",
-      "note": "9,385 completed middlebox tests",
+      "note": "9,401 completed middlebox tests",
       "citation_ids": [
-        "instrumentevidence-30ecc4c866d8c414eb54"
+        "instrumentevidence-54d9533609219abd3649"
       ]
     }
   ],
@@ -25,15 +25,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "The current middlebox index is 1.4% over 9,385 completed middlebox tests.",
+          "text": "The current middlebox index is 1.4% over 9,401 completed middlebox tests.",
           "citation_ids": [
-            "instrumentevidence-30ecc4c866d8c414eb54"
+            "instrumentevidence-54d9533609219abd3649"
           ]
         },
         {
           "text": "The current measurement-weighted middlebox index is 1.35%.",
           "citation_ids": [
-            "instrumentevidence-30ecc4c866d8c414eb54"
+            "instrumentevidence-54d9533609219abd3649"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, undertext, ooni-gfw, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, weibo-hotsearch, undertext, ooni-gfw, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
           "citation_ids": [
-            "instrumentevidence-30ecc4c866d8c414eb54"
+            "instrumentevidence-54d9533609219abd3649"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-30ecc4c866d8c414eb54"
+            "instrumentevidence-54d9533609219abd3649"
           ]
         }
       ]
@@ -61,19 +61,19 @@
         {
           "text": "The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories.",
           "citation_ids": [
-            "instrumentevidence-30ecc4c866d8c414eb54"
+            "instrumentevidence-54d9533609219abd3649"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-30ecc4c866d8c414eb54"
+            "instrumentevidence-54d9533609219abd3649"
           ]
         },
         {
           "text": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate - it has an execution-failure rate, reported separately",
           "citation_ids": [
-            "instrumentevidence-30ecc4c866d8c414eb54"
+            "instrumentevidence-54d9533609219abd3649"
           ]
         }
       ]
@@ -83,13 +83,13 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-30ecc4c866d8c414eb54"
+        "instrumentevidence-54d9533609219abd3649"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-30ecc4c866d8c414eb54"
+        "instrumentevidence-54d9533609219abd3649"
       ]
     }
   ],
@@ -97,31 +97,19 @@
     {
       "text": "The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories.",
       "citation_ids": [
-        "instrumentevidence-30ecc4c866d8c414eb54"
+        "instrumentevidence-54d9533609219abd3649"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-30ecc4c866d8c414eb54"
+        "instrumentevidence-54d9533609219abd3649"
       ]
     }
   ],
   "elevated_peers": [
     {
-      "signal_id": "board-alarm",
-      "section": "command",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
       "signal_id": "event-flags",
-      "section": "command",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "coverage-guard",
       "section": "command",
       "status": "live",
       "priority": "high"
@@ -175,6 +163,12 @@
       "priority": "lead"
     },
     {
+      "signal_id": "erasure-observatory",
+      "section": "erasure",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "wayback",
       "section": "erasure",
       "status": "live",
@@ -203,6 +197,12 @@
       "section": "economy",
       "status": "live",
       "priority": "high"
+    },
+    {
+      "signal_id": "generative-firewall",
+      "section": "models",
+      "status": "live",
+      "priority": "lead"
     }
   ],
   "review_rank": {
@@ -213,7 +213,7 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-30ecc4c866d8c414eb54",
+      "evidence_id": "instrumentevidence-54d9533609219abd3649",
       "kind": "newsroom-story",
       "signal_id": "in-path-interference",
       "headline": "Middlebox signatures register at 1.35% in the current OONI window",
@@ -221,8 +221,8 @@
       "claim": "The current measurement-weighted middlebox index is 1.35%.",
       "story_url": "https://palimpsest.info/news/in-path-interference/",
       "reading_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
-      "source_timestamp": "2026-08-23T02:07:23Z",
-      "input_sha256": "84e439297c28822bf96b94b0e5336ce568bcfedae7e29124df33560044fbd4ed",
+      "source_timestamp": "2026-08-23T07:09:20Z",
+      "input_sha256": "b372d3adc746052884d0d573552175ad48dbdb7b59e633525c4bafc5f997402b",
       "interpretation_limit": "The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories."
     }
   ],

@@ -1,0 +1,75 @@
+{
+  "schema_version": "palimpsest-machine-evidence-capsule.v1",
+  "capsule_type": "redacted-aggregate-evidence",
+  "content_address": {
+    "algorithm": "sha256",
+    "scope": "original-input-bytes",
+    "sha256": "b372d3adc746052884d0d573552175ad48dbdb7b59e633525c4bafc5f997402b"
+  },
+  "original_input": {
+    "artifact_id": "in-path-interference-latest.json",
+    "generated_at": "2026-08-23T07:09:20Z",
+    "sha256": "b372d3adc746052884d0d573552175ad48dbdb7b59e633525c4bafc5f997402b",
+    "integrity": "embedded-receipt-verified"
+  },
+  "citations": [
+    {
+      "evidence_id": "evidence-in-path-interference",
+      "title": "OONI in-path middlebox index",
+      "role": "support",
+      "source_class": "RESEARCH_DATASET",
+      "source_id": "in-path-interference",
+      "selector": "json-pointer:/middlebox_index;denominator-json-pointer:/middlebox_completed_count",
+      "source_timestamp": "2026-08-23T07:09:20Z",
+      "independence_group": "publisher:ooni",
+      "upstream_groups": [
+        "publisher:ooni"
+      ],
+      "value": {
+        "type": "percent",
+        "value": 1.35
+      },
+      "denominator": {
+        "type": "aggregate-count",
+        "label": "completed middlebox tests",
+        "value": 9401
+      },
+      "interpretation_limit": "This is derived from OONI measurements and shares the publisher:ooni lineage. Its completed-test denominator and test family differ from the OONI reachability index.",
+      "freshness": "fresh",
+      "rights": {
+        "redistribution": "ATTRIBUTION_REQUIRED",
+        "reuse": "derived_only",
+        "training": "prohibited"
+      },
+      "attribution": {
+        "attribution_required": true,
+        "providers": [
+          {
+            "name": "OONI",
+            "source_url": "https://api.ooni.io/",
+            "terms_url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+          }
+        ],
+        "upstream_groups": [
+          "publisher:ooni"
+        ],
+        "public_source_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
+        "upstream_source_urls": [
+          "https://api.ooni.io/"
+        ],
+        "source_statement": "OONI aggregation API (api.ooni.io), probe_cc=CN",
+        "license": {
+          "name": "CC BY-NC-SA 4.0 source data",
+          "url": "https://github.com/ooni/license/blob/master/data/LICENSE.md"
+        }
+      }
+    }
+  ],
+  "privacy": {
+    "aggregate_only": true,
+    "raw_input_included": false,
+    "person_level_data_included": false,
+    "contact_data_included": false,
+    "ip_addresses_included": false
+  }
+}

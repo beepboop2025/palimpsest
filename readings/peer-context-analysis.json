@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-f5798e5cd26a25105721808d",
+  "analysis_id": "instrumentv-0062fc484ba4a02d62050fe3",
   "signal_id": "peer-context",
   "story_url": "https://palimpsest.info/news/attributed-peer-context/",
   "url": "https://palimpsest.info/news/attributed-peer-context/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, public-deletion-ledgers, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, greatfire-context, wayback, app-storefront.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, greatfire-context, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap.",
           "citation_ids": [
             "instrumentevidence-49394e7284f79aa32bf0"
           ]
@@ -109,19 +109,7 @@
   ],
   "elevated_peers": [
     {
-      "signal_id": "board-alarm",
-      "section": "command",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
       "signal_id": "event-flags",
-      "section": "command",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "coverage-guard",
       "section": "command",
       "status": "live",
       "priority": "high"
@@ -137,12 +125,6 @@
       "section": "attention",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "public-deletion-ledgers",
-      "section": "attention",
-      "status": "live",
-      "priority": "standard"
     },
     {
       "signal_id": "undertext",
@@ -193,6 +175,12 @@
       "priority": "background"
     },
     {
+      "signal_id": "erasure-observatory",
+      "section": "erasure",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "wayback",
       "section": "erasure",
       "status": "live",
@@ -201,6 +189,18 @@
     {
       "signal_id": "app-storefront",
       "section": "erasure",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "apple-censorship",
+      "section": "erasure",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "cny-fix-gap",
+      "section": "economy",
       "status": "live",
       "priority": "high"
     }
