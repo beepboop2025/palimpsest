@@ -244,6 +244,18 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
         "trainer": "prequential-robust-mad/v1",
         "side": "high",
     },
+    "baike-public-snapshot": {
+        "history": "baike-public-snapshot-history.jsonl",
+        "extract": _field("n_ok"),
+        "field": "n_ok",
+        "meaning": (
+            "successful public Baike topic-page fetches vs this instrument's own "
+            "past; reachability only, not rewrite evidence"
+        ),
+        "min_history": MAD_MIN_HISTORY,
+        "trainer": "prequential-robust-mad/v1",
+        "side": "two",
+    },
     "vantage-fusion": {
         "history": "vantage-fusion-history.jsonl",
         "extract": _field("fused_index"),
