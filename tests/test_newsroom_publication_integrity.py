@@ -128,7 +128,11 @@ def test_wire_history_receipt_closes_both_revision_families(tmp_path: Path) -> N
     assert receipt["n_analysis_revisions"] == 1
     assert receipt["n_current_analysis_aliases"] == 1
     assert receipt["automatic_growth_limit"] == 128
-    assert receipt["automatic_growth_status"] == "within-limit"
+    assert (
+        receipt["automatic_growth_policy"]
+        == "max-128-after-initial-namespace-bootstrap"
+    )
+    assert receipt["automatic_growth_status"] == "validated"
     assert len(receipt["history_tree_sha256"]) == 64
     assert receipt["validation_status"] == "full-history-validated"
     assert receipt["referential_closure"] == "all-analysis-event-versions-present"
@@ -272,6 +276,7 @@ def test_wire_history_refuses_an_analysis_without_its_event_revision(
 def test_wire_history_growth_bound_blocks_revision_fanout(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    (tmp_path / "news" / "wire").mkdir(parents=True)
     outputs = _wire_history_fixture_outputs()
     monkeypatch.setattr(build_newsroom, "MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION", 1)
 

@@ -5245,7 +5245,11 @@ def _wire_history_integrity_receipt(
             "wire history would exceed its reviewed file-count bound: "
             f"{len(payloads)} > {MAX_WIRE_HISTORY_FILES}"
         )
-    if len(new_paths) > MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION:
+    established_namespace = (root / "news" / "wire").exists()
+    if (
+        established_namespace
+        and len(new_paths) > MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION
+    ):
         raise newsroom.NewsroomError(
             "wire-history growth exceeds the automatic publication bound: "
             f"{len(new_paths)} > {MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION}"
@@ -5360,7 +5364,8 @@ def _wire_history_integrity_receipt(
         "n_current_analysis_aliases": len(aliases),
         "current_analysis_tree_sha256": alias_tree.hexdigest(),
         "automatic_growth_limit": MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION,
-        "automatic_growth_status": "within-limit",
+        "automatic_growth_policy": "max-128-after-initial-namespace-bootstrap",
+        "automatic_growth_status": "validated",
         "validation_status": "full-history-validated",
         "referential_closure": "all-analysis-event-versions-present",
     }
