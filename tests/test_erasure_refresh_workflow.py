@@ -45,8 +45,8 @@ def test_a_race_rebuilds_shared_seals_without_requerying_paid_models():
     assert text.count("python3 scripts/seal_readings.py || rc=$?") == 3
     assert text.count("python -m scripts.anchor_roots") == 2
     assert text.count("python -m scripts.verify_eval_registry") == 3
-    assert text.count("python -m scripts.ingest_refusal_drift") == 2
-    assert text.count("python -m scripts.eval_registry_ingest") == 3
+    assert text.count("python -m scripts.ingest_refusal_drift") == 3
+    assert text.count("python -m scripts.eval_registry_ingest") == 4
     assert text.count("python scripts/verify_public_surface.py") == 3
     assert text.count("\n          PALIMPSEST_WAYBACK_ACCESS_KEY:") == 2
     assert text.count("\n          PALIMPSEST_WAYBACK_SECRET_KEY:") == 2
@@ -200,6 +200,37 @@ def test_paid_measurement_is_retained_briefly_after_semantic_verification():
         assert path in retained
 
 
+def test_retained_paid_measurement_has_a_fail_closed_no_requery_recovery_path():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    audit = text.index("Frontier refusal-drift audit")
+    recovery = text.index("Recover a retained paid measurement", audit)
+    verify = text.index("Verify the eval registry", recovery)
+    audit_step = text[audit:recovery]
+    recovery_step = text[recovery:verify]
+
+    assert "recovery_run_id:" in text
+    assert "actions: read" in text
+    assert "inputs.recovery_run_id == ''" in audit_step
+    assert "inputs.recovery_run_id != ''" in recovery_step
+    assert "GH_TOKEN: ${{ github.token }}" in recovery_step
+    assert 'case "$RECOVERY_RUN_ID" in' in recovery_step
+    assert "*[!0-9]*" in recovery_step
+    assert 'gh run view "$RECOVERY_RUN_ID" --json workflowName' in recovery_step
+    assert 'gh run download "$RECOVERY_RUN_ID"' in recovery_step
+    assert 'refusal-drift-measurement-$RECOVERY_RUN_ID' in recovery_step
+    for name in (
+        "refusal-drift-latest.json",
+        "refusal-drift-history.jsonl",
+        "refusal-drift-transcripts.json",
+        "refusal-drift-churn.jsonl",
+    ):
+        assert name in recovery_step
+    legacy = recovery_step.index("python -m scripts.eval_registry_ingest")
+    retained = recovery_step.index("python -m scripts.ingest_refusal_drift")
+    assert audit < recovery < verify
+    assert legacy < retained
+
+
 def test_eval_assurance_is_rebuilt_after_every_chain_reconciliation():
     text = WORKFLOW.read_text(encoding="utf-8")
 
@@ -228,6 +259,7 @@ def test_eval_article_scenarios_gate_reconciliation_and_every_race_retry():
         "tests/test_eval_journal.py",
         "tests/test_eval_articles.py",
         "tests/test_eval_journal_renderer.py",
+        "tests/test_data_catalog.py::test_checked_in_catalog_views_do_not_drift_from_source_and_readings",
     ):
         assert text.count(test_path) == 2, test_path
 
@@ -242,3 +274,31 @@ def test_eval_article_scenarios_gate_reconciliation_and_every_race_retry():
     retry_tests = text.index(command, retry_check)
     retry_anchor = text.index("python -m scripts.anchor_roots", retry_tests)
     assert retry < retry_check < retry_tests < retry_anchor
+
+
+def test_catalog_is_rebuilt_staged_and_gated_before_every_shared_seal():
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert text.count("python -m scripts.build_data_catalog") == 3
+    for output in (
+        "readings/catalog.json",
+        "readings/catalog.jsonld",
+        "datapackage.json",
+    ):
+        assert sum(
+            line.strip().rstrip("\\").strip() == output
+            for line in text.splitlines()
+        ) == 3, output
+
+    initial_catalog = text.index("python -m scripts.build_data_catalog")
+    initial_seal = text.index("Seal every published reading", initial_catalog)
+    rebuild = text.index("Rebuild the aggregate and shared seal after an input change")
+    rebuild_catalog = text.index("python -m scripts.build_data_catalog", rebuild)
+    rebuild_seal = text.index("python3 scripts/seal_readings.py", rebuild_catalog)
+    retry = text.index("Reattest, reverify, and retry after a push race")
+    retry_catalog = text.index("python -m scripts.build_data_catalog", retry)
+    retry_seal = text.index("python3 scripts/seal_readings.py", retry_catalog)
+
+    assert initial_catalog < initial_seal
+    assert rebuild < rebuild_catalog < rebuild_seal
+    assert retry < retry_catalog < retry_seal

@@ -9,9 +9,16 @@ name: Refresh Information Erasure Observatory
 on:
   schedule:
     - cron: "8 */6 * * *"       # every 6h, clear of DDTI/newswire's shared :17 lane
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      recovery_run_id:
+        description: "Erasure run whose retained refusal measurement should be republished without model calls"
+        required: false
+        default: ""
+        type: string
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -69,6 +76,7 @@ jobs:
         run: python -m scripts.eval_registry_ingest
 
       - name: Frontier refusal-drift audit (real models; abstains without a key)
+        if: github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == ''
         # Seals a fresh run of each panel model and records drift versus the last
         # comparable run. Abstains cleanly if OPENROUTER_API_KEY is not configured.
         #
@@ -83,6 +91,41 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         timeout-minutes: 110
         run: python -m scripts.refusal_drift_pull
+
+      - name: Recover a retained paid measurement without requerying models
+        if: github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
+        run: |
+          case "$RECOVERY_RUN_ID" in
+            ""|*[!0-9]*)
+              echo "FATAL: recovery_run_id must contain decimal digits only"
+              exit 1
+              ;;
+          esac
+          source_workflow=$(gh run view "$RECOVERY_RUN_ID" --json workflowName --jq '.workflowName')
+          if [ "$source_workflow" != "Refresh Information Erasure Observatory" ]; then
+            echo "FATAL: run $RECOVERY_RUN_ID belongs to an unexpected workflow: $source_workflow"
+            exit 1
+          fi
+          recovery_dir=$(mktemp -d)
+          gh run download "$RECOVERY_RUN_ID" \
+            --name "refusal-drift-measurement-$RECOVERY_RUN_ID" \
+            --dir "$recovery_dir"
+          for name in refusal-drift-latest.json \
+                      refusal-drift-history.jsonl \
+                      refusal-drift-transcripts.json \
+                      refusal-drift-churn.jsonl ; do
+            source_path="$recovery_dir/$name"
+            if [ ! -s "$source_path" ]; then
+              echo "FATAL: retained measurement is missing or empty: $name"
+              exit 1
+            fi
+            cp "$source_path" "readings/$name"
+          done
+          python -m scripts.eval_registry_ingest
+          python -m scripts.ingest_refusal_drift
 
       - name: Verify the eval registry (chain + pre-registration rule)
         run: python -m scripts.verify_eval_registry
@@ -121,6 +164,7 @@ jobs:
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
           python -m scripts.build_eval_findings
+          python -m scripts.build_data_catalog
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
           python -m scripts.build_eval_findings --check
@@ -192,6 +236,9 @@ jobs:
                    readings/eval-assurance-latest.json \
                    readings/eval-journal-latest.json \
                    readings/eval-articles-latest.json \
+                   readings/catalog.json \
+                   readings/catalog.jsonld \
+                   datapackage.json \
                    evals/ \
                    journal/ \
                    readings/refusal-drift-latest.json \
@@ -265,6 +312,7 @@ jobs:
           python -m scripts.build_eval_assurance
           python -m scripts.build_eval_journal
           python -m scripts.build_eval_findings
+          python -m scripts.build_data_catalog
           python3 scripts/seal_readings.py || rc=$?
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
@@ -286,7 +334,8 @@ jobs:
             tests/test_eval_assurance.py \
             tests/test_eval_journal.py \
             tests/test_eval_articles.py \
-            tests/test_eval_journal_renderer.py
+            tests/test_eval_journal_renderer.py \
+            tests/test_data_catalog.py::test_checked_in_catalog_views_do_not_drift_from_source_and_readings
 
       - name: Anchor only the reconciled roots
         if: steps.candidate.outputs.changed == 'true'
@@ -324,6 +373,9 @@ jobs:
                    readings/eval-assurance-latest.json \
                    readings/eval-journal-latest.json \
                    readings/eval-articles-latest.json \
+                   readings/catalog.json \
+                   readings/catalog.jsonld \
+                   datapackage.json \
                    evals/ \
                    journal/ \
                    readings/refusal-drift-latest.json \
@@ -385,6 +437,7 @@ jobs:
             python -m scripts.build_eval_assurance
             python -m scripts.build_eval_journal
             python -m scripts.build_eval_findings
+            python -m scripts.build_data_catalog
             python3 scripts/seal_readings.py || rc=$?
             if [ "${rc:-0}" = "1" ]; then exit 1; fi
             unset rc
@@ -404,7 +457,8 @@ jobs:
               tests/test_eval_assurance.py \
               tests/test_eval_journal.py \
               tests/test_eval_articles.py \
-              tests/test_eval_journal_renderer.py
+              tests/test_eval_journal_renderer.py \
+              tests/test_data_catalog.py::test_checked_in_catalog_views_do_not_drift_from_source_and_readings
             python -m scripts.anchor_roots
             python scripts/verify_public_surface.py
 
@@ -421,6 +475,9 @@ jobs:
                      readings/eval-assurance-latest.json \
                      readings/eval-journal-latest.json \
                      readings/eval-articles-latest.json \
+                     readings/catalog.json \
+                     readings/catalog.jsonld \
+                     datapackage.json \
                      evals/ \
                      journal/ \
                      readings/refusal-drift-latest.json \
