@@ -152,6 +152,19 @@ def _finite_float(value: str) -> float:
     return parsed
 
 
+def _strict_utc_timestamp(value: Any, label: str) -> datetime:
+    if type(value) is not str or not value:
+        raise RecoveryError(f"{label} must be a non-empty ISO-8601 UTC timestamp")
+    normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise RecoveryError(f"{label} is not a valid ISO-8601 timestamp") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() != timezone.utc.utcoffset(parsed):
+        raise RecoveryError(f"{label} must use UTC offset Z or +00:00")
+    return parsed.astimezone(timezone.utc)
+
+
 def _strict_json_object(raw: bytes, path: str) -> dict[str, Any]:
     try:
         decoded = raw.decode("utf-8")
@@ -484,6 +497,14 @@ def build_plan(repo: Path, spec: RecoverySpec, now: datetime) -> RecoveryPlan:
         expected_head=spec.authority_head,
         label="authority",
     )
+    authority_head_at = _strict_utc_timestamp(
+        authority.entries[-1].get("ts"), "authority ledger head timestamp"
+    )
+    if now < authority_head_at:
+        raise RecoveryError(
+            "--now must not precede the authority ledger head timestamp "
+            f"{authority_head_at.isoformat()}"
+        )
     divergent = _load_git_ledger(
         repo,
         commit=spec.divergent_commit,
@@ -508,6 +529,11 @@ def build_plan(repo: Path, spec: RecoverySpec, now: datetime) -> RecoveryPlan:
     cause_oid, cause_raw = _blob_at(repo, spec.introducing_merge)
     cause_entries = _parse_ledger(cause_raw, "introducing merge")
     cause = GitLedger(spec.introducing_merge, cause_oid, cause_raw, cause_entries)
+    if not divergent.raw.startswith(cause.raw):
+        raise RecoveryError(
+            "introducing merge ledger is not an exact prefix of the quarantined "
+            "divergent ledger"
+        )
     cause_common = _common_prefix(authority, cause)
     actual_common = _common_prefix(authority, divergent)
     if (
@@ -563,6 +589,9 @@ def build_plan(repo: Path, spec: RecoverySpec, now: datetime) -> RecoveryPlan:
             "introducing_merge": spec.introducing_merge,
             "introducing_merge_blob_oid": cause.blob_oid,
             "introducing_merge_ledger_sha256": _sha256(cause.raw),
+            "introducing_merge_entries": len(cause.entries),
+            "introducing_merge_head": cause.entries[-1]["entry_hash"],
+            "introducing_merge_is_prefix_of_divergent": True,
             "common_prefix_entries": actual_common,
             "common_head": common_head,
             "first_divergence_seq": spec.divergence_seq,
@@ -621,6 +650,16 @@ def _readings_unchanged(repo: Path, expected: tuple[ReadingSnapshot, ...]) -> bo
     return all(left.raw == right.raw for left, right in zip(current, expected))
 
 
+def _require_readings_unchanged(
+    repo: Path,
+    expected: tuple[ReadingSnapshot, ...],
+    *,
+    stage: str,
+) -> None:
+    if not _readings_unchanged(repo, expected):
+        raise RecoveryError(f"current readings changed {stage}")
+
+
 def execute(
     repo: Path,
     spec: RecoverySpec,
@@ -639,6 +678,11 @@ def execute(
     with ledger.ledger_lock(ledger_path):
         current_raw = _safe_regular_bytes(ledger_path, label="working ledger")
         receipt_raw = _optional_regular_bytes(receipt_path, "recovery receipt")
+        _require_readings_unchanged(
+            repo,
+            plan.reading_snapshots,
+            stage="during recovery planning",
+        )
         is_divergent = current_raw == plan.divergent_raw
         is_recovered = current_raw == plan.candidate_raw
         receipt_matches = receipt_raw == plan.receipt_raw
@@ -673,10 +717,6 @@ def execute(
                     raise RecoveryError(
                         "existing recovery receipt differs; refusing overwrite"
                     )
-                if not _readings_unchanged(repo, plan.reading_snapshots):
-                    raise RecoveryError(
-                        "current readings changed during recovery planning"
-                    )
                 # Receipt first: a crash can leave an unapplied plan, but never an
                 # unexplained ledger replacement. Both writes are durable/atomic.
                 if receipt_raw is None:
@@ -692,6 +732,12 @@ def execute(
                 status = "recovered"
         else:
             raise RecoveryError(f"unsupported recovery mode: {mode}")
+
+        _require_readings_unchanged(
+            repo,
+            plan.reading_snapshots,
+            stage="during recovery execution",
+        )
 
     recovered = plan.receipt["record"]["recovered_ledger"]
     return {

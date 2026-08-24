@@ -67,6 +67,7 @@ def _spec(
     tmp_path: Path,
     *,
     divergent_raw: bytes | None = None,
+    introducing_raw: bytes | None = None,
     no_divergence: bool = False,
 ) -> tuple[Path, recovery.RecoverySpec, bytes, bytes]:
     repo = tmp_path / "repo"
@@ -91,6 +92,9 @@ def _spec(
         events = common + ([("trusted", 3)] if no_divergence else [("forked", 30)])
         divergent_raw = _chain(tmp_path, "divergent.jsonl", events)
 
+    if introducing_raw is None:
+        introducing_raw = divergent_raw
+
     # The first parent is the protected authority. The second carries the
     # alternate ledger; the synthetic merge tree selects that alternate blob.
     (readings / "readings-ledger.jsonl").write_bytes(
@@ -101,10 +105,17 @@ def _spec(
     base = _git(repo, "rev-parse", "HEAD")
     authority_tree = _write_tree(repo, authority_raw)
     authority = _commit_tree(repo, authority_tree, base, message="authority")
-    divergent_tree = _write_tree(repo, divergent_raw)
-    side = _commit_tree(repo, divergent_tree, base, message="side")
-    merge = _commit_tree(repo, divergent_tree, authority, side, message="merge")
-    _git(repo, "reset", "--hard", "-q", merge)
+    introducing_tree = _write_tree(repo, introducing_raw)
+    side = _commit_tree(repo, introducing_tree, base, message="side")
+    merge = _commit_tree(repo, introducing_tree, authority, side, message="merge")
+    if introducing_raw == divergent_raw:
+        divergent = merge
+    else:
+        divergent_tree = _write_tree(repo, divergent_raw)
+        divergent = _commit_tree(
+            repo, divergent_tree, merge, message="later divergent ledger"
+        )
+    _git(repo, "reset", "--hard", "-q", divergent)
 
     authority_entries, authority_head = _ledger_facts(
         authority_raw, tmp_path, "authority"
@@ -118,7 +129,7 @@ def _spec(
         authority_sha256=hashlib.sha256(authority_raw).hexdigest(),
         authority_entries=authority_entries,
         authority_head=authority_head,
-        divergent_commit=merge,
+        divergent_commit=divergent,
         divergent_sha256=hashlib.sha256(divergent_raw).hexdigest(),
         divergent_entries=divergent_entries,
         divergent_head=divergent_head,
@@ -176,6 +187,7 @@ def test_deterministic_recovery_quarantines_tail_and_reseals_current_readings(
     assert quarantine["tail_first_seq"] == 2
     assert quarantine["disposition"].startswith("excluded-from-recovered-chain")
     assert record["recovered_ledger"]["base"].endswith("no-divergent-tail-spliced")
+    assert record["fork"]["introducing_merge_is_prefix_of_divergent"] is True
 
     assert (
         recovery.execute(repo, spec, NOW, receipt_path=receipt_path, mode="apply")[
@@ -220,6 +232,37 @@ def test_identical_ledgers_are_not_misclassified_as_a_fork(tmp_path: Path) -> No
 
     with pytest.raises(recovery.RecoveryError, match="ledgers do not diverge"):
         recovery.build_plan(repo, spec, NOW)
+
+
+def test_introducing_merge_must_be_exact_prefix_of_quarantined_chain(
+    tmp_path: Path,
+) -> None:
+    introducing_raw = _chain(
+        tmp_path,
+        "unrelated-introducing.jsonl",
+        [("historic-a", 1), ("historic-b", 2), ("different-fork", 31)],
+    )
+    repo, spec, _, _ = _spec(
+        tmp_path / "fixture",
+        introducing_raw=introducing_raw,
+    )
+
+    with pytest.raises(
+        recovery.RecoveryError,
+        match="introducing merge ledger is not an exact prefix",
+    ):
+        recovery.build_plan(repo, spec, NOW)
+
+
+def test_recovery_clock_cannot_precede_authority_head(tmp_path: Path) -> None:
+    repo, spec, _, _ = _spec(tmp_path)
+    before_authority_head = datetime(2026, 8, 20, 1, 59, tzinfo=timezone.utc)
+
+    with pytest.raises(
+        recovery.RecoveryError,
+        match="must not precede the authority ledger head timestamp",
+    ):
+        recovery.build_plan(repo, spec, before_authority_head)
 
 
 def test_broken_divergent_chain_is_rejected_even_when_its_hash_matches(
@@ -278,3 +321,111 @@ def test_check_rejects_receipt_equivocation(tmp_path: Path) -> None:
 
     with pytest.raises(recovery.RecoveryError, match="receipt"):
         recovery.execute(repo, spec, NOW, receipt_path=receipt, mode="check")
+
+
+@pytest.mark.parametrize("mode", ["dry-run", "apply"])
+def test_write_modes_revalidate_readings_inside_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+) -> None:
+    repo, spec, _, divergent_raw = _spec(tmp_path)
+    receipt = repo / "readings" / "audit" / "recovery.json"
+    ledger_path = repo / recovery.LEDGER_REPOSITORY_PATH
+    monkeypatch.setattr(recovery, "_readings_unchanged", lambda *_args: False)
+
+    with pytest.raises(
+        recovery.RecoveryError,
+        match="current readings changed during recovery planning",
+    ):
+        recovery.execute(repo, spec, NOW, receipt_path=receipt, mode=mode)
+
+    assert ledger_path.read_bytes() == divergent_raw
+    assert not receipt.exists()
+
+
+def test_check_revalidates_readings_after_planning(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, spec, _, _ = _spec(tmp_path)
+    receipt = repo / "readings" / "audit" / "recovery.json"
+    recovery.execute(repo, spec, NOW, receipt_path=receipt, mode="apply")
+    original_optional = recovery._optional_regular_bytes
+    alpha = repo / "readings" / "alpha-latest.json"
+
+    def mutate_after_plan(path: Path, label: str) -> bytes | None:
+        raw = original_optional(path, label)
+        if label == "recovery receipt":
+            alpha.write_text('{"value":99}\n', encoding="utf-8")
+        return raw
+
+    monkeypatch.setattr(recovery, "_optional_regular_bytes", mutate_after_plan)
+    with pytest.raises(
+        recovery.RecoveryError,
+        match="current readings changed during recovery planning",
+    ):
+        recovery.execute(repo, spec, NOW, receipt_path=receipt, mode="check")
+
+
+def test_apply_detects_reading_change_after_ledger_install(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, spec, _, _ = _spec(tmp_path)
+    receipt = repo / "readings" / "audit" / "recovery.json"
+    ledger_path = repo / recovery.LEDGER_REPOSITORY_PATH
+    alpha = repo / "readings" / "alpha-latest.json"
+    plan = recovery.build_plan(repo, spec, NOW)
+    original_replace = recovery.ledger.atomic_replace_bytes
+
+    def mutate_after_replace(path: Path, raw: bytes, *, mode: int = 0o644) -> None:
+        original_replace(path, raw, mode=mode)
+        if Path(path) == ledger_path:
+            alpha.write_text('{"value":99}\n', encoding="utf-8")
+
+    monkeypatch.setattr(
+        recovery.ledger,
+        "atomic_replace_bytes",
+        mutate_after_replace,
+    )
+    with pytest.raises(
+        recovery.RecoveryError,
+        match="current readings changed during recovery execution",
+    ):
+        recovery.execute(repo, spec, NOW, receipt_path=receipt, mode="apply")
+
+    assert ledger_path.read_bytes() == plan.candidate_raw
+    assert receipt.read_bytes() == plan.receipt_raw
+
+
+def test_receipt_first_crash_is_recoverable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, spec, _, divergent_raw = _spec(tmp_path)
+    receipt = repo / "readings" / "audit" / "recovery.json"
+    ledger_path = repo / recovery.LEDGER_REPOSITORY_PATH
+    plan = recovery.build_plan(repo, spec, NOW)
+    original_replace = recovery.ledger.atomic_replace_bytes
+
+    def fail_ledger_replace(path: Path, raw: bytes, *, mode: int = 0o644) -> None:
+        if Path(path) == ledger_path:
+            raise OSError("simulated crash before ledger replacement")
+        original_replace(path, raw, mode=mode)
+
+    monkeypatch.setattr(
+        recovery.ledger,
+        "atomic_replace_bytes",
+        fail_ledger_replace,
+    )
+    with pytest.raises(OSError, match="simulated crash"):
+        recovery.execute(repo, spec, NOW, receipt_path=receipt, mode="apply")
+
+    assert receipt.read_bytes() == plan.receipt_raw
+    assert ledger_path.read_bytes() == divergent_raw
+
+    monkeypatch.setattr(recovery.ledger, "atomic_replace_bytes", original_replace)
+    result = recovery.execute(repo, spec, NOW, receipt_path=receipt, mode="apply")
+    assert result["status"] == "recovered"
+    assert ledger_path.read_bytes() == plan.candidate_raw

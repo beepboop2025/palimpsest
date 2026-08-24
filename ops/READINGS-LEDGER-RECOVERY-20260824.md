@@ -27,8 +27,14 @@ into the recovered chain.
    publication commit `9dd8d7f…`, 4,781 entries, head `f96b408…`, and ledger
    SHA-256 `635690f…`. If the host authority has legitimately advanced, stop:
    this incident plan is stale and must not overwrite or rewind that host.
-4. Choose one UTC recovery clock after the current readings graph is final.
-   Reuse exactly the same value for dry run, apply, and check.
+4. Finish every write-mode builder that can change a current `*-latest.json`
+   reading, including deterministic replay, but **do not run
+   `seal_readings.py`**: normal sealing would extend the rejected tail and make
+   the recovery correctly refuse it. Build the catalog before recovery too.
+5. Choose one UTC recovery clock after the current readings graph is final and
+   no earlier than the authority head timestamp
+   `2026-08-22T10:37:43.736918+00:00`. Reuse exactly the same value for dry run,
+   apply, and every later recovery check.
 
 ## Repository recovery
 
@@ -40,10 +46,37 @@ RECOVERY_CLOCK='2026-08-24T07:30:00Z'
 python3 scripts/recover_readings_ledger.py --now "$RECOVERY_CLOCK" --dry-run
 python3 scripts/recover_readings_ledger.py --now "$RECOVERY_CLOCK"
 python3 scripts/recover_readings_ledger.py --now "$RECOVERY_CLOCK" --check
-python3 scripts/seal_readings.py --check
+COVERAGE=$(python3 scripts/seal_readings.py --coverage)
+printf '%s\n' "$COVERAGE"
+printf '%s\n' "$COVERAGE" | python3 -c '
+import json, sys
+value = json.load(sys.stdin)
+ok = value.get("verified") is True and all(
+    value.get(field) == [] for field in ("unsealed", "drifted", "unreadable")
+)
+raise SystemExit(0 if ok else "reading coverage is not exact")
+'
+SEAL_CHECK=$(python3 scripts/seal_readings.py --check)
+printf '%s\n' "$SEAL_CHECK"
+case "$SEAL_CHECK" in
+  "would seal 0, unchanged "*) ;;
+  *) echo "recovered ledger does not seal the exact current readings" >&2; exit 1 ;;
+esac
+python3 scripts/recover_readings_ledger.py --now "$RECOVERY_CLOCK" --check
 git diff --check -- readings/readings-ledger.jsonl \
   readings/audit/readings-ledger-recovery-20260824.json
 ```
+
+The coverage document must report `verified: true` with empty `unsealed`,
+`drifted`, and `unreadable` arrays. An exit-zero `seal_readings.py --check` is
+not sufficient on its own: that command also exits zero when it reports that it
+*would* append a valid new seal, hence the explicit `would seal 0` assertion.
+
+After apply, run only check-mode/fixed-clock verification. If any producer
+changes a current reading, stop and preserve the worktree for review; do not
+paper over the race by invoking normal sealing. The final recovery `--check`
+must be the last reading-sensitive operation before the two recovery artifacts
+are committed together.
 
 The apply step may mutate only these two data paths:
 
@@ -53,7 +86,8 @@ The apply step may mutate only these two data paths:
   authority, quarantine, fork, current-reading tree, and recovered-chain receipt.
 
 Commit both paths in the same data candidate. Do not manually edit either file.
-Run the normal fixed-clock publication checks before push.
+Run the normal fixed-clock publication checks before push, without invoking a
+write-mode current-reading producer after recovery.
 
 ## Host reconciliation
 
@@ -84,6 +118,9 @@ therefore reproduces the exact quarantined bytes for audit.
 
 There is no automatic rollback after publication: returning to the divergent
 tail would recreate the fork. Before publication, a failed apply is safe to
-retry with the same clock. A receipt without a replaced ledger means the crash
-occurred between the receipt-first and ledger writes; the same command verifies
-the receipt and completes the atomic ledger replacement.
+retry with the same clock when the frozen current readings remain byte-identical.
+A receipt without a replaced ledger means the crash occurred between the
+receipt-first and ledger writes; the same command verifies the receipt and
+completes the ledger replacement. Each file replacement is individually durable
+and atomic; receipt-first ordering makes the two-file operation crash-recoverable
+rather than pretending the filesystem offers a two-file atomic transaction.
