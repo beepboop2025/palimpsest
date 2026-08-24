@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-002af4b4f668f184a4ebc443",
+  "analysis_id": "instrumentv-85de34daa80d4079714eff97",
   "signal_id": "weibo-hotsearch",
   "story_url": "https://palimpsest.info/news/weibo-hot-search-join/",
   "url": "https://palimpsest.info/news/weibo-hot-search-join/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, gdelt, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, gdelt, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
           "citation_ids": [
             "instrumentevidence-7dc6b96eac91ece2a15e"
           ]
@@ -111,12 +111,6 @@
     {
       "signal_id": "event-flags",
       "section": "command",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "ddti",
-      "section": "attention",
       "status": "live",
       "priority": "high"
     },
@@ -203,6 +197,12 @@
       "section": "economy",
       "status": "live",
       "priority": "high"
+    },
+    {
+      "signal_id": "generative-firewall",
+      "section": "models",
+      "status": "live",
+      "priority": "lead"
     }
   ],
   "review_rank": {

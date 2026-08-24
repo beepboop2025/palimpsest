@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 25 are live. Health qualifiers: 4 degraded, 10 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 24 are live. Health qualifiers: 4 degraded, 11 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-24T10:34:36Z",
+  "generated_at": "2026-08-24T13:31:37Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "d42a2b4e0e94e078a54c97062214073d27d92eaf",
+  "source_commit": "db592f3a591b6429e7521fb3b391d12ab8fe4497",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 25,
+    "live": 24,
     "status": "degraded",
     "counts": {
-      "live": 25,
+      "live": 24,
       "degraded": 4,
-      "stale": 10,
+      "stale": 11,
       "missing": 0,
       "corrupt": 0
     }
@@ -341,20 +341,20 @@
       "slug": "deletion-directive-term-index",
       "url": "https://palimpsest.info/news/deletion-directive-term-index/",
       "signal_id": "ddti",
-      "headline": "The directive index now tracks 218 censorship terms",
-      "dek": "The index ranks provenance-bound terms found in documented directives and reports of scrubbed material.",
+      "headline": "Deletion-directive term index: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 1,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T04:07:05Z",
       "modified_at": "2026-08-24T04:07:05Z",
-      "claim_fingerprint": "sha256:d0987fc00746e9a74f6e72747d73cde354a36d86275488f7ced4316f26e75d67",
+      "claim_fingerprint": "sha256:d5db3d20835b2ee7052df01b54094eb84f4f4388b984bd0c758eb1ea1be303e4",
       "metric": {
-        "label": "terms ranked",
-        "value": 218,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -362,8 +362,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current deletion-directive index ranks 218 terms with documented censorship provenance."
+          "type": "availability",
+          "statement": "No current finding is published for Deletion-directive term index because the source status is stale."
         }
       ],
       "evidence": {
@@ -380,6 +380,7 @@
         "version": null
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The index reflects documented and collected directives; it is not a census of every censored term."
       ],
       "related_signal_ids": [
