@@ -211,9 +211,16 @@ is transport retention, not the source of durable lineage. Raw WDI responses
 remain review artifacts rather than a permanent public archive.
 
 The refresh workflow has no schedule and never writes these governed paths to
-`main`. A manual run creates a unique candidate branch and PR, and never self-
-merges it. Registry expansion or data revision therefore becomes authoritative
-only through the same reviewed GitHub merge-commit path checked by the chain.
+`main`. A manual run creates and validates a unique candidate branch, pushes it,
+and prints an exact GitHub compare/new-PR URL. The Actions token does not create
+or approve the PR. A human repository operator must create the PR, approve any
+held workflow run, wait for the complete hosted contract, and select GitHub
+**Create a merge commit**. Squash, rebase, auto-merge and direct-main pushes are
+not valid lineage transitions. After merge, the operator re-fetches the bounded
+raw GitHub commit response and verifies author `beepboop2025`, committer
+`web-flow`, at least two parents and signature verification `verified=true` with
+reason `valid`. Registry expansion or data revision becomes authoritative only
+through that reviewed and independently rechecked merge-commit path.
 
 The cross-repository lineage contract is exact. The handoff's
 `revision_lineage` object has only `mode`, `chain`,

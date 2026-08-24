@@ -26,6 +26,14 @@ from core.econ_ledger import LedgerIntegrityError
 
 
 ROOT = Path(__file__).resolve().parents[1]
+GIT_EXECUTABLE = "/usr/bin/git"
+GIT_ENVIRONMENT = {
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_NO_REPLACE_OBJECTS": "1",
+    "GIT_TERMINAL_PROMPT": "0",
+    "LC_ALL": "C",
+}
 DEFAULT_LEDGER = ROOT / "data" / "review" / "china-econ-wdi-observations.jsonl"
 DEFAULT_AVAILABILITY_RECEIPT = ROOT / "data" / "review" / "china-econ-wdi-latest.json"
 DEFAULT_POLICY = ROOT / "config" / "china_econ_source_policy.json"
@@ -131,10 +139,12 @@ def _positive_integer(value: str) -> int:
 
 def _git_head() -> str:
     completed = subprocess.run(
-        ["git", "rev-parse", "--verify", "HEAD"],
+        [GIT_EXECUTABLE, "--no-replace-objects", "rev-parse", "--verify", "HEAD"],
         cwd=ROOT,
         check=False,
         capture_output=True,
+        env=GIT_ENVIRONMENT,
+        stdin=subprocess.DEVNULL,
         text=True,
         timeout=10,
     )

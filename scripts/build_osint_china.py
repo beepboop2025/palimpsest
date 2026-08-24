@@ -734,6 +734,7 @@ EXCLUDED_LATEST_FILES = frozenset(
         "china-censorship-analysis-latest.json",
         "china-econ-forecast-latest.json",
         "china-econ-observations-latest.json",
+        "china-econ-wdi-latest.json",
         "china-economic-pulse-latest.json",
         "china-index-latest.json",
         "china-situation-latest.json",

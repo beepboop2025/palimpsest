@@ -16,6 +16,7 @@ from collectors.world_bank_wdi import (
     WDIError,
     WDIRegistry,
     build_url,
+    collect,
     fetch_bytes,
     load_registry,
     parse_response,
@@ -199,6 +200,51 @@ def test_fetch_uses_hardened_fixed_host_transport_without_redirects():
             },
         )
     ]
+
+
+def test_collect_samples_injected_clock_only_after_exact_fetch_returns():
+    registry = _small_registry()
+    state = {"fetched": False, "clock_calls": 0}
+
+    def delayed_fetch(_url: str) -> bytes:
+        state["fetched"] = True
+        return _response()
+
+    def post_fetch_clock() -> datetime:
+        assert state["fetched"] is True
+        state["clock_calls"] += 1
+        return COLLECTED_AT
+
+    parsed = collect(
+        registry,
+        start_year=2023,
+        end_year=2024,
+        fetch=delayed_fetch,
+        clock=post_fetch_clock,
+    )
+
+    assert state["clock_calls"] == 1
+    assert {row.collected_at for row in parsed.observations} == {COLLECTED_AT}
+
+
+def test_collect_rejects_an_already_evaluated_clock_before_fetch():
+    fetch_calls = 0
+
+    def unexpected_fetch(_url: str) -> bytes:
+        nonlocal fetch_calls
+        fetch_calls += 1
+        return _response()
+
+    with pytest.raises(WDIError, match="clock must be callable"):
+        collect(
+            _small_registry(),
+            start_year=2023,
+            end_year=2024,
+            fetch=unexpected_fetch,
+            clock=COLLECTED_AT,  # type: ignore[arg-type]
+        )
+
+    assert fetch_calls == 0
 
 
 def test_parser_preserves_history_provenance_three_clocks_and_null_availability():

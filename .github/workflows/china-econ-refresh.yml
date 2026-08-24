@@ -7,13 +7,13 @@ name: Refresh China econ telemetry
 # raw responses remain in the attested review handoff rather than Pages.
 
 on:
-  # Deliberately manual through this release. Every refresh opens a PR; no
-  # scheduled or action-token path may write the governed WDI files to main.
+  # Deliberately manual through this release. Every refresh pushes a uniquely
+  # named candidate branch for a human to turn into a PR; no scheduled or
+  # action-token path may write the governed WDI files to main.
   workflow_dispatch: {}
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: china-econ-refresh
@@ -143,9 +143,7 @@ jobs:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
-      - name: Commit and open one reviewed refresh PR if the signal changed
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Commit and push one human-review candidate if the signal changed
         run: |
           set -euo pipefail
           git add \
@@ -190,9 +188,18 @@ jobs:
           else
             git commit -m "data: propose China econ telemetry refresh ($(date -u +%FT%TZ))"
             git push --set-upstream origin "HEAD:refs/heads/$REFRESH_BRANCH"
-            gh pr create \
-              --base main \
-              --head "$REFRESH_BRANCH" \
-              --title "data: review China economic telemetry refresh" \
-              --body $'Automated reviewed-input candidate.\n\nThis PR never self-merges. Merge only through the GitHub reviewed merge-commit path after the complete hosted contract is green.'
+            compare_url="https://github.com/${GITHUB_REPOSITORY}/compare/main...${REFRESH_BRANCH}?expand=1"
+            {
+              echo "## China economic refresh human handoff"
+              echo
+              echo "Candidate branch: \`$REFRESH_BRANCH\`"
+              echo
+              echo "Open the exact compare page and create the PR: [$compare_url]($compare_url)"
+              echo
+              echo "A human repository operator must approve any held workflow run, wait for the complete hosted contract, and merge with GitHub **Create a merge commit** only. Do not squash, rebase, auto-merge, or push these governed paths directly to main."
+              echo
+              echo "After merge, independently verify the bounded raw GitHub commit response: author \`beepboop2025\`, committer \`web-flow\`, at least two parents, and signature verification \`verified=true\` with reason \`valid\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "candidate branch: $REFRESH_BRANCH"
+            echo "human compare URL: $compare_url"
           fi
