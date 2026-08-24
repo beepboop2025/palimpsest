@@ -292,4 +292,4 @@ jobs:
           steps.retry_push.outcome == 'success') }}
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
-        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+        run: python scripts/dispatch_publication_contract.py --scope source "$(git rev-parse HEAD)"

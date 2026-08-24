@@ -183,8 +183,9 @@ jobs:
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
       - name: Read the candidate public surface before synchronization
-        # This repository is served in full by Pages, so the push below is the publication
-        # act. Check once before retaining the expensive model results in a candidate, then
+        # The push below advances auditable Git state; Pages deploys only an exact
+        # SHA after its complete-graph contract passes, so this is the pre-push
+        # boundary. Check once before retaining the expensive model results in a candidate, then
         # again after the candidate has been rebuilt on the actual public chain head.
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
@@ -377,7 +378,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope source
           publish_rc=$?
           set -e
           printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
@@ -398,7 +399,7 @@ jobs:
           steps.push_attempt.outputs.exit_code == '76'
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
-        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+        run: python scripts/dispatch_publication_contract.py --scope source "$(git rev-parse HEAD)"
 
       - name: Reattest, reverify, and retry after a push race
         if: steps.push_attempt.outputs.exit_code == '75'
@@ -489,7 +490,7 @@ jobs:
             git commit -C "$measurement_commit"
 
             set +e
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope source
             publish_rc=$?
             set -e
             case "$publish_rc" in
@@ -500,7 +501,7 @@ jobs:
                 ;;
               76)
                 PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
-                  python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+                  python scripts/dispatch_publication_contract.py --scope source "$(git rev-parse HEAD)"
                 exit 0
                 ;;
               *) exit "$publish_rc" ;;

@@ -1039,11 +1039,12 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
 
 def test_custom_push_workflows_preflight_and_dispatch_only_a_successful_push() -> None:
     workflow_root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
-    for workflow_name in (
-        "data-darkness-refresh.yml",
-        "newswire-refresh.yml",
-        "research-corpus-refresh.yml",
-    ):
+    workflows = {
+        "data-darkness-refresh.yml": "complete",
+        "newswire-refresh.yml": "complete",
+        "research-corpus-refresh.yml": "source",
+    }
+    for workflow_name, scope in workflows.items():
         workflow = yaml.safe_load(
             (workflow_root / workflow_name).read_text(encoding="utf-8")
         )
@@ -1067,7 +1068,7 @@ def test_custom_push_workflows_preflight_and_dispatch_only_a_successful_push() -
             for index, step in enumerate(steps)
             if isinstance(step, dict)
             and step.get("run")
-            == 'python scripts/dispatch_publication_contract.py --scope complete "$(git rev-parse HEAD)"'
+            == f'python scripts/dispatch_publication_contract.py --scope {scope} "$(git rev-parse HEAD)"'
         ]
         assert len(preflights) == len(dispatches) == 1, workflow_name
         preflight_index, preflight = preflights[0]
@@ -1141,12 +1142,12 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
 def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -> None:
     workflow_root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
     controllers = {
-        "board-alarm-refresh.yml": "publish",
-        "erasure-refresh.yml": "push_attempt",
-        "gfi-refresh.yml": "push_attempt",
-        "osint-china-refresh.yml": "push_attempt",
+        "board-alarm-refresh.yml": ("publish", "complete"),
+        "erasure-refresh.yml": ("push_attempt", "source"),
+        "gfi-refresh.yml": ("push_attempt", "complete"),
+        "osint-china-refresh.yml": ("push_attempt", "complete"),
     }
-    for workflow_name, step_id in controllers.items():
+    for workflow_name, (step_id, scope) in controllers.items():
         source = (workflow_root / workflow_name).read_text(encoding="utf-8")
         workflow = yaml.safe_load(source)
         job = next(iter(workflow["jobs"].values()))
@@ -1154,6 +1155,7 @@ def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -
         attempt = next(step for step in steps if step.get("id") == step_id)
         assert attempt["continue-on-error"] is True, workflow_name
         assert "printf 'exit_code=%s\\n'" in attempt["run"], workflow_name
+        assert f"--contract-scope {scope}" in attempt["run"], workflow_name
         assert f"steps.{step_id}.outputs.exit_code == '76'" in source
         assert f"steps.{step_id}.outputs.exit_code != '76'" in source
         dispatch_retries = [
@@ -1162,7 +1164,7 @@ def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -
             if step.get("name") == "Retry the exact contract event without rebuilding"
         ]
         assert len(dispatch_retries) == 1, workflow_name
-        assert "--scope complete" in dispatch_retries[0]["run"]
+        assert f"--scope {scope}" in dispatch_retries[0]["run"]
         for step in steps:
             if "publication race" in step.get("name", "") or "push race" in step.get(
                 "name", ""
