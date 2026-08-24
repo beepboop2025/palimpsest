@@ -8,6 +8,7 @@
 <link rel="canonical" href="https://palimpsest.info/developers.html">
 <link rel="service-desc" type="application/vnd.oai.openapi+json" href="https://palimpsest.info/openapi.json" title="Palimpsest Public Readings API">
 <link rel="alternate" type="application/json" href="https://palimpsest.info/product-card.json" title="Palimpsest product card">
+<link rel="alternate" type="application/ai-catalog+json" href="https://palimpsest.info/.well-known/ai-catalog.json" title="Palimpsest AI catalog">
 <meta name="robots" content="index, follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
@@ -25,7 +26,7 @@
   "@type": "TechArticle",
   "headline": "Connect Palimpsest's public API and MCP server",
   "description": "A quickstart for Palimpsest's three read-only applications: censorship measurement, the China Economic Observatory and verifiable model evaluation.",
-  "dateModified": "2026-08-14",
+  "dateModified": "2026-08-24",
   "mainEntityOfPage": "https://palimpsest.info/developers.html",
   "author": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
   "publisher": {"@type": "Organization", "name": "Palimpsest", "url": "https://palimpsest.info/"},
@@ -198,6 +199,7 @@
       <a class="ps-btn ps-btn--ghost" href="/data.html">Browse the data</a>
       <a class="ps-btn ps-btn--ghost" href="#scamshield">ScamShield pack</a>
       <a class="ps-btn ps-btn--ghost" href="/product-card.json">Product card</a>
+      <a class="ps-btn ps-btn--ghost" href="/.well-known/ai-catalog.json">AI catalog</a>
     </div>
     <div class="proof ps-stagger" aria-label="Service facts">
       <div class="ps-p1 ps-reveal"><b>6 tools</b><span>measurements + newsroom evidence</span></div>
@@ -205,6 +207,22 @@
       <div class="ps-p1 ps-reveal"><b>Read-only</b><span>timestamps and gaps stay visible</span></div>
     </div>
   </header>
+
+  <section class="ps-defer" id="discovery">
+    <h2 class="ps-section-head">Discover the exact production boundary</h2>
+    <p class="dev-copy">The <a href="/.well-known/ai-catalog.json">AI catalog</a> is the
+    machine entry point for the deployed MCP <code>1.8.1</code> service, this site’s
+    <a href="/openapi.json">independently versioned OpenAPI document</a>, the China
+    observation ledger and manifest, and the canonical
+    <a href="https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence">Financial Evidence Agent Skill</a>.
+    Use the catalog’s production boundary instead of inferring deployment from a newer
+    repository version string.</p>
+    <div class="connect-grid">
+      <article class="connect ps-p2 ps-reveal"><p class="ps-label">China money markets</p><h3>CFETS observations</h3><p class="dev-copy"><a href="/china/money-markets/">Read the scoped guide</a> for repo fixings, SHIBOR, CNY parity and the three evidence clocks.</p></article>
+      <article class="connect ps-p2 ps-reveal"><p class="ps-label">China capital markets</p><h3>Stock Connect only</h3><p class="dev-copy"><a href="/china/capital-markets/">Read the coverage guide</a>. Palimpsest does not claim general capital-market coverage or estimate unavailable northbound flow direction.</p></article>
+      <article class="connect ps-p2 ps-reveal"><p class="ps-label">API workflow</p><h3>REST or MCP</h3><p class="dev-copy"><a href="/china-economy-api/">Choose the smallest sufficient surface</a> and preserve release, collection, revision and abstention state.</p></article>
+    </div>
+  </section>
 
   <section id="connect" class="ps-defer">
     <h2 class="ps-section-head">Connect in under a minute</h2>
