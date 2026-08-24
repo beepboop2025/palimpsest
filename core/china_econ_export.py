@@ -51,6 +51,8 @@ WDI_RIGHTS_EVIDENCE_URL = WDI_CATALOG_URL
 WDI_ATTRIBUTION = "World Bank, World Development Indicators"
 PUBLIC_WDI_LINEAGE_MODE = "git_tracked_append_only"
 PUBLIC_WDI_LEDGER_PATH = "readings/china-econ-wdi-observations.jsonl"
+PUBLIC_WDI_AVAILABILITY_PATH = "readings/china-econ-wdi-latest.json"
+WDI_LINEAGE_TRANSITION_SCHEMA = "palimpsest.china-economic-lineage-transition.v1"
 MAX_POLICY_BYTES = 256 * 1024
 MAX_SERIES_REGISTRY_BYTES = 2 * 1024 * 1024
 MAX_AVAILABILITY_RECEIPT_BYTES = 8 * 1024 * 1024
@@ -272,6 +274,7 @@ class AvailabilityReceipt:
     ledger_before: Mapping[str, Any]
     ledger_after: Mapping[str, Any]
     ledger_coverage: Mapping[str, Any]
+    appended_observations: int
     publication_state: str
     revision_lineage_mode: str
     revision_lineage_ledger_path: str
@@ -1118,6 +1121,7 @@ def _parse_availability_receipt(
         ledger_before=ledger_before,
         ledger_after=ledger_after,
         ledger_coverage=dict(ledger_coverage),
+        appended_observations=appended,
         publication_state=publication_state,
         revision_lineage_mode=lineage["mode"],
         revision_lineage_ledger_path=lineage["ledger_path"],
@@ -1204,6 +1208,208 @@ def _expected_ledger_coverage(
             if observations
             else None
         ),
+    }
+
+
+def validate_public_wdi_lineage_transition(
+    *,
+    first_parent_sha: str,
+    current_ledger_bytes: bytes,
+    current_availability_receipt_bytes: bytes,
+    previous_ledger_bytes: bytes | None,
+    previous_availability_receipt_bytes: bytes | None,
+    previous_ledger_history_sha: str | None,
+    previous_availability_history_sha: str | None,
+    series_registry_path: str | Path,
+) -> dict[str, Any]:
+    """Prove an exact first-parent append-only transition for a public handoff."""
+
+    if type(first_parent_sha) is not str or not _COMMIT_SHA.fullmatch(first_parent_sha):
+        raise ChinaEconExportError("first-parent SHA is invalid")
+    if (previous_ledger_bytes is None) != (
+        previous_availability_receipt_bytes is None
+    ):
+        raise ChinaEconExportError(
+            "first-parent WDI ledger and availability receipt must exist together"
+        )
+    for history_sha, label in (
+        (previous_ledger_history_sha, "ledger"),
+        (previous_availability_history_sha, "availability receipt"),
+    ):
+        if history_sha is not None and (
+            type(history_sha) is not str or not _COMMIT_SHA.fullmatch(history_sha)
+        ):
+            raise ChinaEconExportError(
+                f"first-parent {label} history SHA is invalid"
+            )
+    registry = load_market_registry(series_registry_path)
+    current_observations = _parse_ledger_bytes(current_ledger_bytes)
+    current = _parse_availability_receipt(
+        current_availability_receipt_bytes,
+        registry=registry,
+    )
+    current_ledger_receipt = {
+        "sha256": hashlib.sha256(current_ledger_bytes).hexdigest(),
+        "bytes": len(current_ledger_bytes),
+        "records": len(current_observations),
+    }
+    if (
+        current.publication_state != "public_context_only"
+        or not current.durable_cross_run
+        or current.revision_lineage_mode != PUBLIC_WDI_LINEAGE_MODE
+        or current.revision_lineage_ledger_path != PUBLIC_WDI_LEDGER_PATH
+        or current.ledger_after != current_ledger_receipt
+        or current.ledger_coverage != _expected_ledger_coverage(current_observations)
+    ):
+        raise ChinaEconExportError(
+            "current public WDI receipt is not bound to its exact durable ledger"
+        )
+    newest_current_collection = max(
+        (row.collected_at.astimezone(UTC) for row in current_observations),
+        default=None,
+    )
+    if (
+        newest_current_collection is not None
+        and newest_current_collection > current.generated_at_value
+    ):
+        raise ChinaEconExportError(
+            "current public WDI receipt predates its newest ledger collection clock"
+        )
+
+    empty_ledger_receipt = {
+        "sha256": hashlib.sha256(b"").hexdigest(),
+        "bytes": 0,
+        "records": 0,
+    }
+    previous_ledger_receipt: dict[str, Any]
+    previous_availability_summary: dict[str, Any] | None
+    if previous_ledger_bytes is None:
+        if (
+            previous_ledger_history_sha is not None
+            or previous_availability_history_sha is not None
+        ):
+            raise ChinaEconExportError(
+                "initial public WDI seed is forbidden after either path appeared in ancestry"
+            )
+        if (
+            current.ledger_before != empty_ledger_receipt
+            or current.appended_observations != current_ledger_receipt["records"]
+        ):
+            raise ChinaEconExportError(
+                "initial public WDI seed does not start from the exact empty ledger"
+            )
+        state = "initial_seed"
+        transition_records = current_ledger_receipt["records"]
+        previous_ledger_receipt = {
+            "present": False,
+            "path": PUBLIC_WDI_LEDGER_PATH,
+            **empty_ledger_receipt,
+        }
+        previous_availability_summary = None
+    else:
+        if (
+            previous_ledger_history_sha is None
+            or previous_availability_history_sha is None
+        ):
+            raise ChinaEconExportError(
+                "first-parent WDI paths lack their ancestry history proof"
+            )
+        previous_observations = _parse_ledger_bytes(previous_ledger_bytes)
+        previous = _parse_availability_receipt(
+            previous_availability_receipt_bytes,
+            registry=registry,
+        )
+        exact_previous_ledger = {
+            "sha256": hashlib.sha256(previous_ledger_bytes).hexdigest(),
+            "bytes": len(previous_ledger_bytes),
+            "records": len(previous_observations),
+        }
+        if (
+            previous.publication_state != "public_context_only"
+            or not previous.durable_cross_run
+            or previous.revision_lineage_mode != PUBLIC_WDI_LINEAGE_MODE
+            or previous.revision_lineage_ledger_path != PUBLIC_WDI_LEDGER_PATH
+            or previous.ledger_after != exact_previous_ledger
+            or previous.ledger_coverage
+            != _expected_ledger_coverage(previous_observations)
+        ):
+            raise ChinaEconExportError(
+                "first-parent public WDI receipt is not bound to its exact ledger"
+            )
+        newest_previous_collection = max(
+            (row.collected_at.astimezone(UTC) for row in previous_observations),
+            default=None,
+        )
+        if (
+            newest_previous_collection is not None
+            and newest_previous_collection > previous.generated_at_value
+        ):
+            raise ChinaEconExportError(
+                "first-parent public WDI receipt predates its ledger collection clock"
+            )
+        if current.generated_at_value < previous.generated_at_value:
+            raise ChinaEconExportError(
+                "current public WDI receipt clock moves behind its first parent"
+            )
+        if not current_ledger_bytes.startswith(previous_ledger_bytes):
+            raise ChinaEconExportError(
+                "current public WDI ledger is not an exact first-parent byte prefix extension"
+            )
+        transition_records = (
+            current_ledger_receipt["records"] - exact_previous_ledger["records"]
+        )
+        if (
+            current_ledger_bytes == previous_ledger_bytes
+            and current_availability_receipt_bytes
+            == previous_availability_receipt_bytes
+        ):
+            state = "unchanged"
+        else:
+            if (
+                current.ledger_before != exact_previous_ledger
+                or current.appended_observations != transition_records
+            ):
+                raise ChinaEconExportError(
+                    "reviewed public WDI transition does not start at its first-parent ledger"
+                )
+            state = "reviewed_prefix_extension"
+        previous_ledger_receipt = {
+            "present": True,
+            "path": PUBLIC_WDI_LEDGER_PATH,
+            **exact_previous_ledger,
+        }
+        previous_availability_summary = {
+            "path": PUBLIC_WDI_AVAILABILITY_PATH,
+            "sha256": previous.byte_sha256,
+            "bytes": previous.byte_size,
+            "schema_version": WDI_RUN_SCHEMA,
+            "generated_at": previous.generated_at,
+        }
+
+    return {
+        "schema_version": WDI_LINEAGE_TRANSITION_SCHEMA,
+        "state": state,
+        "first_parent_sha": first_parent_sha,
+        "first_parent_path_history": {
+            "ledger_last_change_sha": previous_ledger_history_sha,
+            "availability_last_change_sha": previous_availability_history_sha,
+        },
+        "previous_ledger": previous_ledger_receipt,
+        "previous_availability_receipt": previous_availability_summary,
+        "current_ledger": {
+            "path": PUBLIC_WDI_LEDGER_PATH,
+            **current_ledger_receipt,
+        },
+        "current_availability_receipt": {
+            "path": PUBLIC_WDI_AVAILABILITY_PATH,
+            "sha256": current.byte_sha256,
+            "bytes": current.byte_size,
+            "schema_version": WDI_RUN_SCHEMA,
+            "generated_at": current.generated_at,
+        },
+        "transition_records": transition_records,
+        "current_receipt_appended_observations": current.appended_observations,
+        "prefix_bytes": previous_ledger_receipt["bytes"],
     }
 
 
