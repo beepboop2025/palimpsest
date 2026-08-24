@@ -12,7 +12,10 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.archive_capture import attach_new_url_captures, previous_urls_from_reading
+from collectors.archive_capture import (
+    attach_new_url_captures,
+    previous_urls_from_reading,
+)
 from collectors.news_wire_live import load_wire_events, observations_from_events
 from core.china_observation import SCHEMA_VERSION, iso_z, serialize_observation
 from core.governance import KillSwitch
@@ -45,7 +48,9 @@ def _save_text(url: str) -> str:
     )
 
 
-def main(*, events=None, skip_collect: bool = False, now: datetime | None = None) -> dict | None:
+def main(
+    *, events=None, skip_collect: bool = False, now: datetime | None = None
+) -> dict | None:
     kill = KillSwitch()
     if kill.is_halted():
         print("news-wire-live: halted by kill switch — abstaining")
@@ -56,14 +61,18 @@ def main(*, events=None, skip_collect: bool = False, now: datetime | None = None
         if LIVE_NEWSWIRE_PATH.is_file():
             events = load_wire_events(LIVE_NEWSWIRE_PATH)
             live_collect = False
-            print(f"news-wire-live: projecting the live 30-minute wire at {LIVE_NEWSWIRE_PATH}")
+            print(
+                f"news-wire-live: projecting the live 30-minute wire at {LIVE_NEWSWIRE_PATH}"
+            )
         else:
-            code = newswire_main()
+            code = newswire_main([])
             if code == 2:
                 print("news-wire-live: newswire reported no fresh sources; abstaining")
                 return None
             if code == 3:
-                print("news-wire-live: newswire abstained; not projecting a live family")
+                print(
+                    "news-wire-live: newswire abstained; not projecting a live family"
+                )
                 return None
             if code != 0:
                 raise RuntimeError(f"newswire runner exited with status {code}")
@@ -106,14 +115,24 @@ def main(*, events=None, skip_collect: bool = False, now: datetime | None = None
         "observations": serialized,
     }
     READINGS.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    OUT.write_text(
+        json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     with HIST.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps({
-            "generated_at": generated,
-            "n_events": out["n_events"],
-            "n_observations": out["n_observations"],
-        }, ensure_ascii=False) + "\n")
-    print(f"news-wire-live: {out['n_observations']} observation(s) from {out['n_events']} events")
+        handle.write(
+            json.dumps(
+                {
+                    "generated_at": generated,
+                    "n_events": out["n_events"],
+                    "n_observations": out["n_observations"],
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
+    print(
+        f"news-wire-live: {out['n_observations']} observation(s) from {out['n_events']} events"
+    )
     return out
 
 
