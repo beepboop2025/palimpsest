@@ -1,36 +1,20 @@
 {
   "alerts": [
     {
-      "id": "health-board-alarm",
-      "kind": "health",
+      "id": "board-alarm-headline",
+      "kind": "upstream",
       "severity": "warning",
       "source_id": "board-alarm",
-      "summary": "freshness deadline has passed",
-      "title": "Board alarm: stale"
+      "summary": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together",
+      "title": "Board synthesis"
     },
     {
-      "id": "health-coverage-guard",
+      "id": "health-ddti",
       "kind": "health",
       "severity": "warning",
-      "source_id": "coverage-guard",
+      "source_id": "ddti",
       "summary": "freshness deadline has passed",
-      "title": "Coverage guard: stale"
-    },
-    {
-      "id": "health-forecast-ledger",
-      "kind": "health",
-      "severity": "warning",
-      "source_id": "forecast-ledger",
-      "summary": "freshness deadline has passed",
-      "title": "Forecast ledger: stale"
-    },
-    {
-      "id": "health-cross-layer",
-      "kind": "health",
-      "severity": "warning",
-      "source_id": "cross-layer",
-      "summary": "freshness deadline has passed",
-      "title": "Cross-layer lead/lag: stale"
+      "title": "Deletion-directive term index: stale"
     },
     {
       "id": "health-weibo-hotsearch",
@@ -45,8 +29,8 @@
       "kind": "health",
       "severity": "warning",
       "source_id": "silence-index",
-      "summary": "freshness deadline has passed",
-      "title": "Silence index: stale"
+      "summary": "declared measurement is incomplete: metric /n_blackout is absent or non-scalar",
+      "title": "Silence index: degraded"
     },
     {
       "id": "health-public-deletion-ledgers",
@@ -113,29 +97,29 @@
       "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-24T10:34:36Z",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 25 are live. Health qualifiers: 4 degraded, 10 stale.",
+  "generated_at": "2026-08-24T15:58:52Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 5 degraded, 6 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
-      "degraded": 4,
-      "live": 25,
+      "degraded": 5,
+      "live": 28,
       "missing": 0,
-      "stale": 10
+      "stale": 6
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 23,
+    "required_live": 26,
     "required_reporting": 31,
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "d42a2b4e0e94e078a54c97062214073d27d92eaf",
+  "input_commit": "0d6925d636220daa8ef6dd57d4827f149b49d218",
   "layers": [
     {
       "id": "command",
-      "n_degraded": 4,
-      "n_live": 1,
+      "n_degraded": 0,
+      "n_live": 5,
       "n_reporting": 5,
       "n_total": 5,
       "signal_ids": [
@@ -145,13 +129,13 @@
         "forecast-ledger",
         "cross-layer"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Command view"
     },
     {
       "id": "attention",
-      "n_degraded": 3,
-      "n_live": 7,
+      "n_degraded": 4,
+      "n_live": 6,
       "n_reporting": 10,
       "n_total": 10,
       "signal_ids": [
@@ -262,7 +246,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Source payloads that fit the public embed bound are retained in full; larger source files keep health, metrics and a compact prefix, with complete bytes at raw_url matching input.sha256. Freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 25,
+  "n_signals_live": 28,
   "n_signals_reporting": 39,
   "n_signals_total": 39,
   "schema_version": "osint-china.v1",
@@ -270,24 +254,24 @@
   "signals": [
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T09:38:00Z",
+      "freshness_deadline": "2026-08-24T18:55:45Z",
       "health": {
-        "age_hours": 3.943,
+        "age_hours": 0.052,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "board-alarm",
       "input": {
-        "bytes": 10257,
+        "bytes": 10258,
         "filename": "board-alarm-latest.json",
-        "sha256": "d88df12f13c3186c723cab50c0e97b23e1863fa87e0917e0a403087ea02dc4b1"
+        "sha256": "a2bb5631be1941601f894b83e6dad0abbe5a98fa3bde86316a4dc596dabe15fa"
       },
       "layer": "command",
-      "live": false,
+      "live": true,
       "method": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
       "method_version": null,
       "metric": {
@@ -318,7 +302,7 @@
           "selected": [],
           "threshold": null
         },
-        "generated_at": "2026-08-24T06:38:00.068780+00:00",
+        "generated_at": "2026-08-24T15:55:45.102123+00:00",
         "headline": "MULTI-LAYER CO-MOVEMENT: content + network elevated together",
         "layer_coincidence": 2,
         "layers": {
@@ -396,11 +380,11 @@
             "state": "calm"
           },
           "bleedthrough_pools": {
-            "age_hours": 268.2,
+            "age_hours": 277.5,
             "bound_hours": 168.0,
             "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
             "n": 1,
-            "reason": "newest row is 268.2h old, past the 168h bound",
+            "reason": "newest row is 277.5h old, past the 168h bound",
             "state": "stale"
           },
           "censored_planet": {
@@ -492,7 +476,7 @@
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 1.7,
+            "age_hours": 11.0,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -582,16 +566,16 @@
       "raw_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "scope": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T06:38:00Z",
-      "status": "stale",
-      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. The retained payload is stale: source timestamp 2026-08-24T06:38:00Z passed its freshness deadline 2026-08-24T09:38:00Z, so it is not labelled live. Upstream reading: MULTI-LAYER CO-MOVEMENT: content + network elevated together. Latest payload reports board e-value at 8.79 e-value.",
+      "source_timestamp": "2026-08-24T15:55:45Z",
+      "status": "live",
+      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: MULTI-LAYER CO-MOVEMENT: content + network elevated together. Latest payload reports board e-value at 8.79 e-value.",
       "title": "Board alarm"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:21:11Z",
       "health": {
-        "age_hours": 8.223,
+        "age_hours": 13.628,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -812,24 +796,24 @@
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T09:38:00Z",
+      "freshness_deadline": "2026-08-24T18:55:45Z",
       "health": {
-        "age_hours": 3.943,
+        "age_hours": 0.052,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "coverage-guard",
       "input": {
         "bytes": 4327,
         "filename": "coverage-guard-latest.json",
-        "sha256": "94ddabab22d710823ebd216ab693bae01ac32c6647408f64964968c2b5b9752f"
+        "sha256": "04499879c26b00d5362bb5cb22fc8e4fbd3c4eed9c0d3d7d521466acf6765e78"
       },
       "layer": "command",
-      "live": false,
+      "live": true,
       "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
       "method_version": null,
       "metric": {
@@ -846,7 +830,7 @@
           "signals whose sample size is not recorded in their history cannot be guarded at all and are absent here rather than assumed clean"
         ],
         "confounded": [],
-        "generated_at": "2026-08-24T06:38:00.174119+00:00",
+        "generated_at": "2026-08-24T15:55:45.155006+00:00",
         "headline": "no signal's movement is explained by its own measurement coverage",
         "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
         "signals": {
@@ -944,31 +928,31 @@
       "raw_url": "https://palimpsest.info/readings/coverage-guard-latest.json",
       "scope": "Checks whether apparent movement is confounded by changing measurement coverage.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T06:38:00Z",
-      "status": "stale",
-      "summary": "Checks whether apparent movement is confounded by changing measurement coverage. The retained payload is stale: source timestamp 2026-08-24T06:38:00Z passed its freshness deadline 2026-08-24T09:38:00Z, so it is not labelled live. Upstream reading: no signal's movement is explained by its own measurement coverage. Latest payload reports confounded signals at 0 count.",
+      "source_timestamp": "2026-08-24T15:55:45Z",
+      "status": "live",
+      "summary": "Checks whether apparent movement is confounded by changing measurement coverage. Upstream reading: no signal's movement is explained by its own measurement coverage. Latest payload reports confounded signals at 0 count.",
       "title": "Coverage guard"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T09:38:00Z",
+      "freshness_deadline": "2026-08-24T18:55:45Z",
       "health": {
-        "age_hours": 3.943,
+        "age_hours": 0.052,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "forecast-ledger",
       "input": {
         "bytes": 13968,
         "filename": "forecast-ledger-latest.json",
-        "sha256": "2030c8ebae30c5a3e323354ff1d82c2d608a98fdc2b476a673508fe1e84daa24"
+        "sha256": "bdbf40111f14a05fbb3cbf2d4473dcf0421897e96023385ab77ea7a9970d2802"
       },
       "layer": "command",
-      "live": false,
+      "live": true,
       "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
       "method_version": null,
       "metric": {
@@ -996,7 +980,7 @@
           "silence_blackouts": "needs 20 readings, has 0",
           "weibo_suppression": "history logs state transitions, not a regular series"
         },
-        "generated_at": "2026-08-24T06:38:00.231413+00:00",
+        "generated_at": "2026-08-24T15:55:45.178310+00:00",
         "headline": "8 signals scored over 1606 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8",
         "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
         "n_beating_baseline": 4,
@@ -1524,31 +1508,31 @@
       "raw_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
       "scope": "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T06:38:00Z",
-      "status": "stale",
-      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. The retained payload is stale: source timestamp 2026-08-24T06:38:00Z passed its freshness deadline 2026-08-24T09:38:00Z, so it is not labelled live. Upstream reading: 8 signals scored over 1606 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8. Latest payload reports empirical coverage at 0.844 ratio across 1606 forecasts.",
+      "source_timestamp": "2026-08-24T15:55:45Z",
+      "status": "live",
+      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1606 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8. Latest payload reports empirical coverage at 0.844 ratio across 1606 forecasts.",
       "title": "Forecast ledger"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T09:38:00Z",
+      "freshness_deadline": "2026-08-24T18:55:45Z",
       "health": {
-        "age_hours": 3.943,
+        "age_hours": 0.052,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "cross-layer",
       "input": {
         "bytes": 10602,
         "filename": "cross-layer-latest.json",
-        "sha256": "7da56b6ce0e0c139d347655d48c0678aeb8a43833fb0567531b882ea3d0163b5"
+        "sha256": "c5da9221701a96d725f7a153d557e7dea71061676c63a02993b43b53a143c4d5"
       },
       "layer": "command",
-      "live": false,
+      "live": true,
       "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
       "method_version": 1,
       "metric": {
@@ -1568,7 +1552,7 @@
           "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
           "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
         ],
-        "generated_at": "2026-08-24T06:38:00.325845+00:00",
+        "generated_at": "2026-08-24T15:55:45.217457+00:00",
         "headline": "9 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
         "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
         "method_version": 1,
@@ -1926,21 +1910,21 @@
       "raw_url": "https://palimpsest.info/readings/cross-layer-latest.json",
       "scope": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T06:38:00Z",
-      "status": "stale",
-      "summary": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists. The retained payload is stale: source timestamp 2026-08-24T06:38:00Z passed its freshness deadline 2026-08-24T09:38:00Z, so it is not labelled live. Upstream reading: 9 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established. Latest payload reports confirmed pairs at 0 count across 9 pairs tested.",
+      "source_timestamp": "2026-08-24T15:55:45Z",
+      "status": "live",
+      "summary": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists. Upstream reading: 9 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established. Latest payload reports confirmed pairs at 0 count across 9 pairs tested.",
       "title": "Cross-layer lead/lag"
     },
     {
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-24T11:07:05Z",
       "health": {
-        "age_hours": 6.458,
+        "age_hours": 11.863,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "ddti",
@@ -1950,7 +1934,7 @@
         "sha256": "39563b64c12df0bec07120b57c2204fa1320c42c4c47c1ecfee9f9566c6916d3"
       },
       "layer": "attention",
-      "live": true,
+      "live": false,
       "method": "See the complete embedded upstream payload and its raw feed",
       "method_version": null,
       "metric": {
@@ -2418,15 +2402,15 @@
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
       "source_timestamp": "2026-08-24T04:07:05Z",
-      "status": "live",
-      "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 218 count.",
+      "status": "stale",
+      "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. The retained payload is stale: source timestamp 2026-08-24T04:07:05Z passed its freshness deadline 2026-08-24T11:07:05Z, so it is not labelled live. Latest payload reports terms ranked at 218 count.",
       "title": "Deletion-directive term index"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:17:50Z",
       "health": {
-        "age_hours": 8.279,
+        "age_hours": 13.684,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2728,7 +2712,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T08:55:38Z",
       "health": {
-        "age_hours": 4.649,
+        "age_hours": 10.054,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4184,21 +4168,21 @@
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T09:04:23Z",
+      "freshness_deadline": "2026-08-24T18:19:03Z",
       "health": {
-        "age_hours": 4.504,
+        "age_hours": 0.664,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
         "pipeline_checked_at": null,
-        "reason": "freshness deadline has passed",
+        "reason": "declared measurement is incomplete: metric /n_blackout is absent or non-scalar",
         "upstream_status": null
       },
       "id": "silence-index",
       "input": {
-        "bytes": 6674,
+        "bytes": 6680,
         "filename": "silence-index-latest.json",
-        "sha256": "dd14507946d943cbe74123145c5e5ea8a1fb940bbcd815530a29ca83981de586"
+        "sha256": "b30320a763dc4b07c78e4e4630485ce4e994351928937936c0ba04e49874bd70"
       },
       "layer": "attention",
       "live": false,
@@ -4208,7 +4192,7 @@
       "optional": false,
       "payload": {
         "domestic_proxy_live": true,
-        "generated_at": "2026-08-24T06:04:23Z",
+        "generated_at": "2026-08-24T15:19:03Z",
         "method_note": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in both the latest reading and the history, never zeros",
         "method_version": 1,
         "n_abstained": 25,
@@ -4225,7 +4209,7 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.052,
+            "global_norm": 0.0524,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -4235,41 +4219,41 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.002,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "party history"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0006,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "cross-talk"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "Caixin"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
+            "global_norm": 0.0472,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "Hangzhou"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": 0.0388,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "censorship"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": 0.0042,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "official conduct"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": 0.0003,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "Caixin"
           },
           {
             "abstained": true,
@@ -4299,16 +4283,6 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "official conduct"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
             "topic": "sexual harassment"
           },
           {
@@ -4320,16 +4294,6 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "singapore"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "censorship"
           },
           {
             "abstained": true,
@@ -4380,6 +4344,16 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "The Cultural Revolution Never Ended"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "cross-talk"
           },
           {
             "abstained": true,
@@ -4469,6 +4443,16 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
+            "topic": "party history"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
             "topic": "subway"
           }
         ]
@@ -4477,16 +4461,16 @@
       "raw_url": "https://palimpsest.info/readings/silence-index-latest.json",
       "scope": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
       "source": "DDTI ranked terms (readings/ddti-latest.json) x GDELT DOC API global volume x weibo hot-search join as the permitted domestic proxy (readings/weibo-hotsearch-latest.json)",
-      "source_timestamp": "2026-08-24T06:04:23Z",
-      "status": "stale",
-      "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. The retained payload is stale: source timestamp 2026-08-24T06:04:23Z passed its freshness deadline 2026-08-24T09:04:23Z, so it is not labelled live. Semantic health limitation: declared measurement is incomplete: metric /n_blackout is absent or non-scalar. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously.",
+      "source_timestamp": "2026-08-24T15:19:03Z",
+      "status": "degraded",
+      "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. Semantic health limitation: declared measurement is incomplete: metric /n_blackout is absent or non-scalar. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously.",
       "title": "Silence index"
     },
     {
       "cadence_hours": 168,
       "freshness_deadline": "2026-09-01T05:07:24Z",
       "health": {
-        "age_hours": 5.453,
+        "age_hours": 10.858,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4798,7 +4782,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:22Z",
       "health": {
-        "age_hours": 8.404,
+        "age_hours": 13.808,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5085,7 +5069,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-24T06:08:00Z",
       "health": {
-        "age_hours": 11.443,
+        "age_hours": 16.848,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -5434,7 +5418,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T02:33:11Z",
       "health": {
-        "age_hours": 4.024,
+        "age_hours": 9.428,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6607,7 +6591,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:48:00Z",
       "health": {
-        "age_hours": 3.777,
+        "age_hours": 9.181,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7090,9 +7074,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-24T19:55:38Z",
+      "freshness_deadline": "2026-08-25T05:58:43Z",
       "health": {
-        "age_hours": 4.649,
+        "age_hours": 0.003,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7102,9 +7086,9 @@
       },
       "id": "undertext",
       "input": {
-        "bytes": 30742872,
+        "bytes": 266822,
         "filename": "undertext-latest.json",
-        "sha256": "66124cddff360b13bc0bdd71d44b9642844cb9588b3d23bffdd929a6773464da"
+        "sha256": "b1bdd039a2018048a730d003cc483ebf094c081598397fe8f5c745819e6b5750"
       },
       "layer": "attention",
       "live": true,
@@ -7114,16 +7098,16 @@
         "denominator": null,
         "label": "observations",
         "unit": "count",
-        "value": 7310
+        "value": 57
       },
       "optional": false,
       "payload": {
-        "generated_at": "2026-08-24T05:55:38Z",
+        "generated_at": "2026-08-24T15:58:43Z",
         "live_round_ran": false,
         "live_surfaces_enabled": false,
         "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
         "method_version": 1,
-        "n_observations": 7310,
+        "n_observations": 57,
         "observations": [
           {
             "archive": {
@@ -7139,7 +7123,7 @@
               "wayback_snapshot": null
             },
             "common_crawl": null,
-            "content_sha256": "eafe3d13a343f75972500faa6e0323d8c70fec40998c5dfc5601b7ad2b842c0f",
+            "content_sha256": "d56f2c25c59586809322eb7935fc8ade209c9ab1b21193ddfe8c64363570c2a2",
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
@@ -7149,7 +7133,12 @@
               },
               "cdt": null,
               "common_crawl": null,
-              "gdelt": null,
+              "gdelt": {
+                "id": "gdelt:中国裁判文书网",
+                "note": "GDELT DOC 2.0 overlap on committed term '中国裁判文书网'; label=unknown; global_norm=None; clock 2026-08-24T02:17:50Z. Not a deletion claim.",
+                "title": "中国裁判文书网",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
               "greatfire": null,
               "ooni": {
                 "id": "ooni-gfw",
@@ -7163,53 +7152,43 @@
                 "title": "UNDERTEXT public-archive fusion",
                 "url": "https://palimpsest.info/readings/undertext-latest.json"
               },
-              "weibo": null
+              "weibo": {
+                "id": "weibo:中国裁判文书网",
+                "note": "Weibo hot-search join regime=suppressed_invisible; clock 2026-08-24T05:55:38Z. Permitted-attention board, not a private graph.",
+                "title": "中国裁判文书网",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
             },
-            "deletion_confirmation": [
-              {
-                "note": "no_baseline",
-                "observed_at": "2026-08-24T02:10:39Z",
-                "source": "wayback",
-                "status": "no_baseline"
-              }
-            ],
-            "deletion_signal": "no_baseline",
-            "detected_at": "2026-08-24T02:10:39Z",
-            "first_seen": "2026-08-24T02:10:39Z",
-            "gazetteer_hits": [
-              {
-                "category": "economic_distress",
-                "en": "youth unemployment rate",
-                "first_seen": "",
-                "zh": "青年失业率"
-              }
-            ],
-            "language": "mixed",
+            "deletion_confirmation": [],
+            "deletion_signal": "suppressed_invisible",
+            "detected_at": "2026-08-24T05:55:38Z",
+            "first_seen": "2026-08-24T05:55:38Z",
+            "gazetteer_hits": [],
+            "language": "zh",
             "last_confirmed_alive": null,
-            "last_seen": "2026-08-24T02:10:39Z",
+            "last_seen": "2026-08-24T05:55:38Z",
             "mirror_urls": [],
             "provenance": {
               "collector": "undertext",
-              "event": "no_baseline",
-              "method": "fusion of committed Wayback reconstructions",
+              "method": "fusion of Weibo hot-search suppressed-invisible joins",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "internet-archive-cdx"
+              "vantage": "weibo-board-archive"
             },
-            "severity": null,
-            "source": "undertext:fusion:wayback",
+            "source": "undertext:fusion:weibo-hotsearch",
             "source_url": "",
             "terms": [
-              "青年失业率"
+              "中国裁判文书网"
             ],
-            "text": "no_baseline",
-            "text_en": "no_baseline",
-            "text_zh": "[undertext:no_baseline] 青年失业率",
-            "title": "[undertext:no_baseline] 青年失业率",
+            "text": "中国裁判文书网",
+            "text_en": "",
+            "text_zh": "[undertext:suppressed_invisible] 中国裁判文书网\n中国裁判文书网",
+            "title": "[undertext:suppressed_invisible] 中国裁判文书网",
             "uncertainty": [
               "no public source URL on this row",
               "no witnessed Wayback snapshot; lookup is an address to try",
               "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
               "last-confirmed-alive is unknown",
               "no China Digital Times ledger join",
               "OONI/Bleedthrough join is instrument-level, not URL corroboration"
@@ -7218,19 +7197,20 @@
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/http://www.gov.cn:80/",
-              "ghostarchive_lookup": "https://ghostarchive.org/search?term=http://www.gov.cn:80/",
-              "post_event_snapshot": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
               "timestamp_bracket": {
-                "last_live": "19990428095213",
+                "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/http://www.gov.cn:80/",
+              "wayback_lookup": null,
               "wayback_raw": null,
-              "wayback_snapshot": "https://web.archive.org/web/20120427183500/http://www.gov.cn/"
+              "wayback_snapshot": null
             },
             "common_crawl": null,
-            "content_sha256": "18fb79d695e1de5a9b2aa65c81e310eacb74765b8f136295c52799e586670648",
+            "content_hash": "f093b6424b2b603a61d80fbdd0089da54f4b66a5ce883fe1b9b0904bc3bae13d",
+            "content_sha256": "f093b6424b2b603a61d80fbdd0089da54f4b66a5ce883fe1b9b0904bc3bae13d",
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
@@ -7240,7 +7220,12 @@
               },
               "cdt": null,
               "common_crawl": null,
-              "gdelt": null,
+              "gdelt": {
+                "id": "gdelt:中国裁判文书网",
+                "note": "GDELT DOC 2.0 overlap on committed term '中国裁判文书网'; label=unknown; global_norm=None; clock 2026-08-24T02:17:50Z. Not a deletion claim.",
+                "title": "中国裁判文书网",
+                "url": "https://palimpsest.info/readings/gdelt-latest.json"
+              },
               "greatfire": null,
               "ooni": {
                 "id": "ooni-gfw",
@@ -7254,65 +7239,75 @@
                 "title": "UNDERTEXT public-archive fusion",
                 "url": "https://palimpsest.info/readings/undertext-latest.json"
               },
-              "weibo": null
-            },
-            "deletion_confirmation": [
-              {
-                "note": "archive reconstruction; event is the CDX label, not a live deletion claim",
-                "observed_at": "2016-04-30T00:46:40Z",
-                "source": "wayback",
-                "status": "deletion"
+              "weibo": {
+                "id": "weibo:中国裁判文书网",
+                "note": "Weibo hot-search join regime=suppressed_invisible; clock 2026-08-24T05:55:38Z. Permitted-attention board, not a private graph.",
+                "title": "中国裁判文书网",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
               }
-            ],
-            "deletion_signal": "deletion",
-            "detected_at": "2016-04-30T00:46:40Z",
-            "first_seen": "2016-04-30T00:46:40Z",
-            "gazetteer_hits": [],
-            "language": "mixed",
-            "last_confirmed_alive": null,
-            "last_seen": "2016-04-30T00:46:40Z",
-            "mirror_urls": [],
-            "provenance": {
-              "collector": "undertext",
-              "event": "deletion",
-              "method": "fusion of committed Wayback reconstructions",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "internet-archive-cdx"
             },
-            "severity": "high",
-            "source": "undertext:fusion:wayback",
-            "source_url": "http://www.gov.cn:80/",
+            "deletion_confirmation": [],
+            "evidence_hash": "780c77c8421901f0dc48a7e13269f60be3d5d1d351da561eb60272f7c3da64ae",
+            "first_seen": null,
+            "gazetteer_hits": [],
+            "http_status": null,
+            "language": "zh",
+            "last_confirmed_alive": null,
+            "last_seen": null,
+            "locator": "",
+            "mirror_urls": [],
+            "observer_class": "public-board",
+            "platform": "weibo",
+            "provenance": {
+              "board_days": 8,
+              "collector": "weibo-hotsearch",
+              "method": "justjavac weibo-trending-hot-search archive join",
+              "method_version": 2,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "outside-china-public-archive"
+            },
+            "regime": "suppressed_invisible",
+            "source": "weibo-hotsearch",
+            "source_url": "",
+            "surface": "weibo-hotsearch",
             "terms": [
-              "中国政府网"
+              "中国裁判文书网"
             ],
-            "text": "present→gone; deletion bracketed in [20120427183500 .. 20120429014035]; last-live https://web.archive.org/web/20120427183500/http://www.gov.cn/",
-            "text_en": "present→gone; deletion bracketed in [20120427183500 .. 20120429014035]; last-live https://web.archive.org/web/20120427183500/http://www.gov.cn/",
-            "text_zh": "[undertext:deletion] 中国政府网",
-            "title": "[undertext:deletion] 中国政府网",
+            "text": "中国裁判文书网",
+            "text_en": "",
+            "text_zh": "[weibo-hotsearch:suppressed_invisible] 中国裁判文书网\n中国裁判文书网",
+            "timestamp": null,
+            "title": "[weibo-hotsearch:suppressed_invisible] 中国裁判文书网",
             "uncertainty": [
               "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
               "last-confirmed-alive is unknown",
               "no China Digital Times ledger join",
               "OONI/Bleedthrough join is instrument-level, not URL corroboration"
             ],
-            "url": "http://www.gov.cn:80/"
+            "url": "",
+            "visibility_method_version": 1,
+            "visibility_schema": "palimpsest-visibility-event.v1",
+            "visibility_state": "unknown"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/http://www.fmprc.gov.cn:80/",
-              "ghostarchive_lookup": "https://ghostarchive.org/search?term=http://www.fmprc.gov.cn:80/",
-              "post_event_snapshot": "https://web.archive.org/web/20211031105117/https://www.fmprc.gov.cn/",
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
               "timestamp_bracket": {
-                "last_live": "19981212025021",
+                "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/http://www.fmprc.gov.cn:80/",
+              "wayback_lookup": null,
               "wayback_raw": null,
-              "wayback_snapshot": "https://web.archive.org/web/20211031105046/https://www.fmprc.gov.cn/"
+              "wayback_snapshot": null
             },
             "common_crawl": null,
-            "content_sha256": "4e4dddb0212900407933dc2fcb83c6264009d1b15eb1b5037ffca935613ea9f4",
+            "content_hash": "213b8f0dbd2998badd393848e4262c624eab959e4f591e497ff42aba3cbff0a6",
+            "content_sha256": "213b8f0dbd2998badd393848e4262c624eab959e4f591e497ff42aba3cbff0a6",
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
@@ -7336,65 +7331,82 @@
                 "title": "UNDERTEXT public-archive fusion",
                 "url": "https://palimpsest.info/readings/undertext-latest.json"
               },
-              "weibo": null
+              "weibo": {
+                "id": "weibo:广场",
+                "note": "Weibo hot-search join regime=contained_visible; clock 2026-08-24T05:55:38Z. Permitted-attention board, not a private graph.",
+                "title": "广场",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
             },
-            "deletion_confirmation": [
+            "deletion_confirmation": [],
+            "evidence_hash": "cce24c761122bebd67a08d3d7932d72ea235f07baefcd6e901a3d09e54370266",
+            "first_seen": null,
+            "gazetteer_hits": [
               {
-                "note": "archive reconstruction; event is the CDX label, not a live deletion claim",
-                "observed_at": "2021-11-22T22:25:55Z",
-                "source": "wayback",
-                "status": "mutation"
+                "category": "june4_tiananmen",
+                "en": "the Square (Tiananmen)",
+                "first_seen": "",
+                "zh": "广场"
               }
             ],
-            "deletion_signal": "mutation",
-            "detected_at": "2021-11-22T22:25:55Z",
-            "first_seen": "2021-11-22T22:25:55Z",
-            "gazetteer_hits": [],
-            "language": "mixed",
+            "http_status": null,
+            "language": "zh",
             "last_confirmed_alive": null,
-            "last_seen": "2021-11-22T22:25:55Z",
+            "last_seen": null,
+            "locator": "",
             "mirror_urls": [],
+            "observer_class": "public-board",
+            "platform": "weibo",
             "provenance": {
-              "collector": "undertext",
-              "event": "mutation",
-              "method": "fusion of committed Wayback reconstructions",
-              "method_version": 1,
+              "board_days": 8,
+              "collector": "weibo-hotsearch",
+              "method": "justjavac weibo-trending-hot-search archive join",
+              "method_version": 2,
               "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "internet-archive-cdx"
+              "vantage": "outside-china-public-archive"
             },
-            "severity": "medium",
-            "source": "undertext:fusion:wayback",
-            "source_url": "http://www.fmprc.gov.cn:80/",
+            "regime": "contained_visible",
+            "source": "weibo-hotsearch",
+            "source_url": "",
+            "surface": "weibo-hotsearch",
             "terms": [
-              "外交部"
+              "广场"
             ],
-            "text": "silent redaction between https://web.archive.org/web/20211031105046/https://www.fmprc.gov.cn/ and https://web.archive.org/web/20211031105117/https://www.fmprc.gov.cn/",
-            "text_en": "silent redaction between https://web.archive.org/web/20211031105046/https://www.fmprc.gov.cn/ and https://web.archive.org/web/20211031105117/https://www.fmprc.gov.cn/",
-            "text_zh": "[undertext:mutation] 外交部",
-            "title": "[undertext:mutation] 外交部",
+            "text": "绍兴柯桥蓝天广场\n广场",
+            "text_en": "",
+            "text_zh": "绍兴柯桥蓝天广场\n绍兴柯桥蓝天广场\n广场",
+            "timestamp": null,
+            "title": "绍兴柯桥蓝天广场",
             "uncertainty": [
               "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
               "last-confirmed-alive is unknown",
               "no China Digital Times ledger join",
               "OONI/Bleedthrough join is instrument-level, not URL corroboration"
             ],
-            "url": "http://www.fmprc.gov.cn:80/"
+            "url": "",
+            "visibility_method_version": 1,
+            "visibility_schema": "palimpsest-visibility-event.v1",
+            "visibility_state": "unknown"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/http://www.pbc.gov.cn:80/",
-              "ghostarchive_lookup": "https://ghostarchive.org/search?term=http://www.pbc.gov.cn:80/",
-              "post_event_snapshot": "https://web.archive.org/web/19991128202040/http://pbc.gov.cn:80/",
+              "archive_today_lookup": null,
+              "ghostarchive_lookup": null,
+              "post_event_snapshot": null,
               "timestamp_bracket": {
-                "last_live": "19991127124658",
+                "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/http://www.pbc.gov.cn:80/",
+              "wayback_lookup": null,
               "wayback_raw": null,
-              "wayback_snapshot": "https://web.archive.org/web/19991127124658/http://www.pbc.gov.cn:80/"
+              "wayback_snapshot": null
             },
             "common_crawl": null,
-            "content_sha256": "9c9d69f6fd697ab4137f9ed9fde74db657c1bff285d13af8c7e5c99cdb4c5b7e",
+            "content_hash": "f122c5ccf705d2c070806ab5a6e3ae99b961d2f195e49e9a8dbc6a6182989f9d",
+            "content_sha256": "f122c5ccf705d2c070806ab5a6e3ae99b961d2f195e49e9a8dbc6a6182989f9d",
             "cross_links": {
               "bleedthrough": {
                 "id": "bleedthrough",
@@ -7418,49 +7430,65 @@
                 "title": "UNDERTEXT public-archive fusion",
                 "url": "https://palimpsest.info/readings/undertext-latest.json"
               },
-              "weibo": null
+              "weibo": {
+                "id": "weibo:失联",
+                "note": "Weibo gazetteer breakthrough on permitted board; clock 2026-08-24T05:55:38Z. Not a deletion claim.",
+                "title": "25岁小伙见网恋女友失联近两年",
+                "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+              }
             },
-            "deletion_confirmation": [
+            "deletion_confirmation": [],
+            "evidence_hash": "6a6a7f2d010e8551dbf03749aea452f934fbbed3f8dbba423e2a5538ca15ea05",
+            "first_seen": null,
+            "gazetteer_hits": [
               {
-                "note": "archive reconstruction; event is the CDX label, not a live deletion claim",
-                "observed_at": "2019-12-19T08:40:58Z",
-                "source": "wayback",
-                "status": "deletion"
+                "category": "repression_triggers",
+                "en": "lost contact = disappeared",
+                "first_seen": "",
+                "zh": "失联"
               }
             ],
-            "deletion_signal": "deletion",
-            "detected_at": "2019-12-19T08:40:58Z",
-            "first_seen": "2019-12-19T08:40:58Z",
-            "gazetteer_hits": [],
-            "language": "mixed",
+            "http_status": null,
+            "language": "zh",
             "last_confirmed_alive": null,
-            "last_seen": "2019-12-19T08:40:58Z",
+            "last_seen": null,
+            "locator": "",
             "mirror_urls": [],
+            "observer_class": "public-board",
+            "platform": "weibo",
             "provenance": {
-              "collector": "undertext",
-              "event": "deletion",
-              "method": "fusion of committed Wayback reconstructions",
-              "method_version": 1,
+              "board_days": 8,
+              "collector": "weibo-hotsearch",
+              "method": "justjavac weibo-trending-hot-search archive join",
+              "method_version": 2,
               "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "internet-archive-cdx"
+              "vantage": "outside-china-public-archive"
             },
-            "severity": "high",
-            "source": "undertext:fusion:wayback",
-            "source_url": "http://www.pbc.gov.cn:80/",
+            "regime": "gazetteer_breakthrough",
+            "source": "weibo-hotsearch",
+            "source_url": "",
+            "surface": "weibo-hotsearch",
             "terms": [
-              "中国人民银行"
+              "失联"
             ],
-            "text": "present→gone; deletion bracketed in [19991127124658 .. 19991128202040]; last-live https://web.archive.org/web/19991127124658/http://www.pbc.gov.cn:80/",
-            "text_en": "present→gone; deletion bracketed in [19991127124658 .. 19991128202040]; last-live https://web.archive.org/web/19991127124658/http://www.pbc.gov.cn:80/",
-            "text_zh": "[undertext:deletion] 中国人民银行",
-            "title": "[undertext:deletion] 中国人民银行",
+            "text": "25岁小伙见网恋女友失联近两年\n临沂爆炸事故1死2失联\n美莎克致广西两地159死10失联\n失联",
+            "text_en": "",
+            "text_zh": "25岁小伙见网恋女友失联近两年\n25岁小伙见网恋女友失联近两年\n临沂爆炸事故1死2失联\n美莎克致广西两地159死10失联\n失联",
+            "timestamp": null,
+            "title": "25岁小伙见网恋女友失联近两年",
             "uncertainty": [
               "no public source URL on this row",
+              "no witnessed Wayback snapshot; lookup is an address to try",
+              "public text is title/term only; article body was not captured",
+              "no deletion-confirmation trail on this row",
               "last-confirmed-alive is unknown",
               "no China Digital Times ledger join",
               "OONI/Bleedthrough join is instrument-level, not URL corroboration"
             ],
-            "url": "http://www.pbc.gov.cn:80/"
+            "url": "",
+            "visibility_method_version": 1,
+            "visibility_schema": "palimpsest-visibility-event.v1",
+            "visibility_state": "unknown"
           }
         ],
         "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
@@ -7470,16 +7498,16 @@
       "raw_url": "https://palimpsest.info/readings/undertext-latest.json",
       "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
       "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI + public deletion ledgers + official first-seen + news-wire-live + Wikipedia gazetteer RC when those readings exist, clustered by public URL, with GDELT/OONI/Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present",
-      "source_timestamp": "2026-08-24T05:55:38Z",
+      "source_timestamp": "2026-08-24T15:58:43Z",
       "status": "live",
-      "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 7310 count.",
+      "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 57 count.",
       "title": "UNDERTEXT differential fusion"
     },
     {
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:11:10Z",
       "health": {
-        "age_hours": 8.39,
+        "age_hours": 13.795,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7719,7 +7747,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:00:59Z",
       "health": {
-        "age_hours": 8.56,
+        "age_hours": 13.965,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8050,7 +8078,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:07:57Z",
       "health": {
-        "age_hours": 8.444,
+        "age_hours": 13.848,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8222,7 +8250,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T08:07:17Z",
       "health": {
-        "age_hours": 4.455,
+        "age_hours": 9.859,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8399,7 +8427,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:10:02Z",
       "health": {
-        "age_hours": 8.409,
+        "age_hours": 13.814,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10846,7 +10874,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:04:27Z",
       "health": {
-        "age_hours": 8.502,
+        "age_hours": 13.907,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10897,7 +10925,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T07:52:26Z",
       "health": {
-        "age_hours": 4.703,
+        "age_hours": 10.107,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10971,7 +10999,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:27:09Z",
       "health": {
-        "age_hours": 8.124,
+        "age_hours": 13.528,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11050,7 +11078,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T14:57:39Z",
       "health": {
-        "age_hours": 33.616,
+        "age_hours": 39.02,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11172,7 +11200,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:31:11Z",
       "health": {
-        "age_hours": 4.057,
+        "age_hours": 9.461,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11302,9 +11330,9 @@
     },
     {
       "cadence_hours": 12,
-      "freshness_deadline": "2026-08-25T04:10:39Z",
+      "freshness_deadline": "2026-08-25T17:58:43Z",
       "health": {
-        "age_hours": 8.399,
+        "age_hours": 0.002,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11314,14 +11342,14 @@
       },
       "id": "wayback",
       "input": {
-        "bytes": 23853271,
+        "bytes": 72515,
         "filename": "wayback-latest.json",
-        "sha256": "a5bd02912cc7be9887fd9f78a651c6724ac86f6448e0f9222b67de05613527e6"
+        "sha256": "2ee7bcbc9f07ede818b7675f28dfc72e914c154cd36e71733efd67aa9f6c4c68"
       },
       "layer": "erasure",
       "live": true,
       "method": "See the complete embedded upstream payload and its raw feed",
-      "method_version": 1,
+      "method_version": 2,
       "metric": {
         "denominator": {
           "label": "URLs watched",
@@ -11329,26 +11357,26 @@
         },
         "label": "reconstructed deletions",
         "unit": "count",
-        "value": 2
+        "value": 3
       },
       "optional": false,
       "payload": {
         "ddti_observations": [
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/http://www.gov.cn:80/",
-              "ghostarchive_lookup": "https://ghostarchive.org/search?term=http://www.gov.cn:80/",
-              "post_event_snapshot": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
+              "archive_today_lookup": "https://archive.today/https://www.stats.gov.cn/sj/zxfb/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://www.stats.gov.cn/sj/zxfb/",
+              "post_event_snapshot": "https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/http://www.gov.cn:80/",
+              "wayback_lookup": "https://web.archive.org/web/*/https://www.stats.gov.cn/sj/zxfb/",
               "wayback_raw": null,
-              "wayback_snapshot": "https://web.archive.org/web/20120427183500/http://www.gov.cn/"
+              "wayback_snapshot": "https://web.archive.org/web/20230316105547/http://www.stats.gov.cn/sj/zxfb/"
             },
-            "content_hash": "319686ed43b146050c97fffe06a961aa42332fda5d4aceb8f35152add9476d94",
-            "content_sha256": "319686ed43b146050c97fffe06a961aa42332fda5d4aceb8f35152add9476d94",
+            "content_hash": "00d88f7846da7ff23f630f5e59e0a55358acb30b93e9779139c89c0bb67000e4",
+            "content_sha256": "00d88f7846da7ff23f630f5e59e0a55358acb30b93e9779139c89c0bb67000e4",
             "cross_links": {
               "bleedthrough": null,
               "cdt": null,
@@ -11361,70 +11389,144 @@
             },
             "deletion_confirmation": [
               {
-                "note": "present→gone; deletion bracketed in [20120427183500 .. 20120429014035]; last-live https://web.archive.org/web/20120427183500/http://www.gov.cn/",
-                "observed_at": "2012-04-29T01:40:35Z",
-                "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
+                "note": "silent redaction between https://web.archive.org/web/20230316105547/http://www.stats.gov.cn/sj/zxfb/ and https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
+                "observed_at": "2023-03-16T11:51:28Z",
+                "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
+                "status": "mutation"
+              }
+            ],
+            "deletion_signal": "mutation",
+            "detected_at": "2023-03-16T11:51:28Z",
+            "evidence_hash": "82c14efe6bd0ba1c7147414a5f658321131c5daeed976fef8836e60f7b9f3342",
+            "first_seen": "2023-03-16T10:55:47Z",
+            "gazetteer_hits": [],
+            "http_status": null,
+            "language": "mixed",
+            "last_confirmed_alive": "2023-03-16T10:55:47Z",
+            "last_seen": "2023-03-16T11:51:28Z",
+            "locator": "https://www.stats.gov.cn/sj/zxfb/",
+            "mirror_urls": [],
+            "observer_class": "archive-crawler",
+            "platform": "official",
+            "provenance": {
+              "collector": "undertext",
+              "content_fp": "027533317260184c8df0e09e38908988a5ab7439033e040c5f69011835353838",
+              "method": "differential vantage tomography",
+              "method_version": 1,
+              "schema_version": "palimpsest-china-observation.v1",
+              "vantage": "wayback:www.stats.gov.cn@ARCHIVE/crawler"
+            },
+            "severity": "medium",
+            "source": "undertext:wayback:www.stats.gov.cn@ARCHIVE/crawler",
+            "source_url": "https://www.stats.gov.cn/sj/zxfb/",
+            "surface": "wayback-cdx",
+            "terms": [
+              "国家统计局 最新发布"
+            ],
+            "text": "https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
+            "text_en": "https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
+            "text_zh": "[undertext:mutation] 国家统计局 最新发布",
+            "timestamp": "2023-03-16T11:51:28Z",
+            "title": "[undertext:mutation] 国家统计局 最新发布",
+            "uncertainty": [
+              "public text is title/term only; article body was not captured",
+              "no China Digital Times ledger join"
+            ],
+            "url": "https://www.stats.gov.cn/sj/zxfb/",
+            "visibility_method_version": 1,
+            "visibility_schema": "palimpsest-visibility-event.v1",
+            "visibility_state": "unknown"
+          },
+          {
+            "archive": {
+              "archive_today_lookup": "https://archive.today/https://www.news.cn/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://www.news.cn/",
+              "post_event_snapshot": "https://web.archive.org/web/20111201144052/http://www.news.cn/",
+              "timestamp_bracket": {
+                "last_live": null,
+                "post_event": null
+              },
+              "wayback_lookup": "https://web.archive.org/web/*/https://www.news.cn/",
+              "wayback_raw": null,
+              "wayback_snapshot": "https://web.archive.org/web/20111201061817/http://www.news.cn/"
+            },
+            "content_hash": "0ac977fc9c2af9b80007a05a09ae04441f920ecaabc4a9cfa899fea078961abe",
+            "content_sha256": "0ac977fc9c2af9b80007a05a09ae04441f920ecaabc4a9cfa899fea078961abe",
+            "cross_links": {
+              "bleedthrough": null,
+              "cdt": null,
+              "common_crawl": null,
+              "gdelt": null,
+              "greatfire": null,
+              "ooni": null,
+              "undertext": null,
+              "weibo": null
+            },
+            "deletion_confirmation": [
+              {
+                "note": "present→gone; deletion bracketed in [20111201061817 .. 20111201144052]; last-live https://web.archive.org/web/20111201061817/http://www.news.cn/",
+                "observed_at": "2011-12-01T14:40:52Z",
+                "source": "undertext:wayback:www.news.cn@ARCHIVE/crawler",
                 "status": "deletion"
               }
             ],
             "deletion_signal": "deletion",
-            "detected_at": "2012-04-29T01:40:35Z",
-            "evidence_hash": "9ba9b9e1b8a646023a96bc0fa4b0e43ac313556829bfbd2fd0e24f360f63d81e",
-            "first_seen": "2012-04-27T18:35:00Z",
+            "detected_at": "2011-12-01T14:40:52Z",
+            "evidence_hash": "014470770b38fc519105213c9daac96abf663377cace8c898e4dfa42b88f346e",
+            "first_seen": "2011-12-01T06:18:17Z",
             "gazetteer_hits": [],
             "http_status": null,
             "language": "mixed",
-            "last_confirmed_alive": "2012-04-27T18:35:00Z",
-            "last_seen": "2012-04-29T01:40:35Z",
-            "locator": "http://www.gov.cn:80/",
+            "last_confirmed_alive": "2011-12-01T06:18:17Z",
+            "last_seen": "2011-12-01T14:40:52Z",
+            "locator": "https://www.news.cn/",
             "mirror_urls": [],
             "observer_class": "archive-crawler",
-            "platform": "official",
+            "platform": "xinhua",
             "provenance": {
               "collector": "undertext",
               "content_fp": "",
               "method": "differential vantage tomography",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "wayback:www.gov.cn@ARCHIVE/crawler"
+              "vantage": "wayback:www.news.cn@ARCHIVE/crawler"
             },
             "severity": "high",
-            "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
-            "source_url": "http://www.gov.cn:80/",
+            "source": "undertext:wayback:www.news.cn@ARCHIVE/crawler",
+            "source_url": "https://www.news.cn/",
             "surface": "wayback-cdx",
             "terms": [
-              "中国政府网"
+              "新华网"
             ],
-            "text": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
-            "text_en": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
-            "text_zh": "[undertext:deletion] 中国政府网",
-            "timestamp": "2012-04-29T01:40:35Z",
-            "title": "[undertext:deletion] 中国政府网",
+            "text": "https://web.archive.org/web/20111201144052/http://www.news.cn/",
+            "text_en": "https://web.archive.org/web/20111201144052/http://www.news.cn/",
+            "text_zh": "[undertext:deletion] 新华网",
+            "timestamp": "2011-12-01T14:40:52Z",
+            "title": "[undertext:deletion] 新华网",
             "uncertainty": [
-              "no public source URL on this row",
               "public text is title/term only; article body was not captured",
               "no China Digital Times ledger join"
             ],
-            "url": "http://www.gov.cn:80/",
+            "url": "https://www.news.cn/",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
             "visibility_state": "unknown"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/http://www.gov.cn:80/",
-              "ghostarchive_lookup": "https://ghostarchive.org/search?term=http://www.gov.cn:80/",
-              "post_event_snapshot": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
+              "archive_today_lookup": "https://archive.today/https://english.news.cn/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://english.news.cn/",
+              "post_event_snapshot": "https://web.archive.org/web/20190905203348/http://English.news.cn",
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/http://www.gov.cn:80/",
+              "wayback_lookup": "https://web.archive.org/web/*/https://english.news.cn/",
               "wayback_raw": null,
-              "wayback_snapshot": "https://web.archive.org/web/20120427183500/http://www.gov.cn/"
+              "wayback_snapshot": "https://web.archive.org/web/20190905203345/http://English.news.cn"
             },
-            "content_hash": "e209e3c6a818652f4430d78b62e860393a5fc50a2e34223e55f19c2e634ba6db",
-            "content_sha256": "e209e3c6a818652f4430d78b62e860393a5fc50a2e34223e55f19c2e634ba6db",
+            "content_hash": "e1081deed8cb58f6d3e73e6d787d0cfaf3ce7fd2b9b74384301a3f307ac7c940",
+            "content_sha256": "e1081deed8cb58f6d3e73e6d787d0cfaf3ce7fd2b9b74384301a3f307ac7c940",
             "cross_links": {
               "bleedthrough": null,
               "cdt": null,
@@ -11437,70 +11539,69 @@
             },
             "deletion_confirmation": [
               {
-                "note": "silent redaction between https://web.archive.org/web/20151104094732/http://www.gov.cn/ and https://web.archive.org/web/20151104094733/http://www.gov.cn/",
-                "observed_at": "2015-11-04T09:47:33Z",
-                "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
+                "note": "silent redaction between https://web.archive.org/web/20190905203345/http://English.news.cn and https://web.archive.org/web/20190905203348/http://English.news.cn",
+                "observed_at": "2019-09-05T20:33:48Z",
+                "source": "undertext:wayback:english.news.cn@ARCHIVE/crawler",
                 "status": "mutation"
               }
             ],
             "deletion_signal": "mutation",
-            "detected_at": "2015-11-04T09:47:33Z",
-            "evidence_hash": "e4eb558f5a72576e0b327a2f99b96ab97325acb4d3865b0933e72f406982a826",
-            "first_seen": "2015-11-04T09:47:32Z",
+            "detected_at": "2019-09-05T20:33:48Z",
+            "evidence_hash": "edd4a05d6e398fa310935a92cb2a003a1c76c8d7eca47478a0e135ba9f395d0e",
+            "first_seen": "2019-09-05T20:33:45Z",
             "gazetteer_hits": [],
             "http_status": null,
-            "language": "mixed",
-            "last_confirmed_alive": "2015-11-04T09:47:32Z",
-            "last_seen": "2015-11-04T09:47:33Z",
-            "locator": "http://www.gov.cn:80/",
+            "language": "en",
+            "last_confirmed_alive": "2019-09-05T20:33:45Z",
+            "last_seen": "2019-09-05T20:33:48Z",
+            "locator": "https://english.news.cn/",
             "mirror_urls": [],
             "observer_class": "archive-crawler",
-            "platform": "official",
+            "platform": "xinhua",
             "provenance": {
               "collector": "undertext",
-              "content_fp": "28036b4c570f76822b5f05381211079d75a7c50436e83221338756fcf559e070",
+              "content_fp": "3fdf74f56a36b563346dabcf0d9e8cc6f045f72eafa89b69e98116123a0e0494",
               "method": "differential vantage tomography",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "wayback:www.gov.cn@ARCHIVE/crawler"
+              "vantage": "wayback:english.news.cn@ARCHIVE/crawler"
             },
             "severity": "medium",
-            "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
-            "source_url": "http://www.gov.cn:80/",
+            "source": "undertext:wayback:english.news.cn@ARCHIVE/crawler",
+            "source_url": "https://english.news.cn/",
             "surface": "wayback-cdx",
             "terms": [
-              "中国政府网"
+              "Xinhua English"
             ],
-            "text": "https://web.archive.org/web/20151104094733/http://www.gov.cn/",
-            "text_en": "https://web.archive.org/web/20151104094733/http://www.gov.cn/",
-            "text_zh": "[undertext:mutation] 中国政府网",
-            "timestamp": "2015-11-04T09:47:33Z",
-            "title": "[undertext:mutation] 中国政府网",
+            "text": "https://web.archive.org/web/20190905203348/http://English.news.cn",
+            "text_en": "[undertext:mutation] Xinhua English\nhttps://web.archive.org/web/20190905203348/http://English.news.cn",
+            "text_zh": "",
+            "timestamp": "2019-09-05T20:33:48Z",
+            "title": "[undertext:mutation] Xinhua English",
             "uncertainty": [
-              "no public source URL on this row",
               "public text is title/term only; article body was not captured",
               "no China Digital Times ledger join"
             ],
-            "url": "http://www.gov.cn:80/",
+            "url": "https://english.news.cn/",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
             "visibility_state": "unknown"
           },
           {
             "archive": {
-              "archive_today_lookup": "https://archive.today/http://www.gov.cn:80/",
-              "ghostarchive_lookup": "https://ghostarchive.org/search?term=http://www.gov.cn:80/",
-              "post_event_snapshot": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
+              "archive_today_lookup": "https://archive.today/https://www.people.com.cn/",
+              "ghostarchive_lookup": "https://ghostarchive.org/search?term=https://www.people.com.cn/",
+              "post_event_snapshot": "https://web.archive.org/web/20041128025406/http://www2.people.com.cn:80/",
               "timestamp_bracket": {
                 "last_live": null,
                 "post_event": null
               },
-              "wayback_lookup": "https://web.archive.org/web/*/http://www.gov.cn:80/",
+              "wayback_lookup": "https://web.archive.org/web/*/https://www.people.com.cn/",
               "wayback_raw": null,
-              "wayback_snapshot": "https://web.archive.org/web/20120427183500/http://www.gov.cn/"
+              "wayback_snapshot": "https://web.archive.org/web/20041127094540/http://www.people.com.cn:80/"
             },
-            "content_hash": "28e810266a3408de09737327e7c9f63b1a4003f14a850d6a46d12dc4f70a8807",
-            "content_sha256": "28e810266a3408de09737327e7c9f63b1a4003f14a850d6a46d12dc4f70a8807",
+            "content_hash": "730d3ff7b39ae6c06b8b430e889f2a1e62849de2748917c41b5e57c081e86d1d",
+            "content_sha256": "730d3ff7b39ae6c06b8b430e889f2a1e62849de2748917c41b5e57c081e86d1d",
             "cross_links": {
               "bleedthrough": null,
               "cdt": null,
@@ -11513,152 +11614,78 @@
             },
             "deletion_confirmation": [
               {
-                "note": "silent redaction between https://web.archive.org/web/20151105080741/http://www.gov.cn/ and https://web.archive.org/web/20151105080743/http://www.gov.cn/",
-                "observed_at": "2015-11-05T08:07:43Z",
-                "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
-                "status": "mutation"
+                "note": "present→gone; deletion bracketed in [20041127094540 .. 20041128025406]; last-live https://web.archive.org/web/20041127094540/http://www.people.com.cn:80/",
+                "observed_at": "2004-11-28T02:54:06Z",
+                "source": "undertext:wayback:www.people.com.cn@ARCHIVE/crawler",
+                "status": "deletion"
               }
             ],
-            "deletion_signal": "mutation",
-            "detected_at": "2015-11-05T08:07:43Z",
-            "evidence_hash": "8726efee2e545e40d5a7e7e781e285ceb988ef1658d5d5a6a03fca8742c849c3",
-            "first_seen": "2015-11-05T08:07:41Z",
+            "deletion_signal": "deletion",
+            "detected_at": "2004-11-28T02:54:06Z",
+            "evidence_hash": "054a680e74d90deb5e61ded5a81e1fbba7fda8761f171224e829d63af61ffba7",
+            "first_seen": "2004-11-27T09:45:40Z",
             "gazetteer_hits": [],
             "http_status": null,
             "language": "mixed",
-            "last_confirmed_alive": "2015-11-05T08:07:41Z",
-            "last_seen": "2015-11-05T08:07:43Z",
-            "locator": "http://www.gov.cn:80/",
+            "last_confirmed_alive": "2004-11-27T09:45:40Z",
+            "last_seen": "2004-11-28T02:54:06Z",
+            "locator": "https://www.people.com.cn/",
             "mirror_urls": [],
             "observer_class": "archive-crawler",
-            "platform": "official",
+            "platform": "people-daily",
             "provenance": {
               "collector": "undertext",
-              "content_fp": "2dea20a6465e39b214ada0cc4dd5c19e3c5e89c4cd5250deea9e221c4612b654",
+              "content_fp": "",
               "method": "differential vantage tomography",
               "method_version": 1,
               "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "wayback:www.gov.cn@ARCHIVE/crawler"
+              "vantage": "wayback:www.people.com.cn@ARCHIVE/crawler"
             },
-            "severity": "medium",
-            "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
-            "source_url": "http://www.gov.cn:80/",
+            "severity": "high",
+            "source": "undertext:wayback:www.people.com.cn@ARCHIVE/crawler",
+            "source_url": "https://www.people.com.cn/",
             "surface": "wayback-cdx",
             "terms": [
-              "中国政府网"
+              "人民网"
             ],
-            "text": "https://web.archive.org/web/20151105080743/http://www.gov.cn/",
-            "text_en": "https://web.archive.org/web/20151105080743/http://www.gov.cn/",
-            "text_zh": "[undertext:mutation] 中国政府网",
-            "timestamp": "2015-11-05T08:07:43Z",
-            "title": "[undertext:mutation] 中国政府网",
+            "text": "https://web.archive.org/web/20041128025406/http://www2.people.com.cn:80/",
+            "text_en": "https://web.archive.org/web/20041128025406/http://www2.people.com.cn:80/",
+            "text_zh": "[undertext:deletion] 人民网",
+            "timestamp": "2004-11-28T02:54:06Z",
+            "title": "[undertext:deletion] 人民网",
             "uncertainty": [
-              "no public source URL on this row",
               "public text is title/term only; article body was not captured",
               "no China Digital Times ledger join"
             ],
-            "url": "http://www.gov.cn:80/",
-            "visibility_method_version": 1,
-            "visibility_schema": "palimpsest-visibility-event.v1",
-            "visibility_state": "unknown"
-          },
-          {
-            "archive": {
-              "archive_today_lookup": "https://archive.today/http://www.gov.cn:80/",
-              "ghostarchive_lookup": "https://ghostarchive.org/search?term=http://www.gov.cn:80/",
-              "post_event_snapshot": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
-              "timestamp_bracket": {
-                "last_live": null,
-                "post_event": null
-              },
-              "wayback_lookup": "https://web.archive.org/web/*/http://www.gov.cn:80/",
-              "wayback_raw": null,
-              "wayback_snapshot": "https://web.archive.org/web/20120427183500/http://www.gov.cn/"
-            },
-            "content_hash": "dd17e851111ff283bbe8ee80574d51f4b91d64c357770d2535b9ab597fcdafe8",
-            "content_sha256": "dd17e851111ff283bbe8ee80574d51f4b91d64c357770d2535b9ab597fcdafe8",
-            "cross_links": {
-              "bleedthrough": null,
-              "cdt": null,
-              "common_crawl": null,
-              "gdelt": null,
-              "greatfire": null,
-              "ooni": null,
-              "undertext": null,
-              "weibo": null
-            },
-            "deletion_confirmation": [
-              {
-                "note": "silent redaction between https://web.archive.org/web/20150920014159/http://www.gov.cn/ and https://web.archive.org/web/20150920014218/http://www.gov.cn/",
-                "observed_at": "2015-09-20T01:42:18Z",
-                "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
-                "status": "mutation"
-              }
-            ],
-            "deletion_signal": "mutation",
-            "detected_at": "2015-09-20T01:42:18Z",
-            "evidence_hash": "f853b4dc5b964f0a989a3efaaac21723d2d0aac49a4e6e7b173301cf414f37b1",
-            "first_seen": "2015-09-20T01:41:59Z",
-            "gazetteer_hits": [],
-            "http_status": null,
-            "language": "mixed",
-            "last_confirmed_alive": "2015-09-20T01:41:59Z",
-            "last_seen": "2015-09-20T01:42:18Z",
-            "locator": "http://www.gov.cn:80/",
-            "mirror_urls": [],
-            "observer_class": "archive-crawler",
-            "platform": "official",
-            "provenance": {
-              "collector": "undertext",
-              "content_fp": "46eb663a5f9becbf5e5ca2573dc921903a2130a680862fdcfef13de1562f284c",
-              "method": "differential vantage tomography",
-              "method_version": 1,
-              "schema_version": "palimpsest-china-observation.v1",
-              "vantage": "wayback:www.gov.cn@ARCHIVE/crawler"
-            },
-            "severity": "medium",
-            "source": "undertext:wayback:www.gov.cn@ARCHIVE/crawler",
-            "source_url": "http://www.gov.cn:80/",
-            "surface": "wayback-cdx",
-            "terms": [
-              "中国政府网"
-            ],
-            "text": "https://web.archive.org/web/20150920014218/http://www.gov.cn/",
-            "text_en": "https://web.archive.org/web/20150920014218/http://www.gov.cn/",
-            "text_zh": "[undertext:mutation] 中国政府网",
-            "timestamp": "2015-09-20T01:42:18Z",
-            "title": "[undertext:mutation] 中国政府网",
-            "uncertainty": [
-              "no public source URL on this row",
-              "public text is title/term only; article body was not captured",
-              "no China Digital Times ledger join"
-            ],
-            "url": "http://www.gov.cn:80/",
+            "url": "https://www.people.com.cn/",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
             "visibility_state": "unknown"
           }
         ],
-        "generated_at": "2026-08-24T02:10:39.231795+00:00",
-        "method_version": 1,
-        "n_deletions": 2,
-        "n_mutations": 4,
-        "n_reachable": 8,
+        "generated_at": "2026-08-24T15:58:43.094767+00:00",
+        "method_version": 2,
+        "n_deletions": 3,
+        "n_mutations": 11,
+        "n_reachable": 20,
+        "n_transitions_omitted": 19479,
+        "n_transitions_published": 14,
+        "n_transitions_total": 19493,
         "n_watched": 21,
         "reconstructions": [
           {
             "content_hash": "",
             "event": "no_baseline",
-            "evidence_hash": "3fa08cc01e77b6b4b408ed5a279f56d02d466d0b12f69051edc4bd27448ceed5",
+            "evidence_hash": "0a15e4cd961b6a7ba7ec13f394f2ac644210bbd1dff4c28b3493050b18ec2e4a",
             "first_capture": null,
             "http_status": null,
             "last_capture": null,
-            "locator": "",
+            "locator": "https://baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
             "missingness": "archive_gap",
             "n_captures": 0,
             "note": "no_baseline",
             "observer_class": "archive-crawler",
-            "platform": "public-web",
+            "platform": "baidu",
             "provenance": {
               "collector": "wayback_vantage",
               "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
@@ -11668,7 +11695,7 @@
             "surface": "wayback-cdx",
             "term": "青年失业率",
             "timestamp": null,
-            "url": "",
+            "url": "https://baike.baidu.com/item/%E9%9D%92%E5%B9%B4%E5%A4%B1%E4%B8%9A%E7%8E%87",
             "visibility_label": "archive_gap",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
@@ -11704,15 +11731,15 @@
           },
           {
             "content_hash": "",
-            "event": "unreachable",
-            "evidence_hash": "38d7486882a017cba7d3308196360318f2dc3ce25940f74c93e9a7273df272ed",
+            "event": "no_baseline",
+            "evidence_hash": "20ce9a5f0142c14452d91d091bdd2333e63144e148e4714bf1103c8a8a59e784",
             "first_capture": null,
             "http_status": null,
             "last_capture": null,
             "locator": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
-            "missingness": "coverage_gap",
+            "missingness": "archive_gap",
             "n_captures": 0,
-            "note": "unreachable",
+            "note": "no_baseline",
             "observer_class": "archive-crawler",
             "platform": "baidu",
             "provenance": {
@@ -11725,28 +11752,33 @@
             "term": "白纸运动",
             "timestamp": null,
             "url": "https://baike.baidu.com/item/%E7%99%BD%E7%BA%B8%E8%BF%90%E5%8A%A8",
+            "visibility_label": "archive_gap",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
-            "visibility_state": "visible"
+            "visibility_state": "unavailable"
           },
           {
             "content_hash": "",
-            "event": "unreachable",
+            "detail": "silent redaction between https://web.archive.org/web/20230316105547/http://www.stats.gov.cn/sj/zxfb/ and https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
+            "event": "mutation",
             "evidence_hash": "6c9c184062afdc4607c36e514cd9e9ee7dc267e72ecbda4b0046dfba53bc9154",
-            "first_capture": null,
+            "first_capture": "20230316105547",
             "http_status": null,
-            "last_capture": null,
+            "last_capture": "20260625171924",
+            "last_live_snapshot": "https://web.archive.org/web/20230316105547/http://www.stats.gov.cn/sj/zxfb/",
+            "latency_bracket_s": 3341.0,
             "locator": "https://www.stats.gov.cn/sj/zxfb/",
-            "missingness": "coverage_gap",
-            "n_captures": 0,
-            "note": "unreachable",
+            "n_captures": 47,
+            "note": "",
             "observer_class": "archive-crawler",
             "platform": "official",
+            "post_event_snapshot": "https://web.archive.org/web/20230316115128/http://www.stats.gov.cn/sj/zxfb/",
             "provenance": {
               "collector": "wayback_vantage",
               "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
               "vantage": "ARCHIVE"
             },
+            "severity": "medium",
             "source": "wayback",
             "surface": "wayback-cdx",
             "term": "国家统计局 最新发布",
@@ -11758,49 +11790,58 @@
           },
           {
             "content_hash": "",
-            "event": "unreachable",
-            "evidence_hash": "7859ba2b97c07092d9abbc26401fc4ba0d630ad867ed3994413d53d114a5d235",
-            "first_capture": null,
+            "detail": "present→gone; deletion bracketed in [20111201061817 .. 20111201144052]; last-live https://web.archive.org/web/20111201061817/http://www.news.cn/",
+            "event": "deletion",
+            "evidence_hash": "37d8cf4f022ef245c190d15bf25762896ba9e36251f64875acf207aede60d4b6",
+            "first_capture": "20030719220540",
             "http_status": null,
-            "last_capture": null,
+            "last_capture": "20131223015347",
+            "last_live_snapshot": "https://web.archive.org/web/20111201061817/http://www.news.cn/",
+            "latency_bracket_s": 30155.0,
             "locator": "https://www.news.cn/",
-            "missingness": "coverage_gap",
-            "n_captures": 0,
-            "note": "unreachable",
+            "n_captures": 2000,
+            "note": "",
             "observer_class": "archive-crawler",
             "platform": "xinhua",
+            "post_event_snapshot": "https://web.archive.org/web/20111201144052/http://www.news.cn/",
             "provenance": {
               "collector": "wayback_vantage",
               "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
               "vantage": "ARCHIVE"
             },
+            "severity": "high",
             "source": "wayback",
             "surface": "wayback-cdx",
             "term": "新华网",
             "timestamp": null,
             "url": "https://www.news.cn/",
+            "visibility_label": "visibility_anomaly",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
-            "visibility_state": "visible"
+            "visibility_state": "unavailable"
           },
           {
             "content_hash": "",
-            "event": "unreachable",
+            "detail": "silent redaction between https://web.archive.org/web/20190905203345/http://English.news.cn and https://web.archive.org/web/20190905203348/http://English.news.cn",
+            "event": "mutation",
             "evidence_hash": "93feebdf82339b2e90e62116dd4b3090a84ea4f2c36002ec71c59f79b5bcc315",
-            "first_capture": null,
+            "first_capture": "20100118102210",
             "http_status": null,
-            "last_capture": null,
+            "last_capture": "20220321003855",
+            "last_live_snapshot": "https://web.archive.org/web/20190905203345/http://English.news.cn",
+            "latency_bracket_s": 3.0,
             "locator": "https://english.news.cn/",
-            "missingness": "coverage_gap",
-            "n_captures": 0,
-            "note": "unreachable",
+            "n_captures": 2000,
+            "note": "",
             "observer_class": "archive-crawler",
             "platform": "xinhua",
+            "post_event_snapshot": "https://web.archive.org/web/20190905203348/http://English.news.cn",
             "provenance": {
               "collector": "wayback_vantage",
               "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
               "vantage": "ARCHIVE"
             },
+            "severity": "medium",
             "source": "wayback",
             "surface": "wayback-cdx",
             "term": "Xinhua English",
@@ -11812,47 +11853,20 @@
           },
           {
             "content_hash": "",
-            "event": "unreachable",
-            "evidence_hash": "21446ccc5ec28e25cd2642991833bc6f8f856ea85a02ebf7830d32f115384ccb",
-            "first_capture": null,
-            "http_status": null,
-            "last_capture": null,
-            "locator": "https://www.people.com.cn/",
-            "missingness": "coverage_gap",
-            "n_captures": 0,
-            "note": "unreachable",
-            "observer_class": "archive-crawler",
-            "platform": "people-daily",
-            "provenance": {
-              "collector": "wayback_vantage",
-              "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
-              "vantage": "ARCHIVE"
-            },
-            "source": "wayback",
-            "surface": "wayback-cdx",
-            "term": "人民网",
-            "timestamp": null,
-            "url": "https://www.people.com.cn/",
-            "visibility_method_version": 1,
-            "visibility_schema": "palimpsest-visibility-event.v1",
-            "visibility_state": "visible"
-          },
-          {
-            "content_hash": "",
-            "detail": "present→gone; deletion bracketed in [20120427183500 .. 20120429014035]; last-live https://web.archive.org/web/20120427183500/http://www.gov.cn/",
+            "detail": "present→gone; deletion bracketed in [20041127094540 .. 20041128025406]; last-live https://web.archive.org/web/20041127094540/http://www.people.com.cn:80/",
             "event": "deletion",
-            "evidence_hash": "11298a158a92905fe3024811fdd46c36b121d8fd96b8a67b75e541bb1a955ab6",
-            "first_capture": "19990428095213",
+            "evidence_hash": "cfa1412d732b6aa76d37837ea49878a806a6f6c73cee91d789d67760fcc3738d",
+            "first_capture": "19990125102147",
             "http_status": null,
-            "last_capture": "20160430004640",
-            "last_live_snapshot": "https://web.archive.org/web/20120427183500/http://www.gov.cn/",
-            "latency_bracket_s": 111935.0,
-            "locator": "http://www.gov.cn:80/",
+            "last_capture": "20111115171626",
+            "last_live_snapshot": "https://web.archive.org/web/20041127094540/http://www.people.com.cn:80/",
+            "latency_bracket_s": 61706.0,
+            "locator": "https://www.people.com.cn/",
             "n_captures": 2000,
             "note": "",
             "observer_class": "archive-crawler",
-            "platform": "official",
-            "post_event_snapshot": "https://web.archive.org/web/20120429014035/http://www.gov.cn:80/?",
+            "platform": "people-daily",
+            "post_event_snapshot": "https://web.archive.org/web/20041128025406/http://www2.people.com.cn:80/",
             "provenance": {
               "collector": "wayback_vantage",
               "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
@@ -11861,9 +11875,9 @@
             "severity": "high",
             "source": "wayback",
             "surface": "wayback-cdx",
-            "term": "中国政府网",
+            "term": "人民网",
             "timestamp": null,
-            "url": "http://www.gov.cn:80/",
+            "url": "https://www.people.com.cn/",
             "visibility_label": "visibility_anomaly",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
@@ -11871,15 +11885,42 @@
           },
           {
             "content_hash": "",
+            "event": "unreachable",
+            "evidence_hash": "802811b1e773c87654789177e30d79277187d53a1f0561fd8d71e289e314668e",
+            "first_capture": null,
+            "http_status": null,
+            "last_capture": null,
+            "locator": "https://www.gov.cn/",
+            "missingness": "coverage_gap",
+            "n_captures": 0,
+            "note": "unreachable",
+            "observer_class": "archive-crawler",
+            "platform": "official",
+            "provenance": {
+              "collector": "wayback_vantage",
+              "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
+              "vantage": "ARCHIVE"
+            },
+            "source": "wayback",
+            "surface": "wayback-cdx",
+            "term": "中国政府网",
+            "timestamp": null,
+            "url": "https://www.gov.cn/",
+            "visibility_method_version": 1,
+            "visibility_schema": "palimpsest-visibility-event.v1",
+            "visibility_state": "unknown"
+          },
+          {
+            "content_hash": "",
             "detail": "silent redaction between https://web.archive.org/web/20211031105046/https://www.fmprc.gov.cn/ and https://web.archive.org/web/20211031105117/https://www.fmprc.gov.cn/",
             "event": "mutation",
-            "evidence_hash": "bc8de6b8af43acf6f1981999ea4f37cb95fc7ce4676f19b7f9ab6339e941fdb3",
+            "evidence_hash": "15f9c3ae3dfabd3522afaae3a69c0fd7b099738b9b2993b83e64acb362e58522",
             "first_capture": "19981212025021",
             "http_status": null,
             "last_capture": "20211122222555",
             "last_live_snapshot": "https://web.archive.org/web/20211031105046/https://www.fmprc.gov.cn/",
             "latency_bracket_s": 31.0,
-            "locator": "http://www.fmprc.gov.cn:80/",
+            "locator": "https://www.fmprc.gov.cn/",
             "n_captures": 2000,
             "note": "",
             "observer_class": "archive-crawler",
@@ -11895,7 +11936,7 @@
             "surface": "wayback-cdx",
             "term": "外交部",
             "timestamp": null,
-            "url": "http://www.fmprc.gov.cn:80/",
+            "url": "https://www.fmprc.gov.cn/",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
             "visibility_state": "visible"
@@ -11904,13 +11945,13 @@
             "content_hash": "",
             "detail": "present→gone; deletion bracketed in [19991127124658 .. 19991128202040]; last-live https://web.archive.org/web/19991127124658/http://www.pbc.gov.cn:80/",
             "event": "deletion",
-            "evidence_hash": "2ee8d395f7e0c444f453d2b24d3064bd19f092e52e0e5c7ab47b1ceb13f6084c",
+            "evidence_hash": "50d3eb2b82f41ce6d0214ed549889942eb63eeca43cb3cc00c09ac39c1be48de",
             "first_capture": "19991127124658",
             "http_status": null,
             "last_capture": "20191219084058",
             "last_live_snapshot": "https://web.archive.org/web/19991127124658/http://www.pbc.gov.cn:80/",
             "latency_bracket_s": 113622.0,
-            "locator": "http://www.pbc.gov.cn:80/",
+            "locator": "https://www.pbc.gov.cn/",
             "n_captures": 2000,
             "note": "",
             "observer_class": "archive-crawler",
@@ -11926,7 +11967,7 @@
             "surface": "wayback-cdx",
             "term": "中国人民银行",
             "timestamp": null,
-            "url": "http://www.pbc.gov.cn:80/",
+            "url": "https://www.pbc.gov.cn/",
             "visibility_label": "visibility_anomaly",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
@@ -11934,22 +11975,26 @@
           },
           {
             "content_hash": "",
-            "event": "unreachable",
+            "detail": "silent redaction between https://web.archive.org/web/20220902025057/http://www.cac.gov.cn/ and https://web.archive.org/web/20220902025057/http://www.cac.gov.cn/",
+            "event": "mutation",
             "evidence_hash": "58586d9fd3dff6508f7b63b248ded16943e59230a1e1110a07be1bbc5d34e762",
-            "first_capture": null,
+            "first_capture": "20141018212045",
             "http_status": null,
-            "last_capture": null,
+            "last_capture": "20221130140714",
+            "last_live_snapshot": "https://web.archive.org/web/20220902025057/http://www.cac.gov.cn/",
+            "latency_bracket_s": 0.0,
             "locator": "https://www.cac.gov.cn/",
-            "missingness": "coverage_gap",
-            "n_captures": 0,
-            "note": "unreachable",
+            "n_captures": 2000,
+            "note": "",
             "observer_class": "archive-crawler",
             "platform": "official",
+            "post_event_snapshot": "https://web.archive.org/web/20220902025057/http://www.cac.gov.cn/",
             "provenance": {
               "collector": "wayback_vantage",
               "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
               "vantage": "ARCHIVE"
             },
+            "severity": "medium",
             "source": "wayback",
             "surface": "wayback-cdx",
             "term": "国家网信办",
@@ -11963,13 +12008,13 @@
             "content_hash": "",
             "detail": "silent redaction between https://web.archive.org/web/20191227135147/https://www.ndrc.gov.cn/ and https://web.archive.org/web/20191227135220/https://www.ndrc.gov.cn/",
             "event": "mutation",
-            "evidence_hash": "189a61edd79bc3721d097fac8f842dd0983833303ff9329b279cdeb5bbbd050d",
+            "evidence_hash": "c72ef096f956b0f3e4714c6aa947c989a8ba225e4127756ed400d77bddf71d55",
             "first_capture": "20030713213855",
             "http_status": null,
             "last_capture": "20220811075703",
             "last_live_snapshot": "https://web.archive.org/web/20191227135147/https://www.ndrc.gov.cn/",
             "latency_bracket_s": 33.0,
-            "locator": "http://www.ndrc.gov.cn:80/",
+            "locator": "https://www.ndrc.gov.cn/",
             "n_captures": 2000,
             "note": "",
             "observer_class": "archive-crawler",
@@ -11985,60 +12030,46 @@
             "surface": "wayback-cdx",
             "term": "国家发改委",
             "timestamp": null,
-            "url": "http://www.ndrc.gov.cn:80/",
-            "visibility_method_version": 1,
-            "visibility_schema": "palimpsest-visibility-event.v1",
-            "visibility_state": "visible"
-          },
-          {
-            "content_hash": "",
-            "detail": "silent redaction between https://web.archive.org/web/20160527003501/http://www.miit.gov.cn/ and https://web.archive.org/web/20160527003536/http://www.miit.gov.cn/",
-            "event": "mutation",
-            "evidence_hash": "ea0c549547d090cab25ff6fa9261d99c491d7263d3deab67d9d75ce7ddd9fa44",
-            "first_capture": "20080630033141",
-            "http_status": null,
-            "last_capture": "20220401061140",
-            "last_live_snapshot": "https://web.archive.org/web/20160527003501/http://www.miit.gov.cn/",
-            "latency_bracket_s": 35.0,
-            "locator": "http://www.miit.gov.cn:80/",
-            "n_captures": 2000,
-            "note": "",
-            "observer_class": "archive-crawler",
-            "platform": "official",
-            "post_event_snapshot": "https://web.archive.org/web/20160527003536/http://www.miit.gov.cn/",
-            "provenance": {
-              "collector": "wayback_vantage",
-              "method": "Internet Archive CDX reconstruction; missing captures are archive gaps",
-              "vantage": "ARCHIVE"
-            },
-            "severity": "medium",
-            "source": "wayback",
-            "surface": "wayback-cdx",
-            "term": "工业和信息化部",
-            "timestamp": null,
-            "url": "http://www.miit.gov.cn:80/",
+            "url": "https://www.ndrc.gov.cn/",
             "visibility_method_version": 1,
             "visibility_schema": "palimpsest-visibility-event.v1",
             "visibility_state": "visible"
           }
         ],
-        "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with archive-witnessed timestamps; velocity reported as an explicit capture bracket",
-        "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest"
+        "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with archive-witnessed timestamps; velocity reported as an explicit capture bracket; one primary DDTI representative per URL, with all omitted transitions counted",
+        "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest",
+        "transition_counts": {
+          "omitted": {
+            "deletion": 0,
+            "mutation": 19479,
+            "other": 0
+          },
+          "published": {
+            "deletion": 3,
+            "mutation": 11,
+            "other": 0
+          },
+          "total": {
+            "deletion": 3,
+            "mutation": 19490,
+            "other": 0
+          }
+        }
       },
       "payload_complete": false,
       "raw_url": "https://palimpsest.info/readings/wayback-latest.json",
-      "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with archive-witnessed timestamps; velocity reported as an explicit capture bracket",
+      "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with archive-witnessed timestamps; velocity reported as an explicit capture bracket; one primary DDTI representative per URL, with all omitted transitions counted",
       "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest",
-      "source_timestamp": "2026-08-24T02:10:39Z",
+      "source_timestamp": "2026-08-24T15:58:43Z",
       "status": "live",
-      "summary": "Reconstructs deletions and silent mutations only where archive captures provide a witness. Latest payload reports reconstructed deletions at 2 count across 21 URLs watched.",
+      "summary": "Reconstructs deletions and silent mutations only where archive captures provide a witness. Latest payload reports reconstructed deletions at 3 count across 21 URLs watched.",
       "title": "Wayback reconstruction"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 590.055,
+        "age_hours": 595.46,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -12193,7 +12224,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T18:52:24Z",
       "health": {
-        "age_hours": 5.703,
+        "age_hours": 11.108,
         "collector_reason": null,
         "collector_status": "source_refused",
         "ok": false,
@@ -12332,7 +12363,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:18Z",
       "health": {
-        "age_hours": 8.405,
+        "age_hours": 13.809,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12995,7 +13026,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:13:36Z",
       "health": {
-        "age_hours": 8.35,
+        "age_hours": 13.754,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13172,7 +13203,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T08:06:32Z",
       "health": {
-        "age_hours": 4.468,
+        "age_hours": 9.872,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13277,7 +13308,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T15:47:39Z",
       "health": {
-        "age_hours": 32.782,
+        "age_hours": 38.187,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -13345,7 +13376,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T19:27:00Z",
       "health": {
-        "age_hours": 17.127,
+        "age_hours": 22.531,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13398,7 +13429,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 68.521,
+        "age_hours": 73.926,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13457,7 +13488,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T12:32:44Z",
       "health": {
-        "age_hours": 24.031,
+        "age_hours": 29.436,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13614,7 +13645,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 147.191,
+        "age_hours": 152.595,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -13682,7 +13713,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T10:02:43Z",
       "health": {
-        "age_hours": 26.531,
+        "age_hours": 31.936,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -15964,7 +15995,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:31:32Z",
       "health": {
-        "age_hours": 4.051,
+        "age_hours": 9.455,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -16011,7 +16042,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-23T02:14:16Z",
       "health": {
-        "age_hours": 33.339,
+        "age_hours": 38.743,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
