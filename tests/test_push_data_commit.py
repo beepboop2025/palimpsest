@@ -114,6 +114,182 @@ def test_publish_rebases_byte_identical_candidate_after_unrelated_race(
     assert _git(remote, "rev-parse", "main") == _git(publisher, "rev-parse", "HEAD")
 
 
+def test_china_refresh_branch_refuses_main_advance_without_mutation(
+    tmp_path: Path,
+) -> None:
+    _remote, publisher, racer = _repositories(tmp_path)
+    expected_sha = _git(publisher, "rev-parse", "HEAD")
+    original_branch = _git(publisher, "branch", "--show-current")
+    (racer / "unrelated.txt").write_text("advanced\n", encoding="utf-8")
+    _git(racer, "add", "unrelated.txt")
+    _git(racer, "commit", "-qm", "advance after dispatch")
+    _git(racer, "push", "-q", "origin", "main")
+    _git(
+        publisher,
+        "fetch",
+        "--no-tags",
+        "origin",
+        "+refs/heads/main:refs/remotes/origin/main",
+    )
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "prepare_china_econ_refresh_branch.sh"
+    )
+
+    completed = subprocess.run(
+        [
+            "bash",
+            str(script),
+            expected_sha,
+            expected_sha,
+            "automation/china-econ-refresh-123-1",
+        ],
+        cwd=publisher,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 2
+    assert "origin/main advanced after refresh dispatch" in completed.stderr
+    assert _git(publisher, "rev-parse", "HEAD") == expected_sha
+    assert _git(publisher, "branch", "--show-current") == original_branch
+    assert "automation/china-econ-refresh-123-1" not in _git(
+        publisher, "branch", "--list"
+    )
+
+
+def test_china_refresh_branch_starts_only_from_exact_dispatch_sha(
+    tmp_path: Path,
+) -> None:
+    _remote, publisher, _racer = _repositories(tmp_path)
+    expected_sha = _git(publisher, "rev-parse", "HEAD")
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "prepare_china_econ_refresh_branch.sh"
+    )
+
+    subprocess.run(
+        [
+            "bash",
+            str(script),
+            expected_sha,
+            expected_sha,
+            "automation/china-econ-refresh-124-1",
+        ],
+        cwd=publisher,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert _git(publisher, "branch", "--show-current") == (
+        "automation/china-econ-refresh-124-1"
+    )
+    assert _git(publisher, "rev-parse", "HEAD") == expected_sha
+
+
+def test_china_refresh_extracts_registry_from_latest_receipt_change(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    _git(tmp_path, "init", "-q", "-b", "main", str(repo))
+    _configure(repo)
+    (repo / "config").mkdir()
+    (repo / "readings").mkdir()
+    prior = '{"schema_version":"prior-registry"}\n'
+    current = '{"schema_version":"expanded-registry"}\n'
+    (repo / "config" / "china_econ_wdi_series.json").write_text(
+        prior, encoding="utf-8"
+    )
+    (repo / "readings" / "china-econ-wdi-latest.json").write_text(
+        '{"receipt":"reviewed"}\n', encoding="utf-8"
+    )
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-qm", "seed governed WDI pair")
+    (repo / "unrelated.txt").write_text("later\n", encoding="utf-8")
+    _git(repo, "add", "unrelated.txt")
+    _git(repo, "commit", "-qm", "unrelated main change")
+    (repo / "config" / "china_econ_wdi_series.json").write_text(
+        current, encoding="utf-8"
+    )
+    _git(repo, "add", "config/china_econ_wdi_series.json")
+    _git(repo, "commit", "-qm", "review additive registry expansion")
+    revision = _git(repo, "rev-parse", "HEAD")
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "extract_china_econ_prior_registry.sh"
+    )
+
+    completed = subprocess.run(
+        ["bash", str(script), revision],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.stdout == prior
+    assert "prior WDI registry authority commit" in completed.stderr
+    assert (repo / "config" / "china_econ_wdi_series.json").read_text(
+        encoding="utf-8"
+    ) == current
+
+
+@pytest.mark.parametrize("include_unreviewed_path", [False, True])
+def test_china_registry_candidate_is_data_only_and_based_on_exact_main(
+    tmp_path: Path,
+    include_unreviewed_path: bool,
+) -> None:
+    _remote, publisher, racer = _repositories(tmp_path)
+    (racer / "config").mkdir()
+    registry = racer / "config" / "china_econ_wdi_series.json"
+    registry.write_text('{"series":["old"]}\n', encoding="utf-8")
+    _git(racer, "add", "config/china_econ_wdi_series.json")
+    _git(racer, "commit", "-qm", "publish reviewed registry")
+    _git(racer, "push", "-q", "origin", "main")
+    _git(publisher, "pull", "-q", "--ff-only")
+    workflow_sha = _git(publisher, "rev-parse", "HEAD")
+    registry_ref = "refs/heads/review/china-econ-registry-expansion"
+    _git(publisher, "checkout", "-q", "-b", "registry-expansion")
+    publisher_registry = publisher / "config" / "china_econ_wdi_series.json"
+    publisher_registry.write_text(
+        '{"series":["old","new"]}\n', encoding="utf-8"
+    )
+    _git(publisher, "add", "config/china_econ_wdi_series.json")
+    if include_unreviewed_path:
+        (publisher / "unexpected.txt").write_text("not data only\n", encoding="utf-8")
+        _git(publisher, "add", "unexpected.txt")
+    _git(publisher, "commit", "-qm", "review registry expansion")
+    registry_sha = _git(publisher, "rev-parse", "HEAD")
+    _git(publisher, "push", "-q", "origin", f"HEAD:{registry_ref}")
+    _git(publisher, "checkout", "-q", "main")
+    script = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "validate_china_econ_registry_candidate.sh"
+    )
+
+    completed = subprocess.run(
+        ["bash", str(script), workflow_sha, registry_ref, registry_sha],
+        cwd=publisher,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    if include_unreviewed_path:
+        assert completed.returncode == 2
+        assert "must modify only" in completed.stderr
+    else:
+        assert completed.returncode == 0
+        assert completed.stdout.strip() == registry_sha
+    assert _git(publisher, "rev-parse", "HEAD") == workflow_sha
+
+
 def test_publish_refuses_a_same_path_conflict_and_aborts_rebase(tmp_path: Path) -> None:
     remote, publisher, racer = _repositories(tmp_path)
     _candidate(publisher, '{"version":"candidate"}\n')
@@ -1079,9 +1255,29 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "python -m scripts.build_china_econ_forecast --check" in china_econ
     assert "readings/china-econ-forecast-latest.json" in china_econ
     assert "schedule:" not in china_econ
-    assert "workflow_dispatch: {}" in china_econ
+    assert "workflow_dispatch:" in china_econ
+    assert "registry_ref:" in china_econ and "registry_sha:" in china_econ
+    assert 'test "$(git rev-parse HEAD)" = "$GITHUB_SHA"' in china_econ
+    assert 'test "$(git rev-parse origin/main)" = "$GITHUB_SHA"' in china_econ
+    assert "bash scripts/prepare_china_econ_refresh_branch.sh \\" in china_econ
+    assert '"$GITHUB_SHA" "$candidate_sha" "$branch"' in china_econ
+    assert "validate_china_econ_registry_candidate.sh" in china_econ
+    assert 'test "$(git merge-base "$GITHUB_SHA" HEAD)" = "$GITHUB_SHA"' in china_econ
+    assert "current main contains a non-atomic registry-only transition" in china_econ
+    assert 'transition["state"] != "append_only_addition"' in china_econ
+    assert 'not transition["added_source_indicators"]' in china_econ
+    assert "registry expansion requires a nonempty append-only indicator addition" in china_econ
+    assert china_econ.count("args+=(--require-registry-addition)") == 2
+    assert "registry expansion produced no compatible ledger/receipt update" in china_econ
+    assert (
+        'bash scripts/extract_china_econ_prior_registry.sh "$candidate_sha"'
+        in china_econ
+    )
+    assert "git show HEAD:config/china_econ_wdi_series.json" not in china_econ
+    assert 'git checkout -B "$branch" origin/main' not in china_econ
     assert "python scripts/push_data_commit.py" not in china_econ
     assert "git push --set-upstream origin" in china_econ
+    assert 'test "$(git rev-parse HEAD^)" = "$CANDIDATE_SHA"' in china_econ
     assert "gh pr create" not in china_econ
     assert "pull-requests: write" not in china_econ
     assert "compare/main...${REFRESH_BRANCH}?expand=1" in china_econ
