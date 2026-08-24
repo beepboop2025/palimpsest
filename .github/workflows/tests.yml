@@ -320,6 +320,68 @@ jobs:
         with:
           path: ${{ runner.temp }}/pages-root
 
+      - name: Measure the exact staged Pages artifact
+        id: pages_size
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+          # 950 MiB leaves 74 MiB below GitHub Pages' supported 1 GiB ceiling.
+          PAGES_ARTIFACT_LIMIT_BYTES: "996147200"
+        run: |
+          set -euo pipefail
+          # The pinned upload action creates and uploads this exact tar path.
+          # Measuring it avoids substituting workspace size or compressed size.
+          artifact="$RUNNER_TEMP/artifact.tar"
+          receipt="$RUNNER_TEMP/pages-artifact-size.json"
+          test -f "$artifact"
+          artifact_bytes=$(wc -c < "$artifact" | tr -d '[:space:]')
+          artifact_sha256=$(sha256sum "$artifact" | awk '{print $1}')
+          case "$artifact_bytes" in
+            ''|*[!0-9]*) echo "invalid Pages artifact byte count" >&2; exit 1 ;;
+          esac
+          if [ "$artifact_bytes" -le 0 ]; then
+            echo "Pages artifact is empty" >&2
+            exit 1
+          fi
+          if [ "${#artifact_sha256}" -ne 64 ] ||
+             [ -n "${artifact_sha256//[0-9a-f]/}" ]; then
+            echo "invalid Pages artifact SHA-256" >&2
+            exit 1
+          fi
+          headroom_bytes=$((PAGES_ARTIFACT_LIMIT_BYTES - artifact_bytes))
+          if [ "$artifact_bytes" -le "$PAGES_ARTIFACT_LIMIT_BYTES" ]; then
+            within_limit=true
+            status=within-limit
+          else
+            within_limit=false
+            status=over-limit
+          fi
+          printf '%s\n' \
+            "{\"artifact_bytes\":$artifact_bytes,\"artifact_name\":\"github-pages/artifact.tar\",\"artifact_sha256\":\"$artifact_sha256\",\"headroom_bytes\":$headroom_bytes,\"limit_bytes\":$PAGES_ARTIFACT_LIMIT_BYTES,\"publication_sha\":\"$PUBLICATION_SHA\",\"schema_version\":\"palimpsest.pages-artifact-size.v1\",\"status\":\"$status\"}" \
+            > "$receipt"
+          {
+            echo "artifact_bytes=$artifact_bytes"
+            echo "headroom_bytes=$headroom_bytes"
+            echo "within_limit=$within_limit"
+          } >> "$GITHUB_OUTPUT"
+          cat "$receipt" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the Pages artifact size receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: pages-artifact-size-${{ needs.contract.outputs.revision }}
+          path: ${{ runner.temp }}/pages-artifact-size.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce the Pages artifact size ceiling
+        if: ${{ steps.pages_size.outputs.within_limit != 'true' }}
+        env:
+          ARTIFACT_BYTES: ${{ steps.pages_size.outputs.artifact_bytes }}
+          HEADROOM_BYTES: ${{ steps.pages_size.outputs.headroom_bytes }}
+        run: |
+          echo "Pages artifact is too large: ${ARTIFACT_BYTES} bytes (${HEADROOM_BYTES} bytes headroom)" >&2
+          exit 1
+
   deploy-pages:
     name: Deploy exact complete Pages edition
     needs:

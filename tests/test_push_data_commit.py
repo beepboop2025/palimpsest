@@ -1155,6 +1155,73 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     assert "name: github-pages" in workflow[deploy_pages:]
 
 
+def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
+    workflow_path = (
+        Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tests.yml"
+    )
+    workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    steps = workflow["jobs"]["pages-artifact"]["steps"]
+    by_name = {step.get("name"): step for step in steps if isinstance(step, dict)}
+
+    upload_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Upload the exact Pages artifact"
+    )
+    measure_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Measure the exact staged Pages artifact"
+    )
+    receipt_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Upload the Pages artifact size receipt"
+    )
+    enforce_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Enforce the Pages artifact size ceiling"
+    )
+    assert upload_index < measure_index < receipt_index < enforce_index
+
+    measure = by_name["Measure the exact staged Pages artifact"]
+    limit = int(measure["env"]["PAGES_ARTIFACT_LIMIT_BYTES"])
+    assert limit == 950 * 1024 * 1024
+    assert limit < 1024 * 1024 * 1024
+    assert measure["env"]["PUBLICATION_SHA"] == (
+        "${{ needs.contract.outputs.revision }}"
+    )
+    for field in (
+        "artifact_bytes",
+        "artifact_sha256",
+        "headroom_bytes",
+        "limit_bytes",
+        "publication_sha",
+        "schema_version",
+        "status",
+    ):
+        assert f'\\"{field}\\"' in measure["run"]
+    assert 'artifact="$RUNNER_TEMP/artifact.tar"' in measure["run"]
+    assert "artifact_bytes=$(wc -c" in measure["run"]
+    assert "artifact_sha256=$(sha256sum" in measure["run"]
+
+    receipt = by_name["Upload the Pages artifact size receipt"]
+    assert receipt["uses"] == (
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+    )
+    assert receipt["with"] == {
+        "name": "pages-artifact-size-${{ needs.contract.outputs.revision }}",
+        "path": "${{ runner.temp }}/pages-artifact-size.json",
+        "if-no-files-found": "error",
+        "retention-days": 30,
+    }
+
+    enforce = by_name["Enforce the Pages artifact size ceiling"]
+    assert enforce["if"] == "${{ steps.pages_size.outputs.within_limit != 'true' }}"
+    assert "exit 1" in enforce["run"]
+
+
 def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -> None:
     workflow_root = Path(__file__).resolve().parents[1] / ".github" / "workflows"
     controllers = {
