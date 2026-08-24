@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 29 are live. Health qualifiers: 4 degraded, 6 stale.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 27 are live. Health qualifiers: 4 degraded, 8 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-24T06:38:01Z",
+  "generated_at": "2026-08-24T09:29:31Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "99f278549ae9db25c8ad1a57d3ee81f2bf739e6c",
+  "source_commit": "9d2ee02b767c7783710e923e6d9487494c14fdac",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 29,
+    "live": 27,
     "status": "degraded",
     "counts": {
-      "live": 29,
+      "live": 27,
       "degraded": 4,
-      "stale": 6,
+      "stale": 8,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-24T06:38:00Z",
       "modified_at": "2026-08-24T06:38:00Z",
-      "claim_fingerprint": "sha256:cae0faa41a133a173ca5353aa094990d1f937d6eb88666321a49a2aad544262a",
+      "claim_fingerprint": "sha256:0ebd798adbc0ef75fdedfeda172ff5e03216402e3912e9bd6420bb92299d15d3",
       "metric": {
         "label": "board e-value",
         "value": 8.79,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 29 are live. Health qualifiers: 4 degraded, 6 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 27 are live. Health qualifiers: 4 degraded, 8 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -442,20 +442,20 @@
       "slug": "weibo-hot-search-join",
       "url": "https://palimpsest.info/news/weibo-hot-search-join/",
       "signal_id": "weibo-hotsearch",
-      "headline": "The latest Weibo archive contains 2,937 hot-search board entries",
-      "dek": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
+      "headline": "Weibo hot-search join: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 3,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T05:55:38Z",
       "modified_at": "2026-08-24T05:55:38Z",
-      "claim_fingerprint": "sha256:2d70b7afe465eddd52e019f5149a8302fe23422a2be789cf58c66eda35483e76",
+      "claim_fingerprint": "sha256:fbbd796714a27d8701bf89d250b4dc110fa7b57d5d236815f0693f5547448d69",
       "metric": {
-        "label": "board entries",
-        "value": 2937,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -463,8 +463,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current archive window contains 2,937 Weibo hot-search board entries available for joining."
+          "type": "availability",
+          "statement": "No current finding is published for Weibo hot-search join because the source status is stale."
         }
       ],
       "evidence": {
@@ -481,6 +481,7 @@
         "version": 2
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention."
       ],
       "related_signal_ids": [
@@ -495,15 +496,15 @@
       "url": "https://palimpsest.info/news/silence-index/",
       "signal_id": "silence-index",
       "headline": "Silence index: no current finding",
-      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "degraded",
+      "status": "stale",
       "published_at": "2026-08-24T06:04:23Z",
       "modified_at": "2026-08-24T06:04:23Z",
-      "claim_fingerprint": "sha256:0aaa02fcf26cf2cb3f6a9bc1cbc9d5cd42cf48a141926be5afdeb224c4e6e529",
+      "claim_fingerprint": "sha256:dd0cef3624285bdb741fadf4ad138ac30cc90a95d271c28721e470c25febbfee",
       "metric": {
         "label": null,
         "value": null,
@@ -516,7 +517,7 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for Silence index because the source status is degraded."
+          "statement": "No current finding is published for Silence index because the source status is stale."
         }
       ],
       "evidence": {
@@ -533,7 +534,7 @@
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: declared measurement is incomplete: metric /n_blackout is absent or non-scalar",
+        "Current finding withheld: freshness deadline has passed",
         "Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain."
       ],
       "related_signal_ids": [
@@ -1642,29 +1643,29 @@
       "slug": "baike-public-snapshot",
       "url": "https://palimpsest.info/news/baike-public-snapshot/",
       "signal_id": "baike-public-snapshot",
-      "headline": "Public Baike HTML answered 0 of 8 watched articles",
-      "dek": "Topic and event pages are fetched without a login. A 403 or login wall is recorded as unreachable, never as a rewrite. The Wikipedia-fork collector stays disabled.",
+      "headline": "Baike public snapshot: no current finding",
+      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "erasure",
       "order": 7,
       "type": "measurement",
       "priority": "background",
-      "status": "live",
+      "status": "degraded",
       "published_at": "2026-08-24T04:52:24Z",
       "modified_at": "2026-08-24T04:52:24Z",
-      "claim_fingerprint": "sha256:108b4b8083f83df8a23cd1279f15869f26b35ec86a26ff1fa8c5abcb95fcac50",
+      "claim_fingerprint": "sha256:65a2c83079a606d40c89f337c76e5d50dd5e303d7c5bf4c90253d87ff988be91",
       "metric": {
-        "label": "articles fetched",
-        "value": 0,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "pages watched",
-          "value": 8
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The public Baike snapshot fetched 0 of 8 watched articles this round."
+          "type": "availability",
+          "statement": "No current finding is published for Baike public snapshot because the source status is degraded."
         }
       ],
       "evidence": {
@@ -1681,6 +1682,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: upstream status is unreachable; collector status is source_refused",
         "A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites."
       ],
       "related_signal_ids": [
