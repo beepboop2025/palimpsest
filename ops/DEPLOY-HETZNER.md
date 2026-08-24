@@ -2491,26 +2491,28 @@ systemctl list-timers palimpsest-backup.timer \
 
 A rollback is a new three-phase transaction, not a receipt edit. Select a
 reviewed main-line target that still contains every installer, unit, verifier,
-and state contract used above. Select a second reviewed compatible ancestor as
-its recovery target. A branch-only emergency commit is not a generic rollback
-target. In a fresh Phase 1 shell, run this preflight, then execute Phase 1
-unchanged; its environment-aware assignments retain these exact values. Run
-Phase 2 against `ROLLBACK_TARGET_SHA`, and finish Phase 3 in the paused shell.
+and state contract used above. Independently record the exact deployment that
+is currently running; it is the compatible recovery point if the rollback
+transaction itself fails. A branch-only emergency commit is not a generic
+rollback target. In a fresh Phase 1 shell, run this preflight, then execute
+Phase 1 unchanged; its environment-aware assignments retain these exact
+values. Run Phase 2 against `ROLLBACK_TARGET_SHA`, and finish Phase 3 in the
+paused shell.
 
 ```bash
 set -Eeuo pipefail
 cd /home/palimpsest/palimpsest
 ROLLBACK_TARGET_SHA='REPLACE_WITH_REVIEWED_MAIN_LINE_40_HEX_SHA'
-ROLLBACK_FALLBACK_SHA='REPLACE_WITH_EARLIER_COMPATIBLE_40_HEX_SHA'
+CURRENT_DEPLOY_SHA='REPLACE_WITH_CURRENT_DEPLOYED_40_HEX_SHA'
 [[ "$ROLLBACK_TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
-[[ "$ROLLBACK_FALLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$CURRENT_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 git fetch --prune origin '+refs/heads/main:refs/remotes/origin/main'
 git cat-file -e "${ROLLBACK_TARGET_SHA}^{commit}"
-git cat-file -e "${ROLLBACK_FALLBACK_SHA}^{commit}"
+git cat-file -e "${CURRENT_DEPLOY_SHA}^{commit}"
 git merge-base --is-ancestor \
-  "$ROLLBACK_FALLBACK_SHA" "$ROLLBACK_TARGET_SHA"
+  "$ROLLBACK_TARGET_SHA" "$CURRENT_DEPLOY_SHA"
 git merge-base --is-ancestor \
-  "$ROLLBACK_TARGET_SHA" refs/remotes/origin/main
+  "$CURRENT_DEPLOY_SHA" refs/remotes/origin/main
 for required_path in \
     ops/investigative-analysis/install-host-bundle.sh \
     ops/common-crawl/install-host-bundle.sh \
@@ -2520,10 +2522,12 @@ for required_path in \
     ops/systemd/palimpsest-backup.release-quiesce.conf; do
   git cat-file -e "${ROLLBACK_TARGET_SHA}:${required_path}"
 done
+export EXPECTED_PREVIOUS_DEPLOY_SHA="$CURRENT_DEPLOY_SHA"
+export COMPATIBLE_ROLLBACK_SHA="$CURRENT_DEPLOY_SHA"
 export EXPECTED_DEPLOY_SHA="$ROLLBACK_TARGET_SHA"
-export COMPATIBLE_ROLLBACK_SHA="$ROLLBACK_FALLBACK_SHA"
-printf 'Rollback transaction pinned: target=%s fallback=%s\n' \
-  "$EXPECTED_DEPLOY_SHA" "$COMPATIBLE_ROLLBACK_SHA"
+export TRANSACTION_DIRECTION=rollback
+printf 'Rollback transaction pinned: current=%s target=%s\n' \
+  "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$EXPECTED_DEPLOY_SHA"
 # Execute the complete Phase 1 block now, then Phases 2 and 3 as documented.
 ```
 

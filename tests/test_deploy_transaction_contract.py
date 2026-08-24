@@ -734,6 +734,10 @@ def test_rollback_requires_a_compatible_sha_not_only_the_old_receipt() -> None:
     assert "protected-only" in guide
     assert "Never use the raw previous receipt as the rollback decision" in guide
     assert "Executing a compatible rollback" in guide
+    assert 'export EXPECTED_PREVIOUS_DEPLOY_SHA="$CURRENT_DEPLOY_SHA"' in guide
+    assert 'export COMPATIBLE_ROLLBACK_SHA="$CURRENT_DEPLOY_SHA"' in guide
     assert 'export EXPECTED_DEPLOY_SHA="$ROLLBACK_TARGET_SHA"' in guide
+    assert "export TRANSACTION_DIRECTION=rollback" in guide
+    assert "ROLLBACK_FALLBACK_SHA" not in guide
     assert "ops/osint-sync/install-host-bundle.sh" in guide
     assert 'ROLLBACK_SHA="$(sudo cat /etc/palimpsest/deployed-commit)"' not in guide
