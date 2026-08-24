@@ -38,6 +38,22 @@ x-runtime-depends: &runtime-depends
   redis:    {condition: service_healthy}
   migrate:  {condition: service_completed_successfully}
 
+x-app-environment: &app-environment
+  PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED: ${PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED:-1}
+  PALIMPSEST_OBSERVATION_DIR: ${PALIMPSEST_OBSERVATION_DIR:-/app/data/observations}
+  PALIMPSEST_OBSERVATION_MAX_BYTES: ${PALIMPSEST_OBSERVATION_MAX_BYTES:-16777216}
+  PALIMPSEST_EVIDENCE_DOCUMENT_STORE: ${PALIMPSEST_EVIDENCE_DOCUMENT_STORE:-/app/data/evidence-documents}
+  PALIMPSEST_SOURCE_WORKFLOW_STORE: ${PALIMPSEST_SOURCE_WORKFLOW_STORE:-/app/data/source-workflow}
+  PALIMPSEST_STATUS_PATH: ${PALIMPSEST_STATUS_PATH:-/app/data/node-status.json}
+  PALIMPSEST_ALERT_WEBHOOK_URL: ${PALIMPSEST_ALERT_WEBHOOK_URL:-}
+  PALIMPSEST_ACTIVE_PROBES_ENABLED: ${PALIMPSEST_ACTIVE_PROBES_ENABLED:-0}
+  PALIMPSEST_LIVE: ${PALIMPSEST_LIVE:-0}
+  PALIMPSEST_OONI_BULK_ENABLED: ${PALIMPSEST_OONI_BULK_ENABLED:-0}
+  PALIMPSEST_OONI_WAREHOUSE_DIR: ${PALIMPSEST_OONI_WAREHOUSE_DIR:-/app/data/ooni-bulk}
+  PALIMPSEST_OSINT_AUTHORITY_DIR: /app/osint-authority
+  PALIMPSEST_OSINT_PATH: /app/osint-authority/osint-china-latest.json
+  PALIMPSEST_READINGS_LEDGER_PATH: /app/osint-authority/readings-ledger.jsonl
+
 x-app: &app
   build:
     context: ../..
@@ -60,20 +76,7 @@ x-app: &app
   # retention/status behavior on upgrade without rewriting its secret .env.
   # Values in Compose interpolation (shell or project .env) can still override.
   environment:
-    PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED: ${PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED:-1}
-    PALIMPSEST_OBSERVATION_DIR: ${PALIMPSEST_OBSERVATION_DIR:-/app/data/observations}
-    PALIMPSEST_OBSERVATION_MAX_BYTES: ${PALIMPSEST_OBSERVATION_MAX_BYTES:-16777216}
-    PALIMPSEST_EVIDENCE_DOCUMENT_STORE: ${PALIMPSEST_EVIDENCE_DOCUMENT_STORE:-/app/data/evidence-documents}
-    PALIMPSEST_SOURCE_WORKFLOW_STORE: ${PALIMPSEST_SOURCE_WORKFLOW_STORE:-/app/data/source-workflow}
-    PALIMPSEST_STATUS_PATH: ${PALIMPSEST_STATUS_PATH:-/app/data/node-status.json}
-    PALIMPSEST_ALERT_WEBHOOK_URL: ${PALIMPSEST_ALERT_WEBHOOK_URL:-}
-    PALIMPSEST_ACTIVE_PROBES_ENABLED: ${PALIMPSEST_ACTIVE_PROBES_ENABLED:-0}
-    PALIMPSEST_LIVE: ${PALIMPSEST_LIVE:-0}
-    PALIMPSEST_OONI_BULK_ENABLED: ${PALIMPSEST_OONI_BULK_ENABLED:-0}
-    PALIMPSEST_OONI_WAREHOUSE_DIR: ${PALIMPSEST_OONI_WAREHOUSE_DIR:-/app/data/ooni-bulk}
-    PALIMPSEST_OSINT_AUTHORITY_DIR: /app/osint-authority
-    PALIMPSEST_OSINT_PATH: /app/osint-authority/osint-china-latest.json
-    PALIMPSEST_READINGS_LEDGER_PATH: /app/osint-authority/readings-ledger.jsonl
+    <<: *app-environment
   # Bind the repo's readings/ and private data/ so durable state survives image
   # rebuilds. Production points these variables at operator-owned paths outside
   # the git checkout; the relative fallbacks keep local development convenient.
@@ -197,6 +200,22 @@ services:
     profiles: ["collectors"]
     depends_on: *runtime-depends
     command: ["celery", "-A", "core.scheduler", "worker", "-c", "2", "-Q", "collectors", "--prefetch-multiplier=1", "-n", "collectors@%h"]
+    environment:
+      <<: *app-environment
+      PALIMPSEST_COMMON_CRAWL_FEATURES: /app/common-crawl-derived/common-crawl-features.jsonl
+    # Only the atomic aggregate export crosses from the private archive lane.
+    # Mount the directory so producer replacements become visible; never expose
+    # the SQLite database, inbox, WARC records, or private model outputs.
+    volumes:
+      - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:rw
+      - ${PALIMPSEST_DATA_HOST_PATH:-../../data}:/app/data:rw
+      - ${PALIMPSEST_OSINT_AUTHORITY_HOST_PATH:-/var/lib/palimpsest-public-osint-sync/authoritative}:/app/osint-authority:ro
+      - type: bind
+        source: ${PALIMPSEST_COMMON_CRAWL_DERIVED_HOST_PATH:-/var/lib/palimpsest/common-crawl/derived}
+        target: /app/common-crawl-derived
+        read_only: true
+        bind:
+          create_host_path: false
     secrets:
       - cloudflare_radar_api_token
     mem_limit: 1536m

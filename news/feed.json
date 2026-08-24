@@ -13,12 +13,12 @@
   ],
   "items": [
     {
-      "id": "palimpsest-news:board-alarm:sha256:2ee01ce87a4d3bdda41c80720a60833b0b9e7aaaa6f91ebe0309b878e1ca2bd8",
+      "id": "palimpsest-news:board-alarm:sha256:0cdf7ba861b019d4ec58a3feecf4f536646c99522dfee24739c31e887f7dcdef",
       "url": "https://palimpsest.info/news/board-alarm/",
       "external_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "title": "[Palimpsest measurement] Multiple layers elevated together in the latest board synthesis",
       "summary": "Palimpsest measurement. The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 21 are live. Health qualifiers: 4 degraded, 14 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
       "date_published": "2026-08-24T17:22:36Z",
       "date_modified": "2026-08-24T17:22:36Z",
       "tags": [
@@ -37,7 +37,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-8458d194d55f42ef450b18a8",
+        "revision_id": "storyv-44e7f1aa456def06567c330d",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -1086,31 +1086,31 @@
       }
     },
     {
-      "id": "palimpsest-news:anchors:sha256:e02e301d69119ebeef4dce6dac0dde187c62faec4841fc11d868ed2bf0d14c97",
+      "id": "palimpsest-news:anchors:sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
       "url": "https://palimpsest.info/news/integrity-anchors/",
       "external_url": "https://palimpsest.info/readings/anchors-latest.json",
-      "title": "[Palimpsest measurement] Integrity anchors: no current finding",
-      "summary": "Palimpsest measurement. The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Integrity anchors because the source status is degraded.\n\nLimit: Current finding withheld: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim.\n\nEvidence: https://palimpsest.info/readings/anchors-latest.json",
-      "date_published": "2026-08-24T06:31:32Z",
-      "date_modified": "2026-08-24T06:31:32Z",
+      "title": "[Palimpsest measurement] Palimpsest's public ledgers have a current integrity-anchor reading",
+      "summary": "Palimpsest measurement. Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: A current aggregate integrity-anchor record is published for the Palimpsest ledgers.\n\nLimit: An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim.\n\nEvidence: https://palimpsest.info/readings/anchors-latest.json",
+      "date_published": "2026-08-24T16:50:02Z",
+      "date_modified": "2026-08-24T16:50:02Z",
       "tags": [
         "palimpsest-measurement",
         "Integrity and Witnessing",
         "anchors",
-        "degraded"
+        "live"
       ],
       "attachments": [
         {
           "url": "https://palimpsest.info/readings/anchors-latest.json",
           "mime_type": "application/json",
           "title": "anchors-latest.json",
-          "size_in_bytes": 532
+          "size_in_bytes": 1175
         }
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-5a4ddae42d0cc1125521fc5c",
+        "revision_id": "storyv-a5be4e5d30a86c43ce0603c2",
         "verification_status": "palimpsest_measurement"
       }
     },

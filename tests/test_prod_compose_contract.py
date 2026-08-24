@@ -117,6 +117,41 @@ def test_runtime_state_mounts_can_live_outside_the_git_checkout():
         )
 
 
+def test_only_collector_worker_sees_atomic_archive_features_read_only():
+    document = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
+    services = document["services"]
+    derived_mount = {
+        "type": "bind",
+        "source": (
+            "${PALIMPSEST_COMMON_CRAWL_DERIVED_HOST_PATH:-"
+            "/var/lib/palimpsest/common-crawl/derived}"
+        ),
+        "target": "/app/common-crawl-derived",
+        "read_only": True,
+        "bind": {"create_host_path": False},
+    }
+
+    assert services["worker-collectors"]["environment"][
+        "PALIMPSEST_COMMON_CRAWL_FEATURES"
+    ] == "/app/common-crawl-derived/common-crawl-features.jsonl"
+    assert derived_mount in services["worker-collectors"]["volumes"]
+    assert derived_mount["source"] != "/var/lib/palimpsest/common-crawl"
+    for name, service in services.items():
+        if name != "worker-collectors":
+            assert derived_mount not in service.get("volumes", [])
+            assert "PALIMPSEST_COMMON_CRAWL_FEATURES" not in service.get(
+                "environment", {}
+            )
+
+    env_example = (ROOT / "ops" / "docker" / ".env.example").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        "PALIMPSEST_COMMON_CRAWL_DERIVED_HOST_PATH="
+        "/var/lib/palimpsest/common-crawl/derived"
+    ) in env_example
+
+
 def test_every_app_container_sees_the_atomic_root_owned_osint_directory():
     document = yaml.safe_load(COMPOSE.read_text(encoding="utf-8"))
     services = document["services"]
