@@ -8,16 +8,15 @@ from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / ".well-known" / "ai-catalog.json"
+SERVER_VERSION = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))[
+    "version"
+]
 PAGES = {
-    "china/money-markets/index.html": (
-        "https://palimpsest.info/china/money-markets/"
-    ),
+    "china/money-markets/index.html": ("https://palimpsest.info/china/money-markets/"),
     "china/capital-markets/index.html": (
         "https://palimpsest.info/china/capital-markets/"
     ),
-    "china-economy-api/index.html": (
-        "https://palimpsest.info/china-economy-api/"
-    ),
+    "china-economy-api/index.html": ("https://palimpsest.info/china-economy-api/"),
 }
 SKILL_REVISION = "34549a5bcc2a42c7760c04c95bd449f1d10a18fc"
 SKILL_DIRECTORY = (
@@ -53,16 +52,12 @@ def _json_ld(page: str) -> dict:
     return json.loads(match.group(1))
 
 
-def test_ai_catalog_describes_the_verified_production_mcp_boundary():
+def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     catalog = _catalog()
     assert catalog["specVersion"] == "1.0"
-    assert catalog["host"]["documentationUrl"] == (
-        "https://palimpsest.info/llms.txt"
-    )
+    assert catalog["host"]["documentationUrl"] == ("https://palimpsest.info/llms.txt")
 
-    mcp = _catalog_entries()[
-        "urn:air:palimpsest.info:mcp:evidence-observatory"
-    ]
+    mcp = _catalog_entries()["urn:air:palimpsest.info:mcp:evidence-observatory"]
     assert mcp["data"]["title"] == (
         "Palimpsest — censorship, China economy and model-eval observatory"
     )
@@ -70,9 +65,10 @@ def test_ai_catalog_describes_the_verified_production_mcp_boundary():
         "Live censorship, China economic, and tamper-evident AI evaluation "
         "tools with bounded analysis."
     )
-    assert mcp["data"]["version"] == "1.8.1"
-    assert mcp["version"] == "1.8.1"
-    assert mcp["metadata"]["deploymentBoundary"] == "production-verified"
+    assert mcp["data"]["version"] == SERVER_VERSION
+    assert mcp["version"] == SERVER_VERSION
+    assert mcp["metadata"]["deploymentBoundary"] == "release-bound"
+    assert "serverInfo.version" in mcp["metadata"]["liveVersionAuthority"]
     assert mcp["metadata"]["publicToolCount"] == 6
     assert mcp["capabilities"] == [
         "list_signals",
@@ -88,33 +84,25 @@ def test_ai_catalog_describes_the_verified_production_mcp_boundary():
             "url": "https://api.seiche.info/palimpsest/mcp",
         }
     ]
-    assert "1.9.0" not in CATALOG_PATH.read_text(encoding="utf-8")
+    assert SERVER_VERSION in mcp["description"]
 
 
 def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
     entries = _catalog_entries()
     openapi = entries["urn:air:palimpsest.info:openapi:public-readings"]
-    ledger = entries[
-        "urn:air:palimpsest.info:dataset:china-economic-observations"
-    ]
-    index = entries[
-        "urn:air:palimpsest.info:dataset:china-observatory-index"
-    ]
+    ledger = entries["urn:air:palimpsest.info:dataset:china-economic-observations"]
+    index = entries["urn:air:palimpsest.info:dataset:china-observatory-index"]
     router = entries["urn:air:palimpsest.info:router:financial-evidence"]
 
     assert openapi["url"] == "https://palimpsest.info/openapi.json"
-    assert "independent of the deployed MCP" in openapi["metadata"][
-        "versionAuthority"
-    ]
+    assert "independent of the deployed MCP" in openapi["metadata"]["versionAuthority"]
     assert ledger["metadata"]["manifest"].endswith(
         "/readings/china-econ-observations-latest.json"
     )
     assert ledger["metadata"]["observationSchema"].endswith(
         "/protocol/economic-observation-v1.schema.json"
     )
-    assert index["metadata"]["schema"].endswith(
-        "/protocol/china-index-v1.schema.json"
-    )
+    assert index["metadata"]["schema"].endswith("/protocol/china-index-v1.schema.json")
     assert router["url"] == SKILL_RAW_URL
     assert router["version"] == SKILL_REVISION
     assert router["metadata"]["canonicalDirectory"] == SKILL_DIRECTORY
@@ -137,14 +125,12 @@ def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
     assert catalog_url in llms
     assert 'type="application/ai-catalog+json"' in developers
     assert 'href="/.well-known/ai-catalog.json"' in developers
-    assert "deployed MCP <code>1.8.1</code>" in developers
+    assert f"release-bound MCP <code>{SERVER_VERSION}</code>" in developers
     assert SKILL_DIRECTORY in developers
 
     namespace = {"s": "http://www.sitemaps.org/schemas/sitemap/0.9"}
     tree = ET.parse(ROOT / "sitemap.xml")
-    urls = {
-        node.text for node in tree.findall("s:url/s:loc", namespace)
-    }
+    urls = {node.text for node in tree.findall("s:url/s:loc", namespace)}
     assert catalog_url in urls
     assert set(PAGES.values()) <= urls
 
@@ -179,6 +165,7 @@ def test_pages_publish_examples_clocks_abstention_rights_and_fleet_routing():
         assert "financial-evidence" in page
         assert "warming_up" in page
         assert "MCP" in page and "REST" in page
+        assert SERVER_VERSION in page
         assert "released_at" in page
         assert "collected_at" in page
         assert "publisher" in page.lower() and "rights" in page.lower()
@@ -210,7 +197,7 @@ def test_identity_metadata_names_the_bounded_economic_surface():
     for term in ("China economy evidence", "China money markets", "Stock Connect"):
         assert term in citation
     assert "validated economy-wide forecast" in citation
-    assert "deployed MCP `1.8.1`" in readme
+    assert f"release-bound MCP `{SERVER_VERSION}`" in readme
     assert "not general" in readme
     assert card["access"]["ai_catalog"] == (
         "https://palimpsest.info/.well-known/ai-catalog.json"
