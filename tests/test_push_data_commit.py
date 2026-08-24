@@ -594,8 +594,48 @@ def test_cli_returns_distinct_exit_when_a_published_commit_needs_dispatch_retry(
         "_run_contract_dispatch",
         dispatch_failed,
     )
+    monkeypatch.setattr(push_data_commit.time, "sleep", lambda _delay: None)
 
     assert push_data_commit.main() == push_data_commit.CONTRACT_DISPATCH_EXIT
+
+
+def test_contract_transaction_replays_the_exact_sha_after_partial_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    revision = "b" * 40
+    calls: list[tuple[str, ...]] = []
+    delays: list[float] = []
+
+    def dispatch(_repo: Path, *arguments: str) -> None:
+        calls.append(arguments)
+        if len(calls) == 1:
+            raise push_data_commit.ContractDispatchError("dirty event was not accepted")
+
+    monkeypatch.setattr(push_data_commit, "_run_contract_dispatch", dispatch)
+
+    push_data_commit._run_contract_transaction(  # noqa: SLF001
+        Path("."),
+        scope="source",
+        revision=revision,
+        sleeper=delays.append,
+    )
+
+    assert calls == [
+        ("--scope", "source", revision),
+        ("--scope", "source", revision),
+    ]
+    assert delays == [2.0]
+
+
+@pytest.mark.parametrize("scope", ["", "partial", "SOURCE"])
+def test_contract_transaction_refuses_open_or_unknown_scopes(scope: str) -> None:
+    with pytest.raises(push_data_commit.PublishError, match="closed protocol"):
+        push_data_commit._run_contract_transaction(  # noqa: SLF001
+            Path("."),
+            scope=scope,
+            revision="c" * 40,
+            sleeper=lambda _delay: None,
+        )
 
 
 def test_dispatch_helper_classifies_preflight_and_post_push_failures_differently(
