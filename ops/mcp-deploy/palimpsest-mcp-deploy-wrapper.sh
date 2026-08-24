@@ -273,7 +273,7 @@ curl --disable --fail --silent --show-error \
   --header 'Accept: application/vnd.github+json' \
   --header 'X-GitHub-Api-Version: 2022-11-28' \
   --header 'User-Agent: palimpsest-mcp-release-controller/1' \
-  "https://api.github.com/repos/beepboop2025/palimpsest/commits/${target_sha}" \
+  "https://api.github.com/repos/beepboop2025/palimpsest/commits/${target_sha}?per_page=1" \
   --output "$api_json"
 chmod 0444 "$api_json"
 
