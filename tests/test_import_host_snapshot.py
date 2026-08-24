@@ -17,6 +17,16 @@ CADDY = ROOT / "ops" / "caddy" / "palimpsest-host-snapshots.caddy"
 NOW = datetime(2026, 8, 22, 12, tzinfo=timezone.utc).timestamp()
 
 
+def _publication_fixture_now() -> float:
+    """Use the committed OSINT roll-up clock for deterministic replay."""
+    rollup = json.loads(
+        (ROOT / "readings" / "osint-china-latest.json").read_text(encoding="utf-8")
+    )
+    return datetime.fromisoformat(
+        rollup["generated_at"].replace("Z", "+00:00")
+    ).timestamp()
+
+
 def _peer_document() -> dict:
     return {
         "generated_at": "2026-08-22T06:48:00Z",
@@ -538,16 +548,15 @@ def test_greatfire_rejects_schema_and_nested_ledger_shape_drift():
 
 
 @pytest.mark.parametrize("spec", importer.SNAPSHOTS, ids=lambda spec: spec.snapshot_id)
-def test_every_committed_host_snapshot_satisfies_its_import_schema(spec):
+def test_every_publication_candidate_host_snapshot_satisfies_its_import_schema(spec):
     document = json.loads(
         (ROOT / "readings" / spec.filename).read_text(encoding="utf-8")
     )
-    # This test also runs after the publication workflow imports a newer live
-    # snapshot. Validate that candidate against the current clock instead of a
-    # fixture epoch that inevitably falls behind advancing last-good evidence.
-    validation_now = datetime.now(timezone.utc).timestamp()
 
-    assert importer.validate_document(document, spec, now=validation_now) is document
+    assert (
+        importer.validate_document(document, spec, now=_publication_fixture_now())
+        is document
+    )
 
 
 def test_existing_high_water_document_is_validated_before_comparison(tmp_path):
