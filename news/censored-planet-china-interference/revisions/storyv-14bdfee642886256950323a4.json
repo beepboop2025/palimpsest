@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:censored-planet",
+  "slug": "censored-planet-china-interference",
+  "url": "https://palimpsest.info/news/censored-planet-china-interference/",
+  "signal_id": "censored-planet",
+  "headline": "Independent remote scans put China's interference rate at 4.27%",
+  "dek": "Censored Planet supplies an outside-in method that is independent of OONI's in-country volunteer probes.",
+  "section": "network",
+  "order": 3,
+  "type": "measurement",
+  "priority": "high",
+  "status": "live",
+  "published_at": "2026-08-24T06:07:17Z",
+  "modified_at": "2026-08-24T06:07:17Z",
+  "claim_fingerprint": "sha256:b83ff60b8826f7545695eca3d2a336d4a63b210352364eb1e02c12dbe6b5e8c5",
+  "metric": {
+    "label": "CN interference rate",
+    "value": 4.27,
+    "unit": "percent",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "Censored Planet's current remote side-channel measurement reports a 4.27% China interference rate."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/censored-planet-latest.json",
+    "input": {
+      "filename": "censored-planet-latest.json",
+      "sha256": "5c9668b533fafd21f294ab71794b93a3a51957a3bb048e8b1259137034f070da",
+      "bytes": 3370
+    },
+    "source_timestamp": "2026-08-24T06:07:17Z"
+  },
+  "method": {
+    "summary": "ingests Censored Planet's public aggregated data; probes nothing (vantage-insensitive)",
+    "version": 1
+  },
+  "limitations": [
+    "The remote-scan denominator and method differ from OONI's anomaly index, so their percentages are not interchangeable."
+  ],
+  "related_signal_ids": [
+    "ooni-gfw",
+    "inside-view",
+    "vantage-fusion"
+  ]
+}

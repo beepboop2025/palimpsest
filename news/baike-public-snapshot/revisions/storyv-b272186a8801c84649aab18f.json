@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:baike-public-snapshot",
+  "slug": "baike-public-snapshot",
+  "url": "https://palimpsest.info/news/baike-public-snapshot/",
+  "signal_id": "baike-public-snapshot",
+  "headline": "Public Baike HTML answered 0 of 8 watched articles",
+  "dek": "Topic and event pages are fetched without a login. A 403 or login wall is recorded as unreachable, never as a rewrite. The Wikipedia-fork collector stays disabled.",
+  "section": "erasure",
+  "order": 7,
+  "type": "measurement",
+  "priority": "background",
+  "status": "live",
+  "published_at": "2026-08-24T04:52:24Z",
+  "modified_at": "2026-08-24T04:52:24Z",
+  "claim_fingerprint": "sha256:108b4b8083f83df8a23cd1279f15869f26b35ec86a26ff1fa8c5abcb95fcac50",
+  "metric": {
+    "label": "articles fetched",
+    "value": 0,
+    "unit": "count",
+    "denominator": {
+      "label": "pages watched",
+      "value": 8
+    }
+  },
+  "claims": [
+    {
+      "type": "observation",
+      "statement": "The public Baike snapshot fetched 0 of 8 watched articles this round."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+    "input": {
+      "filename": "baike-public-snapshot-latest.json",
+      "sha256": "852b87743428b9e543b9e22d795e6e25316c398f821b01292d8b27a69dd67ecf",
+      "bytes": 3376
+    },
+    "source_timestamp": "2026-08-24T04:52:24Z"
+  },
+  "method": {
+    "summary": "Keyless GET of reviewed public Baike article URLs; extract_baike facets; hash comparison against node-local state; CDX digest attached when IA answers.",
+    "version": 1
+  },
+  "limitations": [
+    "A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites."
+  ],
+  "related_signal_ids": [
+    "baike-redaction",
+    "wayback",
+    "erasure-observatory"
+  ]
+}
