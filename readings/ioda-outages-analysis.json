@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-7d4a5c538fb1d6a1959aa6a9",
+  "analysis_id": "instrumentv-a3318fb1e1e9a41611e78008",
   "signal_id": "ioda-outages",
   "story_url": "https://palimpsest.info/news/ioda-china-outage-monitor/",
   "url": "https://palimpsest.info/news/ioda-china-outage-monitor/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
+          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
           "citation_ids": [
             "instrumentevidence-c99c5b89363bd1372c3b"
           ]
@@ -109,14 +109,20 @@
   ],
   "elevated_peers": [
     {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
       "signal_id": "event-flags",
       "section": "command",
       "status": "live",
       "priority": "high"
     },
     {
-      "signal_id": "ddti",
-      "section": "attention",
+      "signal_id": "coverage-guard",
+      "section": "command",
       "status": "live",
       "priority": "high"
     },
