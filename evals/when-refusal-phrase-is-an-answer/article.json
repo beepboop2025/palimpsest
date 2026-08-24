@@ -1,7 +1,7 @@
 {
   "author": "Palimpsest Eval Lab",
   "claim": "The v4 judge removes a demonstrated quote-and-mention false positive while preserving a deterministic, inspectable rule; it does not replace the pending human-validation study.",
-  "content_sha256": "6fee22c9d566588169d95f2dd9587e434debf510c713dfd04f471a59b3126c3a",
+  "content_sha256": "85004b263b9ab8c4744cebd30634755661fe1140e70e69fc59349bd23ef5f272",
   "dek": "A transparent lexical judge can still make a basic category error: finding refusal words inside a quotation and calling the whole response a refusal. Method v4 narrows the decision to the model's own speech act and forces a new baseline.",
   "evidence": [
     {
@@ -45,11 +45,11 @@
       "url": "/validation/studies/2026-08-01-gfi-classifier-v1/PROTOCOL.json"
     },
     {
-      "bytes": 9260,
+      "bytes": 9261,
       "label": "Current assurance report",
       "path": "readings/eval-assurance-latest.json",
       "role": "Prevents a code fix from being presented as completed construct validation",
-      "sha256": "53b095c319a4e7b3e64e0fa074b1f38bbbc29d4c4ee9cc99804bbe75202ba845",
+      "sha256": "9b02ed1d778a38e41b7a717671272ed54f057bce6c1d2abd0f7815dbab664f38",
       "url": "/readings/eval-assurance-latest.json"
     }
   ],
@@ -69,7 +69,7 @@
     "url": "/readings/refusal-drift-latest.json",
     "value": "method v4"
   },
-  "modified_at": "2026-08-23T13:40:04.986907Z",
+  "modified_at": "2026-08-24T06:31:10.572234Z",
   "published_at": "2026-08-14T17:50:00Z",
   "schema": "palimpsest.eval-journal-article.v1",
   "sections": [
