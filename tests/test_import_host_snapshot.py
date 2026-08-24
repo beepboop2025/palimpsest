@@ -15,7 +15,6 @@ ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
 CADDY = ROOT / "ops" / "caddy" / "palimpsest-host-snapshots.caddy"
 NOW = datetime(2026, 8, 22, 12, tzinfo=timezone.utc).timestamp()
-CURRENT_FIXTURE_NOW = datetime(2026, 8, 24, 12, tzinfo=timezone.utc).timestamp()
 
 
 def _peer_document() -> dict:
@@ -543,10 +542,12 @@ def test_every_committed_host_snapshot_satisfies_its_import_schema(spec):
     document = json.loads(
         (ROOT / "readings" / spec.filename).read_text(encoding="utf-8")
     )
+    # This test also runs after the publication workflow imports a newer live
+    # snapshot. Validate that candidate against the current clock instead of a
+    # fixture epoch that inevitably falls behind advancing last-good evidence.
+    validation_now = datetime.now(timezone.utc).timestamp()
 
-    assert (
-        importer.validate_document(document, spec, now=CURRENT_FIXTURE_NOW) is document
-    )
+    assert importer.validate_document(document, spec, now=validation_now) is document
 
 
 def test_existing_high_water_document_is_validated_before_comparison(tmp_path):
