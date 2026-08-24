@@ -518,6 +518,8 @@ gh run list --repo "$repo" --workflow tests.yml \
   --json databaseId --jq '.[].databaseId' | \
   LC_ALL=C sort -n >"$tests_runs_before"
 
+git fetch --force --no-tags origin \
+  '+refs/heads/main:refs/remotes/origin/main'
 test "$(git rev-parse origin/main)" = "$target_sha"
 gh api --method POST "repos/$repo/dispatches" \
   -f event_type=publication_contract \
@@ -571,6 +573,8 @@ for required_job in \
     any(.jobs[]; .name == $required_job and .conclusion == "success")
   ' "$pages_jobs" >/dev/null
 done
+git fetch --force --no-tags origin \
+  '+refs/heads/main:refs/remotes/origin/main'
 test "$(git rev-parse origin/main)" = "$target_sha"
 ```
 
@@ -606,6 +610,10 @@ for relative_path in \
   done
   test "$matched" = 1
 done
+
+git fetch --force --no-tags origin \
+  '+refs/heads/main:refs/remotes/origin/main'
+test "$(git rev-parse origin/main)" = "$target_sha"
 ```
 
 Only after the live smoke, host receipt, deployment artifact, Registry receipt,

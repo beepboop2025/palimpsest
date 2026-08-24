@@ -374,6 +374,16 @@ def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
     assert "Deploy exact complete Pages edition" in text
     assert "readings/audit/readings-ledger-recovery-20260824.json" in text
     assert 'test "$matched" = 1' in text
+    refresh_main = (
+        "git fetch --force --no-tags origin \\\n"
+        "  '+refs/heads/main:refs/remotes/origin/main'"
+    )
+    assert text.count(refresh_main) >= 3
+    final_refresh = text.rindex(refresh_main, 0, restore)
+    final_tip_check = text.index(
+        'test "$(git rev-parse origin/main)" = "$target_sha"', final_refresh
+    )
+    assert served_bytes < final_refresh < final_tip_check < restore
     assert '.path | split(\\"@\\")[0]' in text
     assert "## Rollback after a completed release" in text
     assert "never edit `deployed-sha`" in text
