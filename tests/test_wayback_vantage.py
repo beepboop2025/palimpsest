@@ -8,9 +8,16 @@ injected, so the governance gate, the fail-soft abstentions, and the DDTI adapte
 without touching the Internet Archive.
 """
 
+import json
+
+import pytest
+
+import collectors.wayback_vantage as wayback
+
 from collectors.undertext import DELETION, MUTATION, divergence_to_observation
 from collectors.wayback_vantage import (
     CDX_FIELDS,
+    INVALID_RESPONSE,
     Reconstruction,
     WaybackVantagePoint,
     parse_cdx_json,
@@ -46,7 +53,6 @@ def test_status_class_maps_codes():
 def test_parse_cdx_json_from_string_and_list():
     payload = _cdx(("20220101000000", "200", "AAAA"))
     from_list = parse_cdx_json(payload)
-    import json
     from_str = parse_cdx_json(json.dumps(payload))
     assert len(from_list) == len(from_str) == 1
     assert from_list[0].statuscode == "200" and from_list[0].digest == "AAAA"
@@ -166,7 +172,6 @@ def test_vantage_refuses_when_killswitched(tmp_path):
 def test_vantage_uses_injected_fetch_and_reconstructs():
     rc = RateCeiling(rate=1000, capacity=10, clock=lambda: 0.0)
     payload = _cdx(("20220101000000", "200", "AAAA"), ("20220401000000", "404", "-"))
-    import json
     vp = WaybackVantagePoint(fetch_cdx=lambda u: json.dumps(payload), rate_ceiling=rc)
     rec = vp.observe("https://example.cn/story", term="挤兑")
     assert rec.primary.kind == DELETION
@@ -179,10 +184,64 @@ def test_vantage_abstains_when_fetch_raises():
     assert rec.note == "unreachable" and rec.divergences == []
 
 
+@pytest.mark.parametrize("payload", ([], [list(CDX_FIELDS)]))
+def test_vantage_preserves_requested_url_for_a_valid_empty_response(payload):
+    url = "https://example.cn/watched"
+    rec = WaybackVantagePoint(
+        fetch_cdx=lambda _url: json.dumps(payload)
+    ).observe(url, term="watched")
+
+    assert rec.note == "no_baseline"
+    assert rec.url == url
+    assert rec.term == "watched"
+    assert rec.n_captures == 0
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        "<html>upstream error</html>",
+        json.dumps([["unexpected", "header"], ["broken", "row"]]),
+        json.dumps([list(CDX_FIELDS), "truncated-row"]),
+    ),
+)
+def test_vantage_does_not_treat_a_malformed_response_as_an_archive_gap(payload):
+    url = "https://example.cn/watched"
+    rec = WaybackVantagePoint(fetch_cdx=lambda _url: payload).observe(
+        url, term="watched"
+    )
+
+    assert rec.note == INVALID_RESPONSE
+    assert rec.url == url
+    assert rec.divergences == []
+
+
+def test_default_fetch_rejects_a_truncated_response(monkeypatch):
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, limit):
+            assert limit == 9
+            return b"x" * limit
+
+    monkeypatch.setattr(wayback, "_MAX_BYTES", 8)
+    monkeypatch.setattr(
+        wayback.urllib.request,
+        "urlopen",
+        lambda _request, timeout: Response(),
+    )
+
+    with pytest.raises(wayback.InvalidCDXResponse, match="byte cap"):
+        wayback.default_cdx_fetch("https://example.cn/watched")
+
+
 def test_vantage_applies_time_window_clientside():
     payload = _cdx(("20200101000000", "200", "AAAA"), ("20220101000000", "200", "AAAA"),
                    ("20220401000000", "404", "-"))
-    import json
     vp = WaybackVantagePoint(fetch_cdx=lambda u: json.dumps(payload), from_ts="20211231000000")
     rec = vp.observe("https://example.cn/story")
     assert rec.n_captures == 2   # the 2020 capture is filtered out client-side

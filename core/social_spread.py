@@ -319,6 +319,26 @@ def _contains_unsafe_unicode(value: str) -> bool:
     )
 
 
+def _normalize_source_term(
+    value: str,
+    quarantine_counts: dict[str, int] | None,
+) -> str | None:
+    """Normalize one public-source term only after its raw bytes are safe.
+
+    ``str.split()`` treats several Cc characters as whitespace.  Checking after
+    normalization would therefore turn a quarantined source term into an
+    apparently ordinary publishable string and erase the reason it was refused.
+    """
+
+    if _contains_unsafe_unicode(value):
+        if quarantine_counts is not None:
+            quarantine_counts[_UNSAFE_UNICODE_TERM_CLASS] = (
+                quarantine_counts.get(_UNSAFE_UNICODE_TERM_CLASS, 0) + 1
+            )
+        return None
+    return normalize_term(value)
+
+
 def normalize_term(value: str) -> str:
     return unicodedata.normalize("NFC", " ".join((value or "").split()))
 
@@ -474,13 +494,10 @@ def _add_term(
     url: str | None = None,
     quarantine_counts: dict[str, int] | None = None,
 ) -> None:
-    if _contains_unsafe_unicode(term):
-        if quarantine_counts is not None:
-            quarantine_counts[_UNSAFE_UNICODE_TERM_CLASS] = (
-                quarantine_counts.get(_UNSAFE_UNICODE_TERM_CLASS, 0) + 1
-            )
+    normalized = _normalize_source_term(term, quarantine_counts)
+    if normalized is None:
         return
-    term = normalize_term(term)
+    term = normalized
     if not term_is_usable(term):
         return
     if len(term) > MAX_TERM:
@@ -614,18 +631,25 @@ def _extract_observations(
                 quarantine_counts=quarantine_counts,
             )
         if not title_only and record.get("text"):
-            text = normalize_term(str(record["text"]))
-            first_line = text.split("。")[0].split(".")[0]
-            if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
-                _add_term(
-                    bucket,
-                    first_line,
-                    source_id=row_source,
-                    seen_at=seen,
-                    quarantine_counts=quarantine_counts,
-                )
+            text = _normalize_source_term(
+                str(record["text"]), quarantine_counts
+            )
+            if text is not None:
+                first_line = text.split("。")[0].split(".")[0]
+                if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
+                    _add_term(
+                        bucket,
+                        first_line,
+                        source_id=row_source,
+                        seen_at=seen,
+                        quarantine_counts=quarantine_counts,
+                    )
         if record.get("excerpt"):
-            excerpt = normalize_term(str(record["excerpt"]))
+            excerpt = _normalize_source_term(
+                str(record["excerpt"]), quarantine_counts
+            )
+            if excerpt is None:
+                continue
             first_line = excerpt.split("。")[0].split(".")[0]
             if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
                 _add_term(
@@ -649,7 +673,11 @@ def _extract_social_observations(
         source = str(record.get("source_id") or "social-observations")
         seen = _iso_or_none(record.get("published_at") or record.get("first_observed_at")) or generated
         if record.get("title"):
-            title = normalize_term(str(record["title"]))
+            title = _normalize_source_term(
+                str(record["title"]), quarantine_counts
+            )
+            if title is None:
+                continue
             first = title.split("。")[0].split(".")[0]
             _add_term(
                 bucket,
@@ -1042,12 +1070,13 @@ def build_social_spread(
     unsafe_unicode_terms = quarantine_counts.get(_UNSAFE_UNICODE_TERM_CLASS, 0)
     if unsafe_unicode_terms:
         noun = "term" if unsafe_unicode_terms == 1 else "terms"
+        verb = "was" if unsafe_unicode_terms == 1 else "were"
         refusals.append(
             {
                 "term_class": _UNSAFE_UNICODE_TERM_CLASS,
                 "reason": (
                     f"{unsafe_unicode_terms} public-source {noun} contained unsafe "
-                    "Unicode and were withheld before matching. "
+                    f"Unicode and {verb} withheld before matching. "
                     f"{DISCLAIMER}"
                 ),
             }

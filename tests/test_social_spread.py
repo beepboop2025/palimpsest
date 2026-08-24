@@ -308,6 +308,71 @@ def test_unsafe_unicode_terms_are_quarantined_without_poisoning_safe_rows():
     assert all(term not in published for term in unsafe_terms)
 
 
+@pytest.mark.parametrize(
+    ("source_name", "field"),
+    (
+        ("social-observations", "title"),
+        ("telegram-public-channels", "text"),
+        ("telegram-public-channels", "excerpt"),
+    ),
+)
+def test_control_character_whitespace_is_quarantined_before_normalization(
+    source_name,
+    field,
+):
+    unsafe = "Alpha\x1cBeta report"
+    sanitized = "Alpha Beta report"
+    if source_name == "social-observations":
+        source = {
+            "generated_at": "2026-08-20T06:00:00Z",
+            "observations": [
+                {
+                    field: unsafe,
+                    "source_id": "social-observations",
+                    "published_at": "2026-08-20T05:00:00Z",
+                }
+            ],
+        }
+    else:
+        source = {
+            "generated_at": "2026-08-20T06:00:00Z",
+            "observations": [
+                {
+                    "title": "[telegram:public] DragonDenWhispers/12",
+                    field: unsafe,
+                    "channel_handle": "DragonDenWhispers",
+                    "first_seen": "2026-08-20T05:00:00Z",
+                }
+            ],
+        }
+
+    document = build_social_spread(
+        _inputs(
+            **{
+                "weibo-hotsearch": _weibo("杭州暴雨"),
+                source_name: source,
+                "newswire": _wire("杭州暴雨", sanitized),
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
+
+    assert [row["term"] for row in document["rows"]] == ["杭州暴雨"]
+    assert document["n_refused"] == 1
+    assert document["refusals"] == [
+        {
+            "term_class": "unsafe-unicode-source-term",
+            "reason": (
+                "1 public-source term contained unsafe Unicode and was withheld "
+                f"before matching. {DISCLAIMER}"
+            ),
+        }
+    ]
+    published = json.dumps(document, ensure_ascii=False)
+    assert unsafe not in published
+    assert sanitized not in published
+
+
 def test_validator_still_rejects_unsafe_unicode_in_a_published_term():
     document = build_social_spread(
         _inputs(

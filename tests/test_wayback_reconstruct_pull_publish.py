@@ -122,8 +122,10 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.delenv("PALIMPSEST_HALT", raising=False)
     monkeypatch.setenv("PALIMPSEST_KILLFILE", str(tmp_path / "absent-halt-file"))
 
-    def run(rows, watchlist=WATCHLIST):
+    def run(rows, watchlist=WATCHLIST, *, raw_payload=None):
         def fetch(url, **kw):
+            if raw_payload is not None:
+                return raw_payload
             if rows is None:
                 raise _Unreachable("CDX did not answer")
             return json.dumps([_HEADER] + [list(r) for r in rows])
@@ -194,6 +196,14 @@ def test_the_history_records_every_round_not_only_the_moved_ones(publish):
     assert len({r["generated_at"] for r in rows}) == 3
 
 
+def test_wayback_history_binds_the_cardinality_method_version(publish):
+    run, tmp_path = publish
+    run(STABLE)
+
+    rows = _history(tmp_path)
+    assert [row["method_version"] for row in rows] == [pull.METHOD_VERSION]
+
+
 def test_a_moved_finding_reaches_both_the_reading_and_the_history(publish):
     """The page was live, then the Archive found it gone. That is the event this
     signal exists to catch, and it has to be visible in both files."""
@@ -247,6 +257,26 @@ def test_an_all_unreachable_round_publishes_nothing_at_all(publish):
     assert len(_history(tmp_path)) == 1
 
 
+def test_an_all_malformed_round_does_not_advance_reachability(publish):
+    run, tmp_path = publish
+    first = run(STABLE)
+    run(STABLE, raw_payload="<html>upstream error</html>")
+
+    after = _reading(tmp_path)
+    assert after == first
+    assert len(_history(tmp_path)) == 1
+
+
+def test_a_valid_empty_cdx_result_preserves_the_watched_url(publish):
+    run, _ = publish
+    reading = run([])
+
+    assert reading["n_reachable"] == 1
+    assert reading["reconstructions"][0]["event"] == "no_baseline"
+    assert reading["reconstructions"][0]["url"] == URL
+    assert reading["reconstructions"][0]["locator"] == URL
+
+
 def test_an_empty_watchlist_publishes_nothing(publish):
     """Nothing was watched, so nothing was observed. Same rule as the unreachable
     round: no input means no new observation time."""
@@ -268,6 +298,7 @@ def test_a_first_ever_round_writes_both_the_reading_and_the_history(publish):
     assert first["method_version"] == pull.METHOD_VERSION
     assert _history(tmp_path) == [{
         "generated_at": first["generated_at"],
+        "method_version": pull.METHOD_VERSION,
         "n_watched": 1,
         "n_reachable": 1,
         "n_deletions": 0,

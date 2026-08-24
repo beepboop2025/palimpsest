@@ -29,7 +29,11 @@ import os
 from datetime import datetime, timezone
 
 from collectors.undertext import DELETION, MUTATION, divergence_to_observation
-from collectors.wayback_vantage import WaybackVantagePoint, default_cdx_fetch
+from collectors.wayback_vantage import (
+    INVALID_RESPONSE,
+    WaybackVantagePoint,
+    default_cdx_fetch,
+)
 
 try:
     from core.governance import KillSwitch, RateCeiling
@@ -94,15 +98,20 @@ def _reconstruction_row(rec) -> dict:
         surface="wayback-cdx",
         locator=rec.url,
         visibility_state=(
-            "unavailable" if rec.note == "no_baseline" or confirmed_live_gone
-            else "visible"
+            "unknown"
+            if rec.note in {"unreachable", INVALID_RESPONSE}
+            else (
+                "unavailable"
+                if rec.note == "no_baseline" or confirmed_live_gone
+                else "visible"
+            )
         ),
         visibility_label=(
             "archive_gap" if rec.note == "no_baseline"
             else ("visibility_anomaly" if confirmed_live_gone else None)
         ),
         missingness="archive_gap" if rec.note == "no_baseline" else (
-            "coverage_gap" if rec.note == "unreachable" else None
+            "coverage_gap" if rec.note in {"unreachable", INVALID_RESPONSE} else None
         ),
         had_live_baseline=confirmed_live_gone,
         confirmed=False,
@@ -126,7 +135,7 @@ def main() -> None:
     for entry in watchlist:
         rec = vantage.observe(entry["url"], term=entry.get("term", ""),
                               domain=entry.get("domain", ""))
-        if rec.note != "unreachable":
+        if rec.note not in {"unreachable", INVALID_RESPONSE}:
             reachable += 1
         rows.append(_reconstruction_row(rec))
         for divergence in rec.divergences:
@@ -160,7 +169,10 @@ def main() -> None:
     # Honesty guard: if the Archive was unreachable for EVERY URL, abstain — do not publish a
     # signal that is all-unknown (it would read as "nothing is being deleted", a false zero).
     if reachable == 0:
-        print("CDX unreachable for every watched URL — abstaining, not publishing a hollow signal")
+        print(
+            "CDX unavailable or invalid for every watched URL — "
+            "abstaining, not publishing a hollow signal"
+        )
         return
 
     now = datetime.now(timezone.utc)
@@ -201,6 +213,7 @@ def main() -> None:
     with open(HIST, "a", encoding="utf-8") as f:
         f.write(json.dumps({
             "generated_at": out["generated_at"],
+            "method_version": out["method_version"],
             "n_watched": out["n_watched"],
             "n_reachable": out["n_reachable"],
             "n_deletions": n_deletions,
