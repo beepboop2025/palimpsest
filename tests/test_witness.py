@@ -318,6 +318,7 @@ def _configure_status_run(monkeypatch, tmp_path, *, freshness_problems=None):
     )
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.delenv("INVOCATION_ID", raising=False)
     return status_path
 
 
