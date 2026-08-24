@@ -38,17 +38,16 @@ concurrency:
   # distinct publication. Duplicate delivery for the same payload SHA remains
   # self-cancelling.
   group: >-
-    tests-${{ github.event_name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.ref }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope || 'push' }}-${{ github.event_name == 'repository_dispatch' && 'contract-only' || github.event_name == 'push' && contains(github.event.head_commit.message, '[skip pytest]') && 'contract-only' || 'full' }}
+    tests-${{ github.event_name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.ref }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope || 'push' }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope == 'source' && 'contract-only' || 'full' }}
   cancel-in-progress: true
 
 jobs:
   pytest:
-    # Data-refresh workflows mark commits [skip pytest], which is NOT a GitHub-native
-    # skip token. Human-origin pushes still start this workflow normally; action-token
-    # publications use repository_dispatch. Both routes skip only this full-suite job.
-    # Do not use [skip ci] / [ci skip] / [no ci]: GitHub would skip the entire
-    # workflow, including contract.
-    if: ${{ github.event_name != 'repository_dispatch' && !contains(github.event.head_commit.message, '[skip pytest]') }}
+    # Source dispatches are deliberately incomplete and cannot deploy. Every
+    # deployable complete dispatch, ordinary push, and pull request runs the full
+    # suite, regardless of commit-message markers, so newly merged code cannot be
+    # carried into production by a faster data-only dispatch.
+    if: ${{ github.event_name != 'repository_dispatch' || github.event.client_payload.scope == 'complete' }}
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
@@ -230,20 +229,14 @@ jobs:
           python -m scripts.build_data_catalog --now "$catalog_clock"
           python -m scripts.build_china_situation
           python -m scripts.build_erasure_trail
-          git diff --exit-code -- \
-            readings/china-econ-observations-latest.json \
-            readings/china-econ-forecast-latest.json \
-            readings/china-index-latest.json \
-            readings/evidence-mesh-latest.json \
-            readings/machine-investigations-latest.json \
-            readings/newsroom-latest.json \
-            readings/china-situation-latest.json \
-            readings/erasure-trail-latest.json \
-            readings/catalog.json \
-            readings/catalog.jsonld \
-            datapackage.json \
-            china/ \
-            news/
+          managed_status="$(git status --porcelain=v1 --untracked-files=all -- \
+            readings china news datapackage.json)"
+          if [ -n "$managed_status" ]; then
+            printf '%s\n' "$managed_status" >&2
+            git diff --stat -- readings china news datapackage.json >&2
+            echo "managed publication graph changed during replay" >&2
+            exit 1
+          fi
 
       - name: Read the public surface
         # [skip pytest] is only Palimpsest's full-suite lane marker. The explicit
@@ -266,11 +259,45 @@ jobs:
           python -m scripts.build_eval_journal --check
           python -m scripts.build_eval_findings --check
 
+  publication-admission:
+    name: Admit the exact tested publication
+    needs:
+      - pytest
+      - contract
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every applicable exact-SHA gate
+        env:
+          CONTRACT_RESULT: ${{ needs.contract.result }}
+          PUBLICATION_SCOPE: ${{ needs.contract.outputs.scope }}
+          PYTEST_RESULT: ${{ needs.pytest.result }}
+        run: |
+          set -euo pipefail
+          test "$CONTRACT_RESULT" = success
+          if [ "$GITHUB_EVENT_NAME" = repository_dispatch ] &&
+             [ "$PUBLICATION_SCOPE" = source ]; then
+            test "$PYTEST_RESULT" = skipped
+          else
+            case "$GITHUB_EVENT_NAME" in
+              repository_dispatch|push|pull_request)
+                test "$PYTEST_RESULT" = success
+                ;;
+              *)
+                echo "unsupported publication event: $GITHUB_EVENT_NAME" >&2
+                exit 1
+                ;;
+            esac
+          fi
+
   pages-artifact:
     name: Package exact complete Pages edition
-    needs: contract
+    needs:
+      - contract
+      - publication-admission
     if: >-
       needs.contract.result == 'success' &&
+      needs.publication-admission.result == 'success' &&
       needs.contract.outputs.scope == 'complete' &&
       github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -386,9 +413,11 @@ jobs:
     name: Deploy exact complete Pages edition
     needs:
       - contract
+      - publication-admission
       - pages-artifact
     if: >-
       needs.contract.result == 'success' &&
+      needs.publication-admission.result == 'success' &&
       needs.contract.outputs.scope == 'complete' &&
       github.event_name != 'pull_request'
     runs-on: ubuntu-latest

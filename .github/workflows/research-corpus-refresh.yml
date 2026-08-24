@@ -212,14 +212,23 @@ jobs:
           git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic_auth" \
             push origin HEAD:main
 
-      - name: Reset to the winning ledger after a push race
+      - name: Reconcile the attempted push with the winning ledger
         if: steps.push_attempt.outcome == 'failure'
+        id: push_reconcile
         run: |
+          attempted_revision="$(git rev-parse HEAD)"
           git fetch origin main
+          if git merge-base --is-ancestor "$attempted_revision" origin/main; then
+            echo "accepted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "accepted=false" >> "$GITHUB_OUTPUT"
+          fi
           git switch --detach origin/main
 
       - name: Recollect after a push race
-        if: steps.push_attempt.outcome == 'failure'
+        if: >-
+          steps.push_attempt.outcome == 'failure' &&
+          steps.push_reconcile.outputs.accepted != 'true'
         id: race_collect
         run: |
           corpus_json="$(python -m scripts.research_corpus_ingest --readings readings)"
@@ -289,6 +298,7 @@ jobs:
       - name: Dispatch the exact publication contract
         if: >-
           ${{ always() && (steps.push_attempt.outcome == 'success' ||
+          steps.push_reconcile.outputs.accepted == 'true' ||
           steps.retry_push.outcome == 'success') }}
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}

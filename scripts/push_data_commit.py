@@ -643,7 +643,7 @@ def main() -> int:
         candidate_check = (
             _module_checker(arguments.check_module) if arguments.check_module else None
         )
-        published = publish(
+        publish(
             rebuild=rebuild,
             rebuild_paths=rebuild_paths,
             input_paths=arguments.input_path,
@@ -651,12 +651,15 @@ def main() -> int:
             publication_closure=_publication_closure,
             base_locked=arguments.base_locked,
         )
-        if published:
-            _run_contract_transaction(
-                ROOT,
-                scope=arguments.contract_scope,
-                revision=_capture(ROOT, "rev-parse", "HEAD"),
-            )
+        # ``publish`` returning normally proves either that this process received
+        # the push acknowledgement or that a fetch reconciled the candidate as
+        # already reachable from main.  Both outcomes need the explicit contract
+        # event because GITHUB_TOKEN pushes do not create an ordinary push run.
+        _run_contract_transaction(
+            ROOT,
+            scope=arguments.contract_scope,
+            revision=_capture(ROOT, "rev-parse", "HEAD"),
+        )
     except BaseAdvancedError as error:
         print(f"data publication deferred: {error}", file=sys.stderr)
         return BASE_ADVANCED_EXIT

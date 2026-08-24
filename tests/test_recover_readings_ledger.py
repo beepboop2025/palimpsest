@@ -74,7 +74,7 @@ def _spec(
     repo.mkdir(parents=True)
     _git(repo, "init", "-q")
     _git(repo, "config", "user.name", "Ledger Test")
-    _git(repo, "config", "user.email", "ledger@example.test")
+    _git(repo, "config", "user.email", "ledger-test@palimpsest.info")
     readings = repo / "readings"
     readings.mkdir()
     (readings / "alpha-latest.json").write_text(

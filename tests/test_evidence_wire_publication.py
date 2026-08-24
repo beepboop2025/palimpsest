@@ -228,7 +228,9 @@ def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
     assert "catalog_clock=$(python -c" in rebuild
     assert 'readings/evidence-mesh-latest.json' in rebuild
     assert 'readings/catalog.json' in rebuild
-    assert "git diff --exit-code" in rebuild
+    assert "git status --porcelain=v1 --untracked-files=all" in rebuild
+    assert "readings china news datapackage.json" in rebuild
+    assert "managed publication graph changed during replay" in rebuild
 
 
 def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():

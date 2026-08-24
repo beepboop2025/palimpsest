@@ -541,7 +541,7 @@ def test_cli_complete_scope_dispatches_no_source_dirty_request_itself(
     assert dispatches == [("--scope", "complete", revision)]
 
 
-def test_cli_does_not_dispatch_when_no_commit_was_published(
+def test_cli_recertifies_the_reconciled_head_after_a_lost_push_acknowledgement(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     arguments = SimpleNamespace(
@@ -552,10 +552,16 @@ def test_cli_does_not_dispatch_when_no_commit_was_published(
         base_locked=False,
         contract_scope="source",
     )
+    revision = "e" * 40
     dispatches: list[tuple[str, ...]] = []
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
     monkeypatch.setattr(push_data_commit, "publish", lambda **_kwargs: False)
+    monkeypatch.setattr(
+        push_data_commit,
+        "_capture",
+        lambda _repo, *_parts: revision,
+    )
     monkeypatch.setattr(
         push_data_commit,
         "_run_contract_dispatch",
@@ -563,7 +569,7 @@ def test_cli_does_not_dispatch_when_no_commit_was_published(
     )
 
     assert push_data_commit.main() == 0
-    assert dispatches == []
+    assert dispatches == [("--scope", "source", revision)]
 
 
 def test_cli_returns_distinct_exit_when_a_published_commit_needs_dispatch_retry(
@@ -1121,6 +1127,16 @@ def test_custom_push_workflows_preflight_and_dispatch_only_a_successful_push() -
         assert "steps.push_attempt.outcome == 'success'" in dispatch["if"]
         assert "steps.retry_push.outcome == 'success'" in dispatch["if"]
         assert steps[push_indexes[1]]["id"] == "retry_push"
+        if workflow_name == "research-corpus-refresh.yml":
+            reconcile = next(
+                step for step in steps if step.get("id") == "push_reconcile"
+            )
+            assert (
+                'git merge-base --is-ancestor "$attempted_revision" origin/main'
+                in reconcile["run"]
+            )
+            assert 'echo "accepted=true" >> "$GITHUB_OUTPUT"' in reconcile["run"]
+            assert "steps.push_reconcile.outputs.accepted == 'true'" in dispatch["if"]
 
 
 def test_tests_workflow_checks_out_and_proves_the_dispatched_publication_sha() -> None:
@@ -1154,10 +1170,18 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     complete_gate = workflow.index("Validate the complete derived edition")
     replay = workflow.index("Rebuild and prove the deterministic graph is unchanged")
     public_surface = workflow.index("Read the public surface")
+    admission = workflow.index("  publication-admission:")
     pages_artifact = workflow.index("  pages-artifact:")
     deploy_pages = workflow.index("  deploy-pages:")
 
-    assert source_gate < complete_gate < replay < public_surface < pages_artifact
+    assert (
+        source_gate
+        < complete_gate
+        < replay
+        < public_surface
+        < admission
+        < pages_artifact
+    )
     assert workflow.count("steps.identity.outputs.scope == 'complete'") == 3
     assert workflow.count("needs.contract.outputs.scope == 'complete'") == 2
     assert workflow.count("github.event_name != 'pull_request'") == 2
@@ -1168,6 +1192,13 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     assert (
         "python scripts/seal_readings.py --check" in workflow[source_gate:complete_gate]
     )
+    replay_gate = workflow[replay:public_surface]
+    assert (
+        "git status --porcelain=v1 --untracked-files=all -- \\\n"
+        "            readings china news datapackage.json"
+    ) in replay_gate
+    assert "managed publication graph changed during replay" in replay_gate
+    assert "git diff --exit-code --" not in replay_gate
     assert 'git archive --format=tar "$PUBLICATION_SHA"' in workflow
     assert "Pages artifact refuses tracked symbolic links" in workflow
     assert "TAR_OPTIONS: '--transform=s|^\\./well-known|./.well-known|'" in workflow
@@ -1193,6 +1224,69 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
         workflow.count('test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"') == 2
     )
     assert "name: github-pages" in workflow[deploy_pages:]
+
+
+def test_pages_packaging_waits_for_contract_and_exact_sha_pytest_admission() -> None:
+    workflow_path = (
+        Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tests.yml"
+    )
+    workflow = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+    jobs = workflow["jobs"]
+
+    assert jobs["pytest"]["if"] == (
+        "${{ github.event_name != 'repository_dispatch' || "
+        "github.event.client_payload.scope == 'complete' }}"
+    )
+    admission = jobs["publication-admission"]
+    assert set(admission["needs"]) == {"pytest", "contract"}
+    assert admission["if"] == "${{ always() }}"
+    gate = admission["steps"][0]["run"]
+    assert 'test "$CONTRACT_RESULT" = success' in gate
+    assert 'test "$PYTEST_RESULT" = skipped' in gate
+    assert 'test "$PYTEST_RESULT" = success' in gate
+    assert "repository_dispatch|push|pull_request)" in gate
+
+    matrix = (
+        ("repository_dispatch", "source", "skipped", "success", True),
+        ("repository_dispatch", "source", "success", "success", False),
+        ("repository_dispatch", "complete", "success", "success", True),
+        ("repository_dispatch", "complete", "skipped", "success", False),
+        ("push", "complete", "success", "success", True),
+        ("push", "complete", "skipped", "success", False),
+        ("pull_request", "complete", "success", "success", True),
+        ("repository_dispatch", "complete", "success", "failure", False),
+    )
+    for event, scope, pytest_result, contract_result, accepted in matrix:
+        completed = subprocess.run(
+            ["/bin/bash", "-c", gate],
+            check=False,
+            capture_output=True,
+            text=True,
+            env={
+                "CONTRACT_RESULT": contract_result,
+                "GITHUB_EVENT_NAME": event,
+                "PUBLICATION_SCOPE": scope,
+                "PYTEST_RESULT": pytest_result,
+            },
+        )
+        assert (completed.returncode == 0) is accepted, (
+            event,
+            scope,
+            pytest_result,
+            contract_result,
+            completed.stderr,
+        )
+
+    pages_artifact = jobs["pages-artifact"]
+    assert set(pages_artifact["needs"]) == {"contract", "publication-admission"}
+    assert "needs.publication-admission.result == 'success'" in pages_artifact["if"]
+    deploy_pages = jobs["deploy-pages"]
+    assert set(deploy_pages["needs"]) == {
+        "contract",
+        "publication-admission",
+        "pages-artifact",
+    }
+    assert "needs.publication-admission.result == 'success'" in deploy_pages["if"]
 
 
 def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:

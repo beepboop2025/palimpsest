@@ -782,6 +782,10 @@ def test_scheduled_workflow_is_bounded_gated_and_race_safe():
     assert "git rebase origin/main" in workflow
     assert workflow.count("git switch --detach origin/main") >= 2
     assert "continue-on-error: true" in workflow
+    assert "id: push_reconcile" in workflow
+    assert 'git merge-base --is-ancestor "$attempted_revision" origin/main' in workflow
+    assert "steps.push_reconcile.outputs.accepted != 'true'" in workflow
+    assert "steps.push_reconcile.outputs.accepted == 'true'" in workflow
     assert "git pull" not in workflow
     for command in (
         "python -m scripts.build_data_catalog",
