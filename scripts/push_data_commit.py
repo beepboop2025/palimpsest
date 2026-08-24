@@ -28,6 +28,7 @@ MAX_PUSH_ATTEMPTS = 8
 MAX_RETRY_DELAY_SECONDS = 25.0
 BASE_ADVANCED_EXIT = 75
 CONTRACT_DISPATCH_EXIT = 76
+CONTRACT_SCOPES = ("source", "complete")
 MODULE_RE = re.compile(r"scripts\.[a-z][a-z0-9_]*\Z")
 DISPATCH_HELPER = ROOT / "scripts" / "dispatch_publication_contract.py"
 CATALOG_CLOSURE_PATHS = (
@@ -587,6 +588,12 @@ def _arguments() -> argparse.Namespace:
         action="store_true",
         help="refuse to rebase derived output; require the caller to rebuild it",
     )
+    parser.add_argument(
+        "--contract-scope",
+        choices=CONTRACT_SCOPES,
+        default="source",
+        help="contract scope after push; ordinary source publishers default to source",
+    )
     return parser.parse_args()
 
 
@@ -615,7 +622,12 @@ def main() -> int:
             base_locked=arguments.base_locked,
         )
         if published:
-            _run_contract_dispatch(ROOT, _capture(ROOT, "rev-parse", "HEAD"))
+            _run_contract_dispatch(
+                ROOT,
+                "--scope",
+                arguments.contract_scope,
+                _capture(ROOT, "rev-parse", "HEAD"),
+            )
     except BaseAdvancedError as error:
         print(f"data publication deferred: {error}", file=sys.stderr)
         return BASE_ADVANCED_EXIT

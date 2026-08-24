@@ -22,7 +22,9 @@ from urllib.request import Request, urlopen
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EVENT_TYPE = "publication_contract"
+CONTRACT_EVENT_TYPE = "publication_contract"
+GRAPH_DIRTY_EVENT_TYPE = "publication_graph_dirty"
+CONTRACT_SCOPES = frozenset({"complete", "source"})
 MAX_ATTEMPTS = 4
 REQUEST_TIMEOUT_SECONDS = 20.0
 SHA_RE = re.compile(r"[0-9a-f]{40}\Z")
@@ -49,6 +51,12 @@ def _validated_repository(value: str) -> str:
     return value
 
 
+def _validated_scope(value: str) -> str:
+    if value not in CONTRACT_SCOPES:
+        raise DispatchError("publication scope must be exactly 'source' or 'complete'")
+    return value
+
+
 def _actions_credentials(
     environ: Mapping[str, str],
 ) -> tuple[str, str] | None:
@@ -66,8 +74,9 @@ def _retryable_status(status: int) -> bool:
     return status == 429 or 500 <= status <= 599
 
 
-def dispatch(
-    revision: str,
+def _dispatch_event(
+    event_type: str,
+    payload: Mapping[str, str],
     *,
     repository: str,
     token: str,
@@ -75,8 +84,15 @@ def dispatch(
     opener: Callable[..., object] | None = None,
     sleeper: Callable[[float], None] = time.sleep,
 ) -> None:
-    """Create one exact-SHA repository-dispatch event, with bounded retries."""
-    revision = _validated_sha(revision)
+    """Create one closed-protocol repository event, with bounded retries."""
+    if event_type not in {CONTRACT_EVENT_TYPE, GRAPH_DIRTY_EVENT_TYPE}:
+        raise DispatchError("repository dispatch event type is outside the protocol")
+    expected_keys = {"sha", "scope"} if event_type == CONTRACT_EVENT_TYPE else {"sha"}
+    if set(payload) != expected_keys:
+        raise DispatchError(f"{event_type} payload does not match its closed schema")
+    normalized_payload = {"sha": _validated_sha(payload["sha"])}
+    if event_type == CONTRACT_EVENT_TYPE:
+        normalized_payload["scope"] = _validated_scope(payload["scope"])
     repository = _validated_repository(repository)
     if not token or "\n" in token or "\r" in token:
         raise DispatchError("dispatch token is missing or malformed")
@@ -85,8 +101,8 @@ def dispatch(
 
     body = json.dumps(
         {
-            "event_type": EVENT_TYPE,
-            "client_payload": {"sha": revision},
+            "event_type": event_type,
+            "client_payload": normalized_payload,
         },
         separators=(",", ":"),
     ).encode("utf-8")
@@ -113,7 +129,7 @@ def dispatch(
             finally:
                 response.close()
             if status == 204:
-                print(f"dispatched {EVENT_TYPE} for {revision}")
+                print(f"dispatched {event_type} for {normalized_payload['sha']}")
                 return
             retryable = _retryable_status(status)
             last_detail = f"GitHub returned HTTP {status}"
@@ -134,8 +150,41 @@ def dispatch(
         sleeper(delay)
 
     raise DispatchError(
-        f"contract dispatch failed after {attempt} attempt(s): {last_detail}"
+        f"{event_type} dispatch failed after {attempt} attempt(s): {last_detail}"
     )
+
+
+def dispatch(
+    revision: str,
+    *,
+    scope: str,
+    repository: str,
+    token: str,
+    attempts: int = MAX_ATTEMPTS,
+    opener: Callable[..., object] | None = None,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> None:
+    """Dispatch the exact scoped contract and, for source commits, graph closure."""
+    revision = _validated_sha(revision)
+    scope = _validated_scope(scope)
+    common = {
+        "repository": repository,
+        "token": token,
+        "attempts": attempts,
+        "opener": opener,
+        "sleeper": sleeper,
+    }
+    _dispatch_event(
+        CONTRACT_EVENT_TYPE,
+        {"sha": revision, "scope": scope},
+        **common,
+    )
+    if scope == "source":
+        _dispatch_event(
+            GRAPH_DIRTY_EVENT_TYPE,
+            {"sha": revision},
+            **common,
+        )
 
 
 def _head(repo: Path) -> str:
@@ -154,11 +203,13 @@ def _head(repo: Path) -> str:
 def dispatch_current_head(
     revision: str,
     *,
+    scope: str,
     repo: Path = ROOT,
     environ: Mapping[str, str] = os.environ,
 ) -> bool:
     """Dispatch an Actions publication, or defer to a human push's normal event."""
     revision = _validated_sha(revision)
+    scope = _validated_scope(scope)
     if _head(repo) != revision:
         raise DispatchError("publication SHA does not match the checkout HEAD")
     credentials = _actions_credentials(environ)
@@ -166,13 +217,18 @@ def dispatch_current_head(
         print("outside GitHub Actions; the ordinary push event owns the contract gate")
         return False
     repository, token = credentials
-    dispatch(revision, repository=repository, token=token)
+    dispatch(revision, scope=scope, repository=repository, token=token)
     return True
 
 
 def _arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("revision", nargs="?")
+    parser.add_argument(
+        "--scope",
+        choices=sorted(CONTRACT_SCOPES),
+        help="closed publication contract scope (required when dispatching)",
+    )
     parser.add_argument(
         "--check-environment",
         action="store_true",
@@ -191,7 +247,9 @@ def main() -> int:
             return 0
         if arguments.revision is None:
             raise DispatchError("a publication SHA is required")
-        dispatch_current_head(arguments.revision)
+        if arguments.scope is None:
+            raise DispatchError("--scope is required for a publication dispatch")
+        dispatch_current_head(arguments.revision, scope=arguments.scope)
     except (DispatchError, OSError, ValueError) as error:
         print(f"contract dispatch refused: {error}", file=sys.stderr)
         return 1

@@ -436,6 +436,7 @@ def test_cli_returns_retryable_exit_only_for_a_base_advance(
         input_path=[],
         check_module=[],
         base_locked=True,
+        contract_scope="source",
     )
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
@@ -456,6 +457,7 @@ def test_cli_does_not_retry_an_ordinary_publication_refusal(
         input_path=[],
         check_module=[],
         base_locked=True,
+        contract_scope="source",
     )
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
@@ -476,6 +478,7 @@ def test_cli_preflights_actions_authority_then_dispatches_the_published_head(
         input_path=[],
         check_module=[],
         base_locked=False,
+        contract_scope="source",
     )
     revision = "a" * 40
     events: list[tuple[str, ...]] = []
@@ -503,8 +506,39 @@ def test_cli_preflights_actions_authority_then_dispatches_the_published_head(
     assert events == [
         ("dispatch", "--check-environment"),
         ("publish",),
-        ("dispatch", revision),
+        ("dispatch", "--scope", "source", revision),
     ]
+
+
+def test_cli_complete_scope_dispatches_no_source_dirty_request_itself(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = SimpleNamespace(
+        rebuild_module=[],
+        stage=[],
+        input_path=[],
+        check_module=[],
+        base_locked=True,
+        contract_scope="complete",
+    )
+    revision = "f" * 40
+    dispatches: list[tuple[str, ...]] = []
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
+    monkeypatch.setattr(push_data_commit, "publish", lambda **_kwargs: True)
+    monkeypatch.setattr(
+        push_data_commit,
+        "_capture",
+        lambda _repo, *_parts: revision,
+    )
+    monkeypatch.setattr(
+        push_data_commit,
+        "_run_contract_dispatch",
+        lambda _repo, *parts: dispatches.append(parts),
+    )
+
+    assert push_data_commit.main() == 0
+    assert dispatches == [("--scope", "complete", revision)]
 
 
 def test_cli_does_not_dispatch_when_no_commit_was_published(
@@ -516,6 +550,7 @@ def test_cli_does_not_dispatch_when_no_commit_was_published(
         input_path=[],
         check_module=[],
         base_locked=False,
+        contract_scope="source",
     )
     dispatches: list[tuple[str, ...]] = []
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
@@ -540,6 +575,7 @@ def test_cli_returns_distinct_exit_when_a_published_commit_needs_dispatch_retry(
         input_path=[],
         check_module=[],
         base_locked=False,
+        contract_scope="source",
     )
     monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
     monkeypatch.setattr(push_data_commit, "_arguments", lambda: arguments)
@@ -963,7 +999,10 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "python -m scripts.collector_health_pull" in board
     assert "python -m scripts.gazetteer_phylogeny_pull" in board
     assert "python -m scripts.build_newsroom --check" in board
-    assert "python scripts/push_data_commit.py --base-locked" in board
+    assert (
+        "python scripts/push_data_commit.py --base-locked --contract-scope complete"
+        in board
+    )
     vantage = (workflow_root / "vantage-fusion-refresh.yml").read_text(encoding="utf-8")
     assert "--rebuild-module scripts.vantage_fusion_pull" in vantage
     events = (workflow_root / "event-flags-refresh.yml").read_text(encoding="utf-8")
@@ -1028,7 +1067,7 @@ def test_custom_push_workflows_preflight_and_dispatch_only_a_successful_push() -
             for index, step in enumerate(steps)
             if isinstance(step, dict)
             and step.get("run")
-            == 'python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"'
+            == 'python scripts/dispatch_publication_contract.py --scope complete "$(git rev-parse HEAD)"'
         ]
         assert len(preflights) == len(dispatches) == 1, workflow_name
         preflight_index, preflight = preflights[0]
@@ -1049,16 +1088,54 @@ def test_tests_workflow_checks_out_and_proves_the_dispatched_publication_sha() -
     ).read_text(encoding="utf-8")
     assert "repository_dispatch:\n    types:\n      - publication_contract" in workflow
     assert "github.event_name != 'repository_dispatch'" in workflow
-    validation = workflow.index("- name: Validate the dispatched publication identity")
+    validation = workflow.index("- name: Resolve and validate the publication identity")
     checkout = workflow.index("- uses: actions/checkout", validation)
     proof = workflow.index("- name: Prove the dispatched commit is published on main")
     assert validation < checkout < proof
-    assert (
-        "ref: ${{ github.event_name == 'repository_dispatch' && "
-        "github.event.client_payload.sha || github.sha }}"
-    ) in workflow
+    assert ("ref: ${{ steps.identity.outputs.revision }}") in workflow
+    assert "source|complete) ;;" in workflow
     assert 'test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"' in workflow
     assert 'git merge-base --is-ancestor "$PUBLICATION_SHA" origin/main' in workflow
+
+
+def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() -> None:
+    workflow = (
+        Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tests.yml"
+    ).read_text(encoding="utf-8")
+
+    source_gate = workflow.index("Validate publication metadata and source closure")
+    complete_gate = workflow.index("Validate the complete derived edition")
+    replay = workflow.index("Rebuild and prove the deterministic graph is unchanged")
+    public_surface = workflow.index("Read the public surface")
+    pages_artifact = workflow.index("  pages-artifact:")
+    deploy_pages = workflow.index("  deploy-pages:")
+
+    assert source_gate < complete_gate < replay < public_surface < pages_artifact
+    assert workflow.count("steps.identity.outputs.scope == 'complete'") == 3
+    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 2
+    assert workflow.count("github.event_name != 'pull_request'") == 2
+    assert (
+        "python -m scripts.build_data_catalog --check"
+        in workflow[source_gate:complete_gate]
+    )
+    assert (
+        "python scripts/seal_readings.py --check" in workflow[source_gate:complete_gate]
+    )
+    assert 'git archive --format=tar "$PUBLICATION_SHA"' in workflow
+    assert "Pages artifact refuses tracked symbolic links" in workflow
+    assert "TAR_OPTIONS: '--transform=s|^\\./well-known|./.well-known|'" in workflow
+    assert (
+        "actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b" in workflow
+    )
+    assert (
+        "actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b"
+        in workflow
+    )
+    assert "actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e" in workflow
+    assert pages_artifact < deploy_pages
+    assert "pages: write" in workflow[deploy_pages:]
+    assert "id-token: write" in workflow[deploy_pages:]
+    assert "name: github-pages" in workflow[deploy_pages:]
 
 
 def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -> None:
@@ -1085,10 +1162,7 @@ def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -
             if step.get("name") == "Retry the exact contract event without rebuilding"
         ]
         assert len(dispatch_retries) == 1, workflow_name
-        assert (
-            dispatch_retries[0]["run"]
-            == 'python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"'
-        )
+        assert "--scope complete" in dispatch_retries[0]["run"]
         for step in steps:
             if "publication race" in step.get("name", "") or "push race" in step.get(
                 "name", ""

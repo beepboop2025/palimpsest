@@ -92,23 +92,50 @@ jobs:
     # workflow — the one guarantee the project asks readers to check for themselves should
     # not depend on which cron fired.
     runs-on: ubuntu-latest
+    outputs:
+      revision: ${{ steps.identity.outputs.revision }}
+      scope: ${{ steps.identity.outputs.scope }}
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
-      - name: Validate the dispatched publication identity
-        if: ${{ github.event_name == 'repository_dispatch' }}
+      - name: Resolve and validate the publication identity
+        id: identity
         env:
           PUBLICATION_SHA: ${{ github.event.client_payload.sha }}
+          PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
         run: |
-          if [ "${#PUBLICATION_SHA}" -ne 40 ] ||
-             [ -n "${PUBLICATION_SHA//[0-9a-f]/}" ]; then
-            echo "invalid publication SHA payload" >&2
+          if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
+            publication_sha=$PUBLICATION_SHA
+            publication_scope=$PUBLICATION_SCOPE
+          else
+            publication_sha=$GITHUB_SHA
+            publication_scope=complete
+          fi
+          if [ "${#publication_sha}" -ne 40 ] ||
+             [ -n "${publication_sha//[0-9a-f]/}" ]; then
+            echo "invalid publication SHA" >&2
+            exit 1
+          fi
+          case "$publication_scope" in
+            source|complete) ;;
+            *)
+              echo "invalid publication scope" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "revision=$publication_sha"
+            echo "scope=$publication_scope"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$publication_scope" = "source" ] &&
+             [ "$GITHUB_EVENT_NAME" != "repository_dispatch" ]; then
+            echo "source scope is accepted only through exact repository dispatch" >&2
             exit 1
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
-          ref: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.sha }}
+          ref: ${{ steps.identity.outputs.revision }}
           fetch-depth: 0
 
       - name: Prove the dispatched commit is published on main
@@ -133,10 +160,16 @@ jobs:
         # format validators, all pinned to reviewed Python 3.12 Linux wheel hashes.
         run: pip install --quiet --require-hashes -r .github/osint-china-ci-requirements.txt
 
-      - name: Validate what is actually published
+      - name: Validate publication metadata and source closure
+        run: |
+          python -m pytest -q tests/test_publication_contract.py
+          python -m scripts.build_data_catalog --check
+          python scripts/seal_readings.py --check
+
+      - name: Validate the complete derived edition
+        if: ${{ steps.identity.outputs.scope == 'complete' }}
         run: |
           python -m pytest -q \
-            tests/test_publication_contract.py \
             tests/test_erasure_layer_freshness.py \
             tests/test_board_stale_is_not_calm.py \
             tests/test_cadence_matches_crons.py \
@@ -153,6 +186,7 @@ jobs:
             tests/test_mcp_deployment.py
 
       - name: Check the committed deterministic machine-newsroom graph
+        if: ${{ steps.identity.outputs.scope == 'complete' }}
         run: |
           # These checks MUST precede every write-mode builder below. Otherwise a
           # tampered committed artifact could be silently replaced and then pass its
@@ -174,6 +208,7 @@ jobs:
           python scripts/seal_readings.py --check
 
       - name: Rebuild and prove the deterministic graph is unchanged
+        if: ${{ steps.identity.outputs.scope == 'complete' }}
         run: |
           # Replay the already validated mesh at its recorded publication
           # clock.  A no-argument build intentionally means "publish a new
@@ -224,3 +259,74 @@ jobs:
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
           python -m scripts.build_eval_findings --check
+
+  pages-artifact:
+    name: Package exact complete Pages edition
+    needs: contract
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+
+      - name: Configure the existing Pages site without enabling it
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b  # v5
+        with:
+          enablement: false
+
+      - name: Materialize only exact tracked root content
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
+          if git ls-files -s | awk '$1 == "120000" { found=1 } END { exit found ? 0 : 1 }'; then
+            echo "Pages artifact refuses tracked symbolic links" >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/pages-root"
+          git archive --format=tar "$PUBLICATION_SHA" |
+            tar -xf - -C "$RUNNER_TEMP/pages-root"
+          # upload-pages-artifact deliberately excludes dot paths. Preserve the
+          # public RFC 9116 endpoint through a single reviewed archive-name
+          # transform while all other hidden operational files stay excluded.
+          test ! -e "$RUNNER_TEMP/pages-root/well-known"
+          mv "$RUNNER_TEMP/pages-root/.well-known" \
+            "$RUNNER_TEMP/pages-root/well-known"
+          test ! -e "$RUNNER_TEMP/pages-root/.git"
+          test ! -e "$RUNNER_TEMP/pages-root/.pytest_cache"
+          test ! -e "$RUNNER_TEMP/pages-root/.ruff_cache"
+
+      - name: Upload the exact Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b  # v4
+        env:
+          TAR_OPTIONS: '--transform=s|^\./well-known|./.well-known|'
+        with:
+          path: ${{ runner.temp }}/pages-root
+
+  deploy-pages:
+    name: Deploy exact complete Pages edition
+    needs:
+      - contract
+      - pages-artifact
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the exact accepted edition
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4

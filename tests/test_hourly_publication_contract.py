@@ -14,9 +14,10 @@ def _read(relative: str) -> str:
 def test_public_edition_is_hourly_and_keeps_a_bounded_board_queue() -> None:
     workflow = _read(".github/workflows/board-alarm-refresh.yml")
     assert 'cron: "53 * * * *"' in workflow
-    assert "group: board-derived-graph-publish" in workflow
-    assert "queue: max" in workflow
-    assert "cancel-in-progress: true" not in workflow
+    assert "publication_graph_dirty" in workflow
+    assert "group: derived-graph-publish" in workflow
+    assert "cancel-in-progress: false" in workflow
+    assert "queue:" not in workflow
     assert "timeout-minutes: 90" in workflow
     assert "Validate the complete public edition" in workflow
     assert "tests/test_publication_contract.py" in workflow
@@ -46,7 +47,7 @@ def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
         "python scripts/seal_readings.py",
         "python scripts/verify_public_surface.py",
         "git add -A -- readings china news datapackage.json weekly-situation.html",
-        "python scripts/push_data_commit.py --base-locked",
+        "python scripts/push_data_commit.py --base-locked --contract-scope complete",
     )
     positions = [workflow.index(command) for command in ordered]
     assert positions == sorted(positions)
@@ -66,6 +67,19 @@ def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
     assert 'cmp "$RUNNER_TEMP/catalog-before.sha256"' in workflow
     assert "python scripts/seal_readings.py --check" in workflow
     assert "--rebuild-module" not in workflow
+
+
+def test_board_dirty_signal_is_reachable_latest_main_and_closes_without_a_loop() -> (
+    None
+):
+    workflow = _read(".github/workflows/board-alarm-refresh.yml")
+
+    assert "Validate the source-dirty request" in workflow
+    assert 'git merge-base --is-ancestor "$DIRTY_SHA" origin/main' in workflow
+    assert "git switch --detach origin/main" in workflow
+    assert "Certify an already-closed source publication" in workflow
+    assert workflow.count("--scope complete") == 2
+    assert workflow.count("--contract-scope complete") == 1
 
 
 def test_board_retry_is_latest_main_scoped_and_only_retries_a_base_race() -> None:
