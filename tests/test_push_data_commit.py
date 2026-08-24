@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -1286,20 +1288,47 @@ def test_pages_packaging_waits_for_contract_and_exact_sha_pytest_admission() -> 
     assert set(mcp_admission["needs"]) == {"contract", "publication-admission"}
     assert "github.event_name == 'repository_dispatch'" in mcp_admission["if"]
     assert mcp_admission["permissions"] == {"actions": "read", "contents": "read"}
+    by_name = {
+        step.get("name"): step
+        for step in mcp_admission["steps"]
+        if isinstance(step, dict) and step.get("name")
+    }
+    binding_gate = by_name["Bind Pages to the catalog-declared deployed MCP release"][
+        "run"
+    ]
+    for required in (
+        ".metadata.deploymentCommit",
+        ".metadata.deploymentReceipt",
+        ".metadata.deploymentReceiptSha256",
+        ".metadata.deploymentRun",
+        'sha256sum "$deployment_receipt_path"',
+        'git merge-base --is-ancestor "$deployment_sha" "$PUBLICATION_SHA"',
+        "mcp/palimpsest_mcp.py server.json",
+        'test "$deployed_object" = "$publication_object"',
+        'git show "$deployment_sha:ops/mcp-deploy/verify_registry_release.py"',
+        'git show "$deployment_sha:scripts/smoke_palimpsest_mcp.py"',
+        'echo "deployment_sha=$deployment_sha"',
+    ):
+        assert required in binding_gate
     mcp_gate = "\n".join(
         step.get("run", "") for step in mcp_admission["steps"] if isinstance(step, dict)
     )
     for required in (
         "actions/workflows/deploy-mcp.yml/runs",
-        '-f head_sha="$PUBLICATION_SHA"',
+        '-f head_sha="$DEPLOYMENT_SHA"',
+        '--argjson run_id "$deploy_run_id"',
+        "select(.id == $run_id)",
         "select(.head_sha == $sha)",
         'select(.status == "completed" and .conclusion == "success")',
-        'gh run download "$deploy_run_id"',
-        "verify_registry_release.py deployment",
-        "scripts/smoke_palimpsest_mcp.py",
+        '--receipt "$DEPLOYMENT_RECEIPT_PATH"',
+        "verify_registry_release.py",
+        "smoke_palimpsest_mcp.py",
         'test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"',
+        '--target-sha "$DEPLOYMENT_SHA"',
+        '"$RUNNER_TEMP/deployed-mcp-contract/palimpsest_mcp.py"',
     ):
         assert required in mcp_gate
+    assert "gh run download" not in mcp_gate
 
     pages_artifact = jobs["pages-artifact"]
     assert set(pages_artifact["needs"]) == {
@@ -1320,6 +1349,195 @@ def test_pages_packaging_waits_for_contract_and_exact_sha_pytest_admission() -> 
     assert "needs.mcp-deployment-admission.result == 'success'" in deploy_pages["if"]
     assert "github.event_name == 'repository_dispatch'" in deploy_pages["if"]
     assert "needs.publication-admission.result == 'success'" in deploy_pages["if"]
+
+
+def _mcp_pages_binding_fixture(
+    tmp_path: Path, mode: str
+) -> tuple[Path, str, str, Path, Path]:
+    remote = tmp_path / "mcp-remote.git"
+    repository = tmp_path / "mcp-repository"
+    _git(tmp_path, "init", "--bare", "-q", str(remote))
+    _git(tmp_path, "init", "-q", "-b", "main", str(repository))
+    _configure(repository)
+
+    (repository / ".well-known").mkdir()
+    (repository / "mcp").mkdir()
+    (repository / "ops" / "mcp-deploy").mkdir(parents=True)
+    (repository / "scripts").mkdir()
+    (repository / ".well-known" / "ai-catalog.json").write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {
+                        "identifier": (
+                            "urn:air:palimpsest.info:mcp:evidence-observatory"
+                        ),
+                        "metadata": {
+                            "deploymentCommit": "0" * 40,
+                            "deploymentReceipt": (
+                                "https://github.com/beepboop2025/palimpsest/"
+                                "actions/runs/123"
+                            ),
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (repository / "mcp" / "palimpsest_mcp.py").write_text(
+        'SERVER_VERSION = "1.9.0"\n', encoding="utf-8"
+    )
+    (repository / "server.json").write_text(
+        '{"name":"io.github.beepboop2025/palimpsest","version":"1.9.0"}\n',
+        encoding="utf-8",
+    )
+    (repository / "ops" / "mcp-deploy" / "verify_registry_release.py").write_text(
+        "raise SystemExit(0)\n", encoding="utf-8"
+    )
+    (repository / "scripts" / "smoke_palimpsest_mcp.py").write_text(
+        "raise SystemExit(0)\n", encoding="utf-8"
+    )
+    _git(repository, "add", ".")
+    _git(repository, "commit", "-qm", "runtime release")
+    deployment_sha = _git(repository, "rev-parse", "HEAD")
+
+    if mode == "nonancestor":
+        _git(repository, "switch", "-qc", "deployed-sibling")
+        (repository / "deployed-marker.txt").write_text("receipt\n", encoding="utf-8")
+        _git(repository, "add", "deployed-marker.txt")
+        _git(repository, "commit", "-qm", "sibling deployment")
+        deployment_sha = _git(repository, "rev-parse", "HEAD")
+        _git(repository, "switch", "-q", "main")
+
+    receipt_directory = repository / ".well-known" / "receipts"
+    receipt_directory.mkdir()
+    deployment_receipt_path = receipt_directory / "mcp-deployment-1.9.0.json"
+    deployment_receipt = (
+        json.dumps(
+            {
+                "forced_command_deploy": "passed",
+                "public_mcp_url": "https://api.seiche.info/palimpsest/mcp",
+                "public_smoke": "passed",
+                "repository": "beepboop2025/palimpsest",
+                "schema": "palimpsest.mcp-deployment-receipt.v1",
+                "server_version": "1.9.0",
+                "target_sha": deployment_sha,
+                "workflow": ".github/workflows/deploy-mcp.yml",
+                "workflow_run_attempt": 1,
+                "workflow_run_id": 123,
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    deployment_receipt_path.write_text(deployment_receipt, encoding="utf-8")
+    deployment_receipt_digest = hashlib.sha256(
+        deployment_receipt.encode("utf-8")
+    ).hexdigest()
+    if mode == "receipt-digest-drift":
+        deployment_receipt_digest = "0" * 64
+
+    catalog_sha = "not-a-sha" if mode == "malformed" else deployment_sha
+    (repository / ".well-known" / "ai-catalog.json").write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {
+                        "identifier": (
+                            "urn:air:palimpsest.info:mcp:evidence-observatory"
+                        ),
+                        "metadata": {
+                            "deploymentCommit": catalog_sha,
+                            "deploymentReceipt": (
+                                "https://palimpsest.info/.well-known/receipts/"
+                                "mcp-deployment-1.9.0.json"
+                            ),
+                            "deploymentReceiptSha256": (
+                                f"sha256:{deployment_receipt_digest}"
+                            ),
+                            "deploymentRun": (
+                                "https://github.com/beepboop2025/palimpsest/"
+                                "actions/runs/123"
+                            ),
+                        },
+                    }
+                ]
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (repository / "reading.json").write_text('{"fresh":true}\n', encoding="utf-8")
+    if mode == "runtime-drift":
+        (repository / "mcp" / "palimpsest_mcp.py").write_text(
+            'SERVER_VERSION = "1.9.0"\nDRIFT = True\n', encoding="utf-8"
+        )
+    _git(repository, "add", ".")
+    _git(repository, "commit", "-qm", "data publication")
+    publication_sha = _git(repository, "rev-parse", "HEAD")
+    _git(repository, "remote", "add", "origin", str(remote))
+    _git(repository, "push", "-q", "-u", "origin", "main")
+    _git(remote, "symbolic-ref", "HEAD", "refs/heads/main")
+
+    output = tmp_path / "mcp-binding-output"
+    runner_temp = tmp_path / "mcp-runner-temp"
+    runner_temp.mkdir()
+    return repository, deployment_sha, publication_sha, output, runner_temp
+
+
+@pytest.mark.parametrize(
+    ("mode", "accepted"),
+    (
+        ("data-only", True),
+        ("runtime-drift", False),
+        ("nonancestor", False),
+        ("malformed", False),
+        ("receipt-digest-drift", False),
+    ),
+)
+def test_pages_mcp_binding_only_carries_forward_an_unchanged_ancestor(
+    tmp_path: Path, mode: str, accepted: bool
+) -> None:
+    workflow = yaml.safe_load(
+        (
+            Path(__file__).resolve().parents[1] / ".github" / "workflows" / "tests.yml"
+        ).read_text(encoding="utf-8")
+    )
+    steps = workflow["jobs"]["mcp-deployment-admission"]["steps"]
+    binding_gate = next(
+        step["run"]
+        for step in steps
+        if step.get("name") == "Bind Pages to the catalog-declared deployed MCP release"
+    )
+    repository, deployment_sha, publication_sha, output, runner_temp = (
+        _mcp_pages_binding_fixture(tmp_path, mode)
+    )
+    completed = subprocess.run(
+        ["/bin/bash", "-c", binding_gate],
+        cwd=repository,
+        check=False,
+        capture_output=True,
+        text=True,
+        env={
+            **os.environ,
+            "GITHUB_EVENT_NAME": "repository_dispatch",
+            "GITHUB_OUTPUT": str(output),
+            "GITHUB_REPOSITORY": "beepboop2025/palimpsest",
+            "PUBLICATION_SHA": publication_sha,
+            "RUNNER_TEMP": str(runner_temp),
+        },
+    )
+    assert (completed.returncode == 0) is accepted, completed.stderr
+    if accepted:
+        assert output.read_text(encoding="utf-8").splitlines() == [
+            f"deployment_sha={deployment_sha}",
+            "deployment_run_id=123",
+            ("deployment_receipt_path=.well-known/receipts/mcp-deployment-1.9.0.json"),
+        ]
+        assert (runner_temp / "deployed-mcp-contract" / "server.json").is_file()
 
 
 def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
