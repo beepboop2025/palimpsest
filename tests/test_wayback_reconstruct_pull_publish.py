@@ -30,6 +30,7 @@ CDX fetch, so the tests hand it synthetic CDX rows and the real reconstruction
 logic runs unchanged. Nothing touches archive.org. The clock is stubbed too, so
 two rounds are distinguishable no matter how fast the suite runs.
 """
+
 from __future__ import annotations
 
 import json
@@ -164,7 +165,8 @@ def test_an_unchanged_round_still_refreshes_the_observation_time(publish):
     second = run(STABLE)
 
     assert second["generated_at"] > first["generated_at"], (
-        "an unchanged answer must still publish this round's observation time")
+        "an unchanged answer must still publish this round's observation time"
+    )
 
 
 def test_the_unchanged_round_really_was_unchanged(publish):
@@ -174,8 +176,13 @@ def test_the_unchanged_round_really_was_unchanged(publish):
     first = run(STABLE)
     second = run(STABLE)
 
-    for field in ("n_watched", "n_reachable", "n_deletions", "n_mutations",
-                  "method_version"):
+    for field in (
+        "n_watched",
+        "n_reachable",
+        "n_deletions",
+        "n_mutations",
+        "method_version",
+    ):
         assert second[field] == first[field]
     assert second["reconstructions"] == first["reconstructions"]
     assert first["reconstructions"][0]["event"] == "stable"
@@ -252,7 +259,8 @@ def test_an_all_unreachable_round_publishes_nothing_at_all(publish):
 
     after = _reading(tmp_path)
     assert after["generated_at"] == first["generated_at"], (
-        "an abstaining round must not restamp the reading as freshly observed")
+        "an abstaining round must not restamp the reading as freshly observed"
+    )
     assert after["n_reachable"] == 1
     assert len(_history(tmp_path)) == 1
 
@@ -296,17 +304,19 @@ def test_a_first_ever_round_writes_both_the_reading_and_the_history(publish):
 
     assert first["generated_at"] == "2026-07-17T15:23:00+00:00"
     assert first["method_version"] == pull.METHOD_VERSION
-    assert _history(tmp_path) == [{
-        "generated_at": first["generated_at"],
-        "method_version": pull.METHOD_VERSION,
-        "n_watched": 1,
-        "n_reachable": 1,
-        "n_deletions": 0,
-        "n_mutations": 0,
-        "n_transitions_total": 0,
-        "n_transitions_published": 0,
-        "n_transitions_omitted": 0,
-    }]
+    assert _history(tmp_path) == [
+        {
+            "generated_at": first["generated_at"],
+            "method_version": pull.METHOD_VERSION,
+            "n_watched": 1,
+            "n_reachable": 1,
+            "n_deletions": 0,
+            "n_mutations": 0,
+            "n_transitions_total": 0,
+            "n_transitions_published": 0,
+            "n_transitions_omitted": 0,
+        }
+    ]
 
 
 def test_a_corrupt_previous_reading_cannot_stop_a_round(publish):
@@ -355,10 +365,7 @@ def test_max_watchlist_wayback_and_undertext_fit_and_archive(
     def fetch(url, **_kwargs):
         return json.dumps(
             [_HEADER]
-            + [
-                list(row)
-                for row in _high_change_timeline(url, n_transitions=1_999)
-            ],
+            + [list(row) for row in _high_change_timeline(url, n_transitions=1_999)],
             ensure_ascii=False,
         )
 
@@ -373,9 +380,7 @@ def test_max_watchlist_wayback_and_undertext_fit_and_archive(
     assert wayback["n_transitions_published"] == len(watchlist)
     assert wayback["n_transitions_omitted"] == 1_998 * len(watchlist)
     assert len(wayback["ddti_observations"]) == len(watchlist)
-    assert len({row["url"] for row in wayback["ddti_observations"]}) == len(
-        watchlist
-    )
+    assert len({row["url"] for row in wayback["ddti_observations"]}) == len(watchlist)
     assert wayback_path.stat().st_size < DEFAULT_MAX_BYTES
 
     class _ReadyKillSwitch:

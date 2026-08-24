@@ -22,6 +22,7 @@ never Chinese infrastructure, never a person. Standard-library only.
 
 Usage:  PYTHONPATH=. python -m scripts.wayback_reconstruct_pull
 """
+
 from __future__ import annotations
 
 import json
@@ -84,14 +85,19 @@ def _reconstruction_row(rec) -> dict:
         },
     }
     if primary is not None:
-        row.update({
-            "severity": primary.severity(),
-            "latency_bracket_s": round(primary.latency_s, 1),
-            "last_live_snapshot": primary.a.raw_excerpt or None,
-            "post_event_snapshot": primary.b.raw_excerpt or None,
-            "detail": primary.detail,
-        })
-    confirmed_live_gone = bool(primary) and str(getattr(primary, "kind", "")) in {"DELETION", "deletion"}
+        row.update(
+            {
+                "severity": primary.severity(),
+                "latency_bracket_s": round(primary.latency_s, 1),
+                "last_live_snapshot": primary.a.raw_excerpt or None,
+                "post_event_snapshot": primary.b.raw_excerpt or None,
+                "detail": primary.detail,
+            }
+        )
+    confirmed_live_gone = bool(primary) and str(getattr(primary, "kind", "")) in {
+        "DELETION",
+        "deletion",
+    }
     return stamp_visibility_event(
         row,
         observer_class="archive-crawler",
@@ -107,10 +113,13 @@ def _reconstruction_row(rec) -> dict:
             )
         ),
         visibility_label=(
-            "archive_gap" if rec.note == "no_baseline"
+            "archive_gap"
+            if rec.note == "no_baseline"
             else ("visibility_anomaly" if confirmed_live_gone else None)
         ),
-        missingness="archive_gap" if rec.note == "no_baseline" else (
+        missingness="archive_gap"
+        if rec.note == "no_baseline"
+        else (
             "coverage_gap" if rec.note in {"unreachable", INVALID_RESPONSE} else None
         ),
         had_live_baseline=confirmed_live_gone,
@@ -126,20 +135,25 @@ def main() -> None:
 
     kill = KillSwitch() if KillSwitch else None
     rate = RateCeiling(rate=_RATE_PER_SEC, capacity=_BURST) if RateCeiling else None
-    vantage = WaybackVantagePoint(fetch_cdx=default_cdx_fetch, kill_switch=kill, rate_ceiling=rate)
+    vantage = WaybackVantagePoint(
+        fetch_cdx=default_cdx_fetch, kill_switch=kill, rate_ceiling=rate
+    )
 
     rows, ddti_observations = [], []
     transition_totals = {DELETION: 0, MUTATION: 0, "other": 0}
     transition_published = {DELETION: 0, MUTATION: 0, "other": 0}
     reachable = 0
     for entry in watchlist:
-        rec = vantage.observe(entry["url"], term=entry.get("term", ""),
-                              domain=entry.get("domain", ""))
+        rec = vantage.observe(
+            entry["url"], term=entry.get("term", ""), domain=entry.get("domain", "")
+        )
         if rec.note not in {"unreachable", INVALID_RESPONSE}:
             reachable += 1
         rows.append(_reconstruction_row(rec))
         for divergence in rec.divergences:
-            kind = divergence.kind if divergence.kind in {DELETION, MUTATION} else "other"
+            kind = (
+                divergence.kind if divergence.kind in {DELETION, MUTATION} else "other"
+            )
             transition_totals[kind] += 1
 
         primary = rec.primary
@@ -194,8 +208,8 @@ def main() -> None:
         "method_version": METHOD_VERSION,
         "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest",
         "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with "
-                 "archive-witnessed timestamps; velocity reported as an explicit capture bracket; "
-                 "one primary DDTI representative per URL, with all omitted transitions counted",
+        "archive-witnessed timestamps; velocity reported as an explicit capture bracket; "
+        "one primary DDTI representative per URL, with all omitted transitions counted",
         "n_watched": len(rows),
         "n_reachable": reachable,
         "n_deletions": n_deletions,
@@ -211,24 +225,38 @@ def main() -> None:
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
     with open(HIST, "a", encoding="utf-8") as f:
-        f.write(json.dumps({
-            "generated_at": out["generated_at"],
-            "method_version": out["method_version"],
-            "n_watched": out["n_watched"],
-            "n_reachable": out["n_reachable"],
-            "n_deletions": n_deletions,
-            "n_mutations": n_mutations,
-            "n_transitions_total": n_transitions_total,
-            "n_transitions_published": n_transitions_published,
-            "n_transitions_omitted": n_transitions_omitted,
-        }, ensure_ascii=False) + "\n")
+        f.write(
+            json.dumps(
+                {
+                    "generated_at": out["generated_at"],
+                    "method_version": out["method_version"],
+                    "n_watched": out["n_watched"],
+                    "n_reachable": out["n_reachable"],
+                    "n_deletions": n_deletions,
+                    "n_mutations": n_mutations,
+                    "n_transitions_total": n_transitions_total,
+                    "n_transitions_published": n_transitions_published,
+                    "n_transitions_omitted": n_transitions_omitted,
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
 
-    print(f"=== Wayback reconstruction: {len(rows)} watched, {reachable} reachable, "
-          f"{n_deletions} deletions, {n_mutations} silent redactions ===")
+    print(
+        f"=== Wayback reconstruction: {len(rows)} watched, {reachable} reachable, "
+        f"{n_deletions} deletions, {n_mutations} silent redactions ==="
+    )
     for r in rows:
-        detail = f" bracket={r.get('latency_bracket_s')}s" if r.get("latency_bracket_s") else ""
-        print(f"  {str(r['term'])[:24]:<24} {str(r['event']):<11} "
-              f"captures={r['n_captures']:<4} note={r['note'] or '-'}{detail}")
+        detail = (
+            f" bracket={r.get('latency_bracket_s')}s"
+            if r.get("latency_bracket_s")
+            else ""
+        )
+        print(
+            f"  {str(r['term'])[:24]:<24} {str(r['event']):<11} "
+            f"captures={r['n_captures']:<4} note={r['note'] or '-'}{detail}"
+        )
 
 
 if __name__ == "__main__":

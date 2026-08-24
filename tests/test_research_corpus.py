@@ -55,7 +55,9 @@ def _advertisement(
     return b"".join(chunks)
 
 
-def _fixture_payload(repository: str, *, commit_suffix: str = "v1", extra_branch: bool = False):
+def _fixture_payload(
+    repository: str, *, commit_suffix: str = "v1", extra_branch: bool = False
+):
     head = _commit(f"{repository}:{commit_suffix}")
     tag = _commit(f"{repository}:tag")
     extras = [
@@ -162,15 +164,23 @@ def test_default_config_declares_exact_reviewed_allowlist_and_licences(config):
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
-        (lambda doc: doc["sources"][0].update(repository="attacker/repository"), "allowlist"),
+        (
+            lambda doc: doc["sources"][0].update(repository="attacker/repository"),
+            "allowlist",
+        ),
         (lambda doc: doc["sources"][0].update(branch="main"), "allowlist"),
-        (lambda doc: doc["sources"][0].update(endpoint="https://example.invalid"), "keys differ"),
+        (
+            lambda doc: doc["sources"][0].update(endpoint="https://example.invalid"),
+            "keys differ",
+        ),
         (lambda doc: doc["sources"].pop(), "every approved corpus"),
         (lambda doc: doc.update(user_agent="anonymous client"), "contact-bearing"),
         (lambda doc: doc["limits"].update(run_bytes=1024 * 1024), "sum"),
     ],
 )
-def test_config_rejects_network_or_scope_widening(tmp_path, config_document, mutation, message):
+def test_config_rejects_network_or_scope_widening(
+    tmp_path, config_document, mutation, message
+):
     document = copy.deepcopy(config_document)
     mutation(document)
     with pytest.raises(corpus.ConfigurationError, match=message):
@@ -230,9 +240,7 @@ def test_parser_enforces_packet_and_ref_name_caps():
             raw, branch="master", max_packets=2, max_ref_name_bytes=1024
         )
     long_ref = "refs/heads/" + "x" * 100
-    raw = _advertisement(
-        _commit("x"), extra_refs=((_commit("y"), long_ref),)
-    )
+    raw = _advertisement(_commit("x"), extra_refs=((_commit("y"), long_ref),))
     with pytest.raises(corpus.ValidationError, match="byte cap"):
         corpus.parse_ref_advertisement(
             raw, branch="master", max_packets=100, max_ref_name_bytes=64
@@ -269,7 +277,9 @@ def test_collection_uses_only_fixed_keyless_no_redirect_git_endpoints(config, fa
     for url, kwargs in fake_git.calls:
         assert url.startswith("https://github.com/")
         assert url.endswith(".git/info/refs?service=git-upload-pack")
-        assert "api.github.com" not in url and "codeload" not in url and "raw." not in url
+        assert (
+            "api.github.com" not in url and "codeload" not in url and "raw." not in url
+        )
         repository = url.removeprefix("https://github.com/").split(".git/", 1)[0]
         assert kwargs["max_bytes"] == caps[repository]
         assert kwargs["max_redirects"] == 0
@@ -279,7 +289,9 @@ def test_collection_uses_only_fixed_keyless_no_redirect_git_endpoints(config, fa
         assert not any(key.lower() == "authorization" for key in kwargs["headers"])
 
 
-def test_public_snapshot_is_aggregate_only_and_carries_hashes_and_cursors(config, fake_git):
+def test_public_snapshot_is_aggregate_only_and_carries_hashes_and_cursors(
+    config, fake_git
+):
     snapshot = _collect(config, fake_git)
     encoded = json.dumps(snapshot, ensure_ascii=False, sort_keys=True)
     assert "alice-private-marker" not in encoded
@@ -328,7 +340,9 @@ def test_second_snapshot_emits_cursor_and_aggregate_ref_deltas(config, payloads)
     assert second["last_changed_at"] == second["generated_at"]
 
 
-def test_response_cap_is_enforced_even_if_injected_transport_ignores_it(config, payloads):
+def test_response_cap_is_enforced_even_if_injected_transport_ignores_it(
+    config, payloads
+):
     first = config.sources[0]
 
     def oversized(url, **kwargs):
@@ -507,11 +521,14 @@ def test_interrupted_two_file_commit_is_recovered_before_the_next_publish(
     with pytest.raises(OSError, match="latest replace"):
         corpus.publish_snapshot(second, config, readings=tmp_path)
     assert (tmp_path / corpus.TRANSACTION_NAME).is_file()
-    history_rows = (tmp_path / corpus.HISTORY_NAME).read_text(encoding="utf-8").splitlines()
+    history_rows = (
+        (tmp_path / corpus.HISTORY_NAME).read_text(encoding="utf-8").splitlines()
+    )
     assert len(history_rows) == 2
-    assert json.loads((tmp_path / corpus.LATEST_NAME).read_text())["snapshot_sha256"] == first[
-        "snapshot_sha256"
-    ]
+    assert (
+        json.loads((tmp_path / corpus.LATEST_NAME).read_text())["snapshot_sha256"]
+        == first["snapshot_sha256"]
+    )
 
     monkeypatch.setattr(corpus, "_atomic_write", real_atomic_write)
     result = corpus.publish_snapshot(second, config, readings=tmp_path)
@@ -546,14 +563,21 @@ def test_corrupt_history_is_never_repaired_or_overwritten(tmp_path, config, fake
     assert not (tmp_path / corpus.LATEST_NAME).exists()
 
 
-def test_history_byte_ceiling_refuses_growth_without_trimming(tmp_path, config, fake_git):
+def test_history_byte_ceiling_refuses_growth_without_trimming(
+    tmp_path, config, fake_git
+):
     snapshot = _collect(config, fake_git)
     row_size = len(corpus._canonical_json(snapshot)) + 1
     tight = replace(config, limits=replace(config.limits, history_bytes=row_size))
     corpus.publish_snapshot(snapshot, tight, readings=tmp_path)
     second = _collect(
         tight,
-        FakeGit({source.repository: _fixture_payload(source.repository) for source in tight.sources}),
+        FakeGit(
+            {
+                source.repository: _fixture_payload(source.repository)
+                for source in tight.sources
+            }
+        ),
         previous=snapshot,
         now=T0 + timedelta(hours=1),
     )
@@ -769,15 +793,20 @@ def test_scheduled_workflow_is_bounded_gated_and_race_safe():
     ).read_text(encoding="utf-8")
     assert 'cron: "31 */6 * * *"' in workflow
     assert "group: research-corpus-refresh" in workflow
-    setup = workflow[workflow.index("actions/setup-python@"):workflow.index(
-        "- name: Install the pinned offline test runner"
-    )]
+    setup = workflow[
+        workflow.index("actions/setup-python@") : workflow.index(
+            "- name: Install the pinned offline test runner"
+        )
+    ]
     assert "cache: pip" in setup
     assert "cache-dependency-path: .github/osint-china-ci-requirements.txt" in setup
     assert "cancel-in-progress: false" in workflow
     assert "timeout-minutes: 20" in workflow
     assert "persist-credentials: false" in workflow
-    assert workflow.count("python -m scripts.research_corpus_ingest --readings readings") == 3
+    assert (
+        workflow.count("python -m scripts.research_corpus_ingest --readings readings")
+        == 3
+    )
     assert "halted|skipped" in workflow and 'echo "ready=false"' in workflow
     assert "git rebase origin/main" in workflow
     assert workflow.count("git switch --detach origin/main") >= 2
@@ -811,7 +840,10 @@ def test_scheduled_workflow_is_bounded_gated_and_race_safe():
         "datapackage.json",
         "readings/readings-ledger.jsonl",
     ):
-        assert sum(
-            line.strip().rstrip("\\").strip() == artifact
-            for line in workflow.splitlines()
-        ) == 3
+        assert (
+            sum(
+                line.strip().rstrip("\\").strip() == artifact
+                for line in workflow.splitlines()
+            )
+            == 3
+        )

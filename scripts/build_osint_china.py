@@ -15,6 +15,7 @@ previous complete document or the next complete document, never a partial JSON f
     python -m scripts.build_osint_china
     python -m scripts.build_osint_china --now 2026-08-04T12:00:00Z
 """
+
 from __future__ import annotations
 
 import argparse
@@ -136,198 +137,580 @@ def _s(
 # tests/test_osint_china.py ratchets this list against the committed *-latest.json inventory.
 SIGNALS: tuple[SignalSpec, ...] = (
     # Board-level synthesis and its safeguards.
-    _s("board-alarm", "Board alarm", "command", "board-alarm-latest.json", 1, 3,
-       "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
-       "board e-value", ("board_e_value",), "e-value"),
-    _s("event-flags", "Event flags", "command", "event-flags-latest.json", 6, 14,
-       "Per-signal conformal event states, including non-reporting and stale series.",
-       "signals reporting", ("n_reporting",), "count", "signals configured", ("n_signals",)),
-    _s("coverage-guard", "Coverage guard", "command", "coverage-guard-latest.json", 1, 3,
-       "Checks whether apparent movement is confounded by changing measurement coverage.",
-       "confounded signals", ("confounded",), "count"),
-    _s("forecast-ledger", "Forecast ledger", "command", "forecast-ledger-latest.json", 1, 3,
-       "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
-       "empirical coverage", ("pooled_empirical_coverage",), "ratio",
-       "forecasts", ("n_forecasts",)),
-    _s("cross-layer", "Cross-layer lead/lag", "command", "cross-layer-latest.json", 1, 3,
-       "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
-       "confirmed pairs", ("n_confirmed",), "count", "pairs tested", ("n_pairs_tested",)),
-
+    _s(
+        "board-alarm",
+        "Board alarm",
+        "command",
+        "board-alarm-latest.json",
+        1,
+        3,
+        "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
+        "board e-value",
+        ("board_e_value",),
+        "e-value",
+    ),
+    _s(
+        "event-flags",
+        "Event flags",
+        "command",
+        "event-flags-latest.json",
+        6,
+        14,
+        "Per-signal conformal event states, including non-reporting and stale series.",
+        "signals reporting",
+        ("n_reporting",),
+        "count",
+        "signals configured",
+        ("n_signals",),
+    ),
+    _s(
+        "coverage-guard",
+        "Coverage guard",
+        "command",
+        "coverage-guard-latest.json",
+        1,
+        3,
+        "Checks whether apparent movement is confounded by changing measurement coverage.",
+        "confounded signals",
+        ("confounded",),
+        "count",
+    ),
+    _s(
+        "forecast-ledger",
+        "Forecast ledger",
+        "command",
+        "forecast-ledger-latest.json",
+        1,
+        3,
+        "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
+        "empirical coverage",
+        ("pooled_empirical_coverage",),
+        "ratio",
+        "forecasts",
+        ("n_forecasts",),
+    ),
+    _s(
+        "cross-layer",
+        "Cross-layer lead/lag",
+        "command",
+        "cross-layer-latest.json",
+        1,
+        3,
+        "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
+        "confirmed pairs",
+        ("n_confirmed",),
+        "count",
+        "pairs tested",
+        ("n_pairs_tested",),
+    ),
     # Attention, censorship directives and domestic/global narrative contrast.
-    _s("ddti", "Deletion-directive term index", "attention", "ddti-latest.json", 3, 7,
-       "Ranks terms in documented censorship directives and scrubbed-material reports.",
-       "terms ranked", ("n_terms",), "count",
-       source_fallback="China Digital Times public feeds x Palimpsest DDTI"),
-    _s("gdelt", "Global coverage cross-signal", "attention", "gdelt-latest.json", 6, 14,
-       "Contrasts DDTI terms with global GDELT coverage without treating absence as proof.",
-       "terms with global data", ("n_with_global_data",), "count",
-       "terms compared", ("n_terms",)),
-    _s("weibo-hotsearch", "Weibo hot-search join", "attention", "weibo-hotsearch-latest.json", 1, 3,
-       "Joins deletion-stream terms to archived Weibo hot-search board captures.",
-       "board entries", ("board_entries",), "count"),
-    _s("silence-index", "Silence index", "attention", "silence-index-latest.json", 1, 3,
-       "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
-       "blackout topics", ("n_blackout",), "count", "topics considered", ("n_topics_considered",)),
-    _s("blocklist", "Platform blocklist archaeology", "attention", "blocklist-latest.json", 168, 192,
-       "Diffs successive attributable client blocklists and preserves decode limitations.",
-       "keyword additions", ("n_additions",), "count"),
-    _s("net4people", "Community blocking log", "attention", "net4people-latest.json", 12, 26,
-       "Tracks qualitative China blocking and circumvention reports from the net4people community log.",
-       "recent events", ("n_recent",), "count"),
-    _s("public-deletion-ledgers", "Public deletion ledgers", "attention",
-       "public-deletion-ledgers-latest.json", 3, 7,
-       "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style) with reachability explicit.",
-       "ledger observations", ("n_observations",), "count",
-       "feeds answering", ("n_feeds_ok",), optional=True,
-       source_fallback="Public CDT / GreatFire / FreeWeibo-style feeds when reachable",
-       method_fallback=(
-           "Keyless RSS/Atom ingest; unreachable ledgers are reported and never "
-           "published as a zero")),
-    _s("greatfire-context", "GreatFire attributed verdicts", "network",
-       "greatfire-context-latest.json", 12, 20,
-       "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements.",
-       "GreatFire verdicts", ("n_verdicts",), "count",
-       "URLs queried", ("n_urls_queried",), optional=True,
-       source_fallback="GreatFire Analyzer open API, CC BY 4.0",
-       method_fallback="Keyless /api/url/ and /api/verdict lookups; silent API abstains"),
-    _s("peer-context", "Attributed peer-context warehouse", "attention",
-       "peer-context-latest.json", 6, 14,
-       "Joins GreatFire, OONI, CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts.",
-       "hosts joined", ("n_hosts",), "count", optional=True,
-       source_fallback="GreatFire cache, OONI warehouse/ooni-gfw-latest, CDT RSS, Weiboscope citation",
-       method_fallback="Offline host join; no catalog crawl; no 2012 Weiboscope dump"),
-    _s("undertext", "UNDERTEXT differential fusion", "attention",
-       "undertext-latest.json", 6, 14,
-       "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated.",
-       "observations", ("n_observations",), "count"),
-    _s("research-corpus", "Research-corpus metadata", "attention",
-       "research-corpus-latest.json", 12, 26,
-       "Metadata-only Git ref advertisements for five allowlisted public research corpora; blobs and keywords stay unpublished.",
-       "sources", ("n_sources",), "count"),
-
+    _s(
+        "ddti",
+        "Deletion-directive term index",
+        "attention",
+        "ddti-latest.json",
+        3,
+        7,
+        "Ranks terms in documented censorship directives and scrubbed-material reports.",
+        "terms ranked",
+        ("n_terms",),
+        "count",
+        source_fallback="China Digital Times public feeds x Palimpsest DDTI",
+    ),
+    _s(
+        "gdelt",
+        "Global coverage cross-signal",
+        "attention",
+        "gdelt-latest.json",
+        6,
+        14,
+        "Contrasts DDTI terms with global GDELT coverage without treating absence as proof.",
+        "terms with global data",
+        ("n_with_global_data",),
+        "count",
+        "terms compared",
+        ("n_terms",),
+    ),
+    _s(
+        "weibo-hotsearch",
+        "Weibo hot-search join",
+        "attention",
+        "weibo-hotsearch-latest.json",
+        1,
+        3,
+        "Joins deletion-stream terms to archived Weibo hot-search board captures.",
+        "board entries",
+        ("board_entries",),
+        "count",
+    ),
+    _s(
+        "silence-index",
+        "Silence index",
+        "attention",
+        "silence-index-latest.json",
+        1,
+        3,
+        "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
+        "blackout topics",
+        ("n_blackout",),
+        "count",
+        "topics considered",
+        ("n_topics_considered",),
+    ),
+    _s(
+        "blocklist",
+        "Platform blocklist archaeology",
+        "attention",
+        "blocklist-latest.json",
+        168,
+        192,
+        "Diffs successive attributable client blocklists and preserves decode limitations.",
+        "keyword additions",
+        ("n_additions",),
+        "count",
+    ),
+    _s(
+        "net4people",
+        "Community blocking log",
+        "attention",
+        "net4people-latest.json",
+        12,
+        26,
+        "Tracks qualitative China blocking and circumvention reports from the net4people community log.",
+        "recent events",
+        ("n_recent",),
+        "count",
+    ),
+    _s(
+        "public-deletion-ledgers",
+        "Public deletion ledgers",
+        "attention",
+        "public-deletion-ledgers-latest.json",
+        3,
+        7,
+        "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style) with reachability explicit.",
+        "ledger observations",
+        ("n_observations",),
+        "count",
+        "feeds answering",
+        ("n_feeds_ok",),
+        optional=True,
+        source_fallback="Public CDT / GreatFire / FreeWeibo-style feeds when reachable",
+        method_fallback=(
+            "Keyless RSS/Atom ingest; unreachable ledgers are reported and never "
+            "published as a zero"
+        ),
+    ),
+    _s(
+        "greatfire-context",
+        "GreatFire attributed verdicts",
+        "network",
+        "greatfire-context-latest.json",
+        12,
+        20,
+        "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements.",
+        "GreatFire verdicts",
+        ("n_verdicts",),
+        "count",
+        "URLs queried",
+        ("n_urls_queried",),
+        optional=True,
+        source_fallback="GreatFire Analyzer open API, CC BY 4.0",
+        method_fallback="Keyless /api/url/ and /api/verdict lookups; silent API abstains",
+    ),
+    _s(
+        "peer-context",
+        "Attributed peer-context warehouse",
+        "attention",
+        "peer-context-latest.json",
+        6,
+        14,
+        "Joins GreatFire, OONI, CDT excerpts, and a Weiboscope abstention onto already-held Palimpsest hosts.",
+        "hosts joined",
+        ("n_hosts",),
+        "count",
+        optional=True,
+        source_fallback="GreatFire cache, OONI warehouse/ooni-gfw-latest, CDT RSS, Weiboscope citation",
+        method_fallback="Offline host join; no catalog crawl; no 2012 Weiboscope dump",
+    ),
+    _s(
+        "undertext",
+        "UNDERTEXT differential fusion",
+        "attention",
+        "undertext-latest.json",
+        6,
+        14,
+        "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated.",
+        "observations",
+        ("n_observations",),
+        "count",
+    ),
+    _s(
+        "research-corpus",
+        "Research-corpus metadata",
+        "attention",
+        "research-corpus-latest.json",
+        12,
+        26,
+        "Metadata-only Git ref advertisements for five allowlisted public research corpora; blobs and keywords stay unpublished.",
+        "sources",
+        ("n_sources",),
+        "count",
+    ),
     # Independent network and circumvention vantages.
-    _s("ooni-gfw", "OONI Great Firewall index", "network", "ooni-gfw-latest.json", 6, 14,
-       "Aggregates OONI measurements made by probes in China across network test families.",
-       "GFW anomaly index", ("gfw_index",), "percent", "completed measurements",
-       ("n_completed_measurements",)),
-    _s("in-path-interference", "In-path interference", "network", "in-path-interference-latest.json", 6, 14,
-       "Separates middlebox signatures, transport failures and tests that could not execute.",
-       "middlebox index", ("middlebox_index",), "percent",
-       "completed middlebox tests", ("middlebox_completed_count",)),
-    _s("censored-planet", "Censored Planet", "network", "censored-planet-latest.json", 24, 50,
-       "Uses Censored Planet's independent remote side-channel measurement of China interference.",
-       "CN interference rate", ("cn_interference_rate_pct",), "percent"),
-    _s("inside-view", "Inside-China view", "network", "inside-view-latest.json", 6, 14,
-       "Classifies DNS answers from volunteer probes inside China against a same-round external control.",
-       "blocked share", ("block_rate",), "ratio",
-       "qualifying answered measurement domains", ("n_censored_answered",)),
-    _s("ioda-outages", "IODA outage monitor", "network", "ioda-outages-latest.json", 6, 14,
-       "Reports outage events detected by IODA's independent BGP, probing and darknet instruments.",
-       "instruments firing", ("instruments_firing",), "count"),
-    _s("circumvention-demand", "Circumvention demand", "network", "circumvention-demand-latest.json", 24, 50,
-       "Publishes Tor Metrics estimates for China bridge, relay and pluggable-transport use.",
-       "bridge users", ("reading", "bridge_users"), "estimated users"),
-    _s("vantage-fusion", "Network vantage fusion", "network", "vantage-fusion-latest.json", 6, 14,
-       "Fuses only reporting network vantages and names excluded or divergent inputs.",
-       "fused network index", ("fused_index",), "percent"),
-    _s("bleedthrough", "Bleedthrough injector tomography", "network",
-       "bleedthrough-latest.json", 6, 14,
-       "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; "
-       "absence means no controlled deployment has published a current round.",
-       "injector response-process floor", ("max_process_count",), "count",
-       "injecting target IPs", ("vantages_injecting",), optional=True,
-       source_fallback="Optional deployment-controlled prober outside China",
-       method_fallback=(
-           "Benign stateless DNS probes from a controlled external vantage; rate-limited, "
-           "kill-switch guarded, and never run from shared CI")),
-
+    _s(
+        "ooni-gfw",
+        "OONI Great Firewall index",
+        "network",
+        "ooni-gfw-latest.json",
+        6,
+        14,
+        "Aggregates OONI measurements made by probes in China across network test families.",
+        "GFW anomaly index",
+        ("gfw_index",),
+        "percent",
+        "completed measurements",
+        ("n_completed_measurements",),
+    ),
+    _s(
+        "in-path-interference",
+        "In-path interference",
+        "network",
+        "in-path-interference-latest.json",
+        6,
+        14,
+        "Separates middlebox signatures, transport failures and tests that could not execute.",
+        "middlebox index",
+        ("middlebox_index",),
+        "percent",
+        "completed middlebox tests",
+        ("middlebox_completed_count",),
+    ),
+    _s(
+        "censored-planet",
+        "Censored Planet",
+        "network",
+        "censored-planet-latest.json",
+        24,
+        50,
+        "Uses Censored Planet's independent remote side-channel measurement of China interference.",
+        "CN interference rate",
+        ("cn_interference_rate_pct",),
+        "percent",
+    ),
+    _s(
+        "inside-view",
+        "Inside-China view",
+        "network",
+        "inside-view-latest.json",
+        6,
+        14,
+        "Classifies DNS answers from volunteer probes inside China against a same-round external control.",
+        "blocked share",
+        ("block_rate",),
+        "ratio",
+        "qualifying answered measurement domains",
+        ("n_censored_answered",),
+    ),
+    _s(
+        "ioda-outages",
+        "IODA outage monitor",
+        "network",
+        "ioda-outages-latest.json",
+        6,
+        14,
+        "Reports outage events detected by IODA's independent BGP, probing and darknet instruments.",
+        "instruments firing",
+        ("instruments_firing",),
+        "count",
+    ),
+    _s(
+        "circumvention-demand",
+        "Circumvention demand",
+        "network",
+        "circumvention-demand-latest.json",
+        24,
+        50,
+        "Publishes Tor Metrics estimates for China bridge, relay and pluggable-transport use.",
+        "bridge users",
+        ("reading", "bridge_users"),
+        "estimated users",
+    ),
+    _s(
+        "vantage-fusion",
+        "Network vantage fusion",
+        "network",
+        "vantage-fusion-latest.json",
+        6,
+        14,
+        "Fuses only reporting network vantages and names excluded or divergent inputs.",
+        "fused network index",
+        ("fused_index",),
+        "percent",
+    ),
+    _s(
+        "bleedthrough",
+        "Bleedthrough injector tomography",
+        "network",
+        "bleedthrough-latest.json",
+        6,
+        14,
+        "Optional controlled active-prober reading of GFW DNS-injector fleet behaviour; "
+        "absence means no controlled deployment has published a current round.",
+        "injector response-process floor",
+        ("max_process_count",),
+        "count",
+        "injecting target IPs",
+        ("vantages_injecting",),
+        optional=True,
+        source_fallback="Optional deployment-controlled prober outside China",
+        method_fallback=(
+            "Benign stateless DNS probes from a controlled external vantage; rate-limited, "
+            "kill-switch guarded, and never run from shared CI"
+        ),
+    ),
     # Deletion, redaction and distribution surfaces.
-    _s("erasure-observatory", "Erasure observatory", "erasure", "erasure-observatory-latest.json", 6, 14,
-       "Rolls up contributing erasure layers while retaining cross-checks and integrity state.",
-       "erasure index", ("erasure_index",), "index"),
-    _s("wayback", "Wayback reconstruction", "erasure", "wayback-latest.json", 12, 26,
-       "Reconstructs deletions and silent mutations only where archive captures provide a witness.",
-       "reconstructed deletions", ("n_deletions",), "count", "URLs watched", ("n_watched",)),
-    _s("baike-redaction", "Baike redaction", "erasure", "baike-redaction-latest.json", 6, 14,
-       "Compares Baidu Baike entries with an open-record control and abstains without comparable pairs.",
-       "forked entities", ("n_forked",), "count", "comparable entities", ("n_comparable",),
-       optional=True,
-       source_fallback="Authorized Baidu Baike snapshots and Chinese Wikipedia control",
-       method_fallback=(
-           "Offline comparison of authorized snapshots; the public runner remains disabled "
-           "until an authorized Baike source is configured")),
-    _s("baike-public-snapshot", "Baike public snapshot", "erasure",
-       "baike-public-snapshot-latest.json", 6, 14,
-       "Polls public Baike article HTML from outside China. A 403 or login wall is recorded as unreachable, never as a rewrite.",
-       "articles fetched", ("n_ok",), "count", "pages watched", ("n_pages",),
-       optional=True,
-       source_fallback="Public Baike article HTML from the Hetzner vantage",
-       method_fallback=(
-           "Keyless GET of reviewed topic and event pages; Wikipedia-fork "
-           "baike-redaction stays disabled pending authorized access")),
-    _s("github-refuge", "GitHub refuge watch", "erasure", "github-refuge-latest.json", 12, 26,
-       "Watches public pressure metadata for repositories preserving censored material.",
-       "pressure events", ("n_pressure_events",), "count", "repositories watched", ("n_watched",)),
-    _s("app-storefront", "App Storefront panel", "erasure", "app-storefront-latest.json", 6, 14,
-       "Compares a fixed app panel in the China and US Apple storefronts.",
-       "delisting rate", ("delisting_rate",), "ratio", "apps tracked", ("n_tracked",)),
-    _s("apple-censorship", "AppleCensorship corpus", "erasure", "apple-censorship-latest.json", 24, 50,
-       "Measures mainland-China App Store unavailability across GreatFire's corpus-scale catalogue.",
-       "apps unavailable", ("unavailable_pct",), "percent", "apps tested", ("country", "total_tested")),
-
+    _s(
+        "erasure-observatory",
+        "Erasure observatory",
+        "erasure",
+        "erasure-observatory-latest.json",
+        6,
+        14,
+        "Rolls up contributing erasure layers while retaining cross-checks and integrity state.",
+        "erasure index",
+        ("erasure_index",),
+        "index",
+    ),
+    _s(
+        "wayback",
+        "Wayback reconstruction",
+        "erasure",
+        "wayback-latest.json",
+        12,
+        26,
+        "Reconstructs deletions and silent mutations only where archive captures provide a witness.",
+        "reconstructed deletions",
+        ("n_deletions",),
+        "count",
+        "URLs watched",
+        ("n_watched",),
+    ),
+    _s(
+        "baike-redaction",
+        "Baike redaction",
+        "erasure",
+        "baike-redaction-latest.json",
+        6,
+        14,
+        "Compares Baidu Baike entries with an open-record control and abstains without comparable pairs.",
+        "forked entities",
+        ("n_forked",),
+        "count",
+        "comparable entities",
+        ("n_comparable",),
+        optional=True,
+        source_fallback="Authorized Baidu Baike snapshots and Chinese Wikipedia control",
+        method_fallback=(
+            "Offline comparison of authorized snapshots; the public runner remains disabled "
+            "until an authorized Baike source is configured"
+        ),
+    ),
+    _s(
+        "baike-public-snapshot",
+        "Baike public snapshot",
+        "erasure",
+        "baike-public-snapshot-latest.json",
+        6,
+        14,
+        "Polls public Baike article HTML from outside China. A 403 or login wall is recorded as unreachable, never as a rewrite.",
+        "articles fetched",
+        ("n_ok",),
+        "count",
+        "pages watched",
+        ("n_pages",),
+        optional=True,
+        source_fallback="Public Baike article HTML from the Hetzner vantage",
+        method_fallback=(
+            "Keyless GET of reviewed topic and event pages; Wikipedia-fork "
+            "baike-redaction stays disabled pending authorized access"
+        ),
+    ),
+    _s(
+        "github-refuge",
+        "GitHub refuge watch",
+        "erasure",
+        "github-refuge-latest.json",
+        12,
+        26,
+        "Watches public pressure metadata for repositories preserving censored material.",
+        "pressure events",
+        ("n_pressure_events",),
+        "count",
+        "repositories watched",
+        ("n_watched",),
+    ),
+    _s(
+        "app-storefront",
+        "App Storefront panel",
+        "erasure",
+        "app-storefront-latest.json",
+        6,
+        14,
+        "Compares a fixed app panel in the China and US Apple storefronts.",
+        "delisting rate",
+        ("delisting_rate",),
+        "ratio",
+        "apps tracked",
+        ("n_tracked",),
+    ),
+    _s(
+        "apple-censorship",
+        "AppleCensorship corpus",
+        "erasure",
+        "apple-censorship-latest.json",
+        24,
+        50,
+        "Measures mainland-China App Store unavailability across GreatFire's corpus-scale catalogue.",
+        "apps unavailable",
+        ("unavailable_pct",),
+        "percent",
+        "apps tested",
+        ("country", "total_tested"),
+    ),
     # Economic undertext and official-publication coverage.
-    _s("china-econ", "China money-market benchmarks", "economy", "china-econ-latest.json", 6, 14,
-       "Carries keyless official CFETS money-market and central-parity benchmark levels.",
-       "benchmark families reporting", ("families_reporting",), "count"),
-    _s("cny-fix-gap", "CNY fix gap", "economy", "cny-fix-gap-latest.json", 24, 50,
-       "Compares the official PBOC central parity with independent reference-rate cross-checks.",
-       "fix gap", ("gap_pct",), "percent"),
-    _s("stock-connect", "Stock Connect", "economy", "stock-connect-latest.json", 24, 98,
-       "Publishes HKEX's official daily Stock Connect print without estimating discontinued fields.",
-       "southbound net flow", ("reading", "southbound_net_b"), "HKD billions"),
-    _s("data-darkness", "Official-data darkness", "economy", "data-darkness-latest.json", 24, 50,
-       "Checks official Chinese economic series against their own publication rhythms.",
-       "darkness index", ("darkness_index",), "index", "series watched", ("n_series_watched",)),
-    _s("believability", "Believability read", "economy", "believability-latest.json",
-       720, 1100,
-       "Optional monthly Li Keqiang composite against the state's headline industrial-"
-       "production growth, publishing divergence only against the gap's own history.",
-       "divergence drift", ("drift",), "percentage points",
-       "prior months in baseline", ("n_history",), optional=True,
-       source_fallback=(
-           "Official NBS, PBC and NRA releases collected without private credentials"),
-       method_fallback=(
-           "Canonical 40/40/20 loan, electricity and rail-freight composite; missing "
-           "components abstain and drift requires a prior-history uncertainty band")),
-
+    _s(
+        "china-econ",
+        "China money-market benchmarks",
+        "economy",
+        "china-econ-latest.json",
+        6,
+        14,
+        "Carries keyless official CFETS money-market and central-parity benchmark levels.",
+        "benchmark families reporting",
+        ("families_reporting",),
+        "count",
+    ),
+    _s(
+        "cny-fix-gap",
+        "CNY fix gap",
+        "economy",
+        "cny-fix-gap-latest.json",
+        24,
+        50,
+        "Compares the official PBOC central parity with independent reference-rate cross-checks.",
+        "fix gap",
+        ("gap_pct",),
+        "percent",
+    ),
+    _s(
+        "stock-connect",
+        "Stock Connect",
+        "economy",
+        "stock-connect-latest.json",
+        24,
+        98,
+        "Publishes HKEX's official daily Stock Connect print without estimating discontinued fields.",
+        "southbound net flow",
+        ("reading", "southbound_net_b"),
+        "HKD billions",
+    ),
+    _s(
+        "data-darkness",
+        "Official-data darkness",
+        "economy",
+        "data-darkness-latest.json",
+        24,
+        50,
+        "Checks official Chinese economic series against their own publication rhythms.",
+        "darkness index",
+        ("darkness_index",),
+        "index",
+        "series watched",
+        ("n_series_watched",),
+    ),
+    _s(
+        "believability",
+        "Believability read",
+        "economy",
+        "believability-latest.json",
+        720,
+        1100,
+        "Optional monthly Li Keqiang composite against the state's headline industrial-"
+        "production growth, publishing divergence only against the gap's own history.",
+        "divergence drift",
+        ("drift",),
+        "percentage points",
+        "prior months in baseline",
+        ("n_history",),
+        optional=True,
+        source_fallback=(
+            "Official NBS, PBC and NRA releases collected without private credentials"
+        ),
+        method_fallback=(
+            "Canonical 40/40/20 loan, electricity and rail-freight composite; missing "
+            "components abstain and drift requires a prior-history uncertainty band"
+        ),
+    ),
     # China-specific model measurement. Generic cross-lab refusal drift is intentionally
     # outside this page's scope and listed in EXCLUDED_LATEST_FILES below.
-    _s("generative-firewall", "Generative Firewall Index", "models", "latest.json", 24, 50,
-       "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank.",
-       "GFI", ("summary", "gfi"), "index", "evaluated cells", ("summary", "cells"),
-       timestamp_paths=(("summary", "generated_at"),),
-       source_fallback="Palimpsest Generative Firewall controlled model evaluation",
-       method_fallback="Repeated prompt cells with controls and Wilson uncertainty"),
-
+    _s(
+        "generative-firewall",
+        "Generative Firewall Index",
+        "models",
+        "latest.json",
+        24,
+        50,
+        "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank.",
+        "GFI",
+        ("summary", "gfi"),
+        "index",
+        "evaluated cells",
+        ("summary", "cells"),
+        timestamp_paths=(("summary", "generated_at"),),
+        source_fallback="Palimpsest Generative Firewall controlled model evaluation",
+        method_fallback="Repeated prompt cells with controls and Wilson uncertainty",
+    ),
     # Integrity is part of the command surface, not counted as a substantive measurement.
-    _s("anchors", "Integrity anchors", "integrity", "anchors-latest.json", 6, 14,
-       "Publishes ledger roots and external witness status for independent integrity checks.",
-       timestamp_paths=(("ts",),),
-       source_fallback="Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
-       method_fallback="Merkle roots over committed ledgers with external timestamp witnesses"),
-
+    _s(
+        "anchors",
+        "Integrity anchors",
+        "integrity",
+        "anchors-latest.json",
+        6,
+        14,
+        "Publishes ledger roots and external witness status for independent integrity checks.",
+        timestamp_paths=(("ts",),),
+        source_fallback="Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
+        method_fallback="Merkle roots over committed ledgers with external timestamp witnesses",
+    ),
     # The separately operated runtime is intentionally an optional boundary. Absence remains
     # visible inside its own layer but cannot make the required Palimpsest source set unavailable.
-    _s("nemesis", "Private runtime bridge", "nemesis", "nemesis-latest.json", 0.25, 1,
-       "Optional signed and sanitized intelligence export; absence never becomes a zero.",
-       "topics ranked", ("counts", "topics"), "count", optional=True,
-       # The exporter may write a new file around old evidence. Prefer its oldest
-       # required-core data timestamp over the serialization time so a fresh export
-       # cannot launder stale DDTI/economic observations into a live reading.
-       timestamp_paths=(("data_timestamp",), ("timestamps", "data_updated_at"),
-                        ("generated_at",), ("_generated_at",), ("timestamp",)),
-       source_fallback="Optional separately operated sanitized export",
-       method_fallback="Authenticated public export, embedded without reinterpretation"),
+    _s(
+        "nemesis",
+        "Private runtime bridge",
+        "nemesis",
+        "nemesis-latest.json",
+        0.25,
+        1,
+        "Optional signed and sanitized intelligence export; absence never becomes a zero.",
+        "topics ranked",
+        ("counts", "topics"),
+        "count",
+        optional=True,
+        # The exporter may write a new file around old evidence. Prefer its oldest
+        # required-core data timestamp over the serialization time so a fresh export
+        # cannot launder stale DDTI/economic observations into a live reading.
+        timestamp_paths=(
+            ("data_timestamp",),
+            ("timestamps", "data_updated_at"),
+            ("generated_at",),
+            ("_generated_at",),
+            ("timestamp",),
+        ),
+        source_fallback="Optional separately operated sanitized export",
+        method_fallback="Authenticated public export, embedded without reinterpretation",
+    ),
 )
 
 
@@ -345,54 +728,59 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # title-union dump of the already-counted hot-search board; and the remaining files are generic
 # model evaluation surfaces. Research-corpus metadata is a first-party China-adjacent
 # input and is listed in SIGNALS.
-EXCLUDED_LATEST_FILES = frozenset({
-    "china-article-stream-latest.json",
-    "china-censorship-analysis-latest.json",
-    "china-econ-forecast-latest.json",
-    "china-econ-observations-latest.json",
-    "china-economic-pulse-latest.json",
-    "china-index-latest.json",
-    "china-situation-latest.json",
-    "dragon-whispers-latest.json",
-    "live-watch-latest.json",
-    "rumour-board-latest.json",
-    "corroboration-latest.json",
-    "editorial-readiness-latest.json",
-    "evidence-mesh-latest.json",
-    "eval-assurance-latest.json",
-    "eval-articles-latest.json",
-    "eval-journal-latest.json",
-    "eval-registry-latest.json",
-    "gfi-transcripts-latest.json",
-    "investigations-latest.json",
-    "machine-investigations-latest.json",
-    "network-rounds-latest.json",
-    "newswire-latest.json",
-    "newsroom-latest.json",
-    "primary-documents-latest.json",
-    "refusal-drift-latest.json",
-    "source-workflow-latest.json",
-    "social-observations-latest.json",
-    "erasure-trail-latest.json",
-    "common-crawl-china-joins-latest.json",
-    "archive-news-context-latest.json",
-    "official-first-seen-latest.json",
-    "news-wire-live-latest.json",
-    "wikipedia-gazetteer-rc-latest.json",
-    "public-hot-boards-latest.json",
-    "telegram-public-channels-latest.json",
-    "reading-analysis-latest.json",
-    "peer-context-rank-latest.json",
-    "weekly-situation-latest.json",
-    "collector-health-latest.json",
-    "gazetteer-phylogeny-latest.json",
-    "weibo-hotsearch-terms-latest.json",
-})
+EXCLUDED_LATEST_FILES = frozenset(
+    {
+        "china-article-stream-latest.json",
+        "china-censorship-analysis-latest.json",
+        "china-econ-forecast-latest.json",
+        "china-econ-observations-latest.json",
+        "china-economic-pulse-latest.json",
+        "china-index-latest.json",
+        "china-situation-latest.json",
+        "dragon-whispers-latest.json",
+        "live-watch-latest.json",
+        "rumour-board-latest.json",
+        "corroboration-latest.json",
+        "editorial-readiness-latest.json",
+        "evidence-mesh-latest.json",
+        "eval-assurance-latest.json",
+        "eval-articles-latest.json",
+        "eval-journal-latest.json",
+        "eval-registry-latest.json",
+        "gfi-transcripts-latest.json",
+        "investigations-latest.json",
+        "machine-investigations-latest.json",
+        "network-rounds-latest.json",
+        "newswire-latest.json",
+        "newsroom-latest.json",
+        "primary-documents-latest.json",
+        "refusal-drift-latest.json",
+        "source-workflow-latest.json",
+        "social-observations-latest.json",
+        "erasure-trail-latest.json",
+        "common-crawl-china-joins-latest.json",
+        "archive-news-context-latest.json",
+        "official-first-seen-latest.json",
+        "news-wire-live-latest.json",
+        "wikipedia-gazetteer-rc-latest.json",
+        "public-hot-boards-latest.json",
+        "telegram-public-channels-latest.json",
+        "reading-analysis-latest.json",
+        "peer-context-rank-latest.json",
+        "weekly-situation-latest.json",
+        "collector-health-latest.json",
+        "gazetteer-phylogeny-latest.json",
+        "weibo-hotsearch-terms-latest.json",
+    }
+)
 
 
 def _canonical_bytes(value: Any) -> bytes:
     return json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
         allow_nan=False,
     ).encode("utf-8")
 
@@ -484,7 +872,9 @@ def _load_object(path: Path) -> tuple[dict[str, Any] | None, str | None]:
     return payload, None
 
 
-def _timestamp(payload: dict[str, Any], spec: SignalSpec) -> tuple[datetime | None, str | None]:
+def _timestamp(
+    payload: dict[str, Any], spec: SignalSpec
+) -> tuple[datetime | None, str | None]:
     for path in spec.timestamp_paths:
         value = _at(payload, path)
         if value is None:
@@ -496,7 +886,9 @@ def _timestamp(payload: dict[str, Any], spec: SignalSpec) -> tuple[datetime | No
     return None, "source timestamp is missing"
 
 
-def _scalar_metric(value: Any, *, allow_container_count: bool = False) -> int | float | None:
+def _scalar_metric(
+    value: Any, *, allow_container_count: bool = False
+) -> int | float | None:
     """Return only an actual finite JSON number or an explicitly declared container count."""
     if isinstance(value, bool):
         return None
@@ -515,13 +907,16 @@ def _metric(spec: SignalSpec, payload: dict[str, Any]) -> dict[str, Any] | None:
     if not spec.metric_path or not spec.metric_label:
         return None
     value = _scalar_metric(
-        _at(payload, spec.metric_path), allow_container_count=spec.metric_unit == "count")
+        _at(payload, spec.metric_path),
+        allow_container_count=spec.metric_unit == "count",
+    )
     if value is None:
         return None
     denominator = None
     if spec.denominator_path and spec.denominator_label:
         d_value = _scalar_metric(
-            _at(payload, spec.denominator_path), allow_container_count=True)
+            _at(payload, spec.denominator_path), allow_container_count=True
+        )
         if d_value is not None:
             denominator = {"label": spec.denominator_label, "value": d_value}
     return {
@@ -569,12 +964,19 @@ def _text(value: Any) -> str | None:
 
 
 def _provenance(payload: dict[str, Any], spec: SignalSpec) -> tuple[str, str, str]:
-    source = (_text(payload.get("source")) or _text(payload.get("citation"))
-              or _text(payload.get("registry")) or spec.source_fallback)
-    method = (_text(payload.get("method")) or _text(payload.get("method_note"))
-              or _text(payload.get("index_definition"))
-              or _text(_at(payload, ("summary", "methodology")))
-              or spec.method_fallback)
+    source = (
+        _text(payload.get("source"))
+        or _text(payload.get("citation"))
+        or _text(payload.get("registry"))
+        or spec.source_fallback
+    )
+    method = (
+        _text(payload.get("method"))
+        or _text(payload.get("method_note"))
+        or _text(payload.get("index_definition"))
+        or _text(_at(payload, ("summary", "methodology")))
+        or spec.method_fallback
+    )
     scope = _text(payload.get("scope")) or spec.description
     return source, method, scope
 
@@ -594,10 +996,28 @@ def _is_degraded_upstream(status: str | None) -> bool:
         return False
     token = status.casefold().replace("-", "_").replace(" ", "_")
     return token in {
-        "abstain", "abstained", "degraded", "empty", "error", "failed", "failure",
-        "disabled", "disabled_no_authorized_access", "halted", "halted_by_governance",
-        "insufficient_data", "no_data", "not_ready", "partial", "stale", "starting",
-        "source_refused", "unavailable", "unhealthy", "unknown", "unreachable",
+        "abstain",
+        "abstained",
+        "degraded",
+        "empty",
+        "error",
+        "failed",
+        "failure",
+        "disabled",
+        "disabled_no_authorized_access",
+        "halted",
+        "halted_by_governance",
+        "insufficient_data",
+        "no_data",
+        "not_ready",
+        "partial",
+        "stale",
+        "starting",
+        "source_refused",
+        "unavailable",
+        "unhealthy",
+        "unknown",
+        "unreachable",
     }
 
 
@@ -616,8 +1036,12 @@ def _believability_operational_warmup(
     """
     if spec.id != "believability":
         return False
-    status_token = (upstream_status or "").casefold().replace("-", "_").replace(" ", "_")
-    analysis_status = _text(payload.get("analysis_status")) or _text(payload.get("label"))
+    status_token = (
+        (upstream_status or "").casefold().replace("-", "_").replace(" ", "_")
+    )
+    analysis_status = _text(payload.get("analysis_status")) or _text(
+        payload.get("label")
+    )
     if status_token not in {"not_ready", "ok"} or analysis_status != "warming_up":
         return False
 
@@ -666,7 +1090,8 @@ def _semantic_health_reason(spec: SignalSpec, payload: dict[str, Any]) -> str | 
             failures.append(
                 f"collector_status is {collector_status!r}, not 'observed'"
                 if collector_status is not None
-                else "collector_status is absent, not 'observed'")
+                else "collector_status is absent, not 'observed'"
+            )
         if not failures:
             return None
         return "Baike series eligibility failed: " + "; ".join(failures)
@@ -679,7 +1104,9 @@ def _semantic_health_reason(spec: SignalSpec, payload: dict[str, Any]) -> str | 
     if chain is None or chain.casefold() != "verified":
         failures.append(
             f"readings_chain is {chain!r}, not 'verified'"
-            if chain is not None else "readings_chain is absent, not 'verified'")
+            if chain is not None
+            else "readings_chain is absent, not 'verified'"
+        )
 
     problems = payload.get("readings_problems")
     if problems:
@@ -690,7 +1117,8 @@ def _semantic_health_reason(spec: SignalSpec, payload: dict[str, Any]) -> str | 
         failures.append(f"readings_problems reports {n_problems} problem(s)")
 
     missing_roots = [
-        key for key in ("registry_root", "erasure_root", "readings_root")
+        key
+        for key in ("registry_root", "erasure_root", "readings_root")
         if not isinstance(payload.get(key), str) or not payload[key].strip()
     ]
     if missing_roots:
@@ -701,7 +1129,8 @@ def _semantic_health_reason(spec: SignalSpec, payload: dict[str, Any]) -> str | 
         failures.append(
             f"ots_status is {ots_status!r}, not 'stamped' or 'verified'"
             if ots_status is not None
-            else "ots_status is absent, not 'stamped' or 'verified'")
+            else "ots_status is absent, not 'stamped' or 'verified'"
+        )
 
     if payload.get("wayback_ok") == 0:
         failures.append("wayback_ok is zero; no Internet Archive witness succeeded")
@@ -737,11 +1166,15 @@ def _summary(
     operational_warmup: bool = False,
 ) -> str:
     if status == "missing":
-        return (f"{spec.description} No payload is present at readings/{spec.filename}; "
-                "no current measurement is claimed.")
+        return (
+            f"{spec.description} No payload is present at readings/{spec.filename}; "
+            "no current measurement is claimed."
+        )
     if status == "corrupt":
-        return (f"{spec.description} The configured payload cannot be used ({error}); "
-                "no measurement is reported from it.")
+        return (
+            f"{spec.description} The configured payload cannot be used ({error}); "
+            "no measurement is reported from it."
+        )
 
     assert payload is not None
     parts = [spec.description]
@@ -779,9 +1212,13 @@ def _summary(
             limitation += f": {collector_reason}"
         parts.append(limitation + ".")
 
-    upstream_text = (_text(payload.get("headline")) or _text(payload.get("reading"))
-                     or collector_reason or _text(payload.get("reason"))
-                     or _text(payload.get("note")))
+    upstream_text = (
+        _text(payload.get("headline"))
+        or _text(payload.get("reading"))
+        or collector_reason
+        or _text(payload.get("reason"))
+        or _text(payload.get("note"))
+    )
     if upstream_text:
         # Keep summaries useful in the command surface while the complete, untruncated text
         # remains in payload. The prefix makes clear this is an upstream statement.
@@ -907,8 +1344,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         and not intentionally_inactive
     )
     collector_degraded = (
-        _is_degraded_upstream(collector_status)
-        and not intentionally_inactive
+        _is_degraded_upstream(collector_status) and not intentionally_inactive
     )
     semantic_reasons = [
         reason
@@ -996,8 +1432,16 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         "method": method,
         "scope": scope,
         "summary": _summary(
-            spec, payload, status, source_timestamp, deadline, metric, timestamp_error,
-            semantic_reason, operational_warmup),
+            spec,
+            payload,
+            status,
+            source_timestamp,
+            deadline,
+            metric,
+            timestamp_error,
+            semantic_reason,
+            operational_warmup,
+        ),
         "metric": metric,
         "raw_url": raw_url,
         "input": input_fingerprint,
@@ -1019,16 +1463,18 @@ def _layers(signals: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
             status = "degraded"
         else:
             status = "healthy"
-        result.append({
-            "id": layer_id,
-            "title": title,
-            "n_total": len(members),
-            "n_reporting": reporting,
-            "n_live": live,
-            "n_degraded": degraded,
-            "status": status,
-            "signal_ids": [s["id"] for s in members],
-        })
+        result.append(
+            {
+                "id": layer_id,
+                "title": title,
+                "n_total": len(members),
+                "n_reporting": reporting,
+                "n_live": live,
+                "n_degraded": degraded,
+                "status": status,
+                "signal_ids": [s["id"] for s in members],
+            }
+        )
     return result
 
 
@@ -1041,41 +1487,51 @@ def _alerts(signals: Sequence[dict[str, Any]]) -> list[dict[str, Any]]:
     if board and board["live"]:
         headline = _text((board.get("payload") or {}).get("headline"))
         if headline:
-            alerts.append({
-                "id": "board-alarm-headline",
-                "kind": "upstream",
-                "severity": "warning" if "elevated" in headline.casefold() else "info",
-                "title": "Board synthesis",
-                "summary": f"Upstream board reports: {headline}",
-                "source_id": "board-alarm",
-            })
+            alerts.append(
+                {
+                    "id": "board-alarm-headline",
+                    "kind": "upstream",
+                    "severity": "warning"
+                    if "elevated" in headline.casefold()
+                    else "info",
+                    "title": "Board synthesis",
+                    "summary": f"Upstream board reports: {headline}",
+                    "source_id": "board-alarm",
+                }
+            )
 
     coverage = by_id.get("coverage-guard")
     if coverage and coverage["live"]:
         confounded = (coverage.get("payload") or {}).get("confounded")
         if isinstance(confounded, list) and confounded:
-            alerts.append({
-                "id": "coverage-confounded",
-                "kind": "method",
-                "severity": "warning",
-                "title": "Coverage qualifier",
-                "summary": ("Coverage guard marks these upstream signals as confounded: "
-                            + ", ".join(str(v) for v in confounded)),
-                "source_id": "coverage-guard",
-            })
+            alerts.append(
+                {
+                    "id": "coverage-confounded",
+                    "kind": "method",
+                    "severity": "warning",
+                    "title": "Coverage qualifier",
+                    "summary": (
+                        "Coverage guard marks these upstream signals as confounded: "
+                        + ", ".join(str(v) for v in confounded)
+                    ),
+                    "source_id": "coverage-guard",
+                }
+            )
 
     for signal in signals:
         if signal["status"] == "live":
             continue
         optional = bool(signal["optional"])
-        alerts.append({
-            "id": f"health-{signal['id']}",
-            "kind": "health",
-            "severity": "notice" if optional else "warning",
-            "title": f"{signal['title']}: {signal['status']}",
-            "summary": signal["health"]["reason"],
-            "source_id": signal["id"],
-        })
+        alerts.append(
+            {
+                "id": f"health-{signal['id']}",
+                "kind": "health",
+                "severity": "notice" if optional else "warning",
+                "title": f"{signal['title']}: {signal['status']}",
+                "summary": signal["health"]["reason"],
+                "source_id": signal["id"],
+            }
+        )
     return alerts
 
 
@@ -1122,13 +1578,17 @@ def _input_commit(value: str | None) -> str:
         common_dir = git_dir
         common_marker = git_dir / "commondir"
         if common_marker.is_file():
-            common_dir = (git_dir / common_marker.read_text(encoding="utf-8").strip()).resolve()
+            common_dir = (
+                git_dir / common_marker.read_text(encoding="utf-8").strip()
+            ).resolve()
         head = (git_dir / "HEAD").read_text(encoding="ascii").strip()
         if re.fullmatch(r"[0-9a-fA-F]{40}", head):
             resolved = head.lower()
-        elif head.startswith("ref: ") and re.fullmatch(
-            r"refs/[A-Za-z0-9._/-]+", head[5:]
-        ) and ".." not in head[5:].split("/"):
+        elif (
+            head.startswith("ref: ")
+            and re.fullmatch(r"refs/[A-Za-z0-9._/-]+", head[5:])
+            and ".." not in head[5:].split("/")
+        ):
             ref = head[5:]
             resolved = ""
             for base in (git_dir, common_dir):
@@ -1166,7 +1626,9 @@ def build_document(
     now = _utc(now).replace(microsecond=0)
     signals = [_signal(spec, Path(readings_dir), now) for spec in SIGNALS]
     required = [s for s in signals if not s["optional"]]
-    required_reporting = sum(s["status"] not in {"missing", "corrupt"} for s in required)
+    required_reporting = sum(
+        s["status"] not in {"missing", "corrupt"} for s in required
+    )
     required_live = sum(bool(s["live"]) for s in required)
     counts = {
         state: sum(s["status"] == state for s in signals)
@@ -1184,20 +1646,27 @@ def build_document(
         "method_version": METHOD_VERSION,
         "generated_at": iso_z(now),
         "input_commit": _input_commit(input_commit),
-        "source": ("Committed Palimpsest China OSINT readings, the China-specific "
-                   "Generative Firewall reading, integrity anchors, and predeclared "
-                   "optional Nemesis, believability and controlled-prober exports"),
-        "method": ("Deterministic offline roll-up of declared source files. Source payloads "
-                   "that fit the public embed bound are retained in full; larger source "
-                   "files keep health, metrics and a compact prefix, with complete bytes at "
-                   "raw_url matching input.sha256. Freshness is evaluated only from source "
-                   "timestamps and declared deadlines; no missing value is estimated."),
-        "scope": ("China public-source measurement across attention, network access, "
-                  "erasure, economic undertext, model behaviour, command safeguards and "
-                  "integrity witnessing."),
+        "source": (
+            "Committed Palimpsest China OSINT readings, the China-specific "
+            "Generative Firewall reading, integrity anchors, and predeclared "
+            "optional Nemesis, believability and controlled-prober exports"
+        ),
+        "method": (
+            "Deterministic offline roll-up of declared source files. Source payloads "
+            "that fit the public embed bound are retained in full; larger source "
+            "files keep health, metrics and a compact prefix, with complete bytes at "
+            "raw_url matching input.sha256. Freshness is evaluated only from source "
+            "timestamps and declared deadlines; no missing value is estimated."
+        ),
+        "scope": (
+            "China public-source measurement across attention, network access, "
+            "erasure, economic undertext, model behaviour, command safeguards and "
+            "integrity witnessing."
+        ),
         "n_signals_total": len(signals),
         "n_signals_reporting": sum(
-            s["status"] not in {"missing", "corrupt"} for s in signals),
+            s["status"] not in {"missing", "corrupt"} for s in signals
+        ),
         "n_signals_live": counts["live"],
         "health": {
             # Optional Nemesis health is visible in counts and its layer, but cannot turn
@@ -1207,11 +1676,13 @@ def build_document(
             "required_reporting": required_reporting,
             "required_live": required_live,
             "reporting_definition": (
-                "valid JSON object with a valid source timestamp; may be live, degraded or stale"),
+                "valid JSON object with a valid source timestamp; may be live, degraded or stale"
+            ),
             "live_definition": (
                 "valid source timestamp within its deadline, not future-dated, and no explicit "
                 "upstream degraded status or signal-specific semantic health failure; a complete "
-                "believability collection may be live while its drift analysis warms up"),
+                "believability collection may be live while its drift analysis warms up"
+            ),
             "counts": counts,
         },
         "headline": _headline(signals),
@@ -1224,9 +1695,12 @@ def build_document(
 def write_atomic(document: dict[str, Any], output: Path = OUT) -> None:
     """Durably replace ``output`` without exposing a partial JSON document."""
     output = Path(output)
-    rendered = json.dumps(
-        document, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False
-    ) + "\n"
+    rendered = (
+        json.dumps(
+            document, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False
+        )
+        + "\n"
+    )
     raw = rendered.encode("utf-8")
     if len(raw) > ROLLUP_MAX_BYTES:
         raise OsintChinaError(
@@ -1235,7 +1709,8 @@ def write_atomic(document: dict[str, Any], output: Path = OUT) -> None:
         )
     output.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(
-        dir=output.parent, prefix=f".{output.name}.", suffix=".tmp")
+        dir=output.parent, prefix=f".{output.name}.", suffix=".tmp"
+    )
     temporary = Path(temporary_name)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -1265,10 +1740,13 @@ def write_atomic(document: dict[str, Any], output: Path = OUT) -> None:
 
 def _arguments(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--readings-dir", type=Path, default=READINGS,
-                        help="directory holding configured source JSON files")
-    parser.add_argument("--output", type=Path, default=OUT,
-                        help="atomic output path")
+    parser.add_argument(
+        "--readings-dir",
+        type=Path,
+        default=READINGS,
+        help="directory holding configured source JSON files",
+    )
+    parser.add_argument("--output", type=Path, default=OUT, help="atomic output path")
     parser.add_argument("--now", help="fixed timezone-aware ISO timestamp for replay")
     parser.add_argument(
         "--input-commit",

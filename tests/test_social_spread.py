@@ -125,7 +125,9 @@ def test_in_tree_sources_and_handles_were_not_invented():
 
 
 def test_dragon_whispers_publication_policy_is_untouched():
-    policy = dragon_whispers.empty_document("2026-08-20T06:00:00Z")["publication_policy"]
+    policy = dragon_whispers.empty_document("2026-08-20T06:00:00Z")[
+        "publication_policy"
+    ]
     assert policy == {
         "human_review_required": True,
         "raw_messages_included": False,
@@ -253,7 +255,10 @@ def test_missing_collectors_abstain():
 
 
 def test_unsafe_unicode_terms_are_quarantined_without_poisoning_safe_rows():
-    unsafe_terms = ("TYL 3:0 BLG \u200b", "1688\u9650\u65f6\u6e05\u4ed3\u5305\u90ae\u200c")
+    unsafe_terms = (
+        "TYL 3:0 BLG \u200b",
+        "1688\u9650\u65f6\u6e05\u4ed3\u5305\u90ae\u200c",
+    )
     document = build_social_spread(
         _inputs(
             **{
@@ -394,9 +399,7 @@ def test_no_named_missing_claim_in_module_fixtures_or_sample_row():
     assert SAMPLE_ROW["disposition"] == "matched-to-wire"
     assert SAMPLE_ROW["names_a_person"] is False
     claim_fields = {
-        key: value
-        for key, value in SAMPLE_ROW.items()
-        if key not in {"disclaimer"}
+        key: value for key, value in SAMPLE_ROW.items() if key not in {"disclaimer"}
     }
     assert "missing" not in json.dumps(claim_fields, ensure_ascii=False).casefold()
     assert "失联" not in json.dumps(claim_fields, ensure_ascii=False)
@@ -423,7 +426,10 @@ def test_person_status_on_boards_without_capture_is_refused_not_a_finding():
         generated_at="2026-08-20T06:00:00Z",
     )
     assert not any(row["term"] == "张某失联" for row in document["rows"])
-    assert any("named-person-without-capture" in row["term_class"] for row in document["refusals"])
+    assert any(
+        "named-person-without-capture" in row["term_class"]
+        for row in document["refusals"]
+    )
     assert all(DISCLAIMER in row["reason"] for row in document["refusals"])
 
 
@@ -462,7 +468,9 @@ def test_pull_writes_latest_and_history(tmp_path, monkeypatch):
     )
     assert document is not None
     assert (readings / "social-spread-latest.json").is_file()
-    written = json.loads((readings / "social-spread-latest.json").read_text(encoding="utf-8"))
+    written = json.loads(
+        (readings / "social-spread-latest.json").read_text(encoding="utf-8")
+    )
     assert written["job_name"] == "social-spread"
     assert written["n_rows"] >= 1
     assert DISCLAIMER == written["disclaimer"]
@@ -503,7 +511,9 @@ def test_sense_gated_ordinary_shilian_accident_is_not_a_person_package():
                 },
                 "public-hot-boards": {
                     "generated_at": "2026-08-20T06:00:00Z",
-                    "observations": [{"title": "杭州暴雨", "source": "public-hot-boards"}],
+                    "observations": [
+                        {"title": "杭州暴雨", "source": "public-hot-boards"}
+                    ],
                 },
                 "newswire": _wire("杭州暴雨"),
             }
@@ -511,7 +521,9 @@ def test_sense_gated_ordinary_shilian_accident_is_not_a_person_package():
         generated_at="2026-08-20T06:00:00Z",
     )
     row = next(
-        item for item in document["rows"] if item["term"] == "重庆彭水发现失联中巴车残骸"
+        item
+        for item in document["rows"]
+        if item["term"] == "重庆彭水发现失联中巴车残骸"
     )
     assert row["names_a_person"] is False
     assert row["automatic_publication"] is False
@@ -529,7 +541,9 @@ def test_weibo_terms_and_hot_boards_fold_into_one_join():
                 },
                 "public-hot-boards": {
                     "generated_at": "2026-08-20T06:00:00Z",
-                    "observations": [{"title": "杭州暴雨", "source": "public-hot-boards:baidu"}],
+                    "observations": [
+                        {"title": "杭州暴雨", "source": "public-hot-boards:baidu"}
+                    ],
                 },
                 "public-board-terms": {
                     "generated_at": "2026-08-20T06:00:00Z",
@@ -595,7 +609,9 @@ def test_weibo_zhihu_tieba_do_not_join_on_substring_or_wrong_day():
         ),
         generated_at="2026-08-20T06:00:00Z",
     )
-    weibo = next(item for item in substring["rows"] if item["join_keys"]["board"] == "weibo")
+    weibo = next(
+        item for item in substring["rows"] if item["join_keys"]["board"] == "weibo"
+    )
     assert weibo["disposition"] == "circulating-unverified"
     assert weibo["matches"]["wire_event_ids"] == []
 
@@ -627,7 +643,9 @@ def test_weibo_zhihu_tieba_do_not_join_on_substring_or_wrong_day():
         generated_at="2026-08-20T06:00:00Z",
     )
     for board in ("zhihu", "tieba"):
-        row = next(item for item in window_miss["rows"] if item["join_keys"]["board"] == board)
+        row = next(
+            item for item in window_miss["rows"] if item["join_keys"]["board"] == board
+        )
         assert row["disposition"] == "circulating-unverified"
         assert row["matches"]["wire_event_ids"] == []
         assert row["join_keys"]["term"] == "杭州暴雨"

@@ -607,7 +607,9 @@ def review_rank_meaning() -> str:
     )
 
 
-def _review_rank_from_unusualness(score: float | None, unusual: bool | None) -> dict[str, Any]:
+def _review_rank_from_unusualness(
+    score: float | None, unusual: bool | None
+) -> dict[str, Any]:
     if score is None or unusual is None:
         return {
             "status": "warming_up",
@@ -698,15 +700,17 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
-        row["feature_citations"] = [{
-            "instrument_id": instrument_id,
-            "field": spec["field"],
-            "trainer": spec["trainer"],
-            "n_file_lines": 0,
-            "n_history": 0,
-            "current_value": None,
-            "unusualness": None,
-        }]
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": 0,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+            }
+        ]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -729,16 +733,18 @@ def fit_instrument(
                 "retention": "audit_only",
             },
         }
-        row["feature_citations"] = [{
-            "instrument_id": instrument_id,
-            "field": spec["field"],
-            "trainer": spec["trainer"],
-            "n_file_lines": n_file_lines,
-            "n_history": 0,
-            "current_value": None,
-            "unusualness": None,
-            "quarantined": True,
-        }]
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": n_file_lines,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+                "quarantined": True,
+            }
+        ]
         row["public_copy"] = public_copy_for_row(row)
         return row
     if n_file_lines < 2:
@@ -751,15 +757,17 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
-        row["feature_citations"] = [{
-            "instrument_id": instrument_id,
-            "field": spec["field"],
-            "trainer": spec["trainer"],
-            "n_file_lines": n_file_lines,
-            "n_history": 0,
-            "current_value": None,
-            "unusualness": None,
-        }]
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": n_file_lines,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+            }
+        ]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -775,15 +783,17 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
-        row["feature_citations"] = [{
-            "instrument_id": instrument_id,
-            "field": spec["field"],
-            "trainer": spec["trainer"],
-            "n_file_lines": n_file_lines,
-            "n_history": 0,
-            "current_value": None,
-            "unusualness": None,
-        }]
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": n_file_lines,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+            }
+        ]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -831,15 +841,17 @@ def fit_instrument(
         row["board_state"] = board["state"]
         row["board_stat"] = board["stat"]
     row["public_copy"] = public_copy_for_row(row)
-    row["feature_citations"] = [{
-        "instrument_id": instrument_id,
-        "field": spec["field"],
-        "trainer": spec["trainer"],
-        "n_file_lines": n_file_lines,
-        "n_history": n_history,
-        "current_value": current,
-        "unusualness": unusualness,
-    }]
+    row["feature_citations"] = [
+        {
+            "instrument_id": instrument_id,
+            "field": spec["field"],
+            "trainer": spec["trainer"],
+            "n_file_lines": n_file_lines,
+            "n_history": n_history,
+            "current_value": current,
+            "unusualness": unusualness,
+        }
+    ]
     return row
 
 
@@ -884,13 +896,15 @@ def common_crawl_host_model_row() -> dict[str, Any]:
             "score": None,
         },
     }
-    row["feature_citations"] = [{
-        "instrument_id": "common-crawl-hosts",
-        "field": "host_feature_rows",
-        "trainer": CC_MODEL_ID,
-        "n_history": 1,
-        "score": None,
-    }]
+    row["feature_citations"] = [
+        {
+            "instrument_id": "common-crawl-hosts",
+            "field": "host_feature_rows",
+            "trainer": CC_MODEL_ID,
+            "n_history": 1,
+            "score": None,
+        }
+    ]
     row["public_copy"] = (
         "this instrument is warming up vs its own 1 prior points "
         f"(1 of {MAD_MIN_HISTORY} required)"
@@ -908,13 +922,17 @@ def _optional_json(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def _story_features(story: Mapping[str, Any], archive_event: Mapping[str, Any] | None) -> dict[str, Any]:
+def _story_features(
+    story: Mapping[str, Any], archive_event: Mapping[str, Any] | None
+) -> dict[str, Any]:
     if archive_event and isinstance(archive_event.get("model_features"), dict):
         return dict(archive_event["model_features"])
     related = story.get("related_signal_ids")
     groups = related if isinstance(related, list) else []
     live = 1 if story.get("status") == "live" else 0
-    strength = 2 if story.get("type") in {"analysis", "methodology"} else 1 if live else 0
+    strength = (
+        2 if story.get("type") in {"analysis", "methodology"} else 1 if live else 0
+    )
     return {
         "archive_targets": 0,
         "archive_anomaly_max": None,
@@ -926,14 +944,20 @@ def _story_features(story: Mapping[str, Any], archive_event: Mapping[str, Any] |
     }
 
 
-def _newswire_features(event: Mapping[str, Any], archive_event: Mapping[str, Any] | None) -> dict[str, Any]:
+def _newswire_features(
+    event: Mapping[str, Any], archive_event: Mapping[str, Any] | None
+) -> dict[str, Any]:
     if archive_event and isinstance(archive_event.get("model_features"), dict):
         return dict(archive_event["model_features"])
     groups = event.get("evidence_groups")
     if not isinstance(groups, list):
         groups = []
     strength = _EVIDENCE_ORDINAL.get(str(event.get("evidence_strength") or ""), 0)
-    declared = event.get("declared_links") if isinstance(event.get("declared_links"), dict) else {}
+    declared = (
+        event.get("declared_links")
+        if isinstance(event.get("declared_links"), dict)
+        else {}
+    )
     linked = []
     for field in ("scan_signal_ids", "economic_signal_ids"):
         values = declared.get(field) or []
@@ -968,7 +992,10 @@ def build_story_ranks(
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
 
-    if isinstance(newswire, Mapping) and newswire.get("schema_version") == "palimpsest-newswire.v1":
+    if (
+        isinstance(newswire, Mapping)
+        and newswire.get("schema_version") == "palimpsest-newswire.v1"
+    ):
         for event in newswire.get("events") or []:
             if not isinstance(event, dict):
                 continue
@@ -993,7 +1020,10 @@ def build_story_ranks(
             row["row_sha256"] = hashlib.sha256(_canonical_json(row)).hexdigest()
             rows.append(row)
 
-    if isinstance(newsroom, Mapping) and newsroom.get("schema_version") == "palimpsest-news.v1":
+    if (
+        isinstance(newsroom, Mapping)
+        and newsroom.get("schema_version") == "palimpsest-news.v1"
+    ):
         for story in newsroom.get("stories") or []:
             if not isinstance(story, dict):
                 continue
@@ -1003,7 +1033,9 @@ def build_story_ranks(
             seen.add(story_id)
             archive_event = archive_by_id.get(str(story.get("signal_id") or ""))
             features = _story_features(story, archive_event)
-            if archive_event and isinstance(archive_event.get("editorial_priority"), dict):
+            if archive_event and isinstance(
+                archive_event.get("editorial_priority"), dict
+            ):
                 priority = archive_event["editorial_priority"]
             else:
                 priority = editorial_priority(features)
@@ -1039,7 +1071,11 @@ def lookup_story_rank(
         return None
     for row in ranks:
         if isinstance(row, dict) and row.get("event_id") == event_id:
-            priority = row.get("editorial_priority") if isinstance(row.get("editorial_priority"), dict) else {}
+            priority = (
+                row.get("editorial_priority")
+                if isinstance(row.get("editorial_priority"), dict)
+                else {}
+            )
             return {
                 "event_id": event_id,
                 "source": row.get("source"),
@@ -1128,12 +1164,14 @@ def build_reading_analysis(
         spec = INSTRUMENTS[report["instrument_id"]]
         if spec.get("scoring_eligible") is not False:
             continue
-        report.update({
-            "state": "abstain",
-            "reason": spec["quarantine_reason"],
-            "quarantined": True,
-            "scoring_eligible": False,
-        })
+        report.update(
+            {
+                "state": "abstain",
+                "reason": spec["quarantine_reason"],
+                "quarantined": True,
+                "scoring_eligible": False,
+            }
+        )
         report["rights"] = {
             "training_use": "prohibited",
             "retention": "audit_only",
@@ -1150,8 +1188,7 @@ def build_reading_analysis(
             "threshold": UNUSUAL_THRESHOLD,
         }
     holdout_by_id = {
-        row["instrument_id"]: row["holdout"]
-        for row in validation["instruments"]
+        row["instrument_id"]: row["holdout"] for row in validation["instruments"]
     }
     for row in instruments:
         holdout = holdout_by_id.get(row["instrument_id"])
@@ -1178,7 +1215,8 @@ def build_reading_analysis(
             "review rank for news rows. No causal attribution. No cross-instrument "
             "censorship rate. Common Crawl host scores stay null until six crawls."
         ),
-        "n_instruments_considered": len(INSTRUMENTS) + (1 if include_common_crawl else 0),
+        "n_instruments_considered": len(INSTRUMENTS)
+        + (1 if include_common_crawl else 0),
         "n_instruments_scored": len(scored),
         "n_instruments_warming_up": len(warming),
         "n_instruments_missing": len(missing),
@@ -1206,10 +1244,7 @@ def build_reading_analysis(
         [
             str(document.get("method") or ""),
             str(document.get("scope") or ""),
-            *(
-                str(row.get("public_copy") or "")
-                for row in instruments
-            ),
+            *(str(row.get("public_copy") or "") for row in instruments),
         ]
     )
     if any(token in analysis_copy.casefold() for token in FORBIDDEN_COPY):

@@ -41,10 +41,14 @@ READINGS = ROOT / "readings"
 def _write_history(path: Path, values: list[float], field: str) -> None:
     lines = []
     for index, value in enumerate(values):
-        lines.append(json.dumps({
-            "generated_at": f"2026-01-{index + 1:02d}T00:00:00Z",
-            field: value,
-        }))
+        lines.append(
+            json.dumps(
+                {
+                    "generated_at": f"2026-01-{index + 1:02d}T00:00:00Z",
+                    field: value,
+                }
+            )
+        )
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -93,7 +97,8 @@ def test_baike_public_snapshot_is_retained_but_quarantined_from_scoring():
     ],
 )
 def test_baike_history_files_remain_intact_but_cannot_produce_scores(
-        tmp_path, instrument_id, filename, field):
+    tmp_path, instrument_id, filename, field
+):
     values = list(range(12))
     _write_history(tmp_path / filename, values, field)
     before = (tmp_path / filename).read_bytes()
@@ -153,7 +158,9 @@ def test_missing_history_abstains(tmp_path):
 
 
 def test_mad_gate_stays_warming_up_until_minimum_prior(tmp_path):
-    _write_history(tmp_path / "wayback-history.jsonl", [1, 1, 1, 1, 1, 8], "n_deletions")
+    _write_history(
+        tmp_path / "wayback-history.jsonl", [1, 1, 1, 1, 1, 8], "n_deletions"
+    )
     row = fit_instrument("wayback", tmp_path)
     assert row["state"] == "warming_up"
     assert row["n_history"] == 5
@@ -198,7 +205,10 @@ def test_singleton_snapshot_abstains(tmp_path):
     assert row["n_file_lines"] == 1
     assert row["n_history"] == 0
     assert row["unusualness"] is None
-    assert row["public_copy"] == "this instrument abstains; its history is a single snapshot"
+    assert (
+        row["public_copy"]
+        == "this instrument abstains; its history is a single snapshot"
+    )
     official = fit_instrument("official-first-seen", tmp_path)
     assert official["state"] == "missing"
 
@@ -211,28 +221,44 @@ def test_ooni_bulk_missing_history_abstains(tmp_path):
 
 
 def test_story_ranks_stay_unlabeled(tmp_path):
-    (tmp_path / "newswire-latest.json").write_text(json.dumps({
-        "schema_version": "palimpsest-newswire.v1",
-        "events": [{
-            "event_id": "event-aaaaaaaaaaaaaaaaaaaaaaaa",
-            "published_at": "2026-08-01T00:00:00Z",
-            "evidence_strength": "multi-source",
-            "evidence_groups": ["wire-a", "wire-b"],
-            "declared_links": {"scan_signal_ids": ["ooni-gfw"]},
-        }],
-    }), encoding="utf-8")
-    (tmp_path / "newsroom-latest.json").write_text(json.dumps({
-        "schema_version": "palimpsest-news.v1",
-        "stories": [{
-            "id": "story-wayback",
-            "signal_id": "wayback",
-            "status": "live",
-            "type": "analysis",
-            "published_at": "2026-08-01T00:00:00Z",
-            "related_signal_ids": ["wayback"],
-        }],
-    }), encoding="utf-8")
-    document = build_reading_analysis(tmp_path, now=datetime(2026, 8, 20, tzinfo=timezone.utc))
+    (tmp_path / "newswire-latest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "palimpsest-newswire.v1",
+                "events": [
+                    {
+                        "event_id": "event-aaaaaaaaaaaaaaaaaaaaaaaa",
+                        "published_at": "2026-08-01T00:00:00Z",
+                        "evidence_strength": "multi-source",
+                        "evidence_groups": ["wire-a", "wire-b"],
+                        "declared_links": {"scan_signal_ids": ["ooni-gfw"]},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "newsroom-latest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "palimpsest-news.v1",
+                "stories": [
+                    {
+                        "id": "story-wayback",
+                        "signal_id": "wayback",
+                        "status": "live",
+                        "type": "analysis",
+                        "published_at": "2026-08-01T00:00:00Z",
+                        "related_signal_ids": ["wayback"],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    document = build_reading_analysis(
+        tmp_path, now=datetime(2026, 8, 20, tzinfo=timezone.utc)
+    )
     assert document["schema_version"] == SCHEMA
     assert document["job"] == JOB
     assert document["n_story_ranks"] == 2
@@ -241,7 +267,10 @@ def test_story_ranks_stay_unlabeled(tmp_path):
         row["label_source"] == "human-editorial-review-required"
         for row in document["story_ranks"]
     )
-    assert all(row["automatic_publication_eligible"] is False for row in document["story_ranks"])
+    assert all(
+        row["automatic_publication_eligible"] is False
+        for row in document["story_ranks"]
+    )
     rank = lookup_story_rank(document, "event-aaaaaaaaaaaaaaaaaaaaaaaa")
     assert rank is not None
     assert rank["label"] is None
@@ -251,18 +280,22 @@ def test_story_ranks_stay_unlabeled(tmp_path):
 
 def test_lookup_and_attach_are_a_join_hook_not_a_new_event_field():
     document = {
-        "instruments": [{
-            "instrument_id": "wayback",
-            "state": "scored",
-            "n_history": 12,
-            "unusualness": 0.2,
-            "unusual": False,
-            "public_copy": "this instrument is within its own 12 prior points",
-            "review_rank": {"status": "configured", "score": 1.5},
-        }]
+        "instruments": [
+            {
+                "instrument_id": "wayback",
+                "state": "scored",
+                "n_history": 12,
+                "unusualness": 0.2,
+                "unusual": False,
+                "public_copy": "this instrument is within its own 12 prior points",
+                "review_rank": {"status": "configured", "score": 1.5},
+            }
+        ]
     }
     attached = attach_scores([{"signal_id": "wayback", "headline": "x"}], document)
-    assert attached[0]["reading_analysis"]["relation"] == "analysis-context-not-causation"
+    assert (
+        attached[0]["reading_analysis"]["relation"] == "analysis-context-not-causation"
+    )
     assert lookup_score(document, "silence-index") is None
     assert "event_analysis" not in attached[0]
 
@@ -271,7 +304,9 @@ def test_generated_copy_stays_context_only():
     copies = [
         public_copy_for_row({"state": "missing", "n_history": 0}),
         public_copy_for_row({"state": "abstain", "n_history": 0}),
-        public_copy_for_row({"state": "warming_up", "n_history": 2, "minimum_prior": 6}),
+        public_copy_for_row(
+            {"state": "warming_up", "n_history": 2, "minimum_prior": 6}
+        ),
         public_copy_for_row({"state": "scored", "n_history": 9, "unusual": True}),
         public_copy_for_row({"state": "scored", "n_history": 9, "unusual": False}),
         public_copy_for_row({"state": "abstain", "n_history": 0, "quarantined": True}),
@@ -288,11 +323,17 @@ def test_job_writes_latest_and_abstains_when_halted(tmp_path, monkeypatch):
     readings.mkdir()
     _write_history(readings / "wayback-history.jsonl", [1.0] * 9, "n_deletions")
     assert pull.main(["--root", str(tmp_path), "--now", "2026-08-20T00:00:00Z"]) == 0
-    latest = json.loads((readings / "reading-analysis-latest.json").read_text(encoding="utf-8"))
+    latest = json.loads(
+        (readings / "reading-analysis-latest.json").read_text(encoding="utf-8")
+    )
     assert latest["job"] == JOB
-    wayback = next(row for row in latest["instruments"] if row["instrument_id"] == "wayback")
+    wayback = next(
+        row for row in latest["instruments"] if row["instrument_id"] == "wayback"
+    )
     assert wayback["state"] == "scored"
-    missing = next(row for row in latest["instruments"] if row["instrument_id"] == "ooni-gfw")
+    missing = next(
+        row for row in latest["instruments"] if row["instrument_id"] == "ooni-gfw"
+    )
     assert missing["state"] == "missing"
 
     class _Halted:
@@ -394,16 +435,20 @@ def test_join_ranker_time_split_and_negatives_on_disk():
 
 def test_lookup_exposes_citations_not_motive():
     document = {
-        "instruments": [{
-            "instrument_id": "wayback",
-            "state": "scored",
-            "n_history": 12,
-            "unusualness": 0.2,
-            "unusual": False,
-            "public_copy": "this instrument is within its own 12 prior points",
-            "review_rank": {"status": "configured", "score": 1.5},
-            "feature_citations": [{"instrument_id": "wayback", "field": "n_deletions"}],
-        }]
+        "instruments": [
+            {
+                "instrument_id": "wayback",
+                "state": "scored",
+                "n_history": 12,
+                "unusualness": 0.2,
+                "unusual": False,
+                "public_copy": "this instrument is within its own 12 prior points",
+                "review_rank": {"status": "configured", "score": 1.5},
+                "feature_citations": [
+                    {"instrument_id": "wayback", "field": "n_deletions"}
+                ],
+            }
+        ]
     }
     score = lookup_score(document, "wayback")
     assert score is not None
