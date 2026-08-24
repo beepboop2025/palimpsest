@@ -133,6 +133,7 @@ jobs:
           for attempt in $(seq 1 12); do
             if curl --disable --fail --silent --show-error --location \
               --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 20 \
+              --max-filesize 1048576 \
               --header 'Accept: application/json' \
               --header 'Cache-Control: no-cache' \
               "$REGISTRY_LATEST_URL" --output "$registry_json" && \
@@ -147,3 +148,70 @@ jobs:
             sleep 5
           done
           test -z "$(git status --porcelain)"
+
+      - name: Record immutable Registry publication receipt
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+          DEPLOY_RUN_ID: ${{ inputs.deploy_run_id }}
+        run: |
+          set -euo pipefail
+          registry_json="$RUNNER_TEMP/registry-latest.json"
+          receipt_dir="$RUNNER_TEMP/palimpsest-mcp-registry-receipt"
+          test -s "$registry_json"
+          install -d -m 0700 "$receipt_dir"
+          install -m 0400 "$registry_json" "$receipt_dir/registry-latest.json"
+          python3 - "$registry_json" "$receipt_dir/registry-receipt.json" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+
+          registry_path, receipt_path = sys.argv[1:]
+          with open(registry_path, "rb") as handle:
+              registry_raw = handle.read()
+          registry = json.loads(registry_raw)
+          with open("server.json", encoding="utf-8") as handle:
+              manifest = json.load(handle)
+          if registry.get("server") != manifest:
+              raise SystemExit("Registry response drifted after verification")
+          official = registry.get("_meta", {}).get(
+              "io.modelcontextprotocol.registry/official", {}
+          )
+          if official.get("status") != "active" or official.get("isLatest") is not True:
+              raise SystemExit("Registry response is not active and latest")
+          if not isinstance(official.get("publishedAt"), str):
+              raise SystemExit("Registry response has no publication timestamp")
+          deploy_run_id = int(os.environ["DEPLOY_RUN_ID"])
+          if deploy_run_id < 1:
+              raise SystemExit("deployment run ID is invalid")
+          receipt = {
+              "schema": "palimpsest.mcp-registry-publication-receipt.v1",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "workflow": ".github/workflows/registry-publish.yml",
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "target_sha": os.environ["TARGET_SHA"],
+              "server_name": manifest["name"],
+              "server_version": manifest["version"],
+              "deploy_run_id": deploy_run_id,
+              "registry_latest_url": os.environ["REGISTRY_LATEST_URL"],
+              "registry_response_sha256": hashlib.sha256(registry_raw).hexdigest(),
+              "official_status": official["status"],
+              "official_is_latest": official["isLatest"],
+              "published_at": official.get("publishedAt"),
+          }
+          with open(receipt_path, "w", encoding="utf-8") as handle:
+              json.dump(receipt, handle, sort_keys=True, separators=(",", ":"))
+              handle.write("\n")
+          PY
+          chmod 0400 "$receipt_dir/registry-receipt.json"
+          test -z "$(git status --porcelain)"
+
+      - name: Upload immutable Registry publication receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: palimpsest-mcp-registry-${{ inputs.target_sha }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/palimpsest-mcp-registry-receipt
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

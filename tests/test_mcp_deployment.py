@@ -5,7 +5,10 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
+import sys
+import textwrap
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -270,10 +273,23 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
     legacy_sha = "2a80981815680006f3daf7caf503a125d6299c3c"
     assert legacy_sha in text
     assert 'show "${legacy_sha}:server.json"' in text
-    assert text.count('--manifest "$legacy_manifest" --basic') == 2
+    assert text.count('--manifest "$legacy_manifest" --basic') == 3
     assert text.index('--manifest "$legacy_manifest" --basic') < text.index(
         "sudo install -o root -g root -m 0644 ops/systemd/palimpsest-mcp.service"
     )
+    assert "bootstrap-backups/pre-controller.XXXXXX" in text
+    assert "expected_legacy_runtime_sha256" in text
+    assert "expected_legacy_unit_sha256" in text
+    assert 'sudo tee "$bootstrap_backup/SHA256SUMS"' in text
+    assert "finish_bootstrap()" in text
+    assert "mutation_started=1" in text
+    assert "bootstrap_committed=1" in text
+    assert "restoring the captured legacy runtime and unit" in text
+    assert "Do not reuse a workstation" in text
+    assert "`ssh-keyscan`" in text
+    assert "alone is not identity verification" in text
+    assert text.count('"$bootstrap_backup/palimpsest_mcp.py"') >= 2
+    assert text.count('"$bootstrap_backup/palimpsest-mcp.service"') >= 2
     assert "systemctl enable --now" not in text
     assert "sudo systemctl enable palimpsest-mcp.service" in text
     assert "sudo systemctl restart palimpsest-mcp.service" in text
@@ -289,6 +305,31 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
         "CapabilityBoundingSet=",
     ):
         assert property_value in text
+
+
+def test_release_runbook_freezes_writers_through_exact_ref_registry_publish() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    freeze = text.index('gh workflow disable "$workflow_id"')
+    deploy = text.index("gh workflow run deploy-mcp.yml")
+    publish = text.index("gh workflow run registry-publish.yml")
+    restore = text.index('gh workflow enable "$workflow_id"')
+    assert freeze < deploy < publish < restore
+    assert "scheduled-workflows.tsv" in text
+    assert "reuse that gate's" in text
+    assert "original preservation manifest" in text
+    assert 'test "$(wc -l <"$schedule_manifest"' in text
+    assert "expected_state workflow_file" in text
+    assert 'status == "queued" or .status == "in_progress"' in text
+    assert 'test "$(git rev-parse origin/main)" = "$frozen_main"' in text
+    assert 'gh workflow run deploy-mcp.yml --repo "$repo" --ref main' in text
+    assert (
+        '--repo "$repo" --ref main'
+        in text[text.index("gh workflow run registry-publish.yml") :]
+    )
+    assert "a new frozen tip and a new signed merge" in text
+    assert "## Rollback after a completed release" in text
+    assert "never edit `deployed-sha`" in text
+    assert "monotonically higher server version" in text
 
 
 def _write_registry_binding_fixture(
@@ -444,9 +485,83 @@ def test_registry_workflow_is_sha_receipt_and_post_publish_bound() -> None:
         '"$publisher" publish',
         "verify_registry_release.py published",
         "REGISTRY_LATEST_URL",
+        "--max-filesize 1048576",
         'MCP_PUBLISHER_VERSION: "1.8.1"',
         'MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"',
+        "palimpsest.mcp-registry-publication-receipt.v1",
+        '"registry_response_sha256"',
+        "registry-latest.json",
+        "registry-receipt.json",
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+        "palimpsest-mcp-registry-${{ inputs.target_sha }}-run-",
+        "retention-days: 90",
+        "compression-level: 0",
     ):
         assert needle in text
     assert "id-token: write" in text
     assert "PALIMPSEST_MCP_DEPLOY_KEY" not in text
+
+
+def test_registry_receipt_script_binds_exact_verified_response(tmp_path: Path) -> None:
+    workflow = REGISTRY_WORKFLOW.read_text(encoding="utf-8")
+    marker = (
+        'python3 - "$registry_json" "$receipt_dir/registry-receipt.json" <<\'PY\'\n'
+    )
+    start = workflow.index(marker) + len(marker)
+    end = workflow.index("\n          PY", start)
+    source = textwrap.dedent(workflow[start:end])
+
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    (tmp_path / "server.json").write_text(json.dumps(manifest), encoding="utf-8")
+    registry = {
+        "server": manifest,
+        "_meta": {
+            "io.modelcontextprotocol.registry/official": {
+                "status": "active",
+                "isLatest": True,
+                "publishedAt": "2026-08-24T07:00:00Z",
+            }
+        },
+    }
+    registry_path = tmp_path / "registry-latest.json"
+    registry_raw = json.dumps(registry, separators=(",", ":")).encode()
+    registry_path.write_bytes(registry_raw)
+    receipt_path = tmp_path / "registry-receipt.json"
+    target_sha = "a" * 40
+    subprocess.run(
+        [sys.executable, "-c", source, str(registry_path), str(receipt_path)],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "GITHUB_REPOSITORY": "beepboop2025/palimpsest",
+            "GITHUB_RUN_ID": "987654",
+            "GITHUB_RUN_ATTEMPT": "2",
+            "TARGET_SHA": target_sha,
+            "DEPLOY_RUN_ID": "123456",
+            "REGISTRY_LATEST_URL": (
+                "https://registry.modelcontextprotocol.io/v0.1/servers/"
+                "io.github.beepboop2025%2Fpalimpsest/versions/latest"
+            ),
+        },
+        check=True,
+    )
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt == {
+        "schema": "palimpsest.mcp-registry-publication-receipt.v1",
+        "repository": "beepboop2025/palimpsest",
+        "workflow": ".github/workflows/registry-publish.yml",
+        "workflow_run_id": 987654,
+        "workflow_run_attempt": 2,
+        "target_sha": target_sha,
+        "server_name": "io.github.beepboop2025/palimpsest",
+        "server_version": "1.9.0",
+        "deploy_run_id": 123456,
+        "registry_latest_url": (
+            "https://registry.modelcontextprotocol.io/v0.1/servers/"
+            "io.github.beepboop2025%2Fpalimpsest/versions/latest"
+        ),
+        "registry_response_sha256": hashlib.sha256(registry_raw).hexdigest(),
+        "official_status": "active",
+        "official_is_latest": True,
+        "published_at": "2026-08-24T07:00:00Z",
+    }
