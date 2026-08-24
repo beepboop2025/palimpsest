@@ -415,30 +415,64 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$REVIEW_DIR"
-          review_end_year=$(date -u +%Y)
-          export REVIEW_END_YEAR="$review_end_year"
           python - <<'PY'
+          import hashlib
           import os
+          from datetime import UTC, datetime
           from pathlib import Path
 
           from collectors.world_bank_wdi import build_url, fetch_bytes, load_registry
+          from core.china_econ_export import (
+              load_market_registry,
+              load_source_policy,
+              require_world_bank_wdi_rights,
+          )
 
-          registry = load_registry(Path("config/china_econ_wdi_series.json"))
+          registry_path = Path("config/china_econ_wdi_series.json")
+          policy = load_source_policy(Path("config/china_econ_source_policy.json"))
+          market_registry = load_market_registry(registry_path)
+          preflight_at = datetime.now(UTC)
+          require_world_bank_wdi_rights(
+              policy,
+              market_registry,
+              evaluated_at=preflight_at,
+          )
+          registry = load_registry(registry_path)
+          end_year = preflight_at.year
           url = build_url(
               registry,
               start_year=1960,
-              end_year=int(os.environ["REVIEW_END_YEAR"]),
+              end_year=end_year,
           )
           raw = fetch_bytes(url)
+          collected_at = datetime.now(UTC)
+          require_world_bank_wdi_rights(
+              policy,
+              market_registry,
+              evaluated_at=collected_at,
+          )
           destination = Path(os.environ["REVIEW_DIR"]) / "world-bank-wdi-response.json"
           destination.write_bytes(raw)
-          print(f"wdi-response bytes={len(raw)} url={url}")
+          raw_sha256 = hashlib.sha256(raw).hexdigest()
+          collected_at_text = collected_at.isoformat().replace("+00:00", "Z")
+          with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as handle:
+              handle.write(f"WDI_REVIEW_END_YEAR={end_year}\n")
+              handle.write(f"WDI_REVIEW_REQUEST_URL={url}\n")
+              handle.write(f"WDI_REVIEW_COLLECTED_AT={collected_at_text}\n")
+              handle.write(f"WDI_REVIEW_RAW_SHA256={raw_sha256}\n")
+          print(
+              f"wdi-response bytes={len(raw)} sha256={raw_sha256} "
+              f"collected_at={collected_at_text} url={url}"
+          )
           PY
 
       - name: Build the exact review ledger and v3 Seiche handoff
         run: |
           set -euo pipefail
-          review_end_year=$(date -u +%Y)
+          review_end_year="${WDI_REVIEW_END_YEAR:?missing sealed WDI end year}"
+          test -n "${WDI_REVIEW_REQUEST_URL:?missing sealed WDI request URL}"
+          test -n "${WDI_REVIEW_COLLECTED_AT:?missing post-response clock}"
+          test -n "${WDI_REVIEW_RAW_SHA256:?missing raw response digest}"
           git show HEAD:readings/china-econ-wdi-observations.jsonl \
             > "$REVIEW_DIR/china-econ-wdi-observations.jsonl"
           python -m scripts.china_econ_wdi_pull \
@@ -447,8 +481,10 @@ jobs:
             --ledger "$REVIEW_DIR/china-econ-wdi-observations.jsonl" \
             --latest "$REVIEW_DIR/china-econ-wdi-live-check.json" \
             --start-year 1960 \
-            --end-year "$review_end_year"
+            --end-year "$review_end_year" \
+            --collected-at "$WDI_REVIEW_COLLECTED_AT"
           python - <<'PY'
+          import hashlib
           import json
           import os
           from pathlib import Path
@@ -466,6 +502,24 @@ jobs:
               Path("readings/china-econ-wdi-latest.json").read_text(encoding="utf-8")
           )
           registry_path = Path("config/china_econ_wdi_series.json")
+          raw_path = root / "world-bank-wdi-response.json"
+          raw_sha256 = hashlib.sha256(raw_path.read_bytes()).hexdigest()
+          if raw_sha256 != os.environ["WDI_REVIEW_RAW_SHA256"]:
+              raise SystemExit("WDI raw response digest changed after collection")
+          if live["batch_raw_sha256"] != raw_sha256:
+              raise SystemExit("live WDI receipt does not bind the exact raw response")
+          if live["generated_at"] != os.environ["WDI_REVIEW_COLLECTED_AT"]:
+              raise SystemExit("live WDI receipt does not use the post-response clock")
+          if live["response_coverage"]["requested_end_year"] != int(
+              os.environ["WDI_REVIEW_END_YEAR"]
+          ):
+              raise SystemExit("live WDI receipt changed the sealed request end year")
+          source_receipt = live["collector_artifact"]["source_receipt"]
+          if (
+              source_receipt["url"] != os.environ["WDI_REVIEW_REQUEST_URL"]
+              or source_receipt["raw_sha256"] != raw_sha256
+          ):
+              raise SystemExit("live WDI source receipt changed the sealed request scope")
           load_availability_receipt(
               root / "china-econ-wdi-live-check.json",
               series_registry_path=registry_path,

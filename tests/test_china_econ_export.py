@@ -7,8 +7,11 @@ from copy import deepcopy
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
+
+import scripts.build_china_econ_lineage as lineage_cli
 
 from collectors.world_bank_wdi import build_url, load_registry
 from core.china_econ_export import (
@@ -21,8 +24,10 @@ from core.china_econ_export import (
     ChinaEconExportError,
     build_export as _core_build_export,
     build_public_wdi_lineage_chain,
+    load_market_registry,
     load_source_policy,
     parse_github_commit_evidence,
+    require_world_bank_wdi_rights,
     validate_public_wdi_lineage_transition,
     validate_export_bundle,
     validate_wdi_registry_evolution,
@@ -461,6 +466,25 @@ def test_policy_requires_exact_reviewed_wdi_rights_authority(
 
     with pytest.raises(ChinaEconExportError, match="exact reviewed rights"):
         load_source_policy(_write_json(tmp_path / "policy.json", policy))
+
+
+def test_reviewed_wdi_rights_gate_closes_at_the_exact_expiry_clock():
+    policy = load_source_policy(POLICY)
+    registry = load_market_registry(SERIES)
+
+    decision = require_world_bank_wdi_rights(
+        policy,
+        registry,
+        evaluated_at=datetime(2026, 8, 24, 12, 0, tzinfo=UTC),
+    )
+    assert decision.source_id == "world_bank_wdi"
+
+    with pytest.raises(ChinaEconExportError, match="not currently allowed"):
+        require_world_bank_wdi_rights(
+            policy,
+            registry,
+            evaluated_at=datetime(2027, 8, 24, 0, 0, tzinfo=UTC),
+        )
 
 
 @pytest.mark.parametrize(
@@ -1640,6 +1664,12 @@ def test_registry_evolution_allows_append_only_addition_and_refuses_remap_or_del
     assert transition["added_source_indicators"] == [
         document["series"][1]["indicator_id"]
     ]
+    unchanged = validate_wdi_registry_evolution(
+        previous_path.read_bytes(),
+        previous_path.read_bytes(),
+    )
+    assert unchanged["state"] == "unchanged"
+    assert unchanged["added_source_indicators"] == []
 
     remapped = deepcopy(document)
     remapped["series"] = deepcopy(document["series"][:2])
@@ -1883,6 +1913,27 @@ def test_exact_main_workflow_builds_and_attests_non_pages_handoff():
     assert "palimpsest-china-economic-export-v3-manifest.json" in workflow
     assert "path: ${{ runner.temp }}/china-economic-review-v3/" in workflow
     assert "live WDI availability differs from the reviewed main receipt" in workflow
+    fetch_step = workflow.split(
+        "- name: Fetch one exact public WDI response", 1
+    )[1].split("- name: Build the exact review ledger", 1)[0]
+    assert "review_end_year=$(date -u +%Y)" not in fetch_step
+    assert fetch_step.count("require_world_bank_wdi_rights(") == 2
+    assert (
+        fetch_step.index("evaluated_at=preflight_at")
+        < fetch_step.index("raw = fetch_bytes(url)")
+        < fetch_step.index("evaluated_at=collected_at")
+    )
+    assert 'handle.write(f"WDI_REVIEW_END_YEAR={end_year}\\n")' in fetch_step
+    assert 'handle.write(f"WDI_REVIEW_REQUEST_URL={url}\\n")' in fetch_step
+    assert 'handle.write(f"WDI_REVIEW_COLLECTED_AT={collected_at_text}\\n")' in fetch_step
+    build_step = workflow.split(
+        "- name: Build the exact review ledger and v3 Seiche handoff", 1
+    )[1].split("- name: Seal exact inputs", 1)[0]
+    assert "date -u +%Y" not in build_step
+    assert '--end-year "$review_end_year"' in build_step
+    assert '--collected-at "$WDI_REVIEW_COLLECTED_AT"' in build_step
+    assert "live WDI receipt changed the sealed request end year" in build_step
+    assert "live WDI source receipt changed the sealed request scope" in build_step
 
 
 def test_handoff_documentation_requires_external_attestation_and_hash_review():
@@ -1911,3 +1962,138 @@ def test_handoff_documentation_requires_external_attestation_and_hash_review():
     assert 'live["batch_raw_sha256"]' in documentation
     assert 'manifest["availability_receipt"]' in documentation
     assert "owner signs a Seiche acceptance receipt" in documentation
+    assert "before any outbound request" in documentation
+    assert "never\nresamples the year across a UTC rollover" in documentation
+    assert "--require-registry-addition" in documentation
+    assert "before its HTTP getter can run" in documentation
+
+
+@pytest.mark.parametrize("protected", [POLICY, SERIES])
+def test_lineage_cli_refuses_symlink_alias_to_repository_input_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    protected: Path,
+):
+    original = protected.read_bytes()
+    current_evidence = tmp_path / "github-commit.json"
+    current_evidence.write_text("{}\n", encoding="utf-8")
+    output_chain = tmp_path / lineage_cli.WDI_LINEAGE_CHAIN_PATH
+    output_evidence = tmp_path / lineage_cli.WDI_LINEAGE_EVIDENCE_PATH
+    alias_dir = tmp_path / "alias"
+    alias_dir.mkdir()
+    output_receipt = alias_dir / lineage_cli.LINEAGE_RECEIPT_FILENAME
+    output_receipt.symlink_to(protected)
+    called = False
+
+    def unexpected_build(**_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("collision must be refused before lineage construction")
+
+    monkeypatch.setattr(lineage_cli, "build_lineage", unexpected_build)
+    assert (
+        lineage_cli.main(
+            [
+                "--current-commit-evidence",
+                str(current_evidence),
+                "--output-chain",
+                str(output_chain),
+                "--output-evidence",
+                str(output_evidence),
+                "--output-receipt",
+                str(output_receipt),
+            ]
+        )
+        == 2
+    )
+
+    assert called is False
+    assert protected.read_bytes() == original
+    assert not output_chain.exists()
+    assert not output_evidence.exists()
+
+
+def test_lineage_cli_refuses_output_current_evidence_alias_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    current_evidence = tmp_path / "github-commit.json"
+    original = b'{"evidence":true}\n'
+    current_evidence.write_bytes(original)
+    alias_dir = tmp_path / "alias"
+    alias_dir.mkdir()
+    output_chain = alias_dir / lineage_cli.WDI_LINEAGE_CHAIN_PATH
+    output_chain.symlink_to(current_evidence)
+    output_evidence = tmp_path / lineage_cli.WDI_LINEAGE_EVIDENCE_PATH
+    output_receipt = tmp_path / lineage_cli.LINEAGE_RECEIPT_FILENAME
+    monkeypatch.setattr(
+        lineage_cli,
+        "build_lineage",
+        lambda **_kwargs: pytest.fail("collision must precede lineage construction"),
+    )
+
+    assert (
+        lineage_cli.main(
+            [
+                "--current-commit-evidence",
+                str(current_evidence),
+                "--output-chain",
+                str(output_chain),
+                "--output-evidence",
+                str(output_evidence),
+                "--output-receipt",
+                str(output_receipt),
+            ]
+        )
+        == 2
+    )
+    assert current_evidence.read_bytes() == original
+    assert not output_evidence.exists()
+    assert not output_receipt.exists()
+
+
+def test_lineage_cli_atomically_replaces_unrelated_output_symlink(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    current_evidence = tmp_path / "github-commit.json"
+    current_evidence.write_text("{}\n", encoding="utf-8")
+    unrelated = tmp_path / "unrelated.jsonl"
+    unrelated.write_bytes(b"keep-me\n")
+    output_dir = tmp_path / "outputs"
+    output_dir.mkdir()
+    output_chain = output_dir / lineage_cli.WDI_LINEAGE_CHAIN_PATH
+    output_chain.symlink_to(unrelated)
+    output_evidence = output_dir / lineage_cli.WDI_LINEAGE_EVIDENCE_PATH
+    output_receipt = output_dir / lineage_cli.LINEAGE_RECEIPT_FILENAME
+    fake = SimpleNamespace(
+        records_bytes=b'{"chain":true}\n',
+        evidence_bytes=b'{"evidence":true}\n',
+        receipt={
+            "records": 1,
+            "root_commit_sha": "1" * 40,
+            "tip_commit_sha": "1" * 40,
+            "sha256": "2" * 64,
+        },
+    )
+    monkeypatch.setattr(lineage_cli, "build_lineage", lambda **_kwargs: fake)
+
+    assert (
+        lineage_cli.main(
+            [
+                "--current-commit-evidence",
+                str(current_evidence),
+                "--output-chain",
+                str(output_chain),
+                "--output-evidence",
+                str(output_evidence),
+                "--output-receipt",
+                str(output_receipt),
+            ]
+        )
+        == 0
+    )
+    assert unrelated.read_bytes() == b"keep-me\n"
+    assert output_chain.is_symlink() is False
+    assert output_chain.read_bytes() == fake.records_bytes
+    assert output_evidence.read_bytes() == fake.evidence_bytes
