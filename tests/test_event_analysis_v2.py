@@ -732,6 +732,62 @@ def test_same_window_peers_are_counts_and_names_only() -> None:
     assert "deleted because" not in blob
 
 
+def test_rolling_peer_count_is_edition_only_but_peer_identity_is_semantic(
+    tmp_path: Path,
+) -> None:
+    event = _event()
+
+    def peer(identifier: str, *, source_id: str = "china-digital-times") -> dict:
+        candidate = copy.deepcopy(event)
+        candidate["event_id"] = f"event-{identifier * 24}"
+        candidate["version_id"] = f"eventv-{identifier * 24}"
+        candidate["url"] = (
+            f"https://palimpsest.info/news/wire/{candidate['event_id']}/"
+        )
+        candidate["headline"] = f"Peer economy note {identifier}"
+        candidate["topics"] = ["economy"]
+        candidate["evidence_refs"][0]["source_id"] = source_id
+        candidate["evidence_groups"][0]["source_ids"] = [source_id]
+        candidate["evidence_groups"][0]["group_id"] = source_id
+        return candidate
+
+    first_wire = _wire(event)
+    first_wire["events"].append(peer("b"))
+    second_wire = copy.deepcopy(first_wire)
+    second_wire["events"].append(peer("c"))
+    previous = event_analysis.build_event_analysis(
+        event, wire=first_wire, feed=_feed()
+    )
+    candidate = event_analysis.build_event_analysis(
+        event, wire=second_wire, feed=_feed()
+    )
+
+    assert previous["window_peers"]["same_window_peer_count"] == 1
+    assert candidate["window_peers"]["same_window_peer_count"] == 2
+    assert previous["analysis_id"] != candidate["analysis_id"]
+    assert event_analysis.semantically_equivalent(previous, candidate)
+
+    base = tmp_path / "news" / "wire" / event["event_id"]
+    revision = (
+        base / "analysis" / "revisions" / f"{previous['analysis_id']}.json"
+    )
+    revision.parent.mkdir(parents=True)
+    raw = build_newsroom._pretty_json(previous)
+    revision.write_bytes(raw)
+    (base / "analysis.json").write_bytes(raw)
+    retained = build_newsroom._retain_semantically_unchanged_event_analysis(
+        event, candidate, archive_root=tmp_path
+    )
+    assert retained == previous
+
+    identity_wire = copy.deepcopy(first_wire)
+    identity_wire["events"].append(peer("d", source_id="reuters"))
+    identity_change = event_analysis.build_event_analysis(
+        event, wire=identity_wire, feed=_feed()
+    )
+    assert not event_analysis.semantically_equivalent(previous, identity_change)
+
+
 def test_same_topic_outside_interconnection_window_is_not_a_window_peer() -> None:
     event = _event()
     far = _event()
