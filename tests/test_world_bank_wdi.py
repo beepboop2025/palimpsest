@@ -10,6 +10,8 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
+import scripts.china_econ_wdi_pull as wdi_pull
+
 from collectors.world_bank_wdi import (
     WDIError,
     WDIRegistry,
@@ -349,7 +351,15 @@ def test_pull_receipt_splits_response_and_ledger_coverage_and_is_idempotent(
     first_snapshot = load_snapshot(ledger)
     first_receipt = json.loads(latest.read_text(encoding="utf-8"))
     assert first_snapshot.records == 2
-    assert first_receipt["schema_version"] == "palimpsest-china-econ-wdi-run.v2"
+    assert first_receipt["schema_version"] == "palimpsest-china-econ-wdi-run.v3"
+    assert first_receipt["context_only"] is True
+    assert first_receipt["scoring_allowed"] is False
+    assert first_receipt["publication_state"] == "review_only"
+    assert first_receipt["revision_lineage"] == {
+        "mode": "local_review_append_only",
+        "durable_cross_run": False,
+        "ledger_path": ledger.name,
+    }
     assert first_receipt["batch_raw_sha256"] == hashlib.sha256(_response()).hexdigest()
     assert first_receipt["ledger_before"] == {
         "sha256": hashlib.sha256(b"").hexdigest(),
@@ -443,6 +453,189 @@ def test_pull_records_null_withdrawal_without_claiming_old_value_is_current(
     assert receipt["availability"]["withdrawal_state"] == (
         "residual_gate_no_append_only_withdrawal_ledger"
     )
+
+
+def test_explicit_public_context_mode_requires_policy_and_exact_readings_paths(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    registry = _small_registry_path(tmp_path)
+    response = tmp_path / "wdi.json"
+    response.write_bytes(_response())
+    ledger = tmp_path / "readings" / "china-econ-wdi-observations.jsonl"
+    latest = tmp_path / "readings" / "china-econ-wdi-latest.json"
+    monkeypatch.setattr(wdi_pull, "DEFAULT_REGISTRY", registry)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LEDGER", ledger)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LATEST", latest)
+
+    def fake_collect(
+        loaded_registry,
+        *,
+        start_year,
+        end_year,
+        collected_at,
+        fetch=None,
+    ):
+        assert fetch is None
+        return parse_response(
+            response.read_bytes(),
+            registry=loaded_registry,
+            evidence_url=build_url(
+                loaded_registry,
+                start_year=start_year,
+                end_year=end_year,
+            ),
+            start_year=start_year,
+            end_year=end_year,
+            collected_at=collected_at,
+        )
+
+    monkeypatch.setattr(wdi_pull, "collect", fake_collect)
+    args = [
+        "--registry",
+        str(registry),
+        "--ledger",
+        str(ledger),
+        "--latest",
+        str(latest),
+        "--start-year",
+        "2023",
+        "--end-year",
+        "2024",
+        "--public-context-only",
+    ]
+
+    assert wdi_pull.main(args) == 0
+    receipt = json.loads(latest.read_text(encoding="utf-8"))
+    assert receipt["publication_state"] == "public_context_only"
+    assert receipt["context_only"] is True
+    assert receipt["scoring_allowed"] is False
+    assert receipt["revision_lineage"] == {
+        "mode": "git_tracked_append_only",
+        "durable_cross_run": True,
+        "ledger_path": "readings/china-econ-wdi-observations.jsonl",
+    }
+
+    wrong = tmp_path / "wrong.jsonl"
+    assert wdi_pull.main([*args[:-1], "--ledger", str(wrong), args[-1]]) == 2
+    assert not wrong.exists()
+
+    alternate_registry = tmp_path / "alternate-registry.json"
+    alternate_registry.write_bytes(registry.read_bytes())
+    alternate_policy = tmp_path / "alternate-policy.json"
+    alternate_policy.write_bytes(wdi_pull.DEFAULT_POLICY.read_bytes())
+    original_ledger = ledger.read_bytes()
+    original_latest = latest.read_bytes()
+    assert (
+        wdi_pull.main(
+            [*args[:-1], "--input", str(response), args[-1]]
+        )
+        == 2
+    )
+    assert ledger.read_bytes() == original_ledger
+    assert latest.read_bytes() == original_latest
+    for override in (
+        ["--registry", str(alternate_registry)],
+        ["--policy", str(alternate_policy)],
+    ):
+        assert wdi_pull.main([*args[:-1], *override, args[-1]]) == 2
+        assert ledger.read_bytes() == original_ledger
+        assert latest.read_bytes() == original_latest
+
+
+def test_public_context_mode_blocks_previously_numeric_null_without_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    registry = _small_registry_path(tmp_path)
+    ledger = tmp_path / "readings" / "china-econ-wdi-observations.jsonl"
+    latest = tmp_path / "readings" / "china-econ-wdi-latest.json"
+    monkeypatch.setattr(wdi_pull, "DEFAULT_REGISTRY", registry)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LEDGER", ledger)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LATEST", latest)
+    current_raw = {"payload": _response()}
+
+    def fake_collect(
+        loaded_registry,
+        *,
+        start_year,
+        end_year,
+        collected_at,
+        fetch=None,
+    ):
+        assert fetch is None
+        return parse_response(
+            current_raw["payload"],
+            registry=loaded_registry,
+            evidence_url=build_url(
+                loaded_registry,
+                start_year=start_year,
+                end_year=end_year,
+            ),
+            start_year=start_year,
+            end_year=end_year,
+            collected_at=collected_at,
+        )
+
+    monkeypatch.setattr(wdi_pull, "collect", fake_collect)
+    args = [
+        "--registry",
+        str(registry),
+        "--ledger",
+        str(ledger),
+        "--latest",
+        str(latest),
+        "--start-year",
+        "2023",
+        "--end-year",
+        "2024",
+        "--public-context-only",
+    ]
+    assert wdi_pull.main(args) == 0
+    original_ledger = ledger.read_bytes()
+    original_latest = latest.read_bytes()
+
+    current_raw["payload"] = _response(
+        rows=[
+            _row("AG.PRD.CREL.MT", 2024, None),
+            _row("IS.SHP.GOOD.TU", 2023, 310_000_000),
+            _row("FM.LBL.BMNY.ZG", 2024, None),
+        ]
+    )
+    assert wdi_pull.main(args) == 2
+    assert ledger.read_bytes() == original_ledger
+    assert latest.read_bytes() == original_latest
+
+
+def test_published_wdi_ledger_and_receipt_are_exact_attributed_context_only():
+    snapshot = load_snapshot(wdi_pull.PUBLIC_LEDGER)
+    receipt = json.loads(wdi_pull.PUBLIC_LATEST.read_text(encoding="utf-8"))
+
+    assert snapshot.records > 2_000
+    assert receipt["schema_version"] == "palimpsest-china-econ-wdi-run.v3"
+    assert receipt["ledger_after"] == {
+        "sha256": snapshot.byte_sha256,
+        "bytes": snapshot.byte_size,
+        "records": snapshot.records,
+    }
+    assert receipt["source_id"] == "world_bank_wdi"
+    assert receipt["license"] == "CC-BY-4.0"
+    assert receipt["redistribution_status"] == "allowed"
+    assert receipt["publication_state"] == "public_context_only"
+    assert receipt["context_only"] is True
+    assert receipt["scoring_allowed"] is False
+    assert receipt["revision_lineage"] == {
+        "mode": "git_tracked_append_only",
+        "durable_cross_run": True,
+        "ledger_path": "readings/china-econ-wdi-observations.jsonl",
+    }
+    assert receipt["response_coverage"]["represented_indicators"] == 54
+    assert receipt["response_coverage"]["populated_indicators"] >= 40
+    assert receipt["availability"]["withdrawal_state"] == (
+        "residual_gate_no_append_only_withdrawal_ledger"
+    )
+    assert {row.source_id for row in snapshot.observations} == {"world_bank_wdi"}
+    assert all(row.geography == "CN" for row in snapshot.observations)
 
 
 @pytest.mark.parametrize("symlinked", [False, True])
