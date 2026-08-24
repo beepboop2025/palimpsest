@@ -34,6 +34,7 @@ jobs:
         with:
           ref: ${{ inputs.target_sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -67,7 +68,8 @@ jobs:
             --module mcp/palimpsest_mcp.py \
             --manifest server.json \
             --target-sha "$TARGET_SHA" \
-            --github-commit-json "$github_json"
+            --github-commit-json "$github_json" \
+            --github-signing-key ops/mcp-deploy/github-web-flow-signing-key.asc
           printf 'target_sha=%s\n' "$TARGET_SHA" >>"$GITHUB_OUTPUT"
 
       - name: Validate controller syntax and candidate contract
@@ -112,10 +114,30 @@ jobs:
         with:
           ref: ${{ needs.verify.outputs.target_sha }}
           fetch-depth: 1
+          persist-credentials: false
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+
+      - name: Fetch authenticated commit provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ needs.verify.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          provenance_dir="$RUNNER_TEMP/palimpsest-mcp-provenance"
+          install -d -m 0700 "$provenance_dir"
+          github_json="$provenance_dir/github-commit.json"
+          curl --disable --fail --silent --show-error \
+            --proto '=https' --tlsv1.2 --max-time 20 --max-filesize 262144 \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${TARGET_SHA}?per_page=1" \
+            --output "$github_json"
+          test -s "$github_json"
+          chmod 0400 "$github_json"
 
       - name: Configure pinned SSH identity
         env:
@@ -152,22 +174,26 @@ jobs:
           cleanup_ssh() {
             rm -f -- \
               "$RUNNER_TEMP/palimpsest-ssh/key" \
-              "$RUNNER_TEMP/palimpsest-ssh/known_hosts"
+              "$RUNNER_TEMP/palimpsest-ssh/known_hosts" \
+              "$RUNNER_TEMP/palimpsest-mcp-provenance/github-commit.json"
             rmdir "$RUNNER_TEMP/palimpsest-ssh" 2>/dev/null || true
+            rmdir "$RUNNER_TEMP/palimpsest-mcp-provenance" 2>/dev/null || true
           }
           trap cleanup_ssh EXIT
           timeout --kill-after=5s 120s \
             git fetch --force --no-tags origin \
               '+refs/heads/main:refs/remotes/origin/main'
           test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"
-          ssh -p "$SSH_PORT" \
+          github_json="$RUNNER_TEMP/palimpsest-mcp-provenance/github-commit.json"
+          env -u GH_TOKEN -u GITHUB_TOKEN \
+            ssh -p "$SSH_PORT" \
             -i "$RUNNER_TEMP/palimpsest-ssh/key" \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
             -o StrictHostKeyChecking=yes \
             -o "UserKnownHostsFile=$RUNNER_TEMP/palimpsest-ssh/known_hosts" \
             -o LogLevel=ERROR \
-            "root@$DEPLOY_HOST" "deploy $TARGET_SHA"
+            "root@$DEPLOY_HOST" "deploy $TARGET_SHA" <"$github_json"
 
       - name: Verify public initialize, discovery, and representative calls
         run: |

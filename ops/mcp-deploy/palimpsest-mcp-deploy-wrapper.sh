@@ -10,7 +10,8 @@ umask 077
 
 # Keep caller-controlled SSH environment variables (including proxy and Git
 # configuration knobs) out of the privileged transaction. Re-enter only the
-# root-owned installed controller with the one datum the protocol accepts.
+# root-owned installed controller with the exact forced command; standard input
+# remains an untrusted, bounded public-provenance channel verified below.
 if [[ "$#" != "1" || "${1:-}" != "--clean-environment" ]]; then
   exec /usr/bin/env -i \
     PATH="$PATH" \
@@ -36,14 +37,18 @@ readonly TARGET_FILE="${TARGET_DIR}/palimpsest_mcp.py"
 readonly SERVICE="palimpsest-mcp.service"
 readonly CONTROLLER="/usr/local/libexec/palimpsest-mcp-deploy"
 readonly VERIFY_RELEASE="/usr/local/libexec/palimpsest-mcp-verify-release.py"
+readonly GITHUB_SIGNING_KEY="/usr/local/libexec/palimpsest-github-web-flow-signing-key.asc"
 readonly SMOKE="/usr/local/libexec/palimpsest-mcp-smoke.py"
 readonly UNIT_FILE="/etc/systemd/system/palimpsest-mcp.service"
+readonly GPGV="/usr/bin/gpgv"
 readonly LOCAL_ENDPOINT="http://127.0.0.1:8793/"
 readonly RUNTIME_USER="palimpsest-mcp"
 readonly VERIFY_USER="palimpsest-mcp-verify"
+readonly GITHUB_PROVENANCE_MAX_BYTES=262144
 readonly LEGACY_SOURCE_SHA="2a80981815680006f3daf7caf503a125d6299c3c"
 readonly EXPECTED_LEGACY_RUNTIME_SHA256="47d419e81ff048771acab14895a9b1e27868d7bbe14874e5cd8c1c94acfc4ed4"
-readonly EXPECTED_VERIFY_SHA256="5d86f51d91daf88f194a1ee64cb3d434e8b5a01e49f0795039863dc5d8e13e51"
+readonly EXPECTED_VERIFY_SHA256="4036220cdd7c9199244652e3b659bf19d9c6bee416611bb962f14191231b089a"
+readonly EXPECTED_GITHUB_SIGNING_KEY_SHA256="c135dfc1e3add3eb84e6119af7095dec97e0e92730a468d234f925a72bacaf74" # gitleaks:allow -- public trust-root digest
 readonly EXPECTED_SMOKE_SHA256="1e3f1c4eb6d5b8a4960aa1f55dd3a74f6df277f93fc17a42db5a0ee2ec8846f1"
 readonly EXPECTED_UNIT_SHA256="9891f7e321b718b841eba7ea3d1b0377f2e59f09a133c579688e4fd59554d4c2"
 
@@ -180,6 +185,22 @@ run_as_verify_user() {
   return "$rc"
 }
 
+receive_github_provenance() {
+  local output=$1
+  local received_bytes
+  timeout --kill-after=5s 20s \
+    head --bytes="$((GITHUB_PROVENANCE_MAX_BYTES + 1))" >"$output" \
+    || fail "could not read authenticated GitHub provenance from standard input"
+  received_bytes=$(wc -c <"$output" | tr -d '[:space:]')
+  [[ "$received_bytes" =~ ^[0-9]+$ ]] \
+    || fail "authenticated GitHub provenance size is invalid"
+  (( received_bytes > 0 )) \
+    || fail "authenticated GitHub provenance is empty"
+  (( received_bytes <= GITHUB_PROVENANCE_MAX_BYTES )) \
+    || fail "authenticated GitHub provenance exceeds the 256 KiB cap"
+  chmod 0444 "$output"
+}
+
 cleanup() {
   local rc=$?
   trap - EXIT
@@ -214,10 +235,15 @@ require_root_directory "$REPOSITORY"
 require_regular_root_file "$TARGET_FILE"
 require_regular_root_file "$CONTROLLER"
 require_regular_root_file "$VERIFY_RELEASE"
+require_regular_root_file "$GITHUB_SIGNING_KEY"
 require_regular_root_file "$SMOKE"
 require_regular_root_file "$UNIT_FILE"
+require_regular_root_file "$GPGV"
 [[ "$(sha256sum "$VERIFY_RELEASE" | awk '{print $1}')" = \
   "$EXPECTED_VERIFY_SHA256" ]] || fail "installed release verifier drifted"
+[[ "$(sha256sum "$GITHUB_SIGNING_KEY" | awk '{print $1}')" = \
+  "$EXPECTED_GITHUB_SIGNING_KEY_SHA256" ]] \
+  || fail "installed GitHub signing key drifted"
 [[ "$(sha256sum "$SMOKE" | awk '{print $1}')" = \
   "$EXPECTED_SMOKE_SHA256" ]] || fail "installed live smoke drifted"
 [[ "$(sha256sum "$UNIT_FILE" | awk '{print $1}')" = \
@@ -268,20 +294,15 @@ actual_manifest_blob=$(git hash-object "${stage_dir}/server.json")
   || fail "staged manifest blob is not target bytes"
 
 api_json="${stage_dir}/github-commit.json"
-curl --disable --fail --silent --show-error \
-  --proto '=https' --tlsv1.2 --max-time 20 --max-filesize 262144 \
-  --header 'Accept: application/vnd.github+json' \
-  --header 'X-GitHub-Api-Version: 2022-11-28' \
-  --header 'User-Agent: palimpsest-mcp-release-controller/1' \
-  "https://api.github.com/repos/beepboop2025/palimpsest/commits/${target_sha}?per_page=1" \
-  --output "$api_json"
-chmod 0444 "$api_json"
+receive_github_provenance "$api_json"
 
 run_as_verify_user "$VERIFY_RELEASE" \
   --module "${stage_dir}/palimpsest_mcp.py" \
   --manifest "${stage_dir}/server.json" \
   --target-sha "$target_sha" \
-  --github-commit-json "$api_json"
+  --github-commit-json "$api_json" \
+  --github-signing-key "$GITHUB_SIGNING_KEY" \
+  --gpgv "$GPGV"
 
 service_exec=$(systemctl show --property=ExecStart --value "$SERVICE")
 [[ "$service_exec" == *"$TARGET_FILE"* ]] \
