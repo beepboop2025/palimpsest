@@ -11,6 +11,18 @@ CATALOG_PATH = ROOT / ".well-known" / "ai-catalog.json"
 SERVER_VERSION = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))[
     "version"
 ]
+MCP_RELEASE_SHA = "135d8f332d7eaeb48f793ecaa47ee1e13708c1ac"
+MCP_DEPLOY_RUN_URL = (
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32734455304"
+)
+MCP_REGISTRY_RUN_URL = (
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32735073973"
+)
+MCP_REGISTRY_VERSION_URL = (
+    "https://registry.modelcontextprotocol.io/v0.1/servers/"
+    "io.github.beepboop2025%2Fpalimpsest/versions/1.9.0"
+)
+MCP_REGISTRY_PUBLISHED_AT = "2026-08-24T13:51:23.905708Z"
 PAGES = {
     "china/money-markets/index.html": ("https://palimpsest.info/china/money-markets/"),
     "china/capital-markets/index.html": (
@@ -67,7 +79,16 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     )
     assert mcp["data"]["version"] == SERVER_VERSION
     assert mcp["version"] == SERVER_VERSION
-    assert mcp["metadata"]["deploymentBoundary"] == "release-bound"
+    assert mcp["updatedAt"] == MCP_REGISTRY_PUBLISHED_AT
+    assert mcp["metadata"]["deploymentBoundary"] == "production-verified"
+    assert mcp["metadata"]["deploymentCommit"] == MCP_RELEASE_SHA
+    assert mcp["metadata"]["deploymentReceipt"] == MCP_DEPLOY_RUN_URL
+    assert mcp["metadata"]["registryReceipt"] == MCP_REGISTRY_RUN_URL
+    assert mcp["metadata"]["registryVersion"] == MCP_REGISTRY_VERSION_URL
+    assert mcp["metadata"]["registryPublishedAt"] == MCP_REGISTRY_PUBLISHED_AT
+    assert "deployed and independently re-probed" in mcp["metadata"][
+        "deploymentNote"
+    ]
     assert "serverInfo.version" in mcp["metadata"]["liveVersionAuthority"]
     assert mcp["metadata"]["publicToolCount"] == 6
     assert mcp["capabilities"] == [
@@ -123,6 +144,8 @@ def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
 
     assert f"Agentmap: {catalog_url}" in robots
     assert catalog_url in llms
+    assert f"MCP server v{SERVER_VERSION}" in llms
+    assert "MCP server v1.6.0" not in llms
     assert 'type="application/ai-catalog+json"' in developers
     assert 'href="/.well-known/ai-catalog.json"' in developers
     assert f"release-bound MCP <code>{SERVER_VERSION}</code>" in developers
