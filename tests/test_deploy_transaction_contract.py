@@ -122,6 +122,11 @@ def test_common_crawl_storage_and_tools_preflight_before_receipt_change() -> Non
     required_preflights = (
         "findmnt -n -o TARGET",
         'test "$COMMON_CRAWL_MOUNT_TARGET" != "/"',
+        'test ! -L "$COMMON_CRAWL_DERIVED_SOURCE"',
+        'test "$(stat -c \'%u:%g\' "$COMMON_CRAWL_DERIVED_SOURCE")" = "10001:10001"',
+        'test ! -L "$COMMON_CRAWL_FEATURE_EXPORT"',
+        "COMMON_CRAWL_FEATURE_MAX_BYTES=16777216",
+        "Common Crawl feature export exceeds row cap",
         'test "$(/usr/local/bin/cc-downloader --version)" = "cc-downloader 1.0.1"',
         "=~ ^v1\\.5\\.5([[:space:]].*)?$ ]]",
         "/etc/palimpsest/duckdb.sha256",
@@ -130,6 +135,27 @@ def test_common_crawl_storage_and_tools_preflight_before_receipt_change() -> Non
     for marker in required_preflights:
         assert marker in transaction
         assert transaction.index(marker) < receipt_change
+
+
+def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() -> None:
+    transaction = _transaction()
+    compose_start = transaction.index("ops/docker/prod-compose up -d")
+    import_start = transaction.index(
+        "start_and_verify_oneshot palimpsest-common-crawl-import.service"
+    )
+    proof = transaction[compose_start:import_start]
+
+    assert 'ps -q worker-collectors' in proof
+    assert 'eq .Destination "/app/common-crawl-derived"' in proof
+    assert '{{.Source}}' in proof
+    assert '= "$COMMON_CRAWL_DERIVED_SOURCE"' in proof
+    assert "{{.RW}}" in proof
+    assert '= "false"' in proof
+    assert (
+        "PALIMPSEST_COMMON_CRAWL_FEATURES="
+        "/app/common-crawl-derived/common-crawl-features.jsonl"
+    ) in proof
+    assert 'test "$CONTAINER_FEATURE_SHA256" = "$HOST_FEATURE_SHA256"' in proof
 
 
 def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:

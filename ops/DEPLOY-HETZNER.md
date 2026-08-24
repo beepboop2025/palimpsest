@@ -1152,6 +1152,9 @@ EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRE
 COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_COMPATIBLE_40_HEX_SHA}"
 TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward_OR_rollback}"
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+COMMON_CRAWL_DERIVED_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE/derived"
+COMMON_CRAWL_FEATURE_EXPORT="$COMMON_CRAWL_DERIVED_SOURCE/common-crawl-features.jsonl"
+COMMON_CRAWL_FEATURE_MAX_BYTES=16777216
 NODE_BACKUP_ROOT='/home/palimpsest/backups/node'
 BACKUP_RELEASE_QUIESCE_SOURCE='ops/systemd/palimpsest-backup.release-quiesce.conf'
 BACKUP_RELEASE_QUIESCE_TARGET='/etc/systemd/system/palimpsest-backup.service.d/zz-release-quiesce.conf'
@@ -1367,6 +1370,39 @@ test -n "$COMMON_CRAWL_MOUNT_TARGET"
 test "$COMMON_CRAWL_MOUNT_TARGET" != "/"
 [[ ",$COMMON_CRAWL_MOUNT_OPTIONS," == *,rw,* ]]
 df -h "$COMMON_CRAWL_WAREHOUSE_SOURCE"
+
+# This is the sole private-to-collector bridge. Validate the atomic aggregate
+# before changing any receipt, and never substitute the lake root or one
+# bind-mounted file inode for the derived directory.
+test -d "$COMMON_CRAWL_DERIVED_SOURCE"
+test ! -L "$COMMON_CRAWL_DERIVED_SOURCE"
+test "$(realpath -e -- "$COMMON_CRAWL_DERIVED_SOURCE")" \
+  = "$COMMON_CRAWL_DERIVED_SOURCE"
+test "$(stat -c '%u:%g' "$COMMON_CRAWL_DERIVED_SOURCE")" = "10001:10001"
+test -f "$COMMON_CRAWL_FEATURE_EXPORT"
+test ! -L "$COMMON_CRAWL_FEATURE_EXPORT"
+test "$(stat -c '%u:%g' "$COMMON_CRAWL_FEATURE_EXPORT")" = "10001:10001"
+COMMON_CRAWL_FEATURE_BYTES="$(stat -c '%s' "$COMMON_CRAWL_FEATURE_EXPORT")"
+[[ "$COMMON_CRAWL_FEATURE_BYTES" =~ ^[0-9]+$ ]]
+(( COMMON_CRAWL_FEATURE_BYTES > 0 ))
+(( COMMON_CRAWL_FEATURE_BYTES <= COMMON_CRAWL_FEATURE_MAX_BYTES ))
+python3 - "$COMMON_CRAWL_FEATURE_EXPORT" <<'PY'
+import json
+import pathlib
+import sys
+
+feature_path = pathlib.Path(sys.argv[1])
+rows = 0
+with feature_path.open(encoding="utf-8") as handle:
+    for rows, line in enumerate(handle, 1):
+        if rows > 10_000:
+            raise SystemExit("Common Crawl feature export exceeds row cap")
+        value = json.loads(line)
+        if type(value) is not dict:
+            raise SystemExit("Common Crawl feature row is not an object")
+if rows == 0:
+    raise SystemExit("Common Crawl feature export is empty")
+PY
 
 test -f /usr/local/bin/cc-downloader
 test ! -L /usr/local/bin/cc-downloader
@@ -1702,6 +1738,23 @@ fi
 # exists because the first provider sync succeeded above.
 ops/docker/prod-compose up -d
 test "$(ops/docker/prod-compose port api 8000)" = "127.0.0.1:8010"
+COLLECTOR_CONTAINER_ID="$(ops/docker/prod-compose ps -q worker-collectors)"
+[[ "$COLLECTOR_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
+  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.Source}}{{end}}{{end}}')" \
+  = "$COMMON_CRAWL_DERIVED_SOURCE"
+test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
+  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.RW}}{{end}}{{end}}')" \
+  = "false"
+test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
+  '{{range .Config.Env}}{{println .}}{{end}}' | \
+  grep -Fx 'PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl')" \
+  = "PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl"
+HOST_FEATURE_SHA256="$(sha256sum "$COMMON_CRAWL_FEATURE_EXPORT" | awk '{print $1}')"
+CONTAINER_FEATURE_SHA256="$(docker exec "$COLLECTOR_CONTAINER_ID" \
+  sha256sum /app/common-crawl-derived/common-crawl-features.jsonl | \
+  awk '{print $1}')"
+test "$CONTAINER_FEATURE_SHA256" = "$HOST_FEATURE_SHA256"
 api_ready=0
 for (( api_attempt=1; api_attempt<=30; api_attempt++ )); do
   if curl --fail --silent --connect-timeout 1 --max-time 2 \

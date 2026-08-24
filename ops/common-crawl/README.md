@@ -30,6 +30,16 @@ hash) written by `refresh` / `china-join`. None of these files, and no WARC
 object, is copied into the website or git by this lane. An empty or absent
 warehouse yields `status: no_data` and the public China path abstains.
 
+The only Compose bridge out of this private lane is the `derived/`
+directory, mounted read-only and only into `worker-collectors`. The worker
+selects the single `common-crawl-features.jsonl` aggregate through
+`PALIMPSEST_COMMON_CRAWL_FEATURES`; it cannot see the inbox, SQLite
+database, WARC records, or private model outputs. The directory, rather than
+the file, is mounted because refresh publishes with an atomic rename and a
+single-file bind would remain attached to the replaced inode. The public
+`archive-news-context-latest.json` remains a bounded metadata join
+written by the collector, never a copy of the lake.
+
 The stable path is a bind mount from the separately mounted bulk Volume. The
 installer refuses a source on `/`, a symlinked source, a dirty checkout, a
 revision that differs from `/etc/palimpsest/deployed-commit`, or a new Volume
