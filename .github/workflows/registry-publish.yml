@@ -26,6 +26,7 @@ env:
   MCP_PUBLISHER_VERSION: "1.8.1"
   MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
   PUBLIC_MCP_URL: https://api.seiche.info/palimpsest/mcp
+  REGISTRY_VERSIONS_URL: https://registry.modelcontextprotocol.io/v0.1/servers/io.github.beepboop2025%2Fpalimpsest/versions
   REGISTRY_LATEST_URL: https://registry.modelcontextprotocol.io/v0.1/servers/io.github.beepboop2025%2Fpalimpsest/versions/latest
 
 jobs:
@@ -101,7 +102,95 @@ jobs:
             --timeout 20
           test -z "$(git status --porcelain)"
 
+      - name: Preflight the exact immutable Registry version
+        id: registry_preflight
+        run: |
+          set -euo pipefail
+          version=$(python3 -c \
+            'import json; print(json.load(open("server.json", encoding="utf-8"))["version"])')
+          version_json="$RUNNER_TEMP/registry-version.json"
+          version_url="${REGISTRY_VERSIONS_URL}/${version}?include_deleted=true"
+          if ! http_status=$(curl --disable --silent --show-error --location \
+            --proto '=https' --proto-redir '=https' --tlsv1.2 --max-time 20 \
+            --max-filesize 1048576 \
+            --header 'Accept: application/json' \
+            --header 'Cache-Control: no-cache' \
+            --write-out '%{http_code}' \
+            "$version_url" --output "$version_json"); then
+            echo 'could not establish exact Registry version state' >&2
+            exit 1
+          fi
+          case "$http_status" in
+            200)
+              python3 - "$version_json" <<'PY'
+              import json
+              import sys
+
+              def reject_constant(value):
+                  raise ValueError(f"non-finite JSON number: {value}")
+
+              def strict_object(pairs):
+                  result = {}
+                  for key, value in pairs:
+                      if key in result:
+                          raise ValueError(f"duplicate JSON key: {key}")
+                      result[key] = value
+                  return result
+
+              def canonical(value):
+                  return json.dumps(
+                      value,
+                      allow_nan=False,
+                      ensure_ascii=False,
+                      separators=(",", ":"),
+                      sort_keys=True,
+                  ).encode("utf-8")
+
+              with open(sys.argv[1], encoding="utf-8") as handle:
+                  registry = json.load(
+                      handle,
+                      object_pairs_hook=strict_object,
+                      parse_constant=reject_constant,
+                  )
+              with open("server.json", encoding="utf-8") as handle:
+                  manifest = json.load(
+                      handle,
+                      object_pairs_hook=strict_object,
+                      parse_constant=reject_constant,
+                  )
+              if (
+                  not isinstance(registry, dict)
+                  or canonical(registry.get("server")) != canonical(manifest)
+              ):
+                  raise SystemExit(
+                      "immutable Registry version exists with different server content"
+                  )
+              official = registry.get("_meta", {}).get(
+                  "io.modelcontextprotocol.registry/official", {}
+              )
+              if official.get("status") != "active":
+                  raise SystemExit("exact Registry version exists but is not active")
+              published_at = official.get("publishedAt")
+              if not isinstance(published_at, str) or not published_at.strip():
+                  raise SystemExit("exact Registry version has no publication timestamp")
+              PY
+              echo 'already_published=true' >>"$GITHUB_OUTPUT"
+              echo 'publication_mode=recovered-existing' >>"$GITHUB_OUTPUT"
+              ;;
+            404)
+              rm -f -- "$version_json"
+              echo 'already_published=false' >>"$GITHUB_OUTPUT"
+              echo 'publication_mode=published' >>"$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "unexpected Registry version response: HTTP $http_status" >&2
+              exit 1
+              ;;
+          esac
+          test -z "$(git status --porcelain)"
+
       - name: Install checksum-pinned mcp-publisher
+        if: steps.registry_preflight.outputs.already_published != 'true'
         run: |
           set -euo pipefail
           publisher_dir="$RUNNER_TEMP/mcp-publisher"
@@ -119,8 +208,15 @@ jobs:
           test -z "$(git status --porcelain)"
 
       - name: Authenticate by OIDC and publish exact manifest
+        if: steps.registry_preflight.outputs.already_published != 'true'
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
         run: |
           set -euo pipefail
+          timeout --kill-after=5s 120s \
+            git fetch --force --no-tags origin \
+              '+refs/heads/main:refs/remotes/origin/main'
+          test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"
           "$publisher" validate
           "$publisher" login github-oidc
           "$publisher" publish
@@ -153,6 +249,7 @@ jobs:
         env:
           TARGET_SHA: ${{ inputs.target_sha }}
           DEPLOY_RUN_ID: ${{ inputs.deploy_run_id }}
+          PUBLICATION_MODE: ${{ steps.registry_preflight.outputs.publication_mode }}
         run: |
           set -euo pipefail
           registry_json="$RUNNER_TEMP/registry-latest.json"
@@ -164,41 +261,82 @@ jobs:
           import hashlib
           import json
           import os
+          import re
           import sys
+
+          def reject_constant(value):
+              raise ValueError(f"non-finite JSON number: {value}")
+
+          def strict_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError(f"duplicate JSON key: {key}")
+                  result[key] = value
+              return result
+
+          def canonical(value):
+              return json.dumps(
+                  value,
+                  allow_nan=False,
+                  ensure_ascii=False,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              ).encode("utf-8")
 
           registry_path, receipt_path = sys.argv[1:]
           with open(registry_path, "rb") as handle:
               registry_raw = handle.read()
-          registry = json.loads(registry_raw)
+          registry = json.loads(
+              registry_raw,
+              object_pairs_hook=strict_object,
+              parse_constant=reject_constant,
+          )
           with open("server.json", encoding="utf-8") as handle:
-              manifest = json.load(handle)
-          if registry.get("server") != manifest:
+              manifest = json.load(
+                  handle,
+                  object_pairs_hook=strict_object,
+                  parse_constant=reject_constant,
+              )
+          if canonical(registry.get("server")) != canonical(manifest):
               raise SystemExit("Registry response drifted after verification")
           official = registry.get("_meta", {}).get(
               "io.modelcontextprotocol.registry/official", {}
           )
           if official.get("status") != "active" or official.get("isLatest") is not True:
               raise SystemExit("Registry response is not active and latest")
-          if not isinstance(official.get("publishedAt"), str):
+          published_at = official.get("publishedAt")
+          if not isinstance(published_at, str) or not published_at.strip():
               raise SystemExit("Registry response has no publication timestamp")
           deploy_run_id = int(os.environ["DEPLOY_RUN_ID"])
           if deploy_run_id < 1:
               raise SystemExit("deployment run ID is invalid")
+          workflow_run_id = int(os.environ["GITHUB_RUN_ID"])
+          workflow_run_attempt = int(os.environ["GITHUB_RUN_ATTEMPT"])
+          if workflow_run_id < 1 or workflow_run_attempt < 1:
+              raise SystemExit("Registry workflow run identity is invalid")
+          target_sha = os.environ["TARGET_SHA"]
+          if re.fullmatch(r"[0-9a-f]{40}", target_sha) is None:
+              raise SystemExit("target SHA is invalid")
+          publication_mode = os.environ["PUBLICATION_MODE"]
+          if publication_mode not in {"published", "recovered-existing"}:
+              raise SystemExit("Registry publication mode is invalid")
           receipt = {
-              "schema": "palimpsest.mcp-registry-publication-receipt.v1",
+              "schema": "palimpsest.mcp-registry-publication-receipt.v2",
               "repository": os.environ["GITHUB_REPOSITORY"],
               "workflow": ".github/workflows/registry-publish.yml",
-              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
-              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
-              "target_sha": os.environ["TARGET_SHA"],
+              "workflow_run_id": workflow_run_id,
+              "workflow_run_attempt": workflow_run_attempt,
+              "target_sha": target_sha,
               "server_name": manifest["name"],
               "server_version": manifest["version"],
               "deploy_run_id": deploy_run_id,
+              "publication_mode": publication_mode,
               "registry_latest_url": os.environ["REGISTRY_LATEST_URL"],
               "registry_response_sha256": hashlib.sha256(registry_raw).hexdigest(),
               "official_status": official["status"],
               "official_is_latest": official["isLatest"],
-              "published_at": official.get("publishedAt"),
+              "published_at": published_at,
           }
           with open(receipt_path, "w", encoding="utf-8") as handle:
               json.dump(receipt, handle, sort_keys=True, separators=(",", ":"))

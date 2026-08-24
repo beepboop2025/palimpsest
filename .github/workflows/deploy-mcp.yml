@@ -48,11 +48,12 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$GITHUB_REF" = refs/heads/main
           test "$(git rev-parse HEAD)" = "$TARGET_SHA"
           timeout --kill-after=5s 120s \
             git fetch --force --no-tags origin \
               '+refs/heads/main:refs/remotes/origin/main'
-          git merge-base --is-ancestor "$TARGET_SHA" refs/remotes/origin/main
+          test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"
           github_json="$RUNNER_TEMP/github-commit.json"
           curl --disable --fail --silent --show-error \
             --proto '=https' --tlsv1.2 --max-time 20 --max-filesize 262144 \
@@ -155,6 +156,10 @@ jobs:
             rmdir "$RUNNER_TEMP/palimpsest-ssh" 2>/dev/null || true
           }
           trap cleanup_ssh EXIT
+          timeout --kill-after=5s 120s \
+            git fetch --force --no-tags origin \
+              '+refs/heads/main:refs/remotes/origin/main'
+          test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"
           ssh -p "$SSH_PORT" \
             -i "$RUNNER_TEMP/palimpsest-ssh/key" \
             -o BatchMode=yes \
