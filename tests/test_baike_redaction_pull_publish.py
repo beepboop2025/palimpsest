@@ -213,12 +213,13 @@ def test_all_error_fixture_run_does_not_stamp_a_fresh_observation_time(publish, 
     assert len(_history(tmp_path)) == 1
 
 
-def test_erasure_workflow_contains_no_baike_activation_knob():
+def test_erasure_workflow_contains_no_baike_writer_or_activation_knob():
     workflow = (ROOT / ".github" / "workflows" / "erasure-refresh.yml").read_text(
         encoding="utf-8")
     assert "PALIMPSEST_PROXY" not in workflow
     assert "PALIMPSEST_LIVE" not in workflow
-    assert "permanently inert pending an authorized source path" in workflow
+    assert "scripts.baike_redaction_pull" not in workflow
+    assert "scripts.baike_public_snapshot_pull" not in workflow
 
 
 def test_deployment_docs_and_container_do_not_offer_a_baike_proxy_path():
