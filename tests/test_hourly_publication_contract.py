@@ -1,5 +1,6 @@
 """The public observatory must produce and display a coherent hourly edition."""
 
+import ast
 import json
 from pathlib import Path
 
@@ -14,12 +15,15 @@ def _read(relative: str) -> str:
 def test_public_edition_is_hourly_and_keeps_a_bounded_board_queue() -> None:
     workflow = _read(".github/workflows/board-alarm-refresh.yml")
     assert 'cron: "53 * * * *"' in workflow
-    assert "group: board-derived-graph-publish" in workflow
-    assert "queue: max" in workflow
-    assert "cancel-in-progress: true" not in workflow
+    assert "publication_graph_dirty" in workflow
+    assert "group: derived-graph-publish" in workflow
+    assert "cancel-in-progress: false" in workflow
+    assert "queue:" not in workflow
     assert "timeout-minutes: 90" in workflow
     assert "Validate the complete public edition" in workflow
     assert "tests/test_publication_contract.py" in workflow
+    assert "Recertify an unchanged complete publication" in workflow
+    assert "if: steps.candidate.outputs.changed == 'false'" in workflow
 
 
 def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
@@ -46,7 +50,7 @@ def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
         "python scripts/seal_readings.py",
         "python scripts/verify_public_surface.py",
         "git add -A -- readings china news datapackage.json weekly-situation.html",
-        "python scripts/push_data_commit.py --base-locked",
+        "python scripts/push_data_commit.py --base-locked --contract-scope complete",
     )
     positions = [workflow.index(command) for command in ordered]
     assert positions == sorted(positions)
@@ -66,6 +70,19 @@ def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
     assert 'cmp "$RUNNER_TEMP/catalog-before.sha256"' in workflow
     assert "python scripts/seal_readings.py --check" in workflow
     assert "--rebuild-module" not in workflow
+
+
+def test_board_dirty_signal_is_reachable_latest_main_and_closes_without_a_loop() -> (
+    None
+):
+    workflow = _read(".github/workflows/board-alarm-refresh.yml")
+
+    assert "Validate the source-dirty request" in workflow
+    assert 'git merge-base --is-ancestor "$DIRTY_SHA" origin/main' in workflow
+    assert "git switch --detach origin/main" in workflow
+    assert "Recertify an unchanged complete publication" in workflow
+    assert workflow.count("--scope complete") == 2
+    assert workflow.count("--contract-scope complete") == 1
 
 
 def test_board_retry_is_latest_main_scoped_and_only_retries_a_base_race() -> None:
@@ -137,7 +154,20 @@ def test_every_hourly_artifact_declares_the_same_cadence_to_readers() -> None:
     ):
         assert by_id[dataset_id]["cadence"] == "PT1H"
 
-    osint = _read("scripts/build_osint_china.py")
+    osint = ast.parse(_read("scripts/build_osint_china.py"))
+    declarations = {
+        node.args[0].value: (
+            ast.literal_eval(node.args[4]),
+            ast.literal_eval(node.args[5]),
+        )
+        for node in ast.walk(osint)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_s"
+        and len(node.args) >= 6
+        and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, str)
+    }
     for signal_id in (
         "board-alarm",
         "coverage-guard",
@@ -146,9 +176,7 @@ def test_every_hourly_artifact_declares_the_same_cadence_to_readers() -> None:
         "weibo-hotsearch",
         "silence-index",
     ):
-        assert f'_s("{signal_id}"' in osint
-        declaration = osint.split(f'_s("{signal_id}"', 1)[1].split("\n", 1)[0]
-        assert ", 1, 3," in declaration
+        assert declarations[signal_id] == (1, 3)
 
     fleet = _read("core/collector_fleet.py")
     assert (

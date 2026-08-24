@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>China economy API and MCP: source-bound public evidence · Palimpsest</title>
+<meta name="description" content="Use Palimpsest's keyless China economy API, JSONL observation ledger and deployed MCP 1.8.1 tools with release clocks, collection clocks, revisions and abstentions intact.">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info/china-economy-api/">
+<link rel="service-desc" type="application/vnd.oai.openapi+json" href="https://palimpsest.info/openapi.json">
+<link rel="alternate" type="application/ai-catalog+json" href="https://palimpsest.info/.well-known/ai-catalog.json" title="Palimpsest AI catalog">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/assets/china-discovery.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="China economy API and MCP with source clocks">
+<meta property="og:description" content="Keyless public evidence endpoints that retain source, release, collection, revision and abstention context.">
+<meta property="og:url" content="https://palimpsest.info/china-economy-api/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://palimpsest.info/china-economy-api/#page",
+      "url": "https://palimpsest.info/china-economy-api/",
+      "name": "China economy API and MCP: source-bound public evidence",
+      "description": "Developer guide to Palimpsest's keyless REST artifacts, OpenAPI contract and deployed MCP 1.8.1 server for bounded China economic evidence.",
+      "dateModified": "2026-08-24",
+      "isPartOf": {"@type": "WebSite", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+      "mainEntity": [{"@id": "https://palimpsest.info/china-economy-api/#rest"}, {"@id": "https://palimpsest.info/china-economy-api/#mcp"}]
+    },
+    {
+      "@type": "WebAPI",
+      "@id": "https://palimpsest.info/china-economy-api/#rest",
+      "name": "Palimpsest Public Readings API",
+      "url": "https://palimpsest.info/openapi.json",
+      "documentation": "https://palimpsest.info/developers.html",
+      "description": "Read-only public artifacts for the China Observatory index, economic pulse, observation manifest and JSONL ledger, and named-series forecast-status evidence.",
+      "termsOfService": "https://palimpsest.info/data.html#rights"
+    },
+    {
+      "@type": "Service",
+      "@id": "https://palimpsest.info/china-economy-api/#mcp",
+      "name": "Palimpsest MCP 1.8.1",
+      "serviceType": "Model Context Protocol streamable HTTP",
+      "url": "https://api.seiche.info/palimpsest/mcp",
+      "description": "Deployed public read-only MCP boundary with six tools, including bounded point-in-time China economic observation queries.",
+      "isRelatedTo": {"@type": "Dataset", "url": "https://palimpsest.info/readings/china-econ-observations-latest.json"}
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://palimpsest.info/china-economy-api/#faq",
+      "mainEntity": [
+        {"@type": "Question", "name": "Is the Palimpsest China economy API free and keyless?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The published REST artifacts and the six deployed MCP 1.8.1 tools are public and read-only, with no API token required."}},
+        {"@type": "Question", "name": "What is the difference between the REST API and MCP?", "acceptedAnswer": {"@type": "Answer", "text": "REST exposes stable published files and schemas. MCP adds bounded tool discovery and point-in-time filtering over the fixed public ledger. Both return evidence; neither supplies a validated economy-wide forecast."}},
+        {"@type": "Question", "name": "Can an agent treat missing or stale China data as zero?", "acceptedAnswer": {"@type": "Answer", "text": "No. Missing, stale, blocked, planned and not-collected states are distinct. Source silence is not economic contraction or calm. At the 24 August 2026 snapshot the broad composite was warming up; re-read the current index before citing status."}},
+        {"@type": "Question", "name": "Which product should handle a broader money or capital-market question?", "acceptedAnswer": {"@type": "Answer", "text": "Use Palimpsest for source-bound China evidence; Seiche for system funding and money or macro-capital transmission; LiquiLens for institution risk; and Undertow for market-exit liquidity."}}
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body class="cd-page">
+<a class="cd-skip" href="#main">Skip to content</a>
+<nav class="cd-nav" aria-label="Primary"><div class="cd-nav__inner">
+  <a class="cd-brand" href="/">PALIMPSEST</a>
+  <a href="/china/">China Observatory</a>
+  <a href="/china/money-markets/">Money markets</a>
+  <a href="/china/capital-markets/">Capital-market evidence</a>
+  <a href="/developers.html">Developers</a>
+</div></nav>
+<main class="cd-main" id="main">
+  <header class="cd-hero">
+    <p class="cd-kicker">Public REST · deployed MCP 1.8.1 · no key</p>
+    <h1>A China economy API that can still say “not enough evidence.”</h1>
+    <p class="cd-lede">Palimpsest exposes source-bound observations and evidence state, not a magic macro score. The public files and six deployed MCP tools retain provenance, knowledge clocks, revisions, source coverage and explicit abstentions.</p>
+    <div class="cd-actions">
+      <a class="cd-btn" href="/openapi.json">Import OpenAPI</a>
+      <a class="cd-btn cd-btn--ghost" href="/.well-known/ai-catalog.json">Inspect AI catalog</a>
+      <a class="cd-btn cd-btn--ghost" href="/developers.html">Full developer guide</a>
+    </div>
+  </header>
+
+  <aside class="cd-alert" aria-label="Forecast and coverage status">
+    <strong>No validated broad China-economy forecast is exposed.</strong>
+    At the 24 August 2026 publication snapshot, the China Observatory remained <code>warming_up</code> and the named-series forecast artifact had zero promoted champions. Re-read both current artifacts before citing their status; agents must preserve an abstention rather than generate a direction from thin coverage.
+  </aside>
+
+  <section class="cd-section" aria-labelledby="choose">
+    <p class="cd-kicker">Choose the smallest sufficient surface</p>
+    <h2 id="choose">REST for exact artifacts; MCP for bounded questions</h2>
+    <div class="cd-grid">
+      <article class="cd-card"><p class="cd-label">Static REST</p><h3>Archive and reproduce</h3><p>Fetch immutable-format JSON or JSONL, validate it against published schemas, and retain exact bytes for your research record.</p></article>
+      <article class="cd-card"><p class="cd-label">MCP 1.8.1</p><h3>Discover and filter</h3><p>Let an agent list readings, fetch one bounded signal, inspect evidence desks or query the fixed economic ledger without accepting caller-supplied source URLs.</p></article>
+    </div>
+  </section>
+
+  <section class="cd-section" aria-labelledby="rest-example">
+    <p class="cd-kicker">REST quickstart</p>
+    <h2 id="rest-example">Start from the machine index</h2>
+    <pre><code>curl -sS https://palimpsest.info/readings/china-index-latest.json \
+  | python3 -m json.tool</code></pre>
+    <p>The index joins current desks, source states, release monitors, evidence distributions, forecast status and readiness gates without converting them into a true-GDP estimate or causal story.</p>
+    <table class="cd-table">
+      <thead><tr><th>Artifact</th><th>Use it for</th><th>Boundary</th></tr></thead>
+      <tbody>
+        <tr><th scope="row"><a href="/readings/china-index-latest.json">China index</a></th><td>Coverage, source states, releases, current desk metrics and readiness</td><td>No broad composite while gates fail</td></tr>
+        <tr><th scope="row"><a href="/readings/china-econ-observations-latest.json">Observation manifest</a></th><td>Exact JSONL digest, record count, series and clock coverage</td><td>Current rows are the named CFETS family, not the entire registry</td></tr>
+        <tr><th scope="row"><a href="/readings/china-econ-observations.jsonl">Observation ledger</a></th><td>Point-in-time aggregate rows with revisions and provenance</td><td>Publisher rights remain attached</td></tr>
+        <tr><th scope="row"><a href="/readings/stock-connect-latest.json">Stock Connect</a></th><td>Official aggregate cross-border turnover and southbound flow</td><td>No northbound net estimate; no general capital-market coverage</td></tr>
+        <tr><th scope="row"><a href="/readings/china-econ-forecast-latest.json">Forecast status</a></th><td>Pseudo-real-time backtest gates and abstentions</td><td>Read the artifact; the 24 August snapshot had zero promoted targets</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="cd-section" aria-labelledby="mcp-example">
+    <p class="cd-kicker">MCP quickstart</p>
+    <h2 id="mcp-example">Query one series as known at one time</h2>
+    <pre><code>curl -sS https://api.seiche.info/palimpsest/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":1,
+    "method":"tools/call",
+    "params":{
+      "name":"query_economic_observations",
+      "arguments":{
+        "series_id":"cn.cfets.shibor_on",
+        "as_of":"2026-08-21T23:59:59Z",
+        "revision_view":"latest-as-of",
+        "limit":20
+      }
+    }
+  }'</code></pre>
+    <p>The tool verifies the fixed manifest’s exact JSONL bytes, digest and record count before parsing. The <code>as_of</code> cutoff applies to both <code>released_at</code> and <code>collected_at</code>, preventing a later-known vintage from leaking into an earlier question.</p>
+    <p class="cd-note">Checksum verification establishes consistency with the manifest, not publisher identity. Preserve the row’s evidence URL and source ID.</p>
+  </section>
+
+  <section class="cd-section" aria-labelledby="clocks">
+    <p class="cd-kicker">Interpretation contract</p>
+    <h2 id="clocks">Keep scope, clocks and abstention in the answer</h2>
+    <div class="cd-grid">
+      <article class="cd-card"><h3>Economic period</h3><p>What day or interval the observation describes. This is not the collection time.</p></article>
+      <article class="cd-card"><h3>Release clock</h3><p>When a vintage became available. If an exact timestamp is absent, metadata states the conservative substitution.</p></article>
+      <article class="cd-card"><h3>Collection clock</h3><p>When Palimpsest knew the vintage. Point-in-time analysis must respect this clock too.</p></article>
+      <article class="cd-card"><h3>Revision view</h3><p><code>latest-as-of</code> selects the newest vintage knowable by the cutoff, while <code>all</code> retains every visible revision.</p></article>
+      <article class="cd-card"><h3>Coverage state</h3><p>Live, observed, adapter-ready, planned, blocked and out-of-scope are not interchangeable.</p></article>
+      <article class="cd-card"><h3>Forecast state</h3><p><code>warming_up</code> is an abstention. It is not a weak directional signal.</p></article>
+    </div>
+  </section>
+
+  <section class="cd-section" aria-labelledby="rights">
+    <p class="cd-kicker">Rights and safe reuse</p>
+    <h2 id="rights">Public access does not erase source terms</h2>
+    <p>Palimpsest software, schemas and original metadata are MIT-licensed. Source observations retain publisher rights and attribution requirements. Some registered sources are manual, licensed, blocked or out of scope; the API does not imply they have been collected or can be redistributed. Never recruit respondents in China, bypass access controls, or infer restricted microdata from public aggregates.</p>
+    <p><a href="/data.html#rights">Read the dataset-by-dataset rights ledger</a> · <a href="/china/sources/">Inspect source implementation states</a></p>
+  </section>
+
+  <section class="cd-section" aria-labelledby="routing">
+    <p class="cd-kicker">Fleet router</p>
+    <h2 id="routing">One agent entry point, four evidence roles</h2>
+    <div class="cd-route"><strong>Palimpsest</strong><span>China source evidence, revisions, economic-period/release/collection clocks, censorship measurement and explicit evidence gaps.</span></div>
+    <div class="cd-route"><strong>Seiche</strong><span>System funding stress and money/FX/macro-capital transmission. Do not import Palimpsest observations into a Seiche composite without its validation gate.</span></div>
+    <div class="cd-route"><strong>LiquiLens</strong><span>Institution-level bank and NBFC risk, supervisory evidence and construction-PIT eligibility boundaries.</span></div>
+    <div class="cd-route"><strong>Undertow</strong><span>Exit liquidity: market depth, slippage, venue concentration and unwind conditions.</span></div>
+    <p><a href="https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence">Install or inspect the canonical Financial Evidence Agent Skill</a>.</p>
+  </section>
+
+  <section class="cd-section cd-faq" aria-labelledby="faq">
+    <p class="cd-kicker">FAQ</p>
+    <h2 id="faq">Operational questions</h2>
+    <details open><summary>Is the Palimpsest China economy API free and keyless?</summary><p>Yes. The published REST artifacts and the six deployed MCP 1.8.1 tools are public and read-only, with no API token required.</p></details>
+    <details><summary>What is the difference between the REST API and MCP?</summary><p>REST exposes stable published files and schemas. MCP adds bounded tool discovery and point-in-time filtering over the fixed public ledger. Both return evidence; neither supplies a validated economy-wide forecast.</p></details>
+    <details><summary>Can an agent treat missing or stale China data as zero?</summary><p>No. Missing, stale, blocked, planned and not-collected states are distinct. Source silence is not economic contraction or calm. At the 24 August 2026 snapshot the broad composite was <code>warming_up</code>; re-read the current index before citing status.</p></details>
+    <details><summary>Which product should handle a broader money or capital-market question?</summary><p>Use Palimpsest for source-bound China evidence; Seiche for system funding and money or macro-capital transmission; LiquiLens for institution risk; and Undertow for market-exit liquidity.</p></details>
+  </section>
+
+  <footer class="cd-footer">The machine artifacts are authoritative. Cite their current timestamps, source fields, scope and limitations alongside any derived claim.</footer>
+</main>
+</body>
+</html>

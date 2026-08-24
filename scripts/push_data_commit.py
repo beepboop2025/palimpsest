@@ -28,6 +28,8 @@ MAX_PUSH_ATTEMPTS = 8
 MAX_RETRY_DELAY_SECONDS = 25.0
 BASE_ADVANCED_EXIT = 75
 CONTRACT_DISPATCH_EXIT = 76
+CONTRACT_SCOPES = ("source", "complete")
+MAX_CONTRACT_TRANSACTION_ATTEMPTS = 3
 MODULE_RE = re.compile(r"scripts\.[a-z][a-z0-9_]*\Z")
 DISPATCH_HELPER = ROOT / "scripts" / "dispatch_publication_contract.py"
 CATALOG_CLOSURE_PATHS = (
@@ -92,6 +94,35 @@ def _run_contract_dispatch(repo: Path, *arguments: str) -> None:
         raise error_type(
             f"publication contract dispatch failed with {completed.returncode}"
         )
+
+
+def _run_contract_transaction(
+    repo: Path,
+    *,
+    scope: str,
+    revision: str,
+    attempts: int = MAX_CONTRACT_TRANSACTION_ATTEMPTS,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> None:
+    """Replay the exact-SHA dispatch transaction after a partial failure."""
+    if scope not in CONTRACT_SCOPES:
+        raise PublishError("publication contract scope is outside the closed protocol")
+    if attempts < 1 or attempts > MAX_CONTRACT_TRANSACTION_ATTEMPTS:
+        raise PublishError("contract transaction attempt count is outside the bound")
+    for attempt in range(1, attempts + 1):
+        try:
+            _run_contract_dispatch(repo, "--scope", scope, revision)
+            return
+        except ContractDispatchError:
+            if attempt == attempts:
+                raise
+            delay = float(attempt * 2)
+            print(
+                "publication contract transaction was incomplete; "
+                f"replaying the exact SHA in {delay:g}s",
+                file=sys.stderr,
+            )
+            sleeper(delay)
 
 
 def _run_python(repo: Path, *arguments: str) -> None:
@@ -587,6 +618,12 @@ def _arguments() -> argparse.Namespace:
         action="store_true",
         help="refuse to rebase derived output; require the caller to rebuild it",
     )
+    parser.add_argument(
+        "--contract-scope",
+        choices=CONTRACT_SCOPES,
+        default="source",
+        help="contract scope after push; ordinary source publishers default to source",
+    )
     return parser.parse_args()
 
 
@@ -606,7 +643,7 @@ def main() -> int:
         candidate_check = (
             _module_checker(arguments.check_module) if arguments.check_module else None
         )
-        published = publish(
+        publish(
             rebuild=rebuild,
             rebuild_paths=rebuild_paths,
             input_paths=arguments.input_path,
@@ -614,8 +651,15 @@ def main() -> int:
             publication_closure=_publication_closure,
             base_locked=arguments.base_locked,
         )
-        if published:
-            _run_contract_dispatch(ROOT, _capture(ROOT, "rev-parse", "HEAD"))
+        # ``publish`` returning normally proves either that this process received
+        # the push acknowledgement or that a fetch reconciled the candidate as
+        # already reachable from main.  Both outcomes need the explicit contract
+        # event because GITHUB_TOKEN pushes do not create an ordinary push run.
+        _run_contract_transaction(
+            ROOT,
+            scope=arguments.contract_scope,
+            revision=_capture(ROOT, "rev-parse", "HEAD"),
+        )
     except BaseAdvancedError as error:
         print(f"data publication deferred: {error}", file=sys.stderr)
         return BASE_ADVANCED_EXIT

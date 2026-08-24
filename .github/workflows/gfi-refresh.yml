@@ -121,8 +121,9 @@ jobs:
             tests/test_eval_journal_renderer.py
 
       - name: Read the public surface before pushing it
-        # This repository is served in full by Pages, so the push below is the publication
-        # act and this is the last point at which a match can still be stopped. The test
+        # The push below advances auditable Git state; Pages deploys only an exact
+        # SHA after its complete-graph contract passes, so this is the pre-push
+        # boundary and this is the last point at which a match can still be stopped. The test
         # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
         # the exact accepted SHA because action-token pushes emit no ordinary push event.
         # Without the rule list configured this reports and
@@ -187,7 +188,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope complete
           publish_rc=$?
           set -e
           printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
@@ -208,7 +209,7 @@ jobs:
           steps.push_attempt.outputs.exit_code == '76'
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
-        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+        run: python scripts/dispatch_publication_contract.py --scope complete "$(git rev-parse HEAD)"
 
       - name: Reseal the measured bytes after a publication race
         if: steps.push_attempt.outputs.exit_code == '75'
@@ -324,7 +325,7 @@ jobs:
             fi
             git commit -C "$measurement_commit"
             set +e
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope complete
             publish_rc=$?
             set -e
             case "$publish_rc" in
@@ -332,7 +333,7 @@ jobs:
               75) sleep $((attempt * 5)) ;;
               76)
                 PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
-                  python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+                  python scripts/dispatch_publication_contract.py --scope complete "$(git rev-parse HEAD)"
                 exit 0
                 ;;
               *) exit "$publish_rc" ;;

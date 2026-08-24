@@ -14,6 +14,7 @@ anyway. A republished null is honest; a manufactured 0 is not.
 Offline: BaikeRedactionWatch is replaced wholesale, so no fetch, no rate ceiling
 sleep, and nothing but the writer runs.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,16 +37,21 @@ def _observation(*, comparable: bool, forked: bool) -> dict:
     state-side text to diff the open record against.
     """
     if not comparable:
-        return {"status": "partial",
-                "baike": {"present": False, "interstitial": "fetch_failed"},
-                "wiki": {"present": True},
-                "divergences": []}
-    fork = types.SimpleNamespace(kind=pull.ENCYCLOPEDIA_FORK,
-                                 detail="wiki_only_sensitive=3")
-    return {"status": "ok",
-            "baike": {"present": True, "interstitial": ""},
+        return {
+            "status": "partial",
+            "baike": {"present": False, "interstitial": "fetch_failed"},
             "wiki": {"present": True},
-            "divergences": [fork] if forked else []}
+            "divergences": [],
+        }
+    fork = types.SimpleNamespace(
+        kind=pull.ENCYCLOPEDIA_FORK, detail="wiki_only_sensitive=3"
+    )
+    return {
+        "status": "ok",
+        "baike": {"present": True, "interstitial": ""},
+        "wiki": {"present": True},
+        "divergences": [fork] if forked else [],
+    }
 
 
 @pytest.fixture
@@ -57,8 +63,10 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "HIST", str(tmp_path / "baike-redaction-history.jsonl"))
 
     def run(comparable=10, forked=9):
-        rows = [_observation(comparable=i < comparable, forked=i < forked)
-                for i in range(len(pull.ENTITIES))]
+        rows = [
+            _observation(comparable=i < comparable, forked=i < forked)
+            for i in range(len(pull.ENTITIES))
+        ]
 
         class _Watch:
             def __init__(self, **kw):
@@ -96,7 +104,8 @@ def test_a_repeated_finding_still_refreshes_the_observation_time(publish):
     assert first["rewrite_index"] == 90.0
     assert second["rewrite_index"] == first["rewrite_index"]
     assert second["generated_at"] > first["generated_at"], (
-        "an unchanged answer must still publish this round's observation time")
+        "an unchanged answer must still publish this round's observation time"
+    )
 
 
 def test_a_repeated_finding_does_not_move_last_changed_at(publish):
@@ -194,7 +203,9 @@ def test_disabled_round_does_not_stamp_a_fresh_observation_time(publish, monkeyp
     assert len(_history(tmp_path)) == 1
 
 
-def test_all_error_fixture_run_does_not_stamp_a_fresh_observation_time(publish, monkeypatch):
+def test_all_error_fixture_run_does_not_stamp_a_fresh_observation_time(
+    publish, monkeypatch
+):
     """An all-error run has no observation evidence and must leave the last reading intact."""
     run, tmp_path = publish
     first = run(comparable=0, forked=0)
@@ -213,26 +224,32 @@ def test_all_error_fixture_run_does_not_stamp_a_fresh_observation_time(publish, 
     assert len(_history(tmp_path)) == 1
 
 
-def test_erasure_workflow_contains_no_baike_activation_knob():
+def test_erasure_workflow_contains_no_baike_writer_or_activation_knob():
     workflow = (ROOT / ".github" / "workflows" / "erasure-refresh.yml").read_text(
-        encoding="utf-8")
+        encoding="utf-8"
+    )
     assert "PALIMPSEST_PROXY" not in workflow
     assert "PALIMPSEST_LIVE" not in workflow
-    assert "permanently inert pending an authorized source path" in workflow
+    assert "scripts.baike_redaction_pull" not in workflow
+    assert "scripts.baike_public_snapshot_pull" not in workflow
 
 
 def test_deployment_docs_and_container_do_not_offer_a_baike_proxy_path():
     security = (ROOT / "SECURITY-HARDENING.md").read_text(encoding="utf-8")
     docker_readme = (ROOT / "ops" / "docker" / "README.md").read_text(encoding="utf-8")
-    compose = (ROOT / "ops" / "docker" / "docker-compose.yml").read_text(encoding="utf-8")
+    compose = (ROOT / "ops" / "docker" / "docker-compose.yml").read_text(
+        encoding="utf-8"
+    )
     sources = (ROOT / "docs" / "OSINT_SOURCES.md").read_text(encoding="utf-8")
 
     assert "injected by `erasure-refresh.yml`" not in security
     assert "cannot activate Baike collection" in security
     assert "does not forward `PALIMPSEST_PROXY`" in docker_readme
     assert "PALIMPSEST_PROXY" not in compose
-    assert "No environment variable or proxy argument enables Baike acquisition" in " ".join(
-        sources.split())
+    assert (
+        "No environment variable or proxy argument enables Baike acquisition"
+        in " ".join(sources.split())
+    )
 
 
 def test_public_copy_names_disabled_state_and_quarantine():
@@ -244,13 +261,21 @@ def test_public_copy_names_disabled_state_and_quarantine():
 
 
 def test_checked_in_method_v1_numeric_point_is_retained_but_quarantined():
-    rows = [json.loads(line) for line in
-            (ROOT / "readings" / "baike-redaction-history.jsonl").read_text(
-                encoding="utf-8").splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in (ROOT / "readings" / "baike-redaction-history.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+        if line.strip()
+    ]
     bad = next(row for row in rows if row.get("rewrite_index") == 90.0)
     assert bad["generated_at"] == "2026-07-30T20:25:46.041900+00:00"
-    assert bad["status"] == "ok", "the original append-only evidence row stays unchanged"
-    erratum = next(row for row in rows if row.get("event") == "historical_validation_erratum")
+    assert bad["status"] == "ok", (
+        "the original append-only evidence row stays unchanged"
+    )
+    erratum = next(
+        row for row in rows if row.get("event") == "historical_validation_erratum"
+    )
     assert erratum["invalidates_generated_at"] == bad["generated_at"]
     assert erratum["excluded_rewrite_index"] == 90.0
     assert erratum["valid_for_series"] is False

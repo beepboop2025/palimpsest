@@ -6,9 +6,9 @@ brackets a takedown or a state rewrite far tighter than live polling can, with a
 snapshot on each side. This runner walks each watched URL's timeline
 (collectors/wayback_vantage.py), emits the transitions, and writes:
 
-  readings/wayback-latest.json   — one reconstruction per URL (deletion bracket / mutation /
-                                    stable / no_baseline / unreachable), plus the DDTI observations
-                                    those transitions map to (the SAME adapter every surface uses).
+  readings/wayback-latest.json   — one reconstruction and at most one primary DDTI representative
+                                    per URL (deletion outranks mutation), plus honest counts of all
+                                    transitions omitted from that bounded publication.
   readings/wayback-history.jsonl — compact append-only time-series of the run.
 
 Honesty guards (fail loud, never a false zero):
@@ -22,6 +22,7 @@ never Chinese infrastructure, never a person. Standard-library only.
 
 Usage:  PYTHONPATH=. python -m scripts.wayback_reconstruct_pull
 """
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,11 @@ import os
 from datetime import datetime, timezone
 
 from collectors.undertext import DELETION, MUTATION, divergence_to_observation
-from collectors.wayback_vantage import WaybackVantagePoint, default_cdx_fetch
+from collectors.wayback_vantage import (
+    INVALID_RESPONSE,
+    WaybackVantagePoint,
+    default_cdx_fetch,
+)
 
 try:
     from core.governance import KillSwitch, RateCeiling
@@ -46,7 +51,7 @@ HIST = os.path.join(READINGS, "wayback-history.jsonl")
 # the reading unconditionally, so it cannot hide a method change behind an
 # unchanged number. Carried as provenance: a reader diffing two history rows
 # needs to know whether the method moved underneath them.
-METHOD_VERSION = 1
+METHOD_VERSION = 2
 
 
 # Polite by construction: the CDX API is a shared public good. One request per URL, well under 1/s.
@@ -80,29 +85,42 @@ def _reconstruction_row(rec) -> dict:
         },
     }
     if primary is not None:
-        row.update({
-            "severity": primary.severity(),
-            "latency_bracket_s": round(primary.latency_s, 1),
-            "last_live_snapshot": primary.a.raw_excerpt or None,
-            "post_event_snapshot": primary.b.raw_excerpt or None,
-            "detail": primary.detail,
-        })
-    confirmed_live_gone = bool(primary) and str(getattr(primary, "kind", "")) in {"DELETION", "deletion"}
+        row.update(
+            {
+                "severity": primary.severity(),
+                "latency_bracket_s": round(primary.latency_s, 1),
+                "last_live_snapshot": primary.a.raw_excerpt or None,
+                "post_event_snapshot": primary.b.raw_excerpt or None,
+                "detail": primary.detail,
+            }
+        )
+    confirmed_live_gone = bool(primary) and str(getattr(primary, "kind", "")) in {
+        "DELETION",
+        "deletion",
+    }
     return stamp_visibility_event(
         row,
         observer_class="archive-crawler",
         surface="wayback-cdx",
         locator=rec.url,
         visibility_state=(
-            "unavailable" if rec.note == "no_baseline" or confirmed_live_gone
-            else "visible"
+            "unknown"
+            if rec.note in {"unreachable", INVALID_RESPONSE}
+            else (
+                "unavailable"
+                if rec.note == "no_baseline" or confirmed_live_gone
+                else "visible"
+            )
         ),
         visibility_label=(
-            "archive_gap" if rec.note == "no_baseline"
+            "archive_gap"
+            if rec.note == "no_baseline"
             else ("visibility_anomaly" if confirmed_live_gone else None)
         ),
-        missingness="archive_gap" if rec.note == "no_baseline" else (
-            "coverage_gap" if rec.note == "unreachable" else None
+        missingness="archive_gap"
+        if rec.note == "no_baseline"
+        else (
+            "coverage_gap" if rec.note in {"unreachable", INVALID_RESPONSE} else None
         ),
         had_live_baseline=confirmed_live_gone,
         confirmed=False,
@@ -117,28 +135,41 @@ def main() -> None:
 
     kill = KillSwitch() if KillSwitch else None
     rate = RateCeiling(rate=_RATE_PER_SEC, capacity=_BURST) if RateCeiling else None
-    vantage = WaybackVantagePoint(fetch_cdx=default_cdx_fetch, kill_switch=kill, rate_ceiling=rate)
+    vantage = WaybackVantagePoint(
+        fetch_cdx=default_cdx_fetch, kill_switch=kill, rate_ceiling=rate
+    )
 
     rows, ddti_observations = [], []
+    transition_totals = {DELETION: 0, MUTATION: 0, "other": 0}
+    transition_published = {DELETION: 0, MUTATION: 0, "other": 0}
     reachable = 0
     for entry in watchlist:
-        rec = vantage.observe(entry["url"], term=entry.get("term", ""),
-                              domain=entry.get("domain", ""))
-        if rec.note != "unreachable":
+        rec = vantage.observe(
+            entry["url"], term=entry.get("term", ""), domain=entry.get("domain", "")
+        )
+        if rec.note not in {"unreachable", INVALID_RESPONSE}:
             reachable += 1
         rows.append(_reconstruction_row(rec))
-        for d in rec.divergences:
+        for divergence in rec.divergences:
+            kind = (
+                divergence.kind if divergence.kind in {DELETION, MUTATION} else "other"
+            )
+            transition_totals[kind] += 1
+
+        primary = rec.primary
+        if primary is not None:
             from core.china_observation import enrich_observation, serialize_observation
 
-            obs = divergence_to_observation(d)
+            obs = divergence_to_observation(primary)
             obs = enrich_observation(
                 obs,
                 text=obs.get("text") or rec.term,
                 source_url=rec.url,
-                last_live_snapshot=rec.primary.a.raw_excerpt if rec.primary is not None else None,
-                post_event_snapshot=rec.primary.b.raw_excerpt if rec.primary is not None else None,
+                last_live_snapshot=primary.a.raw_excerpt,
+                post_event_snapshot=primary.b.raw_excerpt,
             )
             from core.visibility_event import stamp_visibility_event
+
             obs = stamp_visibility_event(
                 obs,
                 observer_class="archive-crawler",
@@ -146,26 +177,47 @@ def main() -> None:
                 locator=rec.url,
             )
             ddti_observations.append(serialize_observation(obs))
+            kind = primary.kind if primary.kind in {DELETION, MUTATION} else "other"
+            transition_published[kind] += 1
 
     # Honesty guard: if the Archive was unreachable for EVERY URL, abstain — do not publish a
     # signal that is all-unknown (it would read as "nothing is being deleted", a false zero).
     if reachable == 0:
-        print("CDX unreachable for every watched URL — abstaining, not publishing a hollow signal")
+        print(
+            "CDX unavailable or invalid for every watched URL — "
+            "abstaining, not publishing a hollow signal"
+        )
         return
 
     now = datetime.now(timezone.utc)
     n_deletions = sum(1 for r in rows if r["event"] == DELETION)
     n_mutations = sum(1 for r in rows if r["event"] == MUTATION)
+    n_transitions_total = sum(transition_totals.values())
+    n_transitions_published = len(ddti_observations)
+    n_transitions_omitted = n_transitions_total - n_transitions_published
+    transition_counts = {
+        "total": transition_totals,
+        "published": transition_published,
+        "omitted": {
+            kind: transition_totals[kind] - transition_published[kind]
+            for kind in transition_totals
+        },
+    }
     out = {
         "generated_at": now.isoformat(),
         "method_version": METHOD_VERSION,
         "source": "Internet Archive Wayback CDX API (public, outside-the-wall) x Palimpsest",
         "scope": "reconstructed deletions and silent redactions of public Chinese URLs, with "
-                 "archive-witnessed timestamps; velocity reported as an explicit capture bracket",
+        "archive-witnessed timestamps; velocity reported as an explicit capture bracket; "
+        "one primary DDTI representative per URL, with all omitted transitions counted",
         "n_watched": len(rows),
         "n_reachable": reachable,
         "n_deletions": n_deletions,
         "n_mutations": n_mutations,
+        "n_transitions_total": n_transitions_total,
+        "n_transitions_published": n_transitions_published,
+        "n_transitions_omitted": n_transitions_omitted,
+        "transition_counts": transition_counts,
         "reconstructions": rows,
         "ddti_observations": ddti_observations,
     }
@@ -173,20 +225,38 @@ def main() -> None:
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=2)
     with open(HIST, "a", encoding="utf-8") as f:
-        f.write(json.dumps({
-            "generated_at": out["generated_at"],
-            "n_watched": out["n_watched"],
-            "n_reachable": out["n_reachable"],
-            "n_deletions": n_deletions,
-            "n_mutations": n_mutations,
-        }, ensure_ascii=False) + "\n")
+        f.write(
+            json.dumps(
+                {
+                    "generated_at": out["generated_at"],
+                    "method_version": out["method_version"],
+                    "n_watched": out["n_watched"],
+                    "n_reachable": out["n_reachable"],
+                    "n_deletions": n_deletions,
+                    "n_mutations": n_mutations,
+                    "n_transitions_total": n_transitions_total,
+                    "n_transitions_published": n_transitions_published,
+                    "n_transitions_omitted": n_transitions_omitted,
+                },
+                ensure_ascii=False,
+            )
+            + "\n"
+        )
 
-    print(f"=== Wayback reconstruction: {len(rows)} watched, {reachable} reachable, "
-          f"{n_deletions} deletions, {n_mutations} silent redactions ===")
+    print(
+        f"=== Wayback reconstruction: {len(rows)} watched, {reachable} reachable, "
+        f"{n_deletions} deletions, {n_mutations} silent redactions ==="
+    )
     for r in rows:
-        detail = f" bracket={r.get('latency_bracket_s')}s" if r.get("latency_bracket_s") else ""
-        print(f"  {str(r['term'])[:24]:<24} {str(r['event']):<11} "
-              f"captures={r['n_captures']:<4} note={r['note'] or '-'}{detail}")
+        detail = (
+            f" bracket={r.get('latency_bracket_s')}s"
+            if r.get("latency_bracket_s")
+            else ""
+        )
+        print(
+            f"  {str(r['term'])[:24]:<24} {str(r['event']):<11} "
+            f"captures={r['n_captures']:<4} note={r['note'] or '-'}{detail}"
+        )
 
 
 if __name__ == "__main__":

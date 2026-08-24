@@ -112,8 +112,9 @@ jobs:
             tests/test_public_surface_scrub.py
 
       - name: Read the public surface before pushing it
-        # This repository is served in full by Pages, so the push below is the publication
-        # act and this is the last point at which a match can still be stopped. The test
+        # The push below advances auditable Git state; Pages deploys only an exact
+        # SHA after its complete-graph contract passes, so this is the pre-push
+        # boundary and this is the last point at which a match can still be stopped. The test
         # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
         # the exact accepted SHA because action-token pushes emit no ordinary push event.
         # Without the rule list configured this reports and
@@ -171,5 +172,5 @@ jobs:
             for path in scripts core processors config protocol assets dashboards/assets readings; do
               guarded+=(--input-path "$path")
             done
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py "${guarded[@]}"
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --contract-scope complete "${guarded[@]}"
           fi

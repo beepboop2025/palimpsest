@@ -50,9 +50,7 @@ SCHEMA_VERSION = "palimpsest-social-spread.v1"
 JOB_NAME = "social-spread"
 RELATION = "topic-surface-only"
 SECONDARY_RELATION = "attributed-source-report-not-corroboration"
-DISCLAIMER = (
-    "Palimpsest does not confirm a person is missing, detained, or dead."
-)
+DISCLAIMER = "Palimpsest does not confirm a person is missing, detained, or dead."
 OFFICIAL_MISSING_WHISPER_REFUSAL = (
     "A whisper-only report that a Chinese official is missing is not a "
     "Palimpsest claim. Palimpsest does not confirm a person is missing, "
@@ -75,9 +73,7 @@ MATCH_TARGETS = (
 OPTIONAL_CONTEXT = ("wayback",)
 ALL_INPUTS = REQUIRED_SPREADING + OPTIONAL_SPREADING + MATCH_TARGETS + OPTIONAL_CONTEXT
 
-ALLOWED_TELEGRAM_HANDLES = frozenset(
-    channel["handle"] for channel in load_channels()
-)
+ALLOWED_TELEGRAM_HANDLES = frozenset(channel["handle"] for channel in load_channels())
 assert ALLOWED_TELEGRAM_HANDLES == {
     "DragonDenWhispers",
     "DragonDenCyber",
@@ -173,6 +169,8 @@ MAX_ROWS = 4096
 MAX_TERM = 180
 MIN_CJK = 2
 MIN_LATIN = 4
+_UNSAFE_UNICODE_CATEGORIES = frozenset({"Cc", "Cf", "Cs"})
+_UNSAFE_UNICODE_TERM_CLASS = "unsafe-unicode-source-term"
 
 _TOP_FIELDS = frozenset(
     {
@@ -235,9 +233,7 @@ BOARD_HOSTS = {
 }
 _HOST = re.compile(r"^[a-z0-9][a-z0-9.-]{0,252}$")
 _BOARD = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
-_MATCH_FIELDS = frozenset(
-    {"wire_event_ids", "official_page_last_alive", "ledger_hits"}
-)
+_MATCH_FIELDS = frozenset({"wire_event_ids", "official_page_last_alive", "ledger_hits"})
 _STORY_FIELDS = frozenset(
     {
         "headline",
@@ -301,13 +297,44 @@ def _timestamp(value: Any, path: str, *, nullable: bool = False) -> str | None:
 
 
 def _text(value: Any, path: str, *, maximum: int, empty: bool = False) -> str:
-    if type(value) is not str or len(value) > maximum or (not empty and not value.strip()):
+    if (
+        type(value) is not str
+        or len(value) > maximum
+        or (not empty and not value.strip())
+    ):
         raise SocialSpreadError(f"{path} must be bounded text")
     if value != value.strip() and not empty:
         raise SocialSpreadError(f"{path} has leading or trailing whitespace")
-    if any(unicodedata.category(character) in {"Cc", "Cf", "Cs"} for character in value):
+    if _contains_unsafe_unicode(value):
         raise SocialSpreadError(f"{path} contains unsafe Unicode")
     return value
+
+
+def _contains_unsafe_unicode(value: str) -> bool:
+    return any(
+        unicodedata.category(character) in _UNSAFE_UNICODE_CATEGORIES
+        for character in value
+    )
+
+
+def _normalize_source_term(
+    value: str,
+    quarantine_counts: dict[str, int] | None,
+) -> str | None:
+    """Normalize one public-source term only after its raw bytes are safe.
+
+    ``str.split()`` treats several Cc characters as whitespace.  Checking after
+    normalization would therefore turn a quarantined source term into an
+    apparently ordinary publishable string and erase the reason it was refused.
+    """
+
+    if _contains_unsafe_unicode(value):
+        if quarantine_counts is not None:
+            quarantine_counts[_UNSAFE_UNICODE_TERM_CLASS] = (
+                quarantine_counts.get(_UNSAFE_UNICODE_TERM_CLASS, 0) + 1
+            )
+        return None
+    return normalize_term(value)
 
 
 def normalize_term(value: str) -> str:
@@ -410,7 +437,9 @@ def _board_from_source(source_id: str, explicit: str | None = None) -> str | Non
         return name if _BOARD.fullmatch(name) else None
     if source_id in {"weibo-hotsearch", "weibo-hotsearch-terms"}:
         return "weibo"
-    if source_id.startswith("public-board-terms:") or source_id.startswith("public-hot-boards:"):
+    if source_id.startswith("public-board-terms:") or source_id.startswith(
+        "public-hot-boards:"
+    ):
         name = source_id.split(":", 1)[1].strip().casefold()
         return name if _BOARD.fullmatch(name) else None
     return None
@@ -463,8 +492,12 @@ def _add_term(
     first_seen: str | None = None,
     last_seen: str | None = None,
     url: str | None = None,
+    quarantine_counts: dict[str, int] | None = None,
 ) -> None:
-    term = normalize_term(term)
+    normalized = _normalize_source_term(term, quarantine_counts)
+    if normalized is None:
+        return
+    term = normalized
     if not term_is_usable(term):
         return
     if len(term) > MAX_TERM:
@@ -491,53 +524,84 @@ def _add_term(
         row["first_seen"] = first
     if last > row["last_seen"]:
         row["last_seen"] = last
-    if isinstance(rank, int) and rank >= 1 and (
-        row["rank"] is None or rank < row["rank"]
+    if (
+        isinstance(rank, int)
+        and rank >= 1
+        and (row["rank"] is None or rank < row["rank"])
     ):
         row["rank"] = rank
     if host and not row["host"]:
         row["host"] = host
 
 
-def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_weibo(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for row in doc.get("gazetteer_breakthroughs") or []:
         if not isinstance(row, Mapping):
             continue
         if row.get("term"):
-            _add_term(bucket, str(row["term"]), source_id="weibo-hotsearch", seen_at=generated)
+            _add_term(
+                bucket,
+                str(row["term"]),
+                source_id="weibo-hotsearch",
+                seen_at=generated,
+                quarantine_counts=quarantine_counts,
+            )
         for sample in row.get("samples") or []:
             if isinstance(sample, Mapping) and sample.get("title"):
                 date = str(sample.get("date") or "")
-                seen = f"{date}T00:00:00Z" if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else generated
+                seen = (
+                    f"{date}T00:00:00Z"
+                    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)
+                    else generated
+                )
                 _add_term(
                     bucket,
                     str(sample["title"]),
                     source_id="weibo-hotsearch",
                     seen_at=_iso_or_none(seen) or generated,
+                    quarantine_counts=quarantine_counts,
                 )
     for day in doc.get("pinned_headlines") or []:
         if not isinstance(day, Mapping):
             continue
         date = str(day.get("date") or "")
-        seen = f"{date}T00:00:00Z" if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else generated
+        seen = (
+            f"{date}T00:00:00Z"
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)
+            else generated
+        )
         for title in day.get("pinned") or []:
             _add_term(
                 bucket,
                 str(title),
                 source_id="weibo-hotsearch",
                 seen_at=_iso_or_none(seen) or generated,
+                quarantine_counts=quarantine_counts,
             )
-    watch = doc.get("withdrawal_watch") if isinstance(doc.get("withdrawal_watch"), Mapping) else {}
+    watch = (
+        doc.get("withdrawal_watch")
+        if isinstance(doc.get("withdrawal_watch"), Mapping)
+        else {}
+    )
     for candidate in watch.get("candidates") or []:
         if isinstance(candidate, Mapping) and candidate.get("title"):
             date = str(candidate.get("date") or "")
-            seen = f"{date}T00:00:00Z" if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else generated
+            seen = (
+                f"{date}T00:00:00Z"
+                if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)
+                else generated
+            )
             _add_term(
                 bucket,
                 str(candidate["title"]),
                 source_id="weibo-hotsearch",
                 seen_at=_iso_or_none(seen) or generated,
+                quarantine_counts=quarantine_counts,
             )
     for record in doc.get("observation_records") or []:
         if isinstance(record, Mapping) and record.get("title"):
@@ -545,8 +609,11 @@ def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) ->
                 bucket,
                 str(record["title"]),
                 source_id="weibo-hotsearch",
-                seen_at=_iso_or_none(record.get("first_seen") or record.get("detected_at"))
+                seen_at=_iso_or_none(
+                    record.get("first_seen") or record.get("detected_at")
+                )
                 or generated,
+                quarantine_counts=quarantine_counts,
             )
 
 
@@ -556,6 +623,7 @@ def _extract_observations(
     *,
     source_id: str,
     title_only: bool = False,
+    quarantine_counts: dict[str, int],
 ) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for record in doc.get("observations") or []:
@@ -574,58 +642,107 @@ def _extract_observations(
                 continue
             if handle:
                 row_source = f"telegram-public-channels:{handle}"
-        if record.get("title") and not str(record.get("title")).startswith("[telegram:"):
-            _add_term(bucket, str(record["title"]), source_id=row_source, seen_at=seen)
+        if record.get("title") and not str(record.get("title")).startswith(
+            "[telegram:"
+        ):
+            _add_term(
+                bucket,
+                str(record["title"]),
+                source_id=row_source,
+                seen_at=seen,
+                quarantine_counts=quarantine_counts,
+            )
         if not title_only and record.get("text"):
-            text = normalize_term(str(record["text"]))
-            first_line = text.split("。")[0].split(".")[0]
-            if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
-                _add_term(bucket, first_line, source_id=row_source, seen_at=seen)
+            text = _normalize_source_term(str(record["text"]), quarantine_counts)
+            if text is not None:
+                first_line = text.split("。")[0].split(".")[0]
+                if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
+                    _add_term(
+                        bucket,
+                        first_line,
+                        source_id=row_source,
+                        seen_at=seen,
+                        quarantine_counts=quarantine_counts,
+                    )
         if record.get("excerpt"):
-            excerpt = normalize_term(str(record["excerpt"]))
+            excerpt = _normalize_source_term(str(record["excerpt"]), quarantine_counts)
+            if excerpt is None:
+                continue
             first_line = excerpt.split("。")[0].split(".")[0]
             if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
-                _add_term(bucket, first_line, source_id=row_source, seen_at=seen)
+                _add_term(
+                    bucket,
+                    first_line,
+                    source_id=row_source,
+                    seen_at=seen,
+                    quarantine_counts=quarantine_counts,
+                )
 
 
 def _extract_social_observations(
-    doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
 ) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for record in doc.get("observations") or []:
         if not isinstance(record, Mapping):
             continue
         source = str(record.get("source_id") or "social-observations")
-        seen = _iso_or_none(record.get("published_at") or record.get("first_observed_at")) or generated
+        seen = (
+            _iso_or_none(record.get("published_at") or record.get("first_observed_at"))
+            or generated
+        )
         if record.get("title"):
-            title = normalize_term(str(record["title"]))
+            title = _normalize_source_term(str(record["title"]), quarantine_counts)
+            if title is None:
+                continue
             first = title.split("。")[0].split(".")[0]
-            _add_term(bucket, first if term_is_usable(first) else title, source_id=source, seen_at=seen)
+            _add_term(
+                bucket,
+                first if term_is_usable(first) else title,
+                source_id=source,
+                seen_at=seen,
+                quarantine_counts=quarantine_counts,
+            )
 
 
-def _extract_hot_boards(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_hot_boards(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for record in doc.get("observations") or []:
         if not isinstance(record, Mapping) or not record.get("title"):
             continue
         source = str(record.get("source") or "public-hot-boards")
-        provenance = record.get("provenance") if isinstance(record.get("provenance"), Mapping) else {}
+        provenance = (
+            record.get("provenance")
+            if isinstance(record.get("provenance"), Mapping)
+            else {}
+        )
         rank = provenance.get("rank") if isinstance(provenance, Mapping) else None
         board = None
         if isinstance(provenance, Mapping) and provenance.get("board"):
             board = str(provenance["board"])
-        first = _date_stamp(record.get("first_seen") or record.get("detected_at"), generated)
+        first = _date_stamp(
+            record.get("first_seen") or record.get("detected_at"), generated
+        )
         last = _date_stamp(record.get("last_seen"), generated) or first
         _add_term(
             bucket,
             str(record["title"]),
-            source_id=source if source.startswith("public-hot-boards") else "public-hot-boards",
+            source_id=source
+            if source.startswith("public-hot-boards")
+            else "public-hot-boards",
             seen_at=first or generated,
             board=board,
             rank=rank if isinstance(rank, int) else None,
             first_seen=first,
             last_seen=last,
             url=str(record.get("url") or record.get("source_url") or ""),
+            quarantine_counts=quarantine_counts,
         )
 
 
@@ -667,7 +784,9 @@ def _live_wire_targets(doc: Mapping[str, Any]) -> list[dict[str, Any]]:
             continue
         generated = _iso_or_none(doc.get("generated_at"))
         first = _date_stamp(
-            record.get("first_seen") or record.get("published_at") or record.get("detected_at"),
+            record.get("first_seen")
+            or record.get("published_at")
+            or record.get("detected_at"),
             generated,
         )
         last = _date_stamp(record.get("last_seen") or record.get("updated_at"), first)
@@ -713,10 +832,13 @@ def _title_targets(doc: Mapping[str, Any], *, kind: str) -> list[dict[str, Any]]
         title = normalize_term(str(record.get("title") or ""))
         if not title:
             continue
-        last_alive = _iso_or_none(
-            record.get("last_confirmed_alive") or record.get("last_seen")
-        ) or generated
-        first = _date_stamp(record.get("first_seen") or record.get("detected_at"), last_alive)
+        last_alive = (
+            _iso_or_none(record.get("last_confirmed_alive") or record.get("last_seen"))
+            or generated
+        )
+        first = _date_stamp(
+            record.get("first_seen") or record.get("detected_at"), last_alive
+        )
         targets.append(
             {
                 "kind": kind,
@@ -750,7 +872,11 @@ def _capture_window_ok(
     )
 
 
-def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_board_terms(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for row in doc.get("terms") or []:
         if not isinstance(row, Mapping) or not row.get("title"):
@@ -758,7 +884,11 @@ def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
         first = _date_stamp(row.get("first_seen"), generated)
         last = _date_stamp(row.get("last_seen"), generated) or first
         board = str(row.get("board") or "public")
-        rank = row.get("best_rank") if isinstance(row.get("best_rank"), int) else row.get("rank")
+        rank = (
+            row.get("best_rank")
+            if isinstance(row.get("best_rank"), int)
+            else row.get("rank")
+        )
         _add_term(
             bucket,
             str(row["title"]),
@@ -768,10 +898,15 @@ def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
             rank=rank if isinstance(rank, int) else None,
             first_seen=first,
             last_seen=last,
+            quarantine_counts=quarantine_counts,
         )
 
 
-def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_weibo_terms(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for row in doc.get("terms") or []:
         if not isinstance(row, Mapping) or not row.get("title"):
@@ -788,12 +923,17 @@ def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
             rank=rank,
             first_seen=first,
             last_seen=last,
+            quarantine_counts=quarantine_counts,
         )
     for day in doc.get("pinned_headlines") or []:
         if not isinstance(day, Mapping):
             continue
         date = str(day.get("date") or "")
-        seen = f"{date}T00:00:00Z" if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) else generated
+        seen = (
+            f"{date}T00:00:00Z"
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", date)
+            else generated
+        )
         for title in day.get("pinned") or []:
             _add_term(
                 bucket,
@@ -803,31 +943,40 @@ def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
                 board="weibo",
                 first_seen=_iso_or_none(seen) or generated,
                 last_seen=_iso_or_none(seen) or generated,
+                quarantine_counts=quarantine_counts,
             )
 
 
 def extract_spreading_terms(
     inputs: Mapping[str, Mapping[str, Any] | None],
+    *,
+    quarantine_counts: dict[str, int] | None = None,
 ) -> dict[tuple[str, str], dict[str, Any]]:
     bucket: dict[tuple[str, str], dict[str, Any]] = {}
+    quarantines = quarantine_counts if quarantine_counts is not None else {}
     weibo = inputs.get("weibo-hotsearch")
     if isinstance(weibo, Mapping):
-        _extract_weibo(weibo, bucket)
+        _extract_weibo(weibo, bucket, quarantines)
     terms = inputs.get("weibo-hotsearch-terms")
     if isinstance(terms, Mapping):
-        _extract_weibo_terms(terms, bucket)
+        _extract_weibo_terms(terms, bucket, quarantines)
     boards = inputs.get("public-hot-boards")
     if isinstance(boards, Mapping):
-        _extract_hot_boards(boards, bucket)
+        _extract_hot_boards(boards, bucket, quarantines)
     fused = inputs.get("public-board-terms")
     if isinstance(fused, Mapping):
-        _extract_board_terms(fused, bucket)
+        _extract_board_terms(fused, bucket, quarantines)
     social = inputs.get("social-observations")
     if isinstance(social, Mapping):
-        _extract_social_observations(social, bucket)
+        _extract_social_observations(social, bucket, quarantines)
     telegram = inputs.get("telegram-public-channels")
     if isinstance(telegram, Mapping):
-        _extract_observations(telegram, bucket, source_id="telegram-public-channels")
+        _extract_observations(
+            telegram,
+            bucket,
+            source_id="telegram-public-channels",
+            quarantine_counts=quarantines,
+        )
     return bucket
 
 
@@ -903,7 +1052,8 @@ def _news_story(
     publishable = [
         row
         for row in rows
-        if row["disposition"] in {"circulating-unverified", "matched-to-wire", "matched-to-official-page"}
+        if row["disposition"]
+        in {"circulating-unverified", "matched-to-wire", "matched-to-official-page"}
         and not row["names_a_person"]
     ]
     if abstained or not publishable:
@@ -935,7 +1085,9 @@ def build_social_spread(
 
     generated_at = _timestamp(generated_at, "generated_at")
     status_map = _input_status(inputs)
-    spreading_present = any(status_map[name] == "present" for name in REQUIRED_SPREADING)
+    spreading_present = any(
+        status_map[name] == "present" for name in REQUIRED_SPREADING
+    )
     rows: list[dict[str, Any]] = []
     refusals: list[dict[str, str]] = []
     n_abstained = 0
@@ -954,10 +1106,29 @@ def build_social_spread(
         validate_social_spread(document)
         return document
 
-    extracted = extract_spreading_terms(inputs)
-    for (_term_key, raw) in sorted(
+    quarantine_counts: dict[str, int] = {}
+    extracted = extract_spreading_terms(inputs, quarantine_counts=quarantine_counts)
+    unsafe_unicode_terms = quarantine_counts.get(_UNSAFE_UNICODE_TERM_CLASS, 0)
+    if unsafe_unicode_terms:
+        noun = "term" if unsafe_unicode_terms == 1 else "terms"
+        verb = "was" if unsafe_unicode_terms == 1 else "were"
+        refusals.append(
+            {
+                "term_class": _UNSAFE_UNICODE_TERM_CLASS,
+                "reason": (
+                    f"{unsafe_unicode_terms} public-source {noun} contained unsafe "
+                    f"Unicode and {verb} withheld before matching. "
+                    f"{DISCLAIMER}"
+                ),
+            }
+        )
+    for _term_key, raw in sorted(
         extracted.items(),
-        key=lambda item: (-len(item[1]["source_ids"]), item[1]["term"], item[1].get("board") or ""),
+        key=lambda item: (
+            -len(item[1]["source_ids"]),
+            item[1]["term"],
+            item[1].get("board") or "",
+        ),
     ):
         term = raw["term"]
         board = raw.get("board")
@@ -1099,7 +1270,9 @@ def _assemble(
             "official object only on exact term plus overlapping day window. "
             "Other boards join on exact term when that name already appears in "
             "a registered public source. Whisper-only names do not emit a "
-            "person package. Missing required spreading collectors abstain."
+            "person package. Terms containing unsafe Unicode are withheld with "
+            "aggregate, content-free refusal accounting. Missing required "
+            "spreading collectors abstain."
         ),
         "scope": (
             "Public Chinese attention surfaces already collected outside the "
@@ -1135,7 +1308,9 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
         raise SocialSpreadError("relation must remain topic-surface-only")
     if top["disclaimer"] != DISCLAIMER:
         raise SocialSpreadError("required disclaimer was weakened")
-    policy = _exact(top["publication_policy"], frozenset(PUBLICATION_POLICY), "publication_policy")
+    policy = _exact(
+        top["publication_policy"], frozenset(PUBLICATION_POLICY), "publication_policy"
+    )
     if policy != PUBLICATION_POLICY:
         raise SocialSpreadError("publication policy broadens the public boundary")
     status_map = top["input_status"]
@@ -1166,7 +1341,9 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
         _text(raw["reason"], f"{path}.reason", maximum=500)
         if DISCLAIMER not in raw["reason"]:
             raise SocialSpreadError(f"{path} must repeat the required disclaimer")
-        if any(marker in raw["reason"].casefold() for marker in ("named_party", "accused")):
+        if any(
+            marker in raw["reason"].casefold() for marker in ("named_party", "accused")
+        ):
             raise SocialSpreadError(f"{path} uses a forbidden allegation field")
     seen_identities: set[tuple[str, str]] = set()
     for index, raw in enumerate(rows):
@@ -1175,9 +1352,13 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
         term = _text(row["term"], f"{path}.term", maximum=MAX_TERM)
         join_keys = _exact(row["join_keys"], _JOIN_KEY_FIELDS, f"{path}.join_keys")
         if join_keys["term"] != term:
-            raise SocialSpreadError(f"{path}.join_keys.term must repeat the spreading term")
+            raise SocialSpreadError(
+                f"{path}.join_keys.term must repeat the spreading term"
+            )
         board = join_keys["board"]
-        if board is not None and (type(board) is not str or not _BOARD.fullmatch(board)):
+        if board is not None and (
+            type(board) is not str or not _BOARD.fullmatch(board)
+        ):
             raise SocialSpreadError(f"{path}.join_keys.board is invalid")
         identity = (term, board or "")
         if identity in seen_identities:
@@ -1201,7 +1382,11 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             raise SocialSpreadError(f"{path} dropped the required disclaimer")
         spreading = _exact(row["spreading"], _SPREAD_FIELDS, f"{path}.spreading")
         source_ids = spreading["source_ids"]
-        if type(source_ids) is not list or not source_ids or source_ids != sorted(set(source_ids)):
+        if (
+            type(source_ids) is not list
+            or not source_ids
+            or source_ids != sorted(set(source_ids))
+        ):
             raise SocialSpreadError(f"{path}.spreading.source_ids is invalid")
         for source_id in source_ids:
             if type(source_id) is not str or not _SOURCE_ID.fullmatch(source_id):
@@ -1214,9 +1399,15 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             raise SocialSpreadError(f"{path}.spreading.n_surfaces is inconsistent")
         _timestamp(spreading["first_seen"], f"{path}.spreading.first_seen")
         _timestamp(spreading["last_seen"], f"{path}.spreading.last_seen")
-        if spreading["first_seen"] != join_keys["first_seen"] or spreading["last_seen"] != join_keys["last_seen"]:
+        if (
+            spreading["first_seen"] != join_keys["first_seen"]
+            or spreading["last_seen"] != join_keys["last_seen"]
+        ):
             raise SocialSpreadError(f"{path} spreading dates must match join_keys")
-        if spreading["board"] != join_keys["board"] or spreading["rank"] != join_keys["rank"]:
+        if (
+            spreading["board"] != join_keys["board"]
+            or spreading["rank"] != join_keys["rank"]
+        ):
             raise SocialSpreadError(f"{path} spreading board/rank must match join_keys")
         if spreading["host"] != join_keys["host"]:
             raise SocialSpreadError(f"{path} spreading host must match join_keys")
@@ -1255,7 +1446,9 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
             row["disposition"] == "matched-to-official-page"
             and not matches["official_page_last_alive"]
         ):
-            raise SocialSpreadError(f"{path} claims an official-page match without hits")
+            raise SocialSpreadError(
+                f"{path} claims an official-page match without hits"
+            )
         if is_whisper_only(source_ids) and row["names_a_person"]:
             raise SocialSpreadError("whisper-only name emitted a person package")
         if looks_like_named_person_package(term) and row["disposition"] not in {
@@ -1279,7 +1472,9 @@ def validate_social_spread(document: Mapping[str, Any]) -> None:
         if DISCLAIMER not in body:
             raise SocialSpreadError("news story body must include the disclaimer")
         if item["relation"] != RELATION:
-            raise SocialSpreadError("news story relation must remain topic-surface-only")
+            raise SocialSpreadError(
+                "news story relation must remain topic-surface-only"
+            )
         if item["automatic_publication"] is not False:
             raise SocialSpreadError("news story cannot auto-publish")
         if any(row["names_a_person"] for row in rows):

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 
 from collectors.news_wire_live import observation_from_event, observations_from_events
 
@@ -16,11 +17,13 @@ EVENT = {
     "topics": ["censorship", "policy"],
     "published_at": "2026-08-20T01:00:00Z",
     "updated_at": "2026-08-20T01:00:00Z",
-    "evidence_refs": [{
-        "source_id": "china-digital-times",
-        "url": "https://chinadigitaltimes.net/2026/08/example/",
-        "title": "CDT: 白纸 protests",
-    }],
+    "evidence_refs": [
+        {
+            "source_id": "china-digital-times",
+            "url": "https://chinadigitaltimes.net/2026/08/example/",
+            "title": "CDT: 白纸 protests",
+        }
+    ],
 }
 
 
@@ -40,7 +43,12 @@ def test_uses_publisher_url_not_the_palimpsest_permalink():
 def test_skips_events_without_a_publisher_url():
     bare = {
         **EVENT,
-        "evidence_refs": [{"source_id": "china-digital-times", "url": "https://palimpsest.info/news/wire/x/"}],
+        "evidence_refs": [
+            {
+                "source_id": "china-digital-times",
+                "url": "https://palimpsest.info/news/wire/x/",
+            }
+        ],
     }
     assert observation_from_event(bare) is None
 
@@ -74,12 +82,22 @@ def test_pull_projects_the_live_timer_wire_when_present(tmp_path, monkeypatch):
     monkeypatch.setattr(pull, "HIST", tmp_path / "news-wire-live-history.jsonl")
     monkeypatch.setattr(pull, "READINGS", tmp_path)
     monkeypatch.setattr(pull, "WIRE", tmp_path / "newswire-latest.json")
-    monkeypatch.setattr(pull, "KillSwitch", lambda: type("K", (), {"is_halted": lambda self: False})())
+    monkeypatch.setattr(
+        pull, "KillSwitch", lambda: type("K", (), {"is_halted": lambda self: False})()
+    )
 
     called = {"newswire": False}
-    monkeypatch.setattr(pull, "newswire_main", lambda: called.__setitem__("newswire", True) or 0)
+    monkeypatch.setattr(
+        pull,
+        "newswire_main",
+        lambda _argv: called.__setitem__("newswire", True) or 0,
+    )
 
-    out = pull.main(now=__import__("datetime").datetime(2026, 8, 20, tzinfo=__import__("datetime").timezone.utc))
+    out = pull.main(
+        now=__import__("datetime").datetime(
+            2026, 8, 20, tzinfo=__import__("datetime").timezone.utc
+        )
+    )
     assert called["newswire"] is False
     assert out is not None
     assert out["n_events"] == 1
@@ -92,23 +110,77 @@ def test_pull_abstains_when_newswire_reports_no_fresh_sources(tmp_path, monkeypa
     monkeypatch.setattr(pull, "HIST", tmp_path / "news-wire-live-history.jsonl")
     monkeypatch.setattr(pull, "READINGS", tmp_path)
     monkeypatch.setattr(pull, "WIRE", tmp_path / "newswire-latest.json")
-    monkeypatch.setattr(pull, "newswire_main", lambda: 2)
-    monkeypatch.setattr(pull, "KillSwitch", lambda: type("K", (), {"is_halted": lambda self: False})())
+    monkeypatch.setattr(pull, "newswire_main", lambda _argv: 2)
+    monkeypatch.setattr(
+        pull, "KillSwitch", lambda: type("K", (), {"is_halted": lambda self: False})()
+    )
 
     assert pull.main() is None
     assert not (tmp_path / "news-wire-live-latest.json").exists()
 
 
-def test_pull_projects_injected_events_without_touching_the_committed_wire(tmp_path, monkeypatch):
+def test_pull_does_not_leak_celery_argv_into_nested_newswire(tmp_path, monkeypatch):
+    import scripts.news_wire_live_pull as pull
+    import scripts.newswire_pull as nested
+
+    missing_live_wire = tmp_path / "missing-live-newswire.json"
+    monkeypatch.setattr(pull, "LIVE_NEWSWIRE_PATH", missing_live_wire)
+    monkeypatch.setattr(
+        pull,
+        "KillSwitch",
+        lambda: type("K", (), {"is_halted": lambda self: False})(),
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["celery", "-A", "core.scheduler", "worker", "-Q", "vigorous"],
+    )
+
+    seen = {}
+
+    def nested_body(args):
+        seen["args"] = args
+        return 2
+
+    def nested_main(argv=None):
+        seen["argv"] = argv
+        return nested.main(argv)
+
+    monkeypatch.setattr(nested, "_main_locked", nested_body)
+    monkeypatch.setattr(pull, "newswire_main", nested_main)
+
+    assert pull.main() is None
+    assert seen["argv"] == []
+    args = seen["args"]
+    assert args.config == nested.DEFAULT_CONFIG_PATH
+    assert args.output == nested.DEFAULT_OUTPUT_PATH
+    assert args.ledger == nested.DEFAULT_LEDGER_PATH
+    assert args.status is None
+    assert args.lock is None
+    assert args.workers == 6
+    assert args.now is None
+
+
+def test_pull_projects_injected_events_without_touching_the_committed_wire(
+    tmp_path, monkeypatch
+):
     import scripts.news_wire_live_pull as pull
 
     monkeypatch.setattr(pull, "OUT", tmp_path / "news-wire-live-latest.json")
     monkeypatch.setattr(pull, "HIST", tmp_path / "news-wire-live-history.jsonl")
     monkeypatch.setattr(pull, "READINGS", tmp_path)
     monkeypatch.setattr(pull, "WIRE", tmp_path / "newswire-latest.json")
-    monkeypatch.setattr(pull, "KillSwitch", lambda: type("K", (), {"is_halted": lambda self: False})())
+    monkeypatch.setattr(
+        pull, "KillSwitch", lambda: type("K", (), {"is_halted": lambda self: False})()
+    )
 
-    out = pull.main(events=[EVENT], skip_collect=True, now=__import__("datetime").datetime(2026, 8, 20, tzinfo=__import__("datetime").timezone.utc))
+    out = pull.main(
+        events=[EVENT],
+        skip_collect=True,
+        now=__import__("datetime").datetime(
+            2026, 8, 20, tzinfo=__import__("datetime").timezone.utc
+        ),
+    )
     assert out is not None
     assert out["n_observations"] == 1
     assert out["observations"][0]["url"].startswith("https://chinadigitaltimes.net/")

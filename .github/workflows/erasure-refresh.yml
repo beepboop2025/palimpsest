@@ -1,7 +1,7 @@
 name: Refresh Information Erasure Observatory
 
-# The unifying publication lane. It reads the latest OONI/GFI/Baike surface
-# readings, runs the keyed frontier refusal-drift audit when configured, seals the
+# The unifying publication lane. It reads the latest OONI/GFI and retained Baike
+# context, runs the keyed frontier refusal-drift audit when configured, seals the
 # evidence into the tamper-evident ledgers, and publishes the composite Erasure
 # Index plus integrity proofs. The aggregate builder itself is key-less and does
 # not re-measure its inputs; this workflow also owns the paid model observation.
@@ -56,18 +56,6 @@ jobs:
 
       - name: Verify the ledger before sealing (fail loud on any prior tamper)
         run: python -m scripts.verify_ledger
-
-      - name: Refresh the narrative layer (Baike redaction-diff)
-        # The public runner is permanently inert pending an authorized source path.
-        # No secret or environment variable can activate Baike acquisition. This step
-        # records the disabled state without changing the last observation timestamp;
-        # the composite below then exposes the retained reading as stale/unavailable.
-        run: python -m scripts.baike_redaction_pull
-
-      - name: Refresh the public Baike article snapshot
-        # Public HTML GET only. Not the Wikipedia-fork collector. A 403 from
-        # Baidu is published as unreachable, never as a rewrite.
-        run: python -m scripts.baike_public_snapshot_pull
 
       - name: Seal current readings and publish the composite index
         run: python -m scripts.erasure_pull
@@ -195,8 +183,9 @@ jobs:
           if [ "${rc:-0}" = "1" ]; then exit 1; fi
 
       - name: Read the candidate public surface before synchronization
-        # This repository is served in full by Pages, so the push below is the publication
-        # act. Check once before retaining the expensive model results in a candidate, then
+        # The push below advances auditable Git state; Pages deploys only an exact
+        # SHA after its complete-graph contract passes, so this is the pre-push
+        # boundary. Check once before retaining the expensive model results in a candidate, then
         # again after the candidate has been rebuilt on the actual public chain head.
         env:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
@@ -227,10 +216,6 @@ jobs:
                    readings/erasure-observatory-history.jsonl \
                    readings/erasure-ledger.jsonl \
                    readings/readings-ledger.jsonl \
-                   readings/baike-redaction-latest.json \
-                   readings/baike-redaction-history.jsonl \
-                   readings/baike-public-snapshot-latest.json \
-                   readings/baike-public-snapshot-history.jsonl \
                    readings/eval-registry.jsonl \
                    readings/eval-registry-latest.json \
                    readings/eval-assurance-latest.json \
@@ -287,10 +272,6 @@ jobs:
             for p in readings/erasure-observatory-latest.json \
                      readings/erasure-observatory-history.jsonl \
                      readings/erasure-ledger.jsonl \
-                     readings/baike-redaction-latest.json \
-                     readings/baike-redaction-history.jsonl \
-                     readings/baike-public-snapshot-latest.json \
-                     readings/baike-public-snapshot-history.jsonl \
                      readings/refusal-drift-latest.json \
                      readings/refusal-drift-history.jsonl \
                      readings/refusal-drift-transcripts.json \
@@ -364,10 +345,6 @@ jobs:
                    readings/erasure-observatory-history.jsonl \
                    readings/erasure-ledger.jsonl \
                    readings/readings-ledger.jsonl \
-                   readings/baike-redaction-latest.json \
-                   readings/baike-redaction-history.jsonl \
-                   readings/baike-public-snapshot-latest.json \
-                   readings/baike-public-snapshot-history.jsonl \
                    readings/eval-registry.jsonl \
                    readings/eval-registry-latest.json \
                    readings/eval-assurance-latest.json \
@@ -401,7 +378,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope source
           publish_rc=$?
           set -e
           printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
@@ -422,7 +399,7 @@ jobs:
           steps.push_attempt.outputs.exit_code == '76'
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
-        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+        run: python scripts/dispatch_publication_contract.py --scope source "$(git rev-parse HEAD)"
 
       - name: Reattest, reverify, and retry after a push race
         if: steps.push_attempt.outputs.exit_code == '75'
@@ -441,11 +418,7 @@ jobs:
             # shared registries, derived seals, and anchors stay at origin/main until
             # rebuilt below. In particular, never replace a newer GFI registry tail
             # with the stale fork that happened to contain this refusal measurement.
-            for p in readings/baike-redaction-latest.json \
-                     readings/baike-redaction-history.jsonl \
-                     readings/baike-public-snapshot-latest.json \
-                     readings/baike-public-snapshot-history.jsonl \
-                     readings/refusal-drift-latest.json \
+            for p in readings/refusal-drift-latest.json \
                      readings/refusal-drift-history.jsonl \
                      readings/refusal-drift-transcripts.json \
                      readings/refusal-drift-churn.jsonl ; do
@@ -489,10 +462,6 @@ jobs:
                      readings/erasure-observatory-history.jsonl \
                      readings/erasure-ledger.jsonl \
                      readings/readings-ledger.jsonl \
-                     readings/baike-redaction-latest.json \
-                     readings/baike-redaction-history.jsonl \
-                     readings/baike-public-snapshot-latest.json \
-                     readings/baike-public-snapshot-history.jsonl \
                      readings/eval-registry.jsonl \
                      readings/eval-registry-latest.json \
                      readings/eval-assurance-latest.json \
@@ -521,7 +490,7 @@ jobs:
             git commit -C "$measurement_commit"
 
             set +e
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope source
             publish_rc=$?
             set -e
             case "$publish_rc" in
@@ -532,7 +501,7 @@ jobs:
                 ;;
               76)
                 PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
-                  python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+                  python scripts/dispatch_publication_contract.py --scope source "$(git rev-parse HEAD)"
                 exit 0
                 ;;
               *) exit "$publish_rc" ;;

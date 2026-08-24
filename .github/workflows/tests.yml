@@ -38,17 +38,16 @@ concurrency:
   # distinct publication. Duplicate delivery for the same payload SHA remains
   # self-cancelling.
   group: >-
-    tests-${{ github.event_name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.ref }}-${{ github.event_name == 'repository_dispatch' && 'contract-only' || github.event_name == 'push' && contains(github.event.head_commit.message, '[skip pytest]') && 'contract-only' || 'full' }}
+    tests-${{ github.event_name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.ref }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope || 'push' }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope == 'source' && 'contract-only' || 'full' }}
   cancel-in-progress: true
 
 jobs:
   pytest:
-    # Data-refresh workflows mark commits [skip pytest], which is NOT a GitHub-native
-    # skip token. Human-origin pushes still start this workflow normally; action-token
-    # publications use repository_dispatch. Both routes skip only this full-suite job.
-    # Do not use [skip ci] / [ci skip] / [no ci]: GitHub would skip the entire
-    # workflow, including contract.
-    if: ${{ github.event_name != 'repository_dispatch' && !contains(github.event.head_commit.message, '[skip pytest]') }}
+    # Source dispatches are deliberately incomplete and cannot deploy. Every
+    # deployable complete dispatch, ordinary push, and pull request runs the full
+    # suite, regardless of commit-message markers, so newly merged code cannot be
+    # carried into production by a faster data-only dispatch.
+    if: ${{ github.event_name != 'repository_dispatch' || github.event.client_payload.scope == 'complete' }}
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
@@ -92,35 +91,68 @@ jobs:
     # workflow — the one guarantee the project asks readers to check for themselves should
     # not depend on which cron fired.
     runs-on: ubuntu-latest
+    outputs:
+      revision: ${{ steps.identity.outputs.revision }}
+      scope: ${{ steps.identity.outputs.scope }}
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
-      - name: Validate the dispatched publication identity
-        if: ${{ github.event_name == 'repository_dispatch' }}
+      - name: Resolve and validate the publication identity
+        id: identity
         env:
           PUBLICATION_SHA: ${{ github.event.client_payload.sha }}
+          PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
         run: |
-          if [ "${#PUBLICATION_SHA}" -ne 40 ] ||
-             [ -n "${PUBLICATION_SHA//[0-9a-f]/}" ]; then
-            echo "invalid publication SHA payload" >&2
+          if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
+            publication_sha=$PUBLICATION_SHA
+            publication_scope=$PUBLICATION_SCOPE
+          else
+            publication_sha=$GITHUB_SHA
+            publication_scope=complete
+          fi
+          if [ "${#publication_sha}" -ne 40 ] ||
+             [ -n "${publication_sha//[0-9a-f]/}" ]; then
+            echo "invalid publication SHA" >&2
+            exit 1
+          fi
+          case "$publication_scope" in
+            source|complete) ;;
+            *)
+              echo "invalid publication scope" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "revision=$publication_sha"
+            echo "scope=$publication_scope"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$publication_scope" = "source" ] &&
+             [ "$GITHUB_EVENT_NAME" != "repository_dispatch" ]; then
+            echo "source scope is accepted only through exact repository dispatch" >&2
             exit 1
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
-          ref: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.sha }}
+          ref: ${{ steps.identity.outputs.revision }}
           fetch-depth: 0
 
       - name: Prove the dispatched commit is published on main
         if: ${{ github.event_name == 'repository_dispatch' }}
         env:
           PUBLICATION_SHA: ${{ github.event.client_payload.sha }}
+          PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
         run: |
           test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
           git fetch --no-tags origin \
             +refs/heads/main:refs/remotes/origin/main
           if ! git merge-base --is-ancestor "$PUBLICATION_SHA" origin/main; then
             echo "dispatched publication is not reachable from main" >&2
+            exit 1
+          fi
+          if [ "$PUBLICATION_SCOPE" = "complete" ] &&
+             [ "$(git rev-parse origin/main)" != "$PUBLICATION_SHA" ]; then
+            echo "complete publication is not the current main tip" >&2
             exit 1
           fi
 
@@ -133,10 +165,16 @@ jobs:
         # format validators, all pinned to reviewed Python 3.12 Linux wheel hashes.
         run: pip install --quiet --require-hashes -r .github/osint-china-ci-requirements.txt
 
-      - name: Validate what is actually published
+      - name: Validate publication metadata and source closure
+        run: |
+          python -m pytest -q tests/test_publication_contract.py
+          python -m scripts.build_data_catalog --check
+          python scripts/seal_readings.py --check
+
+      - name: Validate the complete derived edition
+        if: ${{ steps.identity.outputs.scope == 'complete' }}
         run: |
           python -m pytest -q \
-            tests/test_publication_contract.py \
             tests/test_erasure_layer_freshness.py \
             tests/test_board_stale_is_not_calm.py \
             tests/test_cadence_matches_crons.py \
@@ -153,6 +191,7 @@ jobs:
             tests/test_mcp_deployment.py
 
       - name: Check the committed deterministic machine-newsroom graph
+        if: ${{ steps.identity.outputs.scope == 'complete' }}
         run: |
           # These checks MUST precede every write-mode builder below. Otherwise a
           # tampered committed artifact could be silently replaced and then pass its
@@ -174,6 +213,7 @@ jobs:
           python scripts/seal_readings.py --check
 
       - name: Rebuild and prove the deterministic graph is unchanged
+        if: ${{ steps.identity.outputs.scope == 'complete' }}
         run: |
           # Replay the already validated mesh at its recorded publication
           # clock.  A no-argument build intentionally means "publish a new
@@ -189,20 +229,14 @@ jobs:
           python -m scripts.build_data_catalog --now "$catalog_clock"
           python -m scripts.build_china_situation
           python -m scripts.build_erasure_trail
-          git diff --exit-code -- \
-            readings/china-econ-observations-latest.json \
-            readings/china-econ-forecast-latest.json \
-            readings/china-index-latest.json \
-            readings/evidence-mesh-latest.json \
-            readings/machine-investigations-latest.json \
-            readings/newsroom-latest.json \
-            readings/china-situation-latest.json \
-            readings/erasure-trail-latest.json \
-            readings/catalog.json \
-            readings/catalog.jsonld \
-            datapackage.json \
-            china/ \
-            news/
+          managed_status="$(git status --porcelain=v1 --untracked-files=all -- \
+            readings china news datapackage.json)"
+          if [ -n "$managed_status" ]; then
+            printf '%s\n' "$managed_status" >&2
+            git diff --stat -- readings china news datapackage.json >&2
+            echo "managed publication graph changed during replay" >&2
+            exit 1
+          fi
 
       - name: Read the public surface
         # [skip pytest] is only Palimpsest's full-suite lane marker. The explicit
@@ -224,3 +258,194 @@ jobs:
           python -m scripts.build_eval_assurance --check
           python -m scripts.build_eval_journal --check
           python -m scripts.build_eval_findings --check
+
+  publication-admission:
+    name: Admit the exact tested publication
+    needs:
+      - pytest
+      - contract
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every applicable exact-SHA gate
+        env:
+          CONTRACT_RESULT: ${{ needs.contract.result }}
+          PUBLICATION_SCOPE: ${{ needs.contract.outputs.scope }}
+          PYTEST_RESULT: ${{ needs.pytest.result }}
+        run: |
+          set -euo pipefail
+          test "$CONTRACT_RESULT" = success
+          if [ "$GITHUB_EVENT_NAME" = repository_dispatch ] &&
+             [ "$PUBLICATION_SCOPE" = source ]; then
+            test "$PYTEST_RESULT" = skipped
+          else
+            case "$GITHUB_EVENT_NAME" in
+              repository_dispatch|push|pull_request)
+                test "$PYTEST_RESULT" = success
+                ;;
+              *)
+                echo "unsupported publication event: $GITHUB_EVENT_NAME" >&2
+                exit 1
+                ;;
+            esac
+          fi
+
+  pages-artifact:
+    name: Package exact complete Pages edition
+    needs:
+      - contract
+      - publication-admission
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.publication-admission.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+
+      - name: Configure the existing Pages site without enabling it
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b  # v5
+        with:
+          enablement: false
+
+      - name: Materialize only exact tracked root content
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"
+          if git ls-files -s | awk '$1 == "120000" { found=1 } END { exit found ? 0 : 1 }'; then
+            echo "Pages artifact refuses tracked symbolic links" >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/pages-root"
+          git archive --format=tar "$PUBLICATION_SHA" |
+            tar -xf - -C "$RUNNER_TEMP/pages-root"
+          # upload-pages-artifact deliberately excludes dot paths. Preserve the
+          # public RFC 9116 endpoint through a single reviewed archive-name
+          # transform while all other hidden operational files stay excluded.
+          test ! -e "$RUNNER_TEMP/pages-root/well-known"
+          mv "$RUNNER_TEMP/pages-root/.well-known" \
+            "$RUNNER_TEMP/pages-root/well-known"
+          test ! -e "$RUNNER_TEMP/pages-root/.git"
+          test ! -e "$RUNNER_TEMP/pages-root/.pytest_cache"
+          test ! -e "$RUNNER_TEMP/pages-root/.ruff_cache"
+
+      - name: Upload the exact Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b  # v4
+        env:
+          TAR_OPTIONS: '--transform=s|^\./well-known|./.well-known|'
+        with:
+          path: ${{ runner.temp }}/pages-root
+
+      - name: Measure the exact staged Pages artifact
+        id: pages_size
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+          # 950 MiB leaves 74 MiB below GitHub Pages' supported 1 GiB ceiling.
+          PAGES_ARTIFACT_LIMIT_BYTES: "996147200"
+        run: |
+          set -euo pipefail
+          # The pinned upload action creates and uploads this exact tar path.
+          # Measuring it avoids substituting workspace size or compressed size.
+          artifact="$RUNNER_TEMP/artifact.tar"
+          receipt="$RUNNER_TEMP/pages-artifact-size.json"
+          test -f "$artifact"
+          artifact_bytes=$(wc -c < "$artifact" | tr -d '[:space:]')
+          artifact_sha256=$(sha256sum "$artifact" | awk '{print $1}')
+          case "$artifact_bytes" in
+            ''|*[!0-9]*) echo "invalid Pages artifact byte count" >&2; exit 1 ;;
+          esac
+          if [ "$artifact_bytes" -le 0 ]; then
+            echo "Pages artifact is empty" >&2
+            exit 1
+          fi
+          if [ "${#artifact_sha256}" -ne 64 ] ||
+             [ -n "${artifact_sha256//[0-9a-f]/}" ]; then
+            echo "invalid Pages artifact SHA-256" >&2
+            exit 1
+          fi
+          headroom_bytes=$((PAGES_ARTIFACT_LIMIT_BYTES - artifact_bytes))
+          if [ "$artifact_bytes" -le "$PAGES_ARTIFACT_LIMIT_BYTES" ]; then
+            within_limit=true
+            status=within-limit
+          else
+            within_limit=false
+            status=over-limit
+          fi
+          printf '%s\n' \
+            "{\"artifact_bytes\":$artifact_bytes,\"artifact_name\":\"github-pages/artifact.tar\",\"artifact_sha256\":\"$artifact_sha256\",\"headroom_bytes\":$headroom_bytes,\"limit_bytes\":$PAGES_ARTIFACT_LIMIT_BYTES,\"publication_sha\":\"$PUBLICATION_SHA\",\"schema_version\":\"palimpsest.pages-artifact-size.v1\",\"status\":\"$status\"}" \
+            > "$receipt"
+          {
+            echo "artifact_bytes=$artifact_bytes"
+            echo "headroom_bytes=$headroom_bytes"
+            echo "within_limit=$within_limit"
+          } >> "$GITHUB_OUTPUT"
+          cat "$receipt" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the Pages artifact size receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: pages-artifact-size-${{ needs.contract.outputs.revision }}
+          path: ${{ runner.temp }}/pages-artifact-size.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce the Pages artifact size ceiling
+        if: ${{ steps.pages_size.outputs.within_limit != 'true' }}
+        env:
+          ARTIFACT_BYTES: ${{ steps.pages_size.outputs.artifact_bytes }}
+          HEADROOM_BYTES: ${{ steps.pages_size.outputs.headroom_bytes }}
+        run: |
+          echo "Pages artifact is too large: ${ARTIFACT_BYTES} bytes (${HEADROOM_BYTES} bytes headroom)" >&2
+          exit 1
+
+  deploy-pages:
+    name: Deploy exact complete Pages edition
+    needs:
+      - contract
+      - publication-admission
+      - pages-artifact
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.publication-admission.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+
+      - name: Refuse a superseded Pages deployment
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"
+
+      - name: Deploy the exact accepted edition
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4

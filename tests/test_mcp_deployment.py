@@ -5,7 +5,10 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import subprocess
+import sys
+import textwrap
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -186,7 +189,8 @@ def test_host_wrapper_is_syntax_valid_and_fail_closed() -> None:
     text = WRAPPER.read_text(encoding="utf-8")
     required = [
         '[[ ! "$original_command" =~ ^deploy\\ ([0-9a-f]{40})$ ]]',
-        "merge-base --is-ancestor",
+        '[[ "$current_main" = "$target_sha" ]]',
+        "target is not the exact origin/main tip",
         "fetch.fsckObjects true",
         "github_signature",
         "--github-commit-json",
@@ -206,12 +210,26 @@ def test_host_wrapper_is_syntax_valid_and_fail_closed() -> None:
         "main_pid=$(systemctl show --property=MainPID",
         "exec_main_pid=$(systemctl show --property=ExecMainPID",
         'process_uid=$(ps -o uid= -p "$main_pid"',
+        '"previous_runtime_sha256": previous_runtime_digest',
+        '"previous_runtime_backup": previous_runtime_backup',
+        '"previous_runtime_source_sha": previous_runtime_source or None',
+        'readonly LEGACY_SOURCE_SHA="2a80981815680006f3daf7caf503a125d6299c3c"',
+        'readonly EXPECTED_LEGACY_RUNTIME_SHA256="47d419e81ff048771acab14895a9b1e27868d7bbe14874e5cd8c1c94acfc4ed4"',
+        "markerless runtime is not the pinned bootstrap legacy release",
+        '"schema_version": 2',
+        "target already has an immutable receipt",
+        'readonly INCIDENT_STATE_FILE="${STATE_DIR}/incident-degraded.json"',
+        'restore_state_file "$previous_incident_state" "$INCIDENT_STATE_FILE"',
+        'rm -f -- "$INCIDENT_STATE_FILE"',
+        "incident state does not bind the live degraded runtime",
     ]
     for needle in required:
         assert needle in text
+    assert text.count('[[ "$current_main" = "$target_sha" ]]') == 2
     assert 'eval "' not in text
     assert "bash -c" not in text
     assert "git checkout" not in text
+    assert "merge-base --is-ancestor" not in text
 
 
 def test_host_wrapper_pins_all_installed_trust_roots() -> None:
@@ -229,7 +247,12 @@ def test_host_wrapper_pins_all_installed_trust_roots() -> None:
 def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert "target_sha:" in text
-    assert "git merge-base --is-ancestor" in text
+    assert "git merge-base --is-ancestor" not in text
+    assert 'test "$GITHUB_REF" = refs/heads/main' in text
+    assert (
+        text.count('test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"')
+        == 2
+    )
     assert "--github-commit-json" in text
     assert "environment: palimpsest-mcp-production" in text
     assert "StrictHostKeyChecking=yes" in text
@@ -270,10 +293,23 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
     legacy_sha = "2a80981815680006f3daf7caf503a125d6299c3c"
     assert legacy_sha in text
     assert 'show "${legacy_sha}:server.json"' in text
-    assert text.count('--manifest "$legacy_manifest" --basic') == 2
+    assert text.count('--manifest "$legacy_manifest" --basic') == 3
     assert text.index('--manifest "$legacy_manifest" --basic') < text.index(
         "sudo install -o root -g root -m 0644 ops/systemd/palimpsest-mcp.service"
     )
+    assert "bootstrap-backups/pre-controller.XXXXXX" in text
+    assert "expected_legacy_runtime_sha256" in text
+    assert "expected_legacy_unit_sha256" in text
+    assert 'sudo tee "$bootstrap_backup/SHA256SUMS"' in text
+    assert "finish_bootstrap()" in text
+    assert "mutation_started=1" in text
+    assert "bootstrap_committed=1" in text
+    assert "restoring the captured legacy runtime and unit" in text
+    assert "Do not reuse a workstation" in text
+    assert "`ssh-keyscan`" in text
+    assert "alone is not identity verification" in text
+    assert text.count('"$bootstrap_backup/palimpsest_mcp.py"') >= 2
+    assert text.count('"$bootstrap_backup/palimpsest-mcp.service"') >= 2
     assert "systemctl enable --now" not in text
     assert "sudo systemctl enable palimpsest-mcp.service" in text
     assert "sudo systemctl restart palimpsest-mcp.service" in text
@@ -281,6 +317,17 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
     assert "--property=MainPID" in text
     assert "--property=ExecMainPID" in text
     assert 'ps -o uid= -p "$main_pid"' in text
+    assert "legacy_enablement=$(sudo systemctl is-enabled" in text
+    assert 'sudo tee "$bootstrap_backup/SERVICE_ENABLEMENT"' in text
+    assert "sudo systemctl disable palimpsest-mcp.service" in text
+    assert '"$legacy_enablement" || rollback_failed=1' in text
+    assert "bootstrap rollback did not restore every captured invariant" in text
+    assert "rm -f --" in text
+    assert '"$deploy_key_dir/palimpsest-mcp-deploy"' in text
+    assert '"$deploy_key_dir/palimpsest-mcp-deploy.pub"' in text
+    assert "unset deploy_key_dir" in text
+    assert "trap cleanup_deploy_key EXIT HUP INT TERM" in text
+    assert "trap - EXIT HUP INT TERM" in text
     for property_value in (
         "NoNewPrivileges=yes",
         "ProtectSystem=strict",
@@ -289,6 +336,71 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
         "CapabilityBoundingSet=",
     ):
         assert property_value in text
+
+
+def test_release_runbook_freezes_writers_through_exact_ref_registry_publish() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    freeze = text.index('gh workflow disable "$workflow_id"')
+    deploy = text.index("gh workflow run deploy-mcp.yml")
+    publish = text.index("gh workflow run registry-publish.yml")
+    restore = text.index('gh workflow enable "$workflow_id"')
+    assert freeze < deploy < publish < restore
+    assert "scheduled-workflows.tsv" in text
+    assert "reuse that gate's" in text
+    assert "original preservation manifest" in text
+    assert 'test "$(wc -l <"$schedule_manifest"' in text
+    assert "expected_state workflow_file" in text
+    assert 'status == "queued" or .status == "in_progress"' in text
+    assert 'test "$(git rev-parse origin/main)" = "$frozen_main"' in text
+    assert 'gh workflow run deploy-mcp.yml --repo "$repo" --ref main' in text
+    assert (
+        '--repo "$repo" --ref main'
+        in text[text.index("gh workflow run registry-publish.yml") :]
+    )
+    assert "a new frozen tip and a new signed merge" in text
+    assert "snapshot_workflow_runs()" in text
+    assert "wait_for_one_new_run()" in text
+    assert "deploy-runs-before.txt" in text
+    assert "registry-runs-before.txt" in text
+    assert "ambiguous new %s runs" in text
+    assert "actions/runs/$deploy_run_id" in text
+    assert "actions/runs/$registry_run_id" in text
+    assert '.path | split(\\"@\\")[0]' in text
+    assert "## Rollback after a completed release" in text
+    assert "never edit `deployed-sha`" in text
+    assert "monotonically higher server version" in text
+
+
+def test_emergency_rollback_is_receipt_bound_atomic_and_syntax_valid() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    heading = text.index("## Rollback after a completed release")
+    start = text.index("```bash\n", heading) + len("```bash\n")
+    end = text.index("\n```", start)
+    source = text[start:end]
+    subprocess.run(["bash", "-n", "-c", source], check=True)
+    for needle in (
+        'receipt.get("schema_version") != 2',
+        'receipt.get("previous_runtime_sha256")',
+        'receipt.get("previous_runtime_backup")',
+        'receipt.get("previous_runtime_source_sha")',
+        'test "$source_previous_digest" = "$previous_digest"',
+        'test "$(sudo sha256sum "$backup_file"',
+        'sudo mv -fT "$restore_tmp" "$target_file"',
+        "finish_emergency_restore()",
+        '"$incident_dir/released-runtime.py"',
+        "palimpsest.mcp-emergency-rollback-receipt.v1",
+        '"state": "incident-degraded"',
+        "sudo grep -Eq '^[0-9a-f]{40}$' \"$marker_file\"",
+        'released_receipt_digest=$(sudo sha256sum "$release_receipt"',
+        'readonly incident_state_file="$state_dir/incident-degraded.json"',
+        'sudo mv -fT "$incident_state_tmp" "$incident_state_file"',
+        'sudo rm -f -- "$incident_state_file"',
+        "incident_state_promoted=1",
+        "/usr/bin/flock -n /var/lib/palimpsest-mcp-deploy/deploy.lock",
+        "/usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin",
+        "PALIMPSEST_EMERGENCY_ROLLBACK",
+    ):
+        assert needle in source
 
 
 def _write_registry_binding_fixture(
@@ -444,9 +556,170 @@ def test_registry_workflow_is_sha_receipt_and_post_publish_bound() -> None:
         '"$publisher" publish',
         "verify_registry_release.py published",
         "REGISTRY_LATEST_URL",
+        "--max-filesize 1048576",
         'MCP_PUBLISHER_VERSION: "1.8.1"',
         'MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"',
+        "REGISTRY_VERSIONS_URL",
+        "?include_deleted=true",
+        "Preflight the exact immutable Registry version",
+        "already_published=true",
+        "publication_mode=recovered-existing",
+        "immutable Registry version exists with different server content",
+        "palimpsest.mcp-registry-publication-receipt.v2",
+        '"publication_mode"',
+        '"registry_response_sha256"',
+        "registry-latest.json",
+        "registry-receipt.json",
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+        "palimpsest-mcp-registry-${{ inputs.target_sha }}-run-",
+        "retention-days: 90",
+        "compression-level: 0",
     ):
         assert needle in text
     assert "id-token: write" in text
     assert "PALIMPSEST_MCP_DEPLOY_KEY" not in text
+    assert (
+        text.count('test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"')
+        == 2
+    )
+    assert (
+        text.count("if: steps.registry_preflight.outputs.already_published != 'true'")
+        == 2
+    )
+
+
+def test_registry_preflight_recovers_only_the_exact_active_version(
+    tmp_path: Path,
+) -> None:
+    workflow = REGISTRY_WORKFLOW.read_text(encoding="utf-8")
+    marker = "python3 - \"$version_json\" <<'PY'\n"
+    start = workflow.index(marker) + len(marker)
+    end = workflow.index("\n          PY", start)
+    source = textwrap.dedent(workflow[start:end])
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    (tmp_path / "server.json").write_text(json.dumps(manifest), encoding="utf-8")
+    registry = {
+        "server": manifest,
+        "_meta": {
+            "io.modelcontextprotocol.registry/official": {
+                "status": "active",
+                "isLatest": True,
+                "publishedAt": "2026-08-24T07:00:00Z",
+            }
+        },
+    }
+    registry_path = tmp_path / "registry-version.json"
+    registry_path.write_text(json.dumps(registry), encoding="utf-8")
+
+    subprocess.run(
+        [sys.executable, "-c", source, str(registry_path)],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    # A prior publish may be visible at its exact immutable endpoint before the
+    # eventually consistent `latest` endpoint converges. The final poll below
+    # remains responsible for requiring isLatest=true.
+    registry["_meta"]["io.modelcontextprotocol.registry/official"]["isLatest"] = False
+    registry_path.write_text(json.dumps(registry), encoding="utf-8")
+    subprocess.run(
+        [sys.executable, "-c", source, str(registry_path)],
+        cwd=tmp_path,
+        check=True,
+    )
+
+    registry["server"] = {**manifest, "description": "equivocated immutable card"}
+    registry_path.write_text(json.dumps(registry), encoding="utf-8")
+    with pytest.raises(subprocess.CalledProcessError):
+        subprocess.run(
+            [sys.executable, "-c", source, str(registry_path)],
+            cwd=tmp_path,
+            check=True,
+        )
+
+
+def test_registry_receipt_script_binds_exact_verified_response(tmp_path: Path) -> None:
+    workflow = REGISTRY_WORKFLOW.read_text(encoding="utf-8")
+    marker = (
+        'python3 - "$registry_json" "$receipt_dir/registry-receipt.json" <<\'PY\'\n'
+    )
+    start = workflow.index(marker) + len(marker)
+    end = workflow.index("\n          PY", start)
+    source = textwrap.dedent(workflow[start:end])
+
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    (tmp_path / "server.json").write_text(json.dumps(manifest), encoding="utf-8")
+    registry = {
+        "server": manifest,
+        "_meta": {
+            "io.modelcontextprotocol.registry/official": {
+                "status": "active",
+                "isLatest": True,
+                "publishedAt": "2026-08-24T07:00:00Z",
+            }
+        },
+    }
+    registry_path = tmp_path / "registry-latest.json"
+    registry_raw = json.dumps(registry, separators=(",", ":")).encode()
+    registry_path.write_bytes(registry_raw)
+    receipt_path = tmp_path / "registry-receipt.json"
+    target_sha = "a" * 40
+    subprocess.run(
+        [sys.executable, "-c", source, str(registry_path), str(receipt_path)],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "GITHUB_REPOSITORY": "beepboop2025/palimpsest",
+            "GITHUB_RUN_ID": "987654",
+            "GITHUB_RUN_ATTEMPT": "2",
+            "TARGET_SHA": target_sha,
+            "DEPLOY_RUN_ID": "123456",
+            "REGISTRY_LATEST_URL": (
+                "https://registry.modelcontextprotocol.io/v0.1/servers/"
+                "io.github.beepboop2025%2Fpalimpsest/versions/latest"
+            ),
+            "PUBLICATION_MODE": "recovered-existing",
+        },
+        check=True,
+    )
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    assert receipt == {
+        "schema": "palimpsest.mcp-registry-publication-receipt.v2",
+        "repository": "beepboop2025/palimpsest",
+        "workflow": ".github/workflows/registry-publish.yml",
+        "workflow_run_id": 987654,
+        "workflow_run_attempt": 2,
+        "target_sha": target_sha,
+        "server_name": "io.github.beepboop2025/palimpsest",
+        "server_version": "1.9.0",
+        "deploy_run_id": 123456,
+        "publication_mode": "recovered-existing",
+        "registry_latest_url": (
+            "https://registry.modelcontextprotocol.io/v0.1/servers/"
+            "io.github.beepboop2025%2Fpalimpsest/versions/latest"
+        ),
+        "registry_response_sha256": hashlib.sha256(registry_raw).hexdigest(),
+        "official_status": "active",
+        "official_is_latest": True,
+        "published_at": "2026-08-24T07:00:00Z",
+    }
+
+    with pytest.raises(subprocess.CalledProcessError):
+        subprocess.run(
+            [sys.executable, "-c", source, str(registry_path), str(receipt_path)],
+            cwd=tmp_path,
+            env={
+                **os.environ,
+                "GITHUB_REPOSITORY": "beepboop2025/palimpsest",
+                "GITHUB_RUN_ID": "987654",
+                "GITHUB_RUN_ATTEMPT": "2",
+                "TARGET_SHA": target_sha,
+                "DEPLOY_RUN_ID": "123456",
+                "REGISTRY_LATEST_URL": (
+                    "https://registry.modelcontextprotocol.io/v0.1/servers/"
+                    "io.github.beepboop2025%2Fpalimpsest/versions/latest"
+                ),
+                "PUBLICATION_MODE": "unreviewed-mode",
+            },
+            check=True,
+        )

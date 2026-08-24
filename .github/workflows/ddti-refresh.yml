@@ -41,14 +41,15 @@ jobs:
 
       - name: Inject the latest index into the dashboards + readings
         run: |
-          IDX=$(ls -t data/ddti/index_*.json 2>/dev/null | head -1)
+          IDX=$(find data/ddti -maxdepth 1 -type f -name 'index_*.json' -print | sort -r | sed -n '1p')
           if [ -z "$IDX" ]; then echo "no index produced (feeds unreachable?) — skipping"; exit 0; fi
           echo "injecting $IDX"
           python inject_ddti.py --index "$IDX" --repo .
 
       - name: Read the public surface before pushing it
-        # This repository is served in full by Pages, so the push below is the publication
-        # act and this is the last point at which a match can still be stopped. The test
+        # The push below advances auditable Git state; Pages deploys only an exact
+        # SHA after its complete-graph contract passes, so this is the pre-push
+        # boundary and this is the last point at which a match can still be stopped. The test
         # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
         # the exact accepted SHA because action-token pushes emit no ordinary push event.
         # Without the rule list configured this reports and

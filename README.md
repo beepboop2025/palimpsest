@@ -43,6 +43,27 @@ pointed at two places where the record gets rewritten in the dark:
 
 Built entirely from open sources. **It watches the censor, never the censored.**
 
+## Use Palimpsest for source-bound China evidence
+
+Palimpsest is the China-evidence layer of a broader financial-research fleet. Its
+[money-market guide](https://palimpsest.info/china/money-markets/) exposes official CFETS
+repo fixings, SHIBOR and USD/CNY parity with economic-period, release and collection
+clocks. Its [capital-market guide](https://palimpsest.info/china/capital-markets/) is
+deliberately narrower: official HKEX Stock Connect aggregate observations, not general
+equity, bond, derivatives or investor-level coverage. The
+[China economy API guide](https://palimpsest.info/china-economy-api/) shows keyless REST
+and deployed MCP `1.8.1` examples while keeping revisions, rights, coverage and
+abstentions attached.
+
+At the 24 August 2026 publication snapshot, the broad China read and named-series
+forecast targets were `warming_up`; this is an abstention, not a validated forecast.
+Re-read the linked current artifacts before citing status. For system funding and money/capital transmission
+use Seiche, for institution risk use LiquiLens, and for exit liquidity use Undertow. The
+canonical [Financial Evidence Agent Skill](https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence)
+performs that routing without merging the products’ evidence boundaries. Agents can
+discover Palimpsest itself through its
+[AI catalog](https://palimpsest.info/.well-known/ai-catalog.json).
+
 ## Fund independent validation
 
 Palimpsest has already frozen and published a 145-row validation sample, its codebook and the

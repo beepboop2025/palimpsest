@@ -104,6 +104,12 @@ def _gap_from_believability(record: dict[str, Any]) -> float | None:
     return _finite(record.get("gap"))
 
 
+def _quarantined_history_value(_record: dict[str, Any]) -> None:
+    """Retain an audit history while making it impossible to train or score it."""
+
+    return None
+
+
 # Public instruments that already publish a history.jsonl. One series each —
 # never a collapsed cross-instrument rate. Conformal extractors are reused
 # where the board already watches that series.
@@ -246,7 +252,7 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
     },
     "baike-public-snapshot": {
         "history": "baike-public-snapshot-history.jsonl",
-        "extract": _field("n_ok"),
+        "extract": _quarantined_history_value,
         "field": "n_ok",
         "meaning": (
             "successful public Baike topic-page fetches vs this instrument's own "
@@ -255,6 +261,11 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
         "min_history": MAD_MIN_HISTORY,
         "trainer": "prequential-robust-mad/v1",
         "side": "two",
+        "scoring_eligible": False,
+        "quarantine_reason": (
+            "history mixes GitHub-hosted and fixed Hetzner collection vantages; "
+            "the retained values are not exchangeable"
+        ),
     },
     "vantage-fusion": {
         "history": "vantage-fusion-history.jsonl",
@@ -366,12 +377,17 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
     },
     "baike-redaction": {
         "history": "baike-redaction-history.jsonl",
-        "extract": _field("n_forked"),
+        "extract": _quarantined_history_value,
         "field": "n_forked",
         "meaning": "forked Baike entities vs this instrument's own past",
         "min_history": MAD_MIN_HISTORY,
         "trainer": "prequential-robust-mad/v1",
         "side": "high",
+        "scoring_eligible": False,
+        "quarantine_reason": (
+            "legacy rows include a method-invalid observation and runner-generated "
+            "status records; retained for audit only"
+        ),
     },
     "peer-context-rank": {
         "history": "peer-context-rank-history.jsonl",
@@ -561,7 +577,9 @@ def public_copy_for_row(row: Mapping[str, Any]) -> str:
 
     n_history = int(row.get("n_history") or 0)
     state = row.get("state")
-    if state == "missing":
+    if row.get("quarantined") is True:
+        copy = "this instrument abstains; its retained Baike history is quarantined from scoring"
+    elif state == "missing":
         copy = "this instrument abstains; its history file is missing"
     elif state == "abstain":
         copy = "this instrument abstains; its history is a single snapshot"
@@ -589,7 +607,9 @@ def review_rank_meaning() -> str:
     )
 
 
-def _review_rank_from_unusualness(score: float | None, unusual: bool | None) -> dict[str, Any]:
+def _review_rank_from_unusualness(
+    score: float | None, unusual: bool | None
+) -> dict[str, Any]:
     if score is None or unusual is None:
         return {
             "status": "warming_up",
@@ -680,20 +700,53 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
-        row["feature_citations"] = [{
-            "instrument_id": instrument_id,
-            "field": spec["field"],
-            "trainer": spec["trainer"],
-            "n_file_lines": 0,
-            "n_history": 0,
-            "current_value": None,
-            "unusualness": None,
-        }]
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": 0,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+            }
+        ]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
     n_file_lines = _history_line_count(path)
     base["n_file_lines"] = n_file_lines
+    if spec.get("scoring_eligible") is False:
+        row = {
+            **base,
+            "state": "abstain",
+            "n_history": 0,
+            "current_value": None,
+            "unusualness": None,
+            "unusual": None,
+            "review_rank": _review_rank_from_unusualness(None, None),
+            "quarantined": True,
+            "scoring_eligible": False,
+            "quarantine_reason": spec["quarantine_reason"],
+            "rights": {
+                "training_use": "prohibited",
+                "retention": "audit_only",
+            },
+        }
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": n_file_lines,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+                "quarantined": True,
+            }
+        ]
+        row["public_copy"] = public_copy_for_row(row)
+        return row
     if n_file_lines < 2:
         row = {
             **base,
@@ -704,15 +757,17 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
-        row["feature_citations"] = [{
-            "instrument_id": instrument_id,
-            "field": spec["field"],
-            "trainer": spec["trainer"],
-            "n_file_lines": n_file_lines,
-            "n_history": 0,
-            "current_value": None,
-            "unusualness": None,
-        }]
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": n_file_lines,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+            }
+        ]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -728,15 +783,17 @@ def fit_instrument(
             "unusual": None,
             "review_rank": _review_rank_from_unusualness(None, None),
         }
-        row["feature_citations"] = [{
-            "instrument_id": instrument_id,
-            "field": spec["field"],
-            "trainer": spec["trainer"],
-            "n_file_lines": n_file_lines,
-            "n_history": 0,
-            "current_value": None,
-            "unusualness": None,
-        }]
+        row["feature_citations"] = [
+            {
+                "instrument_id": instrument_id,
+                "field": spec["field"],
+                "trainer": spec["trainer"],
+                "n_file_lines": n_file_lines,
+                "n_history": 0,
+                "current_value": None,
+                "unusualness": None,
+            }
+        ]
         row["public_copy"] = public_copy_for_row(row)
         return row
 
@@ -784,15 +841,17 @@ def fit_instrument(
         row["board_state"] = board["state"]
         row["board_stat"] = board["stat"]
     row["public_copy"] = public_copy_for_row(row)
-    row["feature_citations"] = [{
-        "instrument_id": instrument_id,
-        "field": spec["field"],
-        "trainer": spec["trainer"],
-        "n_file_lines": n_file_lines,
-        "n_history": n_history,
-        "current_value": current,
-        "unusualness": unusualness,
-    }]
+    row["feature_citations"] = [
+        {
+            "instrument_id": instrument_id,
+            "field": spec["field"],
+            "trainer": spec["trainer"],
+            "n_file_lines": n_file_lines,
+            "n_history": n_history,
+            "current_value": current,
+            "unusualness": unusualness,
+        }
+    ]
     return row
 
 
@@ -837,13 +896,15 @@ def common_crawl_host_model_row() -> dict[str, Any]:
             "score": None,
         },
     }
-    row["feature_citations"] = [{
-        "instrument_id": "common-crawl-hosts",
-        "field": "host_feature_rows",
-        "trainer": CC_MODEL_ID,
-        "n_history": 1,
-        "score": None,
-    }]
+    row["feature_citations"] = [
+        {
+            "instrument_id": "common-crawl-hosts",
+            "field": "host_feature_rows",
+            "trainer": CC_MODEL_ID,
+            "n_history": 1,
+            "score": None,
+        }
+    ]
     row["public_copy"] = (
         "this instrument is warming up vs its own 1 prior points "
         f"(1 of {MAD_MIN_HISTORY} required)"
@@ -861,13 +922,17 @@ def _optional_json(path: Path) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def _story_features(story: Mapping[str, Any], archive_event: Mapping[str, Any] | None) -> dict[str, Any]:
+def _story_features(
+    story: Mapping[str, Any], archive_event: Mapping[str, Any] | None
+) -> dict[str, Any]:
     if archive_event and isinstance(archive_event.get("model_features"), dict):
         return dict(archive_event["model_features"])
     related = story.get("related_signal_ids")
     groups = related if isinstance(related, list) else []
     live = 1 if story.get("status") == "live" else 0
-    strength = 2 if story.get("type") in {"analysis", "methodology"} else 1 if live else 0
+    strength = (
+        2 if story.get("type") in {"analysis", "methodology"} else 1 if live else 0
+    )
     return {
         "archive_targets": 0,
         "archive_anomaly_max": None,
@@ -879,14 +944,20 @@ def _story_features(story: Mapping[str, Any], archive_event: Mapping[str, Any] |
     }
 
 
-def _newswire_features(event: Mapping[str, Any], archive_event: Mapping[str, Any] | None) -> dict[str, Any]:
+def _newswire_features(
+    event: Mapping[str, Any], archive_event: Mapping[str, Any] | None
+) -> dict[str, Any]:
     if archive_event and isinstance(archive_event.get("model_features"), dict):
         return dict(archive_event["model_features"])
     groups = event.get("evidence_groups")
     if not isinstance(groups, list):
         groups = []
     strength = _EVIDENCE_ORDINAL.get(str(event.get("evidence_strength") or ""), 0)
-    declared = event.get("declared_links") if isinstance(event.get("declared_links"), dict) else {}
+    declared = (
+        event.get("declared_links")
+        if isinstance(event.get("declared_links"), dict)
+        else {}
+    )
     linked = []
     for field in ("scan_signal_ids", "economic_signal_ids"):
         values = declared.get(field) or []
@@ -921,7 +992,10 @@ def build_story_ranks(
     rows: list[dict[str, Any]] = []
     seen: set[str] = set()
 
-    if isinstance(newswire, Mapping) and newswire.get("schema_version") == "palimpsest-newswire.v1":
+    if (
+        isinstance(newswire, Mapping)
+        and newswire.get("schema_version") == "palimpsest-newswire.v1"
+    ):
         for event in newswire.get("events") or []:
             if not isinstance(event, dict):
                 continue
@@ -946,7 +1020,10 @@ def build_story_ranks(
             row["row_sha256"] = hashlib.sha256(_canonical_json(row)).hexdigest()
             rows.append(row)
 
-    if isinstance(newsroom, Mapping) and newsroom.get("schema_version") == "palimpsest-news.v1":
+    if (
+        isinstance(newsroom, Mapping)
+        and newsroom.get("schema_version") == "palimpsest-news.v1"
+    ):
         for story in newsroom.get("stories") or []:
             if not isinstance(story, dict):
                 continue
@@ -956,7 +1033,9 @@ def build_story_ranks(
             seen.add(story_id)
             archive_event = archive_by_id.get(str(story.get("signal_id") or ""))
             features = _story_features(story, archive_event)
-            if archive_event and isinstance(archive_event.get("editorial_priority"), dict):
+            if archive_event and isinstance(
+                archive_event.get("editorial_priority"), dict
+            ):
                 priority = archive_event["editorial_priority"]
             else:
                 priority = editorial_priority(features)
@@ -992,7 +1071,11 @@ def lookup_story_rank(
         return None
     for row in ranks:
         if isinstance(row, dict) and row.get("event_id") == event_id:
-            priority = row.get("editorial_priority") if isinstance(row.get("editorial_priority"), dict) else {}
+            priority = (
+                row.get("editorial_priority")
+                if isinstance(row.get("editorial_priority"), dict)
+                else {}
+            )
             return {
                 "event_id": event_id,
                 "source": row.get("source"),
@@ -1077,9 +1160,35 @@ def build_reading_analysis(
     from processors.ranker_training import train_join_ranker, validate_all_instruments
 
     validation = validate_all_instruments(root)
+    for report in validation["instruments"]:
+        spec = INSTRUMENTS[report["instrument_id"]]
+        if spec.get("scoring_eligible") is not False:
+            continue
+        report.update(
+            {
+                "state": "abstain",
+                "reason": spec["quarantine_reason"],
+                "quarantined": True,
+                "scoring_eligible": False,
+            }
+        )
+        report["rights"] = {
+            "training_use": "prohibited",
+            "retention": "audit_only",
+        }
+        report["holdout"] = {
+            "split": "quarantined",
+            "n_extracted": 0,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": None,
+            "holdout_flag_rate": None,
+            "threshold": UNUSUAL_THRESHOLD,
+        }
     holdout_by_id = {
-        row["instrument_id"]: row["holdout"]
-        for row in validation["instruments"]
+        row["instrument_id"]: row["holdout"] for row in validation["instruments"]
     }
     for row in instruments:
         holdout = holdout_by_id.get(row["instrument_id"])
@@ -1091,6 +1200,7 @@ def build_reading_analysis(
     warming = [row for row in instruments if row["state"] == "warming_up"]
     missing = [row for row in instruments if row["state"] == "missing"]
     abstained = [row for row in instruments if row["state"] == "abstain"]
+    quarantined = [row for row in instruments if row.get("quarantined") is True]
     document: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "job": JOB_NAME,
@@ -1105,11 +1215,13 @@ def build_reading_analysis(
             "review rank for news rows. No causal attribution. No cross-instrument "
             "censorship rate. Common Crawl host scores stay null until six crawls."
         ),
-        "n_instruments_considered": len(INSTRUMENTS) + (1 if include_common_crawl else 0),
+        "n_instruments_considered": len(INSTRUMENTS)
+        + (1 if include_common_crawl else 0),
         "n_instruments_scored": len(scored),
         "n_instruments_warming_up": len(warming),
         "n_instruments_missing": len(missing),
         "n_instruments_abstained": len(abstained),
+        "n_instruments_quarantined": len(quarantined),
         "n_story_ranks": len(story_ranks),
         "story_ranks_label_source": "human-editorial-review-required",
         "live_inventory": LIVE_INVENTORY,
@@ -1132,10 +1244,7 @@ def build_reading_analysis(
         [
             str(document.get("method") or ""),
             str(document.get("scope") or ""),
-            *(
-                str(row.get("public_copy") or "")
-                for row in instruments
-            ),
+            *(str(row.get("public_copy") or "") for row in instruments),
         ]
     )
     if any(token in analysis_copy.casefold() for token in FORBIDDEN_COPY):

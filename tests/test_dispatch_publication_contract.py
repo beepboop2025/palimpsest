@@ -22,7 +22,7 @@ class _Response:
         self.closed = True
 
 
-def test_dispatch_posts_the_exact_sha_without_leaking_it_into_the_event_type() -> None:
+def test_complete_dispatch_posts_one_exact_scoped_contract() -> None:
     revision = "a" * 40
     response = _Response()
     requests: list[tuple[object, float]] = []
@@ -33,6 +33,7 @@ def test_dispatch_posts_the_exact_sha_without_leaking_it_into_the_event_type() -
 
     dispatch_publication_contract.dispatch(
         revision,
+        scope="complete",
         repository="beepboop2025/palimpsest",
         token="secret-token",
         opener=opener,
@@ -48,9 +49,40 @@ def test_dispatch_posts_the_exact_sha_without_leaking_it_into_the_event_type() -
     assert request.get_header("Authorization") == "Bearer secret-token"
     assert json.loads(request.data) == {
         "event_type": "publication_contract",
-        "client_payload": {"sha": revision},
+        "client_payload": {"sha": revision, "scope": "complete"},
     }
     assert response.closed is True
+
+
+def test_source_dispatch_requests_exact_contract_then_idempotent_graph_closure() -> (
+    None
+):
+    revision = "d" * 40
+    requests: list[object] = []
+
+    def opener(request: object, *, timeout: float) -> _Response:
+        assert timeout == dispatch_publication_contract.REQUEST_TIMEOUT_SECONDS
+        requests.append(request)
+        return _Response()
+
+    dispatch_publication_contract.dispatch(
+        revision,
+        scope="source",
+        repository="beepboop2025/palimpsest",
+        token="secret-token",
+        opener=opener,
+    )
+
+    assert [json.loads(request.data) for request in requests] == [
+        {
+            "event_type": "publication_contract",
+            "client_payload": {"sha": revision, "scope": "source"},
+        },
+        {
+            "event_type": "publication_graph_dirty",
+            "client_payload": {"sha": revision},
+        },
+    ]
 
 
 @pytest.mark.parametrize(
@@ -72,6 +104,7 @@ def test_dispatch_rejects_unsafe_identity_before_opening_a_request(
     with pytest.raises(dispatch_publication_contract.DispatchError):
         dispatch_publication_contract.dispatch(
             revision,
+            scope="complete",
             repository=repository,
             token="secret-token",
             opener=opener,
@@ -95,6 +128,7 @@ def test_dispatch_retries_transient_transport_failures_with_a_bound() -> None:
 
     dispatch_publication_contract.dispatch(
         "b" * 40,
+        scope="complete",
         repository="beepboop2025/palimpsest",
         token="secret-token",
         opener=opener,
@@ -129,8 +163,26 @@ def test_dispatch_current_head_requires_the_payload_to_match_head(
     ):
         dispatch_publication_contract.dispatch_current_head(
             "c" * 40,
+            scope="complete",
             repo=tmp_path,
             environ={},
+        )
+
+
+def test_dispatch_rejects_an_open_ended_scope_before_opening_a_request() -> None:
+    def opener(_request: object, *, timeout: float) -> _Response:
+        raise AssertionError(f"request unexpectedly opened with timeout {timeout}")
+
+    with pytest.raises(
+        dispatch_publication_contract.DispatchError,
+        match="exactly 'source' or 'complete'",
+    ):
+        dispatch_publication_contract.dispatch(
+            "e" * 40,
+            scope="partial",
+            repository="beepboop2025/palimpsest",
+            token="secret-token",
+            opener=opener,
         )
 
 

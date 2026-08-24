@@ -1,4 +1,5 @@
 """Offline contract tests for the provenance-aware evidence mesh."""
+
 from __future__ import annotations
 
 import copy
@@ -10,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts import build_erasure_trail
 from core.evidence_mesh import (
     EvidenceMeshError,
     build_evidence_mesh,
@@ -23,8 +25,9 @@ from core.lab_evidence import seal_envelope_hashes
 
 ROOT = Path(__file__).resolve().parents[1]
 NOW = datetime.fromisoformat(
-    json.loads((ROOT / "readings/evidence-mesh-latest.json").read_text())["generated_at"]
-    .replace("Z", "+00:00")
+    json.loads((ROOT / "readings/evidence-mesh-latest.json").read_text())[
+        "generated_at"
+    ].replace("Z", "+00:00")
 )
 REQUIRED_FILES = (
     "config/evidence_mesh.json",
@@ -43,11 +46,28 @@ def mesh() -> dict:
 
 
 def _resource(document: dict, resource_id: str) -> dict:
-    return next(row for row in document["resources"] if row["resource_id"] == resource_id)
+    return next(
+        row for row in document["resources"] if row["resource_id"] == resource_id
+    )
 
 
 def _receipt(document: dict, input_id: str) -> dict:
     return next(row for row in document["inputs"] if row["input_id"] == input_id)
+
+
+def test_erasure_trail_declares_every_runtime_dependency_in_the_mesh() -> None:
+    config = json.loads((ROOT / "config/evidence_mesh.json").read_text())
+    declared = set(config["derived_dependencies"]["erasure-trail"])
+    runtime = {
+        filename.removesuffix("-latest.json")
+        for filename in build_erasure_trail.INPUT_FILES
+    }
+
+    assert all(
+        filename.endswith("-latest.json")
+        for filename in build_erasure_trail.INPUT_FILES
+    )
+    assert declared == runtime
 
 
 def _isolated_root(tmp_path: Path) -> Path:
@@ -61,7 +81,9 @@ def _isolated_root(tmp_path: Path) -> Path:
 
 def _write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def _partner_envelope() -> dict:
@@ -74,40 +96,46 @@ def _partner_envelope() -> dict:
         "evidence_class": "OFFICIAL_STATISTIC",
         "content_sha256": hashlib.sha256(b"pboc release").hexdigest(),
     }
-    return seal_envelope_hashes({
-        "schema": "lab-evidence-envelope/v1",
-        "record_id": "cn.cny.loan-growth.2026-07",
-        "signal_id": "cn.cny.loan-growth",
-        "event_time": "2026-07-31T23:59:59Z",
-        "knowledge_time": "2026-08-12T09:00:00Z",
-        "publication_time": "2026-08-12T10:00:00Z",
-        "jurisdiction": {
-            "scheme": "ISO-3166-1-alpha-2",
-            "code": "CN",
-            "label": "China",
-        },
-        "measure": {"type": "year-on-year-change", "value": "8.7", "unit": "percent"},
-        "evidence_status": "OBSERVED",
-        "measured_fraction": "1",
-        "support_level": "DIRECT_OBSERVATION",
-        "source_groups": ["pboc"],
-        "source_refs": [source_ref],
-        "hashes": {
-            "algorithm": "sha256",
-            "record_sha256": "0" * 64,
-            "source_set_sha256": "0" * 64,
-        },
-        "redistribution_status": "OPEN",
-        "public_value_allowed": True,
-        "privacy_tier": "PUBLIC_AGGREGATE",
-        "review_status": "MACHINE_VALIDATED",
-        "contains_exact_iocs": False,
-        "contains_raw_messages": False,
-        "limitations": [
-            "This source-reported national aggregate does not establish causation."
-        ],
-        "supersedes": [],
-    })
+    return seal_envelope_hashes(
+        {
+            "schema": "lab-evidence-envelope/v1",
+            "record_id": "cn.cny.loan-growth.2026-07",
+            "signal_id": "cn.cny.loan-growth",
+            "event_time": "2026-07-31T23:59:59Z",
+            "knowledge_time": "2026-08-12T09:00:00Z",
+            "publication_time": "2026-08-12T10:00:00Z",
+            "jurisdiction": {
+                "scheme": "ISO-3166-1-alpha-2",
+                "code": "CN",
+                "label": "China",
+            },
+            "measure": {
+                "type": "year-on-year-change",
+                "value": "8.7",
+                "unit": "percent",
+            },
+            "evidence_status": "OBSERVED",
+            "measured_fraction": "1",
+            "support_level": "DIRECT_OBSERVATION",
+            "source_groups": ["pboc"],
+            "source_refs": [source_ref],
+            "hashes": {
+                "algorithm": "sha256",
+                "record_sha256": "0" * 64,
+                "source_set_sha256": "0" * 64,
+            },
+            "redistribution_status": "OPEN",
+            "public_value_allowed": True,
+            "privacy_tier": "PUBLIC_AGGREGATE",
+            "review_status": "MACHINE_VALIDATED",
+            "contains_exact_iocs": False,
+            "contains_raw_messages": False,
+            "limitations": [
+                "This source-reported national aggregate does not establish causation."
+            ],
+            "supersedes": [],
+        }
+    )
 
 
 def test_schema_and_runtime_accept_the_deterministic_document(mesh: dict) -> None:
@@ -129,17 +157,21 @@ def test_schema_and_runtime_accept_the_deterministic_document(mesh: dict) -> Non
     visit(schema)
 
 
-def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(mesh: dict) -> None:
+def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(
+    mesh: dict,
+) -> None:
     catalog = json.loads((ROOT / "config/public_data_catalog.json").read_text())
     osint = json.loads((ROOT / "readings/osint-china-latest.json").read_text())
     catalog_ids = {row["id"] for row in catalog["datasets"]}
     signal_ids = {row["id"] for row in osint["signals"]}
     mesh_catalog_ids = {
-        row["source_id"] for row in mesh["resources"]
+        row["source_id"]
+        for row in mesh["resources"]
         if row["project_id"] == "palimpsest" and row["namespace"] == "catalog"
     }
     mesh_signal_ids = {
-        row["source_id"] for row in mesh["resources"]
+        row["source_id"]
+        for row in mesh["resources"]
         if row["project_id"] == "palimpsest" and row["namespace"] == "osint"
     }
 
@@ -170,18 +202,34 @@ def test_weekly_situation_is_derived_not_an_independent_upstream(mesh: dict) -> 
     }
 
 
-def test_all_sibling_projects_have_typed_capabilities_and_input_contracts(mesh: dict) -> None:
+def test_all_sibling_projects_have_typed_capabilities_and_input_contracts(
+    mesh: dict,
+) -> None:
     projects = {row["id"]: row for row in mesh["projects"]}
     assert set(projects) == {
-        "palimpsest", "seiche", "liquilens", "scamshield", "narcoscope",
+        "palimpsest",
+        "seiche",
+        "liquilens",
+        "scamshield",
+        "narcoscope",
     }
     for project in projects.values():
         assert project["capabilities"]
-        assert all(token == token.upper() and " " not in token for token in project["capabilities"])
+        assert all(
+            token == token.upper() and " " not in token
+            for token in project["capabilities"]
+        )
         assert project["input_contracts"]
-        assert all(contract["allowed_role"] in {
-            "evidence", "context", "typology", "candidate-only",
-        } for contract in project["input_contracts"])
+        assert all(
+            contract["allowed_role"]
+            in {
+                "evidence",
+                "context",
+                "typology",
+                "candidate-only",
+            }
+            for contract in project["input_contracts"]
+        )
 
     assert projects["seiche"]["status"] == "REVIEW_GATED"
     assert projects["seiche"]["public_url"] is None
@@ -209,11 +257,10 @@ def test_missing_optional_snapshots_are_explicit_and_never_zero(mesh: dict) -> N
 
 
 def test_catalog_freshness_policy_is_strict_and_drives_resource_deadlines(
-    mesh: dict, tmp_path: Path,
+    mesh: dict,
+    tmp_path: Path,
 ) -> None:
-    observations = _resource(
-        mesh, "palimpsest:catalog:china-economic-observations"
-    )
+    observations = _resource(mesh, "palimpsest:catalog:china-economic-observations")
     observed = datetime.fromisoformat(
         observations["freshness"]["observed_at"].replace("Z", "+00:00")
     )
@@ -221,17 +268,13 @@ def test_catalog_freshness_policy_is_strict_and_drives_resource_deadlines(
         observations["freshness"]["deadline"].replace("Z", "+00:00")
     )
     assert deadline - observed == timedelta(days=10)
-    assert any(
-        "collector" in limitation
-        for limitation in observations["limitations"]
-    )
+    assert any("collector" in limitation for limitation in observations["limitations"])
 
     root = _isolated_root(tmp_path)
     catalog_path = root / "config/public_data_catalog.json"
     catalog = json.loads(catalog_path.read_text())
     target = next(
-        row for row in catalog["datasets"]
-        if row["id"] == "china-economic-observations"
+        row for row in catalog["datasets"] if row["id"] == "china-economic-observations"
     )
     target["freshness_budget"] = "P0D"
     _write_json(catalog_path, catalog)
@@ -245,7 +288,9 @@ def test_catalog_freshness_policy_is_strict_and_drives_resource_deadlines(
         build_evidence_mesh(root, now=NOW)
 
 
-def test_unverified_partner_public_endpoints_fail_config_validation(tmp_path: Path) -> None:
+def test_unverified_partner_public_endpoints_fail_config_validation(
+    tmp_path: Path,
+) -> None:
     root = _isolated_root(tmp_path)
     config_path = root / "config/evidence_mesh.json"
     config = json.loads(config_path.read_text())
@@ -266,15 +311,25 @@ def test_unverified_partner_public_endpoints_fail_config_validation(tmp_path: Pa
 def test_mirrors_and_derived_views_do_not_manufacture_independence(mesh: dict) -> None:
     catalog = json.loads((ROOT / "config/public_data_catalog.json").read_text())
     osint = json.loads((ROOT / "readings/osint-china-latest.json").read_text())
-    shared = {row["id"] for row in catalog["datasets"]} & {row["id"] for row in osint["signals"]}
+    shared = {row["id"] for row in catalog["datasets"]} & {
+        row["id"] for row in osint["signals"]
+    }
     for source_id in shared:
         catalog_resource = _resource(mesh, f"palimpsest:catalog:{source_id}")
         osint_resource = _resource(mesh, f"palimpsest:osint:{source_id}")
-        assert catalog_resource["independence_group"] == osint_resource["independence_group"]
+        assert (
+            catalog_resource["independence_group"]
+            == osint_resource["independence_group"]
+        )
         assert catalog_resource["upstream_groups"] == osint_resource["upstream_groups"]
 
-    assert _resource(mesh, "palimpsest:catalog:ooni-gfw")["independence_group"] == (
-        _resource(mesh, "palimpsest:catalog:in-path-interference")["independence_group"]
+    assert (
+        _resource(mesh, "palimpsest:catalog:ooni-gfw")["independence_group"]
+        == (
+            _resource(mesh, "palimpsest:catalog:in-path-interference")[
+                "independence_group"
+            ]
+        )
     )
     fusion = _resource(mesh, "palimpsest:osint:vantage-fusion")
     assert fusion["independence_eligible"] is False
@@ -326,7 +381,9 @@ def test_narcoscope_pin_mismatch_is_stale_not_current(tmp_path: Path) -> None:
     assert receipt["byte_identity"] == "mismatch"
     assert receipt["resource_count"] == 5
     assert "differs" in receipt["reason"]
-    narco_resources = [row for row in document["resources"] if row["project_id"] == "narcoscope"]
+    narco_resources = [
+        row for row in document["resources"] if row["project_id"] == "narcoscope"
+    ]
     assert len(narco_resources) == 5
     assert {row["availability"] for row in narco_resources} == {"stale"}
     assert {row["freshness"]["status"] for row in narco_resources} == {"stale"}
@@ -346,7 +403,9 @@ def test_narcoscope_clocks_use_source_coverage_and_pin_admission(mesh: dict) -> 
 
     retail = _resource(mesh, "narcoscope:artifact:retail-drug-prices")
     assert retail["source_temporal_coverage"] == {
-        "kind": "year_range", "from_year": 2019, "to_year": 2019,
+        "kind": "year_range",
+        "from_year": 2019,
+        "to_year": 2019,
         "snapshot_date": None,
     }
     assert retail["clocks"]["event_time"] == "2019-12-31T23:59:59Z"
@@ -354,7 +413,9 @@ def test_narcoscope_clocks_use_source_coverage_and_pin_admission(mesh: dict) -> 
     assert ofac["clocks"]["event_time"] is None
 
 
-def test_future_narcoscope_admission_fails_instead_of_negative_age(tmp_path: Path) -> None:
+def test_future_narcoscope_admission_fails_instead_of_negative_age(
+    tmp_path: Path,
+) -> None:
     root = _isolated_root(tmp_path)
     pin = json.loads(
         (root / "integrations/intelligence-commons/narcoscope-pin-v1.json").read_text()
@@ -371,15 +432,18 @@ def test_naive_build_clock_is_rejected_before_timezone_conversion() -> None:
         build_evidence_mesh(ROOT, now=datetime(2030, 1, 2, 3, 4, 5))
 
 
-def test_runtime_rejects_forged_nonnegative_age_for_future_observation(mesh: dict) -> None:
+def test_runtime_rejects_forged_nonnegative_age_for_future_observation(
+    mesh: dict,
+) -> None:
     hostile = copy.deepcopy(mesh)
     resource = next(
-        row for row in hostile["resources"]
+        row
+        for row in hostile["resources"]
         if row["freshness"]["observed_at"] is not None
     )
     resource["freshness"]["observed_at"] = (
-        NOW + timedelta(hours=1)
-    ).isoformat().replace("+00:00", "Z")
+        (NOW + timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+    )
     resource["freshness"]["age_hours"] = 0
     with pytest.raises(EvidenceMeshError, match="after mesh generation"):
         validate_evidence_mesh(hostile)
@@ -388,7 +452,9 @@ def test_runtime_rejects_forged_nonnegative_age_for_future_observation(mesh: dic
 def test_valid_optional_partner_snapshot_is_admitted_as_context(tmp_path: Path) -> None:
     snapshot = tmp_path / "seiche.json"
     _write_json(snapshot, _partner_envelope())
-    document = build_evidence_mesh(ROOT, now=NOW, partner_snapshot_paths={"seiche": snapshot})
+    document = build_evidence_mesh(
+        ROOT, now=NOW, partner_snapshot_paths={"seiche": snapshot}
+    )
 
     receipt = _receipt(document, "seiche-partner-snapshot")
     assert receipt["availability"] == "available"
@@ -400,13 +466,17 @@ def test_valid_optional_partner_snapshot_is_admitted_as_context(tmp_path: Path) 
     assert resource["independence_eligible"] is False
 
 
-def test_partner_snapshot_rejects_unknown_fields_contacts_and_exact_iocs(tmp_path: Path) -> None:
+def test_partner_snapshot_rejects_unknown_fields_contacts_and_exact_iocs(
+    tmp_path: Path,
+) -> None:
     unknown = _partner_envelope()
     unknown["unknown_field"] = "not allowed"
     unknown_path = tmp_path / "unknown.json"
     _write_json(unknown_path, unknown)
     with pytest.raises(EvidenceMeshError, match="invalid seiche partner snapshot"):
-        build_evidence_mesh(ROOT, now=NOW, partner_snapshot_paths={"seiche": unknown_path})
+        build_evidence_mesh(
+            ROOT, now=NOW, partner_snapshot_paths={"seiche": unknown_path}
+        )
 
     contact = _partner_envelope()
     contact["limitations"] = ["Contact reporter@example.org for the underlying record."]
@@ -414,14 +484,18 @@ def test_partner_snapshot_rejects_unknown_fields_contacts_and_exact_iocs(tmp_pat
     contact_path = tmp_path / "contact.json"
     _write_json(contact_path, contact)
     with pytest.raises(EvidenceMeshError, match="person-level contact"):
-        build_evidence_mesh(ROOT, now=NOW, partner_snapshot_paths={"seiche": contact_path})
+        build_evidence_mesh(
+            ROOT, now=NOW, partner_snapshot_paths={"seiche": contact_path}
+        )
 
     exact_ioc = _partner_envelope()
     exact_ioc["contains_exact_iocs"] = True
     exact_path = tmp_path / "exact-ioc.json"
     _write_json(exact_path, exact_ioc)
     with pytest.raises(EvidenceMeshError, match="invalid seiche partner snapshot"):
-        build_evidence_mesh(ROOT, now=NOW, partner_snapshot_paths={"seiche": exact_path})
+        build_evidence_mesh(
+            ROOT, now=NOW, partner_snapshot_paths={"seiche": exact_path}
+        )
 
 
 def test_caller_supplied_partner_input_is_byte_bounded(tmp_path: Path) -> None:
@@ -464,7 +538,8 @@ def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -
     root = _isolated_root(tmp_path)
     publication_paths = {
         "china-article-stream": root / "readings/china-article-stream-latest.json",
-        "china-censorship-analysis": root / "readings/china-censorship-analysis-latest.json",
+        "china-censorship-analysis": root
+        / "readings/china-censorship-analysis-latest.json",
         "china-situation": root / "readings/china-situation-latest.json",
         "evidence-mesh": root / "readings/evidence-mesh-latest.json",
         "machine-investigations": root / "readings/machine-investigations-latest.json",
@@ -475,11 +550,14 @@ def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -
     first = build_evidence_mesh(root, now=NOW)
 
     for path in publication_paths.values():
-        _write_json(path, {
-            "schema_version": "deliberately-not-parsed",
-            "generated_at": "2099-01-01T00:00:00Z",
-            "payload": "downstream bytes must not enter the mesh",
-        })
+        _write_json(
+            path,
+            {
+                "schema_version": "deliberately-not-parsed",
+                "generated_at": "2099-01-01T00:00:00Z",
+                "payload": "downstream bytes must not enter the mesh",
+            },
+        )
     second = build_evidence_mesh(root, now=NOW)
 
     assert canonical_json_bytes(first) == canonical_json_bytes(second)
@@ -491,20 +569,31 @@ def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -
         assert plane["independence_eligible"] is False
 
 
-def test_every_resource_carries_rights_clocks_freshness_role_and_lineage(mesh: dict) -> None:
+def test_every_resource_carries_rights_clocks_freshness_role_and_lineage(
+    mesh: dict,
+) -> None:
     for resource in mesh["resources"]:
         assert set(resource["rights"]) == {"redistribution", "reuse", "training"}
         assert resource["rights"]["training"] == "prohibited"
         assert set(resource["clocks"]) == {
-            "event_time", "knowledge_time", "publication_time",
+            "event_time",
+            "knowledge_time",
+            "publication_time",
         }
         assert set(resource["freshness"]) == {
-            "status", "observed_at", "deadline", "age_hours", "cadence",
+            "status",
+            "observed_at",
+            "deadline",
+            "age_hours",
+            "cadence",
         }
         if resource["freshness"]["age_hours"] is not None:
             assert resource["freshness"]["age_hours"] >= 0
         assert resource["allowed_role"] in {
-            "evidence", "context", "typology", "candidate-only",
+            "evidence",
+            "context",
+            "typology",
+            "candidate-only",
         }
         assert resource["independence_group"]
         assert resource["upstream_groups"]

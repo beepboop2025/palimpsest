@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>China capital-market evidence: Stock Connect scope and clocks · Palimpsest</title>
+<meta name="description" content="Source-bound China capital-market evidence from Palimpsest: official HKEX Stock Connect observations, collection clocks, coverage limits and explicit non-claims.">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info/china/capital-markets/">
+<link rel="alternate" type="application/ai-catalog+json" href="https://palimpsest.info/.well-known/ai-catalog.json" title="Palimpsest AI catalog">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/assets/china-discovery.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="China capital-market evidence with honest coverage limits">
+<meta property="og:description" content="Official HKEX Stock Connect observations without inventing northbound net flow or general market coverage.">
+<meta property="og:url" content="https://palimpsest.info/china/capital-markets/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://palimpsest.info/china/capital-markets/#page",
+      "url": "https://palimpsest.info/china/capital-markets/",
+      "name": "China capital-market evidence: Stock Connect scope and clocks",
+      "description": "An explanation and access guide for Palimpsest's official HKEX Stock Connect observations and their explicit coverage boundary.",
+      "dateModified": "2026-08-24",
+      "isPartOf": {"@type": "WebSite", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+      "mainEntity": {"@id": "https://palimpsest.info/china/capital-markets/#dataset"}
+    },
+    {
+      "@type": "Dataset",
+      "@id": "https://palimpsest.info/china/capital-markets/#dataset",
+      "name": "Palimpsest HKEX Stock Connect reading",
+      "description": "Official aggregate Stock Connect daily statistics: northbound turnover and southbound buy, sell and net observations. It is one cross-border channel, not general China capital-market coverage.",
+      "url": "https://palimpsest.info/readings/stock-connect-latest.json",
+      "isAccessibleForFree": true,
+      "usageInfo": "https://palimpsest.info/data.html#rights",
+      "spatialCoverage": [{"@type": "Place", "name": "Mainland China"}, {"@type": "Place", "name": "Hong Kong"}],
+      "distribution": [{"@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/stock-connect-latest.json"}]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://palimpsest.info/china/capital-markets/#faq",
+      "mainEntity": [
+        {"@type": "Question", "name": "Does Palimpsest cover all Chinese capital markets?", "acceptedAnswer": {"@type": "Answer", "text": "No. Its current dedicated market channel is official HKEX Stock Connect aggregate statistics. It does not claim comprehensive equities, bonds, derivatives, issuance, positioning or investor-level coverage."}},
+        {"@type": "Question", "name": "Can northbound Stock Connect net flow be calculated from the current data?", "acceptedAnswer": {"@type": "Answer", "text": "No. HKEX discontinued the northbound buy and sell split in August 2024. Palimpsest publishes northbound turnover and never estimates a northbound net-flow direction."}},
+        {"@type": "Question", "name": "Does Stock Connect turnover reveal investor nationality or the Chinese economy's direction?", "acceptedAnswer": {"@type": "Answer", "text": "No. Stock Connect is one cross-border market channel. Turnover does not identify beneficial-owner nationality, prove causation, measure domestic output, or support an economy-wide forecast."}}
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body class="cd-page">
+<a class="cd-skip" href="#main">Skip to content</a>
+<nav class="cd-nav" aria-label="Primary"><div class="cd-nav__inner">
+  <a class="cd-brand" href="/">PALIMPSEST</a>
+  <a href="/china/">China Observatory</a>
+  <a href="/china/money-markets/">Money markets</a>
+  <a href="/china-economy-api/">API guide</a>
+  <a href="/developers.html">Developers</a>
+</div></nav>
+<main class="cd-main" id="main">
+  <header class="cd-hero">
+    <p class="cd-kicker">China evidence · capital-market channel · bounded scope</p>
+    <h1>Stock Connect evidence without pretending it is the whole market.</h1>
+    <p class="cd-lede">Palimpsest retains official HKEX aggregate observations for one cross-border market channel. It publishes the source date and collection clock, preserves the post-2024 narrowing of the data, and refuses to manufacture northbound flow direction.</p>
+    <div class="cd-actions">
+      <a class="cd-btn" href="/readings/stock-connect-latest.json">Open the current reading</a>
+      <a class="cd-btn cd-btn--ghost" href="/readings/china-index-latest.json">Inspect the China index</a>
+      <a class="cd-btn cd-btn--ghost" href="/china-economy-api/">Use the API</a>
+    </div>
+  </header>
+
+  <aside class="cd-alert" aria-label="Coverage warning">
+    <strong>This is not general capital-market coverage.</strong>
+    At the 24 August 2026 publication snapshot, the markets-and-capital desk had one independent source group: HKEX Stock Connect, while the broader China Observatory was <code>warming_up</code> and abstained from an economy-wide direction. Re-read the current artifacts before citing status. This does not cover the full mainland equity, bond, derivatives, primary-issuance or investor-positioning universe.
+  </aside>
+
+  <section class="cd-section" aria-labelledby="observed">
+    <p class="cd-kicker">Observed channel</p>
+    <h2 id="observed">What the current artifact can answer</h2>
+    <div class="cd-grid">
+      <article class="cd-card"><p class="cd-label">Northbound</p><h3>SSE and SZSE turnover</h3><p>Daily aggregate turnover for the mainland legs, plus their combined total, in CNY billions.</p></article>
+      <article class="cd-card"><p class="cd-label">Southbound</p><h3>Buy, sell and net observations</h3><p>Daily aggregate buy and sell turnover, and their arithmetic net, in HKD billions.</p></article>
+      <article class="cd-card cd-card--wide"><p class="cd-label">Structural break retained</p><h3>No invented northbound net flow</h3><p>HKEX discontinued the northbound buy/sell split in August 2024. Palimpsest records the resulting turnover-only boundary. It does not backfill or estimate a direction that the official source no longer publishes.</p></article>
+    </div>
+  </section>
+
+  <section class="cd-section" aria-labelledby="clocks">
+    <p class="cd-kicker">Evidence clocks</p>
+    <h2 id="clocks">Read the source day and collection time separately</h2>
+    <dl class="cd-facts">
+      <div><dt><code>date</code> / <code>asof</code></dt><dd>The market day represented by the HKEX aggregate.</dd></div>
+      <div><dt><code>generated_at</code> / index <code>collected_at</code></dt><dd>When Palimpsest collected and generated the retained reading; the China index exposes that same source-collection clock as <code>collected_at</code>.</dd></div>
+      <div><dt><code>released_at</code> in the China index</dt><dd>Currently unavailable for this channel; Palimpsest does not invent an intraday release time.</dd></div>
+      <div><dt>Freshness</dt><dd>Evaluated against the desk’s explicit budget in the current China index. Always inspect the current artifact rather than assuming a daily source is current.</dd></div>
+    </dl>
+  </section>
+
+  <section class="cd-section" aria-labelledby="examples">
+    <p class="cd-kicker">REST and MCP</p>
+    <h2 id="examples">Retrieve the reading and its broader evidence state</h2>
+    <p>The static REST reading is the narrowest source:</p>
+    <pre><code>curl -sS https://palimpsest.info/readings/stock-connect-latest.json \
+  | python3 -m json.tool</code></pre>
+    <p>For the current evidence desk—including coverage gates and abstention—use the deployed MCP <code>1.8.1</code> server:</p>
+    <pre><code>curl -sS https://api.seiche.info/palimpsest/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":1,
+    "method":"tools/call",
+    "params":{
+      "name":"get_signal",
+      "arguments":{"name":"china-economic-pulse","max_rows":25}
+    }
+  }'</code></pre>
+    <p>Do not infer a flow direction from northbound turnover. Do not treat southbound arithmetic net as investor nationality, domestic output or a causal signal.</p>
+  </section>
+
+  <section class="cd-section" aria-labelledby="limits">
+    <p class="cd-kicker">Rights and limits</p>
+    <h2 id="limits">The source relationship remains visible</h2>
+    <p>The reading uses official aggregate HKEX statistics and preserves HKEX attribution and publication date. Palimpsest software, schemas and original metadata are MIT-licensed; the source observations retain publisher rights. Public access does not create permission to strip attribution or redistribute beyond the publisher’s terms.</p>
+    <p><a href="/data.html#rights">Read the Evidence Atlas rights ledger</a> · <a href="/china/sources/">Inspect all source states</a></p>
+  </section>
+
+  <section class="cd-section" aria-labelledby="routing">
+    <p class="cd-kicker">Cross-product routing</p>
+    <h2 id="routing">Route the question by evidence layer</h2>
+    <div class="cd-route"><strong>Palimpsest</strong><span>Use for official, source-bound China observations and the explicit gap between observed evidence and an economy-wide conclusion.</span></div>
+    <div class="cd-route"><strong>Seiche</strong><span>Use for system funding and money/FX/macro-capital transmission across registered markets, with its own coverage ledger.</span></div>
+    <div class="cd-route"><strong>LiquiLens</strong><span>Use when the question is about a bank, lender or NBFC rather than a market channel.</span></div>
+    <div class="cd-route"><strong>Undertow</strong><span>Use when the question is whether a position can exit: depth, concentration, slippage and unwind conditions.</span></div>
+    <p><a href="https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence">Read the canonical Financial Evidence Agent Skill</a>.</p>
+  </section>
+
+  <section class="cd-section cd-faq" aria-labelledby="faq">
+    <p class="cd-kicker">FAQ</p>
+    <h2 id="faq">What this channel does—and does not—mean</h2>
+    <details open><summary>Does Palimpsest cover all Chinese capital markets?</summary><p>No. Its current dedicated market channel is official HKEX Stock Connect aggregate statistics. It does not claim comprehensive equities, bonds, derivatives, issuance, positioning or investor-level coverage.</p></details>
+    <details><summary>Can northbound Stock Connect net flow be calculated from the current data?</summary><p>No. HKEX discontinued the northbound buy and sell split in August 2024. Palimpsest publishes northbound turnover and never estimates a northbound net-flow direction.</p></details>
+    <details><summary>Does Stock Connect turnover reveal investor nationality or the Chinese economy's direction?</summary><p>No. Stock Connect is one cross-border market channel. Turnover does not identify beneficial-owner nationality, prove causation, measure domestic output, or support an economy-wide forecast.</p></details>
+  </section>
+
+  <footer class="cd-footer">Cite the current <code>stock-connect-latest.json</code> reading and its clocks. This page explains the boundary; it is not the measurement.</footer>
+</main>
+</body>
+</html>

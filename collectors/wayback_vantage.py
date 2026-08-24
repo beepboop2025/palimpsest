@@ -80,11 +80,17 @@ WAYBACK_RAW = "https://web.archive.org/web/{ts}id_/{url}"
 
 _USER_AGENT = "Palimpsest/0.2 (open-source censorship research; wayback reconstruction)"
 _MAX_BYTES = 8 * 1024 * 1024
+INVALID_RESPONSE = "invalid_response"
 
 # The CDX fields we request, in order. `digest` (the Archive's own SHA-1 base32 content hash) is
 # what makes mutation detection free — two live captures with different digests differ in
 # substance, with no body fetch. Kept as a named tuple so parse and query never drift apart.
 CDX_FIELDS = ("timestamp", "original", "statuscode", "digest", "mimetype", "length")
+
+
+class InvalidCDXResponse(ValueError):
+    """The Archive answered, but its body could not prove a CDX result."""
+
 
 # China-side "the page is gone" body markers for the OPTIONAL deep path (fetching a snapshot
 # body). The CDX status code alone classifies the common case, which is why nothing calls this
@@ -118,12 +124,15 @@ _CN_GONE_MARKERS = (
 
 # Two-part tells: a legal preamble counts only with a withholding phrase beside it.
 _CN_GONE_PAIRS = (
-    (("根据相关法律法规", "根据国家法律法规", "根据法律法规"),
-     ("无法显示", "无法查看", "暂时无法", "未予显示", "已被删除", "已删除")),
+    (
+        ("根据相关法律法规", "根据国家法律法规", "根据法律法规"),
+        ("无法显示", "无法查看", "暂时无法", "未予显示", "已被删除", "已删除"),
+    ),
 )
 
 
 # ── capture model ─────────────────────────────────────────────────────────────────────
+
 
 # HTTP-status → coarse liveness class. Numeric-only: a non-numeric CDX status ("-", "warc") is a
 # revisit/dedup record and tells us nothing on its own, so it is "unknown" and never drives a
@@ -141,7 +150,7 @@ def status_class(statuscode: str) -> str:
     if code in (301, 302, 303, 307, 308):
         return "redirect"
     if code in (403, 451):
-        return "error"       # our-side / legal block: uninformative about deletion
+        return "error"  # our-side / legal block: uninformative about deletion
     if code >= 500 or code == 0:
         return "error"
     return "unknown"
@@ -151,10 +160,10 @@ def status_class(statuscode: str) -> str:
 class WaybackCapture:
     """One row of a URL's Wayback CDX timeline."""
 
-    timestamp: str            # "YYYYMMDDhhmmss" (UTC, per the Archive)
+    timestamp: str  # "YYYYMMDDhhmmss" (UTC, per the Archive)
     original: str
     statuscode: str
-    digest: str               # Archive SHA-1 base32 — a content address, for free
+    digest: str  # Archive SHA-1 base32 — a content address, for free
     mimetype: str = ""
     length: int | None = None
 
@@ -162,7 +171,9 @@ class WaybackCapture:
     def dt(self) -> datetime:
         """Capture instant as an aware UTC datetime; epoch 0 if unparseable (fail-soft)."""
         try:
-            return datetime.strptime(self.timestamp, "%Y%m%d%H%M%S").replace(tzinfo=timezone.utc)
+            return datetime.strptime(self.timestamp, "%Y%m%d%H%M%S").replace(
+                tzinfo=timezone.utc
+            )
         except (ValueError, TypeError):
             return datetime.fromtimestamp(0, tz=timezone.utc)
 
@@ -179,52 +190,90 @@ class WaybackCapture:
         return tmpl.format(ts=self.timestamp, url=self.original)
 
 
-def parse_cdx_json(payload) -> list[WaybackCapture]:
-    """Parse a CDX `output=json` response (a list-of-lists whose first row is the header) into
-    captures, sorted by time. Tolerant of a JSON string or an already-decoded list, of missing
-    columns, and of malformed rows (they are skipped, never raised) so one bad row cannot sink a
-    cycle. Returns [] on anything unusable."""
+def _parse_cdx_json_with_status(payload) -> tuple[list[WaybackCapture], bool]:
+    """Return captures plus whether the response was a valid CDX document.
+
+    A syntactically valid empty list and a valid header-only response mean the
+    Archive has no captures.  Invalid JSON, a drifted header, or a body made
+    entirely of malformed rows means the collection attempt is unusable.  That
+    distinction prevents a parser failure from becoming a fresh archive-gap
+    observation.
+    """
+
     if isinstance(payload, (str, bytes)):
         try:
             payload = json.loads(payload)
-        except (ValueError, TypeError):
-            return []
-    if not isinstance(payload, list) or len(payload) < 2:
-        return []
-    header = [str(c) for c in payload[0]]
+        except (ValueError, TypeError, UnicodeDecodeError):
+            return [], False
+    if not isinstance(payload, list):
+        return [], False
+    if not payload:
+        return [], True
+    if not isinstance(payload[0], (list, tuple)):
+        return [], False
+    header = [str(column) for column in payload[0]]
+    if len(header) != len(set(header)):
+        return [], False
     idx = {name: header.index(name) for name in CDX_FIELDS if name in header}
-    if "timestamp" not in idx or "original" not in idx or "statuscode" not in idx:
-        return []
+    required = ("timestamp", "original", "statuscode")
+    if any(name not in idx for name in required):
+        return [], False
+    if len(payload) == 1:
+        return [], True
 
     def cell(row, name, default=""):
-        i = idx.get(name)
-        return row[i] if (i is not None and i < len(row)) else default
+        index = idx.get(name)
+        return row[index] if (index is not None and index < len(row)) else default
 
-    out = []
+    captures: list[WaybackCapture] = []
+    malformed_rows = 0
     for row in payload[1:]:
-        if not isinstance(row, (list, tuple)):
+        if not isinstance(row, (list, tuple)) or any(
+            idx[name] >= len(row) for name in required
+        ):
+            malformed_rows += 1
             continue
-        ts = str(cell(row, "timestamp")).strip()
-        if not ts:
+        timestamp = str(cell(row, "timestamp")).strip()
+        original = str(cell(row, "original")).strip()
+        statuscode = str(cell(row, "statuscode")).strip()
+        try:
+            datetime.strptime(timestamp, "%Y%m%d%H%M%S")
+        except (TypeError, ValueError):
+            malformed_rows += 1
+            continue
+        if not original or not statuscode:
+            malformed_rows += 1
             continue
         length = cell(row, "length", "")
         try:
             length_val = int(length)
         except (ValueError, TypeError):
             length_val = None
-        out.append(WaybackCapture(
-            timestamp=ts,
-            original=str(cell(row, "original")).strip(),
-            statuscode=str(cell(row, "statuscode")).strip(),
-            digest=str(cell(row, "digest")).strip(),
-            mimetype=str(cell(row, "mimetype")).strip(),
-            length=length_val,
-        ))
-    out.sort(key=lambda c: c.timestamp)
-    return out
+        captures.append(
+            WaybackCapture(
+                timestamp=timestamp,
+                original=original,
+                statuscode=statuscode,
+                digest=str(cell(row, "digest")).strip(),
+                mimetype=str(cell(row, "mimetype")).strip(),
+                length=length_val,
+            )
+        )
+    captures.sort(key=lambda capture: capture.timestamp)
+    return captures, bool(captures) or malformed_rows == 0
+
+
+def parse_cdx_json(payload) -> list[WaybackCapture]:
+    """Parse a CDX `output=json` response (a list-of-lists whose first row is the header) into
+    captures, sorted by time. Tolerant of a JSON string or an already-decoded list, of missing
+    columns, and of malformed rows (they are skipped, never raised) so one bad row cannot sink a
+    cycle. Returns [] on anything unusable."""
+    captures, _valid = _parse_cdx_json_with_status(payload)
+    return captures
 
 
 # ── reconstruction: transitions in the timeline are the intelligence ───────────────────
+
 
 @dataclass
 class Reconstruction:
@@ -237,8 +286,8 @@ class Reconstruction:
     n_captures: int
     first_capture: str | None
     last_capture: str | None
-    divergences: list            # list[Divergence], most-severe first
-    note: str = ""               # "no_baseline" / "stable" / "" — fail-loud provenance
+    divergences: list  # list[Divergence], most-severe first
+    note: str = ""  # "no_baseline" / "stable" / "" — fail-loud provenance
 
     @property
     def primary(self):
@@ -251,16 +300,25 @@ def _observation(cap: WaybackCapture, probe: Probe, vantage: Vantage) -> Observa
     along as the reproducible evidence excerpt."""
     present = cap.status_class == "live"
     return Observation(
-        probe, vantage,
+        probe,
+        vantage,
         present=present,
-        content_fp=content_key(cap.digest) if (present and cap.digest and cap.digest != "-") else "",
+        content_fp=content_key(cap.digest)
+        if (present and cap.digest and cap.digest != "-")
+        else "",
         observed_at=cap.epoch,
         raw_excerpt=cap.snapshot_url(),
     )
 
 
-def reconstruct(captures: list[WaybackCapture], *, term: str = "", domain: str = "",
-                host: str = "") -> Reconstruction:
+def reconstruct(
+    captures: list[WaybackCapture],
+    *,
+    term: str = "",
+    domain: str = "",
+    host: str = "",
+    url: str = "",
+) -> Reconstruction:
     """Walk one URL's (digest-collapsed) CDX timeline and emit its censorship transitions.
 
     Two events, in the shared UNDERTEXT vocabulary so they flow to DDTI unchanged:
@@ -275,9 +333,13 @@ def reconstruct(captures: list[WaybackCapture], *, term: str = "", domain: str =
     ``redirect`` and ``error`` captures are treated as *uninformative* for transition purposes
     (a redirect can be benign http→https; a 403/451 is our-side/legal, not a deletion) — they
     neither establish nor break a ``live`` baseline. Returns a Reconstruction (never raises)."""
-    url = captures[0].original if captures else ""
+    url = url or (captures[0].original if captures else "")
     host = host or _host_of(url)
-    vantage = Vantage(geo="ARCHIVE", cohort="crawler", surface=f"wayback:{host}" if host else "wayback")
+    vantage = Vantage(
+        geo="ARCHIVE",
+        cohort="crawler",
+        surface=f"wayback:{host}" if host else "wayback",
+    )
     probe = Probe(query=term or url, domain=domain)
 
     informative = [c for c in captures if c.status_class in ("live", "gone")]
@@ -285,29 +347,60 @@ def reconstruct(captures: list[WaybackCapture], *, term: str = "", domain: str =
     note = ""
 
     if not any(c.status_class == "live" for c in informative):
-        note = "no_baseline"      # never saw it live → cannot claim a deletion (fail-loud)
+        note = "no_baseline"  # never saw it live → cannot claim a deletion (fail-loud)
     else:
         last_live = None
         deletion_emitted = False
         for cap in informative:
             if cap.status_class == "live":
-                if (last_live is not None and last_live.digest and cap.digest
-                        and last_live.digest != "-" and cap.digest != "-"
-                        and last_live.digest != cap.digest):
-                    a, b = _observation(last_live, probe, vantage), _observation(cap, probe, vantage)
-                    divs.append(Divergence(
-                        MUTATION, probe, a, b,
-                        latency_s=max(0.0, b.observed_at - a.observed_at),
-                        detail=(f"silent redaction between {last_live.snapshot_url()} and "
-                                f"{cap.snapshot_url()}")))
+                if (
+                    last_live is not None
+                    and last_live.digest
+                    and cap.digest
+                    and last_live.digest != "-"
+                    and cap.digest != "-"
+                    and last_live.digest != cap.digest
+                ):
+                    a, b = (
+                        _observation(last_live, probe, vantage),
+                        _observation(cap, probe, vantage),
+                    )
+                    divs.append(
+                        Divergence(
+                            MUTATION,
+                            probe,
+                            a,
+                            b,
+                            latency_s=max(0.0, b.observed_at - a.observed_at),
+                            detail=(
+                                f"silent redaction between {last_live.snapshot_url()} and "
+                                f"{cap.snapshot_url()}"
+                            ),
+                        )
+                    )
                 last_live = cap
-            elif cap.status_class == "gone" and last_live is not None and not deletion_emitted:
-                a, b = _observation(last_live, probe, vantage), _observation(cap, probe, vantage)
-                divs.append(Divergence(
-                    DELETION, probe, a, b,
-                    latency_s=max(0.0, b.observed_at - a.observed_at),
-                    detail=(f"present→gone; deletion bracketed in [{last_live.timestamp} .. "
-                            f"{cap.timestamp}]; last-live {last_live.snapshot_url()}")))
+            elif (
+                cap.status_class == "gone"
+                and last_live is not None
+                and not deletion_emitted
+            ):
+                a, b = (
+                    _observation(last_live, probe, vantage),
+                    _observation(cap, probe, vantage),
+                )
+                divs.append(
+                    Divergence(
+                        DELETION,
+                        probe,
+                        a,
+                        b,
+                        latency_s=max(0.0, b.observed_at - a.observed_at),
+                        detail=(
+                            f"present→gone; deletion bracketed in [{last_live.timestamp} .. "
+                            f"{cap.timestamp}]; last-live {last_live.snapshot_url()}"
+                        ),
+                    )
+                )
                 deletion_emitted = True
         if not divs:
             note = "stable"
@@ -315,11 +408,13 @@ def reconstruct(captures: list[WaybackCapture], *, term: str = "", domain: str =
     # Deletions outrank mutations; within a kind, the tighter bracket first.
     divs.sort(key=lambda d: (0 if d.kind == DELETION else 1, d.latency_s))
     return Reconstruction(
-        url=url, term=term or url,
+        url=url,
+        term=term or url,
         n_captures=len(captures),
         first_capture=captures[0].timestamp if captures else None,
         last_capture=captures[-1].timestamp if captures else None,
-        divergences=divs, note=note,
+        divergences=divs,
+        note=note,
     )
 
 
@@ -332,12 +427,24 @@ def _host_of(url: str) -> str:
 
 # ── network seam (injectable, governance-gated, fail-soft) ─────────────────────────────
 
-def cdx_query_url(url: str, *, from_ts: str = "", to_ts: str = "", limit: int = 2000,
-                  collapse: str = "digest") -> str:
+
+def cdx_query_url(
+    url: str,
+    *,
+    from_ts: str = "",
+    to_ts: str = "",
+    limit: int = 2000,
+    collapse: str = "digest",
+) -> str:
     """Build the CDX query for a URL's capture timeline. ``collapse=digest`` returns exactly the
     sequence of *distinct content states* (change points), which is precisely the timeline
     reconstruct() wants. ``from_ts``/``to_ts`` are ``YYYYMMDD[hhmmss]`` window bounds (optional)."""
-    params = {"url": url, "output": "json", "fl": ",".join(CDX_FIELDS), "limit": str(limit)}
+    params = {
+        "url": url,
+        "output": "json",
+        "fl": ",".join(CDX_FIELDS),
+        "limit": str(limit),
+    }
     if collapse:
         params["collapse"] = collapse
     if from_ts:
@@ -350,9 +457,17 @@ def cdx_query_url(url: str, *, from_ts: str = "", to_ts: str = "", limit: int = 
 def default_cdx_fetch(url: str, *, timeout: float = 30.0) -> str:
     """Minimal stdlib GET of the CDX API. Raises on transport error (the caller catches and
     abstains). Kept tiny and dependency-free so the analytical core stays stdlib-only."""
-    req = urllib.request.Request(cdx_query_url(url), headers={"User-Agent": _USER_AGENT})
+    req = urllib.request.Request(
+        cdx_query_url(url), headers={"User-Agent": _USER_AGENT}
+    )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read(_MAX_BYTES).decode("utf-8", "replace")
+        payload = resp.read(_MAX_BYTES + 1)
+    if len(payload) > _MAX_BYTES:
+        raise InvalidCDXResponse("CDX response exceeds its byte cap")
+    try:
+        return payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise InvalidCDXResponse("CDX response is not strict UTF-8") from exc
 
 
 class WaybackVantagePoint:
@@ -365,8 +480,15 @@ class WaybackVantagePoint:
     reconstruction is instantly haltable and polite — the same contract as WebVantagePoint.
     """
 
-    def __init__(self, *, fetch_cdx=None, kill_switch=None, rate_ceiling=None,
-                 from_ts: str = "", to_ts: str = ""):
+    def __init__(
+        self,
+        *,
+        fetch_cdx=None,
+        kill_switch=None,
+        rate_ceiling=None,
+        from_ts: str = "",
+        to_ts: str = "",
+    ):
         self._fetch = fetch_cdx
         self._kill = kill_switch
         self._rate = rate_ceiling
@@ -378,38 +500,108 @@ class WaybackVantagePoint:
         Reconstruction with note='unreachable' and no divergences — never a fabricated deletion."""
         host = _host_of(url)
         if self._fetch is None:
-            return Reconstruction(url=url, term=term or url, n_captures=0, first_capture=None,
-                                  last_capture=None, divergences=[], note="inert")
+            return Reconstruction(
+                url=url,
+                term=term or url,
+                n_captures=0,
+                first_capture=None,
+                last_capture=None,
+                divergences=[],
+                note="inert",
+            )
         if self._kill is not None:
-            self._kill.require_live()         # raises if halted — fail safe
+            self._kill.require_live()  # raises if halted — fail safe
         if self._rate is not None:
-            self._rate.acquire()              # polite by construction
+            self._rate.acquire()  # polite by construction
         try:
             payload = self._fetch(url)
-        except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError) as e:
+        except InvalidCDXResponse as e:
+            logger.info("wayback CDX response invalid for %s (%s)", url, e)
+            return Reconstruction(
+                url=url,
+                term=term or url,
+                n_captures=0,
+                first_capture=None,
+                last_capture=None,
+                divergences=[],
+                note=INVALID_RESPONSE,
+            )
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            OSError,
+            ValueError,
+        ) as e:
             logger.info("wayback CDX fetch failed for %s (%s)", url, type(e).__name__)
-            return Reconstruction(url=url, term=term or url, n_captures=0, first_capture=None,
-                                  last_capture=None, divergences=[], note="unreachable")
-        captures = parse_cdx_json(payload)
+            return Reconstruction(
+                url=url,
+                term=term or url,
+                n_captures=0,
+                first_capture=None,
+                last_capture=None,
+                divergences=[],
+                note="unreachable",
+            )
+        captures, valid = _parse_cdx_json_with_status(payload)
+        if not valid:
+            logger.info("wayback CDX response invalid for %s", url)
+            return Reconstruction(
+                url=url,
+                term=term or url,
+                n_captures=0,
+                first_capture=None,
+                last_capture=None,
+                divergences=[],
+                note=INVALID_RESPONSE,
+            )
         # Apply the window client-side too, so an injected fetch that ignores from/to still honors it.
         if self.from_ts or self.to_ts:
-            captures = [c for c in captures
-                        if (not self.from_ts or c.timestamp >= self.from_ts)
-                        and (not self.to_ts or c.timestamp <= self.to_ts)]
-        return reconstruct(captures, term=term, domain=domain, host=host)
+            captures = [
+                c
+                for c in captures
+                if (not self.from_ts or c.timestamp >= self.from_ts)
+                and (not self.to_ts or c.timestamp <= self.to_ts)
+            ]
+        return reconstruct(captures, term=term, domain=domain, host=host, url=url)
 
 
-if __name__ == "__main__":  # offline demo: a timeline where a live page is later scrubbed
+if (
+    __name__ == "__main__"
+):  # offline demo: a timeline where a live page is later scrubbed
     demo_cdx = [
         list(CDX_FIELDS),
-        ["20220101000000", "https://example.cn/story", "200", "AAAA", "text/html", "5000"],
-        ["20220301000000", "https://example.cn/story", "200", "BBBB", "text/html", "5200"],  # edited
-        ["20220401000000", "https://example.cn/story", "404", "-", "text/html", "0"],          # scrubbed
+        [
+            "20220101000000",
+            "https://example.cn/story",
+            "200",
+            "AAAA",
+            "text/html",
+            "5000",
+        ],
+        [
+            "20220301000000",
+            "https://example.cn/story",
+            "200",
+            "BBBB",
+            "text/html",
+            "5200",
+        ],  # edited
+        [
+            "20220401000000",
+            "https://example.cn/story",
+            "404",
+            "-",
+            "text/html",
+            "0",
+        ],  # scrubbed
     ]
     rec = reconstruct(parse_cdx_json(demo_cdx), term="某地 挤兑", domain="ECONOMY")
     print(f"url={rec.url}  captures={rec.n_captures}  note={rec.note!r}")
     for d in rec.divergences:
-        print(f"  {d.kind:9} severity={d.severity():8} latency={d.latency_s:>10.0f}s  {d.detail}")
+        print(
+            f"  {d.kind:9} severity={d.severity():8} latency={d.latency_s:>10.0f}s  {d.detail}"
+        )
     from collectors.undertext import divergence_to_observation
+
     if rec.primary:
         print("→ DDTI observation:", divergence_to_observation(rec.primary)["title"])

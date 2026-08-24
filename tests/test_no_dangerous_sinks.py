@@ -76,6 +76,10 @@ _SINKS = re.compile(
 #   reproduce_all.py: invokes only the current Python interpreter with a frozen
 #   tuple of first-party scripts and -m modules. No shell, no collected bytes in
 #   argv, and PYTHONPATH is the repo root. It is a local verifier, not a collector.
+#   recover_readings_ledger.py: invokes only fixed Git subcommands against the
+#   exact repository root. Commit IDs and paths come from the closed incident
+#   specification, replacement objects are disabled, stdin is closed, and no
+#   shell or fetched evidence enters argv.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
@@ -84,6 +88,7 @@ _ALLOWED = {
     ("scripts/anchor_roots.py", "subprocess."),
     ("scripts/dispatch_publication_contract.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
+    ("scripts/recover_readings_ledger.py", "subprocess."),
     ("scripts/reproduce_all.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
 }
@@ -145,6 +150,17 @@ def test_contract_dispatch_keeps_a_fixed_head_lookup_boundary():
 
     assert "shell=True" not in text
     assert '["git", "rev-parse", "HEAD"]' in text
+
+
+def test_readings_ledger_recovery_keeps_a_fixed_no_shell_git_boundary():
+    text = (ROOT / "scripts" / "recover_readings_ledger.py").read_text(encoding="utf-8")
+
+    assert "shell=True" not in text
+    assert '["git", "-C", os.fspath(repo), *args]' in text
+    assert 'env["GIT_NO_REPLACE_OBJECTS"] = "1"' in text
+    assert "stdin=subprocess.DEVNULL" in text
+    assert text.count("repo = _require_repo(repo)") >= 2
+    assert "_HEX_40.fullmatch" in text
 
 
 def test_network_lane_keeps_fixed_no_shell_process_boundaries():

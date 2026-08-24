@@ -30,10 +30,12 @@ CDX fetch, so the tests hand it synthetic CDX rows and the real reconstruction
 logic runs unchanged. Nothing touches archive.org. The clock is stubbed too, so
 two rounds are distinguishable no matter how fast the suite runs.
 """
+
 from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
@@ -59,6 +61,34 @@ DELETED = [
     ("20240101000000", URL, "200", "AAAAAAAA", "text/html", "10240"),
     ("20250101000000", URL, "404", "-", "text/html", "0"),
 ]
+
+
+def _high_change_timeline(url: str, *, n_transitions: int = 2_000) -> list[tuple]:
+    """One deletion plus enough live digest changes to reach the exact total."""
+
+    started = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    rows = [
+        (
+            (started + timedelta(hours=offset)).strftime("%Y%m%d%H%M%S"),
+            url,
+            "200",
+            f"DIGEST-{offset:04d}",
+            "text/html",
+            "10240",
+        )
+        for offset in range(n_transitions)
+    ]
+    rows.append(
+        (
+            (started + timedelta(hours=n_transitions)).strftime("%Y%m%d%H%M%S"),
+            url,
+            "404",
+            "-",
+            "text/html",
+            "0",
+        )
+    )
+    return rows
 
 
 class _Clock:
@@ -93,8 +123,10 @@ def publish(tmp_path, monkeypatch):
     monkeypatch.delenv("PALIMPSEST_HALT", raising=False)
     monkeypatch.setenv("PALIMPSEST_KILLFILE", str(tmp_path / "absent-halt-file"))
 
-    def run(rows, watchlist=WATCHLIST):
+    def run(rows, watchlist=WATCHLIST, *, raw_payload=None):
         def fetch(url, **kw):
+            if raw_payload is not None:
+                return raw_payload
             if rows is None:
                 raise _Unreachable("CDX did not answer")
             return json.dumps([_HEADER] + [list(r) for r in rows])
@@ -119,7 +151,7 @@ def _history(tmp_path):
     path = tmp_path / "wayback-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def test_an_unchanged_round_still_refreshes_the_observation_time(publish):
@@ -133,7 +165,8 @@ def test_an_unchanged_round_still_refreshes_the_observation_time(publish):
     second = run(STABLE)
 
     assert second["generated_at"] > first["generated_at"], (
-        "an unchanged answer must still publish this round's observation time")
+        "an unchanged answer must still publish this round's observation time"
+    )
 
 
 def test_the_unchanged_round_really_was_unchanged(publish):
@@ -143,8 +176,13 @@ def test_the_unchanged_round_really_was_unchanged(publish):
     first = run(STABLE)
     second = run(STABLE)
 
-    for field in ("n_watched", "n_reachable", "n_deletions", "n_mutations",
-                  "method_version"):
+    for field in (
+        "n_watched",
+        "n_reachable",
+        "n_deletions",
+        "n_mutations",
+        "method_version",
+    ):
         assert second[field] == first[field]
     assert second["reconstructions"] == first["reconstructions"]
     assert first["reconstructions"][0]["event"] == "stable"
@@ -163,6 +201,14 @@ def test_the_history_records_every_round_not_only_the_moved_ones(publish):
     assert len(rows) == 3
     assert [r["n_reachable"] for r in rows] == [1, 1, 1]
     assert len({r["generated_at"] for r in rows}) == 3
+
+
+def test_wayback_history_binds_the_cardinality_method_version(publish):
+    run, tmp_path = publish
+    run(STABLE)
+
+    rows = _history(tmp_path)
+    assert [row["method_version"] for row in rows] == [pull.METHOD_VERSION]
 
 
 def test_a_moved_finding_reaches_both_the_reading_and_the_history(publish):
@@ -184,6 +230,23 @@ def test_a_moved_finding_reaches_both_the_reading_and_the_history(publish):
     assert [r["n_deletions"] for r in rows] == [0, 1]
 
 
+def test_two_thousand_changes_publish_only_the_primary_deletion(publish):
+    run, _ = publish
+    reading = run(_high_change_timeline(URL))
+
+    assert reading["n_transitions_total"] == 2_000
+    assert reading["n_transitions_published"] == 1
+    assert reading["n_transitions_omitted"] == 1_999
+    assert len(reading["ddti_observations"]) == 1
+    assert reading["ddti_observations"][0]["deletion_signal"] == DELETION
+    assert reading["reconstructions"][0]["event"] == DELETION
+    assert reading["transition_counts"] == {
+        "total": {"deletion": 1, "mutation": 1_999, "other": 0},
+        "published": {"deletion": 1, "mutation": 0, "other": 0},
+        "omitted": {"deletion": 0, "mutation": 1_999, "other": 0},
+    }
+
+
 def test_an_all_unreachable_round_publishes_nothing_at_all(publish):
     """The abstain path. CDX answered for no watched URL, so there is no
     observation to stamp. The heartbeat is for rounds that produced something
@@ -196,9 +259,30 @@ def test_an_all_unreachable_round_publishes_nothing_at_all(publish):
 
     after = _reading(tmp_path)
     assert after["generated_at"] == first["generated_at"], (
-        "an abstaining round must not restamp the reading as freshly observed")
+        "an abstaining round must not restamp the reading as freshly observed"
+    )
     assert after["n_reachable"] == 1
     assert len(_history(tmp_path)) == 1
+
+
+def test_an_all_malformed_round_does_not_advance_reachability(publish):
+    run, tmp_path = publish
+    first = run(STABLE)
+    run(STABLE, raw_payload="<html>upstream error</html>")
+
+    after = _reading(tmp_path)
+    assert after == first
+    assert len(_history(tmp_path)) == 1
+
+
+def test_a_valid_empty_cdx_result_preserves_the_watched_url(publish):
+    run, _ = publish
+    reading = run([])
+
+    assert reading["n_reachable"] == 1
+    assert reading["reconstructions"][0]["event"] == "no_baseline"
+    assert reading["reconstructions"][0]["url"] == URL
+    assert reading["reconstructions"][0]["locator"] == URL
 
 
 def test_an_empty_watchlist_publishes_nothing(publish):
@@ -220,13 +304,19 @@ def test_a_first_ever_round_writes_both_the_reading_and_the_history(publish):
 
     assert first["generated_at"] == "2026-07-17T15:23:00+00:00"
     assert first["method_version"] == pull.METHOD_VERSION
-    assert _history(tmp_path) == [{
-        "generated_at": first["generated_at"],
-        "n_watched": 1,
-        "n_reachable": 1,
-        "n_deletions": 0,
-        "n_mutations": 0,
-    }]
+    assert _history(tmp_path) == [
+        {
+            "generated_at": first["generated_at"],
+            "method_version": pull.METHOD_VERSION,
+            "n_watched": 1,
+            "n_reachable": 1,
+            "n_deletions": 0,
+            "n_mutations": 0,
+            "n_transitions_total": 0,
+            "n_transitions_published": 0,
+            "n_transitions_omitted": 0,
+        }
+    ]
 
 
 def test_a_corrupt_previous_reading_cannot_stop_a_round(publish):
@@ -244,3 +334,103 @@ def test_a_corrupt_previous_reading_cannot_stop_a_round(publish):
     assert second["generated_at"] > first["generated_at"]
     assert second["n_watched"] == 1
     assert second["reconstructions"][0]["term"] == "青年失业率"
+
+
+def test_max_watchlist_wayback_and_undertext_fit_and_archive(
+    tmp_path,
+    monkeypatch,
+):
+    from core.artifact_store import DEFAULT_MAX_BYTES
+    from core.collector_fleet import SNAPSHOT_OUTPUTS, run_snapshot_job
+    from scripts import undertext_pull
+
+    assert DEFAULT_MAX_BYTES == 16 * 1024 * 1024
+    watchlist = json.loads(Path(pull.WATCHLIST).read_text(encoding="utf-8"))[
+        "watchlist"
+    ]
+    assert len(watchlist) == 21
+    assert len({entry["url"] for entry in watchlist}) == len(watchlist)
+
+    generated = tmp_path / "generated"
+    readings = generated / "readings"
+    readings.mkdir(parents=True)
+    monkeypatch.setattr(pull, "READINGS", str(readings))
+    monkeypatch.setattr(pull, "OUT", str(readings / "wayback-latest.json"))
+    monkeypatch.setattr(pull, "HIST", str(readings / "wayback-history.jsonl"))
+    monkeypatch.setattr(pull, "load_watchlist", lambda: list(watchlist))
+    monkeypatch.setattr(pull, "KillSwitch", None)
+    monkeypatch.setattr(pull, "RateCeiling", lambda **_kwargs: None)
+    monkeypatch.setattr(pull, "datetime", _Clock())
+
+    def fetch(url, **_kwargs):
+        return json.dumps(
+            [_HEADER]
+            + [list(row) for row in _high_change_timeline(url, n_transitions=1_999)],
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(pull, "default_cdx_fetch", fetch)
+    pull.main()
+
+    wayback_path = readings / "wayback-latest.json"
+    wayback = json.loads(wayback_path.read_text(encoding="utf-8"))
+    assert wayback["n_watched"] == len(watchlist)
+    assert all(row["n_captures"] == 2_000 for row in wayback["reconstructions"])
+    assert wayback["n_transitions_total"] == 1_999 * len(watchlist)
+    assert wayback["n_transitions_published"] == len(watchlist)
+    assert wayback["n_transitions_omitted"] == 1_998 * len(watchlist)
+    assert len(wayback["ddti_observations"]) == len(watchlist)
+    assert len({row["url"] for row in wayback["ddti_observations"]}) == len(watchlist)
+    assert wayback_path.stat().st_size < DEFAULT_MAX_BYTES
+
+    class _ReadyKillSwitch:
+        def is_halted(self) -> bool:
+            return False
+
+    monkeypatch.setattr(undertext_pull, "READINGS", readings)
+    monkeypatch.setattr(
+        undertext_pull,
+        "OUT",
+        readings / "undertext-latest.json",
+    )
+    monkeypatch.setattr(
+        undertext_pull,
+        "HIST",
+        readings / "undertext-history.jsonl",
+    )
+    monkeypatch.setattr(undertext_pull, "KillSwitch", _ReadyKillSwitch)
+    monkeypatch.setattr(undertext_pull, "_live_surfaces_enabled", lambda: False)
+    monkeypatch.setattr(undertext_pull, "load_china_lake_receipt", lambda: None)
+    monkeypatch.setattr(undertext_pull, "open_existing_database", lambda: None)
+    undertext = undertext_pull.main(
+        now=datetime(2026, 8, 24, 8, 0, tzinfo=timezone.utc)
+    )
+    assert undertext is not None
+    undertext_path = readings / "undertext-latest.json"
+    assert undertext_path.stat().st_size < DEFAULT_MAX_BYTES
+
+    payloads = {
+        "wayback": wayback_path.read_bytes(),
+        "undertext": undertext_path.read_bytes(),
+    }
+    archive_repo = tmp_path / "archive-repo"
+    monkeypatch.setenv("PALIMPSEST_OBSERVATION_ARCHIVE_ENABLED", "1")
+    monkeypatch.delenv("PALIMPSEST_OBSERVATION_DIR", raising=False)
+    monkeypatch.delenv("PALIMPSEST_OBSERVATION_MAX_BYTES", raising=False)
+
+    def install_snapshot(name, root):
+        target = root / SNAPSHOT_OUTPUTS[name]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payloads[name])
+
+    for name in ("wayback", "undertext"):
+        result = run_snapshot_job(
+            name,
+            root=archive_repo,
+            invoke=install_snapshot,
+            kill_switch=_ReadyKillSwitch(),
+        )
+        assert result["status"] == "success"
+        assert result["artifact"]["original_bytes"] == len(payloads[name])
+        assert result["artifact"]["original_bytes"] < DEFAULT_MAX_BYTES
+        assert (archive_repo / result["artifact"]["archive_path"]).is_file()

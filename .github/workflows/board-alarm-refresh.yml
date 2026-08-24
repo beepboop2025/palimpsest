@@ -24,6 +24,9 @@ name: Refresh board-level judgements
 on:
   schedule:
     - cron: "53 * * * *"       # hourly public edition, after event-flags/newswire at :47
+  repository_dispatch:
+    types:
+      - publication_graph_dirty
   workflow_dispatch:
     inputs:
       publication_retry:
@@ -40,11 +43,11 @@ permissions:
   actions: write
 
 concurrency:
-  # Retain pending board editions instead of letting other derived writers
-  # evict them before a runner is allocated. Exact-parent locking below still
-  # protects main from mixed-time graph publication.
-  group: board-derived-graph-publish
-  queue: max
+  # Source-dirty events are level-triggered: each run closes the latest main, not
+  # merely the SHA that requested it. GitHub may coalesce pending runs while this
+  # shared group serializes every full-graph publisher.
+  group: derived-graph-publish
+  cancel-in-progress: false
 
 jobs:
   board-alarm:
@@ -62,6 +65,21 @@ jobs:
           git fetch --no-tags --prune origin \
             "+refs/heads/main:refs/remotes/origin/main"
           git switch --detach origin/main
+
+      - name: Validate the source-dirty request
+        if: ${{ github.event_name == 'repository_dispatch' }}
+        env:
+          DIRTY_SHA: ${{ github.event.client_payload.sha }}
+        run: |
+          if [ "${#DIRTY_SHA}" -ne 40 ] ||
+             [ -n "${DIRTY_SHA//[0-9a-f]/}" ]; then
+            echo "invalid publication_graph_dirty SHA payload" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$DIRTY_SHA" origin/main; then
+            echo "publication_graph_dirty SHA is not reachable from main" >&2
+            exit 1
+          fi
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -172,8 +190,9 @@ jobs:
           tests/test_publication_contract.py
 
       - name: Read the public surface before pushing it
-        # This repository is served in full by Pages, so the push below is the publication
-        # act and this is the last point at which a match can still be stopped. The test
+        # The push below advances auditable Git state; Pages deploys only an exact
+        # SHA after its complete-graph contract passes, so this is the pre-push
+        # boundary and this is the last point at which a match can still be stopped. The test
         # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
         # the exact accepted SHA because action-token pushes emit no ordinary push event.
         # Without the rule list configured this reports and
@@ -197,13 +216,21 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Recertify an unchanged complete publication
+        if: steps.candidate.outputs.changed == 'false'
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/dispatch_publication_contract.py
+          --scope complete "$(git rev-parse HEAD)"
+
       - name: Attempt the base-locked publication
         if: steps.candidate.outputs.changed == 'true'
         id: publish
         continue-on-error: true
         run: |
           set +e
-          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+          PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope complete
           publish_rc=$?
           set -e
           printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
@@ -224,7 +251,7 @@ jobs:
           steps.publish.outputs.exit_code == '76'
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
-        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+        run: python scripts/dispatch_publication_contract.py --scope complete "$(git rev-parse HEAD)"
 
       - name: Queue a bounded rebuild from the latest main
         if: >-

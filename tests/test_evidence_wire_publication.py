@@ -4,6 +4,7 @@ The collectors and renderers have their own unit tests. These assertions ratchet
 cross-file contract a reader actually depends on: public schemas, discovery URLs,
 network-only mutable heads, and identical race-safe workflow build graphs.
 """
+
 from __future__ import annotations
 
 import json
@@ -94,19 +95,22 @@ def _staged_occurrences(workflow: str, artifact: str) -> int:
 def test_every_newsroom_publisher_stages_both_china_article_heads():
     for path in OSINT_PUBLISHER_WORKFLOWS:
         workflow = path.read_text(encoding="utf-8")
-        newsroom_heads = _staged_occurrences(
-            workflow, "readings/newsroom-latest.json"
-        )
+        newsroom_heads = _staged_occurrences(workflow, "readings/newsroom-latest.json")
         assert newsroom_heads > 0, path.name
-        assert _staged_occurrences(
-            workflow, "readings/china-article-stream-latest.json"
-        ) == newsroom_heads, path.name
-        assert _staged_occurrences(
-            workflow, "readings/china-situation-latest.json"
-        ) == newsroom_heads, path.name
-        assert _staged_occurrences(
-            workflow, "readings/china-censorship-analysis-latest.json"
-        ) == newsroom_heads, path.name
+        assert (
+            _staged_occurrences(workflow, "readings/china-article-stream-latest.json")
+            == newsroom_heads
+        ), path.name
+        assert (
+            _staged_occurrences(workflow, "readings/china-situation-latest.json")
+            == newsroom_heads
+        ), path.name
+        assert (
+            _staged_occurrences(
+                workflow, "readings/china-censorship-analysis-latest.json"
+            )
+            == newsroom_heads
+        ), path.name
 
 
 def test_every_osint_publisher_rebuilds_checks_and_stages_the_erasure_trail():
@@ -189,13 +193,17 @@ def test_every_newsroom_publisher_rebuilds_the_china_situation_before_catalog():
 
 def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
     workflow = TESTS_WORKFLOW.read_text(encoding="utf-8")
-    contract = workflow[workflow.index("  contract:"):]
-    preflight_marker = "- name: Check the committed deterministic machine-newsroom graph"
+    contract = workflow[workflow.index("  contract:") :]
+    preflight_marker = (
+        "- name: Check the committed deterministic machine-newsroom graph"
+    )
     rebuild_marker = "- name: Rebuild and prove the deterministic graph is unchanged"
     preflight_start = contract.index(preflight_marker)
     rebuild_start = contract.index(rebuild_marker)
     preflight = contract[preflight_start:rebuild_start]
-    rebuild = contract[rebuild_start:contract.index("      - name: Read the public surface")]
+    rebuild = contract[
+        rebuild_start : contract.index("      - name: Read the public surface")
+    ]
 
     required_checks = {
         "python -m scripts.sync_narcoscope --check",
@@ -226,9 +234,11 @@ def test_contract_ci_checks_committed_graph_before_any_write_mode_builder():
     }
     assert "mesh_clock=$(python -c" in rebuild
     assert "catalog_clock=$(python -c" in rebuild
-    assert 'readings/evidence-mesh-latest.json' in rebuild
-    assert 'readings/catalog.json' in rebuild
-    assert "git diff --exit-code" in rebuild
+    assert "readings/evidence-mesh-latest.json" in rebuild
+    assert "readings/catalog.json" in rebuild
+    assert "git status --porcelain=v1 --untracked-files=all" in rebuild
+    assert "readings china news datapackage.json" in rebuild
+    assert "managed publication graph changed during replay" in rebuild
 
 
 def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
@@ -240,11 +250,15 @@ def test_public_wire_contract_has_registry_schema_latest_and_bounded_history():
     assert schema["$id"] == "https://palimpsest.info/protocol/newswire-v1.schema.json"
     assert schema["additionalProperties"] is False
     source_contract = schema["$defs"]["coverage"]["properties"]["sources"]
-    assert source_contract["minItems"] == source_contract["maxItems"] == len(
-        registry["sources"]
+    assert (
+        source_contract["minItems"]
+        == source_contract["maxItems"]
+        == len(registry["sources"])
     )
     assert latest["schema_version"] == "palimpsest-newswire.v1"
-    assert latest["source_registry"] == "https://palimpsest.info/config/news_sources.json"
+    assert (
+        latest["source_registry"] == "https://palimpsest.info/config/news_sources.json"
+    )
     assert latest["coverage"]["registry_sources"] == len(registry["sources"])
     assert latest["n_items"] == len(latest["items"])
     assert latest["n_events"] == len(latest["events"])
@@ -302,35 +316,30 @@ def test_openapi_uses_public_protocol_schemas_for_mutable_evidence_heads():
             "$ref": f"https://palimpsest.info/protocol/{schema_name}"
         }
     expected = {
-        "/readings/newswire-latest.json": (
-            "getEvidenceNewswire", "EvidenceNewswire"
-        ),
+        "/readings/newswire-latest.json": ("getEvidenceNewswire", "EvidenceNewswire"),
         "/readings/china-economic-pulse-latest.json": (
-            "getChinaEconomicPulse", "ChinaEconomicPulse"
+            "getChinaEconomicPulse",
+            "ChinaEconomicPulse",
         ),
-        "/readings/investigations-latest.json": (
-            "getInvestigations", "Investigations"
-        ),
-        "/readings/evidence-mesh-latest.json": (
-            "getEvidenceMesh", "EvidenceMesh"
-        ),
+        "/readings/investigations-latest.json": ("getInvestigations", "Investigations"),
+        "/readings/evidence-mesh-latest.json": ("getEvidenceMesh", "EvidenceMesh"),
         "/readings/machine-investigations-latest.json": (
-            "getMachineInvestigations", "MachineInvestigations"
+            "getMachineInvestigations",
+            "MachineInvestigations",
         ),
         "/readings/primary-documents-latest.json": (
-            "getPrimaryDocuments", "PrimaryDocuments"
+            "getPrimaryDocuments",
+            "PrimaryDocuments",
         ),
-        "/readings/corroboration-latest.json": (
-            "getCorroboration", "Corroboration"
-        ),
-        "/readings/network-rounds-latest.json": (
-            "getNetworkRounds", "NetworkRounds"
-        ),
+        "/readings/corroboration-latest.json": ("getCorroboration", "Corroboration"),
+        "/readings/network-rounds-latest.json": ("getNetworkRounds", "NetworkRounds"),
         "/readings/source-workflow-latest.json": (
-            "getSourceWorkflow", "SourceWorkflow"
+            "getSourceWorkflow",
+            "SourceWorkflow",
         ),
         "/readings/editorial-readiness-latest.json": (
-            "getEditorialReadiness", "EditorialReadiness"
+            "getEditorialReadiness",
+            "EditorialReadiness",
         ),
     }
     for path, (operation_id, response_name) in expected.items():
@@ -408,9 +417,10 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
         "https://palimpsest.info/protocol/editorial-readiness-v1.schema.json",
     ):
         assert url in llms
-    assert robots.splitlines().count(
-        "Sitemap: https://palimpsest.info/news/sitemap.xml"
-    ) == 1
+    assert (
+        robots.splitlines().count("Sitemap: https://palimpsest.info/news/sitemap.xml")
+        == 1
+    )
     assert (ROOT / "news" / "wire" / "index.html").is_file()
     assert (ROOT / "news" / "economy" / "index.html").is_file()
 
@@ -443,41 +453,35 @@ def test_mutable_evidence_heads_are_network_only_and_never_fall_back():
         assert f'"/readings/{name}-latest.json"' in worker
 
     marker = "if (LIVE_EVIDENCE_READINGS.has(url.pathname))"
-    branch = worker[worker.index(marker):]
-    branch = branch[:branch.index("return;")]
+    branch = worker[worker.index(marker) :]
+    branch = branch[: branch.index("return;")]
     assert 'fetch(req, { cache: "no-store" })' in branch
     assert "caches.match" not in branch
 
 
 def test_mutable_investigation_cases_are_network_only_but_revisions_are_not():
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-    declaration = re.search(
-        r"const LIVE_INVESTIGATION_CASE = /(.+)/;", worker
-    )
+    declaration = re.search(r"const LIVE_INVESTIGATION_CASE = /(.+)/;", worker)
     assert declaration is not None
     path_pattern = declaration.group(1).replace(r"\/", "/")
     matcher = re.compile(path_pattern)
 
-    assert matcher.fullmatch(
-        "/news/investigations/chinas-network-filtering/case.json"
-    )
+    assert matcher.fullmatch("/news/investigations/chinas-network-filtering/case.json")
     assert not matcher.fullmatch(
         "/news/investigations/chinas-network-filtering/revisions/"
         "investigationv-0123456789abcdef01234567.json"
     )
 
     marker = "if (LIVE_INVESTIGATION_CASE.test(url.pathname))"
-    branch = worker[worker.index(marker):]
-    branch = branch[:branch.index("return;")]
+    branch = worker[worker.index(marker) :]
+    branch = branch[: branch.index("return;")]
     assert 'fetch(req, { cache: "no-store" })' in branch
     assert "caches.match" not in branch
 
 
 def test_mutable_machine_reports_are_network_only_but_revisions_are_not():
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-    declaration = re.search(
-        r"const LIVE_MACHINE_ANALYSIS_REPORT = /(.+)/;", worker
-    )
+    declaration = re.search(r"const LIVE_MACHINE_ANALYSIS_REPORT = /(.+)/;", worker)
     assert declaration is not None
     matcher = re.compile(declaration.group(1).replace(r"\/", "/"))
     assert matcher.fullmatch("/news/analysis/network-conditions/report.json")
@@ -486,8 +490,8 @@ def test_mutable_machine_reports_are_network_only_but_revisions_are_not():
         "machinev-0123456789abcdef01234567.json"
     )
     marker = "if (LIVE_MACHINE_ANALYSIS_REPORT.test(url.pathname))"
-    branch = worker[worker.index(marker):]
-    branch = branch[:branch.index("return;")]
+    branch = worker[worker.index(marker) :]
+    branch = branch[: branch.index("return;")]
     assert 'fetch(req, { cache: "no-store" })' in branch
     assert "caches.match" not in branch
 
@@ -568,7 +572,9 @@ def test_newswire_workflow_preserves_acquisition_before_materialization():
         "- name: Preserve successful acquisition before materialization"
     )
     build = workflow.index("- name: Correlate, render and seal the evidence wire")
-    first_gate = workflow.index("- name: Verify collection, security and publication contracts")
+    first_gate = workflow.index(
+        "- name: Verify collection, security and publication contracts"
+    )
 
     assert pull < screen < preserve < build < first_gate
     initial_path = workflow[pull:build]
@@ -576,19 +582,21 @@ def test_newswire_workflow_preserves_acquisition_before_materialization():
     artifact = workflow[preserve:build]
     assert initial_path.count("python -m scripts.newswire_pull") == 1
     assert "continue-on-error: true" in screening
-    assert "PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}" in screening
+    assert (
+        "PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}" in screening
+    )
     assert "python scripts/verify_public_surface.py --require-rules" in screening
     assert "if: steps.acquisition_scrub.outcome == 'success'" in artifact
-    assert "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in artifact
+    assert (
+        "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" in artifact
+    )
     assert "continue-on-error: true" in artifact
     assert "${{ steps.acquisition.outputs.base-sha }}" in artifact
     assert "${{ github.run_id }}-${{ github.run_attempt }}" in artifact
     assert "if-no-files-found: error" in artifact
     assert "retention-days: 3" in artifact
     paths = {
-        line.strip()
-        for line in artifact.splitlines()
-        if line.strip().startswith("./")
+        line.strip() for line in artifact.splitlines() if line.strip().startswith("./")
     }
     assert paths == {
         "./readings/newswire-latest.json",
@@ -624,23 +632,30 @@ def test_newswire_workflow_repeats_egress_tests_public_scrub_and_pinned_runner()
     ):
         assert workflow.count(command) == 3, command
 
-    assert sum(
-        line.strip() == "run: python scripts/verify_public_surface.py"
-        for line in workflow.splitlines()
-    ) == 3
-    assert workflow.count(
-        "run: python scripts/verify_public_surface.py --require-rules"
-    ) == 1
+    assert (
+        sum(
+            line.strip() == "run: python scripts/verify_public_surface.py"
+            for line in workflow.splitlines()
+        )
+        == 3
+    )
+    assert (
+        workflow.count("run: python scripts/verify_public_surface.py --require-rules")
+        == 1
+    )
 
     install = workflow[
-        workflow.index("- name: Install the pinned offline test runner"):
-        workflow.index("- name: Synchronize inputs before collection")
+        workflow.index(
+            "- name: Install the pinned offline test runner"
+        ) : workflow.index("- name: Synchronize inputs before collection")
     ]
     assert "python -m pip install --quiet --require-hashes" in install
     assert "-r .github/osint-china-ci-requirements.txt" in install
-    setup = workflow[workflow.index("actions/setup-python@"):workflow.index(
-        "- name: Install the pinned offline test runner"
-    )]
+    setup = workflow[
+        workflow.index("actions/setup-python@") : workflow.index(
+            "- name: Install the pinned offline test runner"
+        )
+    ]
     assert "cache: pip" in setup
     assert "cache-dependency-path: .github/osint-china-ci-requirements.txt" in setup
     assert "env:" not in install
@@ -663,26 +678,25 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
     assert workflow.count("python -m core.evidence_mesh") == 6
     assert workflow.count("python -m core.machine_investigations") == 6
     assert workflow.count("python -m scripts.build_newsroom --check") == 3
-    assert _staged_occurrences(
-        workflow, "readings/china-economic-pulse-latest.json"
-    ) == 3
-    assert _staged_occurrences(
-        workflow, "readings/china-econ-observations-latest.json"
-    ) == 3
+    assert (
+        _staged_occurrences(workflow, "readings/china-economic-pulse-latest.json") == 3
+    )
+    assert (
+        _staged_occurrences(workflow, "readings/china-econ-observations-latest.json")
+        == 3
+    )
     assert _staged_occurrences(workflow, "readings/china-index-latest.json") == 3
     assert _staged_occurrences(workflow, "china/") == 3
-    assert _staged_occurrences(
-        workflow, "readings/investigations-latest.json"
-    ) == 3
-    assert _staged_occurrences(
-        workflow, "readings/evidence-mesh-latest.json"
-    ) == 3
-    assert _staged_occurrences(
-        workflow, "readings/machine-investigations-latest.json"
-    ) == 3
-    assert _staged_occurrences(
-        workflow, "readings/china-censorship-analysis-latest.json"
-    ) == 3
+    assert _staged_occurrences(workflow, "readings/investigations-latest.json") == 3
+    assert _staged_occurrences(workflow, "readings/evidence-mesh-latest.json") == 3
+    assert (
+        _staged_occurrences(workflow, "readings/machine-investigations-latest.json")
+        == 3
+    )
+    assert (
+        _staged_occurrences(workflow, "readings/china-censorship-analysis-latest.json")
+        == 3
+    )
     for artifact in (
         "readings/primary-documents-latest.json",
         "readings/corroboration-latest.json",
@@ -713,27 +727,32 @@ def test_osint_workflow_rebuilds_pulse_but_never_fetches_rss():
         workflow,
     ):
         assert "newswire_pull" not in block
-    assert len(re.findall(
-        r"python -m scripts\.build_economic_pulse\n"
-        r"\s*python -m scripts\.build_china_econ_manifest\n"
-        r"\s*python -m scripts\.build_china_site\n"
-        r"\s*python -m scripts\.undertext_pull\n"
-        r"\s*python -m scripts\.build_erasure_trail\n"
-        r"\s*python -m scripts\.build_erasure_trail --check\n"
-        r"\s*python -m scripts\.build_osint_china[^\n]*\n"
-        r"\s*python -m scripts\.build_investigations\n"
-        r"\s*python -m scripts\.build_network_rounds\n"
-        r"\s*python -m scripts\.build_corroboration\n"
-        r"\s*python -m scripts\.build_editorial_readiness\n"
-        r"\s*python -m scripts\.sync_narcoscope --check\n"
-        r"\s*python -m scripts\.sync_narcoscope --remote-check(?: \|\| true)?\n"
-        r"\s*python -m core\.evidence_mesh\n"
-        r"\s*python -m core\.evidence_mesh --check\n"
-        r"\s*python -m core\.machine_investigations\n"
-        r"\s*python -m core\.machine_investigations --check\n"
-        r"\s*python -m scripts\.build_newsroom",
-        workflow,
-    )) == 3
+    assert (
+        len(
+            re.findall(
+                r"python -m scripts\.build_economic_pulse\n"
+                r"\s*python -m scripts\.build_china_econ_manifest\n"
+                r"\s*python -m scripts\.build_china_site\n"
+                r"\s*python -m scripts\.undertext_pull\n"
+                r"\s*python -m scripts\.build_erasure_trail\n"
+                r"\s*python -m scripts\.build_erasure_trail --check\n"
+                r"\s*python -m scripts\.build_osint_china[^\n]*\n"
+                r"\s*python -m scripts\.build_investigations\n"
+                r"\s*python -m scripts\.build_network_rounds\n"
+                r"\s*python -m scripts\.build_corroboration\n"
+                r"\s*python -m scripts\.build_editorial_readiness\n"
+                r"\s*python -m scripts\.sync_narcoscope --check\n"
+                r"\s*python -m scripts\.sync_narcoscope --remote-check(?: \|\| true)?\n"
+                r"\s*python -m core\.evidence_mesh\n"
+                r"\s*python -m core\.evidence_mesh --check\n"
+                r"\s*python -m core\.machine_investigations\n"
+                r"\s*python -m core\.machine_investigations --check\n"
+                r"\s*python -m scripts\.build_newsroom",
+                workflow,
+            )
+        )
+        == 3
+    )
 
 
 def test_remote_narcoscope_drift_cannot_abort_derived_graph_publish():

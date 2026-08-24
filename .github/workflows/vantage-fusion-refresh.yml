@@ -37,8 +37,9 @@ jobs:
         run: python -B -m scripts.validate_investigation_dependencies
 
       - name: Read the public surface before pushing it
-        # This repository is served in full by Pages, so the push below is the publication
-        # act and this is the last point at which a match can still be stopped. The test
+        # The push below advances auditable Git state; Pages deploys only an exact
+        # SHA after its complete-graph contract passes, so this is the pre-push
+        # boundary and this is the last point at which a match can still be stopped. The test
         # publisher marks [skip pytest] to identify the contract-only lane, then dispatches
         # the exact accepted SHA because action-token pushes emit no ordinary push event.
         # Without the rule list configured this reports and
