@@ -69,7 +69,7 @@ def test_machine_index_matches_all_four_evidence_inputs():
     assert index["source"] == pulse["source"]
     assert index["method"] == pulse["method"]
     assert index["scope"] == pulse["scope"]
-    assert index["n_sources"] == len(registry["sources"]) == 33
+    assert index["n_sources"] == len(registry["sources"]) == 34
     assert index["counts"] == {
         "desks": 6,
         "domains": 12,
