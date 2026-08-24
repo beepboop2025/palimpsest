@@ -174,6 +174,14 @@ CONTRACT = {
     "china-econ-observations": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "china-econ-wdi": _d(
+        "generated_at",
+        ["collector_artifact", "rights_evidence_url", "revision_lineage"],
+        reason="the receipt declares several non-commensurate complete populations "
+        "under response_coverage, ledger_coverage, availability and "
+        "indicator_provenance; one top-level denominator would erase null and "
+        "historical-ledger semantics.",
+    ),
     "china-index": _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "china-econ-forecast": _d(
         "generated_at", ["source", "method", "scope", "snapshot", "configuration"],

@@ -603,11 +603,29 @@ def collect(
     *,
     start_year: int,
     end_year: int,
-    collected_at: datetime,
     fetch: Callable[[str], bytes] | None = None,
+    clock: Callable[[], datetime] | None = None,
 ) -> WDIResponse:
+    """Fetch one exact response, then sample its collection clock.
+
+    ``clock`` is a callable rather than an already evaluated timestamp so no
+    caller can accidentally claim to know bytes before the transport returned.
+    """
+
+    clock_fn = clock or (lambda: datetime.now(UTC))
+    if not callable(clock_fn):
+        raise WDIError("WDI collection clock must be callable")
     url = build_url(registry, start_year=start_year, end_year=end_year)
     raw = fetch(url) if fetch is not None else fetch_bytes(url)
+    if type(raw) is not bytes:
+        raise WDIError("WDI fetcher did not return exact bytes")
+    if not raw:
+        raise WDIError("WDI response is empty")
+    if len(raw) > MAX_RESPONSE_BYTES:
+        raise WDIError(f"WDI response exceeds {MAX_RESPONSE_BYTES} bytes")
+    collected_at = clock_fn()
+    if not isinstance(collected_at, datetime):
+        raise WDIError("WDI collection clock must return a datetime")
     return parse_response(
         raw,
         registry=registry,
