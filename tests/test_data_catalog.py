@@ -223,6 +223,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
 
     telemetry = by_id["china-econ"]
     assert telemetry["cadence"] == "PT6H"
+    assert telemetry["status"] == "historical"
 
     ledger = by_id["china-economic-observations"]
     assert (ledger["layer"], ledger["stage"], ledger["collection_mode"]) == (
@@ -242,6 +243,25 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     assert "aggregate-only" in caveat
     assert "narrow" in caveat
     assert "true gdp" in caveat
+
+    wdi = by_id["china-economic-wdi-history"]
+    assert (wdi["layer"], wdi["stage"], wdi["collection_mode"]) == (
+        "economy",
+        "observation",
+        "passive-bitemporal-aggregate",
+    )
+    assert wdi["latest"] == "readings/china-econ-wdi-latest.json"
+    assert wdi["history"] == "readings/china-econ-wdi-observations.jsonl"
+    assert wdi["landing_page"] == "china/sources/world_bank_wdi/"
+    assert wdi["cadence"] == "P7D"
+    assert wdi["freshness_budget"] == "P120D"
+    assert wdi["sources"] == ["World Bank World Development Indicators"]
+    assert wdi["license"] == {
+        "name": "World Bank WDI, CC BY 4.0; attribution required",
+        "url": "https://datacatalog.worldbank.org/public-licenses",
+    }
+    assert "context-only" in wdi["description"]
+    assert "null availability" in wdi["freshness_semantics"]
 
     forecast = by_id["china-economic-forecast"]
     assert forecast["latest"] == "readings/china-econ-forecast-latest.json"
