@@ -4,15 +4,15 @@
   "url": "https://palimpsest.info/news/integrity-anchors/",
   "signal_id": "anchors",
   "headline": "Integrity anchors: no current finding",
-  "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
   "section": "integrity",
   "order": 1,
   "type": "integrity",
   "priority": "high",
-  "status": "degraded",
+  "status": "stale",
   "published_at": "2026-08-23T13:40:19Z",
   "modified_at": "2026-08-23T13:40:19Z",
-  "claim_fingerprint": "sha256:e02e301d69119ebeef4dce6dac0dde187c62faec4841fc11d868ed2bf0d14c97",
+  "claim_fingerprint": "sha256:07714d3d014babd2730fe80391db82a00a1df81bc4cd55c0f0533c73dcb6fdef",
   "metric": {
     "label": null,
     "value": null,
@@ -25,7 +25,7 @@
   "claims": [
     {
       "type": "availability",
-      "statement": "No current finding is published for Integrity anchors because the source status is degraded."
+      "statement": "No current finding is published for Integrity anchors because the source status is stale."
     }
   ],
   "evidence": {
@@ -42,7 +42,7 @@
     "version": null
   },
   "limitations": [
-    "Current finding withheld: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
+    "Current finding withheld: freshness deadline has passed",
     "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
   ],
   "related_signal_ids": [

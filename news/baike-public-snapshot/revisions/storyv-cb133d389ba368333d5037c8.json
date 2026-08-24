@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:baike-public-snapshot",
+  "slug": "baike-public-snapshot",
+  "url": "https://palimpsest.info/news/baike-public-snapshot/",
+  "signal_id": "baike-public-snapshot",
+  "headline": "Baike public snapshot: no current finding",
+  "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "section": "erasure",
+  "order": 7,
+  "type": "measurement",
+  "priority": "background",
+  "status": "stale",
+  "published_at": "2026-08-23T12:58:20Z",
+  "modified_at": "2026-08-23T12:58:20Z",
+  "claim_fingerprint": "sha256:0f8fe35d47cba08cb1365f2b19099d4a1c3890fd7c4ad14506f41c9e1bcf521e",
+  "metric": {
+    "label": null,
+    "value": null,
+    "unit": null,
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "availability",
+      "statement": "No current finding is published for Baike public snapshot because the source status is stale."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/baike-public-snapshot-latest.json",
+    "input": {
+      "filename": "baike-public-snapshot-latest.json",
+      "sha256": "0cb6fa4d68afa032bbf44b5caa29dd4274d8cdb0f4b27f28e6b79f763f4f107b",
+      "bytes": 3346
+    },
+    "source_timestamp": "2026-08-23T12:58:20Z"
+  },
+  "method": {
+    "summary": "Keyless GET of reviewed public Baike article URLs; extract_baike facets; hash comparison against node-local state; CDX digest attached when IA answers.",
+    "version": 1
+  },
+  "limitations": [
+    "Current finding withheld: freshness deadline has passed",
+    "A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites."
+  ],
+  "related_signal_ids": [
+    "baike-redaction",
+    "wayback",
+    "erasure-observatory"
+  ]
+}

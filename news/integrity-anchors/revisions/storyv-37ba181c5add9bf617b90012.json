@@ -1,0 +1,53 @@
+{
+  "id": "palimpsest-news:anchors",
+  "slug": "integrity-anchors",
+  "url": "https://palimpsest.info/news/integrity-anchors/",
+  "signal_id": "anchors",
+  "headline": "Integrity anchors: no current finding",
+  "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "section": "integrity",
+  "order": 1,
+  "type": "integrity",
+  "priority": "high",
+  "status": "stale",
+  "published_at": "2026-08-23T13:40:19Z",
+  "modified_at": "2026-08-23T13:40:19Z",
+  "claim_fingerprint": "sha256:07714d3d014babd2730fe80391db82a00a1df81bc4cd55c0f0533c73dcb6fdef",
+  "metric": {
+    "label": null,
+    "value": null,
+    "unit": null,
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "availability",
+      "statement": "No current finding is published for Integrity anchors because the source status is stale."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/anchors-latest.json",
+    "input": {
+      "filename": "anchors-latest.json",
+      "sha256": "c386f15768809dc922affe25d798a2421cf6d2f6b07cd79614c1c49940c032f5",
+      "bytes": 532
+    },
+    "source_timestamp": "2026-08-23T13:40:19Z"
+  },
+  "method": {
+    "summary": "Merkle roots over committed ledgers with external timestamp witnesses",
+    "version": null
+  },
+  "limitations": [
+    "Current finding withheld: freshness deadline has passed",
+    "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
+  ],
+  "related_signal_ids": [
+    "wayback",
+    "github-refuge",
+    "erasure-observatory"
+  ]
+}

@@ -1,12 +1,12 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-f7656b38bb05a38aef223e0a",
+  "analysis_id": "instrumentv-b228c5853739e6dcf3f4b4c5",
   "signal_id": "forecast-ledger",
   "story_url": "https://palimpsest.info/news/forecast-ledger/",
   "url": "https://palimpsest.info/news/forecast-ledger/analysis.json",
   "reading_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/forecast-ledger-analysis.json",
-  "generated_at": "2026-08-24T02:38:02Z",
+  "generated_at": "2026-08-24T03:53:56Z",
   "disposition": "live-reading",
   "status": "live",
   "position": "Palimpsest's view: forecast-ledger is live. The current number is 84.4% over 1,603 forecasts. This is the instrument reading, not a national censorship rate.",
@@ -16,7 +16,7 @@
       "label": "empirical coverage",
       "note": "1,603 forecasts",
       "citation_ids": [
-        "instrumentevidence-16b4695639980c35c172"
+        "instrumentevidence-298b0aee0d1319b6d588"
       ]
     }
   ],
@@ -27,13 +27,13 @@
         {
           "text": "The current empirical coverage is 84.4% over 1,603 forecasts.",
           "citation_ids": [
-            "instrumentevidence-16b4695639980c35c172"
+            "instrumentevidence-298b0aee0d1319b6d588"
           ]
         },
         {
           "text": "Empirical forecast coverage is 84.4% across 1,603 scored forecasts.",
           "citation_ids": [
-            "instrumentevidence-16b4695639980c35c172"
+            "instrumentevidence-298b0aee0d1319b6d588"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, cross-layer, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront.",
+          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, cross-layer, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, wayback, app-storefront, apple-censorship.",
           "citation_ids": [
-            "instrumentevidence-16b4695639980c35c172"
+            "instrumentevidence-298b0aee0d1319b6d588"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-16b4695639980c35c172"
+            "instrumentevidence-298b0aee0d1319b6d588"
           ]
         }
       ]
@@ -61,19 +61,19 @@
         {
           "text": "Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band.",
           "citation_ids": [
-            "instrumentevidence-16b4695639980c35c172"
+            "instrumentevidence-298b0aee0d1319b6d588"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-16b4695639980c35c172"
+            "instrumentevidence-298b0aee0d1319b6d588"
           ]
         },
         {
           "text": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
           "citation_ids": [
-            "instrumentevidence-16b4695639980c35c172"
+            "instrumentevidence-298b0aee0d1319b6d588"
           ]
         }
       ]
@@ -83,13 +83,13 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-16b4695639980c35c172"
+        "instrumentevidence-298b0aee0d1319b6d588"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-16b4695639980c35c172"
+        "instrumentevidence-298b0aee0d1319b6d588"
       ]
     }
   ],
@@ -97,13 +97,13 @@
     {
       "text": "Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band.",
       "citation_ids": [
-        "instrumentevidence-16b4695639980c35c172"
+        "instrumentevidence-298b0aee0d1319b6d588"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-16b4695639980c35c172"
+        "instrumentevidence-298b0aee0d1319b6d588"
       ]
     }
   ],
@@ -187,12 +187,6 @@
       "priority": "lead"
     },
     {
-      "signal_id": "erasure-observatory",
-      "section": "erasure",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
       "signal_id": "wayback",
       "section": "erasure",
       "status": "live",
@@ -200,6 +194,12 @@
     },
     {
       "signal_id": "app-storefront",
+      "section": "erasure",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "apple-censorship",
       "section": "erasure",
       "status": "live",
       "priority": "high"
@@ -213,7 +213,7 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-16b4695639980c35c172",
+      "evidence_id": "instrumentevidence-298b0aee0d1319b6d588",
       "kind": "newsroom-story",
       "signal_id": "forecast-ledger",
       "headline": "Forecast bands covered 84.4% of 1,603 scored readings",
@@ -221,8 +221,8 @@
       "claim": "Empirical forecast coverage is 84.4% across 1,603 scored forecasts.",
       "story_url": "https://palimpsest.info/news/forecast-ledger/",
       "reading_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
-      "source_timestamp": "2026-08-24T02:38:02Z",
-      "input_sha256": "a1ca656db3f7e45e7fa1e7577a680787c471b9ba5eb2864de522dd17aa8da006",
+      "source_timestamp": "2026-08-24T03:53:56Z",
+      "input_sha256": "e1cfec35ee5535af83d659b7a4bf3096980d55ee7c95b00ee769bc975fbeca7b",
       "interpretation_limit": "Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band."
     }
   ],
