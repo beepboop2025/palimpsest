@@ -11,6 +11,7 @@ and observation identity therefore survive the transport without reinterpretatio
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -18,7 +19,7 @@ from collections import Counter
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time as daytime
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from core.econ_ledger import LedgerIntegrityError, load_snapshot, validate_observations
@@ -53,6 +54,16 @@ PUBLIC_WDI_LINEAGE_MODE = "git_tracked_append_only"
 PUBLIC_WDI_LEDGER_PATH = "readings/china-econ-wdi-observations.jsonl"
 PUBLIC_WDI_AVAILABILITY_PATH = "readings/china-econ-wdi-latest.json"
 WDI_LINEAGE_TRANSITION_SCHEMA = "palimpsest.china-economic-lineage-transition.v1"
+WDI_LINEAGE_CHAIN_SCHEMA = "palimpsest.china-economic-lineage-chain.v1"
+WDI_LINEAGE_RECORD_SCHEMA = "palimpsest.china-economic-lineage-record.v1"
+WDI_LINEAGE_EVIDENCE_SCHEMA = "palimpsest.china-economic-lineage-evidence.v1"
+WDI_LINEAGE_EVIDENCE_RECORD_SCHEMA = (
+    "palimpsest.china-economic-lineage-evidence-record.v1"
+)
+WDI_LINEAGE_CHAIN_PATH = "china-econ-wdi-lineage-chain.jsonl"
+WDI_LINEAGE_EVIDENCE_PATH = "github-commit-lineage-evidence.jsonl"
+MAX_WDI_LINEAGE_NODES = 256
+MAX_GITHUB_COMMIT_EVIDENCE_BYTES = 256 * 1024
 MAX_POLICY_BYTES = 256 * 1024
 MAX_SERIES_REGISTRY_BYTES = 2 * 1024 * 1024
 MAX_AVAILABILITY_RECEIPT_BYTES = 8 * 1024 * 1024
@@ -288,6 +299,45 @@ class ExportBundle:
     artifact_bytes: bytes
     manifest: Mapping[str, Any]
     manifest_bytes: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class WDIHistoryNode:
+    """Exact governed blobs and GitHub receipt for one first-parent change."""
+
+    commit_sha: str
+    previous_change_sha: str | None
+    github_commit_bytes: bytes
+    tree_entries: Mapping[str, Mapping[str, str]]
+    series_registry_bytes: bytes
+    ledger_bytes: bytes
+    availability_receipt_bytes: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class WDILineageChain:
+    """Canonical transition records, raw evidence, and their handoff receipt."""
+
+    records_bytes: bytes
+    evidence_bytes: bytes
+    receipt: Mapping[str, Any]
+
+
+def _blob_receipt(raw: bytes, *, records: int | None = None) -> dict[str, Any]:
+    """Return the exact byte commitment used by lineage and handoff receipts."""
+
+    receipt: dict[str, Any] = {
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "bytes": len(raw),
+    }
+    if records is not None:
+        receipt["records"] = records
+    return receipt
+
+
+def _git_blob_oid(raw: bytes) -> str:
+    header = f"blob {len(raw)}\0".encode("ascii")
+    return hashlib.sha1(header + raw, usedforsecurity=False).hexdigest()
 
 
 def canonical_json_bytes(value: Any) -> bytes:
@@ -1211,6 +1261,403 @@ def _expected_ledger_coverage(
     }
 
 
+def parse_github_commit_evidence(
+    raw: bytes,
+    *,
+    expected_sha: str,
+) -> dict[str, Any]:
+    """Validate one bounded raw GitHub commit response as a reviewed merge.
+
+    The raw bytes are retained separately in the lineage evidence JSONL.  This
+    normalized view deliberately contains only the release identity fields that
+    downstream acceptance is allowed to trust.
+    """
+
+    if type(expected_sha) is not str or not _COMMIT_SHA.fullmatch(expected_sha):
+        raise ChinaEconExportError("GitHub commit evidence expected SHA is invalid")
+    value = _strict_json(
+        raw,
+        label="GitHub commit evidence",
+        maximum=MAX_GITHUB_COMMIT_EVIDENCE_BYTES,
+    )
+    if type(value) is not dict:
+        raise ChinaEconExportError("GitHub commit evidence must be an object")
+    api_url = (
+        f"https://api.github.com/repos/{PRODUCER_REPOSITORY}/commits/{expected_sha}"
+    )
+    author = value.get("author")
+    committer = value.get("committer")
+    commit = value.get("commit")
+    verification = commit.get("verification") if type(commit) is dict else None
+    parents = value.get("parents")
+    if (
+        value.get("sha") != expected_sha
+        or value.get("url") != api_url
+        or type(author) is not dict
+        or author.get("login") != "beepboop2025"
+        or type(committer) is not dict
+        or committer.get("login") != "web-flow"
+        or type(parents) is not list
+        or len(parents) < 2
+        or type(verification) is not dict
+        or verification.get("verified") is not True
+        or verification.get("reason") != "valid"
+    ):
+        raise ChinaEconExportError(
+            "GitHub commit evidence is not a verified reviewed merge identity"
+        )
+    parent_shas: list[str] = []
+    for position, parent in enumerate(parents, 1):
+        if type(parent) is not dict:
+            raise ChinaEconExportError(
+                f"GitHub commit evidence parent {position} is invalid"
+            )
+        parent_sha = parent.get("sha")
+        if type(parent_sha) is not str or not _COMMIT_SHA.fullmatch(parent_sha):
+            raise ChinaEconExportError(
+                f"GitHub commit evidence parent {position} SHA is invalid"
+            )
+        parent_shas.append(parent_sha)
+    if len(parent_shas) != len(set(parent_shas)):
+        raise ChinaEconExportError("GitHub commit evidence parents are not unique")
+    verified_at, _ = _timestamp(
+        verification.get("verified_at"),
+        path="github_commit.commit.verification.verified_at",
+    )
+    return {
+        "sha": expected_sha,
+        "request_url": f"{api_url}?per_page=1",
+        "api_url": api_url,
+        "author_login": "beepboop2025",
+        "committer_login": "web-flow",
+        "parent_shas": parent_shas,
+        "verification": {
+            "verified": True,
+            "reason": "valid",
+            "verified_at": verified_at,
+        },
+    }
+
+
+def validate_wdi_registry_evolution(
+    previous_registry_bytes: bytes,
+    current_registry_bytes: bytes,
+) -> dict[str, Any]:
+    """Require registry growth to be append-only with immutable prior bindings."""
+
+    previous = _parse_market_registry(previous_registry_bytes)
+    current = _parse_market_registry(current_registry_bytes)
+    previous_value = _strict_json(
+        previous_registry_bytes,
+        label="previous WDI market-channel registry",
+        maximum=MAX_SERIES_REGISTRY_BYTES,
+    )
+    current_value = _strict_json(
+        current_registry_bytes,
+        label="current WDI market-channel registry",
+        maximum=MAX_SERIES_REGISTRY_BYTES,
+    )
+    previous_series = previous_value["series"]
+    current_series = current_value["series"]
+    if previous_value["dataset"] != current_value["dataset"]:
+        raise ChinaEconExportError(
+            "reviewed WDI registry dataset authority is immutable"
+        )
+    if len(current_series) < len(previous_series):
+        raise ChinaEconExportError("reviewed WDI registry cannot delete a series")
+    if current_series[: len(previous_series)] != previous_series:
+        raise ChinaEconExportError(
+            "reviewed WDI registry cannot reorder or remap an existing series"
+        )
+    added = [row["indicator_id"] for row in current_series[len(previous_series) :]]
+    return {
+        "state": "unchanged" if not added else "append_only_addition",
+        "previous": {
+            "path": "config/china_econ_wdi_series.json",
+            "schema_version": WDI_REGISTRY_SCHEMA,
+            **_blob_receipt(previous_registry_bytes),
+            "series_records": len(previous.bindings),
+        },
+        "current": {
+            "path": "config/china_econ_wdi_series.json",
+            "schema_version": WDI_REGISTRY_SCHEMA,
+            **_blob_receipt(current_registry_bytes),
+            "series_records": len(current.bindings),
+        },
+        "added_source_indicators": added,
+    }
+
+
+def _validate_public_wdi_node(
+    *,
+    registry_bytes: bytes,
+    ledger_bytes: bytes,
+    availability_receipt_bytes: bytes,
+    label: str,
+) -> tuple[
+    MarketRegistry,
+    tuple[EconomicObservation, ...],
+    AvailabilityReceipt,
+    dict[str, Any],
+]:
+    registry = _parse_market_registry(registry_bytes)
+    observations = _parse_ledger_bytes(ledger_bytes)
+    availability = _parse_availability_receipt(
+        availability_receipt_bytes,
+        registry=registry,
+    )
+    ledger_receipt = _blob_receipt(ledger_bytes, records=len(observations))
+    if (
+        availability.publication_state != "public_context_only"
+        or not availability.durable_cross_run
+        or availability.revision_lineage_mode != PUBLIC_WDI_LINEAGE_MODE
+        or availability.revision_lineage_ledger_path != PUBLIC_WDI_LEDGER_PATH
+        or availability.ledger_after != ledger_receipt
+        or availability.ledger_coverage != _expected_ledger_coverage(observations)
+    ):
+        raise ChinaEconExportError(
+            f"{label} public WDI receipt is not bound to its exact durable ledger"
+        )
+    newest_collection = max(
+        (row.collected_at.astimezone(UTC) for row in observations),
+        default=None,
+    )
+    if (
+        newest_collection is not None
+        and newest_collection > availability.generated_at_value
+    ):
+        raise ChinaEconExportError(
+            f"{label} public WDI receipt predates its newest ledger collection clock"
+        )
+    return registry, observations, availability, ledger_receipt
+
+
+def build_public_wdi_lineage_chain(
+    nodes: Sequence[WDIHistoryNode],
+    *,
+    evaluated_at_commit_sha: str,
+) -> WDILineageChain:
+    """Build a fail-closed first-parent chain for every governed-path change.
+
+    ``nodes`` must be the oldest-to-newest result of a first-parent history walk
+    over the registry, public ledger, and current-availability receipt paths.
+    Every path-changing commit must itself be a GitHub-verified reviewed merge;
+    this makes an unsigned direct-main rewrite visible and fatal even if a later
+    signed merge leaves the rewritten bytes unchanged.
+    """
+
+    if (
+        type(evaluated_at_commit_sha) is not str
+        or not _COMMIT_SHA.fullmatch(evaluated_at_commit_sha)
+    ):
+        raise ChinaEconExportError("WDI lineage evaluation commit SHA is invalid")
+    if type(nodes) not in (list, tuple) or not 1 <= len(nodes) <= MAX_WDI_LINEAGE_NODES:
+        raise ChinaEconExportError(
+            f"WDI lineage requires 1..{MAX_WDI_LINEAGE_NODES} history nodes"
+        )
+    records: list[dict[str, Any]] = []
+    evidence_records: list[dict[str, Any]] = []
+    previous_node: WDIHistoryNode | None = None
+    previous_availability: AvailabilityReceipt | None = None
+    previous_ledger_receipt: dict[str, Any] | None = None
+    seen_commits: set[str] = set()
+    empty_ledger_receipt = _blob_receipt(b"", records=0)
+
+    for sequence, node in enumerate(nodes):
+        if type(node) is not WDIHistoryNode:
+            raise ChinaEconExportError("WDI lineage node has an invalid type")
+        if (
+            type(node.commit_sha) is not str
+            or not _COMMIT_SHA.fullmatch(node.commit_sha)
+            or node.commit_sha in seen_commits
+        ):
+            raise ChinaEconExportError("WDI lineage node commit SHA is invalid or repeated")
+        expected_previous = previous_node.commit_sha if previous_node is not None else None
+        if node.previous_change_sha != expected_previous:
+            raise ChinaEconExportError(
+                "WDI lineage previous-change link does not match canonical order"
+            )
+        seen_commits.add(node.commit_sha)
+        governed_payloads = {
+            "config/china_econ_wdi_series.json": node.series_registry_bytes,
+            PUBLIC_WDI_LEDGER_PATH: node.ledger_bytes,
+            PUBLIC_WDI_AVAILABILITY_PATH: node.availability_receipt_bytes,
+        }
+        if type(node.tree_entries) is not dict or set(node.tree_entries) != set(
+            governed_payloads
+        ):
+            raise ChinaEconExportError(
+                "WDI lineage node must bind every exact governed Git tree entry"
+            )
+        normalized_tree_entries: dict[str, dict[str, str]] = {}
+        for path, payload in governed_payloads.items():
+            entry = node.tree_entries[path]
+            if (
+                type(entry) is not dict
+                or set(entry) != {"mode", "type", "object_sha"}
+                or entry["mode"] != "100644"
+                or entry["type"] != "blob"
+                or type(entry["object_sha"]) is not str
+                or not _COMMIT_SHA.fullmatch(entry["object_sha"])
+                or entry["object_sha"] != _git_blob_oid(payload)
+            ):
+                raise ChinaEconExportError(
+                    f"WDI lineage node has a non-regular or mismatched Git blob for {path}"
+                )
+            normalized_tree_entries[path] = dict(entry)
+        commit = parse_github_commit_evidence(
+            node.github_commit_bytes,
+            expected_sha=node.commit_sha,
+        )
+        registry, observations, availability, ledger_receipt = (
+            _validate_public_wdi_node(
+                registry_bytes=node.series_registry_bytes,
+                ledger_bytes=node.ledger_bytes,
+                availability_receipt_bytes=node.availability_receipt_bytes,
+                label=f"WDI lineage node {sequence}",
+            )
+        )
+        registry_receipt = {
+            "path": "config/china_econ_wdi_series.json",
+            "schema_version": WDI_REGISTRY_SCHEMA,
+            **_blob_receipt(node.series_registry_bytes),
+            "series_records": len(registry.bindings),
+        }
+        availability_receipt = {
+            "path": PUBLIC_WDI_AVAILABILITY_PATH,
+            "schema_version": WDI_RUN_SCHEMA,
+            **_blob_receipt(node.availability_receipt_bytes),
+            "generated_at": availability.generated_at,
+        }
+        ledger_summary = {
+            "path": PUBLIC_WDI_LEDGER_PATH,
+            **ledger_receipt,
+        }
+
+        if previous_node is None:
+            if (
+                availability.ledger_before != empty_ledger_receipt
+                or availability.appended_observations != ledger_receipt["records"]
+            ):
+                raise ChinaEconExportError(
+                    "WDI lineage genesis does not start from the exact empty ledger"
+                )
+            registry_transition = {
+                "state": "initial_registry",
+                "previous": None,
+                "current": registry_receipt,
+                "added_source_indicators": sorted(
+                    binding.source_series_id for binding in registry.bindings.values()
+                ),
+            }
+            ledger_state = "initial_seed"
+            prefix_bytes = 0
+            appended_records = ledger_receipt["records"]
+        else:
+            registry_transition = validate_wdi_registry_evolution(
+                previous_node.series_registry_bytes,
+                node.series_registry_bytes,
+            )
+            if not node.ledger_bytes.startswith(previous_node.ledger_bytes):
+                raise ChinaEconExportError(
+                    "WDI lineage ledger is not an exact byte-prefix extension"
+                )
+            appended_records = (
+                ledger_receipt["records"] - previous_ledger_receipt["records"]
+            )
+            if (
+                availability.ledger_before != previous_ledger_receipt
+                or availability.appended_observations != appended_records
+            ):
+                raise ChinaEconExportError(
+                    "WDI lineage receipt does not start at the prior governed ledger"
+                )
+            if availability.generated_at_value < previous_availability.generated_at_value:
+                raise ChinaEconExportError(
+                    "WDI lineage availability clock moves behind its predecessor"
+                )
+            if (
+                node.series_registry_bytes == previous_node.series_registry_bytes
+                and node.ledger_bytes == previous_node.ledger_bytes
+                and node.availability_receipt_bytes
+                == previous_node.availability_receipt_bytes
+            ):
+                raise ChinaEconExportError(
+                    "WDI lineage contains a commit with no governed-path byte change"
+                )
+            ledger_state = (
+                "unchanged" if appended_records == 0 else "reviewed_prefix_extension"
+            )
+            prefix_bytes = previous_ledger_receipt["bytes"]
+
+        evidence_receipt = _blob_receipt(node.github_commit_bytes)
+        record = {
+            "schema_version": WDI_LINEAGE_RECORD_SCHEMA,
+            "sequence": sequence,
+            "commit": {
+                **commit,
+                "raw_sha256": evidence_receipt["sha256"],
+                "raw_bytes": evidence_receipt["bytes"],
+            },
+            "previous_change_sha": node.previous_change_sha,
+            "git_tree_entries": normalized_tree_entries,
+            "registry_transition": registry_transition,
+            "ledger": ledger_summary,
+            "availability_receipt": availability_receipt,
+            "ledger_transition": {
+                "state": ledger_state,
+                "prefix_bytes": prefix_bytes,
+                "appended_records": appended_records,
+                "receipt_appended_observations": availability.appended_observations,
+            },
+        }
+        records.append(record)
+        evidence_records.append(
+            {
+                "schema_version": WDI_LINEAGE_EVIDENCE_RECORD_SCHEMA,
+                "sequence": sequence,
+                "commit_sha": node.commit_sha,
+                "raw_sha256": evidence_receipt["sha256"],
+                "raw_bytes": evidence_receipt["bytes"],
+                "encoding": "base64",
+                "payload_base64": base64.b64encode(node.github_commit_bytes).decode(
+                    "ascii"
+                ),
+            }
+        )
+        previous_node = node
+        previous_availability = availability
+        previous_ledger_receipt = ledger_receipt
+
+    records_bytes = b"".join(canonical_json_bytes(record) for record in records)
+    evidence_bytes = b"".join(
+        canonical_json_bytes(record) for record in evidence_records
+    )
+    receipt = {
+        "schema_version": WDI_LINEAGE_CHAIN_SCHEMA,
+        "path": WDI_LINEAGE_CHAIN_PATH,
+        **_blob_receipt(records_bytes, records=len(records)),
+        "root_commit_sha": records[0]["commit"]["sha"],
+        "tip_commit_sha": records[-1]["commit"]["sha"],
+        "evaluated_at_commit_sha": evaluated_at_commit_sha,
+        "governed_paths": [
+            "config/china_econ_wdi_series.json",
+            PUBLIC_WDI_LEDGER_PATH,
+            PUBLIC_WDI_AVAILABILITY_PATH,
+        ],
+        "evidence": {
+            "schema_version": WDI_LINEAGE_EVIDENCE_SCHEMA,
+            "path": WDI_LINEAGE_EVIDENCE_PATH,
+            **_blob_receipt(evidence_bytes, records=len(evidence_records)),
+        },
+    }
+    return WDILineageChain(
+        records_bytes=records_bytes,
+        evidence_bytes=evidence_bytes,
+        receipt=receipt,
+    )
+
+
 def validate_public_wdi_lineage_transition(
     *,
     first_parent_sha: str,
@@ -1221,6 +1668,7 @@ def validate_public_wdi_lineage_transition(
     previous_ledger_history_sha: str | None,
     previous_availability_history_sha: str | None,
     series_registry_path: str | Path,
+    previous_series_registry_bytes: bytes | None = None,
 ) -> dict[str, Any]:
     """Prove an exact first-parent append-only transition for a public handoff."""
 
@@ -1315,9 +1763,19 @@ def validate_public_wdi_lineage_transition(
                 "first-parent WDI paths lack their ancestry history proof"
             )
         previous_observations = _parse_ledger_bytes(previous_ledger_bytes)
+        previous_registry = (
+            _parse_market_registry(previous_series_registry_bytes)
+            if previous_series_registry_bytes is not None
+            else registry
+        )
+        if previous_series_registry_bytes is not None:
+            validate_wdi_registry_evolution(
+                previous_series_registry_bytes,
+                Path(series_registry_path).read_bytes(),
+            )
         previous = _parse_availability_receipt(
             previous_availability_receipt_bytes,
-            registry=registry,
+            registry=previous_registry,
         )
         exact_previous_ledger = {
             "sha256": hashlib.sha256(previous_ledger_bytes).hexdigest(),
@@ -2400,16 +2858,24 @@ __all__ = [
     "PRODUCER_REPOSITORY",
     "PRODUCER_WORKFLOW_FILE",
     "WDI_AVAILABILITY_SCHEMA",
+    "WDIHistoryNode",
+    "WDILineageChain",
+    "WDI_LINEAGE_CHAIN_PATH",
+    "WDI_LINEAGE_EVIDENCE_PATH",
     "WDI_RUN_SCHEMA",
     "AvailabilityReceipt",
     "ChinaEconExportError",
     "ExportBundle",
     "MarketRegistry",
     "build_export",
+    "build_public_wdi_lineage_chain",
     "canonical_json_bytes",
     "load_market_bindings",
     "load_market_registry",
     "load_availability_receipt",
     "load_source_policy",
+    "parse_github_commit_evidence",
     "validate_export_bundle",
+    "validate_public_wdi_lineage_transition",
+    "validate_wdi_registry_evolution",
 ]

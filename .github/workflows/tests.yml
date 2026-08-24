@@ -439,8 +439,8 @@ jobs:
         run: |
           set -euo pipefail
           review_end_year=$(date -u +%Y)
-          cp readings/china-econ-wdi-observations.jsonl \
-            "$REVIEW_DIR/china-econ-wdi-observations.jsonl"
+          git show HEAD:readings/china-econ-wdi-observations.jsonl \
+            > "$REVIEW_DIR/china-econ-wdi-observations.jsonl"
           python -m scripts.china_econ_wdi_pull \
             --registry config/china_econ_wdi_series.json \
             --input "$REVIEW_DIR/world-bank-wdi-response.json" \
@@ -531,8 +531,8 @@ jobs:
           PY
           cmp --silent readings/china-econ-wdi-observations.jsonl \
             "$REVIEW_DIR/china-econ-wdi-observations.jsonl"
-          cp readings/china-econ-wdi-latest.json \
-            "$REVIEW_DIR/china-econ-wdi-latest.json"
+          git show HEAD:readings/china-econ-wdi-latest.json \
+            > "$REVIEW_DIR/china-econ-wdi-latest.json"
           cmp --silent readings/china-econ-wdi-latest.json \
             "$REVIEW_DIR/china-econ-wdi-latest.json"
           python -m scripts.build_china_econ_export \
@@ -547,24 +547,31 @@ jobs:
             --workflow-run-id "$GITHUB_RUN_ID" \
             --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
             --workflow-run-event "$GITHUB_EVENT_NAME"
-          cp config/china_econ_source_policy.json "$REVIEW_DIR/"
-          cp config/china_econ_wdi_series.json "$REVIEW_DIR/"
+          git show HEAD:config/china_econ_source_policy.json \
+            > "$REVIEW_DIR/china_econ_source_policy.json"
+          git show HEAD:config/china_econ_wdi_series.json \
+            > "$REVIEW_DIR/china_econ_wdi_series.json"
 
       - name: Seal exact inputs, outputs, and review receipts
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          python -m scripts.build_china_econ_lineage \
+            --revision HEAD \
+            --current-commit-evidence "$REVIEW_DIR/github-commit.json" \
+            --output-chain "$REVIEW_DIR/china-econ-wdi-lineage-chain.jsonl" \
+            --output-evidence "$REVIEW_DIR/github-commit-lineage-evidence.jsonl" \
+            --output-receipt "$RUNNER_TEMP/china-econ-wdi-lineage-receipt.json"
           python - <<'PY'
           import hashlib
           import json
           import os
-          import re
-          import subprocess
-          from datetime import datetime
           from pathlib import Path
 
           from core.china_econ_export import (
               canonical_json_bytes,
-              validate_public_wdi_lineage_transition,
+              parse_github_commit_evidence,
           )
 
           root = Path(os.environ["REVIEW_DIR"])
@@ -572,13 +579,16 @@ jobs:
           latest_path = root / "china-econ-wdi-latest.json"
           live_path = root / "china-econ-wdi-live-check.json"
           commit_path = root / "github-commit.json"
+          lineage_receipt_path = (
+              Path(os.environ["RUNNER_TEMP"])
+              / "china-econ-wdi-lineage-receipt.json"
+          )
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
           latest = json.loads(latest_path.read_text(encoding="utf-8"))
           live = json.loads(live_path.read_text(encoding="utf-8"))
           commit_raw = commit_path.read_bytes()
           if not 1 <= len(commit_raw) <= 262_144:
               raise SystemExit("GitHub commit evidence exceeds its bounded byte contract")
-          commit = json.loads(commit_raw)
           if live["appended_observations"] != 0:
               raise SystemExit(
                   "live WDI values differ from the Git-tracked durable ledger; "
@@ -587,10 +597,12 @@ jobs:
           expected_core_names = {
               "china-econ-wdi-latest.json",
               "china-econ-wdi-live-check.json",
+              "china-econ-wdi-lineage-chain.jsonl",
               "china-econ-wdi-observations.jsonl",
               "china_econ_source_policy.json",
               "china_econ_wdi_series.json",
               "github-commit.json",
+              "github-commit-lineage-evidence.jsonl",
               "palimpsest-china-economic-export-v1.jsonl",
               "palimpsest-china-economic-export-v3-manifest.json",
               "world-bank-wdi-response.json",
@@ -618,100 +630,16 @@ jobs:
           if manifest["producer"]["commit_sha"] != os.environ["GITHUB_SHA"]:
               raise SystemExit("producer commit does not match the workflow")
           producer_sha = manifest["producer"]["commit_sha"]
-          repository = manifest["producer"]["repository"]
-          author = commit.get("author")
-          committer = commit.get("committer")
-          parents = commit.get("parents")
-          verification = commit.get("commit", {}).get("verification")
-          if (
-              commit.get("sha") != producer_sha
-              or commit.get("url")
-              != f"https://api.github.com/repos/{repository}/commits/{producer_sha}"
-              or not isinstance(author, dict)
-              or author.get("login") != "beepboop2025"
-              or not isinstance(committer, dict)
-              or committer.get("login") != "web-flow"
-              or not isinstance(parents, list)
-              or len(parents) < 2
-              or not isinstance(verification, dict)
-              or verification.get("verified") is not True
-              or verification.get("reason") != "valid"
-          ):
-              raise SystemExit("GitHub commit evidence is not a verified merge identity")
-          parent_shas = [parent.get("sha") for parent in parents]
-          if (
-              len(parent_shas) != len(set(parent_shas))
-              or any(
-                  not isinstance(parent, str)
-                  or re.fullmatch(r"[0-9a-f]{40}", parent) is None
-                  for parent in parent_shas
-              )
-          ):
-              raise SystemExit("GitHub commit evidence has invalid parents")
-          verified_at = verification.get("verified_at")
-          if not isinstance(verified_at, str) or not verified_at.endswith("Z"):
-              raise SystemExit("GitHub commit evidence lacks a verified_at clock")
-          try:
-              parsed_verified_at = datetime.fromisoformat(
-                  verified_at[:-1] + "+00:00"
-              )
-          except ValueError as exc:
-              raise SystemExit("GitHub verified_at clock is invalid") from exc
-          if parsed_verified_at.isoformat().replace("+00:00", "Z") != verified_at:
-              raise SystemExit("GitHub verified_at clock is not canonical")
-
-          first_parent_sha = parent_shas[0]
-          def first_parent_blob(path):
-              listing = subprocess.run(
-                  ["git", "ls-tree", first_parent_sha, "--", path],
-                  check=True,
-                  capture_output=True,
-              ).stdout
-              if not listing:
-                  return None
-              return subprocess.run(
-                  ["git", "show", f"{first_parent_sha}:{path}"],
-                  check=True,
-                  capture_output=True,
-              ).stdout
-
-          def first_parent_last_change(path):
-              value = subprocess.run(
-                  [
-                      "git",
-                      "log",
-                      "--max-count=1",
-                      "--format=%H",
-                      first_parent_sha,
-                      "--",
-                      path,
-                  ],
-                  check=True,
-                  capture_output=True,
-                  text=True,
-              ).stdout.strip()
-              return value or None
-
-          lineage_transition = validate_public_wdi_lineage_transition(
-              first_parent_sha=first_parent_sha,
-              current_ledger_bytes=(
-                  root / "china-econ-wdi-observations.jsonl"
-              ).read_bytes(),
-              current_availability_receipt_bytes=latest_path.read_bytes(),
-              previous_ledger_bytes=first_parent_blob(
-                  "readings/china-econ-wdi-observations.jsonl"
-              ),
-              previous_availability_receipt_bytes=first_parent_blob(
-                  "readings/china-econ-wdi-latest.json"
-              ),
-              previous_ledger_history_sha=first_parent_last_change(
-                  "readings/china-econ-wdi-observations.jsonl"
-              ),
-              previous_availability_history_sha=first_parent_last_change(
-                  "readings/china-econ-wdi-latest.json"
-              ),
-              series_registry_path=Path("config/china_econ_wdi_series.json"),
+          commit_identity = parse_github_commit_evidence(
+              commit_raw,
+              expected_sha=producer_sha,
           )
+          lineage_receipt_raw = lineage_receipt_path.read_bytes()
+          lineage_receipt = json.loads(lineage_receipt_raw)
+          if canonical_json_bytes(lineage_receipt) != lineage_receipt_raw:
+              raise SystemExit("lineage receipt is not canonical JSON")
+          if lineage_receipt["evaluated_at_commit_sha"] != producer_sha:
+              raise SystemExit("lineage was not evaluated at the producer commit")
           workflow_run = manifest["producer"]["workflow_run"]
           if workflow_run != {
               "provider": "github_actions",
@@ -749,6 +677,29 @@ jobs:
               expected_sha=manifest["availability_receipt"]["sha256"],
               expected_bytes=manifest["availability_receipt"]["bytes"],
           )
+          chain_bytes = exact_receipt(
+              root / lineage_receipt["path"],
+              expected_sha=lineage_receipt["sha256"],
+              expected_bytes=lineage_receipt["bytes"],
+          )
+          evidence_receipt = lineage_receipt["evidence"]
+          evidence_bytes = exact_receipt(
+              root / evidence_receipt["path"],
+              expected_sha=evidence_receipt["sha256"],
+              expected_bytes=evidence_receipt["bytes"],
+          )
+          chain_rows = [json.loads(line) for line in chain_bytes.splitlines()]
+          evidence_rows = [json.loads(line) for line in evidence_bytes.splitlines()]
+          if (
+              len(chain_rows) != lineage_receipt["records"]
+              or len(evidence_rows) != evidence_receipt["records"]
+              or len(chain_rows) != len(evidence_rows)
+              or chain_rows[0]["commit"]["sha"]
+              != lineage_receipt["root_commit_sha"]
+              or chain_rows[-1]["commit"]["sha"]
+              != lineage_receipt["tip_commit_sha"]
+          ):
+              raise SystemExit("governed lineage chain receipt does not reconcile")
           if not policy or not registry:
               raise SystemExit("reviewed policy and registry must be non-empty")
           files = []
@@ -762,29 +713,17 @@ jobs:
                   }
               )
           receipt = {
-              "schema_version": "palimpsest.china-economic-handoff-receipt.v2",
+              "schema_version": "palimpsest.china-economic-handoff-receipt.v3",
               "producer": manifest["producer"],
               "producer_commit_evidence": {
                   "path": "github-commit.json",
-                  "request_url": (
-                      f"https://api.github.com/repos/{repository}/commits/"
-                      f"{producer_sha}?per_page=1"
-                  ),
+                  **commit_identity,
                   "sha256": hashlib.sha256(commit_raw).hexdigest(),
                   "bytes": len(commit_raw),
-                  "sha": producer_sha,
-                  "author_login": author["login"],
-                  "committer_login": committer["login"],
-                  "parent_shas": parent_shas,
-                  "verification": {
-                      "verified": verification["verified"],
-                      "reason": verification["reason"],
-                      "verified_at": verified_at,
-                  },
               },
               "revision_lineage": {
-                  "mode": "git_tracked_seeded_append_only",
-                  "transition": lineage_transition,
+                  "mode": "git_tracked_reviewed_merge_chain",
+                  "chain": lineage_receipt,
                   "cross_run_revision_authority": True,
                   "live_check_new_vintages_appended": live[
                       "appended_observations"
@@ -831,6 +770,28 @@ jobs:
               key: manifest["input_ledger"][key]
               for key in ("sha256", "bytes", "records")
           }
+          tip = chain_rows[-1]
+          if tip["ledger"] != {
+              "path": "readings/china-econ-wdi-observations.jsonl",
+              **expected_ledger,
+          }:
+              raise SystemExit("lineage tip is not the exact export ledger")
+          if {
+              key: tip["availability_receipt"][key]
+              for key in ("sha256", "bytes", "schema_version", "generated_at")
+          } != {
+              key: manifest["availability_receipt"][key]
+              for key in ("sha256", "bytes", "schema_version", "generated_at")
+          }:
+              raise SystemExit("lineage tip is not the reviewed availability receipt")
+          if {
+              key: tip["registry_transition"]["current"][key]
+              for key in ("sha256", "bytes", "schema_version")
+          } != {
+              key: manifest["series_registry"][key]
+              for key in ("sha256", "bytes", "schema_version")
+          }:
+              raise SystemExit("lineage tip is not the reviewed series registry")
           if latest["ledger_after"] != expected_ledger:
               raise SystemExit("reviewed availability is not bound to the export ledger")
           if live["ledger_before"] != expected_ledger or live["ledger_after"] != expected_ledger:

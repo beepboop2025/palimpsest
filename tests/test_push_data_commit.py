@@ -996,7 +996,6 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
         "board-alarm-refresh.yml",
         "censored-planet-refresh.yml",
         "china-brief-refresh.yml",
-        "china-econ-refresh.yml",
         "circumvention-demand-refresh.yml",
         "cny-fix-gap-refresh.yml",
         "ddti-refresh.yml",
@@ -1074,10 +1073,13 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     china_econ = (workflow_root / "china-econ-refresh.yml").read_text(encoding="utf-8")
     assert "python -m scripts.build_china_econ_forecast --check" in china_econ
     assert "readings/china-econ-forecast-latest.json" in china_econ
-    assert (
-        "for path in scripts core processors config protocol assets "
-        "dashboards/assets readings"
-    ) in china_econ
+    assert "schedule:" not in china_econ
+    assert "workflow_dispatch: {}" in china_econ
+    assert "python scripts/push_data_commit.py" not in china_econ
+    assert "git push --set-upstream origin" in china_econ
+    assert "gh pr create" in china_econ
+    assert "--prior-registry" in china_econ
+    assert "This PR never self-merges" in china_econ
     assert "--input-path readings/wayback-latest.json" in (
         workflow_root / "ddti-refresh.yml"
     ).read_text(encoding="utf-8")
@@ -1185,7 +1187,8 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
         < pages_artifact
     )
     assert workflow.count("steps.identity.outputs.scope == 'complete'") == 3
-    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 3
+    # MCP admission, Pages artifact/deploy, and the non-Pages China review bundle.
+    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 4
     assert (
         workflow[mcp_admission:].count("github.event_name == 'repository_dispatch'")
         == 3

@@ -173,7 +173,8 @@ workflow. The v3 manifest binds the tracked receipt; the separately named live
 receipt and raw response bind the new check without pretending that a fresh raw
 response has the earlier tracked response's hash. The workflow uploads both
 receipts, the raw response, ledger, policy, registry, artifact, manifest,
-raw bounded `github-commit.json`, handoff receipt and `SHA256SUMS`. The commit
+raw bounded `github-commit.json`, governed-lineage JSONL, raw historical commit-
+evidence JSONL, handoff receipt and `SHA256SUMS`. The current commit
 response is preserved verbatim from the GitHub REST endpoint with
 `?per_page=1`, capped at 256 KiB, and normalized in the handoff receipt. It
 proves the producer is a GitHub-verified multi-parent merge authored by
@@ -182,21 +183,64 @@ with GitHub build provenance. None of these review bytes is copied into Pages.
 A later main advance makes the older handoff non-current even if all of its
 bytes still verify.
 
-`handoff-receipt.json` identifies this as
-`git_tracked_seeded_append_only` and sets `cross_run_revision_authority` true
-only after checking the exact first parent. Its transition is one of
-`initial_seed`, `unchanged`, or `reviewed_prefix_extension`. The seed requires
-both first-parent paths to be absent, neither path ever to have appeared in the
-first-parent ancestry, and an exact empty `ledger_before`; an unchanged
-carry-forward requires byte-identical ledger and latest receipt; and an
-extension requires the current ledger to begin with every prior byte while the
-current receipt starts from the exact prior-ledger digest, byte count and record
-count. A deletion-and-reseed, rewrite or truncation fails before attestation. The inner live
-pull receipt remains conservatively labelled `local_review_append_only`;
-authority comes from the outer first-parent transition, release-reviewed Git
-history and attested workflow bytes. The 90-day workflow artifact is a
-transport retention window, not the source of durable lineage. Raw responses
+`handoff-receipt.json` uses schema
+`palimpsest.china-economic-handoff-receipt.v3`, identifies the lineage as
+`git_tracked_reviewed_merge_chain`, and sets `cross_run_revision_authority` true
+only after walking every first-parent commit at which the registry, public WDI
+ledger or current-availability receipt changed. Each node must be a raw,
+bounded GitHub commit response for a verified multi-parent merge authored by
+`beepboop2025` and committed by `web-flow`. Each of the three governed paths
+must be an exact `100644 blob`; a symlink, deletion, missing companion file or
+other tree mode fails closed. This exposes an unsigned direct-main rewrite even
+when a later signed merge leaves its bytes untouched.
+
+The genesis node requires an exact empty `ledger_before` and appends every seed
+row. Each later ledger must begin with every byte of its predecessor and its
+receipt must name that predecessor's exact digest, byte count and record count.
+The commit-local series registry may grow only by appending reviewed rows: its
+dataset authority and every existing indicator-to-series binding remain byte-
+identical, so addition is possible but deletion, reordering and remapping are
+not. The prior availability receipt is parsed against its own commit-local
+registry, not the current registry. The normalized chain and the base64-wrapped
+raw GitHub responses are canonical JSONL, separately hash-pinned in the chain
+receipt, included in `SHA256SUMS`, and covered by the GitHub attestation. The
+inner live pull receipt remains conservatively labelled
+`local_review_append_only`; authority comes from the full governed-path chain,
+release-reviewed Git history and attested workflow bytes. The 90-day artifact
+is transport retention, not the source of durable lineage. Raw WDI responses
 remain review artifacts rather than a permanent public archive.
+
+The refresh workflow has no schedule and never writes these governed paths to
+`main`. A manual run creates a unique candidate branch and PR, and never self-
+merges it. Registry expansion or data revision therefore becomes authoritative
+only through the same reviewed GitHub merge-commit path checked by the chain.
+
+The cross-repository lineage contract is exact. The handoff's
+`revision_lineage` object has only `mode`, `chain`,
+`cross_run_revision_authority` and `live_check_new_vintages_appended`. `chain`
+uses `palimpsest.china-economic-lineage-chain.v1` and has exactly `path`,
+`sha256`, `bytes`, `records`, `root_commit_sha`, `tip_commit_sha`,
+`evaluated_at_commit_sha`, `governed_paths` and `evidence` in addition to
+`schema_version`. `evaluated_at_commit_sha` must equal the manifest producer;
+`tip_commit_sha` is the newest governed-path change in that producer's exact
+first-parent history and may predate it after an unrelated reviewed merge. The nested
+evidence receipt uses `palimpsest.china-economic-lineage-evidence.v1` and exact
+`path`, `sha256`, `bytes` and `records` fields. Sequence numbers are zero-based;
+the root has `previous_change_sha: null`; subsequent rows name the immediately
+preceding governed-path change.
+
+Each canonical `palimpsest.china-economic-lineage-record.v1` JSONL row has
+exactly `schema_version`, `sequence`, `commit`, `previous_change_sha`,
+`git_tree_entries`, `registry_transition`, `ledger`, `availability_receipt` and
+`ledger_transition`. Its normalized `commit` pins SHA, request/API URLs, author,
+committer, ordered parent SHAs, verification, and raw digest/size. The companion
+`palimpsest.china-economic-lineage-evidence-record.v1` row has exactly
+`schema_version`, `sequence`, `commit_sha`, `raw_sha256`, `raw_bytes`,
+`encoding: "base64"` and `payload_base64`. Both files use strict UTF-8 JSON with
+sorted keys, compact separators, no non-finite values and exactly one terminal
+newline per record. A later node's `prefix_bytes` equals the preceding ledger's
+byte count; `appended_records` equals the record-count delta and must equal the
+current run receipt's `appended_observations`.
 
 Before an owner signs a Seiche acceptance receipt, download the artifact named
 `china-economic-review-v3-<sha>-<run>-<attempt>` and independently require all
@@ -240,21 +284,27 @@ non-basename or malformed entries, then recompute every digest:
 ```bash
 PALIMPSEST_SHA="$sha" PALIMPSEST_RUN="$run" \
 PALIMPSEST_CHECKOUT="$checkout" python3 - <<'PY'
-import hashlib, json, os, re, subprocess, sys
-from datetime import datetime
+import hashlib, json, os, re, sys
 from pathlib import Path
 
 root = Path("china-economic-review-v3")
 checkout = Path(os.environ["PALIMPSEST_CHECKOUT"]).resolve()
 sys.path.insert(0, str(checkout))
-from core.china_econ_export import validate_public_wdi_lineage_transition
+from core.china_econ_export import (
+    build_public_wdi_lineage_chain,
+    canonical_json_bytes,
+    parse_github_commit_evidence,
+)
+from scripts.build_china_econ_lineage import rebuild_lineage_from_evidence
 allowed = {
     "china-econ-wdi-latest.json",
     "china-econ-wdi-live-check.json",
+    "china-econ-wdi-lineage-chain.jsonl",
     "china-econ-wdi-observations.jsonl",
     "china_econ_source_policy.json",
     "china_econ_wdi_series.json",
     "github-commit.json",
+    "github-commit-lineage-evidence.jsonl",
     "handoff-receipt.json",
     "palimpsest-china-economic-export-v1.jsonl",
     "palimpsest-china-economic-export-v3-manifest.json",
@@ -282,6 +332,8 @@ ledger = (root / manifest["input_ledger"]["path"]).read_bytes()
 artifact = (root / manifest["artifact"]["path"]).read_bytes()
 policy = (root / manifest["policy"]["path"]).read_bytes()
 registry = (root / manifest["series_registry"]["path"]).read_bytes()
+chain = (root / "china-econ-wdi-lineage-chain.jsonl").read_bytes()
+chain_evidence = (root / "github-commit-lineage-evidence.jsonl").read_bytes()
 assert hashlib.sha256(raw).hexdigest() == live["batch_raw_sha256"]
 assert hashlib.sha256(ledger).hexdigest() == manifest["input_ledger"]["sha256"]
 assert len(ledger) == manifest["input_ledger"]["bytes"]
@@ -314,45 +366,12 @@ assert handoff["producer"] == manifest["producer"]
 assert 1 <= len(commit_bytes) <= 262_144
 assert 1 <= len(owner_commit_bytes) <= 262_144
 
-def normalized_commit(payload):
-    value = json.loads(payload)
-    sha = os.environ["PALIMPSEST_SHA"]
-    assert value["sha"] == sha
-    assert value["url"] == (
-        f"https://api.github.com/repos/beepboop2025/palimpsest/commits/{sha}"
-    )
-    assert value["author"]["login"] == "beepboop2025"
-    assert value["committer"]["login"] == "web-flow"
-    parent_shas = [parent["sha"] for parent in value["parents"]]
-    assert len(parent_shas) >= 2 and len(parent_shas) == len(set(parent_shas))
-    assert all(re.fullmatch(r"[0-9a-f]{40}", parent) for parent in parent_shas)
-    verification = value["commit"]["verification"]
-    assert verification["verified"] is True and verification["reason"] == "valid"
-    verified_at = verification["verified_at"]
-    assert isinstance(verified_at, str) and verified_at.endswith("Z")
-    parsed = datetime.fromisoformat(verified_at[:-1] + "+00:00")
-    assert parsed.isoformat().replace("+00:00", "Z") == verified_at
-    return {
-        "path": "github-commit.json",
-        "request_url": (
-            f"https://api.github.com/repos/beepboop2025/palimpsest/commits/"
-            f"{sha}?per_page=1"
-        ),
-        "sha256": hashlib.sha256(payload).hexdigest(),
-        "bytes": len(payload),
-        "sha": sha,
-        "author_login": value["author"]["login"],
-        "committer_login": value["committer"]["login"],
-        "parent_shas": parent_shas,
-        "verification": {
-            "verified": verification["verified"],
-            "reason": verification["reason"],
-            "verified_at": verified_at,
-        },
-    }
-
-commit_evidence = normalized_commit(commit_bytes)
-owner_commit_evidence = normalized_commit(owner_commit_bytes)
+sha = os.environ["PALIMPSEST_SHA"]
+commit_evidence = parse_github_commit_evidence(commit_bytes, expected_sha=sha)
+owner_commit_evidence = parse_github_commit_evidence(
+    owner_commit_bytes,
+    expected_sha=sha,
+)
 identity_keys = (
     "sha",
     "author_login",
@@ -363,62 +382,23 @@ identity_keys = (
 assert {key: owner_commit_evidence[key] for key in identity_keys} == {
     key: commit_evidence[key] for key in identity_keys
 }
-assert handoff["producer_commit_evidence"] == commit_evidence
+assert handoff["producer_commit_evidence"] == {
+    "path": "github-commit.json",
+    **commit_evidence,
+    "sha256": hashlib.sha256(commit_bytes).hexdigest(),
+    "bytes": len(commit_bytes),
+}
 
-first_parent_sha = commit_evidence["parent_shas"][0]
-def first_parent_blob(path):
-    listing = subprocess.run(
-        ["git", "ls-tree", first_parent_sha, "--", path],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-    ).stdout
-    if not listing:
-        return None
-    return subprocess.run(
-        ["git", "show", f"{first_parent_sha}:{path}"],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-    ).stdout
-
-def first_parent_last_change(path):
-    value = subprocess.run(
-        [
-            "git",
-            "log",
-            "--max-count=1",
-            "--format=%H",
-            first_parent_sha,
-            "--",
-            path,
-        ],
-        cwd=checkout,
-        check=True,
-        capture_output=True,
-        text=True,
-    ).stdout.strip()
-    return value or None
-
-lineage_transition = validate_public_wdi_lineage_transition(
-    first_parent_sha=first_parent_sha,
-    current_ledger_bytes=ledger,
-    current_availability_receipt_bytes=availability,
-    previous_ledger_bytes=first_parent_blob(
-        "readings/china-econ-wdi-observations.jsonl"
-    ),
-    previous_availability_receipt_bytes=first_parent_blob(
-        "readings/china-econ-wdi-latest.json"
-    ),
-    previous_ledger_history_sha=first_parent_last_change(
-        "readings/china-econ-wdi-observations.jsonl"
-    ),
-    previous_availability_history_sha=first_parent_last_change(
-        "readings/china-econ-wdi-latest.json"
-    ),
-    series_registry_path=root / manifest["series_registry"]["path"],
+# Re-enumerate the exact first-parent governed-path history from the detached
+# source checkout, decode every attested raw GitHub response, re-read every
+# commit-local 100644 Git blob, then rerun build_public_wdi_lineage_chain.
+os.chdir(checkout)
+rebuilt = rebuild_lineage_from_evidence(
+    revision=sha,
+    evidence_bytes=chain_evidence,
 )
-assert handoff["revision_lineage"]["transition"] == lineage_transition
+assert rebuilt.records_bytes == chain
+assert handoff["revision_lineage"]["chain"] == rebuilt.receipt
 assert handoff["artifact"] == manifest["artifact"]
 assert handoff["input_ledger"] == manifest["input_ledger"]
 assert handoff["reviewed_availability_receipt"] == manifest["availability_receipt"]
