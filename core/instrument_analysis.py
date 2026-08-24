@@ -204,8 +204,13 @@ def _metric_phrase(story: Mapping[str, Any], *, live: bool) -> tuple[str, str]:
     denominator = metric.get("denominator") if type(metric.get("denominator")) is dict else {}
     denom_label = denominator.get("label") or "declared denominator"
     denom_value = denominator.get("value")
-    if not live or value is None:
+    if not live:
         return "withheld", f"{denom_label} withheld with the non-live metric"
+    if value is None:
+        return (
+            "current",
+            "live qualitative evidence; no scalar metric or denominator is defined",
+        )
     if type(value) is float and not math.isfinite(value):
         raise InstrumentAnalysisError("story metric is not finite")
     if unit == "percent":
@@ -326,6 +331,8 @@ def build_instrument_analysis(
         raise InstrumentAnalysisError("story status is invalid")
     private = signal_id in PRIVATE_SIGNALS
     live = status == "live" and not private
+    metric = story.get("metric") if type(story.get("metric")) is dict else {}
+    non_scalar_live = live and metric.get("value") is None
     disposition = "live-reading" if live else "availability-brief"
     number, denom = _metric_phrase(story, live=live)
     claim = _story_claim(story)
@@ -348,15 +355,26 @@ def build_instrument_analysis(
     evidence_id = _stable_id("instrumentevidence", evidence_row, 20)
     evidence = [{"evidence_id": evidence_id, **evidence_row}]
     if live:
-        current = (
-            f"The current {story.get('metric', {}).get('label') or 'headline metric'} "
-            f"is {number} over {denom}."
-        )
-        position = (
-            f"Palimpsest's view: {signal_id} is live. The current number is {number} "
-            f"over {denom}. This is the instrument reading, not a national "
-            "censorship rate."
-        )
+        if non_scalar_live:
+            current = (
+                f"The live {signal_id} evidence record is current; no scalar headline "
+                "metric or denominator is defined."
+            )
+            position = (
+                f"Palimpsest's view: {signal_id} is live. This is a cited qualitative "
+                "evidence status; no scalar headline metric is defined. This is the "
+                "instrument reading, not a national censorship rate."
+            )
+        else:
+            current = (
+                f"The current {story.get('metric', {}).get('label') or 'headline metric'} "
+                f"is {number} over {denom}."
+            )
+            position = (
+                f"Palimpsest's view: {signal_id} is live. The current number is {number} "
+                f"over {denom}. This is the instrument reading, not a national "
+                "censorship rate."
+            )
         current_status = "present"
     else:
         current = (
@@ -495,7 +513,11 @@ def build_instrument_analysis(
         "key_numbers": [
             {
                 "value": number,
-                "label": (story.get("metric") or {}).get("label") or "headline metric",
+                "label": (
+                    "evidence status"
+                    if non_scalar_live
+                    else (story.get("metric") or {}).get("label") or "headline metric"
+                ),
                 "note": denom if live else "withheld because the source is not live",
                 "citation_ids": [evidence_id],
             }
@@ -623,6 +645,8 @@ def validate_instrument_analysis(
             raise InstrumentAnalysisError("analysis.key_numbers citations are invalid")
         if document["disposition"] == "availability-brief" and item["value"] != "withheld":
             raise InstrumentAnalysisError("availability brief republished a non-live metric")
+        if document["disposition"] == "live-reading" and item["value"] == "withheld":
+            raise InstrumentAnalysisError("live reading mislabels current evidence as withheld")
     for field in ("counterreadings", "limitations"):
         records = document[field]
         if type(records) is not list or not 1 <= len(records) <= 8:
