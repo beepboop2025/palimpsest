@@ -267,6 +267,22 @@ def test_cgtn_rss_and_telegram_keep_one_publisher_lineage():
     assert context["same_publisher_lineage"] is True
     assert row["reporting"]["independent_groups"] == len(event["evidence_groups"])
 
+    forged = copy.deepcopy(document)
+    forged_row = next(
+        item for item in forged["situations"] if item["event_id"] == event["event_id"]
+    )
+    forged_row["social_context"][0]["same_publisher_lineage"] = False
+    version_payload = {
+        key: value
+        for key, value in forged_row.items()
+        if key not in {"situation_id", "version_id", "url"}
+    }
+    forged_row["version_id"] = china_situation._stable_id(
+        "situationv", version_payload
+    )
+    with pytest.raises(china_situation.ChinaSituationError, match="publisher groups"):
+        china_situation.validate_china_situation(forged)
+
 
 def test_instagram_edit_state_and_observation_time_advance_situation(inputs):
     wire, _feed, analyses = inputs
