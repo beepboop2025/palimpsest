@@ -1865,8 +1865,13 @@ def test_exact_main_workflow_builds_and_attests_non_pages_handoff():
         ROOT / "scripts" / "build_china_econ_lineage.py"
     ).read_text(encoding="utf-8")
     assert "python -m scripts.build_china_econ_lineage" in workflow
-    assert '"git",\n        "log",\n        "--first-parent"' in lineage_builder
-    assert '"git", "ls-tree", "-z", commit_sha, "--", path' in lineage_builder
+    assert '_git(\n        "log",\n        "--first-parent"' in lineage_builder
+    assert 'GIT_EXECUTABLE = "/usr/bin/git"' in lineage_builder
+    assert 'GH_EXECUTABLE = "/usr/bin/gh"' in lineage_builder
+    assert 'cwd=ROOT' in lineage_builder
+    assert 'stdin=subprocess.DEVNULL' in lineage_builder
+    assert 'timeout=60' in lineage_builder
+    assert '_git("ls-tree", "-z", commit_sha, "--", path)' in lineage_builder
     assert 'entry["mode"] != "100644"' in lineage_builder
     assert "china-econ-wdi-lineage-chain.jsonl" in workflow
     assert "github-commit-lineage-evidence.jsonl" in workflow
@@ -1893,7 +1898,9 @@ def test_handoff_documentation_requires_external_attestation_and_hash_review():
     assert "git_tracked_reviewed_merge_chain" in documentation
     assert "every first-parent commit" in documentation
     assert "exact `100644 blob`" in documentation
-    assert "never self-" in documentation
+    assert "human repository operator" in documentation
+    assert "Create a merge commit" in documentation
+    assert "Squash, rebase, auto-merge" in documentation
     assert "build_public_wdi_lineage_chain" in documentation
     assert "rebuild_lineage_from_evidence" in documentation
     assert 'handoff["revision_lineage"]["chain"]' in documentation

@@ -1082,9 +1082,14 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "workflow_dispatch: {}" in china_econ
     assert "python scripts/push_data_commit.py" not in china_econ
     assert "git push --set-upstream origin" in china_econ
-    assert "gh pr create" in china_econ
+    assert "gh pr create" not in china_econ
+    assert "pull-requests: write" not in china_econ
+    assert "compare/main...${REFRESH_BRANCH}?expand=1" in china_econ
+    assert "GITHUB_STEP_SUMMARY" in china_econ
+    assert "Create a merge commit" in china_econ
+    assert "Do not squash, rebase, auto-merge" in china_econ
+    assert "verified=true" in china_econ and "reason \\`valid\\`" in china_econ
     assert "--prior-registry" in china_econ
-    assert "This PR never self-merges" in china_econ
     assert "--input-path readings/wayback-latest.json" in (
         workflow_root / "ddti-refresh.yml"
     ).read_text(encoding="utf-8")

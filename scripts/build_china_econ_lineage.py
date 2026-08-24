@@ -27,6 +27,16 @@ from core.china_econ_export import (
 
 REGISTRY_PATH = "config/china_econ_wdi_series.json"
 GOVERNED_PATHS = (REGISTRY_PATH, PUBLIC_WDI_LEDGER_PATH, PUBLIC_WDI_AVAILABILITY_PATH)
+ROOT = Path(__file__).resolve().parents[1]
+GIT_EXECUTABLE = "/usr/bin/git"
+GH_EXECUTABLE = "/usr/bin/gh"
+_BASE_ENVIRONMENT = {
+    "GIT_CONFIG_GLOBAL": "/dev/null",
+    "GIT_CONFIG_NOSYSTEM": "1",
+    "GIT_NO_REPLACE_OBJECTS": "1",
+    "GIT_TERMINAL_PROMPT": "0",
+    "LC_ALL": "C",
+}
 _TREE_ENTRY = re.compile(
     rb"^(?P<mode>[0-9]{6}) (?P<type>[a-z]+) "
     rb"(?P<object_sha>[0-9a-f]{40})\t(?P<path>[^\0]+)\0$"
@@ -37,23 +47,45 @@ class LineageBuildError(ValueError):
     """The local Git graph cannot prove the governed public lineage."""
 
 
-def _run(*arguments: str) -> bytes:
+def _run(arguments: tuple[str, ...], *, gh_token: str | None = None) -> bytes:
+    if not arguments or arguments[0] not in {GIT_EXECUTABLE, GH_EXECUTABLE}:
+        raise LineageBuildError("lineage command executable is not reviewed")
+    environment = dict(_BASE_ENVIRONMENT)
+    if arguments[0] == GH_EXECUTABLE:
+        if not gh_token:
+            raise LineageBuildError("GH_TOKEN is required for GitHub commit evidence")
+        environment["GH_TOKEN"] = gh_token
+    elif gh_token is not None:
+        raise LineageBuildError("GH_TOKEN cannot be passed to Git")
     try:
         return subprocess.run(
             arguments,
             check=True,
             capture_output=True,
+            cwd=ROOT,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            timeout=60,
         ).stdout
-    except subprocess.CalledProcessError as exc:
-        detail = exc.stderr.decode("utf-8", errors="replace").strip()
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        stderr = getattr(exc, "stderr", b"") or b""
+        detail = stderr.decode("utf-8", errors="replace").strip()
+        status = getattr(exc, "returncode", "timeout")
         raise LineageBuildError(
-            f"command refused ({' '.join(arguments)}): {detail or exc.returncode}"
+            f"command refused ({' '.join(arguments)}): {detail or status}"
         ) from exc
 
 
+def _git(*arguments: str) -> bytes:
+    return _run((GIT_EXECUTABLE, "--no-replace-objects", *arguments))
+
+
+def _gh(*arguments: str) -> bytes:
+    return _run((GH_EXECUTABLE, *arguments), gh_token=os.environ.get("GH_TOKEN"))
+
+
 def _change_commits(revision: str) -> list[str]:
-    raw = _run(
-        "git",
+    raw = _git(
         "log",
         "--first-parent",
         f"--max-count={MAX_WDI_LINEAGE_NODES + 1}",
@@ -77,7 +109,7 @@ def _change_commits(revision: str) -> list[str]:
 
 
 def _regular_blob(commit_sha: str, path: str) -> tuple[dict[str, str], bytes]:
-    listing = _run("git", "ls-tree", "-z", commit_sha, "--", path)
+    listing = _git("ls-tree", "-z", commit_sha, "--", path)
     match = _TREE_ENTRY.fullmatch(listing)
     if match is None or match.group("path").decode("utf-8") != path:
         raise LineageBuildError(
@@ -92,7 +124,7 @@ def _regular_blob(commit_sha: str, path: str) -> tuple[dict[str, str], bytes]:
         raise LineageBuildError(
             f"{commit_sha}:{path} must be an exact 100644 regular Git blob"
         )
-    return entry, _run("git", "cat-file", "blob", entry["object_sha"])
+    return entry, _git("cat-file", "blob", entry["object_sha"])
 
 
 def _github_commit_bytes(
@@ -105,8 +137,7 @@ def _github_commit_bytes(
         return current_evidence_path.read_bytes()
     if not os.environ.get("GH_TOKEN"):
         raise LineageBuildError("GH_TOKEN is required for historical commit evidence")
-    return _run(
-        "gh",
+    return _gh(
         "api",
         "--method",
         "GET",
@@ -123,7 +154,11 @@ def build_lineage(
     revision: str,
     current_evidence_path: Path,
 ):
-    current_sha = _run("git", "rev-parse", revision).decode("ascii").strip()
+    if revision != "HEAD" and re.fullmatch(r"[0-9a-f]{40}", revision) is None:
+        raise LineageBuildError("revision must be HEAD or one full lowercase commit SHA")
+    current_sha = _git(
+        "rev-parse", "--verify", f"{revision}^{{commit}}"
+    ).decode("ascii").strip()
     if re.fullmatch(r"[0-9a-f]{40}", current_sha) is None:
         raise LineageBuildError("current revision did not resolve to a full commit SHA")
     nodes: list[WDIHistoryNode] = []
@@ -210,7 +245,11 @@ def rebuild_lineage_from_evidence(
             raise LineageBuildError("lineage evidence raw commitment does not reconcile")
         raw_by_commit[row["commit_sha"]] = raw
 
-    current_sha = _run("git", "rev-parse", revision).decode("ascii").strip()
+    if revision != "HEAD" and re.fullmatch(r"[0-9a-f]{40}", revision) is None:
+        raise LineageBuildError("revision must be HEAD or one full lowercase commit SHA")
+    current_sha = _git(
+        "rev-parse", "--verify", f"{revision}^{{commit}}"
+    ).decode("ascii").strip()
     commits = _change_commits(current_sha)
     if commits != list(raw_by_commit):
         raise LineageBuildError(
