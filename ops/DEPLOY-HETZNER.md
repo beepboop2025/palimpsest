@@ -1878,21 +1878,21 @@ MAIN_RELATION="$(gh api \
 [[ "$MAIN_RELATION" == "ahead" || "$MAIN_RELATION" == "identical" ]]
 
 OSINT_LATEST_RUN_ID_BEFORE="$(gh run list \
-  --repo "$PALIMPSEST_REPOSITORY" --workflow osint-china-refresh.yml \
+  --repo "$PALIMPSEST_REPOSITORY" --workflow osint-china-v2-refresh.yml \
   --limit 1 --json databaseId \
   --jq 'if length == 0 then 0 else .[0].databaseId end')"
 [[ "$OSINT_LATEST_RUN_ID_BEFORE" =~ ^[0-9]+$ ]]
-gh workflow run osint-china-refresh.yml \
+gh workflow run osint-china-v2-refresh.yml \
   --repo "$PALIMPSEST_REPOSITORY" --ref main
 gh run list --repo "$PALIMPSEST_REPOSITORY" \
-  --workflow osint-china-refresh.yml --event workflow_dispatch --limit 10
+  --workflow osint-china-v2-refresh.yml --event workflow_dispatch --limit 10
 OSINT_RUN_ID='REPLACE_WITH_NEW_NUMERIC_RUN_ID'
 [[ "$OSINT_RUN_ID" =~ ^[0-9]+$ ]]
 (( 10#$OSINT_RUN_ID > 10#$OSINT_LATEST_RUN_ID_BEFORE ))
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --json event --jq .event)" = "workflow_dispatch"
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
-  --json workflowName --jq .workflowName)" = "Refresh OSINT China roll-up"
+  --json workflowName --jq .workflowName)" = "Refresh OSINT China roll-up v2"
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --json headBranch --jq .headBranch)" = "main"
 OSINT_HEAD_SHA="$(gh run view "$OSINT_RUN_ID" \

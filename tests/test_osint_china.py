@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "build_osint_china.py"
 READINGS = ROOT / "readings"
 PUBLISHED = READINGS / "osint-china-latest.json"
-WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
 CI_REQUIREMENTS = ROOT / ".github" / "osint-china-ci-requirements.txt"
 NOW = datetime(2026, 8, 4, 12, 0, tzinfo=timezone.utc)
 

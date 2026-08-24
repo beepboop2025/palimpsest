@@ -45,7 +45,7 @@ RECOVERY_WORKFLOWS: dict[str, str] = {
     "ioda-outages": "ioda-outages-refresh.yml",
     "circumvention-demand": "circumvention-demand-refresh.yml",
     "vantage-fusion": "vantage-fusion-refresh.yml",
-    "bleedthrough": "osint-china-refresh.yml",
+    "bleedthrough": "osint-china-v2-refresh.yml",
     "erasure-observatory": "erasure-refresh.yml",
     "wayback": "wayback-refresh.yml",
     "github-refuge": "github-refuge-refresh.yml",
@@ -58,7 +58,7 @@ RECOVERY_WORKFLOWS: dict[str, str] = {
     "believability": "believability-refresh.yml",
     "generative-firewall": "gfi-refresh.yml",
     "anchors": "erasure-refresh.yml",
-    "nemesis": "osint-china-refresh.yml",
+    "nemesis": "osint-china-v2-refresh.yml",
 }
 
 
@@ -128,12 +128,12 @@ def plan_recoveries(
             "generated_at": now.isoformat().replace("+00:00", "Z"),
             "bundle_generated_at": bundle_time.isoformat().replace("+00:00", "Z"),
             "bundle_stale": True,
-            "dispatch": ["osint-china-refresh.yml"],
+            "dispatch": ["osint-china-v2-refresh.yml"],
             "problems": [{
                 "signal_id": "osint-china",
                 "status": "stale",
                 "optional": False,
-                "workflow": "osint-china-refresh.yml",
+                "workflow": "osint-china-v2-refresh.yml",
                 "action": "refresh the command roll-up before evaluating its embedded states",
             }],
         }

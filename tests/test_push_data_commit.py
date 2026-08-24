@@ -1012,7 +1012,7 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
         "ioda-outages-refresh.yml",
         "net4people-refresh.yml",
         "ooni-gfw-refresh.yml",
-        "osint-china-refresh.yml",
+        "osint-china-v2-refresh.yml",
         "reading-analysis-refresh.yml",
         "peer-context-refresh.yml",
         "peer-context-rank-refresh.yml",
@@ -1062,7 +1062,10 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "--input-path readings/ddti-latest.json" in silence
     assert "--input-path readings/weibo-hotsearch-latest.json" in silence
     assert "timeout-minutes: 35" in silence
-    osint = (workflow_root / "osint-china-refresh.yml").read_text(encoding="utf-8")
+    assert not (workflow_root / "osint-china-refresh.yml").exists()
+    osint = (workflow_root / "osint-china-v2-refresh.yml").read_text(encoding="utf-8")
+    assert "name: Refresh OSINT China roll-up v2" in osint
+    assert "old queued workflow_run" in osint
     assert osint.count("python scripts/push_data_commit.py --base-locked") == 2
     assert "--input-path readings/ddti-latest.json" in (
         workflow_root / "gdelt-refresh.yml"
@@ -1613,7 +1616,7 @@ def test_base_locked_controllers_never_treat_dispatch_failure_as_a_data_race() -
         "board-alarm-refresh.yml": ("publish", "complete"),
         "erasure-refresh.yml": ("push_attempt", "source"),
         "gfi-refresh.yml": ("push_attempt", "complete"),
-        "osint-china-refresh.yml": ("push_attempt", "complete"),
+        "osint-china-v2-refresh.yml": ("push_attempt", "complete"),
     }
     for workflow_name, (step_id, scope) in controllers.items():
         source = (workflow_root / workflow_name).read_text(encoding="utf-8")

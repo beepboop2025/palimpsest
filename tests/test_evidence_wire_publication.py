@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 NEWSWIRE_WORKFLOW = ROOT / ".github" / "workflows" / "newswire-refresh.yml"
-OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
 DDTI_WORKFLOW = ROOT / ".github" / "workflows" / "ddti-refresh.yml"
 TESTS_WORKFLOW = ROOT / ".github" / "workflows" / "tests.yml"
 OSINT_PUBLISHER_WORKFLOWS = tuple(
@@ -759,7 +759,7 @@ def test_remote_narcoscope_drift_cannot_abort_derived_graph_publish():
     """Partner producer bytes may move. The admitted local pin remains the gate."""
 
     workflow_paths = (
-        ROOT / ".github" / "workflows" / "osint-china-refresh.yml",
+        ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml",
         ROOT / ".github" / "workflows" / "newswire-refresh.yml",
         ROOT / ".github" / "workflows" / "data-darkness-refresh.yml",
         ROOT / ".github" / "workflows" / "china-econ-refresh.yml",
