@@ -21,6 +21,8 @@ def test_public_edition_is_hourly_and_keeps_a_bounded_board_queue() -> None:
     assert "timeout-minutes: 90" in workflow
     assert "Validate the complete public edition" in workflow
     assert "tests/test_publication_contract.py" in workflow
+    assert "Recertify an unchanged complete publication" in workflow
+    assert "if: steps.candidate.outputs.changed == 'false'" in workflow
 
 
 def test_board_publisher_closes_and_base_locks_the_derived_graph() -> None:
@@ -77,7 +79,7 @@ def test_board_dirty_signal_is_reachable_latest_main_and_closes_without_a_loop()
     assert "Validate the source-dirty request" in workflow
     assert 'git merge-base --is-ancestor "$DIRTY_SHA" origin/main' in workflow
     assert "git switch --detach origin/main" in workflow
-    assert "Certify an already-closed source publication" in workflow
+    assert "Recertify an unchanged complete publication" in workflow
     assert workflow.count("--scope complete") == 2
     assert workflow.count("--contract-scope complete") == 1
 

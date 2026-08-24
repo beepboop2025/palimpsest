@@ -216,10 +216,8 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Certify an already-closed source publication
-        if: >-
-          github.event_name == 'repository_dispatch' &&
-          steps.candidate.outputs.changed == 'false'
+      - name: Recertify an unchanged complete publication
+        if: steps.candidate.outputs.changed == 'false'
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
         run: >-

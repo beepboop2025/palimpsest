@@ -1089,6 +1089,7 @@ def test_tests_workflow_checks_out_and_proves_the_dispatched_publication_sha() -
     ).read_text(encoding="utf-8")
     assert "repository_dispatch:\n    types:\n      - publication_contract" in workflow
     assert "github.event_name != 'repository_dispatch'" in workflow
+    assert "github.event.client_payload.scope || 'push'" in workflow
     validation = workflow.index("- name: Resolve and validate the publication identity")
     checkout = workflow.index("- uses: actions/checkout", validation)
     proof = workflow.index("- name: Prove the dispatched commit is published on main")
