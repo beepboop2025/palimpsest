@@ -597,7 +597,7 @@ def _is_degraded_upstream(status: str | None) -> bool:
         "abstain", "abstained", "degraded", "empty", "error", "failed", "failure",
         "disabled", "disabled_no_authorized_access", "halted", "halted_by_governance",
         "insufficient_data", "no_data", "not_ready", "partial", "stale", "starting",
-        "unavailable", "unhealthy", "unknown",
+        "source_refused", "unavailable", "unhealthy", "unknown", "unreachable",
     }
 
 
@@ -751,7 +751,11 @@ def _summary(
             f"its freshness deadline {deadline}, so it is not labelled live."
         )
     upstream_status = _upstream_status(payload)
-    if status == "degraded" and upstream_status:
+    if (
+        status == "degraded"
+        and upstream_status
+        and _is_degraded_upstream(upstream_status)
+    ):
         parts.append(
             f"The upstream payload reports status {upstream_status!r}; this roll-up does "
             "not convert that abstention or limitation into a finding."
@@ -890,6 +894,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
     metric = _metric(spec, payload)
     source, method, scope = _provenance(payload, spec)
     upstream_status = _upstream_status(payload)
+    collector_status = _text(payload.get("collector_status"))
     operational_warmup = _believability_operational_warmup(
         spec, payload, upstream_status
     )
@@ -901,13 +906,19 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         and not operational_warmup
         and not intentionally_inactive
     )
+    collector_degraded = (
+        _is_degraded_upstream(collector_status)
+        and not intentionally_inactive
+    )
     semantic_reasons = [
         reason
         for reason in (
             _semantic_health_reason(spec, payload),
             (
                 _declared_metric_health_reason(spec, payload)
-                if not upstream_degraded and not operational_warmup
+                if not upstream_degraded
+                and not collector_degraded
+                and not operational_warmup
                 else None
             ),
         )
@@ -941,9 +952,14 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
         elif now > freshness_at:
             status = "stale"
             reason = "freshness deadline has passed"
-        elif upstream_degraded:
+        elif upstream_degraded or collector_degraded:
             status = "degraded"
-            reason = f"upstream status is {upstream_status}"
+            limitations = []
+            if upstream_degraded:
+                limitations.append(f"upstream status is {upstream_status}")
+            if collector_degraded:
+                limitations.append(f"collector status is {collector_status}")
+            reason = "; ".join(limitations)
         elif semantic_reason:
             status = "degraded"
             reason = semantic_reason
@@ -972,7 +988,7 @@ def _signal(spec: SignalSpec, readings_dir: Path, now: datetime) -> dict[str, An
             "reason": reason,
             "age_hours": age_hours,
             "upstream_status": upstream_status,
-            "collector_status": _text(payload.get("collector_status")),
+            "collector_status": collector_status,
             "collector_reason": _text(payload.get("collector_reason")),
             "pipeline_checked_at": _text(payload.get("pipeline_checked_at")),
         },

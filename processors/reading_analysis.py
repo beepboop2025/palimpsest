@@ -104,6 +104,12 @@ def _gap_from_believability(record: dict[str, Any]) -> float | None:
     return _finite(record.get("gap"))
 
 
+def _quarantined_history_value(_record: dict[str, Any]) -> None:
+    """Retain an audit history while making it impossible to train or score it."""
+
+    return None
+
+
 # Public instruments that already publish a history.jsonl. One series each —
 # never a collapsed cross-instrument rate. Conformal extractors are reused
 # where the board already watches that series.
@@ -246,7 +252,7 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
     },
     "baike-public-snapshot": {
         "history": "baike-public-snapshot-history.jsonl",
-        "extract": _field("n_ok"),
+        "extract": _quarantined_history_value,
         "field": "n_ok",
         "meaning": (
             "successful public Baike topic-page fetches vs this instrument's own "
@@ -255,6 +261,11 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
         "min_history": MAD_MIN_HISTORY,
         "trainer": "prequential-robust-mad/v1",
         "side": "two",
+        "scoring_eligible": False,
+        "quarantine_reason": (
+            "history mixes GitHub-hosted and fixed Hetzner collection vantages; "
+            "the retained values are not exchangeable"
+        ),
     },
     "vantage-fusion": {
         "history": "vantage-fusion-history.jsonl",
@@ -366,12 +377,17 @@ INSTRUMENTS: dict[str, dict[str, Any]] = {
     },
     "baike-redaction": {
         "history": "baike-redaction-history.jsonl",
-        "extract": _field("n_forked"),
+        "extract": _quarantined_history_value,
         "field": "n_forked",
         "meaning": "forked Baike entities vs this instrument's own past",
         "min_history": MAD_MIN_HISTORY,
         "trainer": "prequential-robust-mad/v1",
         "side": "high",
+        "scoring_eligible": False,
+        "quarantine_reason": (
+            "legacy rows include a method-invalid observation and runner-generated "
+            "status records; retained for audit only"
+        ),
     },
     "peer-context-rank": {
         "history": "peer-context-rank-history.jsonl",
@@ -561,7 +577,9 @@ def public_copy_for_row(row: Mapping[str, Any]) -> str:
 
     n_history = int(row.get("n_history") or 0)
     state = row.get("state")
-    if state == "missing":
+    if row.get("quarantined") is True:
+        copy = "this instrument abstains; its retained Baike history is quarantined from scoring"
+    elif state == "missing":
         copy = "this instrument abstains; its history file is missing"
     elif state == "abstain":
         copy = "this instrument abstains; its history is a single snapshot"
@@ -694,6 +712,35 @@ def fit_instrument(
 
     n_file_lines = _history_line_count(path)
     base["n_file_lines"] = n_file_lines
+    if spec.get("scoring_eligible") is False:
+        row = {
+            **base,
+            "state": "abstain",
+            "n_history": 0,
+            "current_value": None,
+            "unusualness": None,
+            "unusual": None,
+            "review_rank": _review_rank_from_unusualness(None, None),
+            "quarantined": True,
+            "scoring_eligible": False,
+            "quarantine_reason": spec["quarantine_reason"],
+            "rights": {
+                "training_use": "prohibited",
+                "retention": "audit_only",
+            },
+        }
+        row["feature_citations"] = [{
+            "instrument_id": instrument_id,
+            "field": spec["field"],
+            "trainer": spec["trainer"],
+            "n_file_lines": n_file_lines,
+            "n_history": 0,
+            "current_value": None,
+            "unusualness": None,
+            "quarantined": True,
+        }]
+        row["public_copy"] = public_copy_for_row(row)
+        return row
     if n_file_lines < 2:
         row = {
             **base,
@@ -1077,6 +1124,31 @@ def build_reading_analysis(
     from processors.ranker_training import train_join_ranker, validate_all_instruments
 
     validation = validate_all_instruments(root)
+    for report in validation["instruments"]:
+        spec = INSTRUMENTS[report["instrument_id"]]
+        if spec.get("scoring_eligible") is not False:
+            continue
+        report.update({
+            "state": "abstain",
+            "reason": spec["quarantine_reason"],
+            "quarantined": True,
+            "scoring_eligible": False,
+        })
+        report["rights"] = {
+            "training_use": "prohibited",
+            "retention": "audit_only",
+        }
+        report["holdout"] = {
+            "split": "quarantined",
+            "n_extracted": 0,
+            "n_prior": 0,
+            "n_holdout": 0,
+            "n_holdout_scored": 0,
+            "n_holdout_unusual": 0,
+            "holdout_unusualness_median": None,
+            "holdout_flag_rate": None,
+            "threshold": UNUSUAL_THRESHOLD,
+        }
     holdout_by_id = {
         row["instrument_id"]: row["holdout"]
         for row in validation["instruments"]
@@ -1091,6 +1163,7 @@ def build_reading_analysis(
     warming = [row for row in instruments if row["state"] == "warming_up"]
     missing = [row for row in instruments if row["state"] == "missing"]
     abstained = [row for row in instruments if row["state"] == "abstain"]
+    quarantined = [row for row in instruments if row.get("quarantined") is True]
     document: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
         "job": JOB_NAME,
@@ -1110,6 +1183,7 @@ def build_reading_analysis(
         "n_instruments_warming_up": len(warming),
         "n_instruments_missing": len(missing),
         "n_instruments_abstained": len(abstained),
+        "n_instruments_quarantined": len(quarantined),
         "n_story_ranks": len(story_ranks),
         "story_ranks_label_source": "human-editorial-review-required",
         "live_inventory": LIVE_INVENTORY,

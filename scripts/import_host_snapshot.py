@@ -5,14 +5,19 @@ second measurement. This boundary fetches only the exact-path Caddy publications
 under api.seiche.info, with redirects disabled, and writes an atomic last-good
 replacement. Origins are code constants: changing a URL requires review.
 
-Usage:  PYTHONPATH=. python -m scripts.import_host_snapshot --allow-empty-bootstrap-404
+Every successful comparison emits one JSON outcome. A reviewed batch may retain a
+newer validated local document when a host lags, but equivocation and invalid evidence
+always fail closed.
+
+Usage:  PYTHONPATH=. python -m scripts.import_host_snapshot \
+          --allow-empty-bootstrap-404 --keep-last-good-on-stale
 """
 
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -46,6 +51,22 @@ class HostSnapshot:
     filename: str
     max_bytes: int
     required_fields: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ImportOutcome:
+    """Observable result of comparing one host publication with its high-water mark."""
+
+    snapshot_id: str
+    status: str
+    incoming_generated_at: str | None
+    retained_generated_at: str | None
+    incoming_sha256: str | None
+    retained_sha256: str | None
+    wrote: bool
+
+    def as_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 # Deliberately not environment or CLI. Changing the trust origin is a code review.
@@ -98,6 +119,25 @@ SNAPSHOTS: tuple[HostSnapshot, ...] = (
 )
 
 
+def _reject_duplicate_keys(
+    pairs: list[tuple[str, Any]], *, snapshot_id: str
+) -> dict[str, Any]:
+    document: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in document:
+            raise HostSnapshotImportError(
+                f"{snapshot_id} repeats JSON key {key!r}"
+            )
+        document[key] = value
+    return document
+
+
+def _reject_constant(value: str, *, snapshot_id: str) -> None:
+    raise HostSnapshotImportError(
+        f"{snapshot_id} contains non-finite JSON number {value}"
+    )
+
+
 def _parse_json(payload: bytes, *, snapshot_id: str) -> dict[str, Any]:
     if not isinstance(payload, bytes):
         raise HostSnapshotImportError(f"{snapshot_id} fetch must return raw bytes")
@@ -106,12 +146,34 @@ def _parse_json(payload: bytes, *, snapshot_id: str) -> dict[str, Any]:
     except UnicodeDecodeError as exc:
         raise HostSnapshotImportError(f"{snapshot_id} is not strict UTF-8") from exc
     try:
-        document = json.loads(text)
-    except json.JSONDecodeError as exc:
+        document = json.loads(
+            text,
+            object_pairs_hook=lambda pairs: _reject_duplicate_keys(
+                pairs, snapshot_id=snapshot_id
+            ),
+            parse_constant=lambda value: _reject_constant(
+                value, snapshot_id=snapshot_id
+            ),
+        )
+    except HostSnapshotImportError:
+        raise
+    except (json.JSONDecodeError, RecursionError) as exc:
         raise HostSnapshotImportError(f"{snapshot_id} is not valid JSON") from exc
     if not isinstance(document, dict):
         raise HostSnapshotImportError(f"{snapshot_id} root must be an object")
     return document
+
+
+def _canonical(document: dict[str, Any]) -> bytes:
+    return json.dumps(
+        document,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _sha256(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _parse_generated_at(value: Any, *, snapshot_id: str, now: float) -> datetime:
@@ -121,7 +183,7 @@ def _parse_generated_at(value: Any, *, snapshot_id: str, now: float) -> datetime
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
         raise HostSnapshotImportError(f"{snapshot_id} generated_at is not ISO-8601") from exc
-    if parsed.tzinfo is None:
+    if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
         raise HostSnapshotImportError(f"{snapshot_id} generated_at must be UTC")
     parsed = parsed.astimezone(timezone.utc)
     epoch = parsed.timestamp()
@@ -142,7 +204,46 @@ def validate_document(
             f"{spec.snapshot_id} missing required fields: {', '.join(missing)}"
         )
     _parse_generated_at(document["generated_at"], snapshot_id=spec.snapshot_id, now=now)
+    for field in ("source", "method", "scope"):
+        value = document.get(field)
+        if not isinstance(value, str) or not value.strip():
+            raise HostSnapshotImportError(
+                f"{spec.snapshot_id} {field} must be a non-empty string"
+            )
+    for field in spec.required_fields:
+        if not field.startswith("n_"):
+            continue
+        value = document[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise HostSnapshotImportError(
+                f"{spec.snapshot_id} {field} must be a non-negative integer"
+            )
     return document
+
+
+def _validated_payload(
+    payload: bytes,
+    spec: HostSnapshot,
+    *,
+    now: float,
+    source: str,
+) -> tuple[dict[str, Any], bytes, datetime]:
+    if len(payload) > spec.max_bytes:
+        raise HostSnapshotImportError(
+            f"{spec.snapshot_id} {source} exceeds {spec.max_bytes} bytes"
+        )
+    document = validate_document(
+        _parse_json(payload, snapshot_id=spec.snapshot_id),
+        spec,
+        now=now,
+    )
+    canonical = _canonical(document)
+    generated_at = _parse_generated_at(
+        document["generated_at"],
+        snapshot_id=spec.snapshot_id,
+        now=now,
+    )
+    return document, canonical, generated_at
 
 
 def _write_atomic(target: Path, payload: bytes) -> None:
@@ -219,7 +320,8 @@ def import_one(
     fetcher: Fetcher = safe_fetch_bytes,
     now: float | None = None,
     allow_empty_bootstrap_404: bool = False,
-) -> dict[str, Any] | None:
+    keep_last_good_on_stale: bool = False,
+) -> ImportOutcome:
     checked_at = time_now(now)
     payload = _download(
         spec,
@@ -231,29 +333,82 @@ def import_one(
             raise HostSnapshotImportError(
                 f"{spec.snapshot_id} endpoint returned 404 after local publication began"
             )
-        return None
-    document = validate_document(_parse_json(payload, snapshot_id=spec.snapshot_id), spec, now=checked_at)
+        return ImportOutcome(
+            snapshot_id=spec.snapshot_id,
+            status="bootstrap-pending",
+            incoming_generated_at=None,
+            retained_generated_at=None,
+            incoming_sha256=None,
+            retained_sha256=None,
+            wrote=False,
+        )
+    document, canonical, incoming_at = _validated_payload(
+        payload,
+        spec,
+        now=checked_at,
+        source="incoming publication",
+    )
+    incoming_digest = _sha256(canonical)
     if output.exists() or output.is_symlink():
         try:
-            previous = json.loads(output.read_text(encoding="utf-8"))
-        except (OSError, ValueError) as exc:
+            previous_payload = output.read_bytes()
+        except OSError as exc:
             raise HostSnapshotImportError(
                 f"{spec.snapshot_id} existing latest is unreadable"
             ) from exc
-        if isinstance(previous, dict) and "generated_at" in previous:
-            incoming = _parse_generated_at(
-                document["generated_at"], snapshot_id=spec.snapshot_id, now=checked_at
+        try:
+            previous, previous_canonical, previous_at = _validated_payload(
+                previous_payload,
+                spec,
+                now=checked_at,
+                source="existing latest",
             )
-            previous_at = _parse_generated_at(
-                previous["generated_at"], snapshot_id=spec.snapshot_id, now=checked_at
-            )
-            if incoming < previous_at:
+        except HostSnapshotImportError as exc:
+            raise HostSnapshotImportError(
+                f"{spec.snapshot_id} existing latest is invalid: {exc}"
+            ) from exc
+        previous_digest = _sha256(previous_canonical)
+        if incoming_at < previous_at:
+            if not keep_last_good_on_stale:
                 raise HostSnapshotImportError(
-                    f"{spec.snapshot_id} generated_at would roll back the last-good high-water mark"
+                    f"{spec.snapshot_id} generated_at would roll back the last-good "
+                    "high-water mark (pass --keep-last-good-on-stale only in the "
+                    "reviewed batch publication workflow)"
                 )
-    canonical = json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            return ImportOutcome(
+                snapshot_id=spec.snapshot_id,
+                status="kept-last-good",
+                incoming_generated_at=document["generated_at"],
+                retained_generated_at=previous["generated_at"],
+                incoming_sha256=incoming_digest,
+                retained_sha256=previous_digest,
+                wrote=False,
+            )
+        if incoming_at == previous_at:
+            if canonical != previous_canonical:
+                raise HostSnapshotImportError(
+                    f"{spec.snapshot_id} equivocated at generated_at "
+                    f"{document['generated_at']}: equal timestamp has different content"
+                )
+            return ImportOutcome(
+                snapshot_id=spec.snapshot_id,
+                status="unchanged",
+                incoming_generated_at=document["generated_at"],
+                retained_generated_at=previous["generated_at"],
+                incoming_sha256=incoming_digest,
+                retained_sha256=previous_digest,
+                wrote=False,
+            )
     _write_atomic(output, canonical + b"\n")
-    return document
+    return ImportOutcome(
+        snapshot_id=spec.snapshot_id,
+        status="imported",
+        incoming_generated_at=document["generated_at"],
+        retained_generated_at=document["generated_at"],
+        incoming_sha256=incoming_digest,
+        retained_sha256=incoming_digest,
+        wrote=True,
+    )
 
 
 def time_now(now: float | None) -> float:
@@ -266,28 +421,20 @@ def import_all(
     fetcher: Fetcher = safe_fetch_bytes,
     now: float | None = None,
     allow_empty_bootstrap_404: bool = False,
-) -> dict[str, str]:
-    results: dict[str, str] = {}
+    keep_last_good_on_stale: bool = False,
+) -> dict[str, ImportOutcome]:
+    results: dict[str, ImportOutcome] = {}
     for spec in SNAPSHOTS:
-        document = import_one(
+        outcome = import_one(
             spec,
             output=Path(readings) / spec.filename,
             fetcher=fetcher,
             now=now,
             allow_empty_bootstrap_404=allow_empty_bootstrap_404,
+            keep_last_good_on_stale=keep_last_good_on_stale,
         )
-        if document is None:
-            results[spec.snapshot_id] = "bootstrap-pending"
-            print(f"{spec.snapshot_id}: bootstrap pending (endpoint 404, no local artifact)")
-            continue
-        digest = hashlib.sha256(
-            json.dumps(document, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-        ).hexdigest()[:16]
-        results[spec.snapshot_id] = document["generated_at"]
-        print(
-            f"imported host snapshot {spec.snapshot_id} "
-            f"({document['generated_at']}, sha256:{digest})"
-        )
+        results[spec.snapshot_id] = outcome
+        print(json.dumps(outcome.as_dict(), sort_keys=True, separators=(",", ":")))
     return results
 
 
@@ -298,6 +445,15 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=READINGS,
         help="directory that receives the imported latest files",
+    )
+    parser.add_argument(
+        "--keep-last-good-on-stale",
+        action="store_true",
+        help=(
+            "when a valid host snapshot is older than the validated local high-water "
+            "mark, retain the local artifact, emit a structured kept-last-good outcome, "
+            "and continue importing the remaining snapshots"
+        ),
     )
     parser.add_argument(
         "--allow-empty-bootstrap-404",
@@ -312,6 +468,7 @@ def main(argv: list[str] | None = None) -> int:
         import_all(
             readings=args.readings,
             allow_empty_bootstrap_404=args.allow_empty_bootstrap_404,
+            keep_last_good_on_stale=args.keep_last_good_on_stale,
         )
     except HostSnapshotImportError as exc:
         print(f"host snapshot import refused: {exc}", file=os.sys.stderr)

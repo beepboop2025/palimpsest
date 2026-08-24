@@ -372,6 +372,38 @@ def test_explicit_upstream_abstention_is_degraded_not_promoted_to_live(mod, tmp_
     assert "does not convert" in signal["summary"]
 
 
+@pytest.mark.parametrize(
+    "status,collector_status,expected_reason",
+    [
+        ("unreachable", "source_refused", "upstream status is unreachable"),
+        ("ok", "source_refused", "collector status is source_refused"),
+    ],
+)
+def test_baike_source_refusal_is_degraded_even_with_a_current_timestamp(
+        mod, tmp_path, status, collector_status, expected_reason):
+    _write_json(tmp_path / "baike-public-snapshot-latest.json", {
+        "generated_at": "2026-08-04T11:00:00Z",
+        "source": "fixed Hetzner vantage",
+        "method": "reviewed public GET",
+        "scope": "reviewed Baike pages",
+        "status": status,
+        "collector_status": collector_status,
+        "n_pages": 8,
+        "n_ok": 0,
+        "n_unreachable": 8,
+        "n_observations": 0,
+    })
+
+    signal = _signal(mod.build_document(tmp_path, NOW), "baike-public-snapshot")
+
+    assert signal["status"] == "degraded"
+    assert signal["live"] is False
+    assert signal["health"]["collector_status"] == "source_refused"
+    assert expected_reason in signal["health"]["reason"]
+    if status == "ok":
+        assert "reports status 'ok'" not in signal["summary"]
+
+
 def test_disabled_baike_collector_is_explicit_on_rollup_surface(mod, tmp_path):
     _write_json(tmp_path / "baike-redaction-latest.json", {
         "generated_at": "2026-08-04T11:00:00Z",
@@ -796,6 +828,9 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     assert "python -m scripts.newswire_pull" not in text
     assert text.count("git add -A -- readings china news datapackage.json") == 3
     assert text.count("python -m scripts.import_host_snapshot") == 3
+    assert text.count("--keep-last-good-on-stale") == 3
+    assert text.count("--contract-scope complete") == 2
+    assert text.count("--scope complete") == 2
 
 
 def test_workflow_rebuilds_tests_and_stages_the_newsroom_on_every_race_path():

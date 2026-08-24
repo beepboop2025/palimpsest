@@ -64,7 +64,9 @@ jobs:
       - name: Import the pinned BLEEDTHROUGH public aggregate
         run: |
           python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
-          python -m scripts.import_host_snapshot --allow-empty-bootstrap-404
+          python -m scripts.import_host_snapshot \
+            --allow-empty-bootstrap-404 \
+            --keep-last-good-on-stale
 
       - name: Import Telegram observations and collect Instagram publishers
         env:
@@ -256,7 +258,9 @@ jobs:
           fi
           python -m scripts.import_nemesis_snapshot
           python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
-          python -m scripts.import_host_snapshot --allow-empty-bootstrap-404
+          python -m scripts.import_host_snapshot \
+            --allow-empty-bootstrap-404 \
+            --keep-last-good-on-stale
           python -m scripts.import_social_observations
           python -m scripts.instagram_pull
 
@@ -404,7 +408,7 @@ jobs:
           GIT_CONFIG_COUNT=1 \
           GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
           GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope complete
           publish_rc=$?
           set -e
           printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
@@ -425,7 +429,9 @@ jobs:
           steps.push_attempt.outputs.exit_code == '76'
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
-        run: python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+        run: >-
+          python scripts/dispatch_publication_contract.py
+          --scope complete "$(git rev-parse HEAD)"
 
       - name: Synchronize after a push race
         if: steps.push_attempt.outputs.exit_code == '75'
@@ -456,7 +462,9 @@ jobs:
           fi
           python -m scripts.import_nemesis_snapshot
           python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
-          python -m scripts.import_host_snapshot --allow-empty-bootstrap-404
+          python -m scripts.import_host_snapshot \
+            --allow-empty-bootstrap-404 \
+            --keep-last-good-on-stale
           python -m scripts.import_social_observations
           python -m scripts.instagram_pull
 
@@ -602,12 +610,13 @@ jobs:
           GIT_CONFIG_COUNT=1 \
           GIT_CONFIG_KEY_0=http.https://github.com/.extraheader \
           GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $basic" \
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked
+            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope complete
           publish_rc=$?
           set -e
           if [ "$publish_rc" = '76' ]; then
             PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
-              python scripts/dispatch_publication_contract.py "$(git rev-parse HEAD)"
+              python scripts/dispatch_publication_contract.py \
+                --scope complete "$(git rev-parse HEAD)"
             exit 0
           fi
           exit "$publish_rc"

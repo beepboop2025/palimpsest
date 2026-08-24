@@ -74,13 +74,72 @@ def test_every_committed_public_history_is_registered():
     assert LIVE_INVENTORY["history_file_lines"]["cross-layer"] == 1
 
 
-def test_baike_public_snapshot_is_reachability_context_not_rewrite_evidence():
+def test_baike_public_snapshot_is_retained_but_quarantined_from_scoring():
     spec = INSTRUMENTS["baike-public-snapshot"]
 
     assert spec["history"] == "baike-public-snapshot-history.jsonl"
     assert spec["field"] == "n_ok"
     assert spec["side"] == "two"
     assert "reachability only, not rewrite evidence" in spec["meaning"]
+    assert spec["scoring_eligible"] is False
+    assert "mixes GitHub-hosted and fixed Hetzner" in spec["quarantine_reason"]
+
+
+@pytest.mark.parametrize(
+    ("instrument_id", "filename", "field"),
+    [
+        ("baike-public-snapshot", "baike-public-snapshot-history.jsonl", "n_ok"),
+        ("baike-redaction", "baike-redaction-history.jsonl", "n_forked"),
+    ],
+)
+def test_baike_history_files_remain_intact_but_cannot_produce_scores(
+        tmp_path, instrument_id, filename, field):
+    values = list(range(12))
+    _write_history(tmp_path / filename, values, field)
+    before = (tmp_path / filename).read_bytes()
+
+    row = fit_instrument(instrument_id, tmp_path)
+
+    assert row["state"] == "abstain"
+    assert row["quarantined"] is True
+    assert row["scoring_eligible"] is False
+    assert row["n_file_lines"] == len(values)
+    assert row["n_history"] == 0
+    assert row["current_value"] is None
+    assert row["unusualness"] is None
+    assert row["review_rank"]["score"] is None
+    assert row["rights"] == {
+        "training_use": "prohibited",
+        "retention": "audit_only",
+    }
+    assert "quarantined from scoring" in row["public_copy"]
+    assert (tmp_path / filename).read_bytes() == before
+
+
+def test_published_analysis_exposes_baike_quarantine_in_validation(tmp_path):
+    _write_history(
+        tmp_path / "baike-public-snapshot-history.jsonl", list(range(12)), "n_ok"
+    )
+    _write_history(
+        tmp_path / "baike-redaction-history.jsonl", list(range(12)), "n_forked"
+    )
+
+    document = build_reading_analysis(
+        tmp_path, now=datetime(2026, 8, 20, tzinfo=timezone.utc)
+    )
+
+    assert document["n_instruments_quarantined"] == 2
+    instruments = {row["instrument_id"]: row for row in document["instruments"]}
+    validation = {
+        row["instrument_id"]: row
+        for row in document["validation"]["instruments"]["instruments"]
+    }
+    for instrument_id in ("baike-public-snapshot", "baike-redaction"):
+        assert instruments[instrument_id]["quarantined"] is True
+        assert validation[instrument_id]["quarantined"] is True
+        assert validation[instrument_id]["scoring_eligible"] is False
+        assert validation[instrument_id]["holdout"]["split"] == "quarantined"
+        assert validation[instrument_id]["rights"]["training_use"] == "prohibited"
 
 
 def test_missing_history_abstains(tmp_path):
@@ -215,6 +274,7 @@ def test_generated_copy_stays_context_only():
         public_copy_for_row({"state": "warming_up", "n_history": 2, "minimum_prior": 6}),
         public_copy_for_row({"state": "scored", "n_history": 9, "unusual": True}),
         public_copy_for_row({"state": "scored", "n_history": 9, "unusual": False}),
+        public_copy_for_row({"state": "abstain", "n_history": 0, "quarantined": True}),
     ]
     for copy in copies:
         lowered = copy.casefold()
@@ -309,6 +369,10 @@ def test_on_disk_training_report_covers_real_histories():
     assert by_id["app-storefront"]["state"] == "warming_up"
     assert by_id["believability"]["state"] == "warming_up"
     assert by_id["vantage-fusion"]["state"] == "warming_up"
+    assert by_id["baike-public-snapshot"]["state"] == "abstain"
+    assert by_id["baike-public-snapshot"]["n_extracted"] == 0
+    assert by_id["baike-redaction"]["state"] == "abstain"
+    assert by_id["baike-redaction"]["n_extracted"] == 0
     cc = report["common_crawl"]
     assert cc["state"] == "warming_up"
     assert cc["holdout"]["n_holdout"] == 0

@@ -21,6 +21,20 @@ def test_all_known_eval_registry_writers_share_one_serial_lane():
         assert "cancel-in-progress: false" in text
 
 
+def test_erasure_lane_neither_collects_nor_carries_host_owned_baike_artifacts():
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert "python -m scripts.baike_redaction_pull" not in text
+    assert "python -m scripts.baike_public_snapshot_pull" not in text
+    for path in (
+        "readings/baike-redaction-latest.json",
+        "readings/baike-redaction-history.jsonl",
+        "readings/baike-public-snapshot-latest.json",
+        "readings/baike-public-snapshot-history.jsonl",
+    ):
+        assert path not in text
+
+
 def test_eval_refresh_is_race_safe_and_never_swallows_a_rebase_failure():
     text = WORKFLOW.read_text(encoding="utf-8")
 
