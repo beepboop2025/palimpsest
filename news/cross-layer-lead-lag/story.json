@@ -10,8 +10,8 @@
   "type": "methodology",
   "priority": "background",
   "status": "live",
-  "published_at": "2026-08-24T03:53:56Z",
-  "modified_at": "2026-08-24T03:53:56Z",
+  "published_at": "2026-08-24T04:44:50Z",
+  "modified_at": "2026-08-24T04:44:50Z",
   "claim_fingerprint": "sha256:0f13b88ae8d9b076d69bf7a966d1b5bb3e51b6b80b8928661aba7a7996d0f4fc",
   "metric": {
     "label": "confirmed pairs",
@@ -32,10 +32,10 @@
     "url": "https://palimpsest.info/readings/cross-layer-latest.json",
     "input": {
       "filename": "cross-layer-latest.json",
-      "sha256": "1f4d61be7d2f58a8dcbb300a25cdd546540ade21abd633afd3dcbdebbb1d4e29",
+      "sha256": "a4c7de3f818fd957e5092069f0dd3f74db34eac2bfbb8f4e0c58b754f0ab1c3e",
       "bytes": 10513
     },
-    "source_timestamp": "2026-08-24T03:53:56Z"
+    "source_timestamp": "2026-08-24T04:44:50Z"
   },
   "method": {
     "summary": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",

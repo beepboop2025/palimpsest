@@ -105,7 +105,7 @@
       "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-24T03:53:57Z",
+  "generated_at": "2026-08-24T04:44:51Z",
   "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 27 are live. Health qualifiers: 3 degraded, 9 stale.",
   "health": {
     "counts": {
@@ -122,7 +122,7 @@
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "74c13307f5cf41d1093c7a03a92b453335d75634",
+  "input_commit": "48a3934727c6f6584d9026ffe708175b2034d146",
   "layers": [
     {
       "id": "command",
@@ -262,7 +262,7 @@
   "signals": [
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T06:53:55Z",
+      "freshness_deadline": "2026-08-24T07:44:50Z",
       "health": {
         "age_hours": 0.0,
         "collector_reason": null,
@@ -274,9 +274,9 @@
       },
       "id": "board-alarm",
       "input": {
-        "bytes": 10277,
+        "bytes": 10335,
         "filename": "board-alarm-latest.json",
-        "sha256": "857cbe95018939027b075e6b90ae2e33d01680aa4c4f47ed3933deb3ae326398"
+        "sha256": "3ecea34fb277ae348b1f313d5a00c373828c68e004a8909ee1ea2e42ad23524a"
       },
       "layer": "command",
       "live": true,
@@ -286,11 +286,11 @@
         "denominator": null,
         "label": "board e-value",
         "unit": "e-value",
-        "value": 105.706
+        "value": 219.161
       },
       "optional": false,
       "payload": {
-        "board_e_value": 105.706,
+        "board_e_value": 219.161,
         "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
         "caveats": [
           "layer co-movement is evidence of CO-MOVEMENT, not of a common cause: two layers can rise together under one directive or under one holiday; this reading reports the coincidence and does not name a cause",
@@ -312,22 +312,24 @@
           ],
           "threshold": 100.0
         },
-        "generated_at": "2026-08-24T03:53:55.869774+00:00",
+        "generated_at": "2026-08-24T04:44:50.097606+00:00",
         "headline": "MULTI-LAYER CO-MOVEMENT: content + network elevated together",
         "layer_coincidence": 2,
         "layers": {
           "content": {
             "corroborated": true,
-            "e": 173.237,
+            "e": 362.329,
             "n_signals": 6,
-            "recent_alarms": [],
+            "recent_alarms": [
+              "weibo_suppression"
+            ],
             "signals": {
               "data_darkness": 8.708,
-              "ddti_novelty": 13.406,
-              "ddti_threat": 14.008,
+              "ddti_novelty": 18.952,
+              "ddti_threat": 23.865,
               "gdelt_containment": 8.101,
               "github_refuge": 1.845,
-              "weibo_suppression": 993.352
+              "weibo_suppression": 2112.504
             },
             "state": "elevated"
           },
@@ -373,7 +375,8 @@
           "weibo_suppression": 20.8
         },
         "recently_fired": [
-          "censored_planet"
+          "censored_planet",
+          "weibo_suppression"
         ],
         "signals": {
           "bleedthrough_capacity": {
@@ -388,11 +391,11 @@
             "state": "calm"
           },
           "bleedthrough_pools": {
-            "age_hours": 265.5,
+            "age_hours": 266.4,
             "bound_hours": 168.0,
             "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
             "n": 1,
-            "reason": "newest row is 265.5h old, past the 168h bound",
+            "reason": "newest row is 266.4h old, past the 168h bound",
             "state": "stale"
           },
           "censored_planet": {
@@ -420,23 +423,23 @@
           "ddti_novelty": {
             "direction": "up",
             "driver_side": "up",
-            "e": 13.4063,
+            "e": 18.9519,
             "meaning": "newly-sensitive terms entering the deletion stream",
-            "n": 351,
+            "n": 352,
             "n_alarms_in_history": 3,
-            "readings_since_alarm": 28,
+            "readings_since_alarm": 29,
             "robust_z": 7.34,
             "state": "calm"
           },
           "ddti_threat": {
             "direction": "up",
             "driver_side": "up",
-            "e": 14.0079,
+            "e": 23.8648,
             "meaning": "peak censor attention on one term",
-            "n": 351,
+            "n": 352,
             "n_alarms_in_history": 4,
-            "readings_since_alarm": 112,
-            "robust_z": 0.47,
+            "readings_since_alarm": 113,
+            "robust_z": 0.4,
             "state": "calm"
           },
           "gdelt_containment": {
@@ -484,7 +487,7 @@
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 14.9,
+            "age_hours": 15.7,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -560,13 +563,13 @@
           "weibo_suppression": {
             "direction": "up",
             "driver_side": "up",
-            "e": 993.3525,
+            "e": 2112.5042,
             "meaning": "DDTI terms deleted AND denied hot-search attention at once",
-            "n": 146,
-            "n_alarms_in_history": 0,
-            "readings_since_alarm": null,
+            "n": 147,
+            "n_alarms_in_history": 1,
+            "readings_since_alarm": 0,
             "robust_z": null,
-            "state": "watch"
+            "state": "alarm"
           }
         }
       },
@@ -574,16 +577,16 @@
       "raw_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "scope": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T03:53:55Z",
+      "source_timestamp": "2026-08-24T04:44:50Z",
       "status": "live",
-      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: MULTI-LAYER CO-MOVEMENT: content + network elevated together. Latest payload reports board e-value at 105.706 e-value.",
+      "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: MULTI-LAYER CO-MOVEMENT: content + network elevated together. Latest payload reports board e-value at 219.161 e-value.",
       "title": "Board alarm"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:21:11Z",
       "health": {
-        "age_hours": 1.546,
+        "age_hours": 2.394,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -804,7 +807,7 @@
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T06:53:56Z",
+      "freshness_deadline": "2026-08-24T07:44:50Z",
       "health": {
         "age_hours": 0.0,
         "collector_reason": null,
@@ -818,7 +821,7 @@
       "input": {
         "bytes": 4327,
         "filename": "coverage-guard-latest.json",
-        "sha256": "46b3bd60cb5a94a875f7af56e64245888920dddef2492dbe77a42d53b0e8922b"
+        "sha256": "ab6f4c50c9a62feaa2ae737368df02860af1c8b14eb4d3fe0b5082cd01d3b384"
       },
       "layer": "command",
       "live": true,
@@ -838,7 +841,7 @@
           "signals whose sample size is not recorded in their history cannot be guarded at all and are absent here rather than assumed clean"
         ],
         "confounded": [],
-        "generated_at": "2026-08-24T03:53:56.033070+00:00",
+        "generated_at": "2026-08-24T04:44:50.184754+00:00",
         "headline": "no signal's movement is explained by its own measurement coverage",
         "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
         "signals": {
@@ -859,14 +862,14 @@
             "denominator_now": 218.0,
             "denominator_robust_z": 1.43,
             "fit": {
-              "correlation": 0.212,
-              "intercept": -17.3942,
-              "slope": 0.265937
+              "correlation": 0.224,
+              "intercept": -20.5977,
+              "slope": 0.284942
             },
             "metric_now": 127.0,
             "metric_robust_z": 7.34,
-            "n_pairs": 351,
-            "note": "the measurement base does not track this metric historically (r=0.21), so coverage does not explain the move",
+            "n_pairs": 352,
+            "note": "the measurement base does not track this metric historically (r=0.22), so coverage does not explain the move",
             "verdict": "CONFIRMED"
           },
           "ddti_threat": {
@@ -874,9 +877,9 @@
             "denominator_is": "distinct terms extracted from the CDT deletion stream",
             "denominator_now": 218.0,
             "denominator_robust_z": 1.43,
-            "metric_now": 1.954,
-            "metric_robust_z": 0.47,
-            "n_pairs": 351,
+            "metric_now": 1.8956,
+            "metric_robust_z": 0.4,
+            "n_pairs": 352,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           },
@@ -926,7 +929,7 @@
             "denominator_robust_z": null,
             "metric_now": 1.0,
             "metric_robust_z": null,
-            "n_pairs": 146,
+            "n_pairs": 147,
             "note": "the metric has not departed from its own history",
             "verdict": "NO_MOVE"
           }
@@ -936,14 +939,14 @@
       "raw_url": "https://palimpsest.info/readings/coverage-guard-latest.json",
       "scope": "Checks whether apparent movement is confounded by changing measurement coverage.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T03:53:56Z",
+      "source_timestamp": "2026-08-24T04:44:50Z",
       "status": "live",
       "summary": "Checks whether apparent movement is confounded by changing measurement coverage. Upstream reading: no signal's movement is explained by its own measurement coverage. Latest payload reports confounded signals at 0 count.",
       "title": "Coverage guard"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T06:53:56Z",
+      "freshness_deadline": "2026-08-24T07:44:50Z",
       "health": {
         "age_hours": 0.0,
         "collector_reason": null,
@@ -957,7 +960,7 @@
       "input": {
         "bytes": 13971,
         "filename": "forecast-ledger-latest.json",
-        "sha256": "e1cfec35ee5535af83d659b7a4bf3096980d55ee7c95b00ee769bc975fbeca7b"
+        "sha256": "da07fb64afba3a20b615d49bc9bb9fd8a5518bb574d60d1e32c60d72ce3f874f"
       },
       "layer": "command",
       "live": true,
@@ -966,7 +969,7 @@
       "metric": {
         "denominator": {
           "label": "forecasts",
-          "value": 1603
+          "value": 1605
         },
         "label": "empirical coverage",
         "unit": "ratio",
@@ -988,11 +991,11 @@
           "silence_blackouts": "needs 20 readings, has 0",
           "weibo_suppression": "history logs state transitions, not a regular series"
         },
-        "generated_at": "2026-08-24T03:53:56.139356+00:00",
-        "headline": "8 signals scored over 1603 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
+        "generated_at": "2026-08-24T04:44:50.227647+00:00",
+        "headline": "8 signals scored over 1605 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8",
         "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
         "n_beating_baseline": 3,
-        "n_forecasts": 1603,
+        "n_forecasts": 1605,
         "n_signals_scored": 8,
         "nominal_coverage": 0.8,
         "not_yet_scoreable": "term-level escalation calls from processors/forecaster.py are not scored here: resolving them needs the full ranked term list preserved at each reading, and readings/ddti-history.jsonl currently stores only the top term. Scoring them requires that list to start being written; it cannot be reconstructed.",
@@ -1066,13 +1069,13 @@
             "beats_baseline": true,
             "coverage_gap_pp": 15.9,
             "empirical_coverage": 0.959,
-            "n_forecasts": 340,
+            "n_forecasts": 341,
             "n_misses": 14,
             "nominal_coverage": 0.8,
             "scoreable": true,
             "skill_vs_baseline": 0.0,
-            "wis": 0.4236,
-            "wis_baseline_fixed_quantile": 0.4238,
+            "wis": 0.4224,
+            "wis_baseline_fixed_quantile": 0.4225,
             "worst_misses": [
               {
                 "actual": 117.0,
@@ -1128,15 +1131,15 @@
           },
           "ddti_threat": {
             "beats_baseline": true,
-            "coverage_gap_pp": 3.5,
-            "empirical_coverage": 0.835,
-            "n_forecasts": 340,
+            "coverage_gap_pp": 3.6,
+            "empirical_coverage": 0.836,
+            "n_forecasts": 341,
             "n_misses": 56,
             "nominal_coverage": 0.8,
             "scoreable": true,
-            "skill_vs_baseline": 0.017,
-            "wis": 0.1157,
-            "wis_baseline_fixed_quantile": 0.1177,
+            "skill_vs_baseline": 0.018,
+            "wis": 0.1154,
+            "wis_baseline_fixed_quantile": 0.1175,
             "worst_misses": [
               {
                 "actual": 3.369,
@@ -1516,14 +1519,14 @@
       "raw_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
       "scope": "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T03:53:56Z",
+      "source_timestamp": "2026-08-24T04:44:50Z",
       "status": "live",
-      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1603 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8. Latest payload reports empirical coverage at 0.844 ratio across 1603 forecasts.",
+      "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1605 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 3 of 8. Latest payload reports empirical coverage at 0.844 ratio across 1605 forecasts.",
       "title": "Forecast ledger"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T06:53:56Z",
+      "freshness_deadline": "2026-08-24T07:44:50Z",
       "health": {
         "age_hours": 0.0,
         "collector_reason": null,
@@ -1537,7 +1540,7 @@
       "input": {
         "bytes": 10513,
         "filename": "cross-layer-latest.json",
-        "sha256": "1f4d61be7d2f58a8dcbb300a25cdd546540ade21abd633afd3dcbdebbb1d4e29"
+        "sha256": "a4c7de3f818fd957e5092069f0dd3f74db34eac2bfbb8f4e0c58b754f0ab1c3e"
       },
       "layer": "command",
       "live": true,
@@ -1560,7 +1563,7 @@
           "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
           "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
         ],
-        "generated_at": "2026-08-24T03:53:56.293054+00:00",
+        "generated_at": "2026-08-24T04:44:50.303110+00:00",
         "headline": "9 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
         "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
         "method_version": 1,
@@ -1732,7 +1735,7 @@
               "network"
             ],
             "n_shifts": 29,
-            "null_median_abs_r": 0.419,
+            "null_median_abs_r": 0.417,
             "ok": true,
             "overlap_days": 44,
             "p_value": 1.0,
@@ -1918,16 +1921,16 @@
       "raw_url": "https://palimpsest.info/readings/cross-layer-latest.json",
       "scope": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T03:53:56Z",
+      "source_timestamp": "2026-08-24T04:44:50Z",
       "status": "live",
       "summary": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists. Upstream reading: 9 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established. Latest payload reports confirmed pairs at 0 count across 9 pairs tested.",
       "title": "Cross-layer lead/lag"
     },
     {
       "cadence_hours": 3,
-      "freshness_deadline": "2026-08-24T09:01:06Z",
+      "freshness_deadline": "2026-08-24T11:07:05Z",
       "health": {
-        "age_hours": 1.881,
+        "age_hours": 0.629,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1937,9 +1940,9 @@
       },
       "id": "ddti",
       "input": {
-        "bytes": 172297,
+        "bytes": 172274,
         "filename": "ddti-latest.json",
-        "sha256": "a6f08b8072b83aa4041c0477f28467b75acd6e9b10d2bf10ef302edc0c42bf0f"
+        "sha256": "39563b64c12df0bec07120b57c2204fa1320c42c4c47c1ecfee9f9566c6916d3"
       },
       "layer": "attention",
       "live": true,
@@ -1961,7 +1964,7 @@
             "cdt_english": 65,
             "cdt_minitrue": 1
           },
-          "days_covered": 194.1,
+          "days_covered": 194.2,
           "duplicates_dropped": 0,
           "endpoint": "https://chinadigitaltimes.net/feed/",
           "history_window_covered": true,
@@ -1975,12 +1978,12 @@
           "stopped_because": "history-window-covered",
           "undated_dropped": 0
         },
-        "generated_at": "2026-08-24T02:01:06.100971+00:00",
+        "generated_at": "2026-08-24T04:07:05.744406+00:00",
         "n_observations": 107,
         "n_terms": 218,
         "ranked": [
           {
-            "attention": 0.977,
+            "attention": 0.9478,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-11T02:57:16+00:00",
@@ -2002,10 +2005,10 @@
               }
             ],
             "term": "Caixin",
-            "threat": 1.954
+            "threat": 1.8956
           },
           {
-            "attention": 0.9658,
+            "attention": 0.9369,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-23T23:36:27+00:00",
@@ -2023,10 +2026,10 @@
               }
             ],
             "term": "Hangzhou",
-            "threat": 1.6901
+            "threat": 1.6396
           },
           {
-            "attention": 0.9658,
+            "attention": 0.9369,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-23T23:36:27+00:00",
@@ -2044,10 +2047,10 @@
               }
             ],
             "term": "abuse of power",
-            "threat": 1.6901
+            "threat": 1.6396
           },
           {
-            "attention": 0.9658,
+            "attention": 0.9369,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-23T23:36:27+00:00",
@@ -2065,10 +2068,10 @@
               }
             ],
             "term": "local officials",
-            "threat": 1.6901
+            "threat": 1.6396
           },
           {
-            "attention": 0.9658,
+            "attention": 0.9369,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-23T23:36:27+00:00",
@@ -2086,10 +2089,10 @@
               }
             ],
             "term": "official conduct",
-            "threat": 1.6901
+            "threat": 1.6396
           },
           {
-            "attention": 0.9658,
+            "attention": 0.9369,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-23T23:36:27+00:00",
@@ -2107,10 +2110,10 @@
               }
             ],
             "term": "sexual harassment",
-            "threat": 1.6901
+            "threat": 1.6396
           },
           {
-            "attention": 0.9658,
+            "attention": 0.9369,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-23T23:36:27+00:00",
@@ -2128,10 +2131,10 @@
               }
             ],
             "term": "singapore",
-            "threat": 1.6901
+            "threat": 1.6396
           },
           {
-            "attention": 1.2563,
+            "attention": 1.2188,
             "burst_ratio": 1.06,
             "domain": "INFORMATION",
             "first_seen": "2026-03-04T07:21:40+00:00",
@@ -2169,10 +2172,10 @@
               }
             ],
             "term": "censorship",
-            "threat": 1.3461
+            "threat": 1.3059
           },
           {
-            "attention": 0.9658,
+            "attention": 0.9369,
             "burst_ratio": 1.5,
             "domain": "OTHER",
             "first_seen": "2026-03-04T22:42:51+00:00",
@@ -2190,10 +2193,10 @@
               }
             ],
             "term": "sexual assault",
-            "threat": 1.2072
+            "threat": 1.1712
           },
           {
-            "attention": 0.6952,
+            "attention": 0.6745,
             "burst_ratio": 1.33,
             "domain": "OTHER",
             "first_seen": "2026-03-04T13:04:05+00:00",
@@ -2239,10 +2242,10 @@
               }
             ],
             "term": "中国裁判文书网",
-            "threat": 0.927
+            "threat": 0.8993
           },
           {
-            "attention": 0.2596,
+            "attention": 0.2518,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2260,10 +2263,10 @@
               }
             ],
             "term": "Chinese opera",
-            "threat": 0.4543
+            "threat": 0.4407
           },
           {
-            "attention": 0.2596,
+            "attention": 0.2518,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2281,10 +2284,10 @@
               }
             ],
             "term": "Cultural Revolution",
-            "threat": 0.4543
+            "threat": 0.4407
           },
           {
-            "attention": 0.2596,
+            "attention": 0.2518,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2302,10 +2305,10 @@
               }
             ],
             "term": "Red",
-            "threat": 0.4543
+            "threat": 0.4407
           },
           {
-            "attention": 0.2596,
+            "attention": 0.2518,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2323,10 +2326,10 @@
               }
             ],
             "term": "The Cultural Revolution Never Ended",
-            "threat": 0.4543
+            "threat": 0.4407
           },
           {
-            "attention": 0.2596,
+            "attention": 0.2518,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2344,10 +2347,10 @@
               }
             ],
             "term": "cross-talk",
-            "threat": 0.4543
+            "threat": 0.4407
           },
           {
-            "attention": 0.2596,
+            "attention": 0.2518,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2365,10 +2368,10 @@
               }
             ],
             "term": "cultural policy",
-            "threat": 0.4543
+            "threat": 0.4407
           },
           {
-            "attention": 0.2596,
+            "attention": 0.2518,
             "burst_ratio": null,
             "domain": "OTHER",
             "first_seen": "2026-08-20T04:37:23+00:00",
@@ -2386,7 +2389,7 @@
               }
             ],
             "term": "insulting heroes and martyrs",
-            "threat": 0.4543
+            "threat": 0.4407
           }
         ],
         "source_feeds": {
@@ -2409,7 +2412,7 @@
       "raw_url": "https://palimpsest.info/readings/ddti-latest.json",
       "scope": "Ranks terms in documented censorship directives and scrubbed-material reports.",
       "source": "Palimpsest — an open observatory of authoritarian censorship, palimpsest.info. DDTI censored-term index, provenance-tracked.",
-      "source_timestamp": "2026-08-24T02:01:06Z",
+      "source_timestamp": "2026-08-24T04:07:05Z",
       "status": "live",
       "summary": "Ranks terms in documented censorship directives and scrubbed-material reports. Latest payload reports terms ranked at 218 count.",
       "title": "Deletion-directive term index"
@@ -2418,7 +2421,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:17:50Z",
       "health": {
-        "age_hours": 1.602,
+        "age_hours": 2.45,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2718,9 +2721,9 @@
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T06:18:30Z",
+      "freshness_deadline": "2026-08-24T07:13:28Z",
       "health": {
-        "age_hours": 0.591,
+        "age_hours": 0.523,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -2730,9 +2733,9 @@
       },
       "id": "weibo-hotsearch",
       "input": {
-        "bytes": 40148,
+        "bytes": 40149,
         "filename": "weibo-hotsearch-latest.json",
-        "sha256": "51f2b2d04dac7163b5791c40b86282d88398b178615ab500dcadf24cfe93654a"
+        "sha256": "35611499c13bd8661c6e913bcfc321d1ce5c4596b70b14f367be05336b98cfb4"
       },
       "layer": "attention",
       "live": true,
@@ -2942,7 +2945,7 @@
             "term": "大白"
           }
         ],
-        "generated_at": "2026-08-24T03:18:30Z",
+        "generated_at": "2026-08-24T04:13:28Z",
         "join": [
           {
             "appearances": 0,
@@ -2955,7 +2958,7 @@
             "sense_filtered": [],
             "sense_filtered_count": 0,
             "term": "中国裁判文书网",
-            "threat": 0.927
+            "threat": 0.8993
           },
           {
             "appearances": 1,
@@ -4168,16 +4171,16 @@
       "raw_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
       "scope": "Joins deletion-stream terms to archived Weibo hot-search board captures.",
       "source": "Sina Weibo hot-search board via the MIT-licensed archive github.com/justjavac/weibo-trending-hot-search (hourly captures, per-day union; keyless raw fetch)",
-      "source_timestamp": "2026-08-24T03:18:30Z",
+      "source_timestamp": "2026-08-24T04:13:28Z",
       "status": "live",
       "summary": "Joins deletion-stream terms to archived Weibo hot-search board captures. Latest payload reports board entries at 2889 count.",
       "title": "Weibo hot-search join"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T06:31:58Z",
+      "freshness_deadline": "2026-08-24T07:24:35Z",
       "health": {
-        "age_hours": 0.366,
+        "age_hours": 0.338,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4187,9 +4190,9 @@
       },
       "id": "silence-index",
       "input": {
-        "bytes": 6680,
+        "bytes": 6678,
         "filename": "silence-index-latest.json",
-        "sha256": "c15fe5f7f375a30c2bb3ab4f81edc005e7c8791694ca1821b2412fe364969937"
+        "sha256": "0436c7677c7f92c710b2080ce8a0c499e5d6a26e75c0401cfddaf0b0ed6915d6"
       },
       "layer": "attention",
       "live": false,
@@ -4199,7 +4202,7 @@
       "optional": false,
       "payload": {
         "domestic_proxy_live": true,
-        "generated_at": "2026-08-24T03:31:58Z",
+        "generated_at": "2026-08-24T04:24:35Z",
         "method_note": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in both the latest reading and the history, never zeros",
         "method_version": 1,
         "n_abstained": 25,
@@ -4216,7 +4219,17 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0479,
+            "global_norm": 0.0518,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "sexual assault"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": 0.0472,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -4226,37 +4239,27 @@
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0348,
+            "global_norm": 0.0085,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "local officials"
+            "topic": "freedom of expression"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0179,
+            "global_norm": 0.0035,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "sexual harassment"
+            "topic": "Cultural Revolution"
           },
           {
             "abstained": true,
             "decoupling": null,
             "domestic_norm": null,
-            "global_norm": 0.0033,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "free expression"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": 0.0003,
+            "global_norm": null,
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
@@ -4280,7 +4283,27 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
+            "topic": "local officials"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
             "topic": "official conduct"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "sexual harassment"
           },
           {
             "abstained": true,
@@ -4305,16 +4328,6 @@
           {
             "abstained": true,
             "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "sexual assault"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
             "domestic_norm": 0.0,
             "global_norm": null,
             "label": "abstain",
@@ -4331,16 +4344,6 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "Chinese opera"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
-            "topic": "Cultural Revolution"
           },
           {
             "abstained": true,
@@ -4420,16 +4423,6 @@
             "label": "abstain",
             "lexicon_hit": false,
             "silence_score": null,
-            "topic": "freedom of expression"
-          },
-          {
-            "abstained": true,
-            "decoupling": null,
-            "domestic_norm": null,
-            "global_norm": null,
-            "label": "abstain",
-            "lexicon_hit": false,
-            "silence_score": null,
             "topic": "arts censorship"
           },
           {
@@ -4441,6 +4434,16 @@
             "lexicon_hit": false,
             "silence_score": null,
             "topic": "comedy"
+          },
+          {
+            "abstained": true,
+            "decoupling": null,
+            "domestic_norm": null,
+            "global_norm": null,
+            "label": "abstain",
+            "lexicon_hit": false,
+            "silence_score": null,
+            "topic": "free expression"
           },
           {
             "abstained": true,
@@ -4468,7 +4471,7 @@
       "raw_url": "https://palimpsest.info/readings/silence-index-latest.json",
       "scope": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit.",
       "source": "DDTI ranked terms (readings/ddti-latest.json) x GDELT DOC API global volume x weibo hot-search join as the permitted domestic proxy (readings/weibo-hotsearch-latest.json)",
-      "source_timestamp": "2026-08-24T03:31:58Z",
+      "source_timestamp": "2026-08-24T04:24:35Z",
       "status": "degraded",
       "summary": "Looks for topics loud abroad but absent from the permitted domestic proxy, with abstention explicit. Semantic health limitation: declared measurement is incomplete: metric /n_blackout is absent or non-scalar. Upstream reading: high n_blackout = more topics loud abroad while absent from the domestic board; the Peng Shuai / youth-unemployment shape, watched continuously.",
       "title": "Silence index"
@@ -4477,7 +4480,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-08-25T05:08:57Z",
       "health": {
-        "age_hours": 166.75,
+        "age_hours": 167.598,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4789,7 +4792,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:22Z",
       "health": {
-        "age_hours": 1.726,
+        "age_hours": 2.575,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5076,7 +5079,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-23T08:08:00Z",
       "health": {
-        "age_hours": 26.766,
+        "age_hours": 27.614,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -5425,7 +5428,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-23T20:33:01Z",
       "health": {
-        "age_hours": 27.349,
+        "age_hours": 28.197,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -6598,7 +6601,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T14:48:00Z",
       "health": {
-        "age_hours": 27.099,
+        "age_hours": 27.948,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8213,9 +8216,9 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-24T17:18:30Z",
+      "freshness_deadline": "2026-08-24T18:13:28Z",
       "health": {
-        "age_hours": 0.591,
+        "age_hours": 0.523,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8227,7 +8230,7 @@
       "input": {
         "bytes": 30742872,
         "filename": "undertext-latest.json",
-        "sha256": "8f1ea117a56d90df6ab573081601cc5140de9d8181cac7d5accfb8ec14c6cac5"
+        "sha256": "c6a500cc4f9545101fb019d1249e8ed6c542d7e1d2bc27f4a9cc94a13b0017d9"
       },
       "layer": "attention",
       "live": true,
@@ -8241,7 +8244,7 @@
       },
       "optional": false,
       "payload": {
-        "generated_at": "2026-08-24T03:18:30Z",
+        "generated_at": "2026-08-24T04:13:28Z",
         "live_round_ran": false,
         "live_surfaces_enabled": false,
         "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
@@ -8593,7 +8596,7 @@
       "raw_url": "https://palimpsest.info/readings/undertext-latest.json",
       "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
       "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI + public deletion ledgers + official first-seen + news-wire-live + Wikipedia gazetteer RC when those readings exist, clustered by public URL, with GDELT/OONI/Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present",
-      "source_timestamp": "2026-08-24T03:18:30Z",
+      "source_timestamp": "2026-08-24T04:13:28Z",
       "status": "live",
       "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 7310 count.",
       "title": "UNDERTEXT differential fusion"
@@ -8602,7 +8605,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:11:10Z",
       "health": {
-        "age_hours": 1.713,
+        "age_hours": 2.561,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8842,7 +8845,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:00:59Z",
       "health": {
-        "age_hours": 1.883,
+        "age_hours": 2.731,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9173,7 +9176,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:07:57Z",
       "health": {
-        "age_hours": 1.766,
+        "age_hours": 2.615,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9345,7 +9348,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T07:58:48Z",
       "health": {
-        "age_hours": 21.919,
+        "age_hours": 22.767,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -9522,7 +9525,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:10:02Z",
       "health": {
-        "age_hours": 1.732,
+        "age_hours": 2.58,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11969,7 +11972,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:04:27Z",
       "health": {
-        "age_hours": 1.825,
+        "age_hours": 2.673,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12020,7 +12023,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T07:43:38Z",
       "health": {
-        "age_hours": 22.172,
+        "age_hours": 23.02,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12094,7 +12097,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:27:09Z",
       "health": {
-        "age_hours": 1.446,
+        "age_hours": 2.295,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12173,7 +12176,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T14:57:39Z",
       "health": {
-        "age_hours": 26.938,
+        "age_hours": 27.787,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -12295,7 +12298,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T03:40:05Z",
       "health": {
-        "age_hours": 14.231,
+        "age_hours": 15.079,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -12437,7 +12440,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:39Z",
       "health": {
-        "age_hours": 1.722,
+        "age_hours": 2.57,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13171,7 +13174,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 583.378,
+        "age_hours": 584.226,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -13326,7 +13329,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T02:58:20Z",
       "health": {
-        "age_hours": 14.927,
+        "age_hours": 15.775,
         "collector_reason": null,
         "collector_status": "source_refused",
         "ok": false,
@@ -13465,7 +13468,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:18Z",
       "health": {
-        "age_hours": 1.727,
+        "age_hours": 2.576,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14128,7 +14131,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:13:36Z",
       "health": {
-        "age_hours": 1.672,
+        "age_hours": 2.521,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14305,7 +14308,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T07:58:36Z",
       "health": {
-        "age_hours": 21.922,
+        "age_hours": 22.771,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14410,7 +14413,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T15:47:39Z",
       "health": {
-        "age_hours": 26.105,
+        "age_hours": 26.953,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -14478,7 +14481,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T19:27:00Z",
       "health": {
-        "age_hours": 10.449,
+        "age_hours": 11.297,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14531,7 +14534,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 61.844,
+        "age_hours": 62.692,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14590,7 +14593,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T12:32:44Z",
       "health": {
-        "age_hours": 17.354,
+        "age_hours": 18.202,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -14747,7 +14750,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 140.513,
+        "age_hours": 141.362,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -14815,7 +14818,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T10:02:43Z",
       "health": {
-        "age_hours": 19.854,
+        "age_hours": 20.702,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -17097,7 +17100,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T03:40:19Z",
       "health": {
-        "age_hours": 14.227,
+        "age_hours": 15.075,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -17144,7 +17147,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-23T02:14:16Z",
       "health": {
-        "age_hours": 26.661,
+        "age_hours": 27.51,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
