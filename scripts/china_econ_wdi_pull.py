@@ -14,8 +14,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from collectors.world_bank_wdi import WDIError, collect, load_registry
-from core.china_econ_export import load_availability_receipt, load_source_policy
+from collectors.world_bank_wdi import (
+    WDIError,
+    build_url,
+    fetch_bytes,
+    load_registry,
+    parse_response,
+)
+from core.china_econ_export import (
+    load_availability_receipt,
+    load_source_policy,
+    validate_wdi_registry_evolution,
+)
 from core.collector_artifact import build_artifact, canonical_json_bytes
 from core.econ_ledger import LedgerIntegrityError, append_vintages, load_snapshot
 
@@ -124,9 +134,31 @@ def _period_coverage(observations) -> tuple[str | None, str | None]:
     )
 
 
+def _require_public_wdi_rights(policy, *, evaluated_at: datetime) -> None:
+    decision = policy.decisions.get("world_bank_wdi")
+    if (
+        decision is None
+        or decision.decision != "allow"
+        or not decision.values_allowed
+        or not decision.seiche_export_allowed
+        or decision.license != "CC-BY-4.0"
+        or decision.reviewed_at_value > evaluated_at
+        or decision.expires_at_value <= evaluated_at
+    ):
+        raise WDIError("world_bank_wdi is not currently allowed for publication")
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
+    parser.add_argument(
+        "--prior-registry",
+        type=Path,
+        help=(
+            "exact registry bytes that authenticated an existing public latest "
+            "receipt; required to review append-only registry expansion"
+        ),
+    )
     parser.add_argument("--policy", type=Path, default=DEFAULT_POLICY)
     parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER)
     parser.add_argument("--latest", type=Path, default=DEFAULT_LATEST)
@@ -159,6 +191,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
         inputs = {"registry": args.registry}
+        if args.prior_registry is not None:
+            inputs["prior_registry"] = args.prior_registry
         if args.public_context_only:
             inputs["policy"] = args.policy
         if args.input is not None:
@@ -168,7 +202,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             outputs={"ledger": args.ledger, "latest": args.latest},
         )
         registry = load_registry(args.registry)
-        collected_at = datetime.now(UTC)
+        policy = None
         if args.public_context_only:
             if args.input is not None:
                 raise WDIError(
@@ -188,23 +222,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "public-context-only writes require the exact reviewed inputs and readings paths"
                 )
             policy = load_source_policy(args.policy)
-            decision = policy.decisions.get("world_bank_wdi")
-            if (
-                decision is None
-                or decision.decision != "allow"
-                or not decision.values_allowed
-                or not decision.seiche_export_allowed
-                or decision.license != "CC-BY-4.0"
-                or decision.reviewed_at_value > collected_at
-                or decision.expires_at_value <= collected_at
-            ):
-                raise WDIError("world_bank_wdi is not currently allowed for publication")
+            _require_public_wdi_rights(policy, evaluated_at=datetime.now(UTC))
         before = load_snapshot(args.ledger)
         if args.validate_only:
             if args.public_context_only:
+                prior_registry_path = args.prior_registry or args.registry
+                validate_wdi_registry_evolution(
+                    prior_registry_path.read_bytes(),
+                    args.registry.read_bytes(),
+                )
                 public_availability = load_availability_receipt(
                     args.latest,
-                    series_registry_path=args.registry,
+                    series_registry_path=prior_registry_path,
                 )
                 if public_availability.ledger_after != _ledger_receipt(before):
                     raise WDIError(
@@ -216,17 +245,35 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f"{before.records} quarantined observations)"
             )
             return 0
-        response = collect(
+        request_url = build_url(
             registry,
             start_year=args.start_year,
             end_year=args.end_year,
+        )
+        raw = args.input.read_bytes() if args.input is not None else fetch_bytes(request_url)
+        # This is the collection clock: it is deliberately sampled only after
+        # the exact response bytes have returned.  Rights are re-evaluated at
+        # this boundary so a licence expiry crossed during a retry cannot publish.
+        collected_at = datetime.now(UTC)
+        if args.public_context_only:
+            _require_public_wdi_rights(policy, evaluated_at=collected_at)
+        response = parse_response(
+            raw,
+            registry=registry,
+            evidence_url=request_url,
+            start_year=args.start_year,
+            end_year=args.end_year,
             collected_at=collected_at,
-            fetch=(lambda _url: args.input.read_bytes()) if args.input else None,
         )
         if args.public_context_only and args.latest.exists():
+            prior_registry_path = args.prior_registry or args.registry
+            validate_wdi_registry_evolution(
+                prior_registry_path.read_bytes(),
+                args.registry.read_bytes(),
+            )
             prior_availability = load_availability_receipt(
                 args.latest,
-                series_registry_path=args.registry,
+                series_registry_path=prior_registry_path,
             )
             if prior_availability.ledger_after != _ledger_receipt(before):
                 raise WDIError(
@@ -256,6 +303,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f"raw_sha256={response.raw_sha256}"
             )
             return 0
+        if args.public_context_only:
+            _require_public_wdi_rights(policy, evaluated_at=datetime.now(UTC))
         appended = append_vintages(args.ledger, response.observations)
         after = load_snapshot(args.ledger)
     except (

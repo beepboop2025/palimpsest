@@ -7,12 +7,13 @@ name: Refresh China econ telemetry
 # raw responses remain in the attested review handoff rather than Pages.
 
 on:
-  schedule:
-    - cron: "17 4 * * 2"       # weekly; WDI is an annual structural transport
+  # Deliberately manual through this release. Every refresh opens a PR; no
+  # scheduled or action-token path may write the governed WDI files to main.
   workflow_dispatch: {}
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: china-econ-refresh
@@ -25,6 +26,8 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -37,14 +40,21 @@ jobs:
 
       - name: Synchronize inputs before collection
         run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
           git config user.name "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
-          git fetch origin main
-          git rebase origin/main
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          branch="automation/china-econ-refresh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          git checkout -B "$branch" origin/main
+          echo "REFRESH_BRANCH=$branch" >> "$GITHUB_ENV"
+          git show HEAD:config/china_econ_wdi_series.json \
+            > "$RUNNER_TEMP/china-econ-prior-registry.json"
 
       - name: Pull reviewed WDI values into the durable attributed ledger
         run: >-
           python -m scripts.china_econ_wdi_pull
+          --prior-registry "$RUNNER_TEMP/china-econ-prior-registry.json"
           --ledger readings/china-econ-wdi-observations.jsonl
           --latest readings/china-econ-wdi-latest.json
           --public-context-only
@@ -52,6 +62,7 @@ jobs:
       - name: Validate the append-only economic observation ledger
         run: |
           python -m scripts.china_econ_wdi_pull \
+            --prior-registry "$RUNNER_TEMP/china-econ-prior-registry.json" \
             --ledger readings/china-econ-wdi-observations.jsonl \
             --latest readings/china-econ-wdi-latest.json \
             --public-context-only \
@@ -132,8 +143,11 @@ jobs:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
-      - name: Commit and publish one guarded graph if the signal changed
+      - name: Commit and open one reviewed refresh PR if the signal changed
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           git add \
             readings/china-econ-latest.json \
             readings/china-econ-history.jsonl \
@@ -174,13 +188,11 @@ jobs:
           if git diff --cached --quiet; then
             echo "no change"
           else
-            git commit -m "data: china econ telemetry refresh ($(date -u +%FT%TZ)) [skip pytest]"
-            # The direct observations stay byte-identical on a race. Refuse the
-            # candidate if any transitive generator/input tree changed on main;
-            # the next scheduled run will rebuild from that newer graph.
-            guarded=()
-            for path in scripts core processors config protocol assets dashboards/assets readings; do
-              guarded+=(--input-path "$path")
-            done
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --contract-scope complete "${guarded[@]}"
+            git commit -m "data: propose China econ telemetry refresh ($(date -u +%FT%TZ))"
+            git push --set-upstream origin "HEAD:refs/heads/$REFRESH_BRANCH"
+            gh pr create \
+              --base main \
+              --head "$REFRESH_BRANCH" \
+              --title "data: review China economic telemetry refresh" \
+              --body $'Automated reviewed-input candidate.\n\nThis PR never self-merges. Merge only through the GitHub reviewed merge-commit path after the complete hosted contract is green.'
           fi

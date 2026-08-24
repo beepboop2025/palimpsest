@@ -468,29 +468,11 @@ def test_explicit_public_context_mode_requires_policy_and_exact_readings_paths(
     monkeypatch.setattr(wdi_pull, "PUBLIC_LEDGER", ledger)
     monkeypatch.setattr(wdi_pull, "PUBLIC_LATEST", latest)
 
-    def fake_collect(
-        loaded_registry,
-        *,
-        start_year,
-        end_year,
-        collected_at,
-        fetch=None,
-    ):
-        assert fetch is None
-        return parse_response(
-            response.read_bytes(),
-            registry=loaded_registry,
-            evidence_url=build_url(
-                loaded_registry,
-                start_year=start_year,
-                end_year=end_year,
-            ),
-            start_year=start_year,
-            end_year=end_year,
-            collected_at=collected_at,
-        )
+    def fake_fetch(url):
+        assert "date=2023%3A2024" in url
+        return response.read_bytes()
 
-    monkeypatch.setattr(wdi_pull, "collect", fake_collect)
+    monkeypatch.setattr(wdi_pull, "fetch_bytes", fake_fetch)
     args = [
         "--registry",
         str(registry),
@@ -543,6 +525,116 @@ def test_explicit_public_context_mode_requires_policy_and_exact_readings_paths(
         assert latest.read_bytes() == original_latest
 
 
+def test_pull_samples_collection_clock_only_after_exact_fetch_returns(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    registry = _small_registry_path(tmp_path)
+    ledger = tmp_path / "ledger.jsonl"
+    latest = tmp_path / "latest.json"
+    state = {"fetched": False, "calls": 0}
+
+    class AfterFetchClock:
+        @classmethod
+        def now(cls, tz=None):
+            state["calls"] += 1
+            if state["calls"] == 1:
+                return datetime(2026, 8, 24, 9, 59, tzinfo=UTC)
+            assert state["fetched"] is True
+            return datetime(2026, 8, 24, 10, 5, tzinfo=UTC)
+
+    def delayed_fetch(_url):
+        state["fetched"] = True
+        return _response()
+
+    monkeypatch.setattr(wdi_pull, "datetime", AfterFetchClock)
+    monkeypatch.setattr(wdi_pull, "fetch_bytes", delayed_fetch)
+    assert wdi_pull.main(
+        [
+            "--registry",
+            str(registry),
+            "--ledger",
+            str(ledger),
+            "--latest",
+            str(latest),
+            "--start-year",
+            "2023",
+            "--end-year",
+            "2024",
+        ]
+    ) == 0
+
+    receipt = json.loads(latest.read_bytes())
+    snapshot = load_snapshot(ledger)
+    assert receipt["generated_at"] == "2026-08-24T10:05:00Z"
+    assert {row.collected_at for row in snapshot.observations} == {
+        datetime(2026, 8, 24, 10, 5, tzinfo=UTC)
+    }
+
+
+def test_public_pull_rechecks_rights_after_fetch_and_refuses_expiry_crossing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    registry = _small_registry_path(tmp_path)
+    policy = tmp_path / "policy.json"
+    policy_document = json.loads(wdi_pull.DEFAULT_POLICY.read_bytes())
+    for row in policy_document["sources"]:
+        if row["source_id"] == "world_bank_wdi":
+            row["expires_at"] = "2026-08-24T10:00:01Z"
+    policy.write_text(
+        json.dumps(
+            policy_document,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ledger = tmp_path / "readings" / "china-econ-wdi-observations.jsonl"
+    latest = tmp_path / "readings" / "china-econ-wdi-latest.json"
+    moments = iter(
+        [
+            datetime(2026, 8, 24, 9, 59, 59, tzinfo=UTC),
+            datetime(2026, 8, 24, 10, 0, 0, tzinfo=UTC),
+            datetime(2026, 8, 24, 10, 0, 2, tzinfo=UTC),
+        ]
+    )
+
+    class ExpiryClock:
+        @classmethod
+        def now(cls, tz=None):
+            return next(moments)
+
+    monkeypatch.setattr(wdi_pull, "datetime", ExpiryClock)
+    monkeypatch.setattr(wdi_pull, "DEFAULT_REGISTRY", registry)
+    monkeypatch.setattr(wdi_pull, "DEFAULT_POLICY", policy)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LEDGER", ledger)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LATEST", latest)
+    monkeypatch.setattr(wdi_pull, "fetch_bytes", lambda _url: _response())
+
+    assert wdi_pull.main(
+        [
+            "--registry",
+            str(registry),
+            "--policy",
+            str(policy),
+            "--ledger",
+            str(ledger),
+            "--latest",
+            str(latest),
+            "--start-year",
+            "2023",
+            "--end-year",
+            "2024",
+            "--public-context-only",
+        ]
+    ) == 2
+    assert not ledger.exists()
+    assert not latest.exists()
+
+
 def test_public_context_mode_blocks_previously_numeric_null_without_mutation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -555,29 +647,7 @@ def test_public_context_mode_blocks_previously_numeric_null_without_mutation(
     monkeypatch.setattr(wdi_pull, "PUBLIC_LATEST", latest)
     current_raw = {"payload": _response()}
 
-    def fake_collect(
-        loaded_registry,
-        *,
-        start_year,
-        end_year,
-        collected_at,
-        fetch=None,
-    ):
-        assert fetch is None
-        return parse_response(
-            current_raw["payload"],
-            registry=loaded_registry,
-            evidence_url=build_url(
-                loaded_registry,
-                start_year=start_year,
-                end_year=end_year,
-            ),
-            start_year=start_year,
-            end_year=end_year,
-            collected_at=collected_at,
-        )
-
-    monkeypatch.setattr(wdi_pull, "collect", fake_collect)
+    monkeypatch.setattr(wdi_pull, "fetch_bytes", lambda _url: current_raw["payload"])
     args = [
         "--registry",
         str(registry),
@@ -605,6 +675,69 @@ def test_public_context_mode_blocks_previously_numeric_null_without_mutation(
     assert wdi_pull.main(args) == 2
     assert ledger.read_bytes() == original_ledger
     assert latest.read_bytes() == original_latest
+
+
+def test_public_context_mode_authenticates_prior_receipt_with_prior_registry(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    previous_registry = _small_registry_path(tmp_path, "AG.PRD.CREL.MT")
+    current_registry = tmp_path / "registry-2-current.json"
+    current_registry.write_bytes(
+        _small_registry_path(
+            tmp_path,
+            "AG.PRD.CREL.MT",
+            "IS.SHP.GOOD.TU",
+        ).read_bytes()
+    )
+    ledger = tmp_path / "readings" / "china-econ-wdi-observations.jsonl"
+    latest = tmp_path / "readings" / "china-econ-wdi-latest.json"
+    current_raw = {
+        "payload": _response(
+            rows=[_row("AG.PRD.CREL.MT", 2024, 652_290_000)],
+            sourceid="2",
+        )
+    }
+    monkeypatch.setattr(wdi_pull, "DEFAULT_REGISTRY", previous_registry)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LEDGER", ledger)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LATEST", latest)
+    monkeypatch.setattr(wdi_pull, "fetch_bytes", lambda _url: current_raw["payload"])
+    common = [
+        "--ledger",
+        str(ledger),
+        "--latest",
+        str(latest),
+        "--start-year",
+        "2024",
+        "--end-year",
+        "2024",
+        "--public-context-only",
+    ]
+    assert wdi_pull.main(["--registry", str(previous_registry), *common]) == 0
+    original_ledger = ledger.read_bytes()
+
+    monkeypatch.setattr(wdi_pull, "DEFAULT_REGISTRY", current_registry)
+    current_raw["payload"] = _response(
+        rows=[
+            _row("AG.PRD.CREL.MT", 2024, 652_290_000),
+            _row("IS.SHP.GOOD.TU", 2024, None),
+        ]
+    )
+    assert wdi_pull.main(
+        [
+            "--registry",
+            str(current_registry),
+            "--prior-registry",
+            str(previous_registry),
+            *common,
+        ]
+    ) == 0
+    receipt = json.loads(latest.read_bytes())
+    assert ledger.read_bytes().startswith(original_ledger)
+    assert receipt["response_coverage"]["configured_indicators"] == 2
+    assert receipt["response_coverage"]["represented_indicators"] == 2
+    assert receipt["appended_observations"] == 1
+    assert receipt["ledger_before"]["bytes"] == len(original_ledger)
 
 
 def test_published_wdi_ledger_and_receipt_are_exact_attributed_context_only():
