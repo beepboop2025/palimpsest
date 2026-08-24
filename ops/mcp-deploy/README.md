@@ -506,9 +506,112 @@ the exact official Registry response plus a canonical receipt binding that
 response's SHA-256, the deployed SHA and run, server identity/version, Registry
 status, and publication workflow attempt.
 
-After the live smoke, host receipt, deployment artifact, Registry receipt, and
-official latest record all agree, restore exactly the states captured in the
-manifest. An intentionally disabled workflow stays disabled.
+Keep the writer gate closed while publishing Pages. An ordinary `main` push
+validates the code but deliberately cannot package or deploy Pages. Snapshot the
+existing repository-dispatch Tests runs, dispatch one complete contract for the
+same still-current SHA, and require exactly one new run:
+
+```bash
+tests_runs_before="$release_gate_dir/tests-repository-dispatch-before.txt"
+gh run list --repo "$repo" --workflow tests.yml \
+  --event repository_dispatch --limit 100 \
+  --json databaseId --jq '.[].databaseId' | \
+  LC_ALL=C sort -n >"$tests_runs_before"
+
+test "$(git rev-parse origin/main)" = "$target_sha"
+gh api --method POST "repos/$repo/dispatches" \
+  -f event_type=publication_contract \
+  -f 'client_payload[sha]'="$target_sha" \
+  -f 'client_payload[scope]'=complete >/dev/null
+
+tests_run_id=""
+for attempt in $(seq 1 24); do
+  new_run_ids=""
+  for candidate_run_id in $(gh run list --repo "$repo" \
+    --workflow tests.yml --event repository_dispatch --limit 100 \
+    --json databaseId,event,headSha \
+    --jq ".[] | select(.event == \"repository_dispatch\" and .headSha == \"$target_sha\") | .databaseId"); do
+    if ! grep -Fxq "$candidate_run_id" "$tests_runs_before"; then
+      new_run_ids="${new_run_ids}${candidate_run_id}\n"
+    fi
+  done
+  new_run_count=$(printf '%b' "$new_run_ids" | sed '/^$/d' | wc -l | \
+    tr -d '[:space:]')
+  if [[ "$new_run_count" = 1 ]]; then
+    tests_run_id=$(printf '%b' "$new_run_ids" | sed '/^$/d')
+    break
+  fi
+  if [[ "$new_run_count" -gt 1 ]]; then
+    printf 'ambiguous complete publication runs for %s\n' "$target_sha" >&2
+    exit 1
+  fi
+  sleep 5
+done
+[[ "$tests_run_id" =~ ^[1-9][0-9]*$ ]]
+gh api "repos/$repo/actions/runs/$tests_run_id" --jq \
+  "select(.event == \"repository_dispatch\") |
+   select(.head_branch == \"main\") |
+   select(.head_sha == \"$target_sha\") |
+   select((.path | split(\"@\")[0]) == \".github/workflows/tests.yml\") |
+   .id" | grep -Fx "$tests_run_id"
+gh run watch "$tests_run_id" --repo "$repo" --exit-status
+
+pages_jobs="$release_gate_dir/pages-jobs.json"
+gh api --paginate \
+  "repos/$repo/actions/runs/$tests_run_id/jobs?per_page=100" \
+  >"$pages_jobs"
+for required_job in \
+  pytest \
+  contract \
+  'Admit the exact tested publication' \
+  'Admit exact deployed MCP release before Pages' \
+  'Package exact complete Pages edition' \
+  'Deploy exact complete Pages edition'; do
+  jq -e --arg required_job "$required_job" '
+    any(.jobs[]; .name == $required_job and .conclusion == "success")
+  ' "$pages_jobs" >/dev/null
+done
+test "$(git rev-parse origin/main)" = "$target_sha"
+```
+
+Finally, prove Pages serves selected exact blobs from that same commit. The
+unique query prevents an intermediary from satisfying the check with an older
+cached response. All paths must converge before the writer gate can reopen:
+
+```bash
+served_dir="$release_gate_dir/pages-served"
+install -d -m 0700 "$served_dir"
+for relative_path in \
+  .well-known/ai-catalog.json \
+  server.json \
+  readings/osint-china-latest.json \
+  readings/readings-ledger.jsonl \
+  readings/audit/readings-ledger-recovery-20260824.json; do
+  expected_digest=$(git show "$target_sha:$relative_path" | sha256sum | \
+    awk '{print $1}')
+  served_file="$served_dir/$(printf '%s' "$relative_path" | tr '/' '_')"
+  matched=0
+  for attempt in $(seq 1 24); do
+    curl --disable --fail --silent --show-error \
+      --proto '=https' --tlsv1.2 --max-time 30 --max-filesize 134217728 \
+      --header 'Cache-Control: no-cache' \
+      "https://palimpsest.info/${relative_path}?release=${target_sha}" \
+      --output "$served_file"
+    if [[ "$(sha256sum "$served_file" | awk '{print $1}')" = \
+          "$expected_digest" ]]; then
+      matched=1
+      break
+    fi
+    sleep 10
+  done
+  test "$matched" = 1
+done
+```
+
+Only after the live smoke, host receipt, deployment artifact, Registry receipt,
+official latest record, exact complete Tests run, Pages deployment, and served
+bytes all agree may the states captured in the manifest be restored. An
+intentionally disabled workflow stays disabled.
 
 ```bash
 while IFS=$'\t' read -r workflow_id expected_state workflow_file; do

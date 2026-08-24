@@ -338,13 +338,15 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
         assert property_value in text
 
 
-def test_release_runbook_freezes_writers_through_exact_ref_registry_publish() -> None:
+def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
     text = RUNBOOK.read_text(encoding="utf-8")
     freeze = text.index('gh workflow disable "$workflow_id"')
     deploy = text.index("gh workflow run deploy-mcp.yml")
     publish = text.index("gh workflow run registry-publish.yml")
+    complete_dispatch = text.index("-f event_type=publication_contract")
+    served_bytes = text.index("pages-served")
     restore = text.index('gh workflow enable "$workflow_id"')
-    assert freeze < deploy < publish < restore
+    assert freeze < deploy < publish < complete_dispatch < served_bytes < restore
     assert "scheduled-workflows.tsv" in text
     assert "reuse that gate's" in text
     assert "original preservation manifest" in text
@@ -365,6 +367,13 @@ def test_release_runbook_freezes_writers_through_exact_ref_registry_publish() ->
     assert "ambiguous new %s runs" in text
     assert "actions/runs/$deploy_run_id" in text
     assert "actions/runs/$registry_run_id" in text
+    assert "tests-repository-dispatch-before.txt" in text
+    assert "client_payload[scope]" in text
+    assert "actions/runs/$tests_run_id" in text
+    assert "Admit exact deployed MCP release before Pages" in text
+    assert "Deploy exact complete Pages edition" in text
+    assert "readings/audit/readings-ledger-recovery-20260824.json" in text
+    assert 'test "$matched" = 1' in text
     assert '.path | split(\\"@\\")[0]' in text
     assert "## Rollback after a completed release" in text
     assert "never edit `deployed-sha`" in text
