@@ -1021,6 +1021,16 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
   GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG
 export DOCKER_HOST='unix:///var/run/docker.sock'
+unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES \
+  COMPOSE_PATH_SEPARATOR COMPOSE_IGNORE_ORPHANS COMPOSE_REMOVE_ORPHANS \
+  PALIMPSEST_ENV_FILE
+export COMPOSE_PROJECT_NAME=palimpsest
+export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
+test -f "$PALIMPSEST_ENV_FILE"
+test ! -L "$PALIMPSEST_ENV_FILE"
+test -r "$PALIMPSEST_ENV_FILE"
+RELEASE_DOCKER_CONFIG="$(mktemp -d /tmp/palimpsest-c0-docker.XXXXXX)"
+chmod 0700 "$RELEASE_DOCKER_CONFIG"
 release_git() {
   /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
     -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
@@ -1044,13 +1054,20 @@ release_git show "$C0_DEPLOY_SHA:$SEED_PATH" >"$SEED_TMP"
 test "$(release_git hash-object "$SEED_TMP")" \
   = "$(release_git rev-parse "$C0_DEPLOY_SHA:$SEED_PATH")"
 chmod 0700 "$SEED_TMP"
-PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \
-PALIMPSEST_ALLOW_PREPARED_C0_RESUME="$PALIMPSEST_ALLOW_PREPARED_C0_RESUME" \
-PREPARED_C0_SHA="$PREPARED_C0_SHA" \
-C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \
-EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
-COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
-  bash "$SEED_TMP"
+/usr/bin/env -i HOME=/root LANG=C LC_ALL=C \
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null \
+  GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+  GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0 \
+  DOCKER_HOST=unix:///var/run/docker.sock \
+  DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG" \
+  COMPOSE_PROJECT_NAME=palimpsest PALIMPSEST_ENV_FILE="$PALIMPSEST_ENV_FILE" \
+  PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \
+  PALIMPSEST_ALLOW_PREPARED_C0_RESUME="$PALIMPSEST_ALLOW_PREPARED_C0_RESUME" \
+  PREPARED_C0_SHA="$PREPARED_C0_SHA" C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \
+  EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
+  COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
+  /bin/bash "$SEED_TMP"
 rm -f -- "$SEED_TMP"
 trap - EXIT
 
@@ -1161,6 +1178,17 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
   GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG
 export DOCKER_HOST=unix:///var/run/docker.sock
+unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES \
+  COMPOSE_PATH_SEPARATOR COMPOSE_IGNORE_ORPHANS COMPOSE_REMOVE_ORPHANS \
+  PALIMPSEST_ENV_FILE
+export COMPOSE_PROJECT_NAME=palimpsest
+export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
+test -f "$PALIMPSEST_ENV_FILE"
+test ! -L "$PALIMPSEST_ENV_FILE"
+test -r "$PALIMPSEST_ENV_FILE"
+RELEASE_DOCKER_CONFIG="$(mktemp -d /tmp/palimpsest-release-docker.XXXXXX)"
+chmod 0700 "$RELEASE_DOCKER_CONFIG"
+export DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG"
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
 export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
 export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
@@ -1170,6 +1198,18 @@ release_git() {
     -c "safe.directory=$PALIMPSEST_REPO_ROOT" \
     -c credential.helper= -c protocol.allow=never \
     -c protocol.https.allow=always "$@"
+}
+release_compose() {
+  /usr/bin/env -i HOME=/root LANG=C LC_ALL=C \
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+    GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0 \
+    DOCKER_HOST=unix:///var/run/docker.sock \
+    DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG" \
+    COMPOSE_PROJECT_NAME=palimpsest \
+    PALIMPSEST_ENV_FILE="$PALIMPSEST_ENV_FILE" \
+    "$PALIMPSEST_REPO_ROOT/ops/docker/prod-compose" "$@"
 }
 test -d .git
 test ! -L .git
@@ -1243,7 +1283,7 @@ import stat
 import sys
 
 directories: set[str] = set()
-anchors = ("/etc", "/opt")
+anchors = ("/etc", "/opt", "/var/lib")
 for raw_path in sys.argv[1:]:
     path = os.path.abspath(raw_path)
     anchor = next(
@@ -1424,6 +1464,14 @@ COMPOSE_QUEUE_BY_SERVICE[worker-collectors]=collectors
 COMPOSE_QUEUE_BY_SERVICE[worker-warehouse]=warehouse
 COMPOSE_QUEUE_BY_SERVICE[worker-velocity]=censorwatch
 
+# Prove that the isolated Docker/Compose environment can load the reviewed
+# production file before the fail-safe is armed. A local plugin/configuration
+# failure must abort without turning a read-only preflight into an outage.
+EXPECTED_COMPOSE_CONFIG_SERVICES=$'api\nbeat\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
+ACTUAL_COMPOSE_CONFIG_SERVICES="$(release_compose \
+  "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
+test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"
+
 stop_loaded_unit() {
   local unit="$1" load_state active_state
   load_state="$(systemctl show --property=LoadState --value \
@@ -1460,7 +1508,7 @@ temporarily_disable_activator() {
 # complete declared inventory rather than only units observed active, because
 # a reboot or concurrent dependency start must not escape the transaction.
 release_quiesce_all() {
-  local unit
+  local unit compose_service container_id compose_working_dir compose_config_file
   set +e
   for unit in "${RELEASE_ACTIVATORS[@]}"; do
     sudo systemctl stop "$unit" >/dev/null 2>&1 || true
@@ -1475,8 +1523,26 @@ release_quiesce_all() {
     >/dev/null 2>&1 || true
   sudo systemctl stop 'palimpsest-investigative-broker@*.service' \
     >/dev/null 2>&1 || true
-  ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" stop \
-    "${COMPOSE_WRITER_SERVICES[@]}" >/dev/null 2>&1 || true
+  # The emergency path cannot depend on the Git-cleanliness checks in the
+  # Compose wrapper: the triggering failure may be the wrapper itself. Stop
+  # every running Compose container launched from the pinned Palimpsest
+  # production definition and carrying one of the controlled writer labels,
+  # including an alternate-project writer that appeared later. Service names
+  # alone are not host-global: unrelated shared-host projects also use generic
+  # names such as worker and beat.
+  compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  compose_config_file="$compose_working_dir/docker-compose.prod.yml"
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    while IFS= read -r container_id; do
+      if [[ "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
+        docker stop --time 180 "$container_id" >/dev/null 2>&1 || true
+      fi
+    done < <(docker ps --no-trunc --filter status=running \
+      --filter "label=com.docker.compose.project.working_dir=$compose_working_dir" \
+      --filter "label=com.docker.compose.project.config_files=$compose_config_file" \
+      --filter "label=com.docker.compose.service=$compose_service" \
+      --format '{{.ID}}' 2>/dev/null)
+  done
   if [[ -n "${ACTIVE_PROOF_PIN:-}" ]]; then
     release_proof_pin >/dev/null 2>&1 || {
       sudo systemctl stop "$ACTIVE_PROOF_PIN" >/dev/null 2>&1 || true
@@ -1508,7 +1574,7 @@ trap 'phase1_fail_safe 143; exit 143' TERM
 
 compose_container_state() {
   local service="$1" container_id state
-  container_id="$(ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" \
+  container_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
     ps -q --all "$service")"
   if [[ -z "$container_id" ]]; then
     COMPOSE_WAS_RUNNING["$service"]=0
@@ -1536,13 +1602,16 @@ compose_container_state() {
 }
 
 verify_compose_container_inventory() {
-  local inventory_file
+  local inventory_file compose_working_dir compose_config_file
   inventory_file="$(mktemp)"
+  compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  compose_config_file="$compose_working_dir/docker-compose.prod.yml"
   docker ps -a --no-trunc \
-    --filter label=com.docker.compose.project=palimpsest \
-    --format '{{.Label "com.docker.compose.service"}}\t{{.ID}}' \
+    --filter label=com.docker.compose.project \
+    --format '{{.Label "com.docker.compose.project"}}\t{{.Label "com.docker.compose.service"}}\t{{.Label "com.docker.compose.project.working_dir"}}\t{{.Label "com.docker.compose.project.config_files"}}\t{{.ID}}' \
     >"$inventory_file"
-  if ! python3 - "$inventory_file" <<'PY'
+  if ! python3 - "$inventory_file" \
+      "$compose_working_dir" "$compose_config_file" <<'PY'
 import pathlib
 import re
 import sys
@@ -1558,19 +1627,42 @@ required = {
     "worker-warehouse",
 }
 allowed = required | {"worker-velocity"}
+expected_working_dir, expected_config_file = sys.argv[2:]
 rows = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
-if not (len(required) <= len(rows) <= len(allowed)):
-    raise SystemExit("unexpected Palimpsest Compose container count")
+if len(rows) > 128:
+    raise SystemExit("global Compose inventory exceeds its row ceiling")
 seen: set[str] = set()
 for row in rows:
     fields = row.split("\t")
-    if len(fields) != 2:
-        raise SystemExit("malformed Palimpsest Compose inventory row")
-    service, container_id = fields
-    if service not in allowed or service in seen:
-        raise SystemExit(f"unexpected or duplicate Compose service: {service!r}")
+    if len(fields) != 5:
+        raise SystemExit("malformed global Compose inventory row")
+    project, service, working_dir, config_files, container_id = fields
+    if not project or len(project) > 128 or not service or len(service) > 128:
+        raise SystemExit("malformed Compose project or service label")
+    if len(working_dir) > 4096 or len(config_files) > 4096:
+        raise SystemExit("oversized Compose provenance label")
     if re.fullmatch(r"[0-9a-f]{64}", container_id) is None:
         raise SystemExit(f"malformed Compose container ID for {service!r}")
+    palimpsest_origin = (
+        working_dir == expected_working_dir
+        or config_files == expected_config_file
+    )
+    if project != "palimpsest" and palimpsest_origin:
+        raise SystemExit(
+            "Palimpsest Compose provenance exists in alternate project: "
+            f"{project!r}/{service!r}"
+        )
+    if project != "palimpsest":
+        continue
+    if (
+        working_dir != expected_working_dir
+        or config_files != expected_config_file
+    ):
+        raise SystemExit(
+            f"unexpected Palimpsest Compose provenance for {service!r}"
+        )
+    if service not in allowed or service in seen:
+        raise SystemExit(f"unexpected or duplicate Palimpsest service: {service!r}")
     seen.add(service)
 if not required <= seen:
     raise SystemExit(f"missing required Compose services: {sorted(required - seen)}")
@@ -1586,7 +1678,9 @@ for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
   compose_container_state "$compose_service"
 done
 verify_compose_container_inventory
-test "${COMPOSE_WAS_RUNNING[worker]}" = 1
+for compose_service in worker worker-collectors worker-warehouse; do
+  test "${COMPOSE_WAS_RUNNING[$compose_service]}" = 1
+done
 for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
   if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
     test "$(docker image inspect "${COMPOSE_IMAGE_ID_BEFORE[$compose_service]}" \
@@ -1607,13 +1701,13 @@ for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
   fi
 done
 for required_service in postgres redis api; do
-  required_container_id="$(ops/docker/prod-compose \
+  required_container_id="$(release_compose \
     "${COMPOSE_ALL_PROFILES[@]}" ps -q "$required_service")"
   [[ "$required_container_id" =~ ^[0-9a-f]{64}$ ]]
   test "$(docker inspect "$required_container_id" \
     --format '{{.State.Status}}')" = running
 done
-PREVIOUS_API_CONTAINER_ID="$(ops/docker/prod-compose \
+PREVIOUS_API_CONTAINER_ID="$(release_compose \
   "${COMPOSE_ALL_PROFILES[@]}" ps -q api)"
 PREVIOUS_API_IMAGE_ID="$(docker inspect "$PREVIOUS_API_CONTAINER_ID" \
   --format '{{.Image}}')"
@@ -1672,6 +1766,13 @@ FORWARD_REPAIR_CONTRACT_PATHS=(
   ops/osint-sync/install-host-bundle.sh
   ops/osint-sync/public_osint_sync.py
   ops/node-offsite/install-host-bundle.sh
+  ops/backup/palimpsest-backup.sh
+  ops/systemd/palimpsest-backup.service
+  ops/systemd/palimpsest-backup.timer
+  ops/systemd/palimpsest-backup.override.example.conf
+  ops/systemd/palimpsest-evidence-wire.service
+  ops/systemd/palimpsest-evidence-wire.timer
+  ops/systemd/palimpsest-event-analysis-live.service
   ops/systemd/palimpsest-public-osint-sync.service
   ops/systemd/palimpsest-backup.release-quiesce.conf
 )
@@ -2006,6 +2107,138 @@ case "${#BACKUP_ON_SUCCESS_UNITS[@]}" in
   *) printf 'unexpected backup OnSuccess trigger set: %s\n' \
        "$BACKUP_ON_SUCCESS" >&2; exit 1 ;;
 esac
+
+git_blob_sha256() {
+  release_git show "$1:$2" | sha256sum | awk '{print $1}'
+}
+
+verify_installed_unit_blob() {
+  local commit="$1" repository_path="$2" installed_path="$3"
+  sudo test -f "$installed_path"
+  sudo test ! -L "$installed_path"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$installed_path")" = "0:0:644:1"
+  test "$(sudo sha256sum "$installed_path" | awk '{print $1}')" \
+    = "$(git_blob_sha256 "$commit" "$repository_path")"
+}
+
+verify_installed_unit_blob_one_of() {
+  local repository_path="$1" installed_path="$2"
+  local actual candidate commit matched=''
+  sudo test -f "$installed_path"
+  sudo test ! -L "$installed_path"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$installed_path")" = "0:0:644:1"
+  actual="$(sudo sha256sum "$installed_path" | awk '{print $1}')"
+  for commit in "$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_PREVIOUS_DEPLOY_SHA"; do
+    candidate="$(git_blob_sha256 "$commit" "$repository_path")"
+    if [[ "$actual" == "$candidate" ]]; then
+      matched="$commit"
+      break
+    fi
+  done
+  if [[ -z "$matched" ]]; then
+    printf 'installed unit matches neither pinned predecessor: %s\n' \
+      "$installed_path" >&2
+    return 1
+  fi
+  printf '%s\n' "$matched"
+}
+
+verify_backup_dropins() {
+  local commit="$1" expected_quiesce="$2" dropin actual expected
+  sudo test -d /etc/systemd/system/palimpsest-backup.service.d
+  sudo test ! -L /etc/systemd/system/palimpsest-backup.service.d
+  expected=''
+  while IFS= read -r dropin; do
+    [[ -n "$dropin" ]] || continue
+    case "$dropin" in
+      /etc/systemd/system/palimpsest-backup.service.d/override.conf)
+        verify_installed_unit_blob "$commit" \
+          ops/systemd/palimpsest-backup.override.example.conf "$dropin"
+        ;;
+      /etc/systemd/system/palimpsest-backup.service.d/offsite-trigger.conf)
+        verify_installed_unit_blob "$commit" \
+          ops/systemd/palimpsest-backup.offsite-trigger.conf "$dropin"
+        ;;
+      "$BACKUP_RELEASE_QUIESCE_TARGET")
+        test "$expected_quiesce" = 1
+        verify_installed_unit_blob "$commit" \
+          "$BACKUP_RELEASE_QUIESCE_SOURCE" "$dropin"
+        ;;
+      *) printf 'unexpected backup unit drop-in: %s\n' "$dropin" >&2; return 1 ;;
+    esac
+    expected+="${expected:+$'\n'}$dropin"
+  done < <(sudo find /etc/systemd/system/palimpsest-backup.service.d \
+    -mindepth 1 -maxdepth 1 \( -type f -o -type l \) -printf '%p\n' \
+    | LC_ALL=C sort)
+  actual="$(systemctl show --property=DropInPaths --value \
+    palimpsest-backup.service | tr ' ' '\n' | sed '/^$/d' | LC_ALL=C sort)"
+  test "$actual" = "$expected"
+  if (( expected_quiesce == 1 )); then
+    grep -Fxq "$BACKUP_RELEASE_QUIESCE_TARGET" <<<"$expected"
+  else
+    if grep -Fxq "$BACKUP_RELEASE_QUIESCE_TARGET" <<<"$expected"; then
+      printf 'unexpected release quiesce drop-in remains installed\n' >&2
+      return 1
+    fi
+  fi
+}
+
+verify_release_service_success_triggers() {
+  local expected_backup="$1" expected_evidence="$2"
+  local unit load_state actual expected
+  for unit in "${RELEASE_SERVICES[@]}"; do
+    load_state="$(systemctl show --property=LoadState --value "$unit")"
+    case "$load_state" in
+      loaded)
+        actual="$(systemctl show --property=OnSuccess --value "$unit")"
+        ;;
+      not-found) actual='' ;;
+      *) printf 'unexpected service load state: %s (%s)\n' \
+           "$unit" "$load_state" >&2; return 1 ;;
+    esac
+    case "$unit" in
+      palimpsest-backup.service) expected="$expected_backup" ;;
+      palimpsest-evidence-wire.service) expected="$expected_evidence" ;;
+      *) expected='' ;;
+    esac
+    if [[ "$actual" != "$expected" ]]; then
+      printf 'unexpected OnSuccess set for %s: %s\n' "$unit" "$actual" >&2
+      return 1
+    fi
+  done
+}
+
+# The pre-change backup executes script bytes from the clean current checkout,
+# but its loaded unit/drop-ins must be the exact prior deployment authority.
+verify_installed_unit_blob "$COMPATIBLE_ROLLBACK_SHA" \
+  ops/systemd/palimpsest-backup.service \
+  /etc/systemd/system/palimpsest-backup.service
+verify_backup_dropins "$COMPATIBLE_ROLLBACK_SHA" 0
+test "$(systemctl show --property=FragmentPath --value \
+  palimpsest-backup.service)" = /etc/systemd/system/palimpsest-backup.service
+test "$(systemctl show --property=User --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=Group --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=WorkingDirectory --value \
+  palimpsest-backup.service)" = /home/palimpsest/palimpsest
+PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY="$(verify_installed_unit_blob_one_of \
+  ops/systemd/palimpsest-evidence-wire.service \
+  /etc/systemd/system/palimpsest-evidence-wire.service)"
+PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY="$(verify_installed_unit_blob_one_of \
+  ops/systemd/palimpsest-evidence-wire.timer \
+  /etc/systemd/system/palimpsest-evidence-wire.timer)"
+[[ "$PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
+[[ "$PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
+EVIDENCE_WIRE_ON_SUCCESS="$(systemctl show --property=OnSuccess --value \
+  palimpsest-evidence-wire.service)"
+case "$EVIDENCE_WIRE_ON_SUCCESS" in
+  ''|palimpsest-event-analysis-live.service) ;;
+  *) printf 'unexpected evidence-wire OnSuccess set: %s\n' \
+       "$EVIDENCE_WIRE_ON_SUCCESS" >&2; exit 1 ;;
+esac
+verify_release_service_success_triggers \
+  "$BACKUP_ON_SUCCESS" "$EVIDENCE_WIRE_ON_SUCCESS"
 if (( NODE_OFFSITE_CONFIGURED == 0 )) \
     && { [[ "${RELEASE_ENABLEMENT[palimpsest-node-offsite-backup.timer]}" \
         == enabled* ]] \
@@ -2048,10 +2281,10 @@ done
 # gate fences each exact node only after two consecutive zero-work samples; it
 # never purges, revokes, or terminates a task.
 if [[ "${COMPOSE_WAS_RUNNING[beat]}" == 1 ]]; then
-  ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" stop beat
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat
 fi
 for _ in 1 2; do
-  beat_id="$(ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" \
+  beat_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
     ps -q --all beat)"
   if [[ -n "$beat_id" ]]; then
     test "$(docker inspect "$beat_id" --format '{{.State.Status}}')" = exited
@@ -2059,7 +2292,7 @@ for _ in 1 2; do
   sleep 2
 done
 CELERY_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-prechange.json"
-ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" exec -T worker \
+release_compose "${COMPOSE_ALL_PROFILES[@]}" exec -T worker \
   /usr/bin/python3 - quiesce \
   --topology-b64 "$CELERY_TOPOLOGY_BEFORE_B64" \
   --timeout-seconds 10800 --interval-seconds 5 \
@@ -2158,12 +2391,12 @@ if not all(checks):
 # available for candidate migration and observer preflight.
 for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
   if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
-    ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" stop "$compose_service"
+    release_compose "${COMPOSE_ALL_PROFILES[@]}" stop "$compose_service"
   fi
 done
 for _ in 1 2; do
   for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
-    writer_id="$(ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" \
+    writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
       ps -q --all "$compose_service")"
     if [[ -n "$writer_id" ]]; then
       test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
@@ -2175,7 +2408,7 @@ done
 release_git switch --detach "$EXPECTED_DEPLOY_SHA"
 test "$(release_git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"
 test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
-ops/docker/prod-compose build
+release_compose build
 CANDIDATE_IMAGE_ID="$(docker image inspect palimpsest/app:local \
   --format '{{.Id}}')"
 [[ "$CANDIDATE_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
@@ -2183,10 +2416,88 @@ test "$(docker image inspect palimpsest/app:local --format \
   '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
   = "$EXPECTED_DEPLOY_SHA"
 
+# Install the exact target backup/newsroom units while every producer is held.
+# The target backup unit is required before the v4 snapshot because it adds the
+# witness history root to the sandbox and switches the canonical service base.
+CANDIDATE_UNIT_SOURCES=(
+  ops/systemd/palimpsest-backup.service
+  ops/systemd/palimpsest-backup.timer
+  ops/systemd/palimpsest-backup.override.example.conf
+  ops/systemd/palimpsest-evidence-wire.service
+  ops/systemd/palimpsest-evidence-wire.timer
+  ops/systemd/palimpsest-event-analysis-live.service
+)
+CANDIDATE_UNIT_TARGETS=(
+  /etc/systemd/system/palimpsest-backup.service
+  /etc/systemd/system/palimpsest-backup.timer
+  /etc/systemd/system/palimpsest-backup.service.d/override.conf
+  /etc/systemd/system/palimpsest-evidence-wire.service
+  /etc/systemd/system/palimpsest-evidence-wire.timer
+  /etc/systemd/system/palimpsest-event-analysis-live.service
+)
+for unit_index in "${!CANDIDATE_UNIT_SOURCES[@]}"; do
+  candidate_unit_source="${CANDIDATE_UNIT_SOURCES[$unit_index]}"
+  candidate_unit_target="${CANDIDATE_UNIT_TARGETS[$unit_index]}"
+  sudo install -o root -g root -m 0644 \
+    "$candidate_unit_source" "$candidate_unit_target"
+  sudo cmp -s "$candidate_unit_source" "$candidate_unit_target"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$candidate_unit_target")" \
+    = "0:0:644:1"
+done
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  sudo install -o root -g root -m 0644 "$BACKUP_RELEASE_QUIESCE_SOURCE" \
+    "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo cmp -s "$BACKUP_RELEASE_QUIESCE_SOURCE" \
+    "$BACKUP_RELEASE_QUIESCE_TARGET"
+  BACKUP_RELEASE_QUIESCE_SHA256="$(sudo sha256sum \
+    "$BACKUP_RELEASE_QUIESCE_TARGET" | awk '{print $1}')"
+  [[ "$BACKUP_RELEASE_QUIESCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  CANDIDATE_UNIT_TARGETS+=("$BACKUP_RELEASE_QUIESCE_TARGET")
+fi
+fsync_installed_paths "${CANDIDATE_UNIT_TARGETS[@]}"
+sudo systemd-analyze verify \
+  /etc/systemd/system/palimpsest-backup.service \
+  /etc/systemd/system/palimpsest-backup.timer \
+  /etc/systemd/system/palimpsest-evidence-wire.service \
+  /etc/systemd/system/palimpsest-evidence-wire.timer \
+  /etc/systemd/system/palimpsest-event-analysis-live.service
+sudo systemctl daemon-reload
+for unit_index in "${!CANDIDATE_UNIT_SOURCES[@]}"; do
+  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+    "${CANDIDATE_UNIT_SOURCES[$unit_index]}" \
+    "${CANDIDATE_UNIT_TARGETS[$unit_index]}"
+done
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+test "$(systemctl show --property=FragmentPath --value \
+  palimpsest-backup.service)" = /etc/systemd/system/palimpsest-backup.service
+test "$(systemctl show --property=User --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=Group --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=WorkingDirectory --value \
+  palimpsest-backup.service)" = /home/palimpsest/palimpsest
+for candidate_unit in \
+    palimpsest-evidence-wire.service \
+    palimpsest-evidence-wire.timer \
+    palimpsest-event-analysis-live.service; do
+  test "$(systemctl show --property=FragmentPath --value "$candidate_unit")" \
+    = "/etc/systemd/system/$candidate_unit"
+  test -z "$(systemctl show --property=DropInPaths --value "$candidate_unit")"
+  test "$(systemctl show --property=NeedDaemonReload --value "$candidate_unit")" \
+    = no
+done
+candidate_backup_on_success="$BACKUP_ON_SUCCESS"
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  candidate_backup_on_success=''
+fi
+verify_release_service_success_triggers \
+  "$candidate_backup_on_success" palimpsest-event-analysis-live.service
+
 # The old v3 snapshot above is still the exact core/database restore point, but
 # its old image could not archive witness history. Before migration or bundle
-# installation, start only the candidate default worker against the already
-# empty broker, prove it quiet, fence it, and use its content-addressed image to
+# installation, start the three mandatory workers against the already empty
+# broker, prove them quiet, fence them, and use the content-addressed image to
 # create the required v4 snapshot with the append-only witness prefix.
 WITNESS_HISTORY_DIR='/home/palimpsest/.palimpsest-witness'
 sudo test -d "$WITNESS_HISTORY_DIR"
@@ -2233,22 +2544,7 @@ if [[ "$WITNESS_ACTUAL_INVENTORY" == "$WITNESS_EXPECTED_WITH_STATUS" ]]; then
     = "$LEGACY_WITNESS_STATUS_SHA256"
   test "$(sudo stat -c '%u:%g:%a:%h' "$LEGACY_WITNESS_STATUS_PATH")" \
     = "0:0:600:1"
-  sudo python3 - "$LEGACY_WITNESS_STATUS_PATH" \
-    "$(dirname "$LEGACY_WITNESS_STATUS_PATH")" <<'PY'
-import os
-import sys
-
-descriptor = os.open(sys.argv[1], os.O_RDONLY | os.O_NOFOLLOW)
-try:
-    os.fsync(descriptor)
-finally:
-    os.close(descriptor)
-directory = os.open(sys.argv[2], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(directory)
-finally:
-    os.close(directory)
-PY
+  fsync_installed_paths "$LEGACY_WITNESS_STATUS_PATH"
   sudo rm -- "$WITNESS_HISTORY_DIR/status.json"
   sudo python3 - "$WITNESS_HISTORY_DIR" <<'PY'
 import os
@@ -2279,27 +2575,43 @@ for witness_file in "${WITNESS_REQUIRED_FILES[@]}"; do
 done
 PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_SNAPSHOT"
 PRE_CHANGE_V4_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
-ops/docker/prod-compose up -d --no-deps worker
-V4_BACKUP_WORKER_ID="$(ops/docker/prod-compose ps -q worker)"
-[[ "$V4_BACKUP_WORKER_ID" =~ ^[0-9a-f]{64}$ ]]
-v4_worker_ready=0
-for (( v4_worker_attempt=1; v4_worker_attempt<=45; v4_worker_attempt++ )); do
-  if [[ "$(docker inspect "$V4_BACKUP_WORKER_ID" \
-      --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" \
-      == healthy ]]; then
-    v4_worker_ready=1
-    break
-  fi
-  sleep 2
+V4_BACKUP_WORKER_SERVICES=(worker worker-collectors worker-warehouse)
+release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+  "${V4_BACKUP_WORKER_SERVICES[@]}"
+declare -A V4_BACKUP_CONTAINER_ID V4_BACKUP_HOSTNAME
+v4_backup_topology_arguments=()
+for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
+  V4_BACKUP_CONTAINER_ID["$compose_service"]="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")"
+  [[ "${V4_BACKUP_CONTAINER_ID[$compose_service]}" =~ ^[0-9a-f]{64}$ ]]
+  v4_worker_ready=0
+  for (( v4_worker_attempt=1; v4_worker_attempt<=45; v4_worker_attempt++ )); do
+    if [[ "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" \
+        == healthy ]]; then
+      v4_worker_ready=1
+      break
+    fi
+    sleep 2
+  done
+  (( v4_worker_ready == 1 ))
+  test "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  V4_BACKUP_HOSTNAME["$compose_service"]="$(docker inspect \
+    "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+    --format '{{.Config.Hostname}}')"
+  case "$compose_service" in
+    worker) v4_prefix=default ;;
+    worker-collectors) v4_prefix=collectors ;;
+    worker-warehouse) v4_prefix=warehouse ;;
+    *) exit 1 ;;
+  esac
+  v4_backup_topology_arguments+=(--pair \
+    "${v4_prefix}@${V4_BACKUP_HOSTNAME[$compose_service]}=${COMPOSE_QUEUE_BY_SERVICE[$compose_service]}")
 done
-(( v4_worker_ready == 1 ))
-test "$(docker inspect "$V4_BACKUP_WORKER_ID" --format '{{.Image}}')" \
-  = "$CANDIDATE_IMAGE_ID"
-V4_BACKUP_WORKER_HOSTNAME="$(docker inspect "$V4_BACKUP_WORKER_ID" \
-  --format '{{.Config.Hostname}}')"
+V4_BACKUP_WORKER_ID="${V4_BACKUP_CONTAINER_ID[worker]}"
 V4_BACKUP_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
-  encode-topology --pair \
-  "default@${V4_BACKUP_WORKER_HOSTNAME}=celery")"
+  encode-topology "${v4_backup_topology_arguments[@]}")"
 CELERY_V4_BACKUP_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-v4-backup-fenced.json"
 docker exec -i "$V4_BACKUP_WORKER_ID" /usr/bin/python3 - quiesce \
   --topology-b64 "$V4_BACKUP_TOPOLOGY_B64" \
@@ -2337,9 +2649,12 @@ if not all(checks):
 V4_BACKUP_VERIFICATION_PATH="$OBSERVER_PREFLIGHT_DIR/v4-backup-verification.json"
 printf '%s\n' "$V4_BACKUP_VERIFICATION_JSON" \
   >"$V4_BACKUP_VERIFICATION_PATH"
-ops/docker/prod-compose stop worker
-test "$(docker inspect "$V4_BACKUP_WORKER_ID" \
-  --format '{{.State.Status}}')" = exited
+release_compose "${COMPOSE_ALL_PROFILES[@]}" stop \
+  "${V4_BACKUP_WORKER_SERVICES[@]}"
+for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
+  test "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+    --format '{{.State.Status}}')" = exited
+done
 PRE_CHANGE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
 
 # Certify the exact built image and receipt without installing a consumer unit.
@@ -2377,6 +2692,10 @@ sudo /usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
 sudo /usr/local/libexec/palimpsest-common-crawl/current/verify-host-bundle.sh
 sudo /usr/local/libexec/palimpsest-public-osint-sync/current/verify-host-bundle.sh
 sudo /usr/local/libexec/palimpsest-node-offsite/current/verify-host-bundle.sh
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+verify_release_service_success_triggers \
+  "$candidate_backup_on_success" palimpsest-event-analysis-live.service
 
 # All Requires=/After= providers now exist in /etc. Verify the installed graph
 # together before any candidate migration or long-lived process starts.
@@ -2518,15 +2837,15 @@ fi
 # migration and read-only API first; no scheduler or worker may be started by a
 # broad Compose command. The authority mount exists because the first provider
 # sync succeeded above.
-ops/docker/prod-compose --profile api up -d postgres redis migrate api
+release_compose --profile api up -d postgres redis migrate api
 for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
-  writer_id="$(ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" \
+  writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
     ps -q --all "$compose_service")"
   if [[ -n "$writer_id" ]]; then
     test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
   fi
 done
-test "$(ops/docker/prod-compose port api 8000)" = "127.0.0.1:8010"
+test "$(release_compose port api 8000)" = "127.0.0.1:8010"
 api_ready=0
 for (( api_attempt=1; api_attempt<=30; api_attempt++ )); do
   if curl --fail --silent --connect-timeout 1 --max-time 2 \
@@ -2542,17 +2861,22 @@ if (( api_ready != 1 )); then
   exit 1
 fi
 
-# Start exactly the two candidate workers needed for synchronous recovery.
-# Beat and optional warehouse/velocity consumers stay stopped.
-ops/docker/prod-compose --profile collectors up -d --no-deps \
-  worker worker-collectors
-CANDIDATE_WORKER_ID="$(ops/docker/prod-compose ps -q worker)"
-COLLECTOR_CONTAINER_ID="$(ops/docker/prod-compose \
+# Start the three mandatory production roles. Beat and the optional velocity
+# consumer stay stopped; the exact gate proves the mandatory set before the
+# collector runs synchronous recovery.
+release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+  worker worker-collectors worker-warehouse
+CANDIDATE_WORKER_ID="$(release_compose ps -q worker)"
+COLLECTOR_CONTAINER_ID="$(release_compose \
   --profile collectors ps -q worker-collectors)"
+WAREHOUSE_CONTAINER_ID="$(release_compose \
+  --profile warehouse ps -q worker-warehouse)"
 [[ "$CANDIDATE_WORKER_ID" =~ ^[0-9a-f]{64}$ ]]
 [[ "$COLLECTOR_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+[[ "$WAREHOUSE_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
 for candidate_container_id in \
-    "$CANDIDATE_WORKER_ID" "$COLLECTOR_CONTAINER_ID"; do
+    "$CANDIDATE_WORKER_ID" "$COLLECTOR_CONTAINER_ID" \
+    "$WAREHOUSE_CONTAINER_ID"; do
   candidate_ready=0
   for (( candidate_attempt=1; candidate_attempt<=45; candidate_attempt++ )); do
     if [[ "$(docker inspect "$candidate_container_id" \
@@ -2587,10 +2911,13 @@ CANDIDATE_WORKER_HOSTNAME="$(docker inspect "$CANDIDATE_WORKER_ID" \
   --format '{{.Config.Hostname}}')"
 CANDIDATE_COLLECTOR_HOSTNAME="$(docker inspect "$COLLECTOR_CONTAINER_ID" \
   --format '{{.Config.Hostname}}')"
+WAREHOUSE_WORKER_HOSTNAME="$(docker inspect "$WAREHOUSE_CONTAINER_ID" \
+  --format '{{.Config.Hostname}}')"
 CELERY_CANDIDATE_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
   encode-topology \
   --pair "default@${CANDIDATE_WORKER_HOSTNAME}=celery" \
-  --pair "collectors@${CANDIDATE_COLLECTOR_HOSTNAME}=collectors")"
+  --pair "collectors@${CANDIDATE_COLLECTOR_HOSTNAME}=collectors" \
+  --pair "warehouse@${WAREHOUSE_WORKER_HOSTNAME}=warehouse")"
 [[ "$CELERY_CANDIDATE_TOPOLOGY_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
 CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-candidate-consuming.json"
 docker exec -i "$CANDIDATE_WORKER_ID" /usr/bin/python3 - check \
@@ -2658,10 +2985,11 @@ docker exec -i "$CANDIDATE_WORKER_ID" /usr/bin/python3 - quiesce \
   --timeout-seconds 10800 --interval-seconds 5 \
   --inspect-timeout-seconds 15 \
   <"$CELERY_GATE_PATH" >"$CELERY_CANDIDATE_FENCED_RECEIPT_PATH"
-ops/docker/prod-compose --profile collectors stop worker worker-collectors
+release_compose "${COMPOSE_ALL_PROFILES[@]}" stop \
+  worker worker-collectors worker-warehouse
 for _ in 1 2; do
   for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
-    writer_id="$(ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" \
+    writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
       ps -q --all "$compose_service")"
     if [[ -n "$writer_id" ]]; then
       test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
@@ -2826,23 +3154,66 @@ MAIN_RELATION="$(gh api \
 
 PHASE2_TMP_DIR="$(mktemp -d)"
 chmod 0700 "$PHASE2_TMP_DIR"
+OSINT_WORKFLOW='osint-china-v2-refresh.yml'
+OSINT_WORKFLOW_RESTORE_DISABLED=0
+osint_workflow_state() {
+  gh api \
+    "repos/$PALIMPSEST_REPOSITORY/actions/workflows/$OSINT_WORKFLOW" \
+    --jq .state
+}
+restore_osint_workflow_freeze() {
+  local workflow_state
+  (( OSINT_WORKFLOW_RESTORE_DISABLED == 1 )) || return 0
+  for _ in {1..3}; do
+    workflow_state="$(osint_workflow_state)" || workflow_state=''
+    if [[ "$workflow_state" == disabled_manually ]]; then
+      OSINT_WORKFLOW_RESTORE_DISABLED=0
+      return 0
+    fi
+    if gh workflow disable "$OSINT_WORKFLOW" \
+        --repo "$PALIMPSEST_REPOSITORY"; then
+      workflow_state="$(osint_workflow_state)" || workflow_state=''
+      if [[ "$workflow_state" == disabled_manually ]]; then
+        OSINT_WORKFLOW_RESTORE_DISABLED=0
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  printf 'failed to restore the OSINT workflow freeze\n' >&2
+  return 1
+}
 cleanup_phase2() {
+  local original_status=$? restore_status=0
+  trap - EXIT
+  set +e
+  restore_osint_workflow_freeze || restore_status=$?
   rm -rf -- "$PHASE2_TMP_DIR"
+  if (( original_status != 0 )); then
+    exit "$original_status"
+  fi
+  exit "$restore_status"
 }
 trap cleanup_phase2 EXIT
+test "$(osint_workflow_state)" = disabled_manually
 OSINT_RUNS_BEFORE_TMP="$PHASE2_TMP_DIR/runs-before.json"
 OSINT_RUNS_AFTER_TMP="$PHASE2_TMP_DIR/runs-after.json"
 gh run list --repo "$PALIMPSEST_REPOSITORY" \
-  --workflow osint-china-v2-refresh.yml --event workflow_dispatch \
+  --workflow "$OSINT_WORKFLOW" --event workflow_dispatch \
   --limit 100 --json databaseId,event,headSha >"$OSINT_RUNS_BEFORE_TMP"
-gh workflow run osint-china-v2-refresh.yml \
+OSINT_WORKFLOW_RESTORE_DISABLED=1
+gh workflow enable "$OSINT_WORKFLOW" \
+  --repo "$PALIMPSEST_REPOSITORY"
+test "$(osint_workflow_state)" = active
+gh workflow run "$OSINT_WORKFLOW" \
   --repo "$PALIMPSEST_REPOSITORY" --ref main \
   -f expected_deploy_sha="$EXPECTED_DEPLOY_SHA" \
   -f release_nonce="$RELEASE_RESUME_TOKEN"
+restore_osint_workflow_freeze
 OSINT_RUN_ID=''
 for _ in {1..30}; do
   gh run list --repo "$PALIMPSEST_REPOSITORY" \
-    --workflow osint-china-v2-refresh.yml --event workflow_dispatch \
+    --workflow "$OSINT_WORKFLOW" --event workflow_dispatch \
     --limit 100 --json databaseId,event,headSha >"$OSINT_RUNS_AFTER_TMP"
   OSINT_RUN_ID="$(python3 - "$OSINT_RUNS_BEFORE_TMP" \
     "$OSINT_RUNS_AFTER_TMP" "$EXPECTED_DEPLOY_SHA" <<'PY'
@@ -3203,6 +3574,7 @@ if ! declare -p \
     COMPOSE_ALL_PROFILES COMPOSE_WRITER_SERVICES CELERY_WORKER_SERVICES \
     COMPOSE_WAS_RUNNING COMPOSE_CONTAINER_ID_BEFORE COMPOSE_IMAGE_ID_BEFORE \
     COMPOSE_NODE_BEFORE COMPOSE_QUEUE_BY_SERVICE \
+    CANDIDATE_UNIT_SOURCES CANDIDATE_UNIT_TARGETS \
     RELEASE_HANDOFF_B64 \
     PROOF_PIN_SEQUENCE ACTIVE_PROOF_PIN \
     OBSERVER_CONTROLLER_SHA OBSERVER_PREFLIGHT_DIR \
@@ -3224,6 +3596,7 @@ if ! declare -p \
     EXPECTED_PREVIOUS_CHECKOUT_SHA EXPECTED_PREVIOUS_DEPLOY_SHA \
     PREVIOUS_CHECKOUT_SHA PREVIOUS_DEPLOY_SHA COMPATIBLE_ROLLBACK_SHA \
     TRANSACTION_DIRECTION PHASE1_SHELL_PID PHASE1_FAIL_SAFE_ARMED \
+    RELEASE_DOCKER_CONFIG \
     BACKUP_RELEASE_QUIESCE_ADDED BACKUP_RELEASE_QUIESCE_TARGET \
     BACKUP_RELEASE_QUIESCE_SHA256 BACKUP_ON_SUCCESS \
     LEGACY_WITNESS_STATUS_PATH \
@@ -3251,8 +3624,11 @@ if ! declare -p \
     || ! [[ "$WATCHDOG_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
     || ! [[ "$WITNESS_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
     || ! [[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
-    || ! declare -F release_git read_enablement stop_loaded_unit \
+    || ! declare -F release_git release_compose read_enablement stop_loaded_unit \
       temporarily_disable_activator release_quiesce_all phase1_fail_safe \
+      fsync_installed_paths git_blob_sha256 verify_installed_unit_blob \
+      verify_backup_dropins \
+      verify_release_service_success_triggers \
       pin_unit_for_proof release_proof_pin normalized_bleed_sha256 \
       verify_compose_container_inventory verify_observer_unit_provenance \
       verify_observer_units \
@@ -3287,6 +3663,14 @@ case "$BACKUP_RELEASE_QUIESCE_ADDED" in
     ;;
   *) exit 1 ;;
 esac
+phase3_backup_on_success="$BACKUP_ON_SUCCESS"
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  phase3_backup_on_success=''
+fi
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+verify_release_service_success_triggers \
+  "$phase3_backup_on_success" palimpsest-event-analysis-live.service
 if [[ -n "$LEGACY_WITNESS_STATUS_PATH" ]]; then
   test "$LEGACY_WITNESS_STATUS_PATH" \
     = "/var/lib/palimpsest-release/pre-release-witness-status/${RELEASE_RESUME_TOKEN}.json"
@@ -3332,7 +3716,7 @@ for held_unit in "${RELEASE_ACTIVATORS[@]}"; do
   esac
 done
 for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
-  held_container_id="$(ops/docker/prod-compose \
+  held_container_id="$(release_compose \
     "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
   if [[ -n "$held_container_id" ]] \
       && [[ "$(docker inspect "$held_container_id" \
@@ -3455,21 +3839,7 @@ RELEASE_PROOF_FILE_SHA256="$(sudo sha256sum "$RELEASE_PROOF_PATH" \
 RELEASE_PROOF_DIR="$(dirname "$RELEASE_PROOF_PATH")"
 sudo test -d "$RELEASE_PROOF_DIR"
 sudo test ! -L "$RELEASE_PROOF_DIR"
-sudo python3 - "$RELEASE_PROOF_PATH" "$RELEASE_PROOF_DIR" <<'PY'
-import os
-import sys
-
-descriptor = os.open(sys.argv[1], os.O_RDONLY | os.O_NOFOLLOW)
-try:
-    os.fsync(descriptor)
-finally:
-    os.close(descriptor)
-directory = os.open(sys.argv[2], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(directory)
-finally:
-    os.close(directory)
-PY
+fsync_installed_paths "$RELEASE_PROOF_PATH"
 rm -f -- "$RELEASE_PROOF_TMP" "$SYNC_RELEASE_PROOF_TMP"
 PUBLIC_BLEED_URL="https://palimpsest.info/readings/bleedthrough-latest.json?release=$EXPECTED_DEPLOY_SHA"
 PUBLIC_BLEED_TMP="$(mktemp /tmp/palimpsest-public-bleed.XXXXXX)"
@@ -3717,6 +4087,15 @@ else
   test "$(systemctl show --property=OnSuccess --value \
     palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
 fi
+for unit_index in "${!CANDIDATE_UNIT_SOURCES[@]}"; do
+  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+    "${CANDIDATE_UNIT_SOURCES[$unit_index]}" \
+    "${CANDIDATE_UNIT_TARGETS[$unit_index]}"
+done
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+verify_release_service_success_triggers \
+  "$phase3_backup_on_success" palimpsest-event-analysis-live.service
 if [[ -n "$LEGACY_WITNESS_STATUS_PATH" ]]; then
   test "$(sudo sha256sum "$LEGACY_WITNESS_STATUS_PATH" | awk '{print $1}')" \
     = "$LEGACY_WITNESS_STATUS_SHA256"
@@ -3812,13 +4191,19 @@ for line in pathlib.Path(compose_path).read_text(encoding="utf-8").splitlines():
     }
 units = {}
 for name in (
+    "/etc/systemd/system/palimpsest-backup.service",
+    "/etc/systemd/system/palimpsest-backup.timer",
+    "/etc/systemd/system/palimpsest-backup.service.d/override.conf",
+    "/etc/systemd/system/palimpsest-evidence-wire.service",
+    "/etc/systemd/system/palimpsest-evidence-wire.timer",
+    "/etc/systemd/system/palimpsest-event-analysis-live.service",
     "/etc/systemd/system/palimpsest-freshness-watchdog.service",
     "/etc/systemd/system/palimpsest-freshness-watchdog.timer",
     "/etc/systemd/system/palimpsest-witness.service",
     "/etc/systemd/system/palimpsest-witness.timer",
 ):
     payload = pathlib.Path(name).read_bytes()
-    units[pathlib.Path(name).name] = digest_bytes(payload)
+    units[name] = digest_bytes(payload)
 handoff = load_json(handoff_path)
 receipt = {
     "schema_version": "palimpsest-host-release.v1",
@@ -3906,21 +4291,7 @@ test "$(sudo stat -c '%u:%g:%a:%h' "$PROOF_COMPLETE_RECEIPT_PATH")" \
 PROOF_COMPLETE_RECEIPT_SHA256="$(sudo sha256sum \
   "$PROOF_COMPLETE_RECEIPT_PATH" | awk '{print $1}')"
 [[ "$PROOF_COMPLETE_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
-sudo python3 - "$PROOF_COMPLETE_RECEIPT_PATH" "$RELEASE_RECEIPT_DIR" <<'PY'
-import os
-import sys
-
-file_descriptor = os.open(sys.argv[1], os.O_RDONLY | os.O_NOFOLLOW)
-try:
-    os.fsync(file_descriptor)
-finally:
-    os.close(file_descriptor)
-directory_descriptor = os.open(sys.argv[2], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(directory_descriptor)
-finally:
-    os.close(directory_descriptor)
-PY
+fsync_installed_paths "$PROOF_COMPLETE_RECEIPT_PATH"
 
 restore_activator_enablement() {
   local unit="$1" previous="${RELEASE_ENABLEMENT[$1]}" first_install='disable'
@@ -3974,11 +4345,11 @@ for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
     compose_restore_services+=("$compose_service")
   fi
 done
-ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
   "${compose_restore_services[@]}"
 restored_topology_arguments=()
 for compose_service in "${compose_restore_services[@]}"; do
-  restored_container_id="$(ops/docker/prod-compose \
+  restored_container_id="$(release_compose \
     "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")"
   [[ "$restored_container_id" =~ ^[0-9a-f]{64}$ ]]
   restored_ready=0
@@ -4009,7 +4380,7 @@ done
 CELERY_RESTORED_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
   encode-topology "${restored_topology_arguments[@]}")"
 CELERY_RESTORED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-restored.json"
-restored_default_id="$(ops/docker/prod-compose ps -q worker)"
+restored_default_id="$(release_compose ps -q worker)"
 docker exec -i "$restored_default_id" /usr/bin/python3 - check \
   --consumer-state consuming --topology-b64 "$CELERY_RESTORED_TOPOLOGY_B64" \
   --timeout-seconds 300 --interval-seconds 5 \
@@ -4041,6 +4412,9 @@ PY
 fi
 test "$(systemctl show --property=OnSuccess --value \
   palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
+verify_backup_dropins "$EXPECTED_DEPLOY_SHA" 0
+verify_release_service_success_triggers \
+  "$BACKUP_ON_SUCCESS" palimpsest-event-analysis-live.service
 
 # Restore every captured systemd activator. All three first-install safety
 # timers (sync, watchdog, and witness) become enabled. An unconfigured
@@ -4112,22 +4486,22 @@ done
 # Beat is the final producer restored. Starting it earlier could enqueue work
 # between the last zero-queue proof and systemd state restoration.
 if [[ "${COMPOSE_WAS_RUNNING[beat]}" == 1 ]]; then
-  ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps beat
-  restored_beat_id="$(ops/docker/prod-compose ps -q beat)"
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps beat
+  restored_beat_id="$(release_compose ps -q beat)"
   [[ "$restored_beat_id" =~ ^[0-9a-f]{64}$ ]]
   test "$(docker inspect "$restored_beat_id" --format '{{.State.Status}}')" \
     = running
   test "$(docker inspect "$restored_beat_id" --format '{{.Image}}')" \
     = "$CANDIDATE_IMAGE_ID"
 else
-  ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" stop beat \
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat \
     >/dev/null 2>&1 || true
 fi
 
 COMPOSE_RESTORED_PATH="$OBSERVER_PREFLIGHT_DIR/compose-restored.tsv"
 : >"$COMPOSE_RESTORED_PATH"
 for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
-  restored_container_id="$(ops/docker/prod-compose \
+  restored_container_id="$(release_compose \
     "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
   restored_state=absent
   restored_image_id=''
@@ -4307,21 +4681,7 @@ checks = (
 if not all(checks):
     raise SystemExit("finalized receipt readback is invalid")
 PY
-sudo python3 - "$FINALIZED_RECEIPT_PATH" "$RELEASE_RECEIPT_DIR" <<'PY'
-import os
-import sys
-
-descriptor = os.open(sys.argv[1], os.O_RDONLY | os.O_NOFOLLOW)
-try:
-    os.fsync(descriptor)
-finally:
-    os.close(descriptor)
-directory = os.open(sys.argv[2], os.O_RDONLY | os.O_DIRECTORY)
-try:
-    os.fsync(directory)
-finally:
-    os.close(directory)
-PY
+fsync_installed_paths "$FINALIZED_RECEIPT_PATH"
 release_finalized=1
 PHASE3_FAIL_SAFE_ARMED=0
 trap - ERR EXIT HUP INT TERM
@@ -4356,6 +4716,14 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
   GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
 unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG
 export DOCKER_HOST=unix:///var/run/docker.sock
+unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES \
+  COMPOSE_PATH_SEPARATOR COMPOSE_IGNORE_ORPHANS COMPOSE_REMOVE_ORPHANS \
+  PALIMPSEST_ENV_FILE
+export COMPOSE_PROJECT_NAME=palimpsest
+export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
+test -f "$PALIMPSEST_ENV_FILE"
+test ! -L "$PALIMPSEST_ENV_FILE"
+test -r "$PALIMPSEST_ENV_FILE"
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
 export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
 export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0

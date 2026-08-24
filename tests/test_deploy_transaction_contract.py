@@ -18,9 +18,8 @@ RELEASE_QUIESCE = ROOT / "ops" / "systemd" / "palimpsest-backup.release-quiesce.
 
 def _transaction() -> str:
     guide = DEPLOY_GUIDE.read_text(encoding="utf-8")
-    start = guide.index(
-        'EXPECTED_DEPLOY_SHA="${EXPECTED_DEPLOY_SHA:-REPLACE_WITH_REVIEWED_40_HEX_SHA}"'
-    )
+    section = guide.index("### Phase 1: host transaction")
+    start = guide.index("```bash\n", section) + len("```bash\n")
     end = guide.index("\nRecord `PREVIOUS_DEPLOY_SHA`", start)
     return guide[start:end]
 
@@ -63,8 +62,10 @@ def test_release_is_forward_only_and_binds_both_previous_host_identities() -> No
 
     fetch = transaction.index("release_git -c fetch.fsckObjects=true")
     checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
-    build = transaction.index("ops/docker/prod-compose build")
-    start = transaction.index("ops/docker/prod-compose up -d", build)
+    build = transaction.index("release_compose build")
+    start = transaction.index(
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d', build
+    )
 
     assert "EXPECTED_PREVIOUS_CHECKOUT_SHA=" in transaction
     assert "EXPECTED_PREVIOUS_DEPLOY_SHA=" in transaction
@@ -123,6 +124,11 @@ def test_complete_phase_one_preamble_sanitizes_git_docker_and_replacement_refs()
         "GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE",
         "unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG",
         "export DOCKER_HOST=unix:///var/run/docker.sock",
+        "unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES",
+        "PALIMPSEST_ENV_FILE",
+        "export COMPOSE_PROJECT_NAME=palimpsest",
+        'export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"',
+        'test ! -L "$PALIMPSEST_ENV_FILE"',
         "export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null",
         "export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1",
         "if grep -Eq '[[:space:]]refs/replace/' .git/packed-refs; then",
@@ -134,7 +140,14 @@ def test_complete_phase_one_preamble_sanitizes_git_docker_and_replacement_refs()
 
 def test_operational_release_blocks_are_parseable_with_complete_preambles() -> None:
     blocks = {
+        "compatibility seed": _fenced_bash_block_after(
+            "### First protected rollout: compatibility seed (C0)"
+        ),
         "phase one": _fenced_bash_block_after("### Phase 1: host transaction"),
+        "phase two": _fenced_bash_block_after(
+            "### Phase 2: external OSINT publication"
+        ),
+        "phase three": _fenced_bash_block_after("### Phase 3: host finalization"),
         "forward repair": _fenced_bash_block_after("### Executing a forward repair"),
     }
     for name, block in blocks.items():
@@ -179,6 +192,11 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
         "palimpsest-common-crawl-filter@*.service",
         "palimpsest-investigative-broker@*.service",
         '"${COMPOSE_WRITER_SERVICES[@]}"',
+        "docker ps --no-trunc --filter status=running",
+        "label=com.docker.compose.project.working_dir=$compose_working_dir",
+        "label=com.docker.compose.project.config_files=$compose_config_file",
+        "label=com.docker.compose.service=$compose_service",
+        'docker stop --time 180 "$container_id"',
         "release_proof_pin",
     ):
         assert marker in quiescer_block
@@ -189,10 +207,14 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
         "PREVIOUS_CHECKOUT_SHA",
         "PREVIOUS_DEPLOY_SHA",
         "release_quiesce_all",
+        "release_compose",
+        "fsync_installed_paths",
         "phase1_fail_safe",
         "verify_observer_units",
     ):
         assert marker in guard
+    assert "release_compose" not in quiescer_block
+    assert "label=com.docker.compose.project=palimpsest" not in quiescer_block
     assert (
         direction_gate
         < quiescer
@@ -213,7 +235,7 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
 def test_release_waits_for_api_readiness_before_first_consumer() -> None:
     transaction = _transaction()
 
-    start = transaction.index("ops/docker/prod-compose up -d")
+    start = transaction.index('release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d')
     readiness = transaction.index("api_ready=0", start)
     retry = transaction.index(
         "for (( api_attempt=1; api_attempt<=30; api_attempt++ ))", readiness
@@ -270,7 +292,9 @@ def test_common_crawl_storage_and_tools_preflight_before_receipt_change() -> Non
 
 def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() -> None:
     transaction = _transaction()
-    compose_start = transaction.index("ops/docker/prod-compose up -d")
+    compose_start = transaction.index(
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d'
+    )
     import_start = transaction.index(
         "start_and_verify_oneshot palimpsest-common-crawl-import.service"
     )
@@ -324,7 +348,7 @@ def test_celery_writers_are_fenced_across_the_publication_commit() -> None:
     transaction = _transaction()
 
     beat_stop = transaction.index(
-        'ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" stop beat'
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat'
     )
     prechange_fence = transaction.index(
         'CELERY_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/'
@@ -376,10 +400,52 @@ def test_celery_writers_are_fenced_across_the_publication_commit() -> None:
     )
 
 
+def test_every_transitional_celery_topology_keeps_all_mandatory_roles() -> None:
+    transaction = _transaction()
+    initial_capture = transaction.index('compose_container_state "$compose_service"')
+    mandatory_running = transaction.index(
+        "for compose_service in worker worker-collectors worker-warehouse; do",
+        initial_capture,
+    )
+    initial_topology = transaction.index(
+        "CELERY_TOPOLOGY_BEFORE_B64=", mandatory_running
+    )
+    v4_start = transaction.index("V4_BACKUP_WORKER_SERVICES=", initial_topology)
+    v4_topology = transaction.index("V4_BACKUP_TOPOLOGY_B64=", v4_start)
+    candidate_start = transaction.index(
+        "worker worker-collectors worker-warehouse", v4_topology
+    )
+    candidate_topology = transaction.index(
+        "CELERY_CANDIDATE_TOPOLOGY_B64=", candidate_start
+    )
+
+    assert (
+        "V4_BACKUP_WORKER_SERVICES=(worker worker-collectors worker-warehouse)"
+        in transaction[v4_start:v4_topology]
+    )
+    assert (
+        '"${v4_backup_topology_arguments[@]}"'
+        in transaction[
+            v4_topology : transaction.index(
+                "CELERY_V4_BACKUP_RECEIPT_PATH", v4_topology
+            )
+        ]
+    )
+    candidate_block = transaction[candidate_start : candidate_topology + 500]
+    for pair in (
+        "default@${CANDIDATE_WORKER_HOSTNAME}=celery",
+        "collectors@${CANDIDATE_COLLECTOR_HOSTNAME}=collectors",
+        "warehouse@${WAREHOUSE_WORKER_HOSTNAME}=warehouse",
+    ):
+        assert pair in candidate_block
+    assert mandatory_running < initial_topology < v4_start < v4_topology
+    assert v4_topology < candidate_start < candidate_topology
+
+
 def test_candidate_v4_backup_binds_witness_history_before_installation() -> None:
     transaction = _transaction()
     checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
-    build = transaction.index("ops/docker/prod-compose build", checkout)
+    build = transaction.index("release_compose build", checkout)
     v4_backup = transaction.index("PRE_CHANGE_V4_SNAPSHOT=", build)
     witness_proof = transaction.index('"witness_history_records", 0) > 0', v4_backup)
     select_v4 = transaction.index(
@@ -407,10 +473,11 @@ def test_optional_legacy_witness_status_is_durable_and_receipted() -> None:
         initialized_digest,
     )
     copy_digest = transaction.index("LEGACY_WITNESS_STATUS_SHA256=", copy)
-    destination_fsync = transaction.index("os.fsync(descriptor)", copy_digest)
-    destination_dir_fsync = transaction.index("os.fsync(directory)", destination_fsync)
+    destination_fsync = transaction.index(
+        'fsync_installed_paths "$LEGACY_WITNESS_STATUS_PATH"', copy_digest
+    )
     source_remove = transaction.index(
-        'sudo rm -- "$WITNESS_HISTORY_DIR/status.json"', destination_dir_fsync
+        'sudo rm -- "$WITNESS_HISTORY_DIR/status.json"', destination_fsync
     )
     source_dir_fsync = transaction.index("os.fsync(directory)", source_remove)
     proof_receipt = transaction.index(
@@ -427,7 +494,6 @@ def test_optional_legacy_witness_status_is_durable_and_receipted() -> None:
         < copy
         < copy_digest
         < destination_fsync
-        < destination_dir_fsync
         < source_remove
         < source_dir_fsync
         < proof_receipt
@@ -542,7 +608,7 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         'temporarily_disable_activator "$unit"', stop_services
     )
     beat_stop = transaction.index(
-        'ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" stop beat',
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat',
         disable_activators,
     )
     celery_fence = transaction.index("CELERY_PRECHANGE_RECEIPT_PATH=", beat_stop)
@@ -674,11 +740,17 @@ def test_compose_inventory_is_exact_before_capture_and_after_restoration() -> No
     transaction = _transaction()
     helper = transaction.index("verify_compose_container_inventory() {")
     docker_inventory = transaction.index("docker ps -a --no-trunc", helper)
-    exact_project = transaction.index(
-        "label=com.docker.compose.project=palimpsest", docker_inventory
+    global_projects = transaction.index(
+        "--filter label=com.docker.compose.project", docker_inventory
     )
-    required = transaction.index("required = {", exact_project)
+    required = transaction.index("required = {", global_projects)
     optional = transaction.index('allowed = required | {"worker-velocity"}', required)
+    provenance_labels = transaction.index(
+        'com.docker.compose.project.working_dir"', global_projects
+    )
+    alternate_refusal = transaction.index(
+        "Palimpsest Compose provenance exists in alternate project", optional
+    )
     first_capture = transaction.index(
         'compose_container_state "$compose_service"', optional
     )
@@ -711,9 +783,11 @@ def test_compose_inventory_is_exact_before_capture_and_after_restoration() -> No
     assert (
         helper
         < docker_inventory
-        < exact_project
+        < global_projects
+        < provenance_labels
         < required
         < optional
+        < alternate_refusal
         < first_capture
         < first_call
         < phase_three
@@ -722,6 +796,214 @@ def test_compose_inventory_is_exact_before_capture_and_after_restoration() -> No
         < second_call
         < finalized
     )
+
+
+def test_compose_inventory_allows_unrelated_shared_host_workers(
+    tmp_path: Path,
+) -> None:
+    transaction = _transaction()
+    helper = transaction.index("verify_compose_container_inventory() {")
+    source_start = transaction.index("<<'PY'\n", helper) + len("<<'PY'\n")
+    source_end = transaction.index("\nPY\n  then", source_start)
+    validator = transaction[source_start:source_end]
+    working_dir = "/home/palimpsest/palimpsest/ops/docker"
+    config_file = f"{working_dir}/docker-compose.prod.yml"
+    inventory = tmp_path / "compose-inventory.tsv"
+    required = (
+        "api",
+        "beat",
+        "migrate",
+        "postgres",
+        "redis",
+        "worker",
+        "worker-collectors",
+        "worker-warehouse",
+    )
+    rows = [
+        f"palimpsest\t{service}\t{working_dir}\t{config_file}\t{index:064x}"
+        for index, service in enumerate(required, 1)
+    ]
+    rows.extend(
+        (
+            f"econ\tbeat\t/home/econ/social_scraper\t"
+            f"/home/econ/social_scraper/docker-compose.yml\t{90:064x}",
+            f"econ\tworker\t/home/econ/social_scraper\t"
+            f"/home/econ/social_scraper/docker-compose.yml\t{91:064x}",
+        )
+    )
+    inventory.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    coexistence = subprocess.run(
+        [sys.executable, "-", str(inventory), working_dir, config_file],
+        input=validator,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert coexistence.returncode == 0, coexistence.stderr
+
+    inventory.write_text(
+        inventory.read_text(encoding="utf-8")
+        + f"alternate\tworker\t{working_dir}\t{config_file}\t{92:064x}\n",
+        encoding="utf-8",
+    )
+    alternate = subprocess.run(
+        [sys.executable, "-", str(inventory), working_dir, config_file],
+        input=validator,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert alternate.returncode != 0
+    assert "Palimpsest Compose provenance exists in alternate project" in (
+        alternate.stderr
+    )
+
+
+def test_release_compose_runs_with_only_reviewed_environment_inputs() -> None:
+    transaction = _transaction()
+    helper = transaction[
+        transaction.index("release_compose() {") : transaction.index(
+            "test -d .git", transaction.index("release_compose() {")
+        )
+    ]
+
+    for marker in (
+        "/usr/bin/env -i HOME=/root LANG=C LC_ALL=C",
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null",
+        "GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1",
+        "DOCKER_HOST=unix:///var/run/docker.sock",
+        'DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG"',
+        "COMPOSE_PROJECT_NAME=palimpsest",
+        'PALIMPSEST_ENV_FILE="$PALIMPSEST_ENV_FILE"',
+        '"$PALIMPSEST_REPO_ROOT/ops/docker/prod-compose" "$@"',
+    ):
+        assert marker in helper
+    assert "PALIMPSEST_READINGS_HOST_PATH" not in helper
+    assert "POSTGRES_PASSWORD" not in helper
+
+
+def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
+    transaction = _transaction()
+    expected = transaction.index("EXPECTED_COMPOSE_CONFIG_SERVICES=")
+    render = transaction.index("config --services", expected)
+    exact = transaction.index(
+        'test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"',
+        render,
+    )
+    fail_safe = transaction.index("PHASE1_FAIL_SAFE_ARMED=1", exact)
+
+    expected_block = transaction[expected:render]
+    for service in (
+        "api",
+        "beat",
+        "migrate",
+        "postgres",
+        "redis",
+        "worker",
+        "worker-collectors",
+        "worker-velocity",
+        "worker-warehouse",
+    ):
+        assert service in expected_block
+    assert expected < render < exact < fail_safe
+
+
+def test_compatibility_seed_also_strips_unreviewed_compose_interpolation() -> None:
+    seed = _fenced_bash_block_after(
+        "### First protected rollout: compatibility seed (C0)"
+    )
+    invocation_start = seed.index("/usr/bin/env -i")
+    invocation = seed[
+        invocation_start : seed.index('rm -f -- "$SEED_TMP"', invocation_start)
+    ]
+
+    for marker in (
+        "HOME=/root LANG=C LC_ALL=C",
+        "DOCKER_HOST=unix:///var/run/docker.sock",
+        'DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG"',
+        "COMPOSE_PROJECT_NAME=palimpsest",
+        'PALIMPSEST_ENV_FILE="$PALIMPSEST_ENV_FILE"',
+        '/bin/bash "$SEED_TMP"',
+    ):
+        assert marker in invocation
+    assert "PALIMPSEST_READINGS_HOST_PATH" not in invocation
+    assert "POSTGRES_PASSWORD" not in invocation
+
+
+def test_target_backup_and_newsroom_units_install_durably_before_v4_backup() -> None:
+    transaction = _transaction()
+    checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
+    unit_sources = transaction.index("CANDIDATE_UNIT_SOURCES=(", checkout)
+    unit_targets = transaction.index("CANDIDATE_UNIT_TARGETS=(", unit_sources)
+    install = transaction.index("sudo install -o root -g root -m 0644 \\", unit_targets)
+    compare = transaction.index('sudo cmp -s "$candidate_unit_source"', install)
+    durable = transaction.index(
+        'fsync_installed_paths "${CANDIDATE_UNIT_TARGETS[@]}"', compare
+    )
+    verify = transaction.index("sudo systemd-analyze verify \\\n", durable)
+    reload = transaction.index("sudo systemctl daemon-reload", verify)
+    provenance = transaction.index(
+        'verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA"', reload
+    )
+    v4_start = transaction.index("V4_BACKUP_WORKER_SERVICES=", provenance)
+    v4_backup = transaction.index(
+        "start_and_verify_oneshot palimpsest-backup.service", v4_start
+    )
+
+    unit_block = transaction[unit_sources:install]
+    for marker in (
+        "ops/systemd/palimpsest-backup.service",
+        "ops/systemd/palimpsest-backup.timer",
+        "ops/systemd/palimpsest-backup.override.example.conf",
+        "ops/systemd/palimpsest-evidence-wire.service",
+        "ops/systemd/palimpsest-evidence-wire.timer",
+        "ops/systemd/palimpsest-event-analysis-live.service",
+    ):
+        assert marker in unit_block
+    assert (
+        checkout
+        < unit_sources
+        < unit_targets
+        < install
+        < compare
+        < durable
+        < verify
+        < reload
+        < provenance
+        < v4_start
+        < v4_backup
+    )
+
+
+def test_every_release_service_has_an_exact_success_trigger_allowlist() -> None:
+    transaction = _transaction()
+    helper = transaction.index("verify_release_service_success_triggers() {")
+    first_stop = transaction.index(
+        'for unit in "${RELEASE_SERVICES[@]}"; do',
+        transaction.index("# Stop and persistently disable every systemd producer"),
+    )
+    initial_call = transaction.index(
+        "verify_release_service_success_triggers \\\n", helper
+    )
+    phase_three = transaction.index("### Phase 3:", initial_call)
+    final_call = transaction.rindex(
+        "verify_release_service_success_triggers \\\n", phase_three
+    )
+
+    block = transaction[helper:initial_call]
+    for marker in (
+        'for unit in "${RELEASE_SERVICES[@]}"',
+        "systemctl show --property=LoadState --value",
+        "systemctl show --property=OnSuccess --value",
+        'palimpsest-backup.service) expected="$expected_backup"',
+        'palimpsest-evidence-wire.service) expected="$expected_evidence"',
+        "*) expected=''",
+        "unexpected OnSuccess set",
+    ):
+        assert marker in block
+    assert helper < initial_call < first_stop < phase_three < final_call
 
 
 def test_installed_observer_controller_bytes_are_fsynced_before_loading() -> None:
@@ -766,7 +1048,7 @@ def test_installed_path_fsync_commits_bounded_ancestor_directories_deepest_first
     ]
 
     for marker in (
-        'anchors = ("/etc", "/opt")',
+        'anchors = ("/etc", "/opt", "/var/lib")',
         "os.path.commonpath((path, candidate)) == candidate",
         "installed release file is outside bounded roots",
         "directory = os.path.dirname(path)",
@@ -784,7 +1066,7 @@ def test_pre_change_backup_must_publish_and_validate_before_candidate_code() -> 
     transaction = _transaction()
 
     checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
-    build = transaction.index("ops/docker/prod-compose build")
+    build = transaction.index("release_compose build")
     start = transaction.index("start_and_verify_oneshot palimpsest-backup.service")
     new_snapshot = transaction.index(
         'test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"'
@@ -916,7 +1198,7 @@ def test_import_and_local_bleed_precede_external_publication_and_timers() -> Non
     live_api = transaction.index(
         "https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json"
     )
-    dispatch = transaction.index("gh workflow run osint-china-v2-refresh.yml")
+    dispatch = transaction.index('gh workflow run "$OSINT_WORKFLOW"')
     publication_success = transaction.index(
         '--json conclusion --jq .conclusion)" = "success"', dispatch
     )
@@ -1057,6 +1339,16 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
     transaction = _transaction()
 
     for marker in (
+        "OSINT_WORKFLOW='osint-china-v2-refresh.yml'",
+        "OSINT_WORKFLOW_RESTORE_DISABLED=0",
+        "osint_workflow_state() {",
+        "restore_osint_workflow_freeze() {",
+        'test "$(osint_workflow_state)" = disabled_manually',
+        'gh workflow enable "$OSINT_WORKFLOW"',
+        'test "$(osint_workflow_state)" = active',
+        'gh workflow disable "$OSINT_WORKFLOW"',
+        "for _ in {1..3}; do",
+        "failed to restore the OSINT workflow freeze",
         'OSINT_RUNS_BEFORE_TMP="$PHASE2_TMP_DIR/runs-before.json"',
         'OSINT_RUNS_AFTER_TMP="$PHASE2_TMP_DIR/runs-after.json"',
         'item["databaseId"] not in before',
@@ -1104,6 +1396,34 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         "FINALIZED_RECEIPT_PATH",
     ):
         assert marker in transaction
+
+    phase_two = transaction.index("### Phase 2:")
+    cleanup = transaction.index("cleanup_phase2() {", phase_two)
+    cleanup_restore = transaction.index(
+        "restore_osint_workflow_freeze || restore_status=$?", cleanup
+    )
+    initial_disabled = transaction.index(
+        'test "$(osint_workflow_state)" = disabled_manually', cleanup_restore
+    )
+    snapshot = transaction.index('OSINT_RUNS_BEFORE_TMP="', initial_disabled)
+    arm_restore = transaction.index("OSINT_WORKFLOW_RESTORE_DISABLED=1", snapshot)
+    enable = transaction.index('gh workflow enable "$OSINT_WORKFLOW"', arm_restore)
+    active = transaction.index('test "$(osint_workflow_state)" = active', enable)
+    dispatch = transaction.index('gh workflow run "$OSINT_WORKFLOW"', active)
+    immediate_restore = transaction.index("restore_osint_workflow_freeze\n", dispatch)
+    discover = transaction.index("OSINT_RUN_ID=''", immediate_restore)
+    assert (
+        cleanup
+        < cleanup_restore
+        < initial_disabled
+        < snapshot
+        < arm_restore
+        < enable
+        < active
+        < dispatch
+        < immediate_restore
+        < discover
+    )
 
     public_match = transaction.index(
         'test "$PUBLIC_BLEED_NORMALIZED_SHA256" \\\n'
@@ -1175,10 +1495,11 @@ def test_public_release_proof_is_fsynced_before_use_and_after_deletion() -> None
         '  "$SYNC_RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"',
         proof_path,
     )
-    proof_file_fsync = transaction.index("os.fsync(descriptor)", proof_install)
-    proof_dir_fsync = transaction.index("os.fsync(directory)", proof_file_fsync)
+    proof_fsync = transaction.index(
+        'fsync_installed_paths "$RELEASE_PROOF_PATH"', proof_install
+    )
     public_sync = transaction.index(
-        "run_final_observer palimpsest-public-osint-sync.service", proof_dir_fsync
+        "run_final_observer palimpsest-public-osint-sync.service", proof_fsync
     )
     proof_delete = transaction.index('sudo rm -- "$RELEASE_PROOF_PATH"', public_sync)
     delete_dir_fsync = transaction.index("os.fsync(directory)", proof_delete)
@@ -1187,8 +1508,7 @@ def test_public_release_proof_is_fsynced_before_use_and_after_deletion() -> None
     assert (
         proof_path
         < proof_install
-        < proof_file_fsync
-        < proof_dir_fsync
+        < proof_fsync
         < public_sync
         < proof_delete
         < delete_dir_fsync
@@ -1210,7 +1530,9 @@ def test_finalized_receipt_records_and_validates_restored_runtime_identities() -
     digest = transaction.index("FINALIZED_RECEIPT_SHA256=", stat)
     readback = transaction.index("expected_fields = {", digest)
     invalid = transaction.index("finalized receipt readback is invalid", readback)
-    fsync = transaction.index("os.fsync(descriptor)", invalid)
+    fsync = transaction.index(
+        'fsync_installed_paths "$FINALIZED_RECEIPT_PATH"', invalid
+    )
     finalized_flag = transaction.index("release_finalized=1", fsync)
     disarm = transaction.index("PHASE3_FAIL_SAFE_ARMED=0", finalized_flag)
     trap_clear = transaction.index("trap - ERR EXIT HUP INT TERM", disarm)
@@ -1253,10 +1575,12 @@ def test_durable_receipts_bracket_the_release_commit_and_writer_restore() -> Non
     proof_install = transaction.index(
         'sudo install -o root -g root -m 0600 "$RELEASE_RECEIPT_TMP"', proof_path
     )
-    proof_fsync = transaction.index("os.fsync(file_descriptor)", proof_install)
+    proof_fsync = transaction.index(
+        'fsync_installed_paths "$PROOF_COMPLETE_RECEIPT_PATH"', proof_install
+    )
     proof_removal = transaction.index('sudo rm -- "$RELEASE_PROOF_PATH"', proof_fsync)
     worker_restore = transaction.index(
-        'ops/docker/prod-compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps',
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps',
         proof_removal,
     )
     quiesce_removal = transaction.index(
@@ -1276,7 +1600,9 @@ def test_durable_receipts_bracket_the_release_commit_and_writer_restore() -> Non
     finalized_readback = transaction.index(
         "finalized receipt readback is invalid", finalized_digest
     )
-    finalized_fsync = transaction.index("os.fsync(descriptor)", finalized_install)
+    finalized_fsync = transaction.index(
+        'fsync_installed_paths "$FINALIZED_RECEIPT_PATH"', finalized_install
+    )
     finalized_flag = transaction.index("release_finalized=1", finalized_fsync)
 
     fail_safe_block = transaction[
@@ -1504,6 +1830,10 @@ def test_recovery_requires_a_reviewed_forward_repair_from_both_prior_shas() -> N
         "unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY",
         "unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG",
         "export DOCKER_HOST=unix:///var/run/docker.sock",
+        "unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES",
+        "export COMPOSE_PROJECT_NAME=palimpsest",
+        'export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"',
+        'test ! -L "$PALIMPSEST_ENV_FILE"',
         "release_git() {",
         '-c "safe.directory=$PALIMPSEST_REPO_ROOT"',
         'test -z "$(release_git status --porcelain=v1 --untracked-files=all)"',

@@ -308,14 +308,22 @@ def test_runbook_executes_the_exact_reviewed_seed_blob() -> None:
         guide.index("### Phase 1: host transaction and local BLEED recovery")
     ]
     invocation = (
-        'PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \\\n'
-        'PALIMPSEST_ALLOW_PREPARED_C0_RESUME='
+        "/usr/bin/env -i HOME=/root LANG=C LC_ALL=C \\\n"
+        "  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \\\n"
+        "  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null \\\n"
+        "  GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 \\\n"
+        "  GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0 \\\n"
+        "  DOCKER_HOST=unix:///var/run/docker.sock \\\n"
+        '  DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG" \\\n'
+        "  COMPOSE_PROJECT_NAME=palimpsest "
+        'PALIMPSEST_ENV_FILE="$PALIMPSEST_ENV_FILE" \\\n'
+        "  PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \\\n"
+        "  PALIMPSEST_ALLOW_PREPARED_C0_RESUME="
         '"$PALIMPSEST_ALLOW_PREPARED_C0_RESUME" \\\n'
-        'PREPARED_C0_SHA="$PREPARED_C0_SHA" \\\n'
-        'C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \\\n'
-        'EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \\\n'
-        'COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \\\n'
-        '  bash "$SEED_TMP"'
+        '  PREPARED_C0_SHA="$PREPARED_C0_SHA" C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \\\n'
+        '  EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \\\n'
+        '  COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \\\n'
+        '  /bin/bash "$SEED_TMP"'
     )
 
     assert invocation in section

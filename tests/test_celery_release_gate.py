@@ -491,7 +491,7 @@ def test_quiesce_uses_one_deadline_for_drain_and_fence():
 @pytest.mark.parametrize("boundary", ["inspection", "broker", "cancellation"])
 def test_external_control_errors_are_sanitized(boundary):
     app = _FakeApp([_sample(), _sample()])
-    secret = "redis://user:credential@example.invalid/0"
+    secret = "redis://localhost/0?password=credential"
     if boundary == "inspection":
         app.control.inspect = lambda **_kwargs: (_ for _ in ()).throw(
             RuntimeError(secret)

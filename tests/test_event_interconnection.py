@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from core import event_analysis, event_interconnection
-from tests.test_event_analysis_v2 import EVENT_ID, OFFICIAL_URL, _event, _feed, _wire
+from tests.test_event_analysis_v2 import _event, _feed, _wire
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -248,6 +248,7 @@ def test_live_ooni_projection_exposes_hosts_without_inventing_a_join(
         json.dumps(
             {
                 "generated_at": "2026-08-20T07:12:09Z",
+                "until": "2026-08-21",
                 "top_blocked": [
                     {
                         "domain": "www.hrw.org",
@@ -263,6 +264,7 @@ def test_live_ooni_projection_exposes_hosts_without_inventing_a_join(
     projected = peer_warehouse_live.project_live_warehouses(tmp_path)
     assert projected["ooni"]["status"] == "live"
     assert projected["ooni"]["peers"][0]["hosts"] == ["hrw.org"]
+    assert projected["ooni"]["peers"][0]["observed_at"] == "2026-08-20T07:12:09Z"
     loaded = event_interconnection.load_optional_peer_warehouses(tmp_path)
     event = _event()
     block = event_interconnection.build_interconnection(event, loaded)

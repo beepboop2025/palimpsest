@@ -211,7 +211,11 @@ def _from_greatfire(document: Mapping[str, Any]) -> list[dict[str, Any]]:
 def _from_ooni(document: Mapping[str, Any]) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     seen: set[str] = set()
-    fallback = _clock(document.get("until"), document.get("generated_at"))
+    # ``until`` is the OONI query's exclusive upper date, not an observation
+    # instant. Around UTC midnight it can therefore be later than the artifact
+    # that reports the result. Prefer the actual materialization clock and use
+    # the bound only for legacy documents that do not expose one.
+    fallback = _clock(document.get("generated_at"), document.get("until"))
     series = document.get("hosts") or document.get("series") or []
     if type(series) is list:
         for row in series:
