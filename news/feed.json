@@ -13,14 +13,14 @@
   ],
   "items": [
     {
-      "id": "palimpsest-news:board-alarm:sha256:6c4f9eea6db993875ab5d8c6861062fd0119abfa41943d51170fb6a402105a64",
+      "id": "palimpsest-news:board-alarm:sha256:2ee01ce87a4d3bdda41c80720a60833b0b9e7aaaa6f91ebe0309b878e1ca2bd8",
       "url": "https://palimpsest.info/news/board-alarm/",
       "external_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "title": "[Palimpsest measurement] Multiple layers elevated together in the latest board synthesis",
       "summary": "Palimpsest measurement. The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 5 degraded, 6 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
-      "date_published": "2026-08-24T15:55:45Z",
-      "date_modified": "2026-08-24T15:55:45Z",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.\n\nLimit: A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.\n\nEvidence: https://palimpsest.info/readings/board-alarm-latest.json",
+      "date_published": "2026-08-24T17:22:36Z",
+      "date_modified": "2026-08-24T17:22:36Z",
       "tags": [
         "palimpsest-measurement",
         "The Board",
@@ -37,24 +37,24 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-32dc684e0a92cd5ba51e1a92",
+        "revision_id": "storyv-8458d194d55f42ef450b18a8",
         "verification_status": "palimpsest_measurement"
       }
     },
     {
-      "id": "palimpsest-news:event-flags:sha256:ebe72284a57b119cf89b9c7cb9a3dd5fcd449dc551505d91aa7e70c064c020f1",
+      "id": "palimpsest-news:event-flags:sha256:539679ad8b0a0f3dfa3206b1930ae014719c92a6df497f5c9018f278ae29c818",
       "url": "https://palimpsest.info/news/event-flags/",
       "external_url": "https://palimpsest.info/readings/event-flags-latest.json",
-      "title": "[Palimpsest measurement] 12 of 15 configured signals are reporting to the event board",
-      "summary": "Palimpsest measurement. The event layer keeps non-reporting and stale series visible instead of reading absence as calm.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: 12 signals are reporting out of 15 configured signals in the current event-flags reading.\n\nLimit: Each detector is calibrated to its own history, so equal event values do not imply equal wall-clock rarity.\n\nEvidence: https://palimpsest.info/readings/event-flags-latest.json",
+      "title": "[Palimpsest measurement] Event flags: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Event flags because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Each detector is calibrated to its own history, so equal event values do not imply equal wall-clock rarity.\n\nEvidence: https://palimpsest.info/readings/event-flags-latest.json",
       "date_published": "2026-08-24T02:21:11Z",
       "date_modified": "2026-08-24T02:21:11Z",
       "tags": [
         "palimpsest-measurement",
         "The Board",
         "event-flags",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -66,7 +66,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-c97927a69a3233667619ff31",
+        "revision_id": "storyv-420c914e7fd9322e9f99013b",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -77,8 +77,8 @@
       "title": "[Palimpsest measurement] Coverage changes confound 0 current signal",
       "summary": "Palimpsest measurement. The guard withholds a censorship interpretation when movement can be explained by a changing measurement base.",
       "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current coverage audit marks 0 signal as confounded by its measurement coverage.\n\nLimit: A coverage-confounded signal is inconclusive about substantive change, not evidence that no change occurred.\n\nEvidence: https://palimpsest.info/readings/coverage-guard-latest.json",
-      "date_published": "2026-08-24T15:55:45Z",
-      "date_modified": "2026-08-24T15:55:45Z",
+      "date_published": "2026-08-24T17:22:36Z",
+      "date_modified": "2026-08-24T17:22:36Z",
       "tags": [
         "palimpsest-measurement",
         "The Board",
@@ -95,7 +95,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-01241ae37d5110e4fc81c2dc",
+        "revision_id": "storyv-aa2d32637c43b95ac66ee38a",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -106,8 +106,8 @@
       "title": "[Palimpsest measurement] Forecast bands covered 84.4% of 1,606 scored readings",
       "summary": "Palimpsest measurement. Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
       "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: Empirical forecast coverage is 84.4% across 1,606 scored forecasts.\n\nLimit: Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band.\n\nEvidence: https://palimpsest.info/readings/forecast-ledger-latest.json",
-      "date_published": "2026-08-24T15:55:45Z",
-      "date_modified": "2026-08-24T15:55:45Z",
+      "date_published": "2026-08-24T17:22:36Z",
+      "date_modified": "2026-08-24T17:22:36Z",
       "tags": [
         "palimpsest-measurement",
         "The Board",
@@ -124,7 +124,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-c080e629ef3e18efca4b68d1",
+        "revision_id": "storyv-a0da6e5bc76d2f36b47589c3",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -135,8 +135,8 @@
       "title": "[Palimpsest measurement] 0 cross-layer relationships are confirmed across 9 eligible tests",
       "summary": "Palimpsest measurement. Pairs enter testing only after enough overlapping history exists; an empty test set is a warm-up state, not a null result.",
       "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: 0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test.\n\nLimit: Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another.\n\nEvidence: https://palimpsest.info/readings/cross-layer-latest.json",
-      "date_published": "2026-08-24T15:55:45Z",
-      "date_modified": "2026-08-24T15:55:45Z",
+      "date_published": "2026-08-24T17:22:36Z",
+      "date_modified": "2026-08-24T17:22:36Z",
       "tags": [
         "palimpsest-measurement",
         "The Board",
@@ -153,7 +153,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-94242162aba018e85dba2c23",
+        "revision_id": "storyv-ee30a949c20e72505cee9ce3",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -187,19 +187,19 @@
       }
     },
     {
-      "id": "palimpsest-news:gdelt:sha256:a462c8969effbb856d92d73dfa544024cb463503e28396b62cb934eaf4d759d6",
+      "id": "palimpsest-news:gdelt:sha256:57c23684e5c7ca3ca7239e4f355eb1aa8c30b2e60d6c11fec75d281addb1ba3b",
       "url": "https://palimpsest.info/news/global-coverage-cross-signal/",
       "external_url": "https://palimpsest.info/readings/gdelt-latest.json",
-      "title": "[Palimpsest measurement] Global coverage is measurable for 3 of 25 compared terms",
-      "summary": "Palimpsest measurement. The cross-signal supplies an outside-China attention baseline without treating a missing result as proof of silence.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: GDELT returned usable global coverage for 3 of 25 compared terms.\n\nLimit: GDELT coverage varies by language and publisher; absence from its index is not proof that a topic received no coverage.\n\nEvidence: https://palimpsest.info/readings/gdelt-latest.json",
+      "title": "[Palimpsest measurement] Global coverage cross-signal: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Global coverage cross-signal because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed GDELT coverage varies by language and publisher; absence from its index is not proof that a topic received no coverage.\n\nEvidence: https://palimpsest.info/readings/gdelt-latest.json",
       "date_published": "2026-08-24T02:17:50Z",
       "date_modified": "2026-08-24T02:17:50Z",
       "tags": [
         "palimpsest-measurement",
         "Attention and Narrative",
         "gdelt",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -211,7 +211,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-ce9501d08eed00085fcf9cf2",
+        "revision_id": "storyv-962e5a14c169a2a09c8f44bd",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -448,19 +448,19 @@
       }
     },
     {
-      "id": "palimpsest-news:ooni-gfw:sha256:44944031bae0d9d60f823f2820837339c9e9bf672928879a929549e059409208",
+      "id": "palimpsest-news:ooni-gfw:sha256:43c4497197f2c28f46200962e6303ca9471b1b648f8d27b1a4df53ade8a04d53",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "external_url": "https://palimpsest.info/readings/ooni-gfw-latest.json",
-      "title": "[Palimpsest measurement] OONI's China anomaly index is 58.3% across 272,935 completed measurements",
-      "summary": "Palimpsest measurement. The index aggregates volunteer-probe observations across network test families inside China.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current OONI aggregate reports a 58.3% anomaly index across 272,935 completed China measurements.\n\nLimit: Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship.\n\nEvidence: https://palimpsest.info/readings/ooni-gfw-latest.json",
+      "title": "[Palimpsest measurement] OONI Great Firewall index: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for OONI Great Firewall index because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship.\n\nEvidence: https://palimpsest.info/readings/ooni-gfw-latest.json",
       "date_published": "2026-08-24T02:00:59Z",
       "date_modified": "2026-08-24T02:00:59Z",
       "tags": [
         "palimpsest-measurement",
         "Network and Circumvention",
         "ooni-gfw",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -472,24 +472,24 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-534118107c14b209588b2eb6",
+        "revision_id": "storyv-ec08d0d96b7a62207837424f",
         "verification_status": "palimpsest_measurement"
       }
     },
     {
-      "id": "palimpsest-news:in-path-interference:sha256:227418982e245e7a78004b5b24928623c16facb96c027689f4037726110a100c",
+      "id": "palimpsest-news:in-path-interference:sha256:974c8960488008a4b61e75f7e82272cc54fdd6051ff2007ab7cefab303e8976c",
       "url": "https://palimpsest.info/news/in-path-interference/",
       "external_url": "https://palimpsest.info/readings/in-path-interference-latest.json",
-      "title": "[Palimpsest measurement] Middlebox signatures register at 1.37% in the current OONI window",
-      "summary": "Palimpsest measurement. The decomposition separates interference signatures from transport failure and tests that could not execute.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current measurement-weighted middlebox index is 1.37%.\n\nLimit: The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories.\n\nEvidence: https://palimpsest.info/readings/in-path-interference-latest.json",
+      "title": "[Palimpsest measurement] In-path interference: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for In-path interference because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories.\n\nEvidence: https://palimpsest.info/readings/in-path-interference-latest.json",
       "date_published": "2026-08-24T02:07:57Z",
       "date_modified": "2026-08-24T02:07:57Z",
       "tags": [
         "palimpsest-measurement",
         "Network and Circumvention",
         "in-path-interference",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -501,7 +501,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-e1dd9d23e2e5f1a2db891db8",
+        "revision_id": "storyv-9a89d322da5a07c06a21c78c",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -535,19 +535,19 @@
       }
     },
     {
-      "id": "palimpsest-news:inside-view:sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
+      "id": "palimpsest-news:inside-view:sha256:265148c2e70552bc56461531e24395d874bc3ace215ab616f4ace08924e6169a",
       "url": "https://palimpsest.info/news/inside-china-view/",
       "external_url": "https://palimpsest.info/readings/inside-view-latest.json",
-      "title": "[Palimpsest measurement] 100% of the 5-domain mainland panel is blocked",
-      "summary": "Palimpsest measurement. Volunteer probes inside China are compared with a same-round external control before an answer is classified.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current controlled panel reports 100% blocked responses across 5 tested domains.\n\nLimit: The volunteer panel is small and availability varies by region; it does not represent every mainland network.\n\nEvidence: https://palimpsest.info/readings/inside-view-latest.json",
+      "title": "[Palimpsest measurement] Inside-China view: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Inside-China view because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The volunteer panel is small and availability varies by region; it does not represent every mainland network.\n\nEvidence: https://palimpsest.info/readings/inside-view-latest.json",
       "date_published": "2026-08-24T02:10:02Z",
       "date_modified": "2026-08-24T02:10:02Z",
       "tags": [
         "palimpsest-measurement",
         "Network and Circumvention",
         "inside-view",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -559,24 +559,24 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-abcb072137e84ea9f2647101",
+        "revision_id": "storyv-36fa1a21d936ba42455e8775",
         "verification_status": "palimpsest_measurement"
       }
     },
     {
-      "id": "palimpsest-news:ioda-outages:sha256:d11298f4540771d4f8f5b0489d93b613a353431d3c905c97f68eaca532a53560",
+      "id": "palimpsest-news:ioda-outages:sha256:ce9cb005f7cc7684ac2f071347ba75e46f619b8dccbca573a36835a010040bfc",
       "url": "https://palimpsest.info/news/ioda-china-outage-monitor/",
       "external_url": "https://palimpsest.info/readings/ioda-outages-latest.json",
-      "title": "[Palimpsest measurement] 0 independent IODA instruments are firing for China",
-      "summary": "Palimpsest measurement. BGP, active-probing and darknet instruments provide a country-scale outage check distinct from content blocking.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current IODA country reading has 0 outage instruments firing.\n\nLimit: No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable.\n\nEvidence: https://palimpsest.info/readings/ioda-outages-latest.json",
+      "title": "[Palimpsest measurement] IODA outage monitor: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for IODA outage monitor because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable.\n\nEvidence: https://palimpsest.info/readings/ioda-outages-latest.json",
       "date_published": "2026-08-24T02:04:27Z",
       "date_modified": "2026-08-24T02:04:27Z",
       "tags": [
         "palimpsest-measurement",
         "Network and Circumvention",
         "ioda-outages",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -588,7 +588,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-17e38c55906da431961f851a",
+        "revision_id": "storyv-1db036255d229c979c450623",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -622,19 +622,19 @@
       }
     },
     {
-      "id": "palimpsest-news:vantage-fusion:sha256:a3f3ce46c954a1c1cbd2ba71d93a0a3971e40d75bc46ab539827431d3ad058dc",
+      "id": "palimpsest-news:vantage-fusion:sha256:3bf74c883d9e155c273561206f59661639e0085cd11f521183c6167ef599cc21",
       "url": "https://palimpsest.info/news/network-vantage-fusion/",
       "external_url": "https://palimpsest.info/readings/vantage-fusion-latest.json",
-      "title": "[Palimpsest measurement] Reporting network vantages combine to a 28.6% interference index",
-      "summary": "Palimpsest measurement. The fusion names excluded and divergent inputs instead of silently averaging away disagreement.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current coverage-weighted fusion of reporting vantages is 28.6%.\n\nLimit: The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.\n\nEvidence: https://palimpsest.info/readings/vantage-fusion-latest.json",
+      "title": "[Palimpsest measurement] Network vantage fusion: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for Network vantage fusion because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic.\n\nEvidence: https://palimpsest.info/readings/vantage-fusion-latest.json",
       "date_published": "2026-08-24T02:27:09Z",
       "date_modified": "2026-08-24T02:27:09Z",
       "tags": [
         "palimpsest-measurement",
         "Network and Circumvention",
         "vantage-fusion",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -646,7 +646,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-366ef3360b34edf6f36f2c78",
+        "revision_id": "storyv-5110bc64380432c806b20681",
         "verification_status": "palimpsest_measurement"
       }
     },
@@ -825,19 +825,19 @@
       }
     },
     {
-      "id": "palimpsest-news:app-storefront:sha256:9f931cb4bc4e94265c2edaf659cc8bf95fba045fafb1bf0ecf77a55d256fd1a3",
+      "id": "palimpsest-news:app-storefront:sha256:d95182b2690009263eda945789650c258cfbbec17cbc06790877268da2f03c88",
       "url": "https://palimpsest.info/news/app-storefront-panel/",
       "external_url": "https://palimpsest.info/readings/app-storefront-latest.json",
-      "title": "[Palimpsest measurement] 60% of the 10-app panel is unavailable in China's storefront",
-      "summary": "Palimpsest measurement. The fixed panel compares China and US storefront results in the same round, with transient lookup failures separated.",
-      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: The current panel finds 60% of 10 tracked apps unavailable in the China storefront.\n\nLimit: A fixed app panel is transparent but not representative of the entire App Store catalogue.\n\nEvidence: https://palimpsest.info/readings/app-storefront-latest.json",
+      "title": "[Palimpsest measurement] App Storefront panel: no current finding",
+      "summary": "Palimpsest measurement. The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "content_text": "ITEM TYPE: PALIMPSEST MEASUREMENT\n\nResult: No current finding is published for App Storefront panel because the source status is stale.\n\nLimit: Current finding withheld: freshness deadline has passed A fixed app panel is transparent but not representative of the entire App Store catalogue.\n\nEvidence: https://palimpsest.info/readings/app-storefront-latest.json",
       "date_published": "2026-08-24T02:13:36Z",
       "date_modified": "2026-08-24T02:13:36Z",
       "tags": [
         "palimpsest-measurement",
         "Erasure and Distribution",
         "app-storefront",
-        "live"
+        "stale"
       ],
       "attachments": [
         {
@@ -849,7 +849,7 @@
       ],
       "_palimpsest": {
         "kind": "instrument_measurement",
-        "revision_id": "storyv-7f6095ecb719771b6bd3ab70",
+        "revision_id": "storyv-35e8ca1b84b4cd0efb920895",
         "verification_status": "palimpsest_measurement"
       }
     },

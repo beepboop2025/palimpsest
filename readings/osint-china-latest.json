@@ -9,12 +9,28 @@
       "title": "Board synthesis"
     },
     {
+      "id": "health-event-flags",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "event-flags",
+      "summary": "freshness deadline has passed",
+      "title": "Event flags: stale"
+    },
+    {
       "id": "health-ddti",
       "kind": "health",
       "severity": "warning",
       "source_id": "ddti",
       "summary": "freshness deadline has passed",
       "title": "Deletion-directive term index: stale"
+    },
+    {
+      "id": "health-gdelt",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "gdelt",
+      "summary": "freshness deadline has passed",
+      "title": "Global coverage cross-signal: stale"
     },
     {
       "id": "health-weibo-hotsearch",
@@ -41,6 +57,46 @@
       "title": "Public deletion ledgers: stale"
     },
     {
+      "id": "health-ooni-gfw",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "ooni-gfw",
+      "summary": "freshness deadline has passed",
+      "title": "OONI Great Firewall index: stale"
+    },
+    {
+      "id": "health-in-path-interference",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "in-path-interference",
+      "summary": "freshness deadline has passed",
+      "title": "In-path interference: stale"
+    },
+    {
+      "id": "health-inside-view",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "inside-view",
+      "summary": "freshness deadline has passed",
+      "title": "Inside-China view: stale"
+    },
+    {
+      "id": "health-ioda-outages",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "ioda-outages",
+      "summary": "freshness deadline has passed",
+      "title": "IODA outage monitor: stale"
+    },
+    {
+      "id": "health-vantage-fusion",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "vantage-fusion",
+      "summary": "freshness deadline has passed",
+      "title": "Network vantage fusion: stale"
+    },
+    {
       "id": "health-bleedthrough",
       "kind": "health",
       "severity": "notice",
@@ -63,6 +119,14 @@
       "source_id": "baike-public-snapshot",
       "summary": "upstream status is unreachable; collector status is source_refused",
       "title": "Baike public snapshot: degraded"
+    },
+    {
+      "id": "health-app-storefront",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "app-storefront",
+      "summary": "freshness deadline has passed",
+      "title": "App Storefront panel: stale"
     },
     {
       "id": "health-china-econ",
@@ -97,29 +161,29 @@
       "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-24T15:58:52Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 5 degraded, 6 stale.",
+  "generated_at": "2026-08-24T17:22:36Z",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 5,
-      "live": 28,
+      "live": 20,
       "missing": 0,
-      "stale": 6
+      "stale": 14
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 26,
+    "required_live": 18,
     "required_reporting": 31,
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "0d6925d636220daa8ef6dd57d4827f149b49d218",
+  "input_commit": "d51662893a2557ad60b1a7eff11e1fc35cdc2a25",
   "layers": [
     {
       "id": "command",
-      "n_degraded": 0,
-      "n_live": 5,
+      "n_degraded": 1,
+      "n_live": 4,
       "n_reporting": 5,
       "n_total": 5,
       "signal_ids": [
@@ -129,13 +193,13 @@
         "forecast-ledger",
         "cross-layer"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Command view"
     },
     {
       "id": "attention",
-      "n_degraded": 4,
-      "n_live": 6,
+      "n_degraded": 5,
+      "n_live": 5,
       "n_reporting": 10,
       "n_total": 10,
       "signal_ids": [
@@ -155,8 +219,8 @@
     },
     {
       "id": "network",
-      "n_degraded": 1,
-      "n_live": 8,
+      "n_degraded": 6,
+      "n_live": 3,
       "n_reporting": 9,
       "n_total": 9,
       "signal_ids": [
@@ -175,8 +239,8 @@
     },
     {
       "id": "erasure",
-      "n_degraded": 2,
-      "n_live": 5,
+      "n_degraded": 3,
+      "n_live": 4,
       "n_reporting": 7,
       "n_total": 7,
       "signal_ids": [
@@ -246,7 +310,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Source payloads that fit the public embed bound are retained in full; larger source files keep health, metrics and a compact prefix, with complete bytes at raw_url matching input.sha256. Freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 28,
+  "n_signals_live": 20,
   "n_signals_reporting": 39,
   "n_signals_total": 39,
   "schema_version": "osint-china.v1",
@@ -254,9 +318,9 @@
   "signals": [
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T18:55:45Z",
+      "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 0.052,
+        "age_hours": -0.0,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -268,7 +332,7 @@
       "input": {
         "bytes": 10258,
         "filename": "board-alarm-latest.json",
-        "sha256": "a2bb5631be1941601f894b83e6dad0abbe5a98fa3bde86316a4dc596dabe15fa"
+        "sha256": "f166f6cb31c747d072eb16bca259522d257a193ea5dfec42f3987acf8428c23e"
       },
       "layer": "command",
       "live": true,
@@ -302,7 +366,7 @@
           "selected": [],
           "threshold": null
         },
-        "generated_at": "2026-08-24T15:55:45.102123+00:00",
+        "generated_at": "2026-08-24T17:22:36.167843+00:00",
         "headline": "MULTI-LAYER CO-MOVEMENT: content + network elevated together",
         "layer_coincidence": 2,
         "layers": {
@@ -380,11 +444,11 @@
             "state": "calm"
           },
           "bleedthrough_pools": {
-            "age_hours": 277.5,
+            "age_hours": 279.0,
             "bound_hours": 168.0,
             "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
             "n": 1,
-            "reason": "newest row is 277.5h old, past the 168h bound",
+            "reason": "newest row is 279.0h old, past the 168h bound",
             "state": "stale"
           },
           "censored_planet": {
@@ -476,7 +540,7 @@
             "state": "calm"
           },
           "refusal_churn": {
-            "age_hours": 11.0,
+            "age_hours": 12.5,
             "bound_hours": 30.0,
             "e": null,
             "instrument": {
@@ -566,7 +630,7 @@
       "raw_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "scope": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T15:55:45Z",
+      "source_timestamp": "2026-08-24T17:22:36Z",
       "status": "live",
       "summary": "Anytime-valid, multiplicity-adjusted synthesis across monitored signal histories. Upstream reading: MULTI-LAYER CO-MOVEMENT: content + network elevated together. Latest payload reports board e-value at 8.79 e-value.",
       "title": "Board alarm"
@@ -575,12 +639,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:21:11Z",
       "health": {
-        "age_hours": 13.628,
+        "age_hours": 15.023,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "event-flags",
@@ -590,7 +654,7 @@
         "sha256": "34ecaa3de3bda70b77a2cd7d4908521e55b58671e4f46a057a5e66e127fbfa03"
       },
       "layer": "command",
-      "live": true,
+      "live": false,
       "method": "conformal e-detector per signal: one-sided conservative p-value (rank+1)/(n+1) against the signal's own past, epsilon-mixture bet over (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9) (an e-value under no change), Shiryaev-Roberts recursion R_t=(1+R_(t-1))*b(p_t), warmup 8; WATCH >= 100, ALARM >= 500; statistic and reference reset after alarm",
       "method_version": null,
       "metric": {
@@ -790,15 +854,15 @@
       "scope": "Per-signal conformal event states, including non-reporting and stale series.",
       "source": "Palimpsest committed public-source reading",
       "source_timestamp": "2026-08-24T02:21:11Z",
-      "status": "live",
-      "summary": "Per-signal conformal event states, including non-reporting and stale series. Upstream reading: elevated: weibo_suppression. Latest payload reports signals reporting at 12 count across 15 signals configured.",
+      "status": "stale",
+      "summary": "Per-signal conformal event states, including non-reporting and stale series. The retained payload is stale: source timestamp 2026-08-24T02:21:11Z passed its freshness deadline 2026-08-24T16:21:11Z, so it is not labelled live. Upstream reading: elevated: weibo_suppression. Latest payload reports signals reporting at 12 count across 15 signals configured.",
       "title": "Event flags"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T18:55:45Z",
+      "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 0.052,
+        "age_hours": -0.0,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -810,7 +874,7 @@
       "input": {
         "bytes": 4327,
         "filename": "coverage-guard-latest.json",
-        "sha256": "04499879c26b00d5362bb5cb22fc8e4fbd3c4eed9c0d3d7d521466acf6765e78"
+        "sha256": "842b284dcfa935fd4980df9deba688d25d9f4f3cd730d6db4eb53986cdade3bb"
       },
       "layer": "command",
       "live": true,
@@ -830,7 +894,7 @@
           "signals whose sample size is not recorded in their history cannot be guarded at all and are absent here rather than assumed clean"
         ],
         "confounded": [],
-        "generated_at": "2026-08-24T15:55:45.155006+00:00",
+        "generated_at": "2026-08-24T17:22:36.277106+00:00",
         "headline": "no signal's movement is explained by its own measurement coverage",
         "method": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
         "signals": {
@@ -928,16 +992,16 @@
       "raw_url": "https://palimpsest.info/readings/coverage-guard-latest.json",
       "scope": "Checks whether apparent movement is confounded by changing measurement coverage.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T15:55:45Z",
+      "source_timestamp": "2026-08-24T17:22:36Z",
       "status": "live",
       "summary": "Checks whether apparent movement is confounded by changing measurement coverage. Upstream reading: no signal's movement is explained by its own measurement coverage. Latest payload reports confounded signals at 0 count.",
       "title": "Coverage guard"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T18:55:45Z",
+      "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 0.052,
+        "age_hours": -0.0,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -949,7 +1013,7 @@
       "input": {
         "bytes": 13968,
         "filename": "forecast-ledger-latest.json",
-        "sha256": "bdbf40111f14a05fbb3cbf2d4473dcf0421897e96023385ab77ea7a9970d2802"
+        "sha256": "90431b87fc072811c32221c0582a7f11558fa962caea445c4aa9c712dfa7e86e"
       },
       "layer": "command",
       "live": true,
@@ -980,7 +1044,7 @@
           "silence_blackouts": "needs 20 readings, has 0",
           "weibo_suppression": "history logs state transitions, not a regular series"
         },
-        "generated_at": "2026-08-24T15:55:45.178310+00:00",
+        "generated_at": "2026-08-24T17:22:36.343185+00:00",
         "headline": "8 signals scored over 1606 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8",
         "method": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
         "n_beating_baseline": 4,
@@ -1508,16 +1572,16 @@
       "raw_url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
       "scope": "Scores one-step-ahead forecasts so the observatory's calibration remains public.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T15:55:45Z",
+      "source_timestamp": "2026-08-24T17:22:36Z",
       "status": "live",
       "summary": "Scores one-step-ahead forecasts so the observatory's calibration remains public. Upstream reading: 8 signals scored over 1606 one-step forecasts; 84% of readings fell inside the 80% band (well calibrated); adaptive bands beat the fixed-quantile baseline on 4 of 8. Latest payload reports empirical coverage at 0.844 ratio across 1606 forecasts.",
       "title": "Forecast ledger"
     },
     {
       "cadence_hours": 1,
-      "freshness_deadline": "2026-08-24T18:55:45Z",
+      "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 0.052,
+        "age_hours": -0.0,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -1529,7 +1593,7 @@
       "input": {
         "bytes": 10602,
         "filename": "cross-layer-latest.json",
-        "sha256": "c5da9221701a96d725f7a153d557e7dea71061676c63a02993b43b53a143c4d5"
+        "sha256": "fefb6c36c763bcd0d75ac4b1dc0986871e887a7eb74bbca9870c22d1ea824f55"
       },
       "layer": "command",
       "live": true,
@@ -1552,7 +1616,7 @@
           "an ordinary correlation test would report far smaller p-values here and would be wrong: these series are autocorrelated, which is exactly the condition under which naive cross-correlation manufactures significance. Measured on independent random walks, the naive test called 98% of pairs significant at alpha=0.05; the shift null on levels 37%; the shift null on differences, which is what this reading uses, 8%",
           "only cross-layer pairs are tested; co-movement within a layer is expected and says nothing about the apparatus acting across its own tiers"
         ],
-        "generated_at": "2026-08-24T15:55:45.217457+00:00",
+        "generated_at": "2026-08-24T17:22:36.442298+00:00",
         "headline": "9 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established",
         "method": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
         "method_version": 1,
@@ -1910,7 +1974,7 @@
       "raw_url": "https://palimpsest.info/readings/cross-layer-latest.json",
       "scope": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists.",
       "source": "Palimpsest committed public-source reading",
-      "source_timestamp": "2026-08-24T15:55:45Z",
+      "source_timestamp": "2026-08-24T17:22:36Z",
       "status": "live",
       "summary": "Tests predeclared cross-layer lead/lag pairs only after enough overlapping history exists. Upstream reading: 9 cross-layer pairs tested, none survives the circular-shift null after multiplicity correction — no timing relationship is established. Latest payload reports confirmed pairs at 0 count across 9 pairs tested.",
       "title": "Cross-layer lead/lag"
@@ -1919,7 +1983,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-24T11:07:05Z",
       "health": {
-        "age_hours": 11.863,
+        "age_hours": 13.258,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -2410,12 +2474,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:17:50Z",
       "health": {
-        "age_hours": 13.684,
+        "age_hours": 15.079,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "gdelt",
@@ -2425,7 +2489,7 @@
         "sha256": "4f82743337b6cc9387aedd8a2af536719c1db798be9a349b92c39cc09fe84909"
       },
       "layer": "attention",
-      "live": true,
+      "live": false,
       "method": "See the complete embedded upstream payload and its raw feed",
       "method_version": 1,
       "metric": {
@@ -2704,15 +2768,15 @@
       "scope": "cross-signal: domestic censorship attention vs global coverage volume",
       "source": "GDELT DOC 2.0 API x Palimpsest DDTI terms",
       "source_timestamp": "2026-08-24T02:17:50Z",
-      "status": "live",
-      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. Latest payload reports terms with global data at 3 count across 25 terms compared.",
+      "status": "stale",
+      "summary": "Contrasts DDTI terms with global GDELT coverage without treating absence as proof. The retained payload is stale: source timestamp 2026-08-24T02:17:50Z passed its freshness deadline 2026-08-24T16:17:50Z, so it is not labelled live. Latest payload reports terms with global data at 3 count across 25 terms compared.",
       "title": "Global coverage cross-signal"
     },
     {
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T08:55:38Z",
       "health": {
-        "age_hours": 10.054,
+        "age_hours": 11.449,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4170,7 +4234,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T18:19:03Z",
       "health": {
-        "age_hours": 0.664,
+        "age_hours": 2.059,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4470,7 +4534,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-09-01T05:07:24Z",
       "health": {
-        "age_hours": 10.858,
+        "age_hours": 12.253,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4782,7 +4846,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:22Z",
       "health": {
-        "age_hours": 13.808,
+        "age_hours": 15.204,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -5069,7 +5133,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-24T06:08:00Z",
       "health": {
-        "age_hours": 16.848,
+        "age_hours": 18.243,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -5418,7 +5482,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T02:33:11Z",
       "health": {
-        "age_hours": 9.428,
+        "age_hours": 10.824,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -6591,7 +6655,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:48:00Z",
       "health": {
-        "age_hours": 9.181,
+        "age_hours": 10.577,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7076,7 +7140,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-25T05:58:43Z",
       "health": {
-        "age_hours": 0.003,
+        "age_hours": 1.398,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7507,7 +7571,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:11:10Z",
       "health": {
-        "age_hours": 13.795,
+        "age_hours": 15.19,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -7747,12 +7811,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:00:59Z",
       "health": {
-        "age_hours": 13.965,
+        "age_hours": 15.36,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "ooni-gfw",
@@ -7762,7 +7826,7 @@
         "sha256": "90accfb51b97976a774e922f9874ab3af2d4fe9a81b934354dfa714981bf1009"
       },
       "layer": "network",
-      "live": true,
+      "live": false,
       "method": "side-channel: we ingest OONI's already-aggregated open data; gfw_index is anomalous completed measurements divided by all completed measurements; we never probe a censored resource ourselves (vantage-insensitive)",
       "method_version": 2,
       "metric": {
@@ -8070,20 +8134,20 @@
       "scope": "live Great Firewall network blocking — website, messenger and circumvention-tool reachability, measured inside China by OONI Probe",
       "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
       "source_timestamp": "2026-08-24T02:00:59Z",
-      "status": "live",
-      "summary": "Aggregates OONI measurements made by probes in China across network test families. Latest payload reports GFW anomaly index at 58.3 percent across 272935 completed measurements.",
+      "status": "stale",
+      "summary": "Aggregates OONI measurements made by probes in China across network test families. The retained payload is stale: source timestamp 2026-08-24T02:00:59Z passed its freshness deadline 2026-08-24T16:00:59Z, so it is not labelled live. Latest payload reports GFW anomaly index at 58.3 percent across 272935 completed measurements.",
       "title": "OONI Great Firewall index"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:07:57Z",
       "health": {
-        "age_hours": 13.848,
+        "age_hours": 15.244,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "in-path-interference",
@@ -8093,7 +8157,7 @@
         "sha256": "b2eba327467c6e780d015440bd7d26a5c5f1814fdb4efade486125003e323592"
       },
       "layer": "network",
-      "live": true,
+      "live": false,
       "method": "rates are computed over COMPLETED tests only (measurement_count - failure_count). OONI's anomaly counter ranges only over completed runs, so a test that never completes has no anomaly rate — it has an execution-failure rate, reported separately",
       "method_version": 1,
       "metric": {
@@ -8242,15 +8306,15 @@
       "scope": "in-path tampering, real-time/circumvention transport health, and measurement methods that cannot execute inside China",
       "source": "OONI aggregation API (api.ooni.io), probe_cc=CN",
       "source_timestamp": "2026-08-24T02:07:57Z",
-      "status": "live",
-      "summary": "Separates middlebox signatures, transport failures and tests that could not execute. Latest payload reports middlebox index at 1.37 percent across 9283 completed middlebox tests.",
+      "status": "stale",
+      "summary": "Separates middlebox signatures, transport failures and tests that could not execute. The retained payload is stale: source timestamp 2026-08-24T02:07:57Z passed its freshness deadline 2026-08-24T16:07:57Z, so it is not labelled live. Latest payload reports middlebox index at 1.37 percent across 9283 completed middlebox tests.",
       "title": "In-path interference"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T08:07:17Z",
       "health": {
-        "age_hours": 9.859,
+        "age_hours": 11.255,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8427,12 +8491,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:10:02Z",
       "health": {
-        "age_hours": 13.814,
+        "age_hours": 15.209,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "inside-view",
@@ -8442,7 +8506,7 @@
         "sha256": "9fe7b2157fc21a8b26214153b614b0c01fe9f8b5e9839f45e753aa6546831291"
       },
       "layer": "network",
-      "live": true,
+      "live": false,
       "method": "a CN answer is forged when it shares no address with the control arm's answer set; no forged-IP list is hardcoded, because the injector pool rotates",
       "method_version": 2,
       "metric": {
@@ -10866,20 +10930,20 @@
       "scope": "DNS answers received by probes INSIDE China for a fixed panel of censored and benign domains, classified against a same-round control arm outside China",
       "source": "Globalping (api.globalping.io) volunteer probes inside mainland China",
       "source_timestamp": "2026-08-24T02:10:02Z",
-      "status": "live",
-      "summary": "Classifies DNS answers from volunteer probes inside China against a same-round external control. Upstream reading: the panel is comprehensively blocked from inside. Latest payload reports blocked share at 1 ratio across 5 qualifying answered measurement domains.",
+      "status": "stale",
+      "summary": "Classifies DNS answers from volunteer probes inside China against a same-round external control. The retained payload is stale: source timestamp 2026-08-24T02:10:02Z passed its freshness deadline 2026-08-24T16:10:02Z, so it is not labelled live. Upstream reading: the panel is comprehensively blocked from inside. Latest payload reports blocked share at 1 ratio across 5 qualifying answered measurement domains.",
       "title": "Inside-China view"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:04:27Z",
       "health": {
-        "age_hours": 13.907,
+        "age_hours": 15.303,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "ioda-outages",
@@ -10889,7 +10953,7 @@
         "sha256": "274665b1fe0b531bcb76673f1c9f5aaba86ffcc51445305d527d88839a0fa244"
       },
       "layer": "network",
-      "live": true,
+      "live": false,
       "method": "Shutdown-scale connectivity events, detected from outside China by three independent global instruments. Each event names the instrument that saw it; a single-instrument event is a candidate, multi-instrument corroboration is the strong read. The conformal signal is the per-day count of event STARTS.",
       "method_version": 1,
       "metric": {
@@ -10917,15 +10981,15 @@
       "scope": "Reports outage events detected by IODA's independent BGP, probing and darknet instruments.",
       "source": "IODA (Georgia Tech Internet Intelligence) v2 API — outage events for country CN from BGP, active probing (ping-slash24) and darknet (merit-nt) instruments",
       "source_timestamp": "2026-08-24T02:04:27Z",
-      "status": "live",
-      "summary": "Reports outage events detected by IODA's independent BGP, probing and darknet instruments. Latest payload reports instruments firing at 0 count.",
+      "status": "stale",
+      "summary": "Reports outage events detected by IODA's independent BGP, probing and darknet instruments. The retained payload is stale: source timestamp 2026-08-24T02:04:27Z passed its freshness deadline 2026-08-24T16:04:27Z, so it is not labelled live. Latest payload reports instruments firing at 0 count.",
       "title": "IODA outage monitor"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T07:52:26Z",
       "health": {
-        "age_hours": 10.107,
+        "age_hours": 11.503,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -10999,12 +11063,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:27:09Z",
       "health": {
-        "age_hours": 13.528,
+        "age_hours": 14.924,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "vantage-fusion",
@@ -11014,7 +11078,7 @@
         "sha256": "9fb06968248eb124c92f21306f1db07a05fa41d4e596433c5ffde2743fb56a6b"
       },
       "layer": "network",
-      "live": true,
+      "live": false,
       "method": "coverage-weighted mean of vantages normalized to 0-100 (Censored Planet remote interference rate, OONI in-country anomaly index); agreement = 1 − |OONI − CP| / 60pp; CONTESTED when the two differ > 20pp; net4people blocking-event share adjusts confidence only.",
       "method_version": 1,
       "metric": {
@@ -11070,15 +11134,15 @@
       "scope": "Fuses only reporting network vantages and names excluded or divergent inputs.",
       "source": "Palimpsest committed public-source reading",
       "source_timestamp": "2026-08-24T02:27:09Z",
-      "status": "live",
-      "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. Latest payload reports fused network index at 28.6 percent.",
+      "status": "stale",
+      "summary": "Fuses only reporting network vantages and names excluded or divergent inputs. The retained payload is stale: source timestamp 2026-08-24T02:27:09Z passed its freshness deadline 2026-08-24T16:27:09Z, so it is not labelled live. Latest payload reports fused network index at 28.6 percent.",
       "title": "Network vantage fusion"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T14:57:39Z",
       "health": {
-        "age_hours": 39.02,
+        "age_hours": 40.416,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11200,7 +11264,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:31:11Z",
       "health": {
-        "age_hours": 9.461,
+        "age_hours": 10.857,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11332,7 +11396,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T17:58:43Z",
       "health": {
-        "age_hours": 0.002,
+        "age_hours": 1.398,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12069,7 +12133,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 595.46,
+        "age_hours": 596.855,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -12224,7 +12288,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T18:52:24Z",
       "health": {
-        "age_hours": 11.108,
+        "age_hours": 12.503,
         "collector_reason": null,
         "collector_status": "source_refused",
         "ok": false,
@@ -12363,7 +12427,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:18Z",
       "health": {
-        "age_hours": 13.809,
+        "age_hours": 15.205,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13026,12 +13090,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:13:36Z",
       "health": {
-        "age_hours": 13.754,
+        "age_hours": 15.15,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "app-storefront",
@@ -13041,7 +13105,7 @@
         "sha256": "901254f8220d2c9ddea70d229be60dffb3bd3cab5bbbb3518119f918120e7ba0"
       },
       "layer": "erasure",
-      "live": true,
+      "live": false,
       "method": "See the complete embedded upstream payload and its raw feed",
       "method_version": 1,
       "metric": {
@@ -13195,15 +13259,15 @@
       "scope": "app-layer availability: which apps are offered in the Chinese App Store storefront versus the US one",
       "source": "Apple iTunes lookup API (itunes.apple.com), storefronts cn vs us",
       "source_timestamp": "2026-08-24T02:13:36Z",
-      "status": "live",
-      "summary": "Compares a fixed app panel in the China and US Apple storefronts. Upstream reading: much of the tracked catalogue is unavailable in the Chinese storefront. Latest payload reports delisting rate at 0.6 ratio across 10 apps tracked.",
+      "status": "stale",
+      "summary": "Compares a fixed app panel in the China and US Apple storefronts. The retained payload is stale: source timestamp 2026-08-24T02:13:36Z passed its freshness deadline 2026-08-24T16:13:36Z, so it is not labelled live. Upstream reading: much of the tracked catalogue is unavailable in the Chinese storefront. Latest payload reports delisting rate at 0.6 ratio across 10 apps tracked.",
       "title": "App Storefront panel"
     },
     {
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T08:06:32Z",
       "health": {
-        "age_hours": 9.872,
+        "age_hours": 11.268,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13308,7 +13372,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T15:47:39Z",
       "health": {
-        "age_hours": 38.187,
+        "age_hours": 39.583,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -13376,7 +13440,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T19:27:00Z",
       "health": {
-        "age_hours": 22.531,
+        "age_hours": 23.927,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13429,7 +13493,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 73.926,
+        "age_hours": 75.321,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13488,7 +13552,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T12:32:44Z",
       "health": {
-        "age_hours": 29.436,
+        "age_hours": 30.831,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13645,7 +13709,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 152.595,
+        "age_hours": 153.991,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -13713,7 +13777,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T10:02:43Z",
       "health": {
-        "age_hours": 31.936,
+        "age_hours": 33.331,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -15995,7 +16059,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:31:32Z",
       "health": {
-        "age_hours": 9.455,
+        "age_hours": 10.851,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -16042,7 +16106,7 @@
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-23T02:14:16Z",
       "health": {
-        "age_hours": 38.743,
+        "age_hours": 40.139,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,

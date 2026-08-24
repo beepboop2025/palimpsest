@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 5 degraded, 6 stale.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-24T15:58:52Z",
+  "generated_at": "2026-08-24T17:22:36Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "0d6925d636220daa8ef6dd57d4827f149b49d218",
+  "source_commit": "d51662893a2557ad60b1a7eff11e1fc35cdc2a25",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 28,
+    "live": 20,
     "status": "degraded",
     "counts": {
-      "live": 28,
+      "live": 20,
       "degraded": 5,
-      "stale": 6,
+      "stale": 14,
       "missing": 0,
       "corrupt": 0
     }
@@ -86,9 +86,9 @@
       "type": "analysis",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-24T15:55:45Z",
-      "modified_at": "2026-08-24T15:55:45Z",
-      "claim_fingerprint": "sha256:6c4f9eea6db993875ab5d8c6861062fd0119abfa41943d51170fb6a402105a64",
+      "published_at": "2026-08-24T17:22:36Z",
+      "modified_at": "2026-08-24T17:22:36Z",
+      "claim_fingerprint": "sha256:2ee01ce87a4d3bdda41c80720a60833b0b9e7aaaa6f91ebe0309b878e1ca2bd8",
       "metric": {
         "label": "board e-value",
         "value": 8.79,
@@ -101,17 +101,17 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 5 degraded, 6 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/board-alarm-latest.json",
         "input": {
           "filename": "board-alarm-latest.json",
-          "sha256": "a2bb5631be1941601f894b83e6dad0abbe5a98fa3bde86316a4dc596dabe15fa",
+          "sha256": "f166f6cb31c747d072eb16bca259522d257a193ea5dfec42f3987acf8428c23e",
           "bytes": 10258
         },
-        "source_timestamp": "2026-08-24T15:55:45Z"
+        "source_timestamp": "2026-08-24T17:22:36Z"
       },
       "method": {
         "summary": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
@@ -131,29 +131,29 @@
       "slug": "event-flags",
       "url": "https://palimpsest.info/news/event-flags/",
       "signal_id": "event-flags",
-      "headline": "12 of 15 configured signals are reporting to the event board",
-      "dek": "The event layer keeps non-reporting and stale series visible instead of reading absence as calm.",
+      "headline": "Event flags: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "command",
       "order": 2,
       "type": "methodology",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:21:11Z",
       "modified_at": "2026-08-24T02:21:11Z",
-      "claim_fingerprint": "sha256:ebe72284a57b119cf89b9c7cb9a3dd5fcd449dc551505d91aa7e70c064c020f1",
+      "claim_fingerprint": "sha256:539679ad8b0a0f3dfa3206b1930ae014719c92a6df497f5c9018f278ae29c818",
       "metric": {
-        "label": "signals reporting",
-        "value": 12,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "signals configured",
-          "value": 15
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "12 signals are reporting out of 15 configured signals in the current event-flags reading."
+          "type": "availability",
+          "statement": "No current finding is published for Event flags because the source status is stale."
         }
       ],
       "evidence": {
@@ -170,6 +170,7 @@
         "version": null
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Each detector is calibrated to its own history, so equal event values do not imply equal wall-clock rarity."
       ],
       "related_signal_ids": [
@@ -190,8 +191,8 @@
       "type": "methodology",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-24T15:55:45Z",
-      "modified_at": "2026-08-24T15:55:45Z",
+      "published_at": "2026-08-24T17:22:36Z",
+      "modified_at": "2026-08-24T17:22:36Z",
       "claim_fingerprint": "sha256:00ce2857f7b3d161951c22846e1b4ef3ffb18ed26b896aad05369cf445534aa3",
       "metric": {
         "label": "confounded signals",
@@ -212,10 +213,10 @@
         "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
         "input": {
           "filename": "coverage-guard-latest.json",
-          "sha256": "04499879c26b00d5362bb5cb22fc8e4fbd3c4eed9c0d3d7d521466acf6765e78",
+          "sha256": "842b284dcfa935fd4980df9deba688d25d9f4f3cd730d6db4eb53986cdade3bb",
           "bytes": 4327
         },
-        "source_timestamp": "2026-08-24T15:55:45Z"
+        "source_timestamp": "2026-08-24T17:22:36Z"
       },
       "method": {
         "summary": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
@@ -242,8 +243,8 @@
       "type": "methodology",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-24T15:55:45Z",
-      "modified_at": "2026-08-24T15:55:45Z",
+      "published_at": "2026-08-24T17:22:36Z",
+      "modified_at": "2026-08-24T17:22:36Z",
       "claim_fingerprint": "sha256:d5d1947e597c598efee43ff304845c9f3e7c41dd2436ce8b654e31a3f1d4bb7d",
       "metric": {
         "label": "empirical coverage",
@@ -264,10 +265,10 @@
         "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
         "input": {
           "filename": "forecast-ledger-latest.json",
-          "sha256": "bdbf40111f14a05fbb3cbf2d4473dcf0421897e96023385ab77ea7a9970d2802",
+          "sha256": "90431b87fc072811c32221c0582a7f11558fa962caea445c4aa9c712dfa7e86e",
           "bytes": 13968
         },
-        "source_timestamp": "2026-08-24T15:55:45Z"
+        "source_timestamp": "2026-08-24T17:22:36Z"
       },
       "method": {
         "summary": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
@@ -293,8 +294,8 @@
       "type": "methodology",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-24T15:55:45Z",
-      "modified_at": "2026-08-24T15:55:45Z",
+      "published_at": "2026-08-24T17:22:36Z",
+      "modified_at": "2026-08-24T17:22:36Z",
       "claim_fingerprint": "sha256:0f13b88ae8d9b076d69bf7a966d1b5bb3e51b6b80b8928661aba7a7996d0f4fc",
       "metric": {
         "label": "confirmed pairs",
@@ -315,10 +316,10 @@
         "url": "https://palimpsest.info/readings/cross-layer-latest.json",
         "input": {
           "filename": "cross-layer-latest.json",
-          "sha256": "c5da9221701a96d725f7a153d557e7dea71061676c63a02993b43b53a143c4d5",
+          "sha256": "fefb6c36c763bcd0d75ac4b1dc0986871e887a7eb74bbca9870c22d1ea824f55",
           "bytes": 10602
         },
-        "source_timestamp": "2026-08-24T15:55:45Z"
+        "source_timestamp": "2026-08-24T17:22:36Z"
       },
       "method": {
         "summary": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
@@ -391,29 +392,29 @@
       "slug": "global-coverage-cross-signal",
       "url": "https://palimpsest.info/news/global-coverage-cross-signal/",
       "signal_id": "gdelt",
-      "headline": "Global coverage is measurable for 3 of 25 compared terms",
-      "dek": "The cross-signal supplies an outside-China attention baseline without treating a missing result as proof of silence.",
+      "headline": "Global coverage cross-signal: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 2,
       "type": "measurement",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:17:50Z",
       "modified_at": "2026-08-24T02:17:50Z",
-      "claim_fingerprint": "sha256:a462c8969effbb856d92d73dfa544024cb463503e28396b62cb934eaf4d759d6",
+      "claim_fingerprint": "sha256:57c23684e5c7ca3ca7239e4f355eb1aa8c30b2e60d6c11fec75d281addb1ba3b",
       "metric": {
-        "label": "terms with global data",
-        "value": 3,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "terms compared",
-          "value": 25
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "GDELT returned usable global coverage for 3 of 25 compared terms."
+          "type": "availability",
+          "statement": "No current finding is published for Global coverage cross-signal because the source status is stale."
         }
       ],
       "evidence": {
@@ -430,6 +431,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "GDELT coverage varies by language and publisher; absence from its index is not proof that a topic received no coverage."
       ],
       "related_signal_ids": [
@@ -860,29 +862,29 @@
       "slug": "ooni-great-firewall-index",
       "url": "https://palimpsest.info/news/ooni-great-firewall-index/",
       "signal_id": "ooni-gfw",
-      "headline": "OONI's China anomaly index is 58.3% across 272,935 completed measurements",
-      "dek": "The index aggregates volunteer-probe observations across network test families inside China.",
+      "headline": "OONI Great Firewall index: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:00:59Z",
       "modified_at": "2026-08-24T02:00:59Z",
-      "claim_fingerprint": "sha256:44944031bae0d9d60f823f2820837339c9e9bf672928879a929549e059409208",
+      "claim_fingerprint": "sha256:43c4497197f2c28f46200962e6303ca9471b1b648f8d27b1a4df53ade8a04d53",
       "metric": {
-        "label": "GFW anomaly index",
-        "value": 58.3,
-        "unit": "percent",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "completed measurements",
-          "value": 272935
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current OONI aggregate reports a 58.3% anomaly index across 272,935 completed China measurements."
+          "type": "availability",
+          "statement": "No current finding is published for OONI Great Firewall index because the source status is stale."
         }
       ],
       "evidence": {
@@ -899,6 +901,7 @@
         "version": 2
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Volunteer-probe coverage is uneven across place, network and test family; anomalies are not all attributable to censorship."
       ],
       "related_signal_ids": [
@@ -913,29 +916,29 @@
       "slug": "in-path-interference",
       "url": "https://palimpsest.info/news/in-path-interference/",
       "signal_id": "in-path-interference",
-      "headline": "Middlebox signatures register at 1.37% in the current OONI window",
-      "dek": "The decomposition separates interference signatures from transport failure and tests that could not execute.",
+      "headline": "In-path interference: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 2,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:07:57Z",
       "modified_at": "2026-08-24T02:07:57Z",
-      "claim_fingerprint": "sha256:227418982e245e7a78004b5b24928623c16facb96c027689f4037726110a100c",
+      "claim_fingerprint": "sha256:974c8960488008a4b61e75f7e82272cc54fdd6051ff2007ab7cefab303e8976c",
       "metric": {
-        "label": "middlebox index",
-        "value": 1.37,
-        "unit": "percent",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "completed middlebox tests",
-          "value": 9283
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current measurement-weighted middlebox index is 1.37%."
+          "type": "availability",
+          "statement": "No current finding is published for In-path interference because the source status is stale."
         }
       ],
       "evidence": {
@@ -952,6 +955,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The index is a weighted aggregate over reporting tests; transport failure and execution blackout remain separate categories."
       ],
       "related_signal_ids": [
@@ -1017,29 +1021,29 @@
       "slug": "inside-china-view",
       "url": "https://palimpsest.info/news/inside-china-view/",
       "signal_id": "inside-view",
-      "headline": "100% of the 5-domain mainland panel is blocked",
-      "dek": "Volunteer probes inside China are compared with a same-round external control before an answer is classified.",
+      "headline": "Inside-China view: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 4,
       "type": "measurement",
       "priority": "lead",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:10:02Z",
       "modified_at": "2026-08-24T02:10:02Z",
-      "claim_fingerprint": "sha256:d48ade77197e25f0336a2866be2369e510a7c470176ee26b48b772e03d76ba4c",
+      "claim_fingerprint": "sha256:265148c2e70552bc56461531e24395d874bc3ace215ab616f4ace08924e6169a",
       "metric": {
-        "label": "blocked share",
-        "value": 1.0,
-        "unit": "ratio",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "qualifying answered measurement domains",
-          "value": 5
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current controlled panel reports 100% blocked responses across 5 tested domains."
+          "type": "availability",
+          "statement": "No current finding is published for Inside-China view because the source status is stale."
         }
       ],
       "evidence": {
@@ -1056,6 +1060,7 @@
         "version": 2
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The volunteer panel is small and availability varies by region; it does not represent every mainland network."
       ],
       "related_signal_ids": [
@@ -1070,20 +1075,20 @@
       "slug": "ioda-china-outage-monitor",
       "url": "https://palimpsest.info/news/ioda-china-outage-monitor/",
       "signal_id": "ioda-outages",
-      "headline": "0 independent IODA instruments are firing for China",
-      "dek": "BGP, active-probing and darknet instruments provide a country-scale outage check distinct from content blocking.",
+      "headline": "IODA outage monitor: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 5,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:04:27Z",
       "modified_at": "2026-08-24T02:04:27Z",
-      "claim_fingerprint": "sha256:d11298f4540771d4f8f5b0489d93b613a353431d3c905c97f68eaca532a53560",
+      "claim_fingerprint": "sha256:ce9cb005f7cc7684ac2f071347ba75e46f619b8dccbca573a36835a010040bfc",
       "metric": {
-        "label": "instruments firing",
-        "value": 0,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1091,8 +1096,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current IODA country reading has 0 outage instruments firing."
+          "type": "availability",
+          "statement": "No current finding is published for IODA outage monitor because the source status is stale."
         }
       ],
       "evidence": {
@@ -1109,6 +1114,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "No firing instrument means no detected country-scale outage in this window, not proof that all local networks were reachable."
       ],
       "related_signal_ids": [
@@ -1173,20 +1179,20 @@
       "slug": "network-vantage-fusion",
       "url": "https://palimpsest.info/news/network-vantage-fusion/",
       "signal_id": "vantage-fusion",
-      "headline": "Reporting network vantages combine to a 28.6% interference index",
-      "dek": "The fusion names excluded and divergent inputs instead of silently averaging away disagreement.",
+      "headline": "Network vantage fusion: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 7,
       "type": "analysis",
       "priority": "lead",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:27:09Z",
       "modified_at": "2026-08-24T02:27:09Z",
-      "claim_fingerprint": "sha256:a3f3ce46c954a1c1cbd2ba71d93a0a3971e40d75bc46ab539827431d3ad058dc",
+      "claim_fingerprint": "sha256:3bf74c883d9e155c273561206f59661639e0085cd11f521183c6167ef599cc21",
       "metric": {
-        "label": "fused network index",
-        "value": 28.6,
-        "unit": "percent",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1194,8 +1200,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current coverage-weighted fusion of reporting vantages is 28.6%."
+          "type": "availability",
+          "statement": "No current finding is published for Network vantage fusion because the source status is stale."
         }
       ],
       "evidence": {
@@ -1212,6 +1218,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The fused index summarizes differently sampled methods and is not a direct percentage of China's internet traffic."
       ],
       "related_signal_ids": [
@@ -1540,29 +1547,29 @@
       "slug": "app-storefront-panel",
       "url": "https://palimpsest.info/news/app-storefront-panel/",
       "signal_id": "app-storefront",
-      "headline": "60% of the 10-app panel is unavailable in China's storefront",
-      "dek": "The fixed panel compares China and US storefront results in the same round, with transient lookup failures separated.",
+      "headline": "App Storefront panel: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "erasure",
       "order": 5,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:13:36Z",
       "modified_at": "2026-08-24T02:13:36Z",
-      "claim_fingerprint": "sha256:9f931cb4bc4e94265c2edaf659cc8bf95fba045fafb1bf0ecf77a55d256fd1a3",
+      "claim_fingerprint": "sha256:d95182b2690009263eda945789650c258cfbbec17cbc06790877268da2f03c88",
       "metric": {
-        "label": "delisting rate",
-        "value": 0.6,
-        "unit": "ratio",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "apps tracked",
-          "value": 10
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current panel finds 60% of 10 tracked apps unavailable in the China storefront."
+          "type": "availability",
+          "statement": "No current finding is published for App Storefront panel because the source status is stale."
         }
       ],
       "evidence": {
@@ -1579,6 +1586,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "A fixed app panel is transparent but not representative of the entire App Store catalogue."
       ],
       "related_signal_ids": [
