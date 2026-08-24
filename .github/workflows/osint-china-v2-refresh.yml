@@ -13,7 +13,16 @@ name: Refresh OSINT China roll-up v2
 on:
   schedule:
     - cron: "58 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      expected_deploy_sha:
+        description: Exact reviewed main SHA that authorizes this release publication
+        required: true
+        type: string
+      release_nonce:
+        description: Unique 32-hex transaction nonce for causal run selection
+        required: true
+        type: string
   workflow_run:
     # These collectors update inputs embedded by the command-surface roll-up.
     # Rebuild immediately so their successful publication cannot leave the
@@ -40,6 +49,16 @@ jobs:
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:
+      - name: Bind a manual run to one exact release transaction
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ inputs.expected_deploy_sha }}
+          RELEASE_NONCE: ${{ inputs.release_nonce }}
+        run: |
+          [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$RELEASE_NONCE" =~ ^[0-9a-f]{32}$ ]]
+          test "$EXPECTED_DEPLOY_SHA" = "$GITHUB_SHA"
+
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7
         with:
           persist-credentials: false
@@ -627,3 +646,53 @@ jobs:
             exit 0
           fi
           exit "$publish_rc"
+
+      - name: Emit the causally bound publication receipt
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ inputs.expected_deploy_sha }}
+          RELEASE_NONCE: ${{ inputs.release_nonce }}
+        run: |
+          publication_commit=$(git rev-parse HEAD)
+          git fetch origin main
+          [[ "$publication_commit" =~ ^[0-9a-f]{40}$ ]]
+          git merge-base --is-ancestor "$publication_commit" origin/main
+          git merge-base --is-ancestor "$EXPECTED_DEPLOY_SHA" "$publication_commit"
+          git diff-tree --no-commit-id --name-only -r "$publication_commit" \
+            | grep -Fx 'readings/osint-china-latest.json'
+          git diff-tree --no-commit-id --name-only -r "$publication_commit" \
+            | grep -Fx 'readings/readings-ledger.jsonl'
+          python - "$publication_commit" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          publication_commit = sys.argv[1]
+          value = {
+              "schema_version": "palimpsest-osint-release-run.v1",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "head_sha": os.environ["GITHUB_SHA"],
+              "expected_deploy_sha": os.environ["EXPECTED_DEPLOY_SHA"],
+              "release_nonce": os.environ["RELEASE_NONCE"],
+              "publication_commit": publication_commit,
+          }
+          if any(
+              re.fullmatch(r"[0-9a-f]{40}", value[field]) is None
+              for field in ("head_sha", "expected_deploy_sha", "publication_commit")
+          ) or re.fullmatch(r"[0-9a-f]{32}", value["release_nonce"]) is None:
+              raise SystemExit("invalid release publication receipt")
+          with open("osint-release-run.json", "w", encoding="utf-8") as handle:
+              json.dump(value, handle, sort_keys=True, separators=(",", ":"))
+              handle.write("\n")
+          PY
+
+      - name: Upload the release publication receipt
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: palimpsest-osint-release-${{ github.run_id }}
+          path: osint-release-run.json
+          if-no-files-found: error
+          retention-days: 14

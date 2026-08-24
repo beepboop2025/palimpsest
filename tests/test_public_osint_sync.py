@@ -122,6 +122,7 @@ def _fixture(tmp_path: Path) -> dict:
         deployed_receipt=deployed,
         repository_url=str(source),
         public_url="https://fixture.invalid/osint.json",
+        public_ledger_url="https://fixture.invalid/readings-ledger.jsonl",
         require_root=False,
     )
     return {
@@ -138,7 +139,12 @@ def _fixture(tmp_path: Path) -> dict:
 
 
 def _candidate_fetch(fixture: dict):
-    return lambda _url, _commit: fixture["second_artifact"]
+    def fetch(url, _commit):
+        if url.endswith("/readings-ledger.jsonl"):
+            return fixture["second_ledger"]
+        return fixture["second_artifact"]
+
+    return fetch
 
 
 def test_sync_pins_publication_commit_and_installs_ledger_before_artifact(
@@ -146,6 +152,7 @@ def test_sync_pins_publication_commit_and_installs_ledger_before_artifact(
 ):
     fixture = _fixture(tmp_path)
     calls: list[str] = []
+    public_calls: list[tuple[str, str]] = []
     original = sync._atomic_replace
 
     def recording_replace(path, raw, **kwargs):
@@ -154,11 +161,18 @@ def test_sync_pins_publication_commit_and_installs_ledger_before_artifact(
         return original(path, raw, **kwargs)
 
     monkeypatch.setattr(sync, "_atomic_replace", recording_replace)
-    receipt = sync.synchronize(
-        fixture["config"], public_fetcher=_candidate_fetch(fixture)
-    )
+
+    def recording_fetch(url, commit):
+        public_calls.append((url, commit))
+        return _candidate_fetch(fixture)(url, commit)
+
+    receipt = sync.synchronize(fixture["config"], public_fetcher=recording_fetch)
 
     assert calls[:2] == [sync.LEDGER_FILENAME, sync.OSINT_FILENAME]
+    assert public_calls == [
+        (fixture["config"].public_url, fixture["second_commit"]),
+        (fixture["config"].public_ledger_url, fixture["second_commit"]),
+    ]
     assert receipt["fetched_main"] == fixture["main_commit"]
     assert receipt["publication_commit"] == fixture["second_commit"]
     assert receipt["artifact_sha256"] == sync._sha256(fixture["second_artifact"])
@@ -269,6 +283,70 @@ def test_public_byte_mismatch_preserves_both_last_good_files(tmp_path):
         )
     assert (readings / sync.LEDGER_FILENAME).read_bytes() == fixture["first_ledger"]
     assert (readings / sync.OSINT_FILENAME).read_bytes() == fixture["first_artifact"]
+
+
+def test_public_ledger_byte_mismatch_preserves_both_last_good_files(tmp_path):
+    fixture = _fixture(tmp_path)
+    readings = fixture["config"].readings_directory
+
+    def mismatched_ledger(url, _commit):
+        if url.endswith("/readings-ledger.jsonl"):
+            return fixture["first_ledger"]
+        return fixture["second_artifact"]
+
+    with pytest.raises(sync.SyncFailure, match="public-ledger-git-byte-mismatch"):
+        sync.synchronize(fixture["config"], public_fetcher=mismatched_ledger)
+    assert (readings / sync.LEDGER_FILENAME).read_bytes() == fixture["first_ledger"]
+    assert (readings / sync.OSINT_FILENAME).read_bytes() == fixture["first_artifact"]
+
+
+def test_public_installed_verifier_rechecks_both_mutable_latest_paths(tmp_path):
+    fixture = _fixture(tmp_path)
+    receipt = sync.synchronize(
+        fixture["config"], public_fetcher=_candidate_fetch(fixture)
+    )
+    calls: list[tuple[str, str]] = []
+
+    def recording_fetch(url, commit):
+        calls.append((url, commit))
+        return _candidate_fetch(fixture)(url, commit)
+
+    assert (
+        sync.verify_public_installed(fixture["config"], public_fetcher=recording_fetch)
+        == receipt
+    )
+    assert calls == [
+        (fixture["config"].public_url, fixture["second_commit"]),
+        (fixture["config"].public_ledger_url, fixture["second_commit"]),
+    ]
+
+    authority = fixture["config"].authority_directory
+    installed_before = {
+        name: (authority / name).read_bytes()
+        for name in (sync.OSINT_FILENAME, sync.LEDGER_FILENAME, sync.RECEIPT_FILENAME)
+    }
+
+    def drifted_artifact(url, _commit):
+        if url == fixture["config"].public_url:
+            return fixture["first_artifact"]
+        return fixture["second_ledger"]
+
+    with pytest.raises(sync.SyncFailure, match="public-installed-osint-mismatch"):
+        sync.verify_public_installed(fixture["config"], public_fetcher=drifted_artifact)
+    assert {
+        name: (authority / name).read_bytes() for name in installed_before
+    } == installed_before
+
+    def drifted_ledger(url, _commit):
+        if url.endswith("/readings-ledger.jsonl"):
+            return fixture["first_ledger"]
+        return fixture["second_artifact"]
+
+    with pytest.raises(sync.SyncFailure, match="public-installed-ledger-mismatch"):
+        sync.verify_public_installed(fixture["config"], public_fetcher=drifted_ledger)
+    assert {
+        name: (authority / name).read_bytes() for name in installed_before
+    } == installed_before
 
 
 @pytest.mark.parametrize(
@@ -419,8 +497,9 @@ def test_stable_lock_refuses_a_concurrent_updater_without_replacing_inode(tmp_pa
     lock_path = state / "sync.lock"
     with sync._lock(state):
         inode = lock_path.stat().st_ino
-        with pytest.raises(sync.SyncFailure, match="sync-already-running"), sync._lock(
-            state
+        with (
+            pytest.raises(sync.SyncFailure, match="sync-already-running"),
+            sync._lock(state),
         ):
             pass
     assert lock_path.stat().st_ino == inode
@@ -453,7 +532,9 @@ def test_writable_bootstrap_tree_replacement_cannot_change_authoritative_view(
             os.replace(attack, shared / sync.OSINT_FILENAME)
         return result
 
-    monkeypatch.setattr(sync, "_validate_authority_pair", replace_shared_after_validation)
+    monkeypatch.setattr(
+        sync, "_validate_authority_pair", replace_shared_after_validation
+    )
     receipt = sync.synchronize(
         fixture["config"], public_fetcher=_candidate_fetch(fixture)
     )
@@ -461,9 +542,9 @@ def test_writable_bootstrap_tree_replacement_cannot_change_authoritative_view(
     authority = fixture["config"].authority_directory
     assert (authority / sync.OSINT_FILENAME).read_bytes() == fixture["second_artifact"]
     assert receipt["artifact_sha256"] == sync._sha256(fixture["second_artifact"])
-    assert (fixture["config"].readings_directory / sync.OSINT_FILENAME).read_bytes() == (
-        b'{"attacker":true}\n'
-    )
+    assert (
+        fixture["config"].readings_directory / sync.OSINT_FILENAME
+    ).read_bytes() == (b'{"attacker":true}\n')
     assert not list(fixture["config"].readings_directory.glob(".*.tmp"))
     assert sync.verify_installed(fixture["config"]) == receipt
 
@@ -512,9 +593,7 @@ def test_release_proof_pins_repeated_starts_to_exact_publication(tmp_path):
     first = sync.synchronize(
         fixture["config"], public_fetcher=_candidate_fetch(fixture)
     )
-    third_document = _document(
-        "2026-08-14T01:15:00Z", fixture["main_commit"], value=3
-    )
+    third_document = _document("2026-08-14T01:15:00Z", fixture["main_commit"], value=3)
     third_ledger = _append_seal(fixture["second_ledger"], third_document, 2)
     _write_publication(fixture["source"], third_document, third_ledger, "third")
 

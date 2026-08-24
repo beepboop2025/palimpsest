@@ -23,6 +23,7 @@ analysis_root="$fixture_root/analysis"
 # Production keeps the evidence wire under the broader state root while the
 # archive mounts only the disjoint readings/ and data/ subtrees from that root.
 newswire_root="$state_root/newswire"
+witness_root="$fixture_root/witness"
 backup_root="$fixture_root/backups"
 failed_root="$fixture_root/failed-backups"
 fake_bin="$fixture_root/bin"
@@ -33,13 +34,14 @@ mkdir -p "$repo/ops/docker" "$state_root/readings" "$state_root/data/raw" \
   "$analysis_root/private" \
   "$analysis_root/delivery" \
   "$analysis_root/runs/run-20260813T010203Z-0123456789ab/private" \
-  "$newswire_root" \
+  "$newswire_root" "$witness_root" \
   "$backup_root" "$failed_root" "$fake_bin"
 # Match the canonical path the backup resolves before it constructs Docker
 # bind mounts (TMPDIR may carry a harmless trailing slash on some runners).
 state_root="$(cd "$state_root" && pwd -P)"
 analysis_root="$(cd "$analysis_root" && pwd -P)"
 newswire_root="$(cd "$newswire_root" && pwd -P)"
+witness_root="$(cd "$witness_root" && pwd -P)"
 
 printf 'services: {}\n' >"$repo/ops/docker/docker-compose.prod.yml"
 printf 'POSTGRES_USER=palimpsest\nPOSTGRES_DB=palimpsest\n' \
@@ -69,6 +71,17 @@ printf '{"event_id":"fixture"}\n' >"$newswire_root/newswire-versions.jsonl"
 printf '{"status":"success"}\n' >"$newswire_root/newswire-status.json"
 printf 'newswire-lock-fixture\n' >"$newswire_root/newswire.lock"
 chmod 0600 "$newswire_root/newswire.lock"
+history_payload='{"ts":"2026-08-13T01:02:03+00:00","n":7,"head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","root":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","alerts":0}'
+printf '%s\n' "$history_payload" \
+  >"$witness_root/eval-registry.witness.jsonl"
+printf '%s\n' "$history_payload" \
+  >"$witness_root/erasure-ledger.witness.jsonl"
+printf '%s\n' \
+  '{"conditions":{},"schema_version":"palimpsest-public-freshness-state.v1"}' \
+  >"$witness_root/public-freshness-state.json"
+chmod 0755 "$witness_root"
+chmod 0644 "$witness_root"/*.witness.jsonl
+chmod 0600 "$witness_root/public-freshness-state.json"
 
 # These single-quoted strings are source code for the fake executable; their
 # variables must expand when that executable runs, not while this test writes it.
@@ -98,6 +111,8 @@ printf '%s\n' \
   '  [[ "$joined" == *"src=$FAKE_STATE_ROOT/data,dst=/source/data,readonly"* ]] || exit 54' \
   '  [[ "$joined" == *"src=$FAKE_ANALYSIS_ROOT,dst=/source/analysis,readonly"* ]] || exit 55' \
   '  [[ "$joined" == *"src=$FAKE_NEWSWIRE_ROOT,dst=/source/newswire,readonly"* ]] || exit 56' \
+  '  [[ "$joined" == *"src=$FAKE_WITNESS_ROOT,dst=/source/witness,readonly"* ]] || exit 57' \
+  '  [[ "$joined" == *" --env PALIMPSEST_EXPECTED_WITNESS_IDENTITY="* ]] || exit 58' \
   '  [[ "$joined" == *" --entrypoint /usr/local/bin/python3 $FAKE_IMAGE_ID -I -B /app/scripts/palimpsest_backup_archive.py "* ]] || exit 47' \
   '  archive_fixture="$(mktemp -d)"' \
   '  trap '\''rm -rf -- "$archive_fixture"'\'' EXIT' \
@@ -105,7 +120,8 @@ printf '%s\n' \
   '  cp -a "$FAKE_STATE_ROOT/data" "$archive_fixture/data"' \
   '  cp -a "$FAKE_ANALYSIS_ROOT" "$archive_fixture/analysis"' \
   '  cp -a "$FAKE_NEWSWIRE_ROOT" "$archive_fixture/newswire"' \
-  '  tar --create --gzip --file - --directory "$archive_fixture" analysis readings data newswire' \
+  '  cp -a "$FAKE_WITNESS_ROOT" "$archive_fixture/witness"' \
+  '  tar --create --gzip --file - --directory "$archive_fixture" analysis readings data newswire witness' \
   'else' \
   '  printf "unexpected fake docker invocation: %s\n" "$*" >&2' \
   '  exit 43' \
@@ -145,6 +161,7 @@ common_env=(
   "PALIMPSEST_STATE_ROOT=$state_root"
   "PALIMPSEST_ANALYSIS_ROOT=$analysis_root"
   "PALIMPSEST_NEWSWIRE_ROOT=$newswire_root"
+  "PALIMPSEST_WITNESS_ROOT=$witness_root"
   "PALIMPSEST_BACKUP_RETENTION_DAYS=14"
   "PALIMPSEST_BACKUP_MIN_FREE_MB=64"
   "FAKE_CONTAINER_ID=$fake_container"
@@ -152,6 +169,7 @@ common_env=(
   "FAKE_STATE_ROOT=$state_root"
   "FAKE_ANALYSIS_ROOT=$analysis_root"
   "FAKE_NEWSWIRE_ROOT=$newswire_root"
+  "FAKE_WITNESS_ROOT=$witness_root"
 )
 
 env "${common_env[@]}" \
@@ -184,6 +202,14 @@ for analysis_member in \
   tar --list --gzip --file "$snapshot/artifacts.tar.gz" | \
     grep -q "^${analysis_member}$" || \
     fail "private analysis artifact is missing: $analysis_member"
+done
+for witness_member in \
+  witness/eval-registry.witness.jsonl \
+  witness/erasure-ledger.witness.jsonl \
+  witness/public-freshness-state.json; do
+  tar --list --gzip --file "$snapshot/artifacts.tar.gz" | \
+    grep -q "^${witness_member}$" || \
+    fail "witness recovery artifact is missing: $witness_member"
 done
 for newswire_member in \
   newswire/newswire-latest.json \
@@ -222,9 +248,21 @@ find "$restore_check/analysis/delivery/wire-claim-audits-latest.json" \
 find "$restore_check/analysis/runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json" \
   -prune -type f -perm 0600 -print -quit | grep -q . || \
   fail "immutable analysis run mode was not preserved"
-grep -Fq 'format_version=3' "$snapshot/MANIFEST.txt" || \
+find "$restore_check/witness" -prune -type d -perm 0755 \
+  -print -quit | grep -q . || fail "witness directory mode was not preserved"
+for witness_history in eval-registry erasure-ledger; do
+  find "$restore_check/witness/${witness_history}.witness.jsonl" \
+    -prune -type f -perm 0644 -print -quit | grep -q . || \
+    fail "witness history mode was not preserved: $witness_history"
+  [[ "$(
+    tar --extract --gzip --to-stdout --file "$snapshot/artifacts.tar.gz" \
+      "witness/${witness_history}.witness.jsonl"
+  )" == "$history_payload" ]] || \
+    fail "witness history bytes are not restore-exact: $witness_history"
+done
+grep -Fq 'format_version=4' "$snapshot/MANIFEST.txt" || \
   fail "backup manifest format was not upgraded"
-grep -Fq 'artifact_roots=readings,data,newswire,analysis' "$snapshot/MANIFEST.txt" || \
+grep -Fq 'artifact_roots=readings,data,newswire,analysis,witness' "$snapshot/MANIFEST.txt" || \
   fail "backup manifest omits an artifact restore root"
 if grep -Fq "$private_state_payload" \
   "$snapshot/MANIFEST.txt" "$snapshot/artifacts.list"; then
@@ -296,6 +334,19 @@ if env "${common_env[@]}" \
 fi
 [[ -z "$(find "$missing_analysis_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
   fail "missing analysis root left a published or incomplete directory"
+
+symlink_witness_root="$fixture_root/symlink-witness"
+symlink_witness_backups="$fixture_root/symlink-witness-backups"
+ln -s "$witness_root" "$symlink_witness_root"
+mkdir -p "$symlink_witness_backups"
+if env "${common_env[@]}" \
+  PALIMPSEST_WITNESS_ROOT="$symlink_witness_root" \
+  PALIMPSEST_BACKUP_DIR="$symlink_witness_backups" \
+  "$backup_script"; then
+  fail "symlinked witness history unexpectedly published"
+fi
+[[ -z "$(find "$symlink_witness_backups" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "symlinked witness refusal left a published or incomplete directory"
 
 symlink_state_root="$fixture_root/symlink-state"
 symlink_data_target="$fixture_root/symlink-data-target"

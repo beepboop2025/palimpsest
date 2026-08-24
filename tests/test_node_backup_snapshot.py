@@ -1,8 +1,10 @@
 import hashlib
 import importlib.util
 import io
+import json
 import os
 from pathlib import Path
+import stat
 import sys
 import tarfile
 
@@ -28,9 +30,11 @@ def _load_verifier_module():
 verifier = _load_verifier_module()
 
 
-def _manifest(*, artifact_roots: str = "readings,data,newswire,analysis") -> bytes:
+def _manifest(
+    *, artifact_roots: str = "readings,data,newswire,analysis,witness"
+) -> bytes:
     return (
-        "format_version=3\n"
+        "format_version=4\n"
         f"snapshot_id={SNAPSHOT_ID}\n"
         "created_at_utc=2026-08-13T01:02:04Z\n"
         "host=palimpsest-fixture\n"
@@ -42,6 +46,18 @@ def _manifest(*, artifact_roots: str = "readings,data,newswire,analysis") -> byt
 
 
 def _archive(members: list[tuple[str, str, bytes | None]] | None = None):
+    witness_record = (
+        json.dumps(
+            {
+                "ts": "2026-08-13T01:02:03+00:00",
+                "n": 7,
+                "head": "a" * 64,
+                "root": "b" * 64,
+                "alerts": 0,
+            }
+        ).encode()
+        + b"\n"
+    )
     selected = members or [
         ("analysis", "directory", None),
         ("analysis/delivery", "directory", None),
@@ -58,6 +74,22 @@ def _archive(members: list[tuple[str, str, bytes | None]] | None = None):
         ("data/index.json", "file", b"{}\n"),
         ("newswire", "directory", None),
         ("newswire/newswire-latest.json", "file", b"{}\n"),
+        ("witness", "directory", None),
+        (
+            "witness/erasure-ledger.witness.jsonl",
+            "file",
+            witness_record,
+        ),
+        (
+            "witness/eval-registry.witness.jsonl",
+            "file",
+            witness_record,
+        ),
+        (
+            "witness/public-freshness-state.json",
+            "file",
+            b'{"conditions":{},"schema_version":"palimpsest-public-freshness-state.v1"}\n',
+        ),
     ]
     payload = io.BytesIO()
     listing: list[str] = []
@@ -66,9 +98,12 @@ def _archive(members: list[tuple[str, str, bytes | None]] | None = None):
     ) as archive:
         for name, kind, content in selected:
             member = tarfile.TarInfo(name)
+            if name == "witness" or name.startswith("witness/"):
+                member.uid = verifier.WITNESS_UID
+                member.gid = verifier.WITNESS_GID
             if kind == "directory":
                 member.type = tarfile.DIRTYPE
-                member.mode = 0o700
+                member.mode = 0o755 if name == "witness" else 0o700
                 archive.addfile(member)
                 listing.append(f"{name.rstrip('/')}/")
             elif kind == "symlink":
@@ -79,7 +114,7 @@ def _archive(members: list[tuple[str, str, bytes | None]] | None = None):
             else:
                 assert content is not None
                 member.type = tarfile.REGTYPE
-                member.mode = 0o600
+                member.mode = 0o644 if name in verifier.WITNESS_HISTORY_FILES else 0o600
                 member.size = len(content)
                 archive.addfile(member, io.BytesIO(content))
                 listing.append(name)
@@ -116,6 +151,45 @@ def _fixture(tmp_path: Path) -> Path:
     return snapshot
 
 
+def _replace_archive_member(
+    snapshot: Path,
+    target: str,
+    *,
+    payload: bytes | None = None,
+    mode: int | None = None,
+    uid: int | None = None,
+) -> None:
+    source_path = snapshot / "artifacts.tar.gz"
+    replacement = io.BytesIO()
+    with (
+        tarfile.open(source_path, mode="r:gz") as source,
+        tarfile.open(
+            fileobj=replacement, mode="w:gz", format=tarfile.PAX_FORMAT
+        ) as destination,
+    ):
+        for original in source:
+            member = tarfile.TarInfo(original.name)
+            member.type = original.type
+            member.mode = (
+                original.mode if mode is None or original.name != target else mode
+            )
+            member.uid = original.uid if uid is None or original.name != target else uid
+            member.gid = original.gid
+            member.mtime = original.mtime
+            if original.isreg():
+                extracted = source.extractfile(original)
+                assert extracted is not None
+                content = extracted.read()
+                if original.name == target and payload is not None:
+                    content = payload
+                member.size = len(content)
+                destination.addfile(member, io.BytesIO(content))
+            else:
+                destination.addfile(member)
+    source_path.write_bytes(replacement.getvalue())
+    _refresh_checksums(snapshot)
+
+
 def _verify(snapshot: Path, **overrides):
     options = {
         "snapshot_id": SNAPSHOT_ID,
@@ -137,11 +211,12 @@ def test_good_snapshot_produces_deterministic_restore_proof(tmp_path):
     assert first["status"] == "verified"
     assert first["snapshot"] == SNAPSHOT_ID
     assert first["counts"] == {
-        "artifact_directories": 6,
-        "artifact_files": 5,
-        "artifact_members": 11,
+        "artifact_directories": 7,
+        "artifact_files": 8,
+        "artifact_members": 15,
         "checksum_entries": 5,
         "snapshot_files": 6,
+        "witness_history_records": 2,
     }
     assert set(first["digests"]) == set(verifier.HASHED_FILES)
 
@@ -252,6 +327,50 @@ def test_manifest_contract_mismatch_is_rejected(tmp_path):
         _verify(snapshot)
 
 
+def test_legacy_manifest_cannot_claim_witness_covered_restore(tmp_path):
+    snapshot = _fixture(tmp_path)
+    (snapshot / "MANIFEST.txt").write_bytes(
+        _manifest().replace(b"format_version=4\n", b"format_version=3\n")
+    )
+    _refresh_checksums(snapshot)
+
+    with pytest.raises(verifier.VerificationError, match="format version is not 4"):
+        _verify(snapshot)
+
+
+@pytest.mark.parametrize(
+    ("payload", "mode", "uid", "match"),
+    [
+        (b'{"n":1}\n', None, None, "fields are not exact"),
+        (
+            b'{"ts":"2026-08-13T01:02:03+00:00","ts":"duplicate","n":1,'
+            b'"head":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",'
+            b'"root":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",'
+            b'"alerts":0}\n',
+            None,
+            None,
+            "duplicate JSON fields",
+        ),
+        (None, 0o666, None, "history mode is invalid"),
+        (None, None, 0, "ownership metadata is invalid"),
+    ],
+)
+def test_witness_history_restore_contract_rejects_malformed_payload_or_metadata(
+    tmp_path, payload, mode, uid, match
+):
+    snapshot = _fixture(tmp_path)
+    _replace_archive_member(
+        snapshot,
+        "witness/eval-registry.witness.jsonl",
+        payload=payload,
+        mode=mode,
+        uid=uid,
+    )
+
+    with pytest.raises(verifier.VerificationError, match=match):
+        _verify(snapshot)
+
+
 def test_payload_hash_mismatch_is_rejected(tmp_path):
     snapshot = _fixture(tmp_path)
     (snapshot / "postgres.dump").write_bytes(b"tampered")
@@ -295,6 +414,30 @@ def test_pack_uses_exact_open_files_and_builds_an_inspectable_outer_tar(tmp_path
             SNAPSHOT_ID,
             *(f"{SNAPSHOT_ID}/{name}" for name in sorted(verifier.SNAPSHOT_FILES)),
         ]
+
+
+def test_pack_fsyncs_the_output_file_and_parent_directory(tmp_path, monkeypatch):
+    snapshot = _fixture(tmp_path)
+    output = tmp_path / "transport.tar"
+    original_fsync = verifier.os.fsync
+    flushed: list[str] = []
+
+    def recording_fsync(descriptor):
+        metadata = os.fstat(descriptor)
+        flushed.append("directory" if stat.S_ISDIR(metadata.st_mode) else "file")
+        return original_fsync(descriptor)
+
+    monkeypatch.setattr(verifier.os, "fsync", recording_fsync)
+    verifier.pack_snapshot(
+        snapshot,
+        snapshot_id=SNAPSHOT_ID,
+        output=output,
+        expected_uid=os.getuid(),
+        expected_gid=os.getgid(),
+    )
+
+    assert "file" in flushed
+    assert flushed[-1] == "directory"
 
 
 def test_pack_rejects_a_path_swap_after_opening_and_removes_partial_output(

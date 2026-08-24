@@ -28,6 +28,22 @@ the systemd-managed `/var/lib/palimpsest-watchdog` directory. Exit `2` means a
 condition is active, so the unit remains visible in `systemctl --failed` even
 without a webhook.
 
+During a host release, exit `2` is never treated as systemd success. The
+three-phase transaction runs the reviewed target watchdog in isolated state
+before mutation, then runs the installed watchdog again after exact public
+publication. `ops/observer_release_gate.py` permits finalization only when each
+final semantic condition identity was present in that fresh baseline, its
+baseline state is listed in the rule's `baseline_states`, and its complete
+final identity exactly matches the reasoned, expiring
+`ops/observer-release-policy-20260824.json`. This admits an explicitly reviewed
+state transition such as `stale` to `degraded`; it does not admit a state change
+merely because the condition name is unchanged. Resolved problems may
+disappear. New conditions, unlisted transitions, stale or malformed reports,
+policy drift, and unapproved deployment-controlled failures abort while
+leaving activators quiesced. The watchdog unit remains failed after an accepted
+degraded release, so journald and `systemctl --failed` continue to carry the
+incident.
+
 ## Install beside the collector stack
 
 The optional localhost API must use the same port as

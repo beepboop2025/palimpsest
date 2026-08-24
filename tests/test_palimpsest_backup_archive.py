@@ -105,6 +105,8 @@ def _artifact_tree(tmp_path: Path, monkeypatch) -> Path:
     data.mkdir()
     newswire = source / "newswire"
     newswire.mkdir()
+    witness = source / "witness"
+    witness.mkdir()
     (readings / "latest.json").write_text('{"status":"ok"}\n')
     (data / "observations").mkdir()
     (data / "observations" / "sample.json").write_text('{"value":1}\n')
@@ -133,8 +135,39 @@ def _artifact_tree(tmp_path: Path, monkeypatch) -> Path:
     )
     (newswire / "newswire.lock").write_text("")
     (newswire / "newswire.lock").chmod(0o600)
+    witness_record = {
+        "ts": "2026-08-13T01:02:03+00:00",
+        "n": 7,
+        "head": "a" * 64,
+        "root": "b" * 64,
+        "alerts": 0,
+    }
+    for name in archive_helper.WITNESS_HISTORY_FILES:
+        (witness / name).write_text(json.dumps(witness_record) + "\n")
+        (witness / name).chmod(0o644)
+    (witness / archive_helper.WITNESS_FRESHNESS_FILE).write_text(
+        json.dumps(
+            {
+                "schema_version": archive_helper.WITNESS_FRESHNESS_SCHEMA,
+                "conditions": {},
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    )
+    (witness / archive_helper.WITNESS_FRESHNESS_FILE).chmod(0o600)
+    witness.chmod(0o755)
     monkeypatch.setattr(archive_helper, "NEWSWIRE_UID", os.getuid())
     monkeypatch.setattr(archive_helper, "NEWSWIRE_GID", os.getgid())
+    monkeypatch.setattr(archive_helper, "WITNESS_UID", os.getuid())
+    monkeypatch.setattr(archive_helper, "WITNESS_GID", os.getgid())
+    witness_metadata = witness.stat()
+    monkeypatch.setattr(
+        archive_helper,
+        "EXPECTED_WITNESS_IDENTITY",
+        (witness_metadata.st_dev, witness_metadata.st_ino),
+    )
     monkeypatch.setattr(archive_helper, "SOURCE_ROOT", str(source))
     return source
 
@@ -146,10 +179,7 @@ def test_analysis_tree_preflight_accepts_exact_immutable_shape(tmp_path, monkeyp
 
     assert signatures
     assert any(row[0] == "private/state.json" for row in signatures)
-    assert any(
-        row[0] == "delivery/wire-claim-audits-latest.json"
-        for row in signatures
-    )
+    assert any(row[0] == "delivery/wire-claim-audits-latest.json" for row in signatures)
     assert any(
         row[0]
         == "runs/run-20260813T010203Z-0123456789ab/private/analytical-packets-latest.json"
@@ -211,7 +241,7 @@ def test_write_archive_streams_only_fixed_roots_with_numeric_ownership(
         members = archive.getmembers()
 
     names = {member.name for member in members}
-    assert {"readings", "data", "analysis", "newswire"}.issubset(names)
+    assert {"readings", "data", "analysis", "newswire", "witness"}.issubset(names)
     assert "readings/latest.json" in names
     assert "data/observations/sample.json" in names
     assert "data/.recovery.lock" in names
@@ -219,6 +249,8 @@ def test_write_archive_streams_only_fixed_roots_with_numeric_ownership(
     assert "analysis/private/state.json" in names
     assert "analysis/delivery/wire-claim-audits-latest.json" in names
     assert "newswire/newswire-latest.json" in names
+    assert "witness/eval-registry.witness.jsonl" in names
+    assert "witness/erasure-ledger.witness.jsonl" in names
     assert all(
         member.name.split("/", 1)[0] in archive_helper.ARCHIVE_ROOTS
         for member in members
@@ -231,7 +263,38 @@ def test_write_archive_streams_only_fixed_roots_with_numeric_ownership(
         assert member.gname == ""
 
     root_order = [member.name for member in members if "/" not in member.name]
-    assert root_order == ["analysis", "readings", "data", "newswire"]
+    assert root_order == ["analysis", "readings", "data", "newswire", "witness"]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "match"),
+    [
+        ("malformed", "fixed artifact archive failed"),
+        ("symlink", "fixed artifact archive failed"),
+        ("hardlink", "fixed artifact archive failed"),
+        ("world-writable", "fixed artifact archive failed"),
+        ("identity", "fixed artifact archive failed"),
+    ],
+)
+def test_witness_history_fails_closed_on_malformed_or_unsafe_state(
+    tmp_path, monkeypatch, mutation, match
+):
+    source = _artifact_tree(tmp_path, monkeypatch)
+    history = source / "witness" / "eval-registry.witness.jsonl"
+    if mutation == "malformed":
+        history.write_text('{"n":1}\n')
+    elif mutation == "symlink":
+        history.unlink()
+        history.symlink_to(source / "readings" / "latest.json")
+    elif mutation == "hardlink":
+        os.link(history, source / "witness-history-alias")
+    elif mutation == "identity":
+        monkeypatch.setattr(archive_helper, "EXPECTED_WITNESS_IDENTITY", (0, 0))
+    else:
+        history.chmod(0o666)
+
+    with pytest.raises(archive_helper.ArchivePreflightError, match=match):
+        archive_helper._write_archive(io.BytesIO())
 
 
 def test_path_to_symlink_swap_cannot_archive_external_bytes(tmp_path, monkeypatch):
@@ -280,9 +343,7 @@ def test_newswire_rejects_extra_atomic_temporary_file(tmp_path, monkeypatch):
         archive_helper._write_archive(io.BytesIO())
 
 
-def test_newswire_status_must_bind_exact_archived_latest_bytes(
-    tmp_path, monkeypatch
-):
+def test_newswire_status_must_bind_exact_archived_latest_bytes(tmp_path, monkeypatch):
     source = _artifact_tree(tmp_path, monkeypatch)
     (source / "newswire" / "newswire-latest.json").write_text(
         '{"generated_at":"2026-08-13T01:02:03Z","wire":"changed"}\n'
@@ -302,9 +363,7 @@ def test_newswire_status_must_bind_exact_archived_latest_bytes(
         {"hardlink": True},
     ],
 )
-def test_newswire_archive_rejects_unsafe_generation_lock(
-    tmp_path, monkeypatch, change
-):
+def test_newswire_archive_rejects_unsafe_generation_lock(tmp_path, monkeypatch, change):
     source = _artifact_tree(tmp_path, monkeypatch)
     lock = source / "newswire" / "newswire.lock"
     if "mode" in change:
@@ -413,7 +472,9 @@ def test_archive_releases_shared_lock_after_analysis_before_other_roots(monkeypa
     monkeypatch.setattr(archive_helper.fcntl, "flock", fake_flock)
     monkeypatch.setattr(archive_helper, "_write_archive", fake_write_archive)
     monkeypatch.setattr(
-        archive_helper.os, "close", lambda descriptor: events.append(("close", descriptor))
+        archive_helper.os,
+        "close",
+        lambda descriptor: events.append(("close", descriptor)),
     )
 
     archive_helper.archive()
