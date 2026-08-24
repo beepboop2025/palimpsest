@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-7a110393b9461e0a12696cc3",
+  "analysis_id": "instrumentv-db19f0689f09f7629228dd35",
   "signal_id": "board-alarm",
   "story_url": "https://palimpsest.info/news/board-alarm/",
   "url": "https://palimpsest.info/news/board-alarm/analysis.json",
@@ -16,7 +16,7 @@
       "label": "board e-value",
       "note": "declared denominator not reported",
       "citation_ids": [
-        "instrumentevidence-0d502629d9e7039f6c32"
+        "instrumentevidence-6a8d3524dff34ba33d89"
       ]
     }
   ],
@@ -27,13 +27,13 @@
         {
           "text": "The current board e-value is 8.79 over declared denominator not reported.",
           "citation_ids": [
-            "instrumentevidence-0d502629d9e7039f6c32"
+            "instrumentevidence-6a8d3524dff34ba33d89"
           ]
         },
         {
-          "text": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 5 degraded, 6 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.",
+          "text": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.",
           "citation_ids": [
-            "instrumentevidence-0d502629d9e7039f6c32"
+            "instrumentevidence-6a8d3524dff34ba33d89"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: event-flags, coverage-guard, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
+          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: coverage-guard, undertext, censored-planet, erasure-observatory, wayback, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
           "citation_ids": [
-            "instrumentevidence-0d502629d9e7039f6c32"
+            "instrumentevidence-6a8d3524dff34ba33d89"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-0d502629d9e7039f6c32"
+            "instrumentevidence-6a8d3524dff34ba33d89"
           ]
         }
       ]
@@ -61,19 +61,19 @@
         {
           "text": "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.",
           "citation_ids": [
-            "instrumentevidence-0d502629d9e7039f6c32"
+            "instrumentevidence-6a8d3524dff34ba33d89"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-0d502629d9e7039f6c32"
+            "instrumentevidence-6a8d3524dff34ba33d89"
           ]
         },
         {
           "text": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean - a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
           "citation_ids": [
-            "instrumentevidence-0d502629d9e7039f6c32"
+            "instrumentevidence-6a8d3524dff34ba33d89"
           ]
         }
       ]
@@ -83,13 +83,13 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-0d502629d9e7039f6c32"
+        "instrumentevidence-6a8d3524dff34ba33d89"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-0d502629d9e7039f6c32"
+        "instrumentevidence-6a8d3524dff34ba33d89"
       ]
     }
   ],
@@ -97,23 +97,17 @@
     {
       "text": "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement.",
       "citation_ids": [
-        "instrumentevidence-0d502629d9e7039f6c32"
+        "instrumentevidence-6a8d3524dff34ba33d89"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-0d502629d9e7039f6c32"
+        "instrumentevidence-6a8d3524dff34ba33d89"
       ]
     }
   ],
   "elevated_peers": [
-    {
-      "signal_id": "event-flags",
-      "section": "command",
-      "status": "live",
-      "priority": "high"
-    },
     {
       "signal_id": "coverage-guard",
       "section": "command",
@@ -127,40 +121,10 @@
       "priority": "high"
     },
     {
-      "signal_id": "ooni-gfw",
-      "section": "network",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
-      "signal_id": "in-path-interference",
-      "section": "network",
-      "status": "live",
-      "priority": "high"
-    },
-    {
       "signal_id": "censored-planet",
       "section": "network",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "inside-view",
-      "section": "network",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
-      "signal_id": "ioda-outages",
-      "section": "network",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "vantage-fusion",
-      "section": "network",
-      "status": "live",
-      "priority": "lead"
     },
     {
       "signal_id": "erasure-observatory",
@@ -170,12 +134,6 @@
     },
     {
       "signal_id": "wayback",
-      "section": "erasure",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "app-storefront",
       "section": "erasure",
       "status": "live",
       "priority": "high"
@@ -213,12 +171,12 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-0d502629d9e7039f6c32",
+      "evidence_id": "instrumentevidence-6a8d3524dff34ba33d89",
       "kind": "newsroom-story",
       "signal_id": "board-alarm",
       "headline": "Multiple layers elevated together in the latest board synthesis",
       "status": "live",
-      "claim": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 5 degraded, 6 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.",
+      "claim": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20.",
       "story_url": "https://palimpsest.info/news/board-alarm/",
       "reading_url": "https://palimpsest.info/readings/board-alarm-latest.json",
       "source_timestamp": "2026-08-24T15:55:45Z",
