@@ -15,7 +15,10 @@ name: Tests
 #                       workflow installs before running rather than relying on the
 #                       stdlib-only invocation the README documents for local use.
 #
-# No secrets, no network reads: nothing here collects data. The suites are offline.
+# The test and publication-contract jobs are offline. After those gates pass on
+# an exact main push, a separate least-privilege job collects one public WDI
+# response and emits an attested, review-only China economic handoff. Those bytes
+# are uploaded as a workflow artifact and are never added to the Pages edition.
 
 # Feature heads are tested by the pull_request event. Restricting push runs to
 # main prevents the same commit from consuming two full CI runs while preserving
@@ -182,6 +185,8 @@ jobs:
             tests/test_eval_assurance.py \
             tests/test_eval_journal.py \
             tests/test_econ_ledger.py::test_published_schema_accepts_every_current_ledger_row \
+            tests/test_world_bank_wdi.py \
+            tests/test_china_econ_export.py \
             tests/test_china_econ_manifest.py::test_manifest_schema_accepts_generated_public_and_fixture_documents \
             tests/test_china_econ_forecast_publish.py::test_strict_schema_accepts_the_public_artifact \
             tests/test_china_site.py::test_json_schema_is_valid_and_validates_the_index \
@@ -289,6 +294,362 @@ jobs:
                 ;;
             esac
           fi
+
+  china-economic-review-bundle:
+    name: Build and attest exact China economic review bundle
+    needs:
+      - contract
+      - publication-admission
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.publication-admission.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    env:
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Allocate the runner-temporary handoff directory
+        run: echo "REVIEW_DIR=$RUNNER_TEMP/china-economic-review-v3" >> "$GITHUB_ENV"
+
+      - name: Prove the producer is the current release-reviewed main merge
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = push
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD)" = "${{ needs.contract.outputs.revision }}"
+          test "$(git rev-list --parents -n 1 HEAD | awk '{print NF}')" -ge 3
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+      - name: Fetch one exact public WDI response
+        run: |
+          set -euo pipefail
+          mkdir -p "$REVIEW_DIR"
+          review_end_year=$(date -u +%Y)
+          export REVIEW_END_YEAR="$review_end_year"
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          from collectors.world_bank_wdi import build_url, fetch_bytes, load_registry
+
+          registry = load_registry(Path("config/china_econ_wdi_series.json"))
+          url = build_url(
+              registry,
+              start_year=1960,
+              end_year=int(os.environ["REVIEW_END_YEAR"]),
+          )
+          raw = fetch_bytes(url)
+          destination = Path(os.environ["REVIEW_DIR"]) / "world-bank-wdi-response.json"
+          destination.write_bytes(raw)
+          print(f"wdi-response bytes={len(raw)} url={url}")
+          PY
+
+      - name: Build the exact review ledger and v3 Seiche handoff
+        run: |
+          set -euo pipefail
+          review_end_year=$(date -u +%Y)
+          cp readings/china-econ-wdi-observations.jsonl \
+            "$REVIEW_DIR/china-econ-wdi-observations.jsonl"
+          python -m scripts.china_econ_wdi_pull \
+            --registry config/china_econ_wdi_series.json \
+            --input "$REVIEW_DIR/world-bank-wdi-response.json" \
+            --ledger "$REVIEW_DIR/china-econ-wdi-observations.jsonl" \
+            --latest "$REVIEW_DIR/china-econ-wdi-live-check.json" \
+            --start-year 1960 \
+            --end-year "$review_end_year"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from core.china_econ_export import canonical_json_bytes
+
+          root = Path(os.environ["REVIEW_DIR"])
+          live = json.loads(
+              (root / "china-econ-wdi-live-check.json").read_text(encoding="utf-8")
+          )
+          tracked = json.loads(
+              Path("readings/china-econ-wdi-latest.json").read_text(encoding="utf-8")
+          )
+          if live["appended_observations"] != 0:
+              raise SystemExit(
+                  "live WDI values differ from the Git-tracked durable ledger; "
+                  "run the reviewed WDI publisher before creating a handoff"
+              )
+          if canonical_json_bytes(live["availability"]) != canonical_json_bytes(
+              tracked["availability"]
+          ):
+              raise SystemExit(
+                  "live WDI availability differs from the reviewed main receipt"
+              )
+          stable_keys = {
+              "source_id",
+              "dataset",
+              "dataset_last_updated",
+              "license",
+              "license_url",
+              "rights_evidence_url",
+              "redistribution_status",
+              "context_only",
+              "scoring_allowed",
+              "response_coverage",
+              "ledger_coverage",
+              "indicator_provenance",
+              "limitations",
+          }
+          if {key: live[key] for key in stable_keys} != {
+              key: tracked[key] for key in stable_keys
+          }:
+              raise SystemExit(
+                  "live WDI receipt semantics differ from the reviewed main receipt"
+              )
+          PY
+          cmp --silent readings/china-econ-wdi-observations.jsonl \
+            "$REVIEW_DIR/china-econ-wdi-observations.jsonl"
+          cp readings/china-econ-wdi-latest.json \
+            "$REVIEW_DIR/china-econ-wdi-latest.json"
+          cmp --silent readings/china-econ-wdi-latest.json \
+            "$REVIEW_DIR/china-econ-wdi-latest.json"
+          python -m scripts.build_china_econ_export \
+            --ledger "$REVIEW_DIR/china-econ-wdi-observations.jsonl" \
+            --availability-receipt "$REVIEW_DIR/china-econ-wdi-latest.json" \
+            --policy config/china_econ_source_policy.json \
+            --series-registry config/china_econ_wdi_series.json \
+            --output "$REVIEW_DIR/palimpsest-china-economic-export-v1.jsonl" \
+            --manifest "$REVIEW_DIR/palimpsest-china-economic-export-v3-manifest.json" \
+            --producer-repository "$GITHUB_REPOSITORY" \
+            --producer-commit "$GITHUB_SHA" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --workflow-run-event "$GITHUB_EVENT_NAME"
+          cp config/china_econ_source_policy.json "$REVIEW_DIR/"
+          cp config/china_econ_wdi_series.json "$REVIEW_DIR/"
+
+      - name: Seal exact inputs, outputs, and review receipts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          from core.china_econ_export import canonical_json_bytes
+
+          root = Path(os.environ["REVIEW_DIR"])
+          manifest_path = root / "palimpsest-china-economic-export-v3-manifest.json"
+          latest_path = root / "china-econ-wdi-latest.json"
+          live_path = root / "china-econ-wdi-live-check.json"
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          latest = json.loads(latest_path.read_text(encoding="utf-8"))
+          live = json.loads(live_path.read_text(encoding="utf-8"))
+          if live["appended_observations"] != 0:
+              raise SystemExit(
+                  "live WDI values differ from the Git-tracked durable ledger; "
+                  "run the reviewed WDI publisher before creating a handoff"
+              )
+          expected_core_names = {
+              "china-econ-wdi-latest.json",
+              "china-econ-wdi-live-check.json",
+              "china-econ-wdi-observations.jsonl",
+              "china_econ_source_policy.json",
+              "china_econ_wdi_series.json",
+              "palimpsest-china-economic-export-v1.jsonl",
+              "palimpsest-china-economic-export-v3-manifest.json",
+              "world-bank-wdi-response.json",
+          }
+          core_names = sorted(
+              path.name
+              for path in root.iterdir()
+              if path.is_file() and path.name not in {"SHA256SUMS", "handoff-receipt.json"}
+          )
+          if set(core_names) != expected_core_names:
+              raise SystemExit(
+                  f"unexpected handoff inputs: {sorted(set(core_names) ^ expected_core_names)}"
+              )
+
+          def exact_receipt(path, *, expected_sha, expected_bytes=None):
+              payload = path.read_bytes()
+              if hashlib.sha256(payload).hexdigest() != expected_sha:
+                  raise SystemExit(f"digest mismatch for {path.name}")
+              if expected_bytes is not None and len(payload) != expected_bytes:
+                  raise SystemExit(f"byte-count mismatch for {path.name}")
+              return payload
+
+          if manifest["producer"]["repository"] != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("producer repository does not match the workflow")
+          if manifest["producer"]["commit_sha"] != os.environ["GITHUB_SHA"]:
+              raise SystemExit("producer commit does not match the workflow")
+          workflow_run = manifest["producer"]["workflow_run"]
+          if workflow_run != {
+              "provider": "github_actions",
+              "workflow_file": ".github/workflows/tests.yml",
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "head_sha": os.environ["GITHUB_SHA"],
+              "event": "push",
+              "conclusion": "success",
+              "url": (
+                  f"https://github.com/{os.environ['GITHUB_REPOSITORY']}"
+                  f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+              ),
+          }:
+              raise SystemExit("producer workflow receipt does not match the workflow")
+
+          policy = exact_receipt(
+              root / manifest["policy"]["path"],
+              expected_sha=manifest["policy"]["sha256"],
+          )
+          registry = exact_receipt(
+              root / manifest["series_registry"]["path"],
+              expected_sha=manifest["series_registry"]["sha256"],
+              expected_bytes=manifest["series_registry"]["bytes"],
+          )
+          artifact = exact_receipt(
+              root / manifest["artifact"]["path"],
+              expected_sha=manifest["artifact"]["sha256"],
+              expected_bytes=manifest["artifact"]["bytes"],
+          )
+          if len(artifact.splitlines()) != manifest["artifact"]["records"]:
+              raise SystemExit("artifact record count does not match the manifest")
+          availability_bytes = exact_receipt(
+              root / manifest["availability_receipt"]["path"],
+              expected_sha=manifest["availability_receipt"]["sha256"],
+              expected_bytes=manifest["availability_receipt"]["bytes"],
+          )
+          if not policy or not registry:
+              raise SystemExit("reviewed policy and registry must be non-empty")
+          files = []
+          for name in core_names:
+              payload = (root / name).read_bytes()
+              files.append(
+                  {
+                      "path": name,
+                      "sha256": hashlib.sha256(payload).hexdigest(),
+                      "bytes": len(payload),
+                  }
+              )
+          receipt = {
+              "schema_version": "palimpsest.china-economic-handoff-receipt.v2",
+              "producer": manifest["producer"],
+              "revision_lineage": {
+                  "mode": "git_tracked_seeded_append_only",
+                  "prior_ledger": {
+                      "path": "readings/china-econ-wdi-observations.jsonl",
+                      "sha256": manifest["input_ledger"]["sha256"],
+                      "bytes": manifest["input_ledger"]["bytes"],
+                      "records": manifest["input_ledger"]["records"],
+                  },
+                  "cross_run_revision_authority": True,
+                  "new_vintages_appended": live["appended_observations"],
+              },
+              "artifact": manifest["artifact"],
+              "input_ledger": manifest["input_ledger"],
+              "reviewed_availability_receipt": manifest["availability_receipt"],
+              "live_verification": {
+                  "path": "china-econ-wdi-live-check.json",
+                  "sha256": hashlib.sha256(live_path.read_bytes()).hexdigest(),
+                  "bytes": len(live_path.read_bytes()),
+                  "batch_raw_sha256": live["batch_raw_sha256"],
+                  "current_availability_sha256": hashlib.sha256(
+                      canonical_json_bytes(live["availability"])
+                  ).hexdigest(),
+              },
+              "live_raw_response": {
+                  "path": "world-bank-wdi-response.json",
+                  "sha256": live["batch_raw_sha256"],
+              },
+              "files": files,
+          }
+          (root / "handoff-receipt.json").write_bytes(canonical_json_bytes(receipt))
+
+          checksum_names = sorted(path.name for path in root.iterdir() if path.is_file())
+          checksums = "".join(
+              f"{hashlib.sha256((root / name).read_bytes()).hexdigest()} *{name}\n"
+              for name in checksum_names
+              if name != "SHA256SUMS"
+          )
+          (root / "SHA256SUMS").write_text(checksums, encoding="ascii")
+
+          raw = (root / "world-bank-wdi-response.json").read_bytes()
+          if hashlib.sha256(raw).hexdigest() != live["batch_raw_sha256"]:
+              raise SystemExit("raw response digest does not match the live WDI receipt")
+          ledger = (root / manifest["input_ledger"]["path"]).read_bytes()
+          if (
+              hashlib.sha256(ledger).hexdigest() != manifest["input_ledger"]["sha256"]
+              or len(ledger) != manifest["input_ledger"]["bytes"]
+          ):
+              raise SystemExit("input ledger does not match the export manifest")
+          expected_ledger = {
+              key: manifest["input_ledger"][key]
+              for key in ("sha256", "bytes", "records")
+          }
+          if latest["ledger_after"] != expected_ledger:
+              raise SystemExit("reviewed availability is not bound to the export ledger")
+          if live["ledger_before"] != expected_ledger or live["ledger_after"] != expected_ledger:
+              raise SystemExit("live check advanced beyond the reviewed export ledger")
+          if canonical_json_bytes(live["availability"]) != canonical_json_bytes(
+              latest["availability"]
+          ):
+              raise SystemExit("live and reviewed current availability differ")
+          if hashlib.sha256(availability_bytes).hexdigest() != manifest[
+              "availability_receipt"
+          ]["sha256"]:
+              raise SystemExit("reviewed availability receipt digest changed")
+          print(checksums, end="")
+          PY
+          {
+            echo '### China economic review bundle'
+            echo
+            echo '```text'
+            cat "$REVIEW_DIR/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+
+      - name: Attest the checksum root
+        id: attest_china_economic_bundle
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8  # v4.2.2
+        with:
+          subject-path: ${{ runner.temp }}/china-economic-review-v3/SHA256SUMS
+
+      - name: Retain the signed attestation bundle with the handoff
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest_china_economic_bundle.outputs.bundle-path }}
+          ATTESTATION_URL: ${{ steps.attest_china_economic_bundle.outputs.attestation-url }}
+        run: |
+          set -euo pipefail
+          test -f "$ATTESTATION_BUNDLE"
+          cp "$ATTESTATION_BUNDLE" "$REVIEW_DIR/github-attestation.jsonl"
+          printf '\nAttestation: %s\n' "$ATTESTATION_URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the non-Pages review handoff
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: china-economic-review-v3-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/china-economic-review-v3/
+          if-no-files-found: error
+          retention-days: 90
 
   mcp-deployment-admission:
     name: Admit exact deployed MCP release before Pages

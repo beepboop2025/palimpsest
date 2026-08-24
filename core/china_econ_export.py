@@ -21,21 +21,28 @@ from pathlib import Path
 from typing import Any, Mapping
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
-from core.econ_ledger import load_snapshot
+from core.econ_ledger import LedgerIntegrityError, load_snapshot, validate_observations
 from core.econ_observation import EconomicObservation
 
 
 POLICY_SCHEMA = "palimpsest.china-economic-source-policy.v1"
 ARTIFACT_SCHEMA = "palimpsest.china-economic-export.v1"
-MANIFEST_SCHEMA = "palimpsest.china-economic-export-manifest.v1"
+MANIFEST_SCHEMA = "palimpsest.china-economic-export-manifest.v3"
+PRODUCER_RECEIPT_SCHEMA = "palimpsest.producer-receipt.v1"
+PRODUCER_REPOSITORY = "beepboop2025/palimpsest"
+PRODUCER_WORKFLOW_FILE = ".github/workflows/tests.yml"
 POLICY_SCOPE = "china_economic_values_and_seiche_export"
 WDI_REGISTRY_SCHEMA = "palimpsest-china-econ-wdi-series.v1"
+WDI_RUN_SCHEMA = "palimpsest-china-econ-wdi-run.v3"
+WDI_AVAILABILITY_SCHEMA = "palimpsest-china-econ-wdi-availability.v1"
 WDI_SOURCE_ID = "world_bank_wdi"
 MAX_POLICY_BYTES = 256 * 1024
 MAX_SERIES_REGISTRY_BYTES = 2 * 1024 * 1024
+MAX_AVAILABILITY_RECEIPT_BYTES = 8 * 1024 * 1024
 _SOURCE_ID = re.compile(r"^[a-z0-9][a-z0-9_]{1,79}$")
 _SERIES_ID = re.compile(r"^cn\.wdi\.[a-z0-9][a-z0-9_]{1,119}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_COMMIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 _MARKET_CHANNELS = frozenset({"money_market", "capital_market"})
 _WDI_DATASET_FIELDS = frozenset(
     {
@@ -101,6 +108,63 @@ _SOURCE_DECISION_FIELDS = frozenset(
         "exported_records",
     }
 )
+_PRODUCER_FIELDS = frozenset(
+    {"schema_version", "repository", "commit_sha", "workflow_run"}
+)
+_WORKFLOW_RUN_FIELDS = frozenset(
+    {
+        "provider",
+        "workflow_file",
+        "run_id",
+        "run_attempt",
+        "head_sha",
+        "event",
+        "conclusion",
+        "url",
+    }
+)
+_WDI_RUN_FIELDS = frozenset(
+    {
+        "appended_observations",
+        "availability",
+        "batch_raw_sha256",
+        "collector_artifact",
+        "context_only",
+        "dataset",
+        "dataset_last_updated",
+        "generated_at",
+        "indicator_provenance",
+        "ledger_after",
+        "ledger_before",
+        "ledger_coverage",
+        "license",
+        "license_url",
+        "limitations",
+        "publication_state",
+        "redistribution_status",
+        "response_coverage",
+        "revision_lineage",
+        "rights_evidence_url",
+        "schema_version",
+        "scoring_allowed",
+        "source_id",
+    }
+)
+_AVAILABILITY_FIELDS = frozenset(
+    {
+        "schema_version",
+        "records",
+        "null_records",
+        "entries",
+        "coverage_semantics",
+        "withdrawal_state",
+        "withdrawal_limitation",
+    }
+)
+_AVAILABILITY_ENTRY_FIELDS = frozenset(
+    {"indicator_id", "year", "available", "footnote"}
+)
+_LEDGER_RECEIPT_FIELDS = frozenset({"sha256", "bytes", "records"})
 
 
 class ChinaEconExportError(ValueError):
@@ -152,6 +216,20 @@ class MarketRegistry:
 
 
 @dataclass(frozen=True, slots=True)
+class AvailabilityReceipt:
+    generated_at: str
+    generated_at_value: datetime
+    batch_raw_sha256: str
+    current_numeric_identities: frozenset[tuple[str, int]]
+    current_numeric_identities_bytes: bytes
+    ledger_after: Mapping[str, Any]
+    publication_state: str
+    durable_cross_run: bool
+    byte_size: int
+    byte_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
 class ExportBundle:
     artifact_bytes: bytes
     manifest: Mapping[str, Any]
@@ -172,6 +250,58 @@ def canonical_json_bytes(value: Any) -> bytes:
     except (TypeError, ValueError, RecursionError) as exc:
         raise ChinaEconExportError(f"value is not canonical JSON: {exc}") from exc
     return (encoded + "\n").encode("utf-8")
+
+
+def _producer_receipt(
+    *,
+    repository: str,
+    commit_sha: str,
+    workflow_run: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    receipt = {
+        "schema_version": PRODUCER_RECEIPT_SCHEMA,
+        "repository": repository,
+        "commit_sha": commit_sha,
+        "workflow_run": dict(workflow_run) if workflow_run is not None else None,
+    }
+    _validate_producer_receipt(receipt)
+    return receipt
+
+
+def _validate_producer_receipt(value: Any) -> None:
+    if type(value) is not dict or set(value) != _PRODUCER_FIELDS:
+        raise ChinaEconExportError("manifest.producer has unexpected fields")
+    repository = value["repository"]
+    commit_sha = value["commit_sha"]
+    if (
+        value["schema_version"] != PRODUCER_RECEIPT_SCHEMA
+        or repository != PRODUCER_REPOSITORY
+        or type(commit_sha) is not str
+        or not _COMMIT_SHA.fullmatch(commit_sha)
+    ):
+        raise ChinaEconExportError("manifest.producer identity is invalid")
+
+    workflow_run = value["workflow_run"]
+    if workflow_run is None:
+        return
+    if type(workflow_run) is not dict or set(workflow_run) != _WORKFLOW_RUN_FIELDS:
+        raise ChinaEconExportError("manifest.producer.workflow_run has unexpected fields")
+    run_id = workflow_run["run_id"]
+    run_attempt = workflow_run["run_attempt"]
+    if (
+        workflow_run["provider"] != "github_actions"
+        or workflow_run["workflow_file"] != PRODUCER_WORKFLOW_FILE
+        or type(run_id) is not int
+        or run_id <= 0
+        or type(run_attempt) is not int
+        or run_attempt <= 0
+        or workflow_run["head_sha"] != commit_sha
+        or workflow_run["event"] not in {"push", "pull_request"}
+        or workflow_run["conclusion"] != "success"
+        or workflow_run["url"]
+        != f"https://github.com/{repository}/actions/runs/{run_id}"
+    ):
+        raise ChinaEconExportError("manifest.producer.workflow_run is invalid")
 
 
 def _strict_json(raw: bytes, *, label: str, maximum: int) -> Any:
@@ -504,6 +634,356 @@ def load_market_bindings(path: str | Path) -> Mapping[str, MarketBinding]:
     return load_market_registry(path).bindings
 
 
+def _identity_jsonl(identities: set[tuple[str, int]] | frozenset[tuple[str, int]]) -> bytes:
+    return b"".join(
+        canonical_json_bytes({"indicator_id": indicator_id, "year": year})
+        for indicator_id, year in sorted(identities)
+    )
+
+
+def _source_indicator_jsonl(indicators: set[str] | frozenset[str]) -> bytes:
+    return b"".join(
+        canonical_json_bytes({"indicator_id": indicator_id})
+        for indicator_id in sorted(indicators)
+    )
+
+
+def _pal_series_jsonl(series_ids: set[str] | frozenset[str]) -> bytes:
+    return b"".join(
+        canonical_json_bytes({"series_id": series_id})
+        for series_id in sorted(series_ids)
+    )
+
+
+def _ledger_receipt(value: object, *, path: str) -> dict[str, Any]:
+    if type(value) is not dict or set(value) != _LEDGER_RECEIPT_FIELDS:
+        raise ChinaEconExportError(f"{path} has unexpected fields")
+    sha256 = value["sha256"]
+    byte_size = value["bytes"]
+    records = value["records"]
+    if (
+        type(sha256) is not str
+        or not _SHA256.fullmatch(sha256)
+        or type(byte_size) is not int
+        or byte_size < 0
+        or type(records) is not int
+        or records < 0
+    ):
+        raise ChinaEconExportError(f"{path} is invalid")
+    return dict(value)
+
+
+def _parse_availability_receipt(
+    raw: bytes,
+    *,
+    registry: MarketRegistry,
+) -> AvailabilityReceipt:
+    value = _strict_json(
+        raw,
+        label="WDI current-availability receipt",
+        maximum=MAX_AVAILABILITY_RECEIPT_BYTES,
+    )
+    if type(value) is not dict or set(value) != _WDI_RUN_FIELDS:
+        raise ChinaEconExportError(
+            "WDI current-availability receipt has unexpected top-level fields"
+        )
+    if canonical_json_bytes(value) != raw:
+        raise ChinaEconExportError("WDI current-availability receipt is not canonical JSON")
+    generated_at, generated_at_value = _timestamp(
+        value["generated_at"], path="availability_receipt.generated_at"
+    )
+    batch_raw_sha256 = value["batch_raw_sha256"]
+    if (
+        value["schema_version"] != WDI_RUN_SCHEMA
+        or value["source_id"] != WDI_SOURCE_ID
+        or value["dataset"] != registry.dataset["name"]
+        or value["license"] != "CC-BY-4.0"
+        or value["license_url"] != "https://creativecommons.org/licenses/by/4.0/"
+        or value["rights_evidence_url"] != registry.dataset["rights_evidence_url"]
+        or value["redistribution_status"] != "allowed"
+        or value["context_only"] is not True
+        or value["scoring_allowed"] is not False
+        or type(batch_raw_sha256) is not str
+        or not _SHA256.fullmatch(batch_raw_sha256)
+    ):
+        raise ChinaEconExportError("WDI current-availability authority is invalid")
+    try:
+        dataset_last_updated = date.fromisoformat(value["dataset_last_updated"])
+    except (TypeError, ValueError) as exc:
+        raise ChinaEconExportError(
+            "availability_receipt.dataset_last_updated is invalid"
+        ) from exc
+    if dataset_last_updated > generated_at_value.date():
+        raise ChinaEconExportError(
+            "availability receipt has a future dataset lastupdated clock"
+        )
+
+    availability = value["availability"]
+    if type(availability) is not dict or set(availability) != _AVAILABILITY_FIELDS:
+        raise ChinaEconExportError("availability_receipt.availability has unexpected fields")
+    entries = availability["entries"]
+    records = availability["records"]
+    null_records = availability["null_records"]
+    if (
+        availability["schema_version"] != WDI_AVAILABILITY_SCHEMA
+        or availability["coverage_semantics"] != "exact_current_response"
+        or availability["withdrawal_state"]
+        != "residual_gate_no_append_only_withdrawal_ledger"
+        or type(availability["withdrawal_limitation"]) is not str
+        or not availability["withdrawal_limitation"].strip()
+        or type(entries) is not list
+        or type(records) is not int
+        or type(null_records) is not int
+        or records < 1
+        or null_records < 0
+        or records != len(entries)
+    ):
+        raise ChinaEconExportError("availability_receipt.availability is invalid")
+
+    indicators = {binding.source_series_id for binding in registry.bindings.values()}
+    all_identities: list[tuple[str, int]] = []
+    current: set[tuple[str, int]] = set()
+    represented: set[str] = set()
+    observed_nulls = 0
+    for position, entry in enumerate(entries, 1):
+        if type(entry) is not dict or set(entry) != _AVAILABILITY_ENTRY_FIELDS:
+            raise ChinaEconExportError(
+                f"availability_receipt.availability.entries[{position}] has unexpected fields"
+            )
+        indicator_id = entry["indicator_id"]
+        year = entry["year"]
+        available = entry["available"]
+        if (
+            type(indicator_id) is not str
+            or indicator_id not in indicators
+            or type(year) is not int
+            or year < 1900
+            or year > generated_at_value.year + 1
+            or type(available) is not bool
+        ):
+            raise ChinaEconExportError(
+                f"availability_receipt.availability.entries[{position}] is invalid"
+            )
+        footnote = entry["footnote"]
+        if footnote is not None and (
+            type(footnote) is not str
+            or not footnote.strip()
+            or len(footnote.encode("utf-8")) > 4096
+        ):
+            raise ChinaEconExportError(
+                f"availability_receipt.availability.entries[{position}].footnote "
+                "is not null or bounded text"
+            )
+        identity = (indicator_id, year)
+        all_identities.append(identity)
+        represented.add(indicator_id)
+        if available:
+            current.add(identity)
+        else:
+            observed_nulls += 1
+    if all_identities != sorted(set(all_identities)):
+        raise ChinaEconExportError(
+            "availability_receipt.availability entries are not uniquely sorted"
+        )
+    if represented != indicators:
+        raise ChinaEconExportError(
+            "availability_receipt.availability does not represent every reviewed indicator"
+        )
+    if null_records != observed_nulls:
+        raise ChinaEconExportError(
+            "availability_receipt.availability null count does not reconcile"
+        )
+
+    coverage = value["response_coverage"]
+    expected_coverage_fields = {
+        "coverage_semantics",
+        "requested_start_year",
+        "requested_end_year",
+        "configured_indicators",
+        "represented_indicators",
+        "populated_indicators",
+        "null_only_indicators",
+        "source_rows",
+        "populated_observations",
+        "null_rows",
+        "period_start",
+        "period_end",
+    }
+    populated_indicators = {indicator_id for indicator_id, _ in current}
+    if (
+        type(coverage) is not dict
+        or set(coverage) != expected_coverage_fields
+        or coverage["coverage_semantics"] != "exact_current_response"
+        or coverage["configured_indicators"] != len(indicators)
+        or coverage["represented_indicators"] != len(represented)
+        or coverage["populated_indicators"] != len(populated_indicators)
+        or coverage["null_only_indicators"] != len(indicators - populated_indicators)
+        or coverage["source_rows"] != records
+        or coverage["populated_observations"] != len(current)
+        or coverage["null_rows"] != null_records
+    ):
+        raise ChinaEconExportError(
+            "availability_receipt.response_coverage does not reconcile"
+        )
+    for year_field in ("requested_start_year", "requested_end_year"):
+        if type(coverage[year_field]) is not int:
+            raise ChinaEconExportError(
+                f"availability_receipt.response_coverage.{year_field} is invalid"
+            )
+    if coverage["requested_start_year"] > coverage["requested_end_year"]:
+        raise ChinaEconExportError("availability receipt has an inverted request range")
+    if any(
+        year < coverage["requested_start_year"]
+        or year > coverage["requested_end_year"]
+        for _, year in all_identities
+    ):
+        raise ChinaEconExportError("availability receipt contains an out-of-range year")
+
+    ledger_after = _ledger_receipt(
+        value["ledger_after"], path="availability_receipt.ledger_after"
+    )
+    publication_state = value["publication_state"]
+    lineage = value["revision_lineage"]
+    if publication_state not in {"review_only", "public_context_only"}:
+        raise ChinaEconExportError("availability receipt publication state is invalid")
+    if (
+        type(lineage) is not dict
+        or set(lineage) != {"mode", "durable_cross_run", "ledger_path"}
+        or type(lineage["durable_cross_run"]) is not bool
+        or type(lineage["mode"]) is not str
+        or type(lineage["ledger_path"]) is not str
+        or not lineage["ledger_path"]
+    ):
+        raise ChinaEconExportError("availability receipt revision lineage is invalid")
+    durable_cross_run = lineage["durable_cross_run"]
+    if (publication_state == "public_context_only") != durable_cross_run:
+        raise ChinaEconExportError(
+            "availability receipt publication state and durable lineage disagree"
+        )
+
+    identities = frozenset(current)
+    identity_bytes = _identity_jsonl(identities)
+    return AvailabilityReceipt(
+        generated_at=generated_at,
+        generated_at_value=generated_at_value,
+        batch_raw_sha256=batch_raw_sha256,
+        current_numeric_identities=identities,
+        current_numeric_identities_bytes=identity_bytes,
+        ledger_after=ledger_after,
+        publication_state=publication_state,
+        durable_cross_run=durable_cross_run,
+        byte_size=len(raw),
+        byte_sha256=hashlib.sha256(raw).hexdigest(),
+    )
+
+
+def load_availability_receipt(
+    path: str | Path,
+    *,
+    series_registry_path: str | Path,
+) -> AvailabilityReceipt:
+    """Load one exact WDI availability receipt against its reviewed registry."""
+
+    registry = load_market_registry(series_registry_path)
+    return _parse_availability_receipt(Path(path).read_bytes(), registry=registry)
+
+
+def _parse_ledger_bytes(raw: bytes) -> tuple[EconomicObservation, ...]:
+    if type(raw) is not bytes or len(raw) > 64 * 1024 * 1024:
+        raise ChinaEconExportError("input ledger exceeds the bounded byte contract")
+    if raw and not raw.endswith(b"\n"):
+        raise ChinaEconExportError("input ledger does not end at a JSONL boundary")
+    lines = raw.splitlines()
+    if len(lines) > 1_000_000:
+        raise ChinaEconExportError("input ledger exceeds the bounded row contract")
+    rows: list[EconomicObservation] = []
+    for position, line in enumerate(lines, 1):
+        if not line or len(line) > 1024 * 1024:
+            raise ChinaEconExportError(f"input ledger row {position} is empty or oversized")
+        value = _strict_json(
+            line,
+            label=f"input ledger row {position}",
+            maximum=1024 * 1024,
+        )
+        if type(value) is not dict or "observation_id" not in value:
+            raise ChinaEconExportError(f"input ledger row {position} lacks an observation")
+        supplied_id = value["observation_id"]
+        try:
+            row = EconomicObservation.from_dict(value)
+        except (KeyError, TypeError, ValueError, RecursionError) as exc:
+            raise ChinaEconExportError(
+                f"input ledger row {position} is not observation v1: {exc}"
+            ) from exc
+        if supplied_id != row.observation_id:
+            raise ChinaEconExportError(
+                f"input ledger row {position} observation identity is invalid"
+            )
+        rows.append(row)
+    try:
+        validate_observations(rows, path="manifest.input_ledger")
+    except LedgerIntegrityError as exc:
+        raise ChinaEconExportError(f"input ledger is invalid: {exc}") from exc
+    return tuple(rows)
+
+
+def _wdi_identity(
+    observation: EconomicObservation,
+    binding: MarketBinding,
+) -> tuple[str, int]:
+    if observation.period_start.year != observation.period_end.year:
+        raise ChinaEconExportError(
+            f"WDI series {observation.series_id} does not have a one-year identity"
+        )
+    return binding.source_series_id, observation.period_start.year
+
+
+def _availability_projection(
+    observations: tuple[EconomicObservation, ...],
+    *,
+    registry: MarketRegistry,
+    availability: AvailabilityReceipt,
+    wdi_allowed: bool,
+) -> tuple[
+    frozenset[tuple[str, int]],
+    frozenset[str],
+    frozenset[tuple[str, int]],
+]:
+    ledger_identities: set[tuple[str, int]] = set()
+    ledger_indicators: set[str] = set()
+    for observation in observations:
+        if observation.source_id != WDI_SOURCE_ID:
+            continue
+        binding = registry.bindings.get(observation.series_id)
+        if binding is None:
+            raise ChinaEconExportError(
+                f"WDI series {observation.series_id} is absent from the pinned registry"
+            )
+        _validate_wdi_observation(observation, binding, registry)
+        identity = _wdi_identity(observation, binding)
+        ledger_identities.add(identity)
+        ledger_indicators.add(identity[0])
+
+    current = availability.current_numeric_identities
+    unreviewed_current = current - ledger_identities
+    if unreviewed_current:
+        first = sorted(unreviewed_current)[0]
+        raise ChinaEconExportError(
+            "current availability contains a numeric identity absent from the reviewed "
+            f"ledger: {first[0]}/{first[1]}"
+        )
+    withdrawn = frozenset(ledger_identities - current)
+    withdrawn_indicators = {indicator_id for indicator_id, _ in withdrawn}
+    projectable = frozenset(
+        ledger_indicators - withdrawn_indicators if wdi_allowed else set()
+    )
+    projectable_identities = frozenset(
+        identity for identity in current if identity[0] in projectable
+    )
+    if {indicator_id for indicator_id, _ in withdrawn} & set(projectable):
+        raise ChinaEconExportError("withdrawn and projectable WDI series overlap")
+    return projectable_identities, projectable, withdrawn
+
+
 def _effective_decision(
     configured: SourcePolicyDecision | None,
     *,
@@ -700,8 +1180,12 @@ def build_export(
     ledger_path: str | Path,
     policy_path: str | Path,
     series_registry_path: str | Path,
+    availability_receipt_path: str | Path,
     generated_at: datetime,
     artifact_name: str,
+    producer_repository: str,
+    producer_commit_sha: str,
+    workflow_run: Mapping[str, Any] | None = None,
 ) -> ExportBundle:
     """Build one deterministic, exact-byte-pinned Seiche context export."""
 
@@ -714,18 +1198,45 @@ def build_export(
     ledger_location = Path(ledger_path)
     policy_location = Path(policy_path)
     series_registry_location = Path(series_registry_path)
+    availability_location = Path(availability_receipt_path)
     snapshot = load_snapshot(ledger_location)
+    ledger_bytes = ledger_location.read_bytes() if ledger_location.exists() else b""
+    if (
+        len(ledger_bytes) != snapshot.byte_size
+        or hashlib.sha256(ledger_bytes).hexdigest() != snapshot.byte_sha256
+    ):
+        raise ChinaEconExportError("input ledger changed while the export was built")
     if snapshot.as_of is not None and snapshot.as_of > evaluated_at:
         raise ChinaEconExportError("generated_at precedes the newest collection clock")
     policy_bytes = policy_location.read_bytes()
     series_registry_bytes = series_registry_location.read_bytes()
+    availability_bytes = availability_location.read_bytes()
     policy = _parse_source_policy(policy_bytes)
     registry = _parse_market_registry(series_registry_bytes)
+    availability = _parse_availability_receipt(
+        availability_bytes,
+        registry=registry,
+    )
+    if availability.generated_at_value > evaluated_at:
+        raise ChinaEconExportError(
+            "manifest generated_at precedes the current-availability receipt"
+        )
+    if availability.ledger_after != {
+        "sha256": snapshot.byte_sha256,
+        "bytes": snapshot.byte_size,
+        "records": snapshot.records,
+    }:
+        raise ChinaEconExportError(
+            "current-availability receipt is not bound to the exact input ledger"
+        )
     bindings = registry.bindings
 
     input_counts = Counter(row.source_id for row in snapshot.observations)
     exported_counts: Counter[str] = Counter()
     output_rows: list[dict[str, Any]] = []
+    selected_wdi: dict[
+        tuple[str, int], tuple[EconomicObservation, MarketBinding]
+    ] = {}
     effective_by_source: dict[str, str] = {}
     all_sources = sorted(set(policy.decisions) | set(input_counts))
     for source_id in all_sources:
@@ -733,6 +1244,19 @@ def build_export(
             policy.decisions.get(source_id), evaluated_at=evaluated_at
         )
 
+    projectable_identities, projectable_indicators, withdrawn_identities = (
+        _availability_projection(
+            snapshot.observations,
+            registry=registry,
+            availability=availability,
+            wdi_allowed=effective_by_source.get(WDI_SOURCE_ID) == "allowed",
+        )
+    )
+    projectable_series_ids = frozenset(
+        binding.series_id
+        for binding in bindings.values()
+        if binding.source_series_id in projectable_indicators
+    )
     for observation in snapshot.observations:
         if effective_by_source[observation.source_id] != "allowed":
             continue
@@ -744,6 +1268,29 @@ def build_export(
                 f"allowed WDI series {observation.series_id} lacks a market-channel decision"
             )
         _validate_wdi_observation(observation, binding, registry)
+        if binding.source_series_id not in projectable_indicators:
+            continue
+        if _wdi_identity(observation, binding) not in projectable_identities:
+            raise ChinaEconExportError(
+                f"projectable WDI row {observation.series_id} is not currently available"
+            )
+        identity = _wdi_identity(observation, binding)
+        prior = selected_wdi.get(identity)
+        if prior is None or (
+            observation.revision,
+            observation.released_at,
+            observation.collected_at,
+            observation.observation_id,
+        ) > (
+            prior[0].revision,
+            prior[0].released_at,
+            prior[0].collected_at,
+            prior[0].observation_id,
+        ):
+            selected_wdi[identity] = (observation, binding)
+
+    for identity in sorted(selected_wdi):
+        observation, binding = selected_wdi[identity]
         output_rows.append(
             {
                 "schema_version": ARTIFACT_SCHEMA,
@@ -781,6 +1328,11 @@ def build_export(
         "generated_at": generated_at_text,
         "context_only": True,
         "scoring_allowed": False,
+        "producer": _producer_receipt(
+            repository=producer_repository,
+            commit_sha=producer_commit_sha,
+            workflow_run=workflow_run,
+        ),
         "artifact": {
             "path": artifact_name,
             "media_type": "application/x-ndjson",
@@ -794,6 +1346,35 @@ def build_export(
             "sha256": snapshot.byte_sha256,
             "bytes": snapshot.byte_size,
             "records": snapshot.records,
+        },
+        "availability_receipt": {
+            "path": availability_location.name,
+            "sha256": availability.byte_sha256,
+            "bytes": availability.byte_size,
+            "schema_version": WDI_RUN_SCHEMA,
+            "generated_at": availability.generated_at,
+            "batch_raw_sha256": availability.batch_raw_sha256,
+            "availability_schema_version": WDI_AVAILABILITY_SCHEMA,
+            "current_numeric_identities_sha256": hashlib.sha256(
+                availability.current_numeric_identities_bytes
+            ).hexdigest(),
+            "current_numeric_identities_records": len(
+                availability.current_numeric_identities
+            ),
+            "current_projectable_series_sha256": hashlib.sha256(
+                _pal_series_jsonl(projectable_series_ids)
+            ).hexdigest(),
+            "current_projectable_series_records": len(projectable_series_ids),
+            "current_projectable_source_indicators_sha256": hashlib.sha256(
+                _source_indicator_jsonl(projectable_indicators)
+            ).hexdigest(),
+            "current_projectable_source_indicators_records": len(
+                projectable_indicators
+            ),
+            "withdrawn_numeric_identities_sha256": hashlib.sha256(
+                _identity_jsonl(withdrawn_identities)
+            ).hexdigest(),
+            "withdrawn_numeric_identities_records": len(withdrawn_identities),
         },
         "policy": {
             "path": policy_location.name,
@@ -815,6 +1396,9 @@ def build_export(
         manifest,
         policy_bytes=policy_bytes,
         series_registry_bytes=series_registry_bytes,
+        availability_receipt_bytes=availability_bytes,
+        input_ledger_bytes=ledger_bytes,
+        expected_producer_commit_sha=producer_commit_sha,
     )
     return ExportBundle(
         artifact_bytes=artifact_bytes,
@@ -829,6 +1413,10 @@ def validate_export_bundle(
     *,
     policy_bytes: bytes,
     series_registry_bytes: bytes,
+    availability_receipt_bytes: bytes,
+    input_ledger_bytes: bytes,
+    expected_producer_commit_sha: str | None = None,
+    require_successful_workflow: bool = False,
 ) -> None:
     """Validate the wire contract against its exact policy and registry bytes."""
 
@@ -837,8 +1425,10 @@ def validate_export_bundle(
         "generated_at",
         "context_only",
         "scoring_allowed",
+        "producer",
         "artifact",
         "input_ledger",
+        "availability_receipt",
         "policy",
         "series_registry",
         "source_decisions",
@@ -856,8 +1446,80 @@ def validate_export_bundle(
     if manifest["context_only"] is not True or manifest["scoring_allowed"] is not False:
         raise ChinaEconExportError("export authority boundary changed")
 
+    _validate_producer_receipt(manifest["producer"])
+    producer = manifest["producer"]
+    if (
+        expected_producer_commit_sha is not None
+        and producer["commit_sha"] != expected_producer_commit_sha
+    ):
+        raise ChinaEconExportError("manifest.producer commit does not match expected producer")
+    if require_successful_workflow and (
+        producer["workflow_run"] is None
+        or producer["workflow_run"]["event"] != "push"
+    ):
+        raise ChinaEconExportError(
+            "manifest.producer requires a successful exact-SHA push workflow receipt"
+        )
+
     parsed_policy = _parse_source_policy(policy_bytes)
     parsed_registry = _parse_market_registry(series_registry_bytes)
+    parsed_availability = _parse_availability_receipt(
+        availability_receipt_bytes,
+        registry=parsed_registry,
+    )
+    if require_successful_workflow and (
+        parsed_availability.publication_state != "public_context_only"
+        or not parsed_availability.durable_cross_run
+    ):
+        raise ChinaEconExportError(
+            "authoritative export requires the reviewed durable public availability receipt"
+        )
+    if parsed_availability.generated_at_value > generated_at:
+        raise ChinaEconExportError(
+            "manifest generated_at precedes the current-availability receipt"
+        )
+    ledger_observations = _parse_ledger_bytes(input_ledger_bytes)
+    wdi_allowed = (
+        _effective_decision(
+            parsed_policy.decisions.get(WDI_SOURCE_ID),
+            evaluated_at=generated_at,
+        )
+        == "allowed"
+    )
+    projectable_identities, projectable_indicators, withdrawn_identities = (
+        _availability_projection(
+            ledger_observations,
+            registry=parsed_registry,
+            availability=parsed_availability,
+            wdi_allowed=wdi_allowed,
+        )
+    )
+    projectable_series_ids = frozenset(
+        binding.series_id
+        for binding in parsed_registry.bindings.values()
+        if binding.source_series_id in projectable_indicators
+    )
+    expected_latest: dict[tuple[str, int], EconomicObservation] = {}
+    for observation in ledger_observations:
+        if observation.source_id != WDI_SOURCE_ID:
+            continue
+        binding = parsed_registry.bindings[observation.series_id]
+        identity = _wdi_identity(observation, binding)
+        if identity not in projectable_identities:
+            continue
+        prior = expected_latest.get(identity)
+        if prior is None or (
+            observation.revision,
+            observation.released_at,
+            observation.collected_at,
+            observation.observation_id,
+        ) > (
+            prior.revision,
+            prior.released_at,
+            prior.collected_at,
+            prior.observation_id,
+        ):
+            expected_latest[identity] = observation
 
     artifact = manifest["artifact"]
     if not isinstance(artifact, Mapping) or set(artifact) != {
@@ -891,6 +1553,10 @@ def validate_export_bundle(
     decoded_rows: list[dict[str, Any]] = []
     observation_ids: set[str] = set()
     artifact_counts: Counter[str] = Counter()
+    artifact_identities: set[tuple[str, int]] = set()
+    artifact_indicators: set[str] = set()
+    artifact_series_ids: set[str] = set()
+    artifact_observation_ids_by_identity: dict[tuple[str, int], str] = {}
     for position, line in enumerate(lines, 1):
         row = _strict_json(line, label=f"artifact row {position}", maximum=1024 * 1024)
         if canonical_json_bytes(row) != line + b"\n":
@@ -941,7 +1607,20 @@ def validate_export_bundle(
                 f"artifact row {position} market channels drifted from the pinned registry"
             )
         _validate_wdi_observation(observation, binding, parsed_registry)
+        identity = _wdi_identity(observation, binding)
+        if identity not in projectable_identities:
+            raise ChinaEconExportError(
+                f"artifact row {position} is not a current projectable WDI identity"
+            )
+        if identity in artifact_observation_ids_by_identity:
+            raise ChinaEconExportError(
+                f"artifact row {position} duplicates a WDI indicator/year identity"
+            )
         observation_ids.add(supplied_id)
+        artifact_identities.add(identity)
+        artifact_indicators.add(identity[0])
+        artifact_series_ids.add(observation.series_id)
+        artifact_observation_ids_by_identity[identity] = supplied_id
         artifact_counts[observation.source_id] += 1
         decoded_rows.append(row)
 
@@ -964,6 +1643,100 @@ def validate_export_bundle(
         or not _SHA256.fullmatch(input_ledger["sha256"])
     ):
         raise ChinaEconExportError("manifest.input_ledger receipt is invalid")
+    if (
+        input_ledger["sha256"] != hashlib.sha256(input_ledger_bytes).hexdigest()
+        or input_ledger["bytes"] != len(input_ledger_bytes)
+        or input_ledger["records"] != len(ledger_observations)
+        or parsed_availability.ledger_after
+        != {
+            "sha256": input_ledger["sha256"],
+            "bytes": input_ledger["bytes"],
+            "records": input_ledger["records"],
+        }
+    ):
+        raise ChinaEconExportError(
+            "manifest.input_ledger does not authenticate the availability-bound bytes"
+        )
+
+    availability_receipt = manifest["availability_receipt"]
+    expected_availability_fields = {
+        "path",
+        "sha256",
+        "bytes",
+        "schema_version",
+        "generated_at",
+        "batch_raw_sha256",
+        "availability_schema_version",
+        "current_numeric_identities_sha256",
+        "current_numeric_identities_records",
+        "current_projectable_series_sha256",
+        "current_projectable_series_records",
+        "current_projectable_source_indicators_sha256",
+        "current_projectable_source_indicators_records",
+        "withdrawn_numeric_identities_sha256",
+        "withdrawn_numeric_identities_records",
+    }
+    if (
+        not isinstance(availability_receipt, Mapping)
+        or set(availability_receipt) != expected_availability_fields
+    ):
+        raise ChinaEconExportError("manifest.availability_receipt has unexpected fields")
+    current_identity_bytes = parsed_availability.current_numeric_identities_bytes
+    projectable_series_bytes = _pal_series_jsonl(projectable_series_ids)
+    projectable_source_indicator_bytes = _source_indicator_jsonl(
+        projectable_indicators
+    )
+    withdrawn_identity_bytes = _identity_jsonl(withdrawn_identities)
+    if (
+        type(availability_receipt["path"]) is not str
+        or Path(availability_receipt["path"]).name != availability_receipt["path"]
+        or availability_receipt["sha256"] != parsed_availability.byte_sha256
+        or availability_receipt["bytes"] != parsed_availability.byte_size
+        or availability_receipt["schema_version"] != WDI_RUN_SCHEMA
+        or availability_receipt["generated_at"] != parsed_availability.generated_at
+        or availability_receipt["batch_raw_sha256"]
+        != parsed_availability.batch_raw_sha256
+        or availability_receipt["availability_schema_version"]
+        != WDI_AVAILABILITY_SCHEMA
+        or availability_receipt["current_numeric_identities_sha256"]
+        != hashlib.sha256(current_identity_bytes).hexdigest()
+        or availability_receipt["current_numeric_identities_records"]
+        != len(parsed_availability.current_numeric_identities)
+        or availability_receipt["current_projectable_series_sha256"]
+        != hashlib.sha256(projectable_series_bytes).hexdigest()
+        or availability_receipt["current_projectable_series_records"]
+        != len(projectable_series_ids)
+        or availability_receipt["current_projectable_source_indicators_sha256"]
+        != hashlib.sha256(projectable_source_indicator_bytes).hexdigest()
+        or availability_receipt["current_projectable_source_indicators_records"]
+        != len(projectable_indicators)
+        or availability_receipt["withdrawn_numeric_identities_sha256"]
+        != hashlib.sha256(withdrawn_identity_bytes).hexdigest()
+        or availability_receipt["withdrawn_numeric_identities_records"]
+        != len(withdrawn_identities)
+    ):
+        raise ChinaEconExportError("manifest.availability_receipt is invalid")
+    if artifact_identities != set(projectable_identities):
+        raise ChinaEconExportError(
+            "artifact current numeric identities do not match the availability projection"
+        )
+    if artifact_observation_ids_by_identity != {
+        identity: observation.observation_id
+        for identity, observation in expected_latest.items()
+    }:
+        raise ChinaEconExportError(
+            "artifact does not contain the exact latest reviewed vintage per identity"
+        )
+    if artifact_indicators != set(projectable_indicators):
+        raise ChinaEconExportError(
+            "artifact series do not match the current projectable series commitment"
+        )
+    if artifact_series_ids != set(projectable_series_ids):
+        raise ChinaEconExportError(
+            "artifact Palimpsest series do not match the projectable series commitment"
+        )
+    if {indicator_id for indicator_id, _ in withdrawn_identities} & artifact_indicators:
+        raise ChinaEconExportError("artifact contains a series with a withdrawn identity")
 
     policy = manifest["policy"]
     if not isinstance(policy, Mapping) or set(policy) != {
@@ -1076,6 +1849,13 @@ def validate_export_bundle(
             raise ChinaEconExportError(
                 f"source_decisions[{position}] export count does not match artifact rows"
             )
+        actual_input_records = sum(
+            1 for observation in ledger_observations if observation.source_id == source_id
+        )
+        if row["input_records"] != actual_input_records:
+            raise ChinaEconExportError(
+                f"source_decisions[{position}] input count does not match the ledger"
+            )
         decision_sources.append(source_id)
         exported_by_source[source_id] += row["exported_records"]
     if decision_sources != sorted(set(decision_sources)):
@@ -1108,6 +1888,12 @@ __all__ = [
     "ARTIFACT_SCHEMA",
     "MANIFEST_SCHEMA",
     "POLICY_SCHEMA",
+    "PRODUCER_RECEIPT_SCHEMA",
+    "PRODUCER_REPOSITORY",
+    "PRODUCER_WORKFLOW_FILE",
+    "WDI_AVAILABILITY_SCHEMA",
+    "WDI_RUN_SCHEMA",
+    "AvailabilityReceipt",
     "ChinaEconExportError",
     "ExportBundle",
     "MarketRegistry",
@@ -1115,6 +1901,7 @@ __all__ = [
     "canonical_json_bytes",
     "load_market_bindings",
     "load_market_registry",
+    "load_availability_receipt",
     "load_source_policy",
     "validate_export_bundle",
 ]

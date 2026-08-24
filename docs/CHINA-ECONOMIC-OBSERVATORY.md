@@ -137,6 +137,171 @@ immutable corrected capture lineages and a chronology-safe merge policy, not an 
 to old receipts. NBS 70-city parsing succeeds across all 70 reviewed cities, but it
 stays `adapter_ready` until the same source-level review is complete.
 
+### Review-only WDI handoff and producer proof
+
+The WDI-to-Seiche transport is deliberately separate from the public Pages
+edition. `palimpsest.china-economic-export.v1` JSONL rows retain the unchanged
+`EconomicObservation` v1 record and its economic-period, publisher-release and
+Palimpsest-collection clocks. The authoritative envelope is
+`palimpsest.china-economic-export-manifest.v3`: it pins the artifact, exact
+input-ledger bytes, exact current-availability receipt, source policy and WDI
+series registry and adds an exact `palimpsest.producer-receipt.v1`
+repository/commit/run locator. The previously released v2 shape remains
+parseable for offline compatibility only; it cannot become an authoritative
+acceptance. A null `producer.workflow_run` is likewise valid only for offline
+review. It is not release or scoring authority.
+
+The v3 availability commitment derives three exact sets from the durable ledger
+and current response. Numeric indicator/year identities currently present are
+bound directly. A formerly numeric identity that is now null or absent is bound
+as withdrawn, and its entire series is omitted from the artifact so a consumer
+cannot silently fall back to an older year. A never-numeric new-year null does
+not withdraw older evidence. Reappearance restores projectability only after
+the numeric identity is again present. Both World Bank indicator IDs and their
+pinned Palimpsest series-ID mappings are committed, and the artifact carries
+exactly one latest reviewed vintage per projectable indicator/year.
+
+After the offline suite and publication contract pass on an exact
+release-reviewed `main` merge, the `Tests` workflow independently fetches one
+bounded public WDI response. It seeds runner-temporary processing from the
+attributed, Git-tracked append-only WDI ledger, requires the ledger to remain
+byte-identical, and compares the live response's complete canonical availability
+and stable provenance/coverage semantics with the reviewed, Git-tracked latest
+receipt. Any numeric, null, withdrawal, provenance or coverage drift blocks the
+handoff until the reviewed WDI publisher records it through the normal release
+workflow. The v3 manifest binds the tracked receipt; the separately named live
+receipt and raw response bind the new check without pretending that a fresh raw
+response has the earlier tracked response's hash. The workflow uploads both
+receipts, the raw response, ledger, policy, registry, artifact, manifest,
+handoff receipt and `SHA256SUMS`. It attests `SHA256SUMS` with GitHub build
+provenance. None of these review bytes is copied into Pages. A later main advance
+makes the older handoff non-current even if all of its bytes still verify.
+
+`handoff-receipt.json` identifies this as
+`git_tracked_seeded_append_only`, pins the prior public-ledger hash, and sets
+`cross_run_revision_authority` true. The inner pull receipt remains
+conservatively labelled `local_review_append_only`; authority comes only from
+the outer exact-seed receipt plus the release-reviewed Git history and attested
+workflow bytes. The 90-day workflow artifact is a transport retention window,
+not the source of durable lineage. Raw responses remain review artifacts rather
+than a permanent public archive.
+
+Before an owner signs a Seiche acceptance receipt, download the artifact named
+`china-economic-review-v3-<sha>-<run>-<attempt>` and independently require all
+of the following:
+
+```bash
+repo=beepboop2025/palimpsest
+sha=<exact-40-hex-main-merge>
+run=<tests-run-id>
+gh api "repos/$repo/actions/runs/$run" > run.json
+attempt=$(jq -er '.run_attempt | select(type == "number" and . >= 1)' run.json)
+jq -e --arg sha "$sha" '
+  .status == "completed" and .conclusion == "success" and
+  .head_sha == $sha and .head_branch == "main" and .event == "push" and
+  ((.path | split("@")[0]) == ".github/workflows/tests.yml")
+' run.json
+gh run download "$run" --repo "$repo" \
+  --name "china-economic-review-v3-${sha}-${run}-${attempt}" \
+  --dir china-economic-review-v3
+gh attestation verify china-economic-review-v3/SHA256SUMS \
+  --repo "$repo" \
+  --signer-workflow "$repo/.github/workflows/tests.yml" \
+  --source-digest "$sha" \
+  --source-ref refs/heads/main \
+  --deny-self-hosted-runners
+```
+
+Do not feed unvalidated checksum paths to a checksum utility. The handoff has
+this exact bounded checksum subject set; reject missing, extra, duplicate,
+non-basename or malformed entries, then recompute every digest:
+
+```bash
+PALIMPSEST_SHA="$sha" PALIMPSEST_RUN="$run" python3 - <<'PY'
+import hashlib, json, os, re
+from pathlib import Path
+
+root = Path("china-economic-review-v3")
+allowed = {
+    "china-econ-wdi-latest.json",
+    "china-econ-wdi-live-check.json",
+    "china-econ-wdi-observations.jsonl",
+    "china_econ_source_policy.json",
+    "china_econ_wdi_series.json",
+    "handoff-receipt.json",
+    "palimpsest-china-economic-export-v1.jsonl",
+    "palimpsest-china-economic-export-v3-manifest.json",
+    "world-bank-wdi-response.json",
+}
+seen = set()
+for line in (root / "SHA256SUMS").read_text(encoding="ascii").splitlines():
+    digest, marker, name = line[:64], line[64:66], line[66:]
+    assert re.fullmatch(r"[0-9a-f]{64}", digest) and marker == " *"
+    assert name in allowed and Path(name).name == name and name not in seen
+    assert hashlib.sha256((root / name).read_bytes()).hexdigest() == digest
+    seen.add(name)
+assert seen == allowed
+
+latest = json.loads((root / "china-econ-wdi-latest.json").read_bytes())
+live = json.loads((root / "china-econ-wdi-live-check.json").read_bytes())
+manifest = json.loads(
+    (root / "palimpsest-china-economic-export-v3-manifest.json").read_bytes()
+)
+handoff = json.loads((root / "handoff-receipt.json").read_bytes())
+raw = (root / "world-bank-wdi-response.json").read_bytes()
+ledger = (root / manifest["input_ledger"]["path"]).read_bytes()
+artifact = (root / manifest["artifact"]["path"]).read_bytes()
+policy = (root / manifest["policy"]["path"]).read_bytes()
+registry = (root / manifest["series_registry"]["path"]).read_bytes()
+assert hashlib.sha256(raw).hexdigest() == live["batch_raw_sha256"]
+assert hashlib.sha256(ledger).hexdigest() == manifest["input_ledger"]["sha256"]
+assert len(ledger) == manifest["input_ledger"]["bytes"]
+assert hashlib.sha256(artifact).hexdigest() == manifest["artifact"]["sha256"]
+assert len(artifact) == manifest["artifact"]["bytes"]
+assert len(artifact.splitlines()) == manifest["artifact"]["records"]
+assert hashlib.sha256(policy).hexdigest() == manifest["policy"]["sha256"]
+assert hashlib.sha256(registry).hexdigest() == manifest["series_registry"]["sha256"]
+assert len(registry) == manifest["series_registry"]["bytes"]
+assert latest["ledger_after"] == {
+    key: manifest["input_ledger"][key] for key in ("sha256", "bytes", "records")
+}
+assert live["ledger_before"] == live["ledger_after"] == latest["ledger_after"]
+canonical = lambda value: (
+    json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    + "\n"
+).encode()
+assert canonical(live["availability"]) == canonical(latest["availability"])
+availability_path = root / manifest["availability_receipt"]["path"]
+availability = availability_path.read_bytes()
+assert hashlib.sha256(availability).hexdigest() == manifest[
+    "availability_receipt"
+]["sha256"]
+assert len(availability) == manifest["availability_receipt"]["bytes"]
+assert manifest["availability_receipt"]["generated_at"] == latest["generated_at"]
+assert manifest["availability_receipt"]["batch_raw_sha256"] == latest[
+    "batch_raw_sha256"
+]
+assert handoff["producer"] == manifest["producer"]
+assert handoff["artifact"] == manifest["artifact"]
+assert handoff["input_ledger"] == manifest["input_ledger"]
+assert handoff["reviewed_availability_receipt"] == manifest["availability_receipt"]
+assert handoff["live_raw_response"]["sha256"] == live["batch_raw_sha256"]
+assert handoff["revision_lineage"]["cross_run_revision_authority"] is True
+assert manifest["producer"]["commit_sha"] == os.environ["PALIMPSEST_SHA"]
+assert manifest["producer"]["workflow_run"]["run_id"] == int(
+    os.environ["PALIMPSEST_RUN"]
+)
+PY
+```
+
+Finally review the exact raw response and the
+availability/indicator-provenance receipts. The lack of an append-only
+withdrawal-event ledger and complete per-indicator upstream attribution remain
+explicit gates. Until tombstones exist, the public publisher refuses any
+formerly numeric identity that becomes absent/null, and the export omits the
+whole affected series. An old numeric observation must never be represented as
+current merely because it remains in the accumulated ledger.
+
 Run the coverage planner with:
 
 ```bash
