@@ -1099,6 +1099,10 @@ def test_tests_workflow_checks_out_and_proves_the_dispatched_publication_sha() -
     assert 'test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"' in workflow
     assert 'git merge-base --is-ancestor "$PUBLICATION_SHA" origin/main' in workflow
     assert "complete publication is not the current main tip" in workflow
+    assert (
+        workflow.count("PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}")
+        == 2
+    )
 
 
 def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() -> None:

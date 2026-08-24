@@ -103,7 +103,6 @@ jobs:
         env:
           PUBLICATION_SHA: ${{ github.event.client_payload.sha }}
           PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
-          PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
             publication_sha=$PUBLICATION_SHA
@@ -143,6 +142,7 @@ jobs:
         if: ${{ github.event_name == 'repository_dispatch' }}
         env:
           PUBLICATION_SHA: ${{ github.event.client_payload.sha }}
+          PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
         run: |
           test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
           git fetch --no-tags origin \
