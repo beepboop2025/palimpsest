@@ -594,7 +594,7 @@ def test_registry_preflight_recovers_only_the_exact_active_version(
     workflow = REGISTRY_WORKFLOW.read_text(encoding="utf-8")
     marker = "python3 - \"$version_json\" <<'PY'\n"
     start = workflow.index(marker) + len(marker)
-    end = workflow.index("\n              PY", start)
+    end = workflow.index("\n          PY", start)
     source = textwrap.dedent(workflow[start:end])
     manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     (tmp_path / "server.json").write_text(json.dumps(manifest), encoding="utf-8")

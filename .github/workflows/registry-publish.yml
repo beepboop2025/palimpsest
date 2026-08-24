@@ -122,58 +122,58 @@ jobs:
           fi
           case "$http_status" in
             200)
-              python3 - "$version_json" <<'PY'
-              import json
-              import sys
+          python3 - "$version_json" <<'PY'
+          import json
+          import sys
 
-              def reject_constant(value):
-                  raise ValueError(f"non-finite JSON number: {value}")
+          def reject_constant(value):
+              raise ValueError(f"non-finite JSON number: {value}")
 
-              def strict_object(pairs):
-                  result = {}
-                  for key, value in pairs:
-                      if key in result:
-                          raise ValueError(f"duplicate JSON key: {key}")
-                      result[key] = value
-                  return result
+          def strict_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise ValueError(f"duplicate JSON key: {key}")
+                  result[key] = value
+              return result
 
-              def canonical(value):
-                  return json.dumps(
-                      value,
-                      allow_nan=False,
-                      ensure_ascii=False,
-                      separators=(",", ":"),
-                      sort_keys=True,
-                  ).encode("utf-8")
+          def canonical(value):
+              return json.dumps(
+                  value,
+                  allow_nan=False,
+                  ensure_ascii=False,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              ).encode("utf-8")
 
-              with open(sys.argv[1], encoding="utf-8") as handle:
-                  registry = json.load(
-                      handle,
-                      object_pairs_hook=strict_object,
-                      parse_constant=reject_constant,
-                  )
-              with open("server.json", encoding="utf-8") as handle:
-                  manifest = json.load(
-                      handle,
-                      object_pairs_hook=strict_object,
-                      parse_constant=reject_constant,
-                  )
-              if (
-                  not isinstance(registry, dict)
-                  or canonical(registry.get("server")) != canonical(manifest)
-              ):
-                  raise SystemExit(
-                      "immutable Registry version exists with different server content"
-                  )
-              official = registry.get("_meta", {}).get(
-                  "io.modelcontextprotocol.registry/official", {}
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              registry = json.load(
+                  handle,
+                  object_pairs_hook=strict_object,
+                  parse_constant=reject_constant,
               )
-              if official.get("status") != "active":
-                  raise SystemExit("exact Registry version exists but is not active")
-              published_at = official.get("publishedAt")
-              if not isinstance(published_at, str) or not published_at.strip():
-                  raise SystemExit("exact Registry version has no publication timestamp")
-              PY
+          with open("server.json", encoding="utf-8") as handle:
+              manifest = json.load(
+                  handle,
+                  object_pairs_hook=strict_object,
+                  parse_constant=reject_constant,
+              )
+          if (
+              not isinstance(registry, dict)
+              or canonical(registry.get("server")) != canonical(manifest)
+          ):
+              raise SystemExit(
+                  "immutable Registry version exists with different server content"
+              )
+          official = registry.get("_meta", {}).get(
+              "io.modelcontextprotocol.registry/official", {}
+          )
+          if official.get("status") != "active":
+              raise SystemExit("exact Registry version exists but is not active")
+          published_at = official.get("publishedAt")
+          if not isinstance(published_at, str) or not published_at.strip():
+              raise SystemExit("exact Registry version has no publication timestamp")
+          PY
               echo 'already_published=true' >>"$GITHUB_OUTPUT"
               echo 'publication_mode=recovered-existing' >>"$GITHUB_OUTPUT"
               ;;
