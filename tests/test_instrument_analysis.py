@@ -77,6 +77,50 @@ def test_non_live_story_is_an_availability_brief():
     assert story["status"] in analysis["position"]
 
 
+def test_live_story_without_scalar_metric_reports_qualitative_status():
+    feed = _feed()
+    story = json.loads(
+        json.dumps(
+            next(
+                row
+                for row in feed["stories"]
+                if row["status"] == "live"
+                and row["signal_id"] not in instrument_analysis.PRIVATE_SIGNALS
+            )
+        )
+    )
+    story["signal_id"] = "qualitative-evidence"
+    story["metric"] = {
+        "label": None,
+        "value": None,
+        "unit": None,
+        "denominator": {"label": None, "value": None},
+    }
+
+    analysis = instrument_analysis.build_instrument_analysis(story, feed)
+
+    assert analysis["disposition"] == "live-reading"
+    assert analysis["key_numbers"] == [
+        {
+            "value": "current",
+            "label": "evidence status",
+            "note": (
+                "live qualitative evidence; no scalar metric or denominator is defined"
+            ),
+            "citation_ids": [analysis["evidence"][0]["evidence_id"]],
+        }
+    ]
+    assert "no scalar headline metric" in analysis["position"]
+
+    broken = json.loads(json.dumps(analysis))
+    broken["key_numbers"][0]["value"] = "withheld"
+    with pytest.raises(
+        instrument_analysis.InstrumentAnalysisError,
+        match="live reading mislabels current evidence as withheld",
+    ):
+        instrument_analysis.validate_instrument_analysis(broken, story=story)
+
+
 def test_nemesis_never_becomes_a_live_finding():
     feed = _feed()
     story = next(row for row in feed["stories"] if row["signal_id"] == "nemesis")
