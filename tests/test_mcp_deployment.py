@@ -234,6 +234,7 @@ def test_host_wrapper_is_syntax_valid_and_fail_closed() -> None:
 
 def test_host_wrapper_pins_all_installed_trust_roots() -> None:
     text = WRAPPER.read_text(encoding="utf-8")
+    assert "commits/${target_sha}?per_page=1" in text
     pinned = {
         "EXPECTED_VERIFY_SHA256": ROOT / "ops/mcp-deploy/verify_release.py",
         "EXPECTED_SMOKE_SHA256": ROOT / "scripts/smoke_palimpsest_mcp.py",
@@ -254,6 +255,7 @@ def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
         == 2
     )
     assert "--github-commit-json" in text
+    assert "commits/${TARGET_SHA}?per_page=1" in text
     assert "environment: palimpsest-mcp-production" in text
     assert "StrictHostKeyChecking=yes" in text
     assert "PALIMPSEST_MCP_SSH_HOST_KEY" in text
