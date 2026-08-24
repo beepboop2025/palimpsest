@@ -206,6 +206,35 @@ def semantic_assessment_seed(analysis: Mapping[str, Any]) -> dict[str, Any]:
                 f"{row.get('peer')} has no live event-matched peer record."
             )
 
+    # The wire is a rolling window. Its raw same-window event count can rise or
+    # fall when otherwise unchanged events enter or leave that edition, even
+    # though the retained peer sources, independence groups, and shared topics
+    # express the same assessment. Normalize the count and its two rendered
+    # copies here; identity-set changes remain revision-forming below.
+    window_peers = projected.get("window_peers")
+    if type(window_peers) is dict:
+        peer_count = window_peers.get("same_window_peer_count")
+        if type(peer_count) is int and peer_count >= 0:
+            for row in projected.get("key_numbers") or []:
+                if (
+                    type(row) is dict
+                    and row.get("label") == "same-window events sharing a topic"
+                    and row.get("value") == str(peer_count)
+                ):
+                    row["value"] = "edition-count"
+            peer_clause = (
+                f"{peer_count} same-window "
+                f"event{'s' if peer_count != 1 else ''} share a declared topic."
+            )
+            position = projected.get("position")
+            if type(position) is str and peer_clause in position:
+                projected["position"] = position.replace(
+                    peer_clause,
+                    "Same-window event count belongs to the mutable edition.",
+                    1,
+                )
+            window_peers["same_window_peer_count"] = "edition-count"
+
     def normalize(value: Any) -> Any:
         if isinstance(value, dict):
             normalized = {}
