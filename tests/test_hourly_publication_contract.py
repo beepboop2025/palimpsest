@@ -1,5 +1,6 @@
 """The public observatory must produce and display a coherent hourly edition."""
 
+import ast
 import json
 from pathlib import Path
 
@@ -153,7 +154,20 @@ def test_every_hourly_artifact_declares_the_same_cadence_to_readers() -> None:
     ):
         assert by_id[dataset_id]["cadence"] == "PT1H"
 
-    osint = _read("scripts/build_osint_china.py")
+    osint = ast.parse(_read("scripts/build_osint_china.py"))
+    declarations = {
+        node.args[0].value: (
+            ast.literal_eval(node.args[4]),
+            ast.literal_eval(node.args[5]),
+        )
+        for node in ast.walk(osint)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "_s"
+        and len(node.args) >= 6
+        and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, str)
+    }
     for signal_id in (
         "board-alarm",
         "coverage-guard",
@@ -162,9 +176,7 @@ def test_every_hourly_artifact_declares_the_same_cadence_to_readers() -> None:
         "weibo-hotsearch",
         "silence-index",
     ):
-        assert f'_s("{signal_id}"' in osint
-        declaration = osint.split(f'_s("{signal_id}"', 1)[1].split("\n", 1)[0]
-        assert ", 1, 3," in declaration
+        assert declarations[signal_id] == (1, 3)
 
     fleet = _read("core/collector_fleet.py")
     assert (
