@@ -10,8 +10,9 @@ The controller enforces all of these before replacing runtime bytes:
 - the requested value is an exact 40-character lowercase commit SHA;
 - the commit is reachable from the repository's current `origin/main`;
 - the Git author is the pinned Palimpsest release principal;
-- GitHub attributes it to the pinned maintainer and reports a valid `web-flow`
-  signature for that exact reviewed merge commit;
+- the exact signed payload reconstructs the requested commit SHA, identifies the
+  pinned maintainer/GitHub committer, and verifies locally against the pinned
+  GitHub `web-flow` public key;
 - `mcp/palimpsest_mcp.py` and `server.json` are exact blobs from the commit;
 - server/manifest versions match, all six tools and four prompts discover, every
   tool is declared read-only/closed-world, and `get_newsroom` advertises
@@ -22,16 +23,23 @@ The controller enforces all of these before replacing runtime bytes:
 - only then is `/var/lib/palimpsest-mcp-deploy/deployed-sha` advanced. A failure
   after promotion restores the previous server file and restarts it.
 
-The wrapper also pins the SHA-256 of its installed verifier, smoke client, and
-systemd unit. Candidate inspection and live probing run as the separate,
+The wrapper also pins the SHA-256 of its installed verifier, GitHub signing key,
+smoke client, and systemd unit. Candidate inspection and live probing run as the separate,
 unprivileged `palimpsest-mcp-verify` account with an empty environment; candidate
 Python is never imported by the root controller process and does not share a UID
 with the running service.
 
 The GitHub workflow repeats the identity and contract checks in a no-secret job,
-waits at the `palimpsest-mcp-production` environment gate, sends only
-`deploy <sha>` through a pinned SSH host key, then repeats the full smoke through
-`https://api.seiche.info/palimpsest/mcp` (therefore including the Caddy route).
+waits at the `palimpsest-mcp-production` environment gate, then authenticates a
+second commit-metadata request with the job-scoped GitHub token. It sends only
+the `deploy <sha>` command plus that public response on standard input through a
+pinned SSH host key; the token-scoped step ends before the SSH key is
+materialized, and the token never reaches the host.
+The host treats the response as untrusted, caps it at 256 KiB, reconstructs the
+exact Git commit object, and verifies its detached signature locally against the
+root-owned GitHub signing key before mutation. The workflow then repeats
+the full smoke through `https://api.seiche.info/palimpsest/mcp` (therefore
+including the Caddy route).
 
 ## One-time host bootstrap
 
@@ -71,10 +79,20 @@ cannot bootstrap or broaden its own authority.
    sudo install -o root -g root -m 0755 \
      ops/mcp-deploy/verify_release.py \
      /usr/local/libexec/palimpsest-mcp-verify-release.py
+   sudo install -o root -g root -m 0444 \
+     ops/mcp-deploy/github-web-flow-signing-key.asc \
+     /usr/local/libexec/palimpsest-github-web-flow-signing-key.asc
    sudo install -o root -g root -m 0755 \
      scripts/smoke_palimpsest_mcp.py \
      /usr/local/libexec/palimpsest-mcp-smoke.py
+   test -x /usr/bin/gpgv
    ```
+
+   The armored bundle is copied from GitHub's published
+   `https://github.com/web-flow.gpg`; the verifier accepts only fingerprint
+   `968479A1AFF927E37D1A566BB5690EEEBB952194`. A future GitHub signing-key
+   rotation therefore requires a separately reviewed trust-bundle release, not
+   an automatic network refresh on the host.
 
 3. Preserve the existing runtime until its current source commit is known. The
    pre-controller runtime is version 1.8.1 from exact core commit
@@ -323,10 +341,33 @@ cannot bootstrap or broaden its own authority.
    secrets, enable required-reviewer protection, and test that the dedicated key
    cannot open a shell or run anything except the exact forced command.
 
+## Updating the installed controller trust bundle
+
+Controller changes are a separate root-admin transaction, never a capability of
+the forced deployment key. Finish any data/Pages publication first, freeze
+scheduled publishers, merge the reviewed controller change through GitHub, and
+record the exact verified `web-flow` merge SHA. On the host, acquire
+`/var/lib/palimpsest-mcp-deploy/deploy.lock`, fetch that exact `origin/main` into
+the root-owned mirror, and extract the wrapper, verifier, and signing key from
+that commit into a root-only temporary directory.
+
+Before mutation, preserve the installed wrapper and verifier plus their modes
+and SHA-256 digests in a root-only backup directory. Preserve the installed
+signing key too, or record that it was absent. Prove the extracted blobs match
+the exact Git objects, run Bash/Python syntax checks, and verify the wrapper's
+pinned verifier/signing-key hashes. Install the signing key `0444`, then the
+verifier `0755`, and the wrapper `0755` last; verify root ownership, single-link
+regular-file type, modes, and digests before releasing the lock. If any check
+fails, restore every preimage and remove a newly introduced key when the prior
+state recorded it as absent, all while still holding the lock. Only after this
+transaction succeeds may `deploy-mcp.yml` be dispatched for the same exact
+merge SHA.
+
 ## Release transaction
 
 The target must be a reviewed merge on `main` whose GitHub API verification is
-`verified: true`, not an unsigned feature-branch commit. Scheduled publishers
+`verified: true` and whose signed payload verifies locally against the pinned
+`web-flow` key, not an unsigned feature-branch commit. Scheduled publishers
 normally advance `main` with single-parent data commits, while Registry
 publication deliberately requires the deployed SHA to remain the exact current
 tip. Freeze every scheduled workflow before the release merge, wait for all

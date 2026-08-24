@@ -87,9 +87,14 @@ _SINKS = re.compile(
 #   fixed `gh api` endpoint for validated full commit SHAs. Paths are closed
 #   constants, stdin is closed, no shell is used, and fetched response bytes are
 #   captured as data rather than reintroduced into argv.
+#   verify_release.py: invokes only the checked absolute gpgv executable with
+#   fixed flags and private temporary paths. Provenance bytes are written as
+#   data files, stdin is closed, the environment and timeout are fixed, and no
+#   shell or fetched value becomes executable text.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
+    ("ops/mcp-deploy/verify_release.py", "subprocess."),
     ("ops/network-lane/network_lane.py", "subprocess."),
     ("ops/osint-sync/public_osint_sync.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
@@ -101,6 +106,60 @@ _ALLOWED = {
     ("scripts/reproduce_all.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
 }
+
+
+def test_mcp_release_verifier_keeps_a_closed_gpgv_boundary():
+    source = (ROOT / "ops" / "mcp-deploy" / "verify_release.py").read_text(
+        encoding="utf-8"
+    )
+    tree = ast.parse(source)
+    subprocess_imports = [
+        (alias.name, alias.asname)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+        if alias.name == "subprocess"
+    ]
+    assert subprocess_imports == [("subprocess", None)]
+    assert not any(
+        isinstance(node, ast.ImportFrom) and node.module == "subprocess"
+        for node in ast.walk(tree)
+    )
+    subprocess_attributes = sorted(
+        node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "subprocess"
+    )
+    assert subprocess_attributes == ["DEVNULL", "SubprocessError", "run"]
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "subprocess"
+        and node.func.attr == "run"
+    ]
+    assert len(calls) == 1
+    call = calls[0]
+    assert ast.unparse(call.args[0]) == (
+        "[str(gpgv_path), '--homedir', str(directory), '--status-fd', '1', "
+        "'--keyring', str(keyring_path), str(signature_path), str(payload_path)]"
+    )
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords}
+    assert set(keywords) == {"capture_output", "check", "env", "stdin", "timeout"}
+    assert ast.literal_eval(keywords["check"]) is False
+    assert ast.literal_eval(keywords["capture_output"]) is True
+    assert ast.literal_eval(keywords["timeout"]) == 20
+    assert ast.unparse(keywords["stdin"]) == "subprocess.DEVNULL"
+    assert ast.literal_eval(keywords["env"]) == {
+        "PATH": "/usr/bin:/bin",
+        "LC_ALL": "C",
+    }
+    assert 'DEFAULT_GPGV = Path("/usr/bin/gpgv")' in source
+    assert "if not gpgv_path.is_file() or gpgv_path.is_symlink():" in source
 
 
 def test_china_economic_git_helpers_keep_a_closed_subprocess_boundary():
@@ -118,7 +177,7 @@ def test_china_economic_git_helpers_keep_a_closed_subprocess_boundary():
         assert "cwd=ROOT" in text
         assert "env=" in text
     assert 'GIT_EXECUTABLE = "/usr/bin/git"' in export
-    assert "[GIT_EXECUTABLE, \"--no-replace-objects\", \"rev-parse\"" in export
+    assert '[GIT_EXECUTABLE, "--no-replace-objects", "rev-parse"' in export
     assert 'GIT_EXECUTABLE = "/usr/bin/git"' in lineage
     assert 'GH_EXECUTABLE = "/usr/bin/gh"' in lineage
     assert lineage.count("_git(") == 6  # one definition plus five reviewed call sites

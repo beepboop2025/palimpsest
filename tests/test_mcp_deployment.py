@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -28,6 +29,8 @@ WORKFLOW = ROOT / ".github/workflows/deploy-mcp.yml"
 REGISTRY_WORKFLOW = ROOT / ".github/workflows/registry-publish.yml"
 UNIT = ROOT / "ops/systemd/palimpsest-mcp.service"
 RUNBOOK = ROOT / "ops/mcp-deploy/README.md"
+GITHUB_SIGNING_KEY = ROOT / "ops/mcp-deploy/github-web-flow-signing-key.asc"
+GITHUB_COMMIT_FIXTURE_SHA = "ad52601de621edfd7a9b8fd221fb030a0cfab273"
 
 
 def _load_verifier() -> ModuleType:
@@ -52,6 +55,58 @@ def _load_registry_verifier() -> ModuleType:
 
 
 registry_verifier = _load_registry_verifier()
+
+
+def _github_commit_fixture() -> dict[str, object]:
+    """Recreate API evidence from one exact authentic reachable GitHub merge."""
+    commit_sha = GITHUB_COMMIT_FIXTURE_SHA
+    raw_commit = subprocess.run(
+        ["git", "cat-file", "commit", commit_sha],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    raw_headers, message = raw_commit.split("\n\n", 1)
+    payload_headers: list[str] = []
+    signature_lines: list[str] = []
+    reading_signature = False
+    for line in raw_headers.splitlines():
+        if line.startswith("gpgsig "):
+            assert not signature_lines
+            reading_signature = True
+            signature_lines.append(line.removeprefix("gpgsig "))
+        elif reading_signature and line.startswith(" "):
+            signature_lines.append(line[1:])
+        else:
+            reading_signature = False
+            payload_headers.append(line)
+    while signature_lines and not signature_lines[-1]:
+        signature_lines.pop()
+    assert signature_lines
+    assert signature_lines[0] == "-----BEGIN PGP SIGNATURE-----"
+    parents = [
+        {"sha": line.removeprefix("parent ")}
+        for line in payload_headers
+        if line.startswith("parent ")
+    ]
+    return {
+        "sha": commit_sha,
+        "author": {"login": "beepboop2025"},
+        "committer": {"login": "web-flow"},
+        "parents": parents,
+        "commit": {
+            "verification": {
+                "verified": True,
+                "reason": "valid",
+                "verified_at": "2026-08-24T20:28:24Z",
+                "payload": "\n".join(payload_headers)
+                + "\n\n"
+                + message.removesuffix("\n"),
+                "signature": "\n".join(signature_lines) + "\n",
+            }
+        },
+    }
 
 
 def test_current_candidate_satisfies_release_contract() -> None:
@@ -96,9 +151,34 @@ def test_verifier_rejects_duplicate_manifest_keys(tmp_path: Path) -> None:
 
 
 def test_verifier_requires_exact_valid_github_signature(tmp_path: Path) -> None:
-    target = "a" * 40
-    payload = {
-        "sha": target,
+    gpgv = shutil.which("gpgv")
+    assert gpgv is not None, "gpgv is part of the release-controller contract"
+    payload = _github_commit_fixture()
+    target_sha = payload["sha"]
+    assert isinstance(target_sha, str)
+    path = tmp_path / "commit.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    verifier.verify_github_commit(
+        path,
+        target_sha,
+        GITHUB_SIGNING_KEY,
+        gpgv_path=Path(gpgv).resolve(),
+    )
+
+    payload["commit"]["verification"]["verified"] = False
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(verifier.VerificationError, match="valid verified signature"):
+        verifier.verify_github_commit(
+            path,
+            target_sha,
+            GITHUB_SIGNING_KEY,
+            gpgv_path=Path(gpgv).resolve(),
+        )
+
+
+def test_verifier_rejects_forged_runner_provenance(tmp_path: Path) -> None:
+    forged = {
+        "sha": "a" * 40,
         "author": {"login": "beepboop2025"},
         "committer": {"login": "web-flow"},
         "parents": [{"sha": "b" * 40}, {"sha": "c" * 40}],
@@ -110,14 +190,52 @@ def test_verifier_requires_exact_valid_github_signature(tmp_path: Path) -> None:
             },
         },
     }
-    path = tmp_path / "commit.json"
-    path.write_text(json.dumps(payload), encoding="utf-8")
-    verifier.verify_github_commit(path, target)
+    path = tmp_path / "forged.json"
+    path.write_text(json.dumps(forged), encoding="utf-8")
+    with pytest.raises(verifier.VerificationError, match="no signed payload"):
+        verifier.verify_github_commit(path, "a" * 40, GITHUB_SIGNING_KEY)
 
-    payload["commit"]["verification"]["verified"] = False
+
+def test_verifier_binds_signed_payload_to_target_sha(tmp_path: Path) -> None:
+    payload = _github_commit_fixture()
+    target_sha = payload["sha"]
+    assert isinstance(target_sha, str)
+    signed_payload = payload["commit"]["verification"]["payload"]
+    assert isinstance(signed_payload, str)
+    payload["commit"]["verification"]["payload"] = signed_payload + "!"
+    path = tmp_path / "tampered.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(verifier.VerificationError, match="valid verified signature"):
-        verifier.verify_github_commit(path, target)
+    with pytest.raises(verifier.VerificationError, match="reconstruct the target SHA"):
+        verifier.verify_github_commit(
+            path,
+            target_sha,
+            GITHUB_SIGNING_KEY,
+        )
+
+
+def test_verifier_rejects_unpinned_signed_author(tmp_path: Path) -> None:
+    payload = _github_commit_fixture()
+    target_sha = payload["sha"]
+    assert isinstance(target_sha, str)
+    signed_payload = payload["commit"]["verification"]["payload"]
+    assert isinstance(signed_payload, str)
+    author_line = next(
+        line for line in signed_payload.splitlines() if line.startswith("author ")
+    )
+    timestamp, timezone = author_line.rsplit(" ", 2)[-2:]
+    payload["commit"]["verification"]["payload"] = signed_payload.replace(
+        author_line,
+        f"author Example Maintainer <release@example.com> {timestamp} {timezone}",
+        1,
+    )
+    path = tmp_path / "wrong-author.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(verifier.VerificationError, match="pinned release principal"):
+        verifier.verify_github_commit(
+            path,
+            target_sha,
+            GITHUB_SIGNING_KEY,
+        )
 
 
 class _DispatchHandler(BaseHTTPRequestHandler):
@@ -194,6 +312,8 @@ def test_host_wrapper_is_syntax_valid_and_fail_closed() -> None:
         "fetch.fsckObjects true",
         "github_signature",
         "--github-commit-json",
+        "--github-signing-key",
+        'readonly GPGV="/usr/bin/gpgv"',
         'run_as_verify_user "$VERIFY_RELEASE"',
         'run_as_verify_user "$SMOKE"',
         'env -i PATH="$PATH"',
@@ -234,15 +354,98 @@ def test_host_wrapper_is_syntax_valid_and_fail_closed() -> None:
 
 def test_host_wrapper_pins_all_installed_trust_roots() -> None:
     text = WRAPPER.read_text(encoding="utf-8")
-    assert "commits/${target_sha}?per_page=1" in text
     pinned = {
         "EXPECTED_VERIFY_SHA256": ROOT / "ops/mcp-deploy/verify_release.py",
+        "EXPECTED_GITHUB_SIGNING_KEY_SHA256": GITHUB_SIGNING_KEY,
         "EXPECTED_SMOKE_SHA256": ROOT / "scripts/smoke_palimpsest_mcp.py",
         "EXPECTED_UNIT_SHA256": ROOT / "ops/systemd/palimpsest-mcp.service",
     }
     for variable, path in pinned.items():
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         assert f'readonly {variable}="{digest}"' in text
+
+
+def test_host_wrapper_accepts_only_bounded_runner_provenance() -> None:
+    text = WRAPPER.read_text(encoding="utf-8")
+    assert "api.github.com" not in text
+    assert "Authorization:" not in text
+    assert "GH_TOKEN" not in text
+    assert "GITHUB_TOKEN" not in text
+    assert "GITHUB_PROVENANCE_MAX_BYTES=262144" in text
+    assert 'head --bytes="$((GITHUB_PROVENANCE_MAX_BYTES + 1))"' in text
+    assert "could not read authenticated GitHub provenance" in text
+    assert "authenticated GitHub provenance is empty" in text
+    assert "authenticated GitHub provenance exceeds the 256 KiB cap" in text
+    assert 'receive_github_provenance "$api_json"' in text
+    assert text.index('receive_github_provenance "$api_json"') < text.index(
+        'run_as_verify_user "$VERIFY_RELEASE"'
+    )
+
+
+def test_host_wrapper_bounded_provenance_reader(tmp_path: Path) -> None:
+    text = WRAPPER.read_text(encoding="utf-8")
+    start = text.index("receive_github_provenance() {")
+    function_source = text[start : text.index("\n}\n", start) + 3]
+    shim_dir = tmp_path / "bin"
+    shim_dir.mkdir()
+    timeout_shim = shim_dir / "timeout"
+    timeout_shim.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'test "$1" = --kill-after=5s\n'
+        "shift\n"
+        'test "$1" = 20s\n'
+        "shift\n"
+        'exec "$@"\n',
+        encoding="utf-8",
+    )
+    timeout_shim.chmod(0o755)
+    script = textwrap.dedent(
+        f"""
+        set -Eeuo pipefail
+        PATH="$1:$PATH"
+        shift
+        readonly GITHUB_PROVENANCE_MAX_BYTES=262144
+        fail() {{ printf '%s\n' "$*" >&2; exit 1; }}
+        {function_source}
+        receive_github_provenance "$1"
+        """
+    )
+
+    valid_output = tmp_path / "valid.json"
+    valid = subprocess.run(
+        ["bash", "-c", script, "bounded-reader", str(shim_dir), str(valid_output)],
+        input=b'{"sha":"fixture"}\n',
+        capture_output=True,
+        check=False,
+    )
+    assert valid.returncode == 0, valid.stderr.decode()
+    assert valid_output.read_bytes() == b'{"sha":"fixture"}\n'
+    assert valid_output.stat().st_mode & 0o777 == 0o444
+
+    for label, payload, error in (
+        ("empty", b"", "authenticated GitHub provenance is empty"),
+        (
+            "oversize",
+            b"x" * 262145,
+            "authenticated GitHub provenance exceeds the 256 KiB cap",
+        ),
+    ):
+        result = subprocess.run(
+            [
+                "bash",
+                "-c",
+                script,
+                "bounded-reader",
+                str(shim_dir),
+                str(tmp_path / f"{label}.json"),
+            ],
+            input=payload,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode != 0
+        assert error in result.stderr.decode()
 
 
 def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
@@ -256,6 +459,22 @@ def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
     )
     assert "--github-commit-json" in text
     assert "commits/${TARGET_SHA}?per_page=1" in text
+    assert text.count("persist-credentials: false") == 2
+    assert "--github-signing-key ops/mcp-deploy/github-web-flow-signing-key.asc" in text
+    assert text.count("GH_TOKEN: ${{ github.token }}") == 2
+    assert text.count('--header "Authorization: Bearer $GH_TOKEN"') == 2
+    provenance_step_start = text.index("- name: Fetch authenticated commit provenance")
+    configure_step_start = text.index("- name: Configure pinned SSH identity")
+    deploy_step_start = text.index("- name: Deploy exact SHA through forced command")
+    assert provenance_step_start < configure_step_start < deploy_step_start
+    provenance_step = text[provenance_step_start:configure_step_start]
+    deploy_step = text[deploy_step_start:]
+    assert "GH_TOKEN: ${{ github.token }}" not in deploy_step
+    assert '--header "Authorization: Bearer $GH_TOKEN"' not in deploy_step
+    assert "env -u GH_TOKEN -u GITHUB_TOKEN" in deploy_step
+    assert '"deploy $TARGET_SHA" <"$github_json"' in deploy_step
+    assert 'test -s "$github_json"' in provenance_step
+    assert "palimpsest-mcp-provenance/github-commit.json" in deploy_step
     assert "environment: palimpsest-mcp-production" in text
     assert "StrictHostKeyChecking=yes" in text
     assert "PALIMPSEST_MCP_SSH_HOST_KEY" in text
@@ -327,6 +546,8 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
     assert "rm -f --" in text
     assert '"$deploy_key_dir/palimpsest-mcp-deploy"' in text
     assert '"$deploy_key_dir/palimpsest-mcp-deploy.pub"' in text
+    assert "ops/mcp-deploy/github-web-flow-signing-key.asc" in text
+    assert "968479A1AFF927E37D1A566BB5690EEEBB952194" in text
     assert "unset deploy_key_dir" in text
     assert "trap cleanup_deploy_key EXIT HUP INT TERM" in text
     assert "trap - EXIT HUP INT TERM" in text
@@ -338,6 +559,23 @@ def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> Non
         "CapabilityBoundingSet=",
     ):
         assert property_value in text
+
+
+def test_controller_upgrade_precedes_forced_deployment() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    section = text.index("## Updating the installed controller trust bundle")
+    release = text.index("## Release transaction", section)
+    upgrade = text[section:release]
+    normalized = " ".join(upgrade.split())
+    assert "separate root-admin transaction" in upgrade
+    assert "/var/lib/palimpsest-mcp-deploy/deploy.lock" in upgrade
+    assert "preserve the installed wrapper and verifier" in upgrade
+    assert "record that it was absent" in normalized
+    assert upgrade.index("signing key `0444`") < upgrade.index("verifier `0755`")
+    assert upgrade.index("verifier `0755`") < upgrade.index("wrapper `0755` last")
+    assert "remove a newly introduced key" in normalized
+    assert "all while still holding the lock" in normalized
+    assert "Only after this transaction succeeds" in normalized
 
 
 def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
@@ -446,8 +684,7 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
 
     for number in range(31):
         (workflows / f"writer-{number:02d}.yml").write_text(
-            f"name: writer-{number:02d}\non:\n"
-            "  schedule:\n    - cron: '0 0 * * *'\n",
+            f"name: writer-{number:02d}\non:\n  schedule:\n    - cron: '0 0 * * *'\n",
             encoding="utf-8",
         )
     yaml_writer = workflows / "writer-yaml.yaml"
@@ -495,7 +732,9 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
         "name: OSINT China v2\non:\n  schedule:\n    - cron: '7 * * * *'\n",
         encoding="utf-8",
     )
-    subprocess.run(["git", "add", "-A", ".github/workflows"], cwd=repository, check=True)
+    subprocess.run(
+        ["git", "add", "-A", ".github/workflows"], cwd=repository, check=True
+    )
     subprocess.run(
         [
             "git",
@@ -566,17 +805,17 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
             text=True,
         )
 
-    assert validate_transition(premerge_tree, transition_tree, "one-time").returncode == 0
-    assert validate_transition(transition_tree, steady_tree, "steady").returncode == 0
-    premerge_paths = (tmp_path / "one-time-pre.txt").read_text(
-        encoding="utf-8"
-    ).splitlines()
-    postmerge_paths = (tmp_path / "one-time-post.txt").read_text(
-        encoding="utf-8"
-    ).splitlines()
-    replacements = (tmp_path / "one-time-replacements.tsv").read_text(
-        encoding="utf-8"
+    assert (
+        validate_transition(premerge_tree, transition_tree, "one-time").returncode == 0
     )
+    assert validate_transition(transition_tree, steady_tree, "steady").returncode == 0
+    premerge_paths = (
+        (tmp_path / "one-time-pre.txt").read_text(encoding="utf-8").splitlines()
+    )
+    postmerge_paths = (
+        (tmp_path / "one-time-post.txt").read_text(encoding="utf-8").splitlines()
+    )
+    replacements = (tmp_path / "one-time-replacements.tsv").read_text(encoding="utf-8")
     assert len(premerge_paths) == 34
     assert len(postmerge_paths) == 33
     assert ".github/workflows/writer-yaml.yaml" in premerge_paths
@@ -591,8 +830,7 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
         encoding="utf-8",
     )
     (workflows / "replacement.yml").write_text(
-        "name: replacement\non:\n"
-        "  schedule:\n    - cron: '5 0 * * *'\n",
+        "name: replacement\non:\n  schedule:\n    - cron: '5 0 * * *'\n",
         encoding="utf-8",
     )
     subprocess.run(["git", "add", ".github/workflows"], cwd=repository, check=True)
