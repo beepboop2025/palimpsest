@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-08-24T00:26:26.773475+00:00",
-  "board_e_value": 20.444,
+  "generated_at": "2026-08-24T02:38:02.562988+00:00",
+  "board_e_value": 48.754,
   "board_guarantee": "the board e-value is the arithmetic mean of the per-signal e-processes (valid under arbitrary dependence, Vovk & Wang 2021): under no change anywhere, P(it ever reaches A) <= 1/A. A board e-value of 20 is thus 'at most a 1-in-20 fluke', once, for the whole board — not per signal.",
   "fdr_selection": {
     "selected": [
@@ -13,14 +13,14 @@
   },
   "layers": {
     "network": {
-      "e": 3.98,
+      "e": 4.409,
       "n_signals": 4,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "bleedthrough_capacity": 1.27,
         "ioda_outages": 1.0,
-        "ooni_gfw": 5.43,
+        "ooni_gfw": 7.146,
         "tor_bridge_cn": 8.22
       },
       "recent_alarms": [
@@ -28,17 +28,17 @@
       ]
     },
     "content": {
-      "e": 31.421,
+      "e": 78.317,
       "n_signals": 6,
       "state": "elevated",
       "corroborated": true,
       "signals": {
         "data_darkness": 8.708,
-        "ddti_novelty": 2.335,
-        "ddti_threat": 6.097,
-        "gdelt_containment": 9.639,
-        "github_refuge": 2.048,
-        "weibo_suppression": 159.697
+        "ddti_novelty": 13.406,
+        "ddti_threat": 14.008,
+        "gdelt_containment": 8.101,
+        "github_refuge": 1.845,
+        "weibo_suppression": 423.833
       },
       "recent_alarms": []
     },
@@ -62,34 +62,34 @@
   "signals": {
     "ooni_gfw": {
       "state": "calm",
-      "e": 5.4296,
-      "n": 180,
+      "e": 7.1463,
+      "n": 181,
       "direction": "down",
-      "robust_z": -0.77,
+      "robust_z": -0.87,
       "driver_side": "down",
-      "readings_since_alarm": 33,
+      "readings_since_alarm": 34,
       "n_alarms_in_history": 2,
       "meaning": "network-layer GFW anomaly rate"
     },
     "ddti_threat": {
       "state": "calm",
-      "e": 6.0971,
-      "n": 349,
-      "direction": "down",
-      "robust_z": -0.35,
-      "driver_side": "down",
-      "readings_since_alarm": 110,
+      "e": 14.0079,
+      "n": 351,
+      "direction": "up",
+      "robust_z": 0.47,
+      "driver_side": "up",
+      "readings_since_alarm": 112,
       "n_alarms_in_history": 4,
       "meaning": "peak censor attention on one term"
     },
     "ddti_novelty": {
       "state": "calm",
-      "e": 2.3347,
-      "n": 349,
+      "e": 13.4063,
+      "n": 351,
       "direction": "up",
-      "robust_z": 6.74,
+      "robust_z": 7.34,
       "driver_side": "up",
-      "readings_since_alarm": 26,
+      "readings_since_alarm": 28,
       "n_alarms_in_history": 3,
       "meaning": "newly-sensitive terms entering the deletion stream"
     },
@@ -106,8 +106,8 @@
     },
     "gdelt_containment": {
       "state": "calm",
-      "e": 9.6389,
-      "n": 191,
+      "e": 8.1007,
+      "n": 192,
       "direction": "down",
       "robust_z": -0.67,
       "driver_side": "down",
@@ -117,10 +117,10 @@
     },
     "github_refuge": {
       "state": "calm",
-      "e": 2.0481,
-      "n": 95,
-      "direction": "down",
-      "robust_z": -0.67,
+      "e": 1.845,
+      "n": 96,
+      "direction": "flat",
+      "robust_z": 0.0,
       "driver_side": "down",
       "readings_since_alarm": null,
       "n_alarms_in_history": 0,
@@ -136,9 +136,9 @@
       "state": "stale",
       "n": 1,
       "meaning": "distinct GFW injector pools, counted per region — a jump signals fragmentation",
-      "age_hours": 262.1,
+      "age_hours": 264.2,
       "bound_hours": 168.0,
-      "reason": "newest row is 262.1h old, past the 168h bound"
+      "reason": "newest row is 264.2h old, past the 168h bound"
     },
     "bleedthrough_capacity": {
       "state": "calm",
@@ -163,9 +163,9 @@
       "meaning": "demand for unlisted Tor entry points from China — a surge reads as censorship pressure or fear rising"
     },
     "weibo_suppression": {
-      "state": "calm",
-      "e": 159.6968,
-      "n": 144,
+      "state": "watch",
+      "e": 423.8329,
+      "n": 145,
       "direction": "up",
       "robust_z": null,
       "driver_side": "up",
@@ -176,7 +176,7 @@
     "ioda_outages": {
       "state": "calm",
       "e": 1.0,
-      "n": 137,
+      "n": 138,
       "direction": "flat",
       "robust_z": null,
       "driver_side": "up",
@@ -247,7 +247,7 @@
         "method_version": 4,
         "judge_fingerprint": "31da6276e05adcbb694537eb6277194940a2e624b19f56c53e61eac055d9c22d"
       },
-      "age_hours": 11.4,
+      "age_hours": 13.6,
       "bound_hours": 30.0,
       "state": "calibrating",
       "reason": "burn-in in progress: furthest model has 13 of 21 adjacent-run pairs"

@@ -1,22 +1,22 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-d8a11ccb9d8899125070e759",
+  "analysis_id": "instrumentv-342c3ad9d23f019b75b6c0cd",
   "signal_id": "cross-layer",
   "story_url": "https://palimpsest.info/news/cross-layer-lead-lag/",
   "url": "https://palimpsest.info/news/cross-layer-lead-lag/analysis.json",
   "reading_url": "https://palimpsest.info/readings/cross-layer-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/cross-layer-analysis.json",
-  "generated_at": "2026-08-24T00:26:26Z",
+  "generated_at": "2026-08-24T02:38:02Z",
   "disposition": "live-reading",
   "status": "live",
-  "position": "Palimpsest's view: cross-layer is live. The current number is 0 over 8 pairs tested. This is the instrument reading, not a national censorship rate.",
+  "position": "Palimpsest's view: cross-layer is live. The current number is 0 over 9 pairs tested. This is the instrument reading, not a national censorship rate.",
   "key_numbers": [
     {
       "value": "0",
       "label": "confirmed pairs",
-      "note": "8 pairs tested",
+      "note": "9 pairs tested",
       "citation_ids": [
-        "instrumentevidence-7cfbf5d6eb510bc9864b"
+        "instrumentevidence-529445a638ab95458ab6"
       ]
     }
   ],
@@ -25,15 +25,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "The current confirmed pairs is 0 over 8 pairs tested.",
+          "text": "The current confirmed pairs is 0 over 9 pairs tested.",
           "citation_ids": [
-            "instrumentevidence-7cfbf5d6eb510bc9864b"
+            "instrumentevidence-529445a638ab95458ab6"
           ]
         },
         {
-          "text": "0 cross-layer pairs are confirmed among 8 pairs with enough shared history to test.",
+          "text": "0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test.",
           "citation_ids": [
-            "instrumentevidence-7cfbf5d6eb510bc9864b"
+            "instrumentevidence-529445a638ab95458ab6"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, forecast-ledger, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship.",
+          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, forecast-ledger, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront.",
           "citation_ids": [
-            "instrumentevidence-7cfbf5d6eb510bc9864b"
+            "instrumentevidence-529445a638ab95458ab6"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-7cfbf5d6eb510bc9864b"
+            "instrumentevidence-529445a638ab95458ab6"
           ]
         }
       ]
@@ -61,19 +61,19 @@
         {
           "text": "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another.",
           "citation_ids": [
-            "instrumentevidence-7cfbf5d6eb510bc9864b"
+            "instrumentevidence-529445a638ab95458ab6"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-7cfbf5d6eb510bc9864b"
+            "instrumentevidence-529445a638ab95458ab6"
           ]
         },
         {
           "text": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
           "citation_ids": [
-            "instrumentevidence-7cfbf5d6eb510bc9864b"
+            "instrumentevidence-529445a638ab95458ab6"
           ]
         }
       ]
@@ -83,13 +83,13 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-7cfbf5d6eb510bc9864b"
+        "instrumentevidence-529445a638ab95458ab6"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-7cfbf5d6eb510bc9864b"
+        "instrumentevidence-529445a638ab95458ab6"
       ]
     }
   ],
@@ -97,13 +97,13 @@
     {
       "text": "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another.",
       "citation_ids": [
-        "instrumentevidence-7cfbf5d6eb510bc9864b"
+        "instrumentevidence-529445a638ab95458ab6"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-7cfbf5d6eb510bc9864b"
+        "instrumentevidence-529445a638ab95458ab6"
       ]
     }
   ],
@@ -131,6 +131,12 @@
       "section": "command",
       "status": "live",
       "priority": "standard"
+    },
+    {
+      "signal_id": "ddti",
+      "section": "attention",
+      "status": "live",
+      "priority": "high"
     },
     {
       "signal_id": "weibo-hotsearch",
@@ -197,12 +203,6 @@
       "section": "erasure",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "apple-censorship",
-      "section": "erasure",
-      "status": "live",
-      "priority": "high"
     }
   ],
   "review_rank": {
@@ -213,16 +213,16 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-7cfbf5d6eb510bc9864b",
+      "evidence_id": "instrumentevidence-529445a638ab95458ab6",
       "kind": "newsroom-story",
       "signal_id": "cross-layer",
-      "headline": "0 cross-layer relationships are confirmed across 8 eligible tests",
+      "headline": "0 cross-layer relationships are confirmed across 9 eligible tests",
       "status": "live",
-      "claim": "0 cross-layer pairs are confirmed among 8 pairs with enough shared history to test.",
+      "claim": "0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test.",
       "story_url": "https://palimpsest.info/news/cross-layer-lead-lag/",
       "reading_url": "https://palimpsest.info/readings/cross-layer-latest.json",
-      "source_timestamp": "2026-08-24T00:26:26Z",
-      "input_sha256": "9b199dabe03f2070e7261cf3a1ad599292ec0f936cda1f376f038f636699a8ca",
+      "source_timestamp": "2026-08-24T02:38:02Z",
+      "input_sha256": "7baf86cea239ca230d2e4f897c4b3b3ff81d077a3baaae258a987bd9f752a307",
       "interpretation_limit": "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another."
     }
   ],
