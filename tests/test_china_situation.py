@@ -135,6 +135,11 @@ def test_every_in_scope_event_gets_one_situation_without_strengthening(
     assert all("interconnection" in row for row in situation["situations"])
     assert "events_with_interconnection" in situation["coverage"]
     assert "interconnection_joined_rows" in situation["coverage"]
+    order = [
+        (row["published_at"], row["updated_at"], row["situation_id"])
+        for row in situation["situations"]
+    ]
+    assert order == sorted(order, reverse=True)
 
     events = {event["event_id"]: event for event in wire["events"]}
     for row in situation["situations"]:
@@ -353,6 +358,35 @@ def test_runtime_validator_rejects_relation_and_count_tampering(situation):
     unknown["truth_score"] = 1
     with pytest.raises(china_situation.ChinaSituationError, match="fields differ"):
         china_situation.validate_china_situation(unknown)
+
+    wrong_order = copy.deepcopy(situation)
+    wrong_order["situations"][0], wrong_order["situations"][1] = (
+        wrong_order["situations"][1],
+        wrong_order["situations"][0],
+    )
+    with pytest.raises(
+        china_situation.ChinaSituationError, match="reverse chronological"
+    ):
+        china_situation.validate_china_situation(wrong_order)
+
+
+def test_prior_validator_accepts_only_the_superseded_updated_order(situation):
+    prior = copy.deepcopy(situation)
+    prior["situations"].sort(
+        key=lambda row: (row["updated_at"], row["situation_id"]), reverse=True
+    )
+    assert prior["situations"] != situation["situations"]
+
+    with pytest.raises(
+        china_situation.ChinaSituationError, match="reverse chronological"
+    ):
+        china_situation.validate_china_situation(prior)
+    china_situation.validate_prior_china_situation(prior)
+
+    tampered = copy.deepcopy(prior)
+    tampered["coverage"]["publisher_reports"] += 1
+    with pytest.raises(china_situation.ChinaSituationError, match="publisher report"):
+        china_situation.validate_prior_china_situation(tampered)
 
 
 def test_generated_situation_conforms_to_public_json_schema(situation):

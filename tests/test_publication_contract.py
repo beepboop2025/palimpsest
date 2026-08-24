@@ -577,7 +577,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v18"' in worker
+    assert 'const CACHE = "palimpsest-v19"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert '"/readings/gfi-transcripts-latest.json"' in worker
     for endpoint in (

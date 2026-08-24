@@ -91,21 +91,30 @@ def _history_independent_case(slug: str, *, title: str) -> dict:
     return case
 
 
-def _wire_history_fixture_outputs() -> dict[Path, bytes]:
+def _wire_history_fixture_outputs(count: int = 1) -> dict[Path, bytes]:
     source_root = build_newsroom.ROOT
-    alias_path = sorted((source_root / "news/wire").glob("event-*/analysis.json"))[0]
-    alias = alias_path.relative_to(source_root)
-    analysis_raw = alias_path.read_bytes()
-    analysis = json.loads(analysis_raw)
-    analysis_revision = (
-        alias.parent / "analysis" / "revisions" / f"{analysis['analysis_id']}.json"
-    )
-    event_revision = alias.parent / "revisions" / f"{analysis['event_version_id']}.json"
-    return {
-        alias: analysis_raw,
-        analysis_revision: (source_root / analysis_revision).read_bytes(),
-        event_revision: (source_root / event_revision).read_bytes(),
-    }
+    outputs: dict[Path, bytes] = {}
+    aliases = sorted((source_root / "news/wire").glob("event-*/analysis.json"))
+    for alias_path in aliases[:count]:
+        alias = alias_path.relative_to(source_root)
+        analysis_raw = alias_path.read_bytes()
+        analysis = json.loads(analysis_raw)
+        analysis_revision = (
+            alias.parent / "analysis" / "revisions" / f"{analysis['analysis_id']}.json"
+        )
+        event_revision = (
+            alias.parent / "revisions" / f"{analysis['event_version_id']}.json"
+        )
+        outputs.update(
+            {
+                alias: analysis_raw,
+                analysis_revision: (source_root / analysis_revision).read_bytes(),
+                event_revision: (source_root / event_revision).read_bytes(),
+            }
+        )
+    if len(aliases) < count:
+        raise AssertionError(f"fixture has fewer than {count} wire analyses")
+    return outputs
 
 
 def _attach_wire_history_receipt(
@@ -128,9 +137,14 @@ def test_wire_history_receipt_closes_both_revision_families(tmp_path: Path) -> N
     assert receipt["n_analysis_revisions"] == 1
     assert receipt["n_current_analysis_aliases"] == 1
     assert receipt["automatic_growth_limit"] == 128
+    assert receipt["automatic_growth_max_catchup_intervals"] == 48
+    assert (
+        receipt["automatic_growth_scope"]
+        == "all-new-revisions-per-hour-with-non-current-max-128"
+    )
     assert (
         receipt["automatic_growth_policy"]
-        == "max-128-after-initial-namespace-bootstrap"
+        == "cadence-scaled-max-128-all-with-48-hour-catchup-cap"
     )
     assert receipt["automatic_growth_status"] == "validated"
     assert len(receipt["history_tree_sha256"]) == 64
@@ -285,6 +299,248 @@ def test_wire_history_growth_bound_blocks_revision_fanout(
         match="growth exceeds the automatic publication bound",
     ):
         build_newsroom._wire_history_integrity_receipt(outputs, root=tmp_path)
+
+
+def test_wire_history_growth_counts_validated_current_heads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "news" / "wire").mkdir(parents=True)
+    outputs = _wire_history_fixture_outputs()
+    event_revision = next(
+        path
+        for path in outputs
+        if path.parts[-2] == "revisions" and path.name.startswith("eventv-")
+    )
+    event = json.loads(outputs[event_revision])
+    monkeypatch.setattr(build_newsroom, "MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION", 0)
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="total growth exceeds the cadence-scaled publication bound",
+    ):
+        build_newsroom._wire_history_integrity_receipt(
+            outputs,
+            root=tmp_path,
+            current_events={event["event_id"]: event},
+        )
+
+
+def test_wire_history_growth_does_not_trust_an_unbound_analysis_alias(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "news" / "wire").mkdir(parents=True)
+    outputs = _wire_history_fixture_outputs()
+    event_revision = next(
+        path
+        for path in outputs
+        if path.parts[-2] == "revisions" and path.name.startswith("eventv-")
+    )
+    event = json.loads(outputs[event_revision])
+    other_alias = sorted(build_newsroom.ROOT.glob("news/wire/event-*/analysis.json"))[1]
+    other_analysis = json.loads(other_alias.read_bytes())
+    other_base = other_alias.parent.relative_to(build_newsroom.ROOT)
+    other_analysis_revision = (
+        other_base / "analysis" / "revisions" / f"{other_analysis['analysis_id']}.json"
+    )
+    other_event_revision = (
+        other_base / "revisions" / f"{other_analysis['event_version_id']}.json"
+    )
+    outputs[other_analysis_revision] = (
+        build_newsroom.ROOT / other_analysis_revision
+    ).read_bytes()
+    outputs[other_event_revision] = (
+        build_newsroom.ROOT / other_event_revision
+    ).read_bytes()
+    monkeypatch.setattr(build_newsroom, "MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION", 1)
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="non-current growth exceeds the automatic publication bound",
+    ):
+        build_newsroom._wire_history_integrity_receipt(
+            outputs,
+            root=tmp_path,
+            current_events={event["event_id"]: event},
+        )
+
+
+def test_wire_history_receipt_is_stable_after_current_heads_are_published(
+    tmp_path: Path,
+) -> None:
+    outputs = _wire_history_fixture_outputs()
+    event_revision = next(
+        path
+        for path in outputs
+        if path.parts[-2] == "revisions" and path.name.startswith("eventv-")
+    )
+    event = json.loads(outputs[event_revision])
+    generated_at = event["updated_at"]
+    first = build_newsroom._wire_history_integrity_receipt(
+        outputs,
+        root=tmp_path,
+        current_events={event["event_id"]: event},
+        current_wire_generated_at=generated_at,
+    )
+    for relative, raw in outputs.items():
+        if build_newsroom._is_wire_history_revision_path(relative):
+            destination = tmp_path / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(raw)
+
+    replay = build_newsroom._wire_history_integrity_receipt(
+        outputs,
+        root=tmp_path,
+        current_events={event["event_id"]: event},
+        current_wire_generated_at=generated_at,
+    )
+
+    assert build_newsroom._pretty_json(first) == build_newsroom._pretty_json(replay)
+
+
+def test_wire_history_rejects_an_extra_current_analysis_alias(tmp_path: Path) -> None:
+    outputs = _wire_history_fixture_outputs()
+    event_revision = next(
+        path
+        for path in outputs
+        if path.parts[-2] == "revisions" and path.name.startswith("eventv-")
+    )
+    event = json.loads(outputs[event_revision])
+    extra_alias = sorted(build_newsroom.ROOT.glob("news/wire/event-*/analysis.json"))[1]
+    outputs[extra_alias.relative_to(build_newsroom.ROOT)] = extra_alias.read_bytes()
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="analysis heads do not match the current event inventory",
+    ):
+        build_newsroom._wire_history_integrity_receipt(
+            outputs,
+            root=tmp_path,
+            current_events={event["event_id"]: event},
+        )
+
+
+def test_analysis_only_growth_uses_elapsed_wire_slots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outputs = _wire_history_fixture_outputs(count=2)
+    event_revisions = {
+        path: raw
+        for path, raw in outputs.items()
+        if path.parts[-2] == "revisions" and path.name.startswith("eventv-")
+    }
+    current_events = {
+        event["event_id"]: event
+        for event in (json.loads(raw) for raw in event_revisions.values())
+    }
+    for relative, raw in event_revisions.items():
+        destination = tmp_path / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+    monkeypatch.setattr(build_newsroom, "MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION", 1)
+
+    monkeypatch.setattr(
+        build_newsroom,
+        "_prior_wire_generated_at",
+        lambda _root: "2026-08-24T10:00:00Z",
+    )
+    build_newsroom._wire_history_integrity_receipt(
+        outputs,
+        root=tmp_path,
+        current_events=current_events,
+        current_wire_generated_at="2026-08-24T12:00:00Z",
+    )
+
+    monkeypatch.setattr(
+        build_newsroom,
+        "_prior_wire_generated_at",
+        lambda _root: "2026-08-24T11:45:00Z",
+    )
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="total growth exceeds the cadence-scaled publication bound",
+    ):
+        build_newsroom._wire_history_integrity_receipt(
+            outputs,
+            root=tmp_path,
+            current_events=current_events,
+            current_wire_generated_at="2026-08-24T12:00:00Z",
+        )
+
+
+def test_wire_history_catchup_is_bounded_after_a_long_outage() -> None:
+    assert (
+        build_newsroom._wire_history_catchup_intervals(
+            "2026-08-24T12:00:00Z", "2026-08-14T12:00:00Z"
+        )
+        == build_newsroom.MAX_WIRE_HISTORY_CATCHUP_INTERVALS
+    )
+
+
+def test_wire_history_catchup_counts_only_completed_hourly_slots() -> None:
+    assert (
+        build_newsroom._wire_history_catchup_intervals(
+            "2026-08-24T12:00:01Z", "2026-08-24T11:00:00Z"
+        )
+        == 1
+    )
+    assert (
+        build_newsroom._wire_history_catchup_intervals(
+            "2026-08-24T12:00:00Z", "2026-08-24T10:00:00Z"
+        )
+        == 2
+    )
+
+
+def test_prior_wire_clock_requires_a_valid_situation_contract(tmp_path: Path) -> None:
+    situation_path = tmp_path / "readings" / "china-situation-latest.json"
+    situation_path.parent.mkdir(parents=True)
+    situation_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "palimpsest-china-situation.v1",
+                "inputs": {"newswire_generated_at": "2026-08-24T11:00:00Z"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    assert build_newsroom._prior_wire_generated_at(tmp_path) is None
+
+
+def test_prior_wire_clock_accepts_a_large_bounded_validated_situation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    situation_path = tmp_path / "readings" / "china-situation-latest.json"
+    situation_path.parent.mkdir(parents=True)
+    situation_path.write_text(
+        json.dumps(
+            {
+                "inputs": {"newswire_generated_at": "2026-08-24T11:00:00Z"},
+                "padding": "x" * (3 * 1024 * 1024),
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        build_newsroom.china_situation_model,
+        "validate_prior_china_situation",
+        lambda _document: None,
+    )
+
+    assert build_newsroom._prior_wire_generated_at(tmp_path) == "2026-08-24T11:00:00Z"
+
+
+def test_prior_wire_clock_accepts_the_checked_in_legacy_order() -> None:
+    situation = json.loads(
+        (build_newsroom.ROOT / "readings" / "china-situation-latest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert (
+        build_newsroom._prior_wire_generated_at(build_newsroom.ROOT)
+        == (situation["inputs"]["newswire_generated_at"])
+    )
 
 
 def test_wire_history_detects_tampered_retained_bytes(tmp_path: Path) -> None:

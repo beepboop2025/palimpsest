@@ -8,15 +8,16 @@ name: Refresh DDTI index
 
 on:
   schedule:
-    - cron: "17 */3 * * *"   # every 3 hours (UTC)
+    - cron: "43 */3 * * *"   # every 3 hours (UTC), clear of the hourly wire start
   workflow_dispatch: {}        # allow manual runs from the Actions tab
 
 permissions:
   contents: write
 
 concurrency:
-  # DDTI feeds the OSINT/newsroom graph and shares newswire's :17 schedule.
-  # One cross-workflow mutex keeps its commit out of a full-graph scrub/push.
+  # DDTI feeds the OSINT/newsroom graph. Keep it serialized with non-wire
+  # graph publishers and offset it from the dedicated wire lane;
+  # the wire publisher has exact-base race recovery for a concurrent source commit.
   group: derived-graph-publish
   cancel-in-progress: false
 

@@ -454,6 +454,77 @@ def test_lazy_migration_reuses_the_prior_exact_byte_revision(tmp_path: Path) -> 
     assert retained == previous
 
 
+def test_event_version_rollover_publishes_the_new_analysis_revision(
+    tmp_path: Path,
+) -> None:
+    previous_event = _event()
+    current_event = copy.deepcopy(previous_event)
+    current_event["version_id"] = "eventv-" + "ef" * 12
+    current_event["updated_at"] = "2026-08-21T01:00:00Z"
+    current_event["mutation"] = {
+        "kind": "updated",
+        "previous_version_id": previous_event["version_id"],
+    }
+    previous = event_analysis.build_event_analysis(
+        previous_event, wire=_wire(previous_event), feed=_feed()
+    )
+    candidate = event_analysis.build_event_analysis(
+        current_event, wire=_wire(current_event), feed=_feed()
+    )
+    base = tmp_path / "news" / "wire" / current_event["event_id"]
+    revision = base / "analysis" / "revisions" / f"{previous['analysis_id']}.json"
+    revision.parent.mkdir(parents=True)
+    raw = build_newsroom._pretty_json(previous)
+    revision.write_bytes(raw)
+    (base / "analysis.json").write_bytes(raw)
+
+    retained = build_newsroom._retain_semantically_unchanged_event_analysis(
+        current_event, candidate, archive_root=tmp_path
+    )
+
+    assert retained == candidate
+    assert retained["event_version_id"] == current_event["version_id"]
+
+
+def test_same_version_analysis_still_fails_closed_on_event_drift(
+    tmp_path: Path,
+) -> None:
+    previous_event = _event()
+    current_event = copy.deepcopy(previous_event)
+    second_ref = copy.deepcopy(current_event["evidence_refs"][0])
+    second_ref.update(
+        {
+            "item_id": "item-" + "12" * 12,
+            "version_id": "itemv-" + "34" * 12,
+            "source_id": "second-source",
+            "source_name": "Second Source",
+            "independence_group": "cdt",
+        }
+    )
+    current_event["evidence_refs"].append(second_ref)
+    current_event["evidence_groups"][0]["source_ids"].append("second-source")
+    previous = event_analysis.build_event_analysis(
+        previous_event, wire=_wire(previous_event), feed=_feed()
+    )
+    candidate = event_analysis.build_event_analysis(
+        current_event, wire=_wire(current_event), feed=_feed()
+    )
+    base = tmp_path / "news" / "wire" / current_event["event_id"]
+    revision = base / "analysis" / "revisions" / f"{previous['analysis_id']}.json"
+    revision.parent.mkdir(parents=True)
+    raw = build_newsroom._pretty_json(previous)
+    revision.write_bytes(raw)
+    (base / "analysis.json").write_bytes(raw)
+
+    with pytest.raises(
+        build_newsroom.newsroom.NewsroomError,
+        match="invalid current event analysis",
+    ):
+        build_newsroom._retain_semantically_unchanged_event_analysis(
+            current_event, candidate, archive_root=tmp_path
+        )
+
+
 def test_corroboration_coverage_is_scoped_to_one_event() -> None:
     other_event = "event-" + "ef" * 12
     candidate_id = "candidate-" + "12" * 12

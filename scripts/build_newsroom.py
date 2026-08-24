@@ -33,6 +33,7 @@ from xml.sax.saxutils import quoteattr as xml_quoteattr
 
 from core import china_analysis as china_analysis_model
 from core import china_article_stream as china_stream_model
+from core import china_situation as china_situation_model
 from core import dragon_whispers as dragon_whispers_model
 from core import economic_pulse as economic_pulse_model
 from core import event_analysis as event_analysis_model
@@ -144,6 +145,9 @@ _MACHINE_EVIDENCE_FILENAME = re.compile(r"sha256-[0-9a-f]{64}\.json")
 _ANALYSIS_CASE_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 MAX_WIRE_HISTORY_FILES = 100_000
 MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION = 128
+WIRE_HISTORY_GROWTH_INTERVAL = timedelta(hours=1)
+MAX_WIRE_HISTORY_CATCHUP_INTERVALS = 48
+MAX_PRIOR_SITUATION_BYTES = 12 * 1024 * 1024
 _VERIFIED_WIRE_HISTORY_RECEIPTS: dict[tuple[str, str, str], str] = {}
 _MACHINE_EVIDENCE_CAPSULE_SCHEMA = "palimpsest-machine-evidence-capsule.v1"
 _MACHINE_EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
@@ -5028,8 +5032,10 @@ def _event_revision_bytes(
     return raw
 
 
-def _read_current_event_analysis(relative: Path, *, root: Path) -> bytes | None:
-    """Read one mutable analysis head without following its final symlink."""
+def _read_bounded_regular_file(
+    relative: Path, *, root: Path, max_bytes: int, label: str
+) -> bytes | None:
+    """Read one bounded regular file without following its final symlink."""
 
     flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
@@ -5038,18 +5044,13 @@ def _read_current_event_analysis(relative: Path, *, root: Path) -> bytes | None:
         return None
     except OSError as exc:
         raise newsroom.NewsroomError(
-            f"cannot safely read current event analysis {relative}: {exc}"
+            f"cannot safely read {label} {relative}: {exc}"
         ) from exc
     try:
         metadata = os.fstat(descriptor)
-        if (
-            not stat.S_ISREG(metadata.st_mode)
-            or not 1
-            <= metadata.st_size
-            <= machine_investigations_model.MAX_OUTPUT_BYTES
-        ):
+        if not stat.S_ISREG(metadata.st_mode) or not 1 <= metadata.st_size <= max_bytes:
             raise newsroom.NewsroomError(
-                f"current event analysis is not a bounded regular file: {relative}"
+                f"{label} is not a bounded regular file: {relative}"
             )
         chunks: list[bytes] = []
         remaining = metadata.st_size
@@ -5061,12 +5062,21 @@ def _read_current_event_analysis(relative: Path, *, root: Path) -> bytes | None:
             remaining -= len(chunk)
         raw = b"".join(chunks)
         if len(raw) != metadata.st_size:
-            raise newsroom.NewsroomError(
-                f"current event analysis changed while reading: {relative}"
-            )
+            raise newsroom.NewsroomError(f"{label} changed while reading: {relative}")
         return raw
     finally:
         os.close(descriptor)
+
+
+def _read_current_event_analysis(relative: Path, *, root: Path) -> bytes | None:
+    """Read one mutable analysis head without following its final symlink."""
+
+    return _read_bounded_regular_file(
+        relative,
+        root=root,
+        max_bytes=machine_investigations_model.MAX_OUTPUT_BYTES,
+        label="current event analysis",
+    )
 
 
 def _retain_semantically_unchanged_event_analysis(
@@ -5075,7 +5085,13 @@ def _retain_semantically_unchanged_event_analysis(
     *,
     archive_root: Path,
 ) -> Mapping[str, Any]:
-    """Reuse a valid prior exact-byte revision when only edition receipts moved."""
+    """Reuse a valid prior exact-byte revision when only edition receipts moved.
+
+    The mutable ``analysis.json`` head may legitimately describe the preceding
+    version of a rolling event.  Validate that document and its immutable byte
+    receipt first, then compare it with today's event only when both documents
+    name the same event version.
+    """
 
     base = Path("news/wire") / event["event_id"]
     current_path = base / "analysis.json"
@@ -5086,7 +5102,7 @@ def _retain_semantically_unchanged_event_analysis(
         previous = newswire_model.strict_json_loads(
             raw, label=f"current event analysis {current_path}"
         )
-        event_analysis_model.validate_event_analysis(previous, event=event)
+        event_analysis_model.validate_event_analysis(previous)
     except (TypeError, ValueError, event_analysis_model.EventAnalysisError) as exc:
         raise newsroom.NewsroomError(
             f"invalid current event analysis: {current_path}"
@@ -5097,6 +5113,18 @@ def _retain_semantically_unchanged_event_analysis(
         raise newsroom.NewsroomError(
             f"current event analysis is not its immutable revision: {current_path}"
         )
+    if previous["event_id"] != event["event_id"]:
+        raise newsroom.NewsroomError(
+            f"current event analysis does not match its event path: {current_path}"
+        )
+    if previous["event_version_id"] != event["version_id"]:
+        return candidate
+    try:
+        event_analysis_model.validate_event_analysis(previous, event=event)
+    except (TypeError, ValueError, event_analysis_model.EventAnalysisError) as exc:
+        raise newsroom.NewsroomError(
+            f"invalid current event analysis: {current_path}"
+        ) from exc
     if event_analysis_model.semantically_equivalent(previous, candidate):
         return previous
     return candidate
@@ -5218,8 +5246,145 @@ def _read_wire_history_namespace(*, root: Path) -> dict[Path, bytes]:
     return payloads
 
 
+def _current_wire_history_paths(
+    outputs: Mapping[Path, bytes],
+    payloads: Mapping[Path, bytes],
+    *,
+    current_events: Mapping[str, Mapping[str, Any]] | None,
+) -> set[Path]:
+    """Return current immutable paths after closing every head to its revision."""
+
+    if current_events is None:
+        return set()
+    current_paths: set[Path] = set()
+    expected_aliases: set[Path] = set()
+    for event_id, event in current_events.items():
+        try:
+            newswire_model._validate_public_event(event, f"current event {event_id}")
+            if event_id != event["event_id"]:
+                raise ValueError("current event mapping key does not match its event")
+        except (KeyError, TypeError, ValueError, newswire_model.NewswireError) as exc:
+            raise newsroom.NewsroomError(
+                f"invalid current wire event for history receipt: {event_id}"
+            ) from exc
+
+        base = Path("news/wire") / event_id
+        event_revision = base / "revisions" / f"{event['version_id']}.json"
+        event_raw = payloads.get(event_revision)
+        if event_raw is None:
+            raise newsroom.NewsroomError(
+                f"current wire event is outside wire history: {event_revision}"
+            )
+        try:
+            archived_event = newswire_model.strict_json_loads(
+                event_raw, label=f"current event revision {event_revision}"
+            )
+            newswire_model._validate_public_event(
+                archived_event, f"current event revision {event_revision}"
+            )
+        except (TypeError, ValueError, newswire_model.NewswireError) as exc:
+            raise newsroom.NewsroomError(
+                f"invalid current wire event revision: {event_revision}"
+            ) from exc
+        archived_core = {
+            key: value for key, value in archived_event.items() if key != "mutation"
+        }
+        current_core = {key: value for key, value in event.items() if key != "mutation"}
+        if archived_core != current_core:
+            raise newsroom.NewsroomError(
+                f"current wire event revision does not match its head: {event_revision}"
+            )
+        current_paths.add(event_revision)
+
+        alias = base / "analysis.json"
+        expected_aliases.add(alias)
+        alias_raw = outputs.get(alias)
+        if alias_raw is None:
+            raise newsroom.NewsroomError(
+                f"current wire event has no analysis head: {alias}"
+            )
+        try:
+            analysis = newswire_model.strict_json_loads(
+                alias_raw, label=f"current event analysis {alias}"
+            )
+            event_analysis_model.validate_event_analysis(analysis, event=event)
+        except (TypeError, ValueError, event_analysis_model.EventAnalysisError) as exc:
+            raise newsroom.NewsroomError(
+                f"invalid current event analysis: {alias}"
+            ) from exc
+        analysis_revision = (
+            base / "analysis" / "revisions" / f"{analysis['analysis_id']}.json"
+        )
+        if payloads.get(analysis_revision) != alias_raw:
+            raise newsroom.NewsroomError(
+                f"current event analysis is outside wire history: {alias}"
+            )
+        current_paths.add(analysis_revision)
+
+    actual_aliases = {
+        Path(candidate)
+        for candidate in outputs
+        if _is_current_wire_analysis_path(Path(candidate))
+    }
+    if actual_aliases != expected_aliases:
+        raise newsroom.NewsroomError(
+            "current wire analysis heads do not match the current event inventory"
+        )
+    return current_paths
+
+
+def _prior_wire_generated_at(root: Path) -> str | None:
+    """Read the prior wire clock only from a fully valid published situation."""
+
+    path = root / "readings" / "china-situation-latest.json"
+    try:
+        raw = _read_bounded_regular_file(
+            path.relative_to(root),
+            root=root,
+            max_bytes=MAX_PRIOR_SITUATION_BYTES,
+            label="prior China situation",
+        )
+        if raw is None:
+            return None
+        document = newswire_model.strict_json_loads(
+            raw, label=f"prior wire clock {path}"
+        )
+        china_situation_model.validate_prior_china_situation(document)
+        value = document["inputs"]["newswire_generated_at"]
+        _parse_time(value)
+        return value
+    except (
+        KeyError,
+        OSError,
+        TypeError,
+        ValueError,
+        newsroom.NewsroomError,
+    ):
+        return None
+
+
+def _wire_history_catchup_intervals(
+    current_generated_at: str | None, previous_generated_at: str | None
+) -> int:
+    """Return elapsed scheduled wire slots, with one slot as the fail-closed floor."""
+
+    if current_generated_at is None or previous_generated_at is None:
+        return 1
+    elapsed = _parse_time(current_generated_at) - _parse_time(previous_generated_at)
+    if elapsed <= WIRE_HISTORY_GROWTH_INTERVAL:
+        return 1
+    seconds = elapsed.total_seconds()
+    interval = WIRE_HISTORY_GROWTH_INTERVAL.total_seconds()
+    elapsed_intervals = max(1, int(seconds // interval))
+    return min(elapsed_intervals, MAX_WIRE_HISTORY_CATCHUP_INTERVALS)
+
+
 def _wire_history_integrity_receipt(
-    outputs: Mapping[Path, bytes], *, root: Path
+    outputs: Mapping[Path, bytes],
+    *,
+    root: Path,
+    current_events: Mapping[str, Mapping[str, Any]] | None = None,
+    current_wire_generated_at: str | None = None,
 ) -> dict[str, Any]:
     """Bind every retained wire revision into one bounded, reproducible root."""
 
@@ -5245,15 +5410,29 @@ def _wire_history_integrity_receipt(
             "wire history would exceed its reviewed file-count bound: "
             f"{len(payloads)} > {MAX_WIRE_HISTORY_FILES}"
         )
+    current_paths = _current_wire_history_paths(
+        outputs,
+        payloads,
+        current_events=current_events,
+    )
+    noncurrent_new_paths = [path for path in new_paths if path not in current_paths]
     established_namespace = (root / "news" / "wire").exists()
-    if (
-        established_namespace
-        and len(new_paths) > MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION
-    ):
-        raise newsroom.NewsroomError(
-            "wire-history growth exceeds the automatic publication bound: "
-            f"{len(new_paths)} > {MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION}"
+    if established_namespace:
+        if len(noncurrent_new_paths) > MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION:
+            raise newsroom.NewsroomError(
+                "wire-history non-current growth exceeds the automatic publication "
+                f"bound: {len(noncurrent_new_paths)} > "
+                f"{MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION}"
+            )
+        catchup_intervals = _wire_history_catchup_intervals(
+            current_wire_generated_at, _prior_wire_generated_at(root)
         )
+        growth_limit = MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION * catchup_intervals
+        if len(new_paths) > growth_limit:
+            raise newsroom.NewsroomError(
+                "wire-history total growth exceeds the cadence-scaled publication "
+                f"bound: {len(new_paths)} > {growth_limit}"
+            )
 
     event_versions: set[tuple[str, str]] = set()
     analysis_event_versions: list[tuple[Path, str, str]] = []
@@ -5363,8 +5542,15 @@ def _wire_history_integrity_receipt(
         "history_tree_sha256": tree.hexdigest(),
         "n_current_analysis_aliases": len(aliases),
         "current_analysis_tree_sha256": alias_tree.hexdigest(),
+        "wire_generated_at": current_wire_generated_at,
         "automatic_growth_limit": MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION,
-        "automatic_growth_policy": "max-128-after-initial-namespace-bootstrap",
+        "automatic_growth_max_catchup_intervals": (MAX_WIRE_HISTORY_CATCHUP_INTERVALS),
+        "automatic_growth_scope": (
+            "all-new-revisions-per-hour-with-non-current-max-128"
+        ),
+        "automatic_growth_policy": (
+            "cadence-scaled-max-128-all-with-48-hour-catchup-cap"
+        ),
         "automatic_growth_status": "validated",
         "validation_status": "full-history-validated",
         "referential_closure": "all-analysis-event-versions-present",
@@ -5756,7 +5942,12 @@ def build_outputs(
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
     history_integrity = None
     if wire is not None:
-        history_integrity = _wire_history_integrity_receipt(outputs, root=archive_root)
+        history_integrity = _wire_history_integrity_receipt(
+            outputs,
+            root=archive_root,
+            current_events={event["event_id"]: event for event in wire["events"]},
+            current_wire_generated_at=wire["generated_at"],
+        )
         outputs[_WIRE_HISTORY_INTEGRITY_PATH] = _pretty_json(history_integrity)
     if wire is not None or investigations is not None or machine_analyses is not None:
         manifest_path = Path("news/generated-manifest.json")

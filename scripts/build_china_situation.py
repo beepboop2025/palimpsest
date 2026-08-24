@@ -456,7 +456,7 @@ def _situation_card(row: Mapping[str, Any], *, expanded: bool) -> str:
         + [source["source_name"] for source in row["reporting"]["sources"]]
     ).casefold()
     return f"""<article class="situation-card" id="{_h(row['situation_id'])}" data-desk="{_h(row['desk'])}" data-posture="{_h(row['posture'])}" data-search="{_h(search)}">
-  <header class="situation-card__head"><div><p class="situation-kicker">{_h(row['desk'])} · {_h(row['posture'].replace('-', ' '))}</p><h2>{_h(row['headline'])}</h2><p>{_h(row['dek'])}</p></div><div class="situation-card__meta"><time datetime="{_h(row['updated_at'])}">{_h(_human(row['updated_at']))}</time><span>{topics}</span><a href="/news/wire/{_h(row['event_id'])}/">Open dossier</a></div></header>
+  <header class="situation-card__head"><div><p class="situation-kicker">{_h(row['desk'])} · {_h(row['posture'].replace('-', ' '))}</p><h2>{_h(row['headline'])}</h2><p>{_h(row['dek'])}</p></div><div class="situation-card__meta"><time datetime="{_h(row['published_at'])}">Reported {_h(_human(row['published_at']))}</time><time datetime="{_h(row['updated_at'])}">Analysis refreshed {_h(_human(row['updated_at']))}</time><span>{topics}</span><a href="/news/wire/{_h(row['event_id'])}/">Open dossier</a></div></header>
   <details{' open' if expanded else ''}><summary><span>Open the complete three-layer view</span><strong>{_h(row['reporting']['evidence_strength'])}</strong></summary>
     <div class="situation-layers">{_reporting_layer(row)}{_social_layer(row)}{_measurement_layer(row)}{_osint_layer(row)}{_peer_layer(row)}{_interconnection_layer(row)}</div>
     <section class="situation-synthesis"><div><p class="situation-kicker">Bounded synthesis</p><h3>What the combined view says</h3><p>{_h(row['synthesis']['summary'])}</p></div><div><h4>Next checks</h4><ol>{checks}</ol></div><details><summary>Known unknowns</summary><ul>{unknowns}</ul></details></section>
@@ -524,11 +524,15 @@ def render_page(
     pager = _pagination(page=page, total_pages=total_pages, total_rows=len(all_rows))
     range_start = first + 1 if page_rows else 0
     range_end = first + len(page_rows)
+    newest_report_at = max(
+        (row["published_at"] for row in all_rows),
+        default=document["inputs"]["newswire_generated_at"],
+    )
     body = f"""<body class="ps newsroom-page situation-page">
 {site_nav.render('/news/')}
 <main id="main">
   <header class="situation-hero"><div><p class="situation-kicker">Palimpsest / China situation desk{' / archive ' + str(page) if page > 1 else ''}</p><h1>Reports.<br><em>Social context.</em><br>Measurements.</h1></div><div><p class="situation-hero__dek">One evidence-bound view of what publishers report, how reviewed social sources carry it, and what Palimpsest can independently measure. The layers meet here; their limits do not disappear. This desk captures public posts, deletions, archives and GFW injector telemetry. It does not capture private WeChat, classified systems, or in-country accounts.</p><nav><a href="/news/china/erasure/">Find a deleted post</a><a href="/news/china/">Publisher stream</a><a href="/news/">Observatory desk</a><a href="/readings/china-situation-latest.json">Structured situation index</a><a href="/news/china/situation/feed.xml">RSS</a><a href="/news/china/situation/feed.json">JSON Feed</a></nav></div></header>
-  <section class="situation-stats" aria-label="Current situation coverage"><span><strong>{coverage['in_scope_events']}</strong> situations</span><span><strong>{coverage['publisher_reports']}</strong> publisher reports</span><span><strong>{coverage['measurement_context_rows']}</strong> measurement links</span><span><strong>{coverage['social_observations_linked']}</strong> exact-link social observations</span><span><strong>{coverage.get('osint_context_rows', 0)}</strong> public OSINT links</span><span><strong>{coverage['reviewed_telegram_signals']}</strong> reviewed Telegram signals</span><span><strong>{_h(_human(document['generated_at']))}</strong> rebuilt</span></section>
+  <section class="situation-stats" aria-label="Current situation coverage"><span><strong>{coverage['in_scope_events']}</strong> situations</span><span><strong>{coverage['publisher_reports']}</strong> publisher reports</span><span><strong>{coverage['measurement_context_rows']}</strong> measurement links</span><span><strong>{coverage['social_observations_linked']}</strong> exact-link social observations</span><span><strong>{coverage.get('osint_context_rows', 0)}</strong> public OSINT links</span><span><strong>{coverage['reviewed_telegram_signals']}</strong> reviewed Telegram signals</span><span><strong>{_h(_human(newest_report_at))}</strong> newest report</span><span><strong>{_h(_human(document['inputs']['newswire_generated_at']))}</strong> news collected</span><span><strong>{_h(_human(document['generated_at']))}</strong> synthesis rebuilt</span></section>
   <div class="situation-shell">
     {_status_panel(document)}
     {_spread_panel(social_spread)}
@@ -612,7 +616,7 @@ def _rfc2822(value: str) -> str:
 def build_rss(document: Mapping[str, Any]) -> bytes:
     situation_model.validate_china_situation(document)
     items = "".join(
-        f"""<item><title>{xml_escape('[Situation synthesis] ' + row['headline'])}</title><link>{xml_escape(row['url'])}</link><guid isPermaLink="false">{xml_escape(row['version_id'])}</guid><pubDate>{_rfc2822(row['updated_at'])}</pubDate><description>{xml_escape(row['synthesis']['summary'])}</description><category>{xml_escape(row['desk'])}</category><category>{xml_escape(row['posture'])}</category></item>"""
+        f"""<item><title>{xml_escape('[Situation synthesis] ' + row['headline'])}</title><link>{xml_escape(row['url'])}</link><guid isPermaLink="false">{xml_escape(row['version_id'])}</guid><pubDate>{_rfc2822(row['published_at'])}</pubDate><description>{xml_escape(row['synthesis']['summary'])}</description><category>{xml_escape(row['desk'])}</category><category>{xml_escape(row['posture'])}</category></item>"""
         for row in document["situations"][:FEED_LIMIT]
     )
     return f"""<?xml version="1.0" encoding="UTF-8"?>

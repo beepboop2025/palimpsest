@@ -2,10 +2,11 @@
 """Out-of-band Palimpsest node and evidence freshness watchdog.
 
 This program is intentionally standard-library-only and is scheduled by a host
-systemd timer, not Celery Beat. It reads the dynamic localhost status endpoint
-and the local OSINT roll-up, recomputes evidence deadlines against its own
-clock, writes a bounded status document, and optionally alerts on condition
-transitions. It never edits a reading or invokes a collector.
+systemd timer, not Celery Beat. It reads the dynamic localhost status endpoint,
+the local OSINT roll-up, and two fixed public publication heads. It recomputes
+evidence deadlines against its own clock, writes a bounded status document, and
+optionally alerts on condition transitions. It never edits a reading, invokes a
+collector, or dispatches a publication workflow.
 
 Exit codes: 0 = healthy, 2 = one or more conditions active, 3 = watchdog error.
 """
@@ -13,6 +14,7 @@ Exit codes: 0 = healthy, 2 = one or more conditions active, 3 = watchdog error.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import ipaddress
 import json
 import os
@@ -38,13 +40,20 @@ DEFAULT_OSINT_PATH = Path("/var/lib/palimpsest/readings/osint-china-latest.json"
 DEFAULT_OUTPUT_PATH = Path("/var/lib/palimpsest-watchdog/status.json")
 DEFAULT_STATE_PATH = Path("/var/lib/palimpsest-watchdog/alert-state.json")
 DEFAULT_BUNDLE_MAX_AGE_SECONDS = 2 * 60 * 60
+PUBLICATION_MAX_AGE_SECONDS = 2 * 60 * 60
+PUBLICATION_TIMEOUT_SECONDS = 10
+PUBLIC_NEWSWIRE_URL = "https://palimpsest.info/readings/newswire-latest.json"
+PUBLIC_SITUATION_URL = "https://palimpsest.info/readings/china-situation-latest.json"
+PUBLICATION_URLS = frozenset({PUBLIC_NEWSWIRE_URL, PUBLIC_SITUATION_URL})
 MAX_INPUT_BYTES = 4 * 1024 * 1024
+MAX_PUBLICATION_INPUT_BYTES = 12 * 1024 * 1024
 MAX_STATE_BYTES = 64 * 1024
 MAX_CONDITIONS = 128
 MAX_ALERT_TRANSITIONS = 64
 MAX_ALERT_BYTES = 16 * 1024
 NODE_STATUS_MAX_AGE_SECONDS = 10 * 60
 _IDENTIFIER = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 class WatchdogError(RuntimeError):
@@ -155,6 +164,90 @@ def _fetch_json(url: str, *, opener: Any | None = None) -> dict[str, Any]:
     if not isinstance(document, dict):
         raise WatchdogError("local status response is not an object")
     return document
+
+
+def _strict_json_object(body: bytes, *, label: str) -> dict[str, Any]:
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        document: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in document:
+                raise ValueError("duplicate JSON key")
+            document[key] = value
+        return document
+
+    def reject_constant(_value: str) -> None:
+        raise ValueError("non-finite JSON number")
+
+    try:
+        document = json.loads(
+            body.decode("utf-8"),
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except (UnicodeError, ValueError) as exc:
+        raise WatchdogError(f"{label} response is not strict JSON") from exc
+    if not isinstance(document, dict):
+        raise WatchdogError(f"{label} response is not an object")
+    return document
+
+
+def _canonical_json_bytes(value: Any) -> bytes:
+    try:
+        return (
+            json.dumps(
+                value,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            )
+            + "\n"
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise WatchdogError("public newswire cannot be canonicalized") from exc
+
+
+def _fetch_public_json(
+    url: str,
+    *,
+    observed_at: datetime | None = None,
+    opener: Any | None = None,
+) -> dict[str, Any]:
+    """Fetch one immutable-authority publication head through a closed egress lane."""
+
+    if url not in PUBLICATION_URLS:
+        raise WatchdogError("public publication URL is not allowlisted")
+    request_time = observed_at or _now()
+    if request_time.tzinfo is None or request_time.utcoffset() is None:
+        raise WatchdogError("public publication request clock must include a timezone")
+    five_minute_bucket = int(request_time.astimezone(UTC).timestamp()) // (5 * 60)
+    request_url = f"{url}?watchdog={five_minute_bucket}"
+    request = urllib.request.Request(
+        request_url,
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache",
+        },
+        method="GET",
+    )
+    client = opener or urllib.request.build_opener(_NoRedirect())
+    try:
+        with client.open(request, timeout=PUBLICATION_TIMEOUT_SECONDS) as response:
+            final_url = response.geturl()
+            status = response.getcode()
+            if final_url != request_url:
+                raise WatchdogError("public publication redirect was refused")
+            if status != 200:
+                raise WatchdogError("public publication returned a non-success status")
+            body = response.read(MAX_PUBLICATION_INPUT_BYTES + 1)
+    except WatchdogError:
+        raise
+    except Exception as exc:
+        raise WatchdogError("public publication endpoint is unavailable") from exc
+    if len(body) > MAX_PUBLICATION_INPUT_BYTES:
+        raise WatchdogError("public publication response exceeds its byte ceiling")
+    return _strict_json_object(body, label="public publication")
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -301,9 +394,121 @@ def _osint_problems(
     return problems
 
 
+def _publication_clock_state(
+    document: Mapping[str, Any] | None,
+    *,
+    schema_version: str,
+    now: datetime,
+) -> str | None:
+    if document is None:
+        return "unavailable"
+    if document.get("schema_version") != schema_version:
+        return "corrupt"
+    generated_at = _timestamp(document.get("generated_at"))
+    if generated_at is None or generated_at - now > timedelta(minutes=5):
+        return "corrupt"
+    if (now - generated_at).total_seconds() > PUBLICATION_MAX_AGE_SECONDS:
+        return "stale"
+    return None
+
+
+def _newswire_state(
+    document: Mapping[str, Any] | None, *, now: datetime
+) -> str | None:
+    state = _publication_clock_state(
+        document,
+        schema_version="palimpsest-newswire.v1",
+        now=now,
+    )
+    if state in {"unavailable", "corrupt"} or document is None:
+        return state
+    items = document.get("items")
+    events = document.get("events")
+    n_items = document.get("n_items")
+    n_events = document.get("n_events")
+    if (
+        not isinstance(items, list)
+        or not isinstance(events, list)
+        or type(n_items) is not int
+        or type(n_events) is not int
+        or n_items != len(items)
+        or n_events != len(events)
+    ):
+        return "corrupt"
+    return state
+
+
+def _situation_state(
+    document: Mapping[str, Any] | None,
+    newswire: Mapping[str, Any] | None,
+    *,
+    newswire_state: str | None,
+    now: datetime,
+) -> str | None:
+    state = _publication_clock_state(
+        document,
+        schema_version="palimpsest-china-situation.v1",
+        now=now,
+    )
+    if state in {"unavailable", "corrupt"} or document is None:
+        return state
+    if not isinstance(document.get("situations"), list):
+        return "corrupt"
+    inputs = document.get("inputs")
+    if not isinstance(inputs, Mapping):
+        return "corrupt"
+    embedded_clock_raw = inputs.get("newswire_generated_at")
+    embedded_clock = _timestamp(embedded_clock_raw)
+    embedded_digest = inputs.get("newswire_sha256")
+    if (
+        embedded_clock is None
+        or embedded_clock - now > timedelta(minutes=5)
+        or type(embedded_digest) is not str
+        or _SHA256.fullmatch(embedded_digest) is None
+    ):
+        return "corrupt"
+
+    # A situation document is only fresh if its claimed wire input is both
+    # current and exactly reproducible from the independently fetched wire.
+    if newswire is None or newswire_state in {"unavailable", "corrupt"}:
+        return "corrupt"
+    expected_digest = hashlib.sha256(_canonical_json_bytes(newswire)).hexdigest()
+    if (
+        embedded_clock_raw != newswire.get("generated_at")
+        or embedded_digest != expected_digest
+    ):
+        return "corrupt"
+    if (now - embedded_clock).total_seconds() > PUBLICATION_MAX_AGE_SECONDS:
+        return "stale"
+    return state
+
+
+def _publication_problems(
+    newswire: Mapping[str, Any] | None,
+    situation: Mapping[str, Any] | None,
+    *,
+    now: datetime,
+) -> list[dict[str, Any]]:
+    newswire_state = _newswire_state(newswire, now=now)
+    situation_state = _situation_state(
+        situation,
+        newswire,
+        newswire_state=newswire_state,
+        now=now,
+    )
+    problems: list[dict[str, Any]] = []
+    if newswire_state is not None:
+        problems.append(_problem("publication", "newswire", newswire_state))
+    if situation_state is not None:
+        problems.append(_problem("publication", "china-situation", situation_state))
+    return problems
+
+
 def evaluate(
     status: Mapping[str, Any] | None,
     osint: Mapping[str, Any] | None,
+    newswire: Mapping[str, Any] | None,
+    situation: Mapping[str, Any] | None,
     *,
     now: datetime | None = None,
     bundle_max_age_seconds: int = DEFAULT_BUNDLE_MAX_AGE_SECONDS,
@@ -315,10 +520,14 @@ def evaluate(
     if not 60 <= int(bundle_max_age_seconds) <= 7 * 24 * 60 * 60:
         raise WatchdogError("bundle max age is outside the safe range")
 
-    raw_problems = _node_problems(status, now=observed_at) + _osint_problems(
-        osint,
-        now=observed_at,
-        bundle_max_age_seconds=int(bundle_max_age_seconds),
+    raw_problems = (
+        _node_problems(status, now=observed_at)
+        + _osint_problems(
+            osint,
+            now=observed_at,
+            bundle_max_age_seconds=int(bundle_max_age_seconds),
+        )
+        + _publication_problems(newswire, situation, now=observed_at)
     )
     by_condition: dict[str, dict[str, Any]] = {}
     for item in raw_problems:
@@ -509,6 +718,7 @@ def run(
     args: argparse.Namespace,
     *,
     status_opener: Any | None = None,
+    publication_opener: Any | None = None,
     webhook_opener: Any | None = None,
 ) -> int:
     observed_at = _timestamp(args.now) if args.now else _now()
@@ -528,10 +738,28 @@ def run(
         osint = _load_json(args.osint_path)
     except WatchdogError:
         osint = None
+    try:
+        newswire = _fetch_public_json(
+            PUBLIC_NEWSWIRE_URL,
+            observed_at=observed_at,
+            opener=publication_opener,
+        )
+    except WatchdogError:
+        newswire = None
+    try:
+        situation = _fetch_public_json(
+            PUBLIC_SITUATION_URL,
+            observed_at=observed_at,
+            opener=publication_opener,
+        )
+    except WatchdogError:
+        situation = None
 
     document = evaluate(
         status,
         osint,
+        newswire,
+        situation,
         now=observed_at,
         bundle_max_age_seconds=args.bundle_max_age_seconds,
     )
