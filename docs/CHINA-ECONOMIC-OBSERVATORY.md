@@ -173,9 +173,14 @@ workflow. The v3 manifest binds the tracked receipt; the separately named live
 receipt and raw response bind the new check without pretending that a fresh raw
 response has the earlier tracked response's hash. The workflow uploads both
 receipts, the raw response, ledger, policy, registry, artifact, manifest,
-handoff receipt and `SHA256SUMS`. It attests `SHA256SUMS` with GitHub build
-provenance. None of these review bytes is copied into Pages. A later main advance
-makes the older handoff non-current even if all of its bytes still verify.
+raw bounded `github-commit.json`, handoff receipt and `SHA256SUMS`. The commit
+response is preserved verbatim from the GitHub REST endpoint with
+`?per_page=1`, capped at 256 KiB, and normalized in the handoff receipt. It
+proves the producer is a GitHub-verified multi-parent merge authored by
+`beepboop2025` and committed by `web-flow`. The workflow attests `SHA256SUMS`
+with GitHub build provenance. None of these review bytes is copied into Pages.
+A later main advance makes the older handoff non-current even if all of its
+bytes still verify.
 
 `handoff-receipt.json` identifies this as
 `git_tracked_seeded_append_only`, pins the prior public-ledger hash, and sets
@@ -195,6 +200,10 @@ repo=beepboop2025/palimpsest
 sha=<exact-40-hex-main-merge>
 run=<tests-run-id>
 gh api "repos/$repo/actions/runs/$run" > run.json
+gh api \
+  -H 'Accept: application/vnd.github+json' \
+  -H 'X-GitHub-Api-Version: 2022-11-28' \
+  "repos/$repo/commits/$sha?per_page=1" > owner-github-commit.json
 attempt=$(jq -er '.run_attempt | select(type == "number" and . >= 1)' run.json)
 jq -e --arg sha "$sha" '
   .status == "completed" and .conclusion == "success" and
@@ -219,6 +228,7 @@ non-basename or malformed entries, then recompute every digest:
 ```bash
 PALIMPSEST_SHA="$sha" PALIMPSEST_RUN="$run" python3 - <<'PY'
 import hashlib, json, os, re
+from datetime import datetime
 from pathlib import Path
 
 root = Path("china-economic-review-v3")
@@ -228,6 +238,7 @@ allowed = {
     "china-econ-wdi-observations.jsonl",
     "china_econ_source_policy.json",
     "china_econ_wdi_series.json",
+    "github-commit.json",
     "handoff-receipt.json",
     "palimpsest-china-economic-export-v1.jsonl",
     "palimpsest-china-economic-export-v3-manifest.json",
@@ -248,6 +259,8 @@ manifest = json.loads(
     (root / "palimpsest-china-economic-export-v3-manifest.json").read_bytes()
 )
 handoff = json.loads((root / "handoff-receipt.json").read_bytes())
+commit_bytes = (root / "github-commit.json").read_bytes()
+owner_commit_bytes = Path("owner-github-commit.json").read_bytes()
 raw = (root / "world-bank-wdi-response.json").read_bytes()
 ledger = (root / manifest["input_ledger"]["path"]).read_bytes()
 artifact = (root / manifest["artifact"]["path"]).read_bytes()
@@ -282,6 +295,59 @@ assert manifest["availability_receipt"]["batch_raw_sha256"] == latest[
     "batch_raw_sha256"
 ]
 assert handoff["producer"] == manifest["producer"]
+assert 1 <= len(commit_bytes) <= 262_144
+assert 1 <= len(owner_commit_bytes) <= 262_144
+
+def normalized_commit(payload):
+    value = json.loads(payload)
+    sha = os.environ["PALIMPSEST_SHA"]
+    assert value["sha"] == sha
+    assert value["url"] == (
+        f"https://api.github.com/repos/beepboop2025/palimpsest/commits/{sha}"
+    )
+    assert value["author"]["login"] == "beepboop2025"
+    assert value["committer"]["login"] == "web-flow"
+    parent_shas = [parent["sha"] for parent in value["parents"]]
+    assert len(parent_shas) >= 2 and len(parent_shas) == len(set(parent_shas))
+    assert all(re.fullmatch(r"[0-9a-f]{40}", parent) for parent in parent_shas)
+    verification = value["commit"]["verification"]
+    assert verification["verified"] is True and verification["reason"] == "valid"
+    verified_at = verification["verified_at"]
+    assert isinstance(verified_at, str) and verified_at.endswith("Z")
+    parsed = datetime.fromisoformat(verified_at[:-1] + "+00:00")
+    assert parsed.isoformat().replace("+00:00", "Z") == verified_at
+    return {
+        "path": "github-commit.json",
+        "request_url": (
+            f"https://api.github.com/repos/beepboop2025/palimpsest/commits/"
+            f"{sha}?per_page=1"
+        ),
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "bytes": len(payload),
+        "sha": sha,
+        "author_login": value["author"]["login"],
+        "committer_login": value["committer"]["login"],
+        "parent_shas": parent_shas,
+        "verification": {
+            "verified": verification["verified"],
+            "reason": verification["reason"],
+            "verified_at": verified_at,
+        },
+    }
+
+commit_evidence = normalized_commit(commit_bytes)
+owner_commit_evidence = normalized_commit(owner_commit_bytes)
+identity_keys = (
+    "sha",
+    "author_login",
+    "committer_login",
+    "parent_shas",
+    "verification",
+)
+assert {key: owner_commit_evidence[key] for key in identity_keys} == {
+    key: commit_evidence[key] for key in identity_keys
+}
+assert handoff["producer_commit_evidence"] == commit_evidence
 assert handoff["artifact"] == manifest["artifact"]
 assert handoff["input_ledger"] == manifest["input_ledger"]
 assert handoff["reviewed_availability_receipt"] == manifest["availability_receipt"]

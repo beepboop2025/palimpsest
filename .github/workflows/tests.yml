@@ -325,7 +325,79 @@ jobs:
           python-version: "3.12"
 
       - name: Allocate the runner-temporary handoff directory
-        run: echo "REVIEW_DIR=$RUNNER_TEMP/china-economic-review-v3" >> "$GITHUB_ENV"
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/china-economic-review-v3"
+          echo "REVIEW_DIR=$RUNNER_TEMP/china-economic-review-v3" >> "$GITHUB_ENV"
+
+      - name: Capture and validate the exact GitHub merge identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          request="repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA?per_page=1"
+          gh api \
+            --method GET \
+            --header 'Accept: application/vnd.github+json' \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "$request" > "$REVIEW_DIR/github-commit.json"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          from datetime import datetime
+          from pathlib import Path
+
+          path = Path(os.environ["REVIEW_DIR"]) / "github-commit.json"
+          raw = path.read_bytes()
+          if not 1 <= len(raw) <= 262_144:
+              raise SystemExit("GitHub commit evidence exceeds its bounded byte contract")
+          value = json.loads(raw)
+          sha = os.environ["GITHUB_SHA"]
+          repo = os.environ["GITHUB_REPOSITORY"]
+          verification = value.get("commit", {}).get("verification")
+          parents = value.get("parents")
+          if (
+              value.get("sha") != sha
+              or value.get("url") != f"https://api.github.com/repos/{repo}/commits/{sha}"
+              or value.get("author", {}).get("login") != "beepboop2025"
+              or value.get("committer", {}).get("login") != "web-flow"
+              or not isinstance(parents, list)
+              or len(parents) < 2
+              or not isinstance(verification, dict)
+              or verification.get("verified") is not True
+              or verification.get("reason") != "valid"
+          ):
+              raise SystemExit("GitHub commit evidence is not a verified merge identity")
+          parent_shas = [parent.get("sha") for parent in parents]
+          if (
+              len(parent_shas) != len(set(parent_shas))
+              or any(
+                  not isinstance(parent, str)
+                  or re.fullmatch(r"[0-9a-f]{40}", parent) is None
+                  for parent in parent_shas
+              )
+          ):
+              raise SystemExit("GitHub commit evidence has invalid parents")
+          verified_at = verification.get("verified_at")
+          if not isinstance(verified_at, str) or not verified_at.endswith("Z"):
+              raise SystemExit("GitHub commit evidence lacks a verified_at clock")
+          try:
+              parsed = datetime.fromisoformat(verified_at[:-1] + "+00:00")
+          except ValueError as exc:
+              raise SystemExit("GitHub verified_at clock is invalid") from exc
+          if parsed.isoformat().replace("+00:00", "Z") != verified_at:
+              raise SystemExit("GitHub verified_at clock is not canonical")
+          local_parents = os.popen("git show -s --format=%P HEAD").read().strip().split()
+          if local_parents != parent_shas:
+              raise SystemExit("GitHub and checked-out merge parents differ")
+          print(
+              "github-commit "
+              f"bytes={len(raw)} sha256={hashlib.sha256(raw).hexdigest()} "
+              f"parents={len(parent_shas)} verified_at={verified_at}"
+          )
+          PY
 
       - name: Prove the producer is the current release-reviewed main merge
         run: |
@@ -381,7 +453,10 @@ jobs:
           import os
           from pathlib import Path
 
-          from core.china_econ_export import canonical_json_bytes
+          from core.china_econ_export import (
+              canonical_json_bytes,
+              load_availability_receipt,
+          )
 
           root = Path(os.environ["REVIEW_DIR"])
           live = json.loads(
@@ -389,6 +464,15 @@ jobs:
           )
           tracked = json.loads(
               Path("readings/china-econ-wdi-latest.json").read_text(encoding="utf-8")
+          )
+          registry_path = Path("config/china_econ_wdi_series.json")
+          load_availability_receipt(
+              root / "china-econ-wdi-live-check.json",
+              series_registry_path=registry_path,
+          )
+          load_availability_receipt(
+              Path("readings/china-econ-wdi-latest.json"),
+              series_registry_path=registry_path,
           )
           if live["appended_observations"] != 0:
               raise SystemExit(
@@ -422,6 +506,28 @@ jobs:
               raise SystemExit(
                   "live WDI receipt semantics differ from the reviewed main receipt"
               )
+          def stable_collector(document):
+              artifact = document["collector_artifact"]
+              source = artifact["source_receipt"]
+              freshness = artifact["freshness"]
+              return {
+                  "schema_version": artifact["schema_version"],
+                  "collector_id": artifact["collector_id"],
+                  "abstention": artifact["abstention"],
+                  "coverage": artifact["coverage"],
+                  "source_receipt": {
+                      key: source[key]
+                      for key in ("url", "dataset_last_updated", "license")
+                  },
+                  "freshness": {
+                      key: freshness[key]
+                      for key in ("evidence_state", "native_cadence")
+                  },
+              }
+          if stable_collector(live) != stable_collector(tracked):
+              raise SystemExit(
+                  "live WDI collector authority differs from the reviewed main receipt"
+              )
           PY
           cmp --silent readings/china-econ-wdi-observations.jsonl \
             "$REVIEW_DIR/china-econ-wdi-observations.jsonl"
@@ -451,6 +557,8 @@ jobs:
           import hashlib
           import json
           import os
+          import re
+          from datetime import datetime
           from pathlib import Path
 
           from core.china_econ_export import canonical_json_bytes
@@ -459,9 +567,14 @@ jobs:
           manifest_path = root / "palimpsest-china-economic-export-v3-manifest.json"
           latest_path = root / "china-econ-wdi-latest.json"
           live_path = root / "china-econ-wdi-live-check.json"
+          commit_path = root / "github-commit.json"
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
           latest = json.loads(latest_path.read_text(encoding="utf-8"))
           live = json.loads(live_path.read_text(encoding="utf-8"))
+          commit_raw = commit_path.read_bytes()
+          if not 1 <= len(commit_raw) <= 262_144:
+              raise SystemExit("GitHub commit evidence exceeds its bounded byte contract")
+          commit = json.loads(commit_raw)
           if live["appended_observations"] != 0:
               raise SystemExit(
                   "live WDI values differ from the Git-tracked durable ledger; "
@@ -473,6 +586,7 @@ jobs:
               "china-econ-wdi-observations.jsonl",
               "china_econ_source_policy.json",
               "china_econ_wdi_series.json",
+              "github-commit.json",
               "palimpsest-china-economic-export-v1.jsonl",
               "palimpsest-china-economic-export-v3-manifest.json",
               "world-bank-wdi-response.json",
@@ -499,6 +613,48 @@ jobs:
               raise SystemExit("producer repository does not match the workflow")
           if manifest["producer"]["commit_sha"] != os.environ["GITHUB_SHA"]:
               raise SystemExit("producer commit does not match the workflow")
+          producer_sha = manifest["producer"]["commit_sha"]
+          repository = manifest["producer"]["repository"]
+          author = commit.get("author")
+          committer = commit.get("committer")
+          parents = commit.get("parents")
+          verification = commit.get("commit", {}).get("verification")
+          if (
+              commit.get("sha") != producer_sha
+              or commit.get("url")
+              != f"https://api.github.com/repos/{repository}/commits/{producer_sha}"
+              or not isinstance(author, dict)
+              or author.get("login") != "beepboop2025"
+              or not isinstance(committer, dict)
+              or committer.get("login") != "web-flow"
+              or not isinstance(parents, list)
+              or len(parents) < 2
+              or not isinstance(verification, dict)
+              or verification.get("verified") is not True
+              or verification.get("reason") != "valid"
+          ):
+              raise SystemExit("GitHub commit evidence is not a verified merge identity")
+          parent_shas = [parent.get("sha") for parent in parents]
+          if (
+              len(parent_shas) != len(set(parent_shas))
+              or any(
+                  not isinstance(parent, str)
+                  or re.fullmatch(r"[0-9a-f]{40}", parent) is None
+                  for parent in parent_shas
+              )
+          ):
+              raise SystemExit("GitHub commit evidence has invalid parents")
+          verified_at = verification.get("verified_at")
+          if not isinstance(verified_at, str) or not verified_at.endswith("Z"):
+              raise SystemExit("GitHub commit evidence lacks a verified_at clock")
+          try:
+              parsed_verified_at = datetime.fromisoformat(
+                  verified_at[:-1] + "+00:00"
+              )
+          except ValueError as exc:
+              raise SystemExit("GitHub verified_at clock is invalid") from exc
+          if parsed_verified_at.isoformat().replace("+00:00", "Z") != verified_at:
+              raise SystemExit("GitHub verified_at clock is not canonical")
           workflow_run = manifest["producer"]["workflow_run"]
           if workflow_run != {
               "provider": "github_actions",
@@ -551,6 +707,24 @@ jobs:
           receipt = {
               "schema_version": "palimpsest.china-economic-handoff-receipt.v2",
               "producer": manifest["producer"],
+              "producer_commit_evidence": {
+                  "path": "github-commit.json",
+                  "request_url": (
+                      f"https://api.github.com/repos/{repository}/commits/"
+                      f"{producer_sha}?per_page=1"
+                  ),
+                  "sha256": hashlib.sha256(commit_raw).hexdigest(),
+                  "bytes": len(commit_raw),
+                  "sha": producer_sha,
+                  "author_login": author["login"],
+                  "committer_login": committer["login"],
+                  "parent_shas": parent_shas,
+                  "verification": {
+                      "verified": verification["verified"],
+                      "reason": verification["reason"],
+                      "verified_at": verified_at,
+                  },
+              },
               "revision_lineage": {
                   "mode": "git_tracked_seeded_append_only",
                   "prior_ledger": {
