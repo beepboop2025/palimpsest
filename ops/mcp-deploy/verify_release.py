@@ -29,8 +29,12 @@ EXPECTED_SERVER_NAME = "palimpsest"
 EXPECTED_MANIFEST_NAME = "io.github.beepboop2025/palimpsest"
 EXPECTED_GITHUB_AUTHOR = "beepboop2025"
 EXPECTED_GITHUB_COMMITTER = "web-flow"
-EXPECTED_SIGNED_AUTHOR = "Palimpsest Maintainer <mrinallovesbhature@gmail.com>"
-EXPECTED_SIGNED_COMMITTER = "GitHub <noreply@github.com>"
+EXPECTED_SIGNED_AUTHOR_SHA256 = (
+    "3e2c7d488c81e8ec805d397aada3fc149ecc833bf67befa1c5a364c68ed61c16"
+)
+EXPECTED_SIGNED_COMMITTER_SHA256 = (
+    "42fcc3ed5b24c4780bbcecb719d07dcef72a5881fdb8cdf8ee334b412f107c5b"
+)
 EXPECTED_GITHUB_SIGNING_FINGERPRINT = "968479A1AFF927E37D1A566BB5690EEEBB952194"
 DEFAULT_GPGV = Path("/usr/bin/gpgv")
 REQUIRED_TOOLS = {
@@ -153,6 +157,7 @@ def _verify_github_signature(
                 check=False,
                 capture_output=True,
                 env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"},
+                stdin=subprocess.DEVNULL,
                 timeout=20,
             )
     except (OSError, subprocess.SubprocessError, UnicodeError) as exc:
@@ -174,6 +179,25 @@ def _verify_github_signature(
         raise VerificationError(
             "commit is not signed by the pinned GitHub web-flow key"
         )
+
+
+def _matches_signed_identity(
+    line: str,
+    *,
+    header: str,
+    expected_sha256: str,
+) -> bool:
+    prefix = f"{header} "
+    if not line.startswith(prefix):
+        return False
+    identity = re.fullmatch(
+        r"(.+) [1-9][0-9]* [+-][0-9]{4}",
+        line.removeprefix(prefix),
+    )
+    if identity is None:
+        return False
+    actual_sha256 = hashlib.sha256(identity.group(1).encode("utf-8")).hexdigest()
+    return actual_sha256 == expected_sha256
 
 
 def _parse_signed_commit_payload(payload: str) -> tuple[str, list[str], str]:
@@ -199,23 +223,18 @@ def _parse_signed_commit_payload(payload: str) -> tuple[str, list[str], str]:
         index += 1
     if len(parents) < 2 or len(lines) != index + 2:
         raise VerificationError("target is not a strict merge commit")
-    identity_suffix = r" [1-9][0-9]* [+-][0-9]{4}"
-    if (
-        re.fullmatch(
-            "author " + re.escape(EXPECTED_SIGNED_AUTHOR) + identity_suffix,
-            lines[index],
-        )
-        is None
+    if not _matches_signed_identity(
+        lines[index],
+        header="author",
+        expected_sha256=EXPECTED_SIGNED_AUTHOR_SHA256,
     ):
         raise VerificationError(
             "signed commit author is not the pinned release principal"
         )
-    if (
-        re.fullmatch(
-            "committer " + re.escape(EXPECTED_SIGNED_COMMITTER) + identity_suffix,
-            lines[index + 1],
-        )
-        is None
+    if not _matches_signed_identity(
+        lines[index + 1],
+        header="committer",
+        expected_sha256=EXPECTED_SIGNED_COMMITTER_SHA256,
     ):
         raise VerificationError("signed commit committer is not GitHub web-flow")
     if re.match(r"Merge pull request #[1-9][0-9]* from beepboop2025/", message) is None:

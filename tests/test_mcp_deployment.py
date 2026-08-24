@@ -30,7 +30,6 @@ REGISTRY_WORKFLOW = ROOT / ".github/workflows/registry-publish.yml"
 UNIT = ROOT / "ops/systemd/palimpsest-mcp.service"
 RUNBOOK = ROOT / "ops/mcp-deploy/README.md"
 GITHUB_SIGNING_KEY = ROOT / "ops/mcp-deploy/github-web-flow-signing-key.asc"
-GITHUB_COMMIT_FIXTURE = ROOT / "tests/fixtures/github_web_flow_commit_ad52601.json"
 GITHUB_COMMIT_FIXTURE_SHA = "ad52601de621edfd7a9b8fd221fb030a0cfab273"
 
 
@@ -56,6 +55,58 @@ def _load_registry_verifier() -> ModuleType:
 
 
 registry_verifier = _load_registry_verifier()
+
+
+def _github_commit_fixture() -> dict[str, object]:
+    """Recreate API evidence from one exact authentic reachable GitHub merge."""
+    commit_sha = GITHUB_COMMIT_FIXTURE_SHA
+    raw_commit = subprocess.run(
+        ["git", "cat-file", "commit", commit_sha],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    raw_headers, message = raw_commit.split("\n\n", 1)
+    payload_headers: list[str] = []
+    signature_lines: list[str] = []
+    reading_signature = False
+    for line in raw_headers.splitlines():
+        if line.startswith("gpgsig "):
+            assert not signature_lines
+            reading_signature = True
+            signature_lines.append(line.removeprefix("gpgsig "))
+        elif reading_signature and line.startswith(" "):
+            signature_lines.append(line[1:])
+        else:
+            reading_signature = False
+            payload_headers.append(line)
+    while signature_lines and not signature_lines[-1]:
+        signature_lines.pop()
+    assert signature_lines
+    assert signature_lines[0] == "-----BEGIN PGP SIGNATURE-----"
+    parents = [
+        {"sha": line.removeprefix("parent ")}
+        for line in payload_headers
+        if line.startswith("parent ")
+    ]
+    return {
+        "sha": commit_sha,
+        "author": {"login": "beepboop2025"},
+        "committer": {"login": "web-flow"},
+        "parents": parents,
+        "commit": {
+            "verification": {
+                "verified": True,
+                "reason": "valid",
+                "verified_at": "2026-08-24T20:28:24Z",
+                "payload": "\n".join(payload_headers)
+                + "\n\n"
+                + message.removesuffix("\n"),
+                "signature": "\n".join(signature_lines) + "\n",
+            }
+        },
+    }
 
 
 def test_current_candidate_satisfies_release_contract() -> None:
@@ -102,12 +153,14 @@ def test_verifier_rejects_duplicate_manifest_keys(tmp_path: Path) -> None:
 def test_verifier_requires_exact_valid_github_signature(tmp_path: Path) -> None:
     gpgv = shutil.which("gpgv")
     assert gpgv is not None, "gpgv is part of the release-controller contract"
-    payload = json.loads(GITHUB_COMMIT_FIXTURE.read_text(encoding="utf-8"))
+    payload = _github_commit_fixture()
+    target_sha = payload["sha"]
+    assert isinstance(target_sha, str)
     path = tmp_path / "commit.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     verifier.verify_github_commit(
         path,
-        GITHUB_COMMIT_FIXTURE_SHA,
+        target_sha,
         GITHUB_SIGNING_KEY,
         gpgv_path=Path(gpgv).resolve(),
     )
@@ -117,7 +170,7 @@ def test_verifier_requires_exact_valid_github_signature(tmp_path: Path) -> None:
     with pytest.raises(verifier.VerificationError, match="valid verified signature"):
         verifier.verify_github_commit(
             path,
-            GITHUB_COMMIT_FIXTURE_SHA,
+            target_sha,
             GITHUB_SIGNING_KEY,
             gpgv_path=Path(gpgv).resolve(),
         )
@@ -144,16 +197,43 @@ def test_verifier_rejects_forged_runner_provenance(tmp_path: Path) -> None:
 
 
 def test_verifier_binds_signed_payload_to_target_sha(tmp_path: Path) -> None:
-    payload = json.loads(GITHUB_COMMIT_FIXTURE.read_text(encoding="utf-8"))
-    payload["commit"]["verification"]["payload"] = payload["commit"]["verification"][
-        "payload"
-    ].replace("Harden China", "Weaken China")
+    payload = _github_commit_fixture()
+    target_sha = payload["sha"]
+    assert isinstance(target_sha, str)
+    signed_payload = payload["commit"]["verification"]["payload"]
+    assert isinstance(signed_payload, str)
+    payload["commit"]["verification"]["payload"] = signed_payload + "!"
     path = tmp_path / "tampered.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(verifier.VerificationError, match="reconstruct the target SHA"):
         verifier.verify_github_commit(
             path,
-            GITHUB_COMMIT_FIXTURE_SHA,
+            target_sha,
+            GITHUB_SIGNING_KEY,
+        )
+
+
+def test_verifier_rejects_unpinned_signed_author(tmp_path: Path) -> None:
+    payload = _github_commit_fixture()
+    target_sha = payload["sha"]
+    assert isinstance(target_sha, str)
+    signed_payload = payload["commit"]["verification"]["payload"]
+    assert isinstance(signed_payload, str)
+    author_line = next(
+        line for line in signed_payload.splitlines() if line.startswith("author ")
+    )
+    timestamp, timezone = author_line.rsplit(" ", 2)[-2:]
+    payload["commit"]["verification"]["payload"] = signed_payload.replace(
+        author_line,
+        f"author Example Maintainer <release@example.com> {timestamp} {timezone}",
+        1,
+    )
+    path = tmp_path / "wrong-author.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(verifier.VerificationError, match="pinned release principal"):
+        verifier.verify_github_commit(
+            path,
+            target_sha,
             GITHUB_SIGNING_KEY,
         )
 
