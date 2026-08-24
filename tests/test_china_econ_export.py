@@ -22,6 +22,7 @@ from core.china_econ_export import (
     load_source_policy,
     validate_export_bundle,
 )
+from core.collector_artifact import build_artifact
 from core.econ_ledger import append_vintages, load_snapshot
 from core.econ_observation import EconomicObservation
 from scripts.build_china_econ_export import (
@@ -135,6 +136,41 @@ def _availability_path(ledger: Path) -> Path:
     return ledger.with_name(f"{ledger.name}.latest.json")
 
 
+def _reseal_collector_artifact(
+    receipt: dict,
+    *,
+    series_registry: Path = SERIES,
+) -> None:
+    payload = dict(receipt)
+    payload.pop("collector_artifact", None)
+    observed_at = datetime.fromisoformat(receipt["generated_at"].replace("Z", "+00:00"))
+    last_updated = date.fromisoformat(receipt["dataset_last_updated"])
+    age_days = (observed_at.date() - last_updated).days
+    coverage = receipt["response_coverage"]
+    receipt["collector_artifact"] = build_artifact(
+        collector_id="world-bank-wdi-china",
+        source_receipt={
+            "url": build_url(
+                load_registry(series_registry),
+                start_year=coverage["requested_start_year"],
+                end_year=coverage["requested_end_year"],
+            ),
+            "raw_sha256": receipt["batch_raw_sha256"],
+            "dataset_last_updated": receipt["dataset_last_updated"],
+            "license": receipt["license"],
+        },
+        freshness={
+            "evidence_state": "fresh" if age_days <= 120 else "stale",
+            "observed_at": receipt["generated_at"],
+            "native_cadence": "annual",
+            "dataset_age_days": age_days,
+        },
+        coverage=coverage,
+        abstention=None,
+        payload=payload,
+    )
+
+
 def _availability_receipt(
     ledger: Path,
     *,
@@ -220,7 +256,23 @@ def _availability_receipt(
             "period_start": "2024-01-01" if available else None,
             "period_end": "2024-12-31" if available else None,
         },
-        "ledger_coverage": {},
+        "ledger_coverage": {
+            "coverage_semantics": (
+                "accumulated_append_only_history_not_current_response"
+            ),
+            "records": snapshot.records,
+            "series_count": len({row.series_id for row in snapshot.observations}),
+            "period_start": (
+                min(row.period_start for row in snapshot.observations).isoformat()
+                if snapshot.observations
+                else None
+            ),
+            "period_end": (
+                max(row.period_end for row in snapshot.observations).isoformat()
+                if snapshot.observations
+                else None
+            ),
+        },
         "availability": {
             "schema_version": "palimpsest-china-econ-wdi-availability.v1",
             "records": len(entries),
@@ -230,16 +282,44 @@ def _availability_receipt(
             "withdrawal_state": "residual_gate_no_append_only_withdrawal_ledger",
             "withdrawal_limitation": "Exact test availability; no tombstone ledger.",
         },
-        "indicator_provenance": {},
+        "indicator_provenance": {
+            "schema_version": (
+                "palimpsest-china-econ-wdi-indicator-provenance.v1"
+            ),
+            "records": len(registry["series"]),
+            "entries": [
+                {
+                    "indicator_id": row["indicator_id"],
+                    "reviewed_name": row["name"],
+                    "source_title": f"{row['name']} (source title)",
+                }
+                for row in sorted(
+                    registry["series"], key=lambda item: item["indicator_id"]
+                )
+            ],
+            "upstream_attribution_state": registry["dataset"][
+                "per_indicator_upstream_metadata_status"
+            ],
+            "upstream_attribution_requirement": registry["dataset"][
+                "per_indicator_upstream_metadata_requirement"
+            ],
+        },
         "collector_artifact": {},
         "publication_state": "public_context_only" if public else "review_only",
         "revision_lineage": {
             "mode": "git_tracked_append_only" if public else "local_review_append_only",
             "durable_cross_run": public,
-            "ledger_path": ledger.name,
+            "ledger_path": (
+                "readings/china-econ-wdi-observations.jsonl"
+                if public
+                else ledger.name
+            ),
         },
-        "limitations": [],
+        "limitations": [
+            registry["dataset"]["per_indicator_upstream_metadata_requirement"]
+        ],
     }
+    _reseal_collector_artifact(receipt, series_registry=series_registry)
     return _write_json(_availability_path(ledger), receipt)
 
 
@@ -270,6 +350,54 @@ def test_policy_is_default_deny_and_only_cc_by_wdi_is_allowed():
         assert policy.decisions[source_id].decision == "deny"
         assert policy.decisions[source_id].values_allowed is False
         assert policy.decisions[source_id].seiche_export_allowed is False
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("rights_evidence_url", "https://example.invalid/rights"),
+        ("attribution", "World Bank"),
+    ],
+)
+def test_policy_requires_exact_reviewed_wdi_rights_authority(
+    tmp_path: Path,
+    field: str,
+    value: str,
+):
+    policy = _policy_document()
+    wdi = next(row for row in policy["sources"] if row["source_id"] == "world_bank_wdi")
+    wdi[field] = value
+
+    with pytest.raises(ChinaEconExportError, match="exact reviewed rights"):
+        load_source_policy(_write_json(tmp_path / "policy.json", policy))
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("catalog_url", "https://example.invalid/catalog"),
+        ("rights_evidence_url", "https://example.invalid/rights"),
+        ("attribution", "World Bank"),
+    ],
+)
+def test_export_requires_exact_registry_rights_authority(
+    tmp_path: Path,
+    field: str,
+    value: str,
+):
+    registry = json.loads(SERIES.read_text(encoding="utf-8"))
+    registry["dataset"][field] = value
+    registry_path = _write_json(tmp_path / "series.json", registry)
+    ledger = _ledger(tmp_path / "wdi.jsonl", _wdi_observation())
+
+    with pytest.raises(ChinaEconExportError, match=rf"dataset\.{field}"):
+        _build_export(
+            ledger_path=ledger,
+            policy_path=POLICY,
+            series_registry_path=registry_path,
+            generated_at=GENERATED_AT,
+            artifact_name="export.jsonl",
+        )
 
 
 def test_export_is_exact_pinned_context_only_and_excludes_denied_unknown(tmp_path: Path):
@@ -540,7 +668,7 @@ def test_policy_refuses_any_second_allow_or_weak_wdi_license(tmp_path: Path):
     weak_license = _policy_document()
     wdi = next(row for row in weak_license["sources"] if row["source_id"] == "world_bank_wdi")
     wdi["license"] = "custom"
-    with pytest.raises(ChinaEconExportError, match="CC-BY-4.0"):
+    with pytest.raises(ChinaEconExportError, match="exact reviewed rights"):
         load_source_policy(_write_json(tmp_path / "weak-license.json", weak_license))
 
 
@@ -602,6 +730,9 @@ def test_validator_requires_exact_availability_and_input_ledger_bytes(tmp_path: 
     availability["response_coverage"]["null_only_indicators"] += 1
     availability["response_coverage"]["populated_observations"] -= 1
     availability["response_coverage"]["null_rows"] += 1
+    availability["response_coverage"]["period_start"] = None
+    availability["response_coverage"]["period_end"] = None
+    _reseal_collector_artifact(availability)
     tampered_availability = (
         json.dumps(
             availability,
@@ -882,7 +1013,7 @@ def test_validator_rejects_registry_receipt_or_policy_byte_mismatch(tmp_path: Pa
         b"World Bank, World Development Indicators",
         b"World Bank, World Development Indicators dataset",
     )
-    with pytest.raises(ChinaEconExportError, match="policy receipt"):
+    with pytest.raises(ChinaEconExportError, match="exact reviewed rights"):
         _validate_bundle(
             ledger,
             bundle.artifact_bytes,
@@ -899,6 +1030,179 @@ def test_export_refuses_future_generated_at(tmp_path: Path):
             policy_path=POLICY,
             series_registry_path=SERIES,
             generated_at=datetime.now(UTC) + timedelta(hours=1),
+            artifact_name="export.jsonl",
+        )
+
+
+def test_export_refuses_availability_clock_before_ledger_collection(tmp_path: Path):
+    ledger = _ledger(tmp_path / "wdi.jsonl", _wdi_observation())
+    availability_path = _availability_receipt(ledger)
+    availability = json.loads(availability_path.read_bytes())
+    availability["generated_at"] = "2026-08-24T09:59:59Z"
+    _reseal_collector_artifact(availability)
+    _write_json(availability_path, availability)
+
+    with pytest.raises(ChinaEconExportError, match="predates the newest ledger"):
+        _build_export(
+            ledger_path=ledger,
+            policy_path=POLICY,
+            series_registry_path=SERIES,
+            availability_receipt_path=availability_path,
+            generated_at=GENERATED_AT,
+            artifact_name="export.jsonl",
+        )
+
+
+def test_authoritative_validator_refuses_availability_clock_before_ledger_collection(
+    tmp_path: Path,
+):
+    ledger = _ledger(tmp_path / "wdi.jsonl", _wdi_observation())
+    bundle = _build_export(
+        ledger_path=ledger,
+        policy_path=POLICY,
+        series_registry_path=SERIES,
+        generated_at=GENERATED_AT,
+        artifact_name="export.jsonl",
+        workflow_run=WORKFLOW_RUN,
+    )
+    availability = json.loads(_availability_path(ledger).read_bytes())
+    availability["generated_at"] = "2026-08-24T09:59:59Z"
+    _reseal_collector_artifact(availability)
+    tampered_bytes = (
+        json.dumps(
+            availability,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode()
+    manifest = deepcopy(bundle.manifest)
+    manifest["availability_receipt"].update(
+        generated_at=availability["generated_at"],
+        sha256=hashlib.sha256(tampered_bytes).hexdigest(),
+        bytes=len(tampered_bytes),
+    )
+
+    with pytest.raises(ChinaEconExportError, match="predates the newest ledger"):
+        _validate_bundle(
+            ledger,
+            bundle.artifact_bytes,
+            manifest,
+            availability_receipt_bytes=tampered_bytes,
+            expected_producer_commit_sha=PRODUCER_COMMIT,
+            require_successful_workflow=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("mode", "self_declared_append_only"),
+        ("ledger_path", "elsewhere/wdi.jsonl"),
+    ],
+)
+def test_authoritative_validator_requires_exact_public_revision_lineage(
+    tmp_path: Path,
+    field: str,
+    value: str,
+):
+    ledger = _ledger(tmp_path / "wdi.jsonl", _wdi_observation())
+    bundle = _build_export(
+        ledger_path=ledger,
+        policy_path=POLICY,
+        series_registry_path=SERIES,
+        generated_at=GENERATED_AT,
+        artifact_name="export.jsonl",
+        workflow_run=WORKFLOW_RUN,
+    )
+    availability = json.loads(_availability_path(ledger).read_bytes())
+    availability["revision_lineage"][field] = value
+    _reseal_collector_artifact(availability)
+    tampered_bytes = (
+        json.dumps(
+            availability,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode()
+    manifest = deepcopy(bundle.manifest)
+    manifest["availability_receipt"].update(
+        sha256=hashlib.sha256(tampered_bytes).hexdigest(),
+        bytes=len(tampered_bytes),
+    )
+
+    with pytest.raises(ChinaEconExportError, match="exact reviewed durable lineage"):
+        _validate_bundle(
+            ledger,
+            bundle.artifact_bytes,
+            manifest,
+            availability_receipt_bytes=tampered_bytes,
+            expected_producer_commit_sha=PRODUCER_COMMIT,
+            require_successful_workflow=True,
+        )
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "value"),
+    [
+        ("collector_artifact", "payload_sha256", "0" * 64),
+        ("source_receipt", "raw_sha256", "0" * 64),
+        ("source_receipt", "url", "https://example.invalid/wdi"),
+        ("source_receipt", "dataset_last_updated", "2026-07-12"),
+        ("source_receipt", "license", "custom"),
+        ("freshness", "observed_at", "2026-08-24T10:14:59Z"),
+        ("freshness", "evidence_state", "stale"),
+        ("coverage", "source_rows", 999),
+    ],
+)
+def test_export_reconciles_collector_artifact_authority(
+    tmp_path: Path,
+    section: str,
+    field: str,
+    value: object,
+):
+    ledger = _ledger(tmp_path / "wdi.jsonl", _wdi_observation())
+    availability_path = _availability_receipt(ledger)
+    availability = json.loads(availability_path.read_bytes())
+    target = availability["collector_artifact"]
+    if section != "collector_artifact":
+        target = target[section]
+    target[field] = value
+    _write_json(availability_path, availability)
+
+    with pytest.raises(ChinaEconExportError, match="collector_artifact"):
+        _build_export(
+            ledger_path=ledger,
+            policy_path=POLICY,
+            series_registry_path=SERIES,
+            availability_receipt_path=availability_path,
+            generated_at=GENERATED_AT,
+            artifact_name="export.jsonl",
+        )
+
+
+def test_export_binds_collector_payload_and_indicator_provenance(tmp_path: Path):
+    ledger = _ledger(tmp_path / "wdi.jsonl", _wdi_observation())
+    availability_path = _availability_receipt(ledger)
+    availability = json.loads(availability_path.read_bytes())
+    cereal = next(
+        row
+        for row in availability["indicator_provenance"]["entries"]
+        if row["indicator_id"] == "AG.PRD.CREL.MT"
+    )
+    cereal["reviewed_name"] = "Unreviewed cereal label"
+    _write_json(availability_path, availability)
+
+    with pytest.raises(ChinaEconExportError, match="provenance"):
+        _build_export(
+            ledger_path=ledger,
+            policy_path=POLICY,
+            series_registry_path=SERIES,
+            availability_receipt_path=availability_path,
+            generated_at=GENERATED_AT,
             artifact_name="export.jsonl",
         )
 
@@ -1026,6 +1330,13 @@ def test_exact_main_workflow_builds_and_attests_non_pages_handoff():
     assert "--workflow-run-id \"$GITHUB_RUN_ID\"" in workflow
     assert "--workflow-run-event \"$GITHUB_EVENT_NAME\"" in workflow
     assert "world-bank-wdi-response.json" in workflow
+    assert "github-commit.json" in workflow
+    assert "commits/$GITHUB_SHA?per_page=1" in workflow
+    assert 'author.get("login") != "beepboop2025"' in workflow
+    assert 'committer.get("login") != "web-flow"' in workflow
+    assert 'verification.get("verified") is not True' in workflow
+    assert 'verification.get("reason") != "valid"' in workflow
+    assert '"producer_commit_evidence": {' in workflow
     assert "china-econ-wdi-observations.jsonl" in workflow
     assert "china-econ-wdi-live-check.json" in workflow
     assert '--availability-receipt "$REVIEW_DIR/china-econ-wdi-latest.json"' in workflow
@@ -1041,6 +1352,11 @@ def test_handoff_documentation_requires_external_attestation_and_hash_review():
 
     assert "palimpsest.china-economic-export-manifest.v3" in documentation
     assert "gh attestation verify china-economic-review-v3/SHA256SUMS" in documentation
+    assert '"repos/$repo/commits/$sha?per_page=1"' in documentation
+    assert '"github-commit.json"' in documentation
+    assert 'value["author"]["login"] == "beepboop2025"' in documentation
+    assert 'value["committer"]["login"] == "web-flow"' in documentation
+    assert 'handoff["producer_commit_evidence"] == commit_evidence' in documentation
     assert "formerly numeric identity that is now null or absent" in documentation
     assert "--signer-workflow \"$repo/.github/workflows/tests.yml\"" in documentation
     assert "--source-digest \"$sha\"" in documentation
