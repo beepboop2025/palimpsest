@@ -173,6 +173,8 @@ MAX_ROWS = 4096
 MAX_TERM = 180
 MIN_CJK = 2
 MIN_LATIN = 4
+_UNSAFE_UNICODE_CATEGORIES = frozenset({"Cc", "Cf", "Cs"})
+_UNSAFE_UNICODE_TERM_CLASS = "unsafe-unicode-source-term"
 
 _TOP_FIELDS = frozenset(
     {
@@ -305,9 +307,16 @@ def _text(value: Any, path: str, *, maximum: int, empty: bool = False) -> str:
         raise SocialSpreadError(f"{path} must be bounded text")
     if value != value.strip() and not empty:
         raise SocialSpreadError(f"{path} has leading or trailing whitespace")
-    if any(unicodedata.category(character) in {"Cc", "Cf", "Cs"} for character in value):
+    if _contains_unsafe_unicode(value):
         raise SocialSpreadError(f"{path} contains unsafe Unicode")
     return value
+
+
+def _contains_unsafe_unicode(value: str) -> bool:
+    return any(
+        unicodedata.category(character) in _UNSAFE_UNICODE_CATEGORIES
+        for character in value
+    )
 
 
 def normalize_term(value: str) -> str:
@@ -463,7 +472,14 @@ def _add_term(
     first_seen: str | None = None,
     last_seen: str | None = None,
     url: str | None = None,
+    quarantine_counts: dict[str, int] | None = None,
 ) -> None:
+    if _contains_unsafe_unicode(term):
+        if quarantine_counts is not None:
+            quarantine_counts[_UNSAFE_UNICODE_TERM_CLASS] = (
+                quarantine_counts.get(_UNSAFE_UNICODE_TERM_CLASS, 0) + 1
+            )
+        return
     term = normalize_term(term)
     if not term_is_usable(term):
         return
@@ -499,13 +515,23 @@ def _add_term(
         row["host"] = host
 
 
-def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_weibo(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for row in doc.get("gazetteer_breakthroughs") or []:
         if not isinstance(row, Mapping):
             continue
         if row.get("term"):
-            _add_term(bucket, str(row["term"]), source_id="weibo-hotsearch", seen_at=generated)
+            _add_term(
+                bucket,
+                str(row["term"]),
+                source_id="weibo-hotsearch",
+                seen_at=generated,
+                quarantine_counts=quarantine_counts,
+            )
         for sample in row.get("samples") or []:
             if isinstance(sample, Mapping) and sample.get("title"):
                 date = str(sample.get("date") or "")
@@ -515,6 +541,7 @@ def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) ->
                     str(sample["title"]),
                     source_id="weibo-hotsearch",
                     seen_at=_iso_or_none(seen) or generated,
+                    quarantine_counts=quarantine_counts,
                 )
     for day in doc.get("pinned_headlines") or []:
         if not isinstance(day, Mapping):
@@ -527,6 +554,7 @@ def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) ->
                 str(title),
                 source_id="weibo-hotsearch",
                 seen_at=_iso_or_none(seen) or generated,
+                quarantine_counts=quarantine_counts,
             )
     watch = doc.get("withdrawal_watch") if isinstance(doc.get("withdrawal_watch"), Mapping) else {}
     for candidate in watch.get("candidates") or []:
@@ -538,6 +566,7 @@ def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) ->
                 str(candidate["title"]),
                 source_id="weibo-hotsearch",
                 seen_at=_iso_or_none(seen) or generated,
+                quarantine_counts=quarantine_counts,
             )
     for record in doc.get("observation_records") or []:
         if isinstance(record, Mapping) and record.get("title"):
@@ -547,6 +576,7 @@ def _extract_weibo(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) ->
                 source_id="weibo-hotsearch",
                 seen_at=_iso_or_none(record.get("first_seen") or record.get("detected_at"))
                 or generated,
+                quarantine_counts=quarantine_counts,
             )
 
 
@@ -556,6 +586,7 @@ def _extract_observations(
     *,
     source_id: str,
     title_only: bool = False,
+    quarantine_counts: dict[str, int],
 ) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for record in doc.get("observations") or []:
@@ -575,21 +606,41 @@ def _extract_observations(
             if handle:
                 row_source = f"telegram-public-channels:{handle}"
         if record.get("title") and not str(record.get("title")).startswith("[telegram:"):
-            _add_term(bucket, str(record["title"]), source_id=row_source, seen_at=seen)
+            _add_term(
+                bucket,
+                str(record["title"]),
+                source_id=row_source,
+                seen_at=seen,
+                quarantine_counts=quarantine_counts,
+            )
         if not title_only and record.get("text"):
             text = normalize_term(str(record["text"]))
             first_line = text.split("。")[0].split(".")[0]
             if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
-                _add_term(bucket, first_line, source_id=row_source, seen_at=seen)
+                _add_term(
+                    bucket,
+                    first_line,
+                    source_id=row_source,
+                    seen_at=seen,
+                    quarantine_counts=quarantine_counts,
+                )
         if record.get("excerpt"):
             excerpt = normalize_term(str(record["excerpt"]))
             first_line = excerpt.split("。")[0].split(".")[0]
             if term_is_usable(first_line) and len(first_line) <= MAX_TERM:
-                _add_term(bucket, first_line, source_id=row_source, seen_at=seen)
+                _add_term(
+                    bucket,
+                    first_line,
+                    source_id=row_source,
+                    seen_at=seen,
+                    quarantine_counts=quarantine_counts,
+                )
 
 
 def _extract_social_observations(
-    doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
 ) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for record in doc.get("observations") or []:
@@ -600,10 +651,20 @@ def _extract_social_observations(
         if record.get("title"):
             title = normalize_term(str(record["title"]))
             first = title.split("。")[0].split(".")[0]
-            _add_term(bucket, first if term_is_usable(first) else title, source_id=source, seen_at=seen)
+            _add_term(
+                bucket,
+                first if term_is_usable(first) else title,
+                source_id=source,
+                seen_at=seen,
+                quarantine_counts=quarantine_counts,
+            )
 
 
-def _extract_hot_boards(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_hot_boards(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for record in doc.get("observations") or []:
         if not isinstance(record, Mapping) or not record.get("title"):
@@ -626,6 +687,7 @@ def _extract_hot_boards(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]
             first_seen=first,
             last_seen=last,
             url=str(record.get("url") or record.get("source_url") or ""),
+            quarantine_counts=quarantine_counts,
         )
 
 
@@ -750,7 +812,11 @@ def _capture_window_ok(
     )
 
 
-def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_board_terms(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for row in doc.get("terms") or []:
         if not isinstance(row, Mapping) or not row.get("title"):
@@ -768,10 +834,15 @@ def _extract_board_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
             rank=rank if isinstance(rank, int) else None,
             first_seen=first,
             last_seen=last,
+            quarantine_counts=quarantine_counts,
         )
 
 
-def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any]]) -> None:
+def _extract_weibo_terms(
+    doc: Mapping[str, Any],
+    bucket: dict[str, dict[str, Any]],
+    quarantine_counts: dict[str, int],
+) -> None:
     generated = _iso_or_none(doc.get("generated_at"))
     for row in doc.get("terms") or []:
         if not isinstance(row, Mapping) or not row.get("title"):
@@ -788,6 +859,7 @@ def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
             rank=rank,
             first_seen=first,
             last_seen=last,
+            quarantine_counts=quarantine_counts,
         )
     for day in doc.get("pinned_headlines") or []:
         if not isinstance(day, Mapping):
@@ -803,31 +875,40 @@ def _extract_weibo_terms(doc: Mapping[str, Any], bucket: dict[str, dict[str, Any
                 board="weibo",
                 first_seen=_iso_or_none(seen) or generated,
                 last_seen=_iso_or_none(seen) or generated,
+                quarantine_counts=quarantine_counts,
             )
 
 
 def extract_spreading_terms(
     inputs: Mapping[str, Mapping[str, Any] | None],
+    *,
+    quarantine_counts: dict[str, int] | None = None,
 ) -> dict[tuple[str, str], dict[str, Any]]:
     bucket: dict[tuple[str, str], dict[str, Any]] = {}
+    quarantines = quarantine_counts if quarantine_counts is not None else {}
     weibo = inputs.get("weibo-hotsearch")
     if isinstance(weibo, Mapping):
-        _extract_weibo(weibo, bucket)
+        _extract_weibo(weibo, bucket, quarantines)
     terms = inputs.get("weibo-hotsearch-terms")
     if isinstance(terms, Mapping):
-        _extract_weibo_terms(terms, bucket)
+        _extract_weibo_terms(terms, bucket, quarantines)
     boards = inputs.get("public-hot-boards")
     if isinstance(boards, Mapping):
-        _extract_hot_boards(boards, bucket)
+        _extract_hot_boards(boards, bucket, quarantines)
     fused = inputs.get("public-board-terms")
     if isinstance(fused, Mapping):
-        _extract_board_terms(fused, bucket)
+        _extract_board_terms(fused, bucket, quarantines)
     social = inputs.get("social-observations")
     if isinstance(social, Mapping):
-        _extract_social_observations(social, bucket)
+        _extract_social_observations(social, bucket, quarantines)
     telegram = inputs.get("telegram-public-channels")
     if isinstance(telegram, Mapping):
-        _extract_observations(telegram, bucket, source_id="telegram-public-channels")
+        _extract_observations(
+            telegram,
+            bucket,
+            source_id="telegram-public-channels",
+            quarantine_counts=quarantines,
+        )
     return bucket
 
 
@@ -954,7 +1035,23 @@ def build_social_spread(
         validate_social_spread(document)
         return document
 
-    extracted = extract_spreading_terms(inputs)
+    quarantine_counts: dict[str, int] = {}
+    extracted = extract_spreading_terms(
+        inputs, quarantine_counts=quarantine_counts
+    )
+    unsafe_unicode_terms = quarantine_counts.get(_UNSAFE_UNICODE_TERM_CLASS, 0)
+    if unsafe_unicode_terms:
+        noun = "term" if unsafe_unicode_terms == 1 else "terms"
+        refusals.append(
+            {
+                "term_class": _UNSAFE_UNICODE_TERM_CLASS,
+                "reason": (
+                    f"{unsafe_unicode_terms} public-source {noun} contained unsafe "
+                    "Unicode and were withheld before matching. "
+                    f"{DISCLAIMER}"
+                ),
+            }
+        )
     for (_term_key, raw) in sorted(
         extracted.items(),
         key=lambda item: (-len(item[1]["source_ids"]), item[1]["term"], item[1].get("board") or ""),
@@ -1099,7 +1196,9 @@ def _assemble(
             "official object only on exact term plus overlapping day window. "
             "Other boards join on exact term when that name already appears in "
             "a registered public source. Whisper-only names do not emit a "
-            "person package. Missing required spreading collectors abstain."
+            "person package. Terms containing unsafe Unicode are withheld with "
+            "aggregate, content-free refusal accounting. Missing required "
+            "spreading collectors abstain."
         ),
         "scope": (
             "Public Chinese attention surfaces already collected outside the "

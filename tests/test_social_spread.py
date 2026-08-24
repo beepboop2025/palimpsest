@@ -252,6 +252,78 @@ def test_missing_collectors_abstain():
     assert document["news_story"] is None
 
 
+def test_unsafe_unicode_terms_are_quarantined_without_poisoning_safe_rows():
+    unsafe_terms = ("TYL 3:0 BLG \u200b", "1688\u9650\u65f6\u6e05\u4ed3\u5305\u90ae\u200c")
+    document = build_social_spread(
+        _inputs(
+            **{
+                "public-board-terms": {
+                    "generated_at": "2026-08-20T06:00:00Z",
+                    "terms": [
+                        {
+                            "board": "weibo",
+                            "title": "\u676d\u5dde\u66b4\u96e8",
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                            "best_rank": 1,
+                        },
+                        {
+                            "board": "douyin",
+                            "title": unsafe_terms[0],
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                            "best_rank": 2,
+                        },
+                        {
+                            "board": "sogou",
+                            "title": unsafe_terms[1],
+                            "first_seen": "2026-08-20",
+                            "last_seen": "2026-08-20",
+                            "best_rank": 3,
+                        },
+                    ],
+                },
+                "newswire": _wire("\u676d\u5dde\u66b4\u96e8"),
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
+
+    validate_social_spread(document)
+    assert document["status"] == "live"
+    assert [row["term"] for row in document["rows"]] == ["\u676d\u5dde\u66b4\u96e8"]
+    assert document["n_refused"] == 1
+    assert document["refusals"] == [
+        {
+            "term_class": "unsafe-unicode-source-term",
+            "reason": (
+                "2 public-source terms contained unsafe Unicode and were withheld "
+                f"before matching. {DISCLAIMER}"
+            ),
+        }
+    ]
+    published = json.dumps(document, ensure_ascii=False)
+    assert "\u200b" not in published
+    assert "\u200c" not in published
+    assert all(term not in published for term in unsafe_terms)
+
+
+def test_validator_still_rejects_unsafe_unicode_in_a_published_term():
+    document = build_social_spread(
+        _inputs(
+            **{
+                "weibo-hotsearch": _weibo("\u676d\u5dde\u66b4\u96e8"),
+                "newswire": _wire("\u676d\u5dde\u66b4\u96e8"),
+            }
+        ),
+        generated_at="2026-08-20T06:00:00Z",
+    )
+    document["rows"][0]["term"] += "\u200b"
+
+    with pytest.raises(social_spread.SocialSpreadError, match="unsafe Unicode"):
+        validate_social_spread(document)
+
+
 def test_no_named_missing_claim_in_module_fixtures_or_sample_row():
     assert SAMPLE_ROW["term"] == "杭州暴雨"
     assert SAMPLE_ROW["disposition"] == "matched-to-wire"
