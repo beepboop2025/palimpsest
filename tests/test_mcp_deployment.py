@@ -392,6 +392,38 @@ def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
     assert "monotonically higher server version" in text
 
 
+def test_release_runbook_pins_china_schedule_transition() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    workflows = ROOT / ".github/workflows"
+    scheduled_paths = sorted(
+        path.relative_to(ROOT).as_posix()
+        for path in workflows.glob("*.yml")
+        if "\n  schedule:" in path.read_text(encoding="utf-8")
+    )
+
+    assert len(scheduled_paths) == 33
+    assert ".github/workflows/china-econ-refresh.yml" not in scheduled_paths
+    assert 'premerge_schedule_paths="$release_gate_dir/' in text
+    assert 'postmerge_schedule_paths="$release_gate_dir/' in text
+    assert "git grep -l '^  schedule:' \"$frozen_main\"" in text
+    assert "git grep -l '^  schedule:' \"$target_sha\"" in text
+    assert (
+        'test "$(wc -l <"$premerge_schedule_paths" | tr -d '
+        "'[:space:]')\" = 34"
+    ) in text
+    assert (
+        'test "$(wc -l <"$postmerge_schedule_paths" | tr -d '
+        "'[:space:]')\" = 33"
+    ) in text
+    assert "comm -23 \"$premerge_schedule_paths\"" in text
+    assert "comm -13 \"$premerge_schedule_paths\"" in text
+    assert ".github/workflows/china-econ-refresh.yml" in text
+    assert "original 34 API" in text
+    assert "reviewed manual dispatch" in text
+    assert "cannot recreate the" in text
+    assert "removed schedule" in text
+
+
 def test_emergency_rollback_is_receipt_bound_atomic_and_syntax_valid() -> None:
     text = RUNBOOK.read_text(encoding="utf-8")
     heading = text.index("## Rollback after a completed release")

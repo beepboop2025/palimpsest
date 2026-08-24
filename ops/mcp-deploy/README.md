@@ -333,10 +333,13 @@ tip. Freeze every scheduled workflow before the release merge, wait for all
 already-started runs, and keep that gate closed through deployment and Registry
 verification.
 
-Create a fresh state manifest from the reviewed checkout. The expected count is
-an intentional drift alarm: review this transaction whenever a scheduled
-workflow is added or removed. Do not use a shell variable named `path` in zsh;
-it aliases the executable search path.
+Create the state manifest from the exact pre-merge `origin/main` tree, not from
+the candidate checkout. The China WDI release deliberately changes
+`china-econ-refresh.yml` from scheduled to manual-only: the live pre-merge union
+has 34 scheduled workflow paths, including China econ, while the reviewed
+post-merge tree has 33. Both exact counts and the one-path difference are drift
+alarms. Do not use a shell variable named `path` in zsh; it aliases the
+executable search path.
 
 If this release continues an already-open publication gate, reuse that gate's
 original preservation manifest. Never recapture state after workflows have been
@@ -349,15 +352,26 @@ repo=beepboop2025/palimpsest
 release_gate_dir=$(mktemp -d /tmp/palimpsest-mcp-release-gate.XXXXXX)
 schedule_manifest="$release_gate_dir/scheduled-workflows.tsv"
 workflow_inventory="$release_gate_dir/workflows.json"
+premerge_schedule_paths="$release_gate_dir/premerge-scheduled-paths.txt"
+postmerge_schedule_paths="$release_gate_dir/postmerge-scheduled-paths.txt"
+
+git fetch --force --no-tags origin \
+  '+refs/heads/main:refs/remotes/origin/main'
+frozen_main=$(git rev-parse origin/main)
+git grep -l '^  schedule:' "$frozen_main" -- '.github/workflows/*.yml' | \
+  LC_ALL=C sort >"$premerge_schedule_paths"
+test "$(wc -l <"$premerge_schedule_paths" | tr -d '[:space:]')" = 34
+grep -Fx '.github/workflows/china-econ-refresh.yml' \
+  "$premerge_schedule_paths"
 
 gh workflow list --repo "$repo" --all --json id,path,state \
   >"$workflow_inventory"
 : >"$schedule_manifest"
-for workflow_file in $(rg -l '^  schedule:' .github/workflows/*.yml); do
+while IFS= read -r workflow_file; do
   jq -r --arg workflow_file "$workflow_file" \
     '.[] | select(.path == $workflow_file) | [.id,.state,.path] | @tsv' \
     "$workflow_inventory" >>"$schedule_manifest"
-done
+done <"$premerge_schedule_paths"
 LC_ALL=C sort -o "$schedule_manifest" "$schedule_manifest"
 test "$(wc -l <"$schedule_manifest" | tr -d '[:space:]')" = 34
 awk -F '\t' 'NF != 3 { exit 1 }' "$schedule_manifest"
@@ -373,10 +387,9 @@ while gh run list --repo "$repo" --limit 1000 \
   grep -q .; do
   sleep 15
 done
-git fetch origin --prune
-frozen_main=$(git rev-parse origin/main)
 sleep 10
-git fetch origin --prune
+git fetch --force --no-tags origin \
+  '+refs/heads/main:refs/remotes/origin/main'
 test "$(git rev-parse origin/main)" = "$frozen_main"
 printf 'release gate: %s\nschedule manifest: %s\n' \
   "$frozen_main" "$schedule_manifest"
@@ -391,6 +404,14 @@ place if either workflow needs a retry.
 git fetch origin --prune
 target_sha=$(git rev-parse origin/main)
 test "$target_sha" != "$frozen_main"
+git grep -l '^  schedule:' "$target_sha" -- '.github/workflows/*.yml' | \
+  LC_ALL=C sort >"$postmerge_schedule_paths"
+test "$(wc -l <"$postmerge_schedule_paths" | tr -d '[:space:]')" = 33
+test "$(comm -23 "$premerge_schedule_paths" \
+  "$postmerge_schedule_paths")" = \
+  '.github/workflows/china-econ-refresh.yml'
+test -z "$(comm -13 "$premerge_schedule_paths" \
+  "$postmerge_schedule_paths")"
 gh api "repos/$repo/commits/$target_sha" --jq \
   'select(.author.login == "beepboop2025") |
    select(.committer.login == "web-flow") |
@@ -619,7 +640,10 @@ test "$(git rev-parse origin/main)" = "$target_sha"
 Only after the live smoke, host receipt, deployment artifact, Registry receipt,
 official latest record, exact complete Tests run, Pages deployment, and served
 bytes all agree may the states captured in the manifest be restored. An
-intentionally disabled workflow stays disabled.
+intentionally disabled workflow stays disabled. Restore the original 34 API
+states even though the target has only 33 scheduled paths: re-enabling the China
+econ workflow exposes its reviewed manual dispatch but cannot recreate the
+removed schedule.
 
 ```bash
 while IFS=$'\t' read -r workflow_id expected_state workflow_file; do
