@@ -10,8 +10,8 @@
   "type": "methodology",
   "priority": "high",
   "status": "live",
-  "published_at": "2026-08-23T22:48:31Z",
-  "modified_at": "2026-08-23T22:48:31Z",
+  "published_at": "2026-08-24T00:26:26Z",
+  "modified_at": "2026-08-24T00:26:26Z",
   "claim_fingerprint": "sha256:00ce2857f7b3d161951c22846e1b4ef3ffb18ed26b896aad05369cf445534aa3",
   "metric": {
     "label": "confounded signals",
@@ -32,10 +32,10 @@
     "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
     "input": {
       "filename": "coverage-guard-latest.json",
-      "sha256": "f51440bcac404e1e26d26139ef1f2b3b094c20b2191869984066eb08c3b6846e",
+      "sha256": "504c987d07159a044a6d43e8a40565e16c05f3dfa91acda0ccf223ab601cc3e6",
       "bytes": 4331
     },
-    "source_timestamp": "2026-08-23T22:48:31Z"
+    "source_timestamp": "2026-08-24T00:26:26Z"
   },
   "method": {
     "summary": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",

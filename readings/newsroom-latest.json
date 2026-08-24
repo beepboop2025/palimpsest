@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 27 are live. Health qualifiers: 3 degraded, 9 stale.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 4 degraded, 7 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-23T22:48:32Z",
+  "generated_at": "2026-08-24T00:26:27Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "68c740bbd23b08c7e4e2461f0175e840c961d64b",
+  "source_commit": "7ee91d376765bbf8876e3dae635589cdeb3bdea4",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 27,
+    "live": 28,
     "status": "degraded",
     "counts": {
-      "live": 27,
-      "degraded": 3,
-      "stale": 9,
+      "live": 28,
+      "degraded": 4,
+      "stale": 7,
       "missing": 0,
       "corrupt": 0
     }
@@ -79,19 +79,19 @@
       "slug": "board-alarm",
       "url": "https://palimpsest.info/news/board-alarm/",
       "signal_id": "board-alarm",
-      "headline": "Network layer elevated in the latest board synthesis",
+      "headline": "Multiple layers elevated together in the latest board synthesis",
       "dek": "The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
       "section": "command",
       "order": 1,
       "type": "analysis",
       "priority": "lead",
       "status": "live",
-      "published_at": "2026-08-23T22:48:31Z",
-      "modified_at": "2026-08-23T22:48:31Z",
-      "claim_fingerprint": "sha256:cd18e2f19a3b8680cc47b0d035b25c8284ba91d3e4834a81c32487169ed76ffc",
+      "published_at": "2026-08-24T00:26:26Z",
+      "modified_at": "2026-08-24T00:26:26Z",
+      "claim_fingerprint": "sha256:2dfa721e9252faf03bf9a4dec23ca95f1cec61c8b52d7adbe9d80bc7970a0c9d",
       "metric": {
         "label": "board e-value",
-        "value": 9.534,
+        "value": 20.444,
         "unit": "e-value",
         "denominator": {
           "label": null,
@@ -101,17 +101,17 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: single layer elevated: network. 39 of 39 configured sources report; 27 are live. Health qualifiers: 3 degraded, 9 stale. The board-wide e-value is 9.534; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 4 degraded, 7 stale. The board-wide e-value is 20.444; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/board-alarm-latest.json",
         "input": {
           "filename": "board-alarm-latest.json",
-          "sha256": "9ab9af4f6770136dc90adf96be3d383ecd5aa3bee90e9b7da40a476311e6d67c",
-          "bytes": 10191
+          "sha256": "840a2a6f7d73be3baf86fd360eacce10072a927553e360da3e6fb2ae7b040d8d",
+          "bytes": 10276
         },
-        "source_timestamp": "2026-08-23T22:48:31Z"
+        "source_timestamp": "2026-08-24T00:26:26Z"
       },
       "method": {
         "summary": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
@@ -190,8 +190,8 @@
       "type": "methodology",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-23T22:48:31Z",
-      "modified_at": "2026-08-23T22:48:31Z",
+      "published_at": "2026-08-24T00:26:26Z",
+      "modified_at": "2026-08-24T00:26:26Z",
       "claim_fingerprint": "sha256:00ce2857f7b3d161951c22846e1b4ef3ffb18ed26b896aad05369cf445534aa3",
       "metric": {
         "label": "confounded signals",
@@ -212,10 +212,10 @@
         "url": "https://palimpsest.info/readings/coverage-guard-latest.json",
         "input": {
           "filename": "coverage-guard-latest.json",
-          "sha256": "f51440bcac404e1e26d26139ef1f2b3b094c20b2191869984066eb08c3b6846e",
+          "sha256": "504c987d07159a044a6d43e8a40565e16c05f3dfa91acda0ccf223ab601cc3e6",
           "bytes": 4331
         },
-        "source_timestamp": "2026-08-23T22:48:31Z"
+        "source_timestamp": "2026-08-24T00:26:26Z"
       },
       "method": {
         "summary": "for each signal with a recorded sample size: robust (MAD) z of the metric and of its denominator, then least-squares metric ~ a + b*denominator over the reference readings and the latest residual scored against reference residuals. CONFIRMED when the departure survives conditioning (>= 0.5 of the raw z and >= 2); COVERAGE_CONFOUNDED when it does not; INCONCLUSIVE when the fit cannot support either call",
@@ -242,8 +242,8 @@
       "type": "methodology",
       "priority": "standard",
       "status": "live",
-      "published_at": "2026-08-23T22:48:31Z",
-      "modified_at": "2026-08-23T22:48:31Z",
+      "published_at": "2026-08-24T00:26:26Z",
+      "modified_at": "2026-08-24T00:26:26Z",
       "claim_fingerprint": "sha256:f96899396e48bffabf65f7c305bd5c3297a366f02e7e0965f2a557ebbea9e682",
       "metric": {
         "label": "empirical coverage",
@@ -264,10 +264,10 @@
         "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
         "input": {
           "filename": "forecast-ledger-latest.json",
-          "sha256": "2e7ef0e518a0bdfdc767d74ecf4af50204c14b0913aceb6679321e00515db3d4",
+          "sha256": "45b7e1edcc72349ea8eb1391ea536db54c96db15f535ee2a24a103c858c9c8d4",
           "bytes": 13965
         },
-        "source_timestamp": "2026-08-23T22:48:31Z"
+        "source_timestamp": "2026-08-24T00:26:26Z"
       },
       "method": {
         "summary": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",
@@ -293,8 +293,8 @@
       "type": "methodology",
       "priority": "background",
       "status": "live",
-      "published_at": "2026-08-23T22:48:31Z",
-      "modified_at": "2026-08-23T22:48:31Z",
+      "published_at": "2026-08-24T00:26:26Z",
+      "modified_at": "2026-08-24T00:26:26Z",
       "claim_fingerprint": "sha256:34322e87371fe1daa4ce37dcf6f8aad06cc59c8361cd0f941f874010e72ca2fa",
       "metric": {
         "label": "confirmed pairs",
@@ -315,10 +315,10 @@
         "url": "https://palimpsest.info/readings/cross-layer-latest.json",
         "input": {
           "filename": "cross-layer-latest.json",
-          "sha256": "4621e3e3983ee01eec5c3c9a6c5702606f7d20bff03e11233792696ebaa13cd6",
+          "sha256": "9b199dabe03f2070e7261cf3a1ad599292ec0f936cda1f376f038f636699a8ca",
           "bytes": 10227
         },
-        "source_timestamp": "2026-08-23T22:48:31Z"
+        "source_timestamp": "2026-08-24T00:26:26Z"
       },
       "method": {
         "summary": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
@@ -443,20 +443,20 @@
       "slug": "weibo-hot-search-join",
       "url": "https://palimpsest.info/news/weibo-hot-search-join/",
       "signal_id": "weibo-hotsearch",
-      "headline": "Weibo hot-search join: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The latest Weibo archive contains 3,116 hot-search board entries",
+      "dek": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
       "section": "attention",
       "order": 3,
       "type": "measurement",
       "priority": "high",
-      "status": "stale",
-      "published_at": "2026-08-23T19:39:10Z",
-      "modified_at": "2026-08-23T19:39:10Z",
-      "claim_fingerprint": "sha256:fbbd796714a27d8701bf89d250b4dc110fa7b57d5d236815f0693f5547448d69",
+      "status": "live",
+      "published_at": "2026-08-23T23:38:00Z",
+      "modified_at": "2026-08-23T23:38:00Z",
+      "claim_fingerprint": "sha256:c9b8feaffece756ffe5b6066af685588b778fcc6bc7a1e35e906ade4f86b9ab6",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "board entries",
+        "value": 3116,
+        "unit": "count",
         "denominator": {
           "label": null,
           "value": null
@@ -464,25 +464,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Weibo hot-search join because the source status is stale."
+          "type": "finding",
+          "statement": "The current archive window contains 3,116 Weibo hot-search board entries available for joining."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
         "input": {
           "filename": "weibo-hotsearch-latest.json",
-          "sha256": "c99d8f45eee5a9cb0dbe686e8363dc20de5d8a3d814411cfb9ef3355cc72813c",
+          "sha256": "3629b6ed892a1eddcf95e367999346a4c7c35ee99ce4294c9fe49b823cdcdf7d",
           "bytes": 40308
         },
-        "source_timestamp": "2026-08-23T19:39:10Z"
+        "source_timestamp": "2026-08-23T23:38:00Z"
       },
       "method": {
         "summary": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
         "version": 2
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention."
       ],
       "related_signal_ids": [
@@ -497,15 +496,15 @@
       "url": "https://palimpsest.info/news/silence-index/",
       "signal_id": "silence-index",
       "headline": "Silence index: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "stale",
-      "published_at": "2026-08-23T17:50:40Z",
-      "modified_at": "2026-08-23T17:50:40Z",
-      "claim_fingerprint": "sha256:dd0cef3624285bdb741fadf4ad138ac30cc90a95d271c28721e470c25febbfee",
+      "status": "degraded",
+      "published_at": "2026-08-23T23:47:08Z",
+      "modified_at": "2026-08-23T23:47:08Z",
+      "claim_fingerprint": "sha256:0aaa02fcf26cf2cb3f6a9bc1cbc9d5cd42cf48a141926be5afdeb224c4e6e529",
       "metric": {
         "label": null,
         "value": null,
@@ -518,24 +517,24 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for Silence index because the source status is stale."
+          "statement": "No current finding is published for Silence index because the source status is degraded."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/silence-index-latest.json",
         "input": {
           "filename": "silence-index-latest.json",
-          "sha256": "230ca6c2a99a39bb7b854c3f7ecd9a2ad7b726ad46ce1f940cf2847a39f41423",
-          "bytes": 6683
+          "sha256": "5195fdb0ecc117e763b05cea4e1e1d1cfd1365c0bb6bf8a55e6cbd347c57b047",
+          "bytes": 6674
         },
-        "source_timestamp": "2026-08-23T17:50:40Z"
+        "source_timestamp": "2026-08-23T23:47:08Z"
       },
       "method": {
         "summary": "pre-emptive silence: topics loud abroad and gone at home, the censorship that leaves no deletion to count. Guard rails are the processor's, not this runner's: no China nexus -> out_of_scope; missing global or domestic input -> abstain; and with no coupling baseline wired (v1), a topic without gazetteer corroboration abstains rather than scores — a topic China never covered being quiet at home is disinterest, not suppression. An abstention is published as an abstention, never as a zero. DDTI terms carry china_nexus by provenance: they are drawn from the censor's own deletion stream, so this runner sets the nexus flag at source and the processor's per-term gazetteer gate is deliberately bypassed for them (it still guards any non-DDTI deployment). A blind round (nothing scored) records null blackout counts in both the latest reading and the history, never zeros",
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
+        "Current finding withheld: declared measurement is incomplete: metric /n_blackout is absent or non-scalar",
         "Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain."
       ],
       "related_signal_ids": [
@@ -712,8 +711,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "live",
-      "published_at": "2026-08-23T19:39:10Z",
-      "modified_at": "2026-08-23T19:39:10Z",
+      "published_at": "2026-08-23T23:38:00Z",
+      "modified_at": "2026-08-23T23:38:00Z",
       "claim_fingerprint": "sha256:920f97438dc11f16b4b5508bf0e106bd656540b41207d38439e336ed5ca7f04f",
       "metric": {
         "label": "observations",
@@ -734,10 +733,10 @@
         "url": "https://palimpsest.info/readings/undertext-latest.json",
         "input": {
           "filename": "undertext-latest.json",
-          "sha256": "58fa71e9107329dc533d71196003fc48648112d7550dedfb8c7d13ddbe9a9f59",
+          "sha256": "27ac66b84f65f6e24db0b2c221490ba3c3f372a346bdd274d0bac12daa367b22",
           "bytes": 27576933
         },
-        "source_timestamp": "2026-08-23T19:39:10Z"
+        "source_timestamp": "2026-08-23T23:38:00Z"
       },
       "method": {
         "summary": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",

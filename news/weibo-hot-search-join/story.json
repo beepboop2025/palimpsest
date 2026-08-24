@@ -3,20 +3,20 @@
   "slug": "weibo-hot-search-join",
   "url": "https://palimpsest.info/news/weibo-hot-search-join/",
   "signal_id": "weibo-hotsearch",
-  "headline": "Weibo hot-search join: no current finding",
-  "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+  "headline": "The latest Weibo archive contains 3,116 hot-search board entries",
+  "dek": "Archived board captures provide a bounded domestic attention proxy for terms already tied to the deletion stream.",
   "section": "attention",
   "order": 3,
   "type": "measurement",
   "priority": "high",
-  "status": "stale",
-  "published_at": "2026-08-23T19:39:10Z",
-  "modified_at": "2026-08-23T19:39:10Z",
-  "claim_fingerprint": "sha256:fbbd796714a27d8701bf89d250b4dc110fa7b57d5d236815f0693f5547448d69",
+  "status": "live",
+  "published_at": "2026-08-23T23:38:00Z",
+  "modified_at": "2026-08-23T23:38:00Z",
+  "claim_fingerprint": "sha256:c9b8feaffece756ffe5b6066af685588b778fcc6bc7a1e35e906ade4f86b9ab6",
   "metric": {
-    "label": null,
-    "value": null,
-    "unit": null,
+    "label": "board entries",
+    "value": 3116,
+    "unit": "count",
     "denominator": {
       "label": null,
       "value": null
@@ -24,25 +24,24 @@
   },
   "claims": [
     {
-      "type": "availability",
-      "statement": "No current finding is published for Weibo hot-search join because the source status is stale."
+      "type": "finding",
+      "statement": "The current archive window contains 3,116 Weibo hot-search board entries available for joining."
     }
   ],
   "evidence": {
     "url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
     "input": {
       "filename": "weibo-hotsearch-latest.json",
-      "sha256": "c99d8f45eee5a9cb0dbe686e8363dc20de5d8a3d814411cfb9ef3355cc72813c",
+      "sha256": "3629b6ed892a1eddcf95e367999346a4c7c35ee99ce4294c9fe49b823cdcdf7d",
       "bytes": 40308
     },
-    "source_timestamp": "2026-08-23T19:39:10Z"
+    "source_timestamp": "2026-08-23T23:38:00Z"
   },
   "method": {
     "summary": "The hot-search board is itself a censored surface (curated top slot, on-command withdrawals), so it is read here as the record of PERMITTED attention, never as neutral volume. A DDTI term under deletion pressure that also trends is CONTAINED_VISIBLE (pruned, not hidden); one absent from the board while hot in the deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied attention) — the content-layer sibling of the Silence Index. attention_ratio is threat share over permitted-attention share, published with both parts.",
     "version": 2
   },
   "limitations": [
-    "Current finding withheld: freshness deadline has passed",
     "The hot-search board is a curated and censored surface, so it is only a proxy for domestic attention."
   ],
   "related_signal_ids": [

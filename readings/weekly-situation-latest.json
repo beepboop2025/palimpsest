@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-weekly-situation.v1",
-  "generated_at": "2026-08-23T22:48:31.494040+00:00",
+  "generated_at": "2026-08-24T00:26:27.034617+00:00",
   "template": {
     "id": "weekly-situation-v1",
     "version": 1,
@@ -18,7 +18,7 @@
     ],
     "sha256": "bf82970c09174fbae87e6067472d58c9a7d3f7d352456c4cb5af9e9420a39e2b"
   },
-  "headline": "212 DDTI terms from 107 CDT observations. 9 of 9 fused layers present. 1 layer(s) elevated (network). GFI 25.0 (interval 11.2 to 46.9).",
+  "headline": "212 DDTI terms from 107 CDT observations. 9 of 9 fused layers present. 2 layer(s) elevated (content, network). GFI 25.0 (interval 11.2 to 46.9).",
   "working_hardest": [
     {
       "term": "中国裁判文书网",
@@ -223,8 +223,8 @@
     "social": {
       "status": "ok",
       "source": "weibo",
-      "generated_at": "2026-08-23T19:39:10Z",
-      "sha256": "c99d8f45eee5a9cb0dbe686e8363dc20de5d8a3d814411cfb9ef3355cc72813c"
+      "generated_at": "2026-08-23T23:38:00Z",
+      "sha256": "3629b6ed892a1eddcf95e367999346a4c7c35ee99ce4294c9fe49b823cdcdf7d"
     },
     "global-news": {
       "status": "ok",
@@ -241,8 +241,8 @@
     "network-board": {
       "status": "ok",
       "source": "board_alarm",
-      "generated_at": "2026-08-23T22:48:31.087232+00:00",
-      "sha256": "9ab9af4f6770136dc90adf96be3d383ecd5aa3bee90e9b7da40a476311e6d67c"
+      "generated_at": "2026-08-24T00:26:26.773475+00:00",
+      "sha256": "840a2a6f7d73be3baf86fd360eacce10072a927553e360da3e6fb2ae7b040d8d"
     },
     "model": {
       "status": "ok",
@@ -253,8 +253,8 @@
     "forecast": {
       "status": "ok",
       "source": "forecast_ledger",
-      "generated_at": "2026-08-23T22:48:31.242470+00:00",
-      "sha256": "2e7ef0e518a0bdfdc767d74ecf4af50204c14b0913aceb6679321e00515db3d4"
+      "generated_at": "2026-08-24T00:26:26.879341+00:00",
+      "sha256": "45b7e1edcc72349ea8eb1391ea536db54c96db15f535ee2a24a103c858c9c8d4"
     }
   },
   "social_differential": {
@@ -270,7 +270,7 @@
       "2026-08-22",
       "2026-08-23"
     ],
-    "generated_at": "2026-08-23T19:39:10Z",
+    "generated_at": "2026-08-23T23:38:00Z",
     "note": "contained_visible: DDTI term still trends. suppressed_invisible: DDTI term never appears on the public hot-search board."
   },
   "campaigns": {
@@ -791,7 +791,7 @@
     ]
   },
   "n_layers_present": 9,
-  "trigger": "scheduled",
+  "trigger": "cross-layer",
   "inputs": {
     "ddti": {
       "source": "ddti",
@@ -811,8 +811,8 @@
       "source": "weibo",
       "path": "weibo-hotsearch-latest.json",
       "status": "ok",
-      "sha256": "c99d8f45eee5a9cb0dbe686e8363dc20de5d8a3d814411cfb9ef3355cc72813c",
-      "generated_at": "2026-08-23T19:39:10Z"
+      "sha256": "3629b6ed892a1eddcf95e367999346a4c7c35ee99ce4294c9fe49b823cdcdf7d",
+      "generated_at": "2026-08-23T23:38:00Z"
     },
     "github_refuge": {
       "source": "github_refuge",
@@ -825,29 +825,29 @@
       "source": "board_alarm",
       "path": "board-alarm-latest.json",
       "status": "ok",
-      "sha256": "9ab9af4f6770136dc90adf96be3d383ecd5aa3bee90e9b7da40a476311e6d67c",
-      "generated_at": "2026-08-23T22:48:31.087232+00:00"
+      "sha256": "840a2a6f7d73be3baf86fd360eacce10072a927553e360da3e6fb2ae7b040d8d",
+      "generated_at": "2026-08-24T00:26:26.773475+00:00"
     },
     "coverage_guard": {
       "source": "coverage_guard",
       "path": "coverage-guard-latest.json",
       "status": "ok",
-      "sha256": "f51440bcac404e1e26d26139ef1f2b3b094c20b2191869984066eb08c3b6846e",
-      "generated_at": "2026-08-23T22:48:31.191229+00:00"
+      "sha256": "504c987d07159a044a6d43e8a40565e16c05f3dfa91acda0ccf223ab601cc3e6",
+      "generated_at": "2026-08-24T00:26:26.839586+00:00"
     },
     "forecast_ledger": {
       "source": "forecast_ledger",
       "path": "forecast-ledger-latest.json",
       "status": "ok",
-      "sha256": "2e7ef0e518a0bdfdc767d74ecf4af50204c14b0913aceb6679321e00515db3d4",
-      "generated_at": "2026-08-23T22:48:31.242470+00:00"
+      "sha256": "45b7e1edcc72349ea8eb1391ea536db54c96db15f535ee2a24a103c858c9c8d4",
+      "generated_at": "2026-08-24T00:26:26.879341+00:00"
     },
     "cross_layer": {
       "source": "cross_layer",
       "path": "cross-layer-latest.json",
       "status": "ok",
-      "sha256": "4621e3e3983ee01eec5c3c9a6c5702606f7d20bff03e11233792696ebaa13cd6",
-      "generated_at": "2026-08-23T22:48:31.334688+00:00"
+      "sha256": "9b199dabe03f2070e7261cf3a1ad599292ec0f936cda1f376f038f636699a8ca",
+      "generated_at": "2026-08-24T00:26:26.937469+00:00"
     },
     "gfi": {
       "source": "gfi",
@@ -868,7 +868,7 @@
   ],
   "method_version": 1,
   "seal": {
-    "payload_sha256": "1e4ec3a72ac0d11105b62feee0f791088d324213342acc727caeccbe07a5f0d0",
+    "payload_sha256": "88ace4eec5fde29b893046ba94e5f6a0115694e328f7043939f15f6caab079cb",
     "schema_version": "palimpsest-weekly-situation.v1",
     "template_id": "weekly-situation-v1"
   }

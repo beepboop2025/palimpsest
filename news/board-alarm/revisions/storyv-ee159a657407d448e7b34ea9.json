@@ -1,0 +1,52 @@
+{
+  "id": "palimpsest-news:board-alarm",
+  "slug": "board-alarm",
+  "url": "https://palimpsest.info/news/board-alarm/",
+  "signal_id": "board-alarm",
+  "headline": "Multiple layers elevated together in the latest board synthesis",
+  "dek": "The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
+  "section": "command",
+  "order": 1,
+  "type": "analysis",
+  "priority": "lead",
+  "status": "live",
+  "published_at": "2026-08-24T00:26:26Z",
+  "modified_at": "2026-08-24T00:26:26Z",
+  "claim_fingerprint": "sha256:2dfa721e9252faf03bf9a4dec23ca95f1cec61c8b52d7adbe9d80bc7970a0c9d",
+  "metric": {
+    "label": "board e-value",
+    "value": 20.444,
+    "unit": "e-value",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "observation",
+      "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 28 are live. Health qualifiers: 4 degraded, 7 stale. The board-wide e-value is 20.444; the predeclared board alarm threshold is 20."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/board-alarm-latest.json",
+    "input": {
+      "filename": "board-alarm-latest.json",
+      "sha256": "840a2a6f7d73be3baf86fd360eacce10072a927553e360da3e6fb2ae7b040d8d",
+      "bytes": 10276
+    },
+    "source_timestamp": "2026-08-24T00:26:26Z"
+  },
+  "method": {
+    "summary": "per-signal two-sided conformal Shiryaev-Roberts e-detectors, except the model layer: refusal_churn is the v2 refusal suite's own anytime-valid mixture e-process over adjacent-run flip counts (one per model, calibrated on a burn-in, valid under unlimited peeking), panel-merged by arithmetic mean — a valid e-value at any stopping time, which is all the machinery below requires. e-BH (arXiv:2009.02824) at alpha=0.1 selects which signals are reported elevated, controlling FDR under arbitrary dependence; per-layer and board-wide e-values merged by arithmetic mean (arXiv:1912.06116), which is valid for dependent e-values; a layer counts as elevated at merged e >= 20, i.e. at most a 1-in-20 fluke, or when one of its signals alarmed within the last 12 readings",
+    "version": null
+  },
+  "limitations": [
+    "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement."
+  ],
+  "related_signal_ids": [
+    "event-flags",
+    "coverage-guard",
+    "vantage-fusion"
+  ]
+}
