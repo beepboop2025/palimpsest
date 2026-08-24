@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>China money-market data: CFETS repo, SHIBOR and CNY clocks · Palimpsest</title>
+<meta name="description" content="Keyless China money-market evidence from Palimpsest: official CFETS repo fixings, SHIBOR and USD/CNY parity with release, collection and economic-period clocks.">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info/china/money-markets/">
+<link rel="alternate" type="application/ai-catalog+json" href="https://palimpsest.info/.well-known/ai-catalog.json" title="Palimpsest AI catalog">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<link rel="stylesheet" href="/assets/china-discovery.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="China money-market data with evidence clocks">
+<meta property="og:description" content="Official CFETS repo, SHIBOR and CNY observations with point-in-time provenance and explicit limits.">
+<meta property="og:url" content="https://palimpsest.info/china/money-markets/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://palimpsest.info/china/money-markets/#page",
+      "url": "https://palimpsest.info/china/money-markets/",
+      "name": "China money-market data with evidence clocks",
+      "description": "Official CFETS repo fixings, SHIBOR and USD/CNY parity observations with separate economic-period, release and collection clocks.",
+      "dateModified": "2026-08-24",
+      "isPartOf": {"@type": "WebSite", "name": "Palimpsest", "url": "https://palimpsest.info/"},
+      "mainEntity": {"@id": "https://palimpsest.info/china/money-markets/#dataset"}
+    },
+    {
+      "@type": "Dataset",
+      "@id": "https://palimpsest.info/china/money-markets/#dataset",
+      "name": "Palimpsest China Economic Observation Ledger — CFETS coverage",
+      "description": "A bitemporal aggregate observation ledger whose current coverage is defined by its published manifest. It is not a complete China economy or funding-stress dataset.",
+      "url": "https://palimpsest.info/readings/china-econ-observations-latest.json",
+      "usageInfo": "https://palimpsest.info/data.html#rights",
+      "isAccessibleForFree": true,
+      "spatialCoverage": {"@type": "Place", "name": "China"},
+      "distribution": [
+        {"@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://palimpsest.info/readings/china-econ-observations-latest.json"},
+        {"@type": "DataDownload", "encodingFormat": "application/x-ndjson", "contentUrl": "https://palimpsest.info/readings/china-econ-observations.jsonl"}
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://palimpsest.info/china/money-markets/#faq",
+      "mainEntity": [
+        {"@type": "Question", "name": "Does Palimpsest provide a China money-market API?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The public OpenAPI document links the manifest and JSONL ledger, and the deployed MCP 1.8.1 server exposes query_economic_observations. Both are read-only and keyless."}},
+        {"@type": "Question", "name": "Does a CFETS fixing prove funding stress?", "acceptedAnswer": {"@type": "Answer", "text": "No. Each print is an official observation for a named benchmark and tenor. A level alone does not establish system-wide stress, causation, or an economy-wide direction."}},
+        {"@type": "Question", "name": "Are Palimpsest China economic forecasts validated?", "acceptedAnswer": {"@type": "Answer", "text": "No. At the 24 August 2026 publication snapshot, all named targets abstained and the broad China Observatory also abstained from an economy-wide direction. Re-read the current forecast and index artifacts before citing status."}}
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body class="cd-page">
+<a class="cd-skip" href="#main">Skip to content</a>
+<nav class="cd-nav" aria-label="Primary"><div class="cd-nav__inner">
+  <a class="cd-brand" href="/">PALIMPSEST</a>
+  <a href="/china/">China Observatory</a>
+  <a href="/china/capital-markets/">Capital-market evidence</a>
+  <a href="/china-economy-api/">API guide</a>
+  <a href="/developers.html">Developers</a>
+</div></nav>
+<main class="cd-main" id="main">
+  <header class="cd-hero">
+    <p class="cd-kicker">China evidence · money markets · point in time</p>
+    <h1>China money-market prints, with the clocks left attached.</h1>
+    <p class="cd-lede">Palimpsest publishes official CFETS repo fixings, SHIBOR tenors and the USD/CNY central parity as aggregate observations. Every row preserves the economic period and Palimpsest collection clock; <code>released_at</code> is the source release when established or an explicitly qualified first-observed upper bound.</p>
+    <div class="cd-actions">
+      <a class="cd-btn" href="/readings/china-econ-observations-latest.json">Inspect the manifest</a>
+      <a class="cd-btn cd-btn--ghost" href="/readings/china-econ-observations.jsonl">Download JSONL</a>
+      <a class="cd-btn cd-btn--ghost" href="/china-economy-api/">Use the API</a>
+    </div>
+  </header>
+
+  <aside class="cd-alert" aria-label="Current evidence status">
+    <strong>24 August 2026 snapshot: evidence, not a broad call.</strong>
+    At publication, the China Observatory was <code>warming_up</code> and abstained from a broad state-of-economy direction; the separate forecast artifact had zero promoted targets. Re-read the linked current artifacts before citing status. Do not convert these benchmark observations into a validated forecast or a general claim about Chinese capital markets.
+  </aside>
+
+  <section class="cd-section" aria-labelledby="included">
+    <p class="cd-kicker">What is actually included</p>
+    <h2 id="included">One official source family, manifest-defined series</h2>
+    <p>The 24 August 2026 publication snapshot covered the CFETS benchmark family: FDR and FR repo fixings, eight SHIBOR tenors, and USD/CNY central parity. The manifest—not this landing page—is authoritative for the current record count, coverage window, byte digest and series list.</p>
+    <div class="cd-grid">
+      <article class="cd-card"><p class="cd-label">Secured money</p><h3>FDR repo fixings</h3><p>Depository-institution repo fixings for 1-day, 7-day and 14-day tenors. Tenor and family remain distinct.</p></article>
+      <article class="cd-card"><p class="cd-label">Repo market</p><h3>FR fixings</h3><p>Repo fixings for 1-day, 7-day and 14-day tenors. They are not silently pooled with FDR.</p></article>
+      <article class="cd-card"><p class="cd-label">Unsecured money</p><h3>SHIBOR curve</h3><p>Overnight through one-year named tenors, retained as published percent rates rather than compressed into one score.</p></article>
+      <article class="cd-card"><p class="cd-label">Policy reference</p><h3>USD/CNY central parity</h3><p>The official daily parity observation. It is not an executable FX price or a forecast of currency direction.</p></article>
+    </div>
+  </section>
+
+  <section class="cd-section" aria-labelledby="clocks">
+    <p class="cd-kicker">Point-in-time discipline</p>
+    <h2 id="clocks">Three clocks answer three different questions</h2>
+    <div class="cd-card cd-card--wide">
+      <table class="cd-table">
+        <thead><tr><th>Field</th><th>What it means</th><th>Why an agent needs it</th></tr></thead>
+        <tbody>
+          <tr><th scope="row"><code>period_end</code></th><td>The trading day or economic period described by the number.</td><td>Prevents an old-period observation from being mistaken for a current print.</td></tr>
+          <tr><th scope="row"><code>released_at</code></th><td>When the source made the vintage available. If CFETS omits an exact release time, the row declares a conservative first-observed upper bound.</td><td>Prevents look-ahead in historical analysis.</td></tr>
+          <tr><th scope="row"><code>collected_at</code></th><td>When Palimpsest first knew and retained that vintage.</td><td>Allows a reproducible “what could we have known then?” query.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cd-note">The checksum proves that downloaded bytes match the published manifest. It does not independently authenticate the publisher.</p>
+  </section>
+
+  <section class="cd-section" aria-labelledby="examples">
+    <p class="cd-kicker">REST and MCP</p>
+    <h2 id="examples">Use the public evidence without a key</h2>
+    <p>Start with the manifest so scope and limitations travel with the data:</p>
+    <pre><code>curl -sS https://palimpsest.info/readings/china-econ-observations-latest.json \
+  | python3 -m json.tool</code></pre>
+    <p>For a bounded point-in-time MCP query, call the deployed <code>1.8.1</code> server:</p>
+    <pre><code>curl -sS https://api.seiche.info/palimpsest/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc":"2.0",
+    "id":1,
+    "method":"tools/call",
+    "params":{
+      "name":"query_economic_observations",
+      "arguments":{
+        "series_id":"cn.cfets.fdr007",
+        "revision_view":"latest-as-of",
+        "limit":10
+      }
+    }
+  }'</code></pre>
+    <p>Keep the returned <code>source</code>, clocks, evidence URL, digest, observation ID and limitations beside any derived statement.</p>
+  </section>
+
+  <section class="cd-section" aria-labelledby="rights">
+    <p class="cd-kicker">Coverage and rights</p>
+    <h2 id="rights">Open access is not blanket redistribution permission</h2>
+    <p>Palimpsest software, schemas and original metadata are MIT-licensed. Source observations retain their publishers’ rights. The CFETS registry entry requires attribution, rate-limit respect and retained raw-document hashes. Planned, licensed, blocked and out-of-scope sources are not treated as collected rows.</p>
+    <p><a href="/data.html#rights">Read the Evidence Atlas rights ledger</a> · <a href="/china/sources/">Inspect the source registry</a></p>
+  </section>
+
+  <section class="cd-section" aria-labelledby="routing">
+    <p class="cd-kicker">Use the right product</p>
+    <h2 id="routing">Money-market evidence is one layer of financial plumbing</h2>
+    <div class="cd-route"><strong>Palimpsest</strong><span>Use for source-bound China observations, economic-period/release/collection clocks, revisions and explicit abstention.</span></div>
+    <div class="cd-route"><strong>Seiche</strong><span>Use for system funding stress and broader money/FX/macro-capital transmission context.</span></div>
+    <div class="cd-route"><strong>LiquiLens</strong><span>Use for institution-level bank and NBFC evidence, supervisory actions and historical-eligibility flags.</span></div>
+    <div class="cd-route"><strong>Undertow</strong><span>Use for market exit cost, depth, venue concentration and unwind liquidity.</span></div>
+    <p><a href="https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence">Open the canonical Financial Evidence Agent Skill</a>.</p>
+  </section>
+
+  <section class="cd-section cd-faq" aria-labelledby="faq">
+    <p class="cd-kicker">FAQ</p>
+    <h2 id="faq">Questions agents should answer before citing</h2>
+    <details open><summary>Does Palimpsest provide a China money-market API?</summary><p>Yes. The public OpenAPI document links the manifest and JSONL ledger, and the deployed MCP 1.8.1 server exposes <code>query_economic_observations</code>. Both are read-only and keyless.</p></details>
+    <details><summary>Does a CFETS fixing prove funding stress?</summary><p>No. Each print is an official observation for a named benchmark and tenor. A level alone does not establish system-wide stress, causation, or an economy-wide direction.</p></details>
+    <details><summary>Are Palimpsest China economic forecasts validated?</summary><p>No. At the 24 August 2026 publication snapshot, all named targets abstained and the broad China Observatory also abstained from an economy-wide direction. Re-read the current forecast and index artifacts before citing status.</p></details>
+  </section>
+
+  <footer class="cd-footer">Cite the specific artifact, its <code>generated_at</code> timestamp, source, observation clocks and limitations—not only this explanatory page.</footer>
+</main>
+</body>
+</html>
