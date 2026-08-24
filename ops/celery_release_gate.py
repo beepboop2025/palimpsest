@@ -1,0 +1,621 @@
+#!/usr/bin/env python3
+"""Fail-closed Celery quiescence proof for the host release transaction.
+
+The gate binds a reviewed set of worker node names to their one allowed queue,
+requires exact Celery inspection replies, and joins that worker view to the
+Redis broker's ready and unacknowledged counts.  It never discards work.  A
+release may proceed only after two consecutive zero-work observations and, for
+``quiesce``, after every exact worker has stopped consuming its bound queue.
+
+The module deliberately imports no application code at import time.  Public
+functions accept an injected Celery app; the production app is imported only
+by the command-line entry point.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import binascii
+from dataclasses import dataclass
+from datetime import datetime, timezone
+import hashlib
+import json
+import re
+import sys
+import time
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any
+
+
+TOPOLOGY_SCHEMA = "palimpsest-celery-release-topology.v1"
+RECEIPT_SCHEMA = "palimpsest-celery-release-gate.v1"
+SUPPORTED_NODE_QUEUES = {
+    "default": "celery",
+    "collectors": "collectors",
+    "warehouse": "warehouse",
+    "velocity": "censorwatch",
+}
+MANDATORY_PRODUCTION_ROLES = frozenset({"default", "collectors", "warehouse"})
+BROKER_QUEUES = ("celery", "collectors", "warehouse", "censorwatch")
+INSPECT_TASK_METHODS = ("active", "reserved", "scheduled")
+MAX_TOPOLOGY_BYTES = 4096
+MAX_RECEIPT_BYTES = 64 * 1024
+MAX_TASK_RECORDS_PER_NODE = 10_000
+MAX_ACTIVE_QUEUES_PER_NODE = 16
+MAX_BROKER_RECORDS = 1_000_000
+MAX_WAIT_SECONDS = 3 * 60 * 60
+MAX_INTERVAL_SECONDS = 60
+MAX_INSPECT_TIMEOUT_SECONDS = 30
+MAX_SAMPLES = MAX_WAIT_SECONDS + 2
+REQUIRED_ZERO_SAMPLES = 2
+_NODE = re.compile(
+    r"(?:default|collectors|warehouse|velocity)@"
+    r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"
+)
+
+
+class GateError(RuntimeError):
+    """The live Celery/broker state cannot prove safe quiescence."""
+
+
+@dataclass(frozen=True, order=True)
+class NodeQueue:
+    node: str
+    queue: str
+
+
+def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _canonical_bytes(document: object) -> bytes:
+    return json.dumps(
+        document,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _validated_topology(
+    pairs: Iterable[NodeQueue | tuple[str, str]],
+) -> tuple[NodeQueue, ...]:
+    try:
+        values = tuple(
+            pair if isinstance(pair, NodeQueue) else NodeQueue(*pair) for pair in pairs
+        )
+    except (TypeError, ValueError) as error:
+        raise GateError("topology contains a malformed node/queue pair") from error
+    if not len(MANDATORY_PRODUCTION_ROLES) <= len(values) <= len(SUPPORTED_NODE_QUEUES):
+        raise GateError("topology must contain three or four workers")
+    nodes = [value.node for value in values]
+    queues = [value.queue for value in values]
+    if len(set(nodes)) != len(nodes) or len(set(queues)) != len(queues):
+        raise GateError("topology contains a duplicate node or queue")
+    roles = set()
+    for value in values:
+        if _NODE.fullmatch(value.node) is None:
+            raise GateError("topology contains an invalid worker node")
+        prefix = value.node.split("@", 1)[0]
+        roles.add(prefix)
+        if SUPPORTED_NODE_QUEUES[prefix] != value.queue:
+            raise GateError("worker node is bound to the wrong queue")
+    missing_roles = MANDATORY_PRODUCTION_ROLES - roles
+    if missing_roles:
+        raise GateError(
+            "topology is missing mandatory production roles: "
+            + ", ".join(sorted(missing_roles))
+        )
+    return tuple(sorted(values))
+
+
+def _topology_document(topology: tuple[NodeQueue, ...]) -> dict[str, object]:
+    return {
+        "schema_version": TOPOLOGY_SCHEMA,
+        "nodes": [{"node": value.node, "queue": value.queue} for value in topology],
+    }
+
+
+def encode_topology(pairs: Iterable[NodeQueue | tuple[str, str]]) -> str:
+    """Return a strict base64 token over canonical node/queue JSON."""
+    topology = _validated_topology(pairs)
+    payload = _canonical_bytes(_topology_document(topology))
+    if len(payload) > MAX_TOPOLOGY_BYTES:
+        raise GateError("topology exceeds its byte ceiling")
+    return base64.b64encode(payload).decode("ascii")
+
+
+def decode_topology(token: str) -> tuple[NodeQueue, ...]:
+    """Decode and re-canonicalize a topology token, rejecting aliases."""
+    if not isinstance(token, str) or not token or len(token) > MAX_TOPOLOGY_BYTES * 2:
+        raise GateError("topology token is missing or oversized")
+    try:
+        encoded = token.encode("ascii")
+        payload = base64.b64decode(encoded, validate=True)
+        if len(payload) > MAX_TOPOLOGY_BYTES:
+            raise GateError("topology exceeds its byte ceiling")
+        document = json.loads(
+            payload.decode("utf-8", "strict"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON number: {value}")
+            ),
+        )
+    except (UnicodeError, ValueError, binascii.Error) as error:
+        raise GateError("topology token is not strict canonical JSON") from error
+    if not isinstance(document, dict) or set(document) != {"schema_version", "nodes"}:
+        raise GateError("topology document has unexpected fields")
+    if document.get("schema_version") != TOPOLOGY_SCHEMA:
+        raise GateError("topology schema is unsupported")
+    raw_nodes = document.get("nodes")
+    if not isinstance(raw_nodes, list):
+        raise GateError("topology nodes are not a list")
+    pairs: list[NodeQueue] = []
+    for item in raw_nodes:
+        if not isinstance(item, dict) or set(item) != {"node", "queue"}:
+            raise GateError("topology node has unexpected fields")
+        if not isinstance(item["node"], str) or not isinstance(item["queue"], str):
+            raise GateError("topology node fields are not strings")
+        pairs.append(NodeQueue(item["node"], item["queue"]))
+    topology = _validated_topology(pairs)
+    canonical = _canonical_bytes(_topology_document(topology))
+    if payload != canonical or base64.b64encode(canonical) != encoded:
+        raise GateError("topology token is not canonical")
+    return topology
+
+
+def topology_sha256(topology: tuple[NodeQueue, ...]) -> str:
+    topology = _validated_topology(topology)
+    return hashlib.sha256(_canonical_bytes(_topology_document(topology))).hexdigest()
+
+
+def _exact_mapping_reply(
+    method: str,
+    reply: object,
+    expected_nodes: frozenset[str],
+) -> dict[str, Any]:
+    if not isinstance(reply, Mapping) or set(reply) != expected_nodes:
+        raise GateError(f"{method} did not return the exact worker set")
+    return dict(reply)
+
+
+def _task_counts(
+    inspector: object, nodes: tuple[str, ...]
+) -> dict[str, dict[str, int]]:
+    counts = {node: {} for node in nodes}
+    expected = frozenset(nodes)
+    for method in INSPECT_TASK_METHODS:
+        operation = getattr(inspector, method, None)
+        if not callable(operation):
+            raise GateError(f"Celery inspector has no {method} operation")
+        reply = _exact_mapping_reply(method, operation(), expected)
+        for node in nodes:
+            records = reply[node]
+            if not isinstance(records, list):
+                raise GateError(f"{method} reply is not a task list")
+            if len(records) > MAX_TASK_RECORDS_PER_NODE:
+                raise GateError(f"{method} reply exceeds its record ceiling")
+            counts[node][method] = len(records)
+    return counts
+
+
+def _active_queues(inspector: object, nodes: tuple[str, ...]) -> dict[str, list[str]]:
+    operation = getattr(inspector, "active_queues", None)
+    if not callable(operation):
+        raise GateError("Celery inspector has no active_queues operation")
+    reply = _exact_mapping_reply("active_queues", operation(), frozenset(nodes))
+    result: dict[str, list[str]] = {}
+    for node in nodes:
+        records = reply[node]
+        if not isinstance(records, list) or len(records) > MAX_ACTIVE_QUEUES_PER_NODE:
+            raise GateError("active_queues reply is malformed or oversized")
+        names: list[str] = []
+        for record in records:
+            if not isinstance(record, Mapping) or not isinstance(
+                record.get("name"), str
+            ):
+                raise GateError("active_queues record has no queue name")
+            name = record["name"]
+            if name not in BROKER_QUEUES or name in names:
+                raise GateError("active_queues contains an unexpected queue")
+            names.append(name)
+        result[node] = sorted(names)
+    return result
+
+
+def _ping(inspector: object, nodes: tuple[str, ...]) -> None:
+    operation = getattr(inspector, "ping", None)
+    if not callable(operation):
+        raise GateError("Celery inspector has no ping operation")
+    reply = _exact_mapping_reply("ping", operation(), frozenset(nodes))
+    for node in nodes:
+        if reply[node] != {"ok": "pong"}:
+            raise GateError("worker ping was not an exact pong")
+
+
+def _bounded_count(value: object, label: str) -> int:
+    if type(value) is not int or not 0 <= value <= MAX_BROKER_RECORDS:
+        raise GateError(f"{label} is not a bounded nonnegative count")
+    return value
+
+
+def _broker_counts_unchecked(app: object) -> tuple[dict[str, int], dict[str, int]]:
+    connection_factory = getattr(app, "connection_for_read", None)
+    if not callable(connection_factory):
+        raise GateError("Celery app cannot open a broker read connection")
+    with connection_factory() as connection:
+        transport = getattr(connection, "transport", None)
+        if getattr(transport, "driver_type", None) != "redis":
+            raise GateError("release gate requires the reviewed Redis transport")
+        channel_factory = getattr(connection, "channel", None)
+        if not callable(channel_factory):
+            raise GateError("broker connection cannot open a channel")
+        channel = channel_factory()
+        try:
+            size = getattr(channel, "_size", None)
+            acquire = getattr(channel, "conn_or_acquire", None)
+            unacked_key = getattr(channel, "unacked_key", None)
+            unacked_index_key = getattr(channel, "unacked_index_key", None)
+            if (
+                not callable(size)
+                or not callable(acquire)
+                or not isinstance(unacked_key, str)
+                or not isinstance(unacked_index_key, str)
+            ):
+                raise GateError("Redis broker channel lacks the reviewed count API")
+            depths = {
+                queue: _bounded_count(size(queue), f"{queue} broker depth")
+                for queue in BROKER_QUEUES
+            }
+            with acquire() as client:
+                unacked = {
+                    "hash": _bounded_count(
+                        client.hlen(unacked_key), "unacknowledged hash"
+                    ),
+                    "index": _bounded_count(
+                        client.zcard(unacked_index_key), "unacknowledged index"
+                    ),
+                }
+        finally:
+            close = getattr(channel, "close", None)
+            if callable(close):
+                close()
+    return depths, unacked
+
+
+def _broker_counts(app: object) -> tuple[dict[str, int], dict[str, int]]:
+    try:
+        return _broker_counts_unchecked(app)
+    except GateError:
+        raise
+    except Exception as error:
+        raise GateError("Redis broker count probe failed") from error
+
+
+def sample_state(
+    app: object,
+    topology: tuple[NodeQueue, ...],
+    *,
+    inspect_timeout_seconds: float = 10,
+) -> dict[str, object]:
+    """Take one exact, bounded worker-and-broker observation."""
+    topology = _validated_topology(topology)
+    if not 0 < inspect_timeout_seconds <= MAX_INSPECT_TIMEOUT_SECONDS:
+        raise GateError("inspect timeout is outside the supported bound")
+    nodes = tuple(value.node for value in topology)
+    control = getattr(app, "control", None)
+    inspect_factory = getattr(control, "inspect", None)
+    if not callable(inspect_factory):
+        raise GateError("Celery app has no inspection control")
+    try:
+        discovery = inspect_factory(timeout=inspect_timeout_seconds)
+        _ping(discovery, nodes)
+        inspector = inspect_factory(
+            destination=list(nodes), timeout=inspect_timeout_seconds
+        )
+        _ping(inspector, nodes)
+        tasks = _task_counts(inspector, nodes)
+        consumers = _active_queues(inspector, nodes)
+        broker_depth, unacked = _broker_counts(app)
+    except GateError:
+        raise
+    except Exception as error:
+        raise GateError("Celery inspection probe failed") from error
+    return {
+        "task_counts": tasks,
+        "active_queues": consumers,
+        "broker_depth": broker_depth,
+        "unacknowledged": unacked,
+    }
+
+
+def _consumer_state_matches(
+    sample: dict[str, object],
+    topology: tuple[NodeQueue, ...],
+    required_state: str,
+) -> bool:
+    active_queues = sample["active_queues"]
+    if not isinstance(active_queues, Mapping):
+        raise GateError("sample has no active queue map")
+    transition_pending = False
+    for value in topology:
+        names = active_queues.get(value.node)
+        if required_state == "consuming":
+            if names != [value.queue]:
+                raise GateError("worker is not consuming exactly its bound queue")
+        elif required_state == "fenced":
+            if names == [value.queue]:
+                transition_pending = True
+            elif names != []:
+                raise GateError("fenced worker still consumes an unexpected queue")
+        else:
+            raise GateError("consumer state must be consuming or fenced")
+    return not transition_pending
+
+
+def _sample_is_zero(sample: dict[str, object]) -> bool:
+    task_counts = sample["task_counts"]
+    broker_depth = sample["broker_depth"]
+    unacknowledged = sample["unacknowledged"]
+    return (
+        all(
+            count == 0
+            for per_node in task_counts.values()
+            for count in per_node.values()
+        )
+        and all(count == 0 for count in broker_depth.values())
+        and all(count == 0 for count in unacknowledged.values())
+    )
+
+
+def _utc_timestamp(now: Callable[[], datetime]) -> str:
+    value = now()
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise GateError("receipt clock is not timezone-aware")
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _receipt(
+    *,
+    topology: tuple[NodeQueue, ...],
+    consumer_state: str,
+    sample: dict[str, object],
+    samples_observed: int,
+    drain_samples: int,
+    cancellations: list[dict[str, str]],
+    now: Callable[[], datetime],
+) -> dict[str, object]:
+    document = {
+        "schema_version": RECEIPT_SCHEMA,
+        "generated_at": _utc_timestamp(now),
+        "status": "quiet" if consumer_state == "consuming" else "fenced",
+        "consumer_state": consumer_state,
+        "topology_sha256": topology_sha256(topology),
+        "topology": [{"node": value.node, "queue": value.queue} for value in topology],
+        "required_zero_samples": REQUIRED_ZERO_SAMPLES,
+        "samples_observed": samples_observed,
+        "drain_samples": drain_samples,
+        "cancellations": cancellations,
+        "final": sample,
+    }
+    if len(_canonical_bytes(document)) > MAX_RECEIPT_BYTES:
+        raise GateError("release gate receipt exceeds its byte ceiling")
+    return document
+
+
+def canonical_receipt(document: Mapping[str, object]) -> str:
+    payload = _canonical_bytes(dict(document))
+    if len(payload) > MAX_RECEIPT_BYTES:
+        raise GateError("release gate receipt exceeds its byte ceiling")
+    return payload.decode("utf-8")
+
+
+def wait_for_quiet(
+    app: object,
+    topology: tuple[NodeQueue, ...],
+    *,
+    consumer_state: str,
+    timeout_seconds: float = MAX_WAIT_SECONDS,
+    interval_seconds: float = 5,
+    inspect_timeout_seconds: float = 10,
+    clock: Callable[[], float] = time.monotonic,
+    sleeper: Callable[[float], None] = time.sleep,
+    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+) -> dict[str, object]:
+    """Wait for two consecutive exact zero-work samples."""
+    topology = _validated_topology(topology)
+    if not 0 < timeout_seconds <= MAX_WAIT_SECONDS:
+        raise GateError("wait timeout is outside the supported bound")
+    if not 0 < interval_seconds <= MAX_INTERVAL_SECONDS:
+        raise GateError("sample interval is outside the supported bound")
+    started = clock()
+    consecutive = 0
+    samples = 0
+    while True:
+        sample = sample_state(
+            app,
+            topology,
+            inspect_timeout_seconds=inspect_timeout_seconds,
+        )
+        samples += 1
+        if samples > MAX_SAMPLES:
+            raise GateError("release gate exceeded its sample ceiling")
+        consumers_ready = _consumer_state_matches(sample, topology, consumer_state)
+        if consumers_ready and _sample_is_zero(sample):
+            consecutive += 1
+            if consecutive == REQUIRED_ZERO_SAMPLES:
+                return _receipt(
+                    topology=topology,
+                    consumer_state=consumer_state,
+                    sample=sample,
+                    samples_observed=samples,
+                    drain_samples=0,
+                    cancellations=[],
+                    now=now,
+                )
+        else:
+            consecutive = 0
+        elapsed = clock() - started
+        if elapsed >= timeout_seconds:
+            raise GateError("Celery did not reach a stable zero-work state")
+        sleeper(min(interval_seconds, timeout_seconds - elapsed))
+
+
+def cancel_consumers(
+    app: object,
+    topology: tuple[NodeQueue, ...],
+    *,
+    inspect_timeout_seconds: float = 10,
+) -> list[dict[str, str]]:
+    """Fence each exact worker from its one reviewed queue."""
+    topology = _validated_topology(topology)
+    if not 0 < inspect_timeout_seconds <= MAX_INSPECT_TIMEOUT_SECONDS:
+        raise GateError("inspect timeout is outside the supported bound")
+    control = getattr(app, "control", None)
+    operation = getattr(control, "cancel_consumer", None)
+    if not callable(operation):
+        raise GateError("Celery app has no consumer cancellation control")
+    cancelled: list[dict[str, str]] = []
+    for value in topology:
+        try:
+            reply = operation(
+                value.queue,
+                destination=[value.node],
+                reply=True,
+                timeout=inspect_timeout_seconds,
+            )
+        except Exception as error:
+            raise GateError("consumer cancellation control failed") from error
+        expected = [{value.node: {"ok": f"no longer consuming from {value.queue}"}}]
+        if reply != expected:
+            raise GateError("consumer cancellation reply was not exact")
+        cancelled.append({"node": value.node, "queue": value.queue})
+    return cancelled
+
+
+def quiesce(
+    app: object,
+    topology: tuple[NodeQueue, ...],
+    *,
+    timeout_seconds: float = MAX_WAIT_SECONDS,
+    interval_seconds: float = 5,
+    inspect_timeout_seconds: float = 10,
+    clock: Callable[[], float] = time.monotonic,
+    sleeper: Callable[[float], None] = time.sleep,
+    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+) -> dict[str, object]:
+    """Drain exact consumers, fence them, and return canonicalizable proof."""
+    topology = _validated_topology(topology)
+    if not 0 < timeout_seconds <= MAX_WAIT_SECONDS:
+        raise GateError("wait timeout is outside the supported bound")
+    started = clock()
+    drain = wait_for_quiet(
+        app,
+        topology,
+        consumer_state="consuming",
+        timeout_seconds=timeout_seconds,
+        interval_seconds=interval_seconds,
+        inspect_timeout_seconds=inspect_timeout_seconds,
+        clock=clock,
+        sleeper=sleeper,
+        now=now,
+    )
+    remaining = timeout_seconds - (clock() - started)
+    if remaining <= 0:
+        raise GateError("Celery quiescence deadline expired before fencing")
+    cancelled = cancel_consumers(
+        app,
+        topology,
+        inspect_timeout_seconds=inspect_timeout_seconds,
+    )
+    fenced = wait_for_quiet(
+        app,
+        topology,
+        consumer_state="fenced",
+        timeout_seconds=remaining,
+        interval_seconds=interval_seconds,
+        inspect_timeout_seconds=inspect_timeout_seconds,
+        clock=clock,
+        sleeper=sleeper,
+        now=now,
+    )
+    fenced["samples_observed"] = int(drain["samples_observed"]) + int(
+        fenced["samples_observed"]
+    )
+    fenced["drain_samples"] = int(drain["samples_observed"])
+    fenced["cancellations"] = cancelled
+    if len(_canonical_bytes(fenced)) > MAX_RECEIPT_BYTES:
+        raise GateError("release gate receipt exceeds its byte ceiling")
+    return fenced
+
+
+def _pair(value: str) -> tuple[str, str]:
+    node, separator, queue = value.partition("=")
+    if separator != "=" or not node or not queue:
+        raise argparse.ArgumentTypeError("pair must be NODE=QUEUE")
+    return node, queue
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    encode = commands.add_parser("encode-topology")
+    encode.add_argument("--pair", action="append", type=_pair, required=True)
+    for command in ("check", "quiesce"):
+        subparser = commands.add_parser(command)
+        subparser.add_argument("--topology-b64", required=True)
+        subparser.add_argument(
+            "--timeout-seconds", type=float, default=MAX_WAIT_SECONDS
+        )
+        subparser.add_argument("--interval-seconds", type=float, default=5)
+        subparser.add_argument("--inspect-timeout-seconds", type=float, default=10)
+        if command == "check":
+            subparser.add_argument(
+                "--consumer-state",
+                choices=("consuming", "fenced"),
+                required=True,
+            )
+    return parser
+
+
+def main(argv: list[str] | None = None, *, app: object | None = None) -> int:
+    args = _parser().parse_args(argv)
+    try:
+        if args.command == "encode-topology":
+            print(encode_topology(args.pair))
+            return 0
+        topology = decode_topology(args.topology_b64)
+        if app is None:
+            from core.scheduler import app as production_app
+
+            app = production_app
+        common = {
+            "timeout_seconds": args.timeout_seconds,
+            "interval_seconds": args.interval_seconds,
+            "inspect_timeout_seconds": args.inspect_timeout_seconds,
+        }
+        if args.command == "quiesce":
+            receipt = quiesce(app, topology, **common)
+        else:
+            receipt = wait_for_quiet(
+                app,
+                topology,
+                consumer_state=args.consumer_state,
+                **common,
+            )
+        print(canonical_receipt(receipt))
+        return 0
+    except GateError as error:
+        print(f"celery release gate: {error}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

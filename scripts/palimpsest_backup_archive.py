@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import fcntl
+from datetime import datetime
 import hashlib
 import json
 import os
@@ -27,12 +28,18 @@ RUNTIME_UID = 10001
 RUNTIME_GID = 10001
 NEWSWIRE_UID = 1001
 NEWSWIRE_GID = 1001
+WITNESS_UID = 1001
+WITNESS_GID = 1001
 MAX_RUNS = 48
 MAX_ANALYSIS_ENTRIES = 32768
 MAX_ANALYSIS_DEPTH = 8
 MAX_DELIVERY_BYTES = 16 * 1024 * 1024
 MAX_ARTIFACT_ENTRIES = 1_000_000
 MAX_ARTIFACT_DEPTH = 64
+MAX_WITNESS_HISTORY_BYTES = 64 * 1024 * 1024
+MAX_WITNESS_HISTORY_RECORDS = 1_000_000
+MAX_WITNESS_HISTORY_LINE_BYTES = 4096
+MAX_WITNESS_FRESHNESS_BYTES = 64 * 1024
 _RUN_NAME = re.compile(r"run-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}")
 _ANALYSIS_SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,254}")
 # Live readings/data contain dot-prefixed coordination files and ISO timestamps
@@ -40,8 +47,8 @@ _ANALYSIS_SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,254}")
 # the special dot components remain forbidden separately.
 _ARTIFACT_SAFE_NAME = re.compile(r"[A-Za-z0-9._+-]{1,255}")
 SOURCE_ROOT = "/source"
-ARCHIVE_ROOTS = ("readings", "data", "analysis", "newswire")
-ARCHIVE_WRITE_ORDER = ("analysis", "readings", "data", "newswire")
+ARCHIVE_ROOTS = ("readings", "data", "analysis", "newswire", "witness")
+ARCHIVE_WRITE_ORDER = ("analysis", "readings", "data", "newswire", "witness")
 NEWSWIRE_FILES = (
     "newswire-latest.json",
     "newswire-status.json",
@@ -51,21 +58,202 @@ NEWSWIRE_FILES = (
 DELIVERY_FILES = ("wire-claim-audits-latest.json",)
 NEWSWIRE_STATUS_MAX_BYTES = 16 * 1024
 NEWSWIRE_STATUS_SCHEMA = "palimpsest-evidence-wire-attempt.v1"
+WITNESS_HISTORY_FILES = (
+    "erasure-ledger.witness.jsonl",
+    "eval-registry.witness.jsonl",
+)
+WITNESS_FRESHNESS_FILE = "public-freshness-state.json"
+WITNESS_FILES = (*WITNESS_HISTORY_FILES, WITNESS_FRESHNESS_FILE)
+WITNESS_FRESHNESS_SCHEMA = "palimpsest-public-freshness-state.v1"
+_LOWER_HEX_64 = re.compile(r"[0-9a-f]{64}")
+_WITNESS_CONDITION = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}/[a-z0-9][a-z0-9._-]{0,63}")
+_WITNESS_STATE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
+_WITNESS_IDENTITY = re.compile(r"([0-9]+):([0-9]+)")
+_expected_witness_identity_value = os.environ.get(
+    "PALIMPSEST_EXPECTED_WITNESS_IDENTITY", ""
+)
+_expected_witness_identity_match = _WITNESS_IDENTITY.fullmatch(
+    _expected_witness_identity_value
+)
+EXPECTED_WITNESS_IDENTITY = (
+    tuple(int(value) for value in _expected_witness_identity_match.groups())
+    if _expected_witness_identity_match is not None
+    else None
+)
 
 _DIRECTORY_OPEN_FLAGS = (
     os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
 )
 _REGULAR_OPEN_FLAGS = (
-    os.O_RDONLY
-    | os.O_NOFOLLOW
-    | os.O_NONBLOCK
-    | getattr(os, "O_CLOEXEC", 0)
+    os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
 )
 _LOCK_OPEN_FLAGS = _REGULAR_OPEN_FLAGS
 
 
 class ArchivePreflightError(RuntimeError):
     """The fixed private-analysis archive boundary is not trustworthy."""
+
+
+def _strict_json_object(payload: bytes, *, label: str) -> dict[str, object]:
+    """Decode one JSON object while refusing duplicate fields and odd text."""
+
+    if not payload.endswith(b"\n") or b"\r" in payload or b"\0" in payload:
+        raise ArchivePreflightError(f"{label} is not canonical UTF-8 JSON")
+
+    def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        value: dict[str, object] = {}
+        for key, item in pairs:
+            if key in value:
+                raise ArchivePreflightError(f"{label} has duplicate JSON fields")
+            value[key] = item
+        return value
+
+    try:
+        decoded = json.loads(payload, object_pairs_hook=unique_object)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ArchivePreflightError(f"{label} is not valid JSON") from exc
+    if not isinstance(decoded, dict):
+        raise ArchivePreflightError(f"{label} is not a JSON object")
+    return decoded
+
+
+def _read_bounded_descriptor(
+    descriptor: int, *, maximum_bytes: int, label: str
+) -> bytes:
+    """Read from a duplicate descriptor without trusting its pathname again."""
+
+    try:
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        with os.fdopen(os.dup(descriptor), "rb", closefd=True) as source:
+            payload = source.read(maximum_bytes + 1)
+    except OSError as exc:
+        raise ArchivePreflightError(f"{label} cannot be read") from exc
+    if len(payload) > maximum_bytes:
+        raise ArchivePreflightError(f"{label} exceeds its size bound")
+    return payload
+
+
+def _validate_witness_history(descriptor: int, *, name: str) -> str:
+    """Validate one append-only witness log and return its exact digest."""
+
+    payload = _read_bounded_descriptor(
+        descriptor,
+        maximum_bytes=MAX_WITNESS_HISTORY_BYTES,
+        label="witness history",
+    )
+    if (
+        not payload
+        or not payload.endswith(b"\n")
+        or b"\r" in payload
+        or b"\0" in payload
+    ):
+        raise ArchivePreflightError("witness history is not canonical JSONL")
+    lines = payload.splitlines(keepends=True)
+    if len(lines) > MAX_WITNESS_HISTORY_RECORDS:
+        raise ArchivePreflightError("witness history exceeds its record bound")
+    for line in lines:
+        if len(line) > MAX_WITNESS_HISTORY_LINE_BYTES:
+            raise ArchivePreflightError("witness history has an overlong record")
+        record = _strict_json_object(line, label="witness history record")
+        if set(record) != {"ts", "n", "head", "root", "alerts"}:
+            raise ArchivePreflightError("witness history record fields are not exact")
+        timestamp = record["ts"]
+        if not isinstance(timestamp, str) or len(timestamp) > 64:
+            raise ArchivePreflightError("witness history timestamp is malformed")
+        try:
+            parsed_timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ArchivePreflightError(
+                "witness history timestamp is malformed"
+            ) from exc
+        if parsed_timestamp.tzinfo is None or parsed_timestamp.utcoffset() is None:
+            raise ArchivePreflightError("witness history timestamp lacks a timezone")
+        for field in ("n", "alerts"):
+            value = record[field]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ArchivePreflightError(
+                    f"witness history {field} is not a non-negative integer"
+                )
+        for field in ("head", "root"):
+            value = record[field]
+            if not isinstance(value, str) or _LOWER_HEX_64.fullmatch(value) is None:
+                raise ArchivePreflightError(f"witness history {field} is malformed")
+    # The fixed names bind each validated history to one reviewed public chain.
+    if name not in WITNESS_HISTORY_FILES:
+        raise ArchivePreflightError("witness history filename is not approved")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _validate_witness_freshness(descriptor: int) -> str:
+    """Validate the small state latch restored alongside witness history."""
+
+    payload = _read_bounded_descriptor(
+        descriptor,
+        maximum_bytes=MAX_WITNESS_FRESHNESS_BYTES,
+        label="witness freshness state",
+    )
+    document = _strict_json_object(payload, label="witness freshness state")
+    if (
+        set(document) != {"schema_version", "conditions"}
+        or document.get("schema_version") != WITNESS_FRESHNESS_SCHEMA
+        or not isinstance(document.get("conditions"), dict)
+        or len(document["conditions"]) > 128
+    ):
+        raise ArchivePreflightError("witness freshness state contract is invalid")
+    for condition, state_name in document["conditions"].items():
+        if (
+            not isinstance(condition, str)
+            or _WITNESS_CONDITION.fullmatch(condition) is None
+            or not isinstance(state_name, str)
+            or _WITNESS_STATE.fullmatch(state_name) is None
+        ):
+            raise ArchivePreflightError("witness freshness condition is malformed")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _validate_witness_archive_entry(
+    relative_parts: tuple[str, ...],
+    metadata: os.stat_result,
+    descriptor: int,
+) -> str | None:
+    """Require the historical UID/GID and a non-writable public-observer tree."""
+
+    mode = stat.S_IMODE(metadata.st_mode)
+    if not relative_parts:
+        if (
+            not stat.S_ISDIR(metadata.st_mode)
+            or metadata.st_uid != WITNESS_UID
+            or metadata.st_gid != WITNESS_GID
+            or mode not in {0o700, 0o750, 0o755}
+        ):
+            raise ArchivePreflightError("witness directory contract is invalid")
+        if (
+            EXPECTED_WITNESS_IDENTITY is None
+            or (
+                metadata.st_dev,
+                metadata.st_ino,
+            )
+            != EXPECTED_WITNESS_IDENTITY
+        ):
+            raise ArchivePreflightError("witness directory identity is not exact")
+        return None
+    if len(relative_parts) != 1 or relative_parts[0] not in WITNESS_FILES:
+        raise ArchivePreflightError("witness root inventory is not exact")
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_nlink != 1
+        or metadata.st_uid != WITNESS_UID
+        or metadata.st_gid != WITNESS_GID
+    ):
+        raise ArchivePreflightError("witness state file contract is invalid")
+    name = relative_parts[0]
+    if name in WITNESS_HISTORY_FILES:
+        if mode not in {0o600, 0o640, 0o644}:
+            raise ArchivePreflightError("witness history mode is invalid")
+        return _validate_witness_history(descriptor, name=name)
+    if mode != 0o600:
+        raise ArchivePreflightError("witness freshness state mode is invalid")
+    return _validate_witness_freshness(descriptor)
 
 
 class _DescriptorArchiveReader:
@@ -159,7 +347,9 @@ def _validate_directory(
         raise ArchivePreflightError("analysis directory contract is invalid")
 
 
-def _entry_signature(relative_path: str, metadata: os.stat_result) -> tuple[object, ...]:
+def _entry_signature(
+    relative_path: str, metadata: os.stat_result
+) -> tuple[object, ...]:
     return (
         relative_path,
         metadata.st_dev,
@@ -197,9 +387,7 @@ def _scan_branch(
         with entries:
             for entry in entries:
                 if not _ANALYSIS_SAFE_NAME.fullmatch(entry.name):
-                    raise ArchivePreflightError(
-                        "analysis tree entry name is unsafe"
-                    )
+                    raise ArchivePreflightError("analysis tree entry name is unsafe")
                 try:
                     metadata = entry.stat(follow_symlinks=False)
                 except OSError as exc:
@@ -209,9 +397,7 @@ def _scan_branch(
                 relative = os.path.relpath(entry.path, ANALYSIS_ROOT)
                 signatures.append(_entry_signature(relative, metadata))
                 if len(signatures) > MAX_ANALYSIS_ENTRIES:
-                    raise ArchivePreflightError(
-                        "analysis tree exceeds its entry bound"
-                    )
+                    raise ArchivePreflightError("analysis tree exceeds its entry bound")
                 if stat.S_ISDIR(metadata.st_mode):
                     _validate_directory(
                         metadata,
@@ -243,24 +429,16 @@ def _validate_analysis_tree() -> tuple[tuple[object, ...], ...]:
         root_entries = {entry.name: entry for entry in os.scandir(ANALYSIS_ROOT)}
     except OSError as exc:
         raise ArchivePreflightError("analysis root cannot be inspected") from exc
-    _validate_directory(
-        root_metadata, uid=ROOT_UID, gid=ROOT_GID, mode=0o711
-    )
+    _validate_directory(root_metadata, uid=ROOT_UID, gid=ROOT_GID, mode=0o711)
     if set(root_entries) != {"runs", "private", "delivery"}:
         raise ArchivePreflightError("analysis root inventory is not exact")
 
     runs_metadata = root_entries["runs"].stat(follow_symlinks=False)
     private_metadata = root_entries["private"].stat(follow_symlinks=False)
     delivery_metadata = root_entries["delivery"].stat(follow_symlinks=False)
-    _validate_directory(
-        runs_metadata, uid=ROOT_UID, gid=RUNTIME_GID, mode=0o710
-    )
-    _validate_directory(
-        private_metadata, uid=RUNTIME_UID, gid=RUNTIME_GID, mode=0o700
-    )
-    _validate_directory(
-        delivery_metadata, uid=RUNTIME_UID, gid=RUNTIME_GID, mode=0o711
-    )
+    _validate_directory(runs_metadata, uid=ROOT_UID, gid=RUNTIME_GID, mode=0o710)
+    _validate_directory(private_metadata, uid=RUNTIME_UID, gid=RUNTIME_GID, mode=0o700)
+    _validate_directory(delivery_metadata, uid=RUNTIME_UID, gid=RUNTIME_GID, mode=0o711)
     signatures = [
         _entry_signature(".", root_metadata),
         _entry_signature("runs", runs_metadata),
@@ -289,9 +467,7 @@ def _validate_analysis_tree() -> tuple[tuple[object, ...], ...]:
     ):
         raise ArchivePreflightError("analysis delivery artifact contract is invalid")
     signatures.append(
-        _entry_signature(
-            f"delivery/{DELIVERY_FILES[0]}", delivery_file_metadata
-        )
+        _entry_signature(f"delivery/{DELIVERY_FILES[0]}", delivery_file_metadata)
     )
 
     try:
@@ -306,9 +482,7 @@ def _validate_analysis_tree() -> tuple[tuple[object, ...], ...]:
                 "analysis runs contain a staging or malformed directory"
             )
         run_metadata = run_entry.stat(follow_symlinks=False)
-        _validate_directory(
-            run_metadata, uid=ROOT_UID, gid=RUNTIME_GID, mode=0o750
-        )
+        _validate_directory(run_metadata, uid=ROOT_UID, gid=RUNTIME_GID, mode=0o750)
         relative = f"runs/{run_entry.name}"
         signatures.append(_entry_signature(relative, run_metadata))
         signatures.extend(
@@ -395,7 +569,9 @@ def _validate_open_identity(
             follow_symlinks=False,
         )
     except OSError as exc:
-        raise ArchivePreflightError("artifact entry identity cannot be verified") from exc
+        raise ArchivePreflightError(
+            "artifact entry identity cannot be verified"
+        ) from exc
     expected_signature = _metadata_signature(expected)
     if (
         _metadata_signature(descriptor_metadata) != expected_signature
@@ -421,9 +597,7 @@ def _open_child_descriptor(
         elif stat.S_ISREG(expected.st_mode):
             flags = _REGULAR_OPEN_FLAGS
         else:
-            raise ArchivePreflightError(
-                "artifact tree contains a link or special file"
-            )
+            raise ArchivePreflightError("artifact tree contains a link or special file")
         descriptor = os.open(name, flags, dir_fd=parent_descriptor)
     except ArchivePreflightError:
         raise
@@ -444,18 +618,13 @@ def _open_child_descriptor(
         raise
 
 
-def _safe_directory_names(
-    descriptor: int, *, root_name: str
-) -> tuple[str, ...]:
+def _safe_directory_names(descriptor: int, *, root_name: str) -> tuple[str, ...]:
     try:
         names = tuple(sorted(os.listdir(descriptor)))
     except OSError as exc:
         raise ArchivePreflightError("artifact directory cannot be enumerated") from exc
     pattern = _ANALYSIS_SAFE_NAME if root_name == "analysis" else _ARTIFACT_SAFE_NAME
-    if any(
-        name in {".", ".."} or not pattern.fullmatch(name)
-        for name in names
-    ):
+    if any(name in {".", ".."} or not pattern.fullmatch(name) for name in names):
         raise ArchivePreflightError("artifact tree entry name is unsafe")
     return names
 
@@ -536,9 +705,7 @@ def _validate_analysis_archive_entry(
         raise ArchivePreflightError("analysis entry ownership or mode is invalid")
 
 
-def _tar_info(
-    member_name: str, metadata: os.stat_result
-) -> tarfile.TarInfo:
+def _tar_info(member_name: str, metadata: os.stat_result) -> tarfile.TarInfo:
     member = tarfile.TarInfo(member_name)
     member.mode = stat.S_IMODE(metadata.st_mode)
     member.uid = metadata.st_uid
@@ -565,9 +732,7 @@ def _archive_open_tree(
     entry_limit = (
         MAX_ANALYSIS_ENTRIES if root_name == "analysis" else MAX_ARTIFACT_ENTRIES
     )
-    depth_limit = (
-        MAX_ANALYSIS_DEPTH if root_name == "analysis" else MAX_ARTIFACT_DEPTH
-    )
+    depth_limit = MAX_ANALYSIS_DEPTH if root_name == "analysis" else MAX_ARTIFACT_DEPTH
     entries_seen = 0
     newswire_latest_sha256: str | None = None
     newswire_status: dict[str, object] | None = None
@@ -587,6 +752,13 @@ def _archive_open_tree(
             raise ArchivePreflightError("artifact tree exceeds its traversal bound")
         if root_name == "analysis":
             _validate_analysis_archive_entry(relative_parts, metadata)
+        witness_digest = None
+        if root_name == "witness":
+            witness_digest = _validate_witness_archive_entry(
+                relative_parts,
+                metadata,
+                descriptor,
+            )
         if root_name == "newswire" and relative_parts:
             if len(relative_parts) != 1 or relative_parts[0] not in NEWSWIRE_FILES:
                 raise ArchivePreflightError("newswire root inventory is not exact")
@@ -612,6 +784,13 @@ def _archive_open_tree(
                         capture_limit=capture_limit,
                     )
                     archive.addfile(member, reader)
+                    if (
+                        witness_digest is not None
+                        and reader.hexdigest() != witness_digest
+                    ):
+                        raise ArchivePreflightError(
+                            "witness state changed while it was archived"
+                        )
                     if root_name == "newswire":
                         if relative_parts == ("newswire-latest.json",):
                             newswire_latest_sha256 = reader.hexdigest()
@@ -647,9 +826,10 @@ def _archive_open_tree(
                     )
             if root_name == "newswire" and not relative_parts:
                 if tuple(names_before) != NEWSWIRE_FILES:
-                    raise ArchivePreflightError(
-                        "newswire root inventory is not exact"
-                    )
+                    raise ArchivePreflightError("newswire root inventory is not exact")
+            if root_name == "witness" and not relative_parts:
+                if tuple(names_before) != WITNESS_FILES:
+                    raise ArchivePreflightError("witness root inventory is not exact")
             for name in names_before:
                 child_descriptor, child_metadata = _open_child_descriptor(
                     descriptor, name
@@ -665,10 +845,7 @@ def _archive_open_tree(
                     )
                 finally:
                     os.close(child_descriptor)
-            if (
-                _safe_directory_names(descriptor, root_name=root_name)
-                != names_before
-            ):
+            if _safe_directory_names(descriptor, root_name=root_name) != names_before:
                 raise ArchivePreflightError("artifact directory inventory changed")
 
         _validate_open_identity(

@@ -1,0 +1,28 @@
+{
+  "expires_at": "2026-08-31T23:59:59Z",
+  "reviewed_at": "2026-08-24T18:00:00Z",
+  "schema_version": "palimpsest-observer-release-policy.v1",
+  "watchdog": [
+    {"baseline_states": ["stale"], "condition": "evidence/baike-public-snapshot", "reason": "Public Baike remains access-walled; no authorized substitute evidence exists.", "required": true, "scope": "evidence", "state": "stale", "subject": "baike-public-snapshot"},
+    {"baseline_states": ["stale"], "condition": "evidence/gdelt", "reason": "GDELT is rate-limited upstream; the last authentic observation remains visible.", "required": true, "scope": "evidence", "state": "stale", "subject": "gdelt"},
+    {"baseline_states": ["missing"], "condition": "evidence/greyball-donation", "reason": "No permitted donation input has been supplied; placeholders are forbidden.", "required": true, "scope": "evidence", "state": "missing", "subject": "greyball-donation"},
+    {"baseline_states": ["missing"], "condition": "evidence/greyball-endpoint", "reason": "No permitted endpoint input has been supplied; placeholders are forbidden.", "required": true, "scope": "evidence", "state": "missing", "subject": "greyball-endpoint"},
+    {"baseline_states": ["missing"], "condition": "evidence/greyball-observers", "reason": "No permitted observer input has been supplied; placeholders are forbidden.", "required": true, "scope": "evidence", "state": "missing", "subject": "greyball-observers"},
+    {"baseline_states": ["missing"], "condition": "evidence/greyball-panel", "reason": "No permitted panel input has been supplied; placeholders are forbidden.", "required": true, "scope": "evidence", "state": "missing", "subject": "greyball-panel"},
+    {"baseline_states": ["missing"], "condition": "evidence/greyball-serp", "reason": "No permitted SERP input has been supplied; placeholders are forbidden.", "required": true, "scope": "evidence", "state": "missing", "subject": "greyball-serp"},
+    {"baseline_states": ["stale"], "condition": "evidence/net4people", "reason": "The public upstream currently returns an access error; stale evidence remains explicit.", "required": true, "scope": "evidence", "state": "stale", "subject": "net4people"},
+    {"baseline_states": ["missing"], "condition": "evidence/telegram-public-channels", "reason": "Public Telegram previews remain access-walled; private access is not substituted.", "required": true, "scope": "evidence", "state": "missing", "subject": "telegram-public-channels"},
+    {"baseline_states": ["degraded"], "condition": "osint/baike-public-snapshot", "reason": "The published bundle truthfully preserves the Baike access-wall degradation.", "required": false, "scope": "osint", "state": "degraded", "subject": "baike-public-snapshot"},
+    {"baseline_states": ["degraded"], "condition": "osint/believability", "reason": "Believability remains degraded until independent source inputs recover.", "required": false, "scope": "osint", "state": "degraded", "subject": "believability"},
+    {"baseline_states": ["stale"], "condition": "osint/gdelt", "reason": "The published bundle truthfully preserves the GDELT upstream staleness.", "required": true, "scope": "osint", "state": "stale", "subject": "gdelt"},
+    {"baseline_states": ["stale"], "condition": "osint/nemesis", "reason": "No current authenticated Nemesis snapshot exists.", "required": false, "scope": "osint", "state": "stale", "subject": "nemesis"},
+    {"baseline_states": ["stale", "degraded"], "condition": "osint/silence-index", "reason": "The index has no scored blackout denominator and must remain visibly degraded after the reviewed publication transition.", "required": true, "scope": "osint", "state": "degraded", "subject": "silence-index"}
+  ],
+  "witness": [
+    {"baseline_states": ["degraded"], "condition": "osint/baike-public-snapshot", "reason": "The served bundle preserves the reviewed Baike degradation.", "state": "degraded"},
+    {"baseline_states": ["degraded"], "condition": "osint/believability", "reason": "The served bundle preserves the reviewed believability degradation.", "state": "degraded"},
+    {"baseline_states": ["stale"], "condition": "osint/gdelt", "reason": "The served bundle preserves the reviewed GDELT staleness.", "state": "stale"},
+    {"baseline_states": ["stale"], "condition": "osint/nemesis", "reason": "The served bundle preserves the reviewed Nemesis staleness.", "state": "stale"},
+    {"baseline_states": ["stale", "degraded"], "condition": "osint/silence-index", "reason": "The served bundle preserves the reviewed silence-index degradation after publication.", "state": "degraded"}
+  ]
+}

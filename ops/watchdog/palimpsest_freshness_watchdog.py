@@ -48,6 +48,7 @@ PUBLICATION_URLS = frozenset({PUBLIC_NEWSWIRE_URL, PUBLIC_SITUATION_URL})
 MAX_INPUT_BYTES = 4 * 1024 * 1024
 MAX_PUBLICATION_INPUT_BYTES = 12 * 1024 * 1024
 MAX_STATE_BYTES = 64 * 1024
+_INVOCATION_ID = re.compile(r"[0-9a-f]{32}")
 MAX_CONDITIONS = 128
 MAX_ALERT_TRANSITIONS = 64
 MAX_ALERT_BYTES = 16 * 1024
@@ -70,8 +71,8 @@ def _now() -> datetime:
 
 
 def _iso(value: datetime) -> str:
-    return value.astimezone(UTC).replace(microsecond=0).isoformat().replace(
-        "+00:00", "Z"
+    return (
+        value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )
 
 
@@ -265,7 +266,9 @@ def _load_json(path: Path) -> dict[str, Any]:
     return document
 
 
-def _problem(scope: str, subject: str, state: str, *, required: bool = True) -> dict[str, Any]:
+def _problem(
+    scope: str, subject: str, state: str, *, required: bool = True
+) -> dict[str, Any]:
     safe_scope = _identifier(scope, fallback="watchdog")
     safe_subject = _identifier(subject, fallback="invalid")
     safe_state = _identifier(state, fallback="unknown")
@@ -331,8 +334,7 @@ def _disabled_signal(signal: Mapping[str, Any]) -> bool:
     if isinstance(health, Mapping):
         values.extend((health.get("collector_status"), health.get("upstream_status")))
     return any(
-        isinstance(value, str) and "disabled" in value.casefold()
-        for value in values
+        isinstance(value, str) and "disabled" in value.casefold() for value in values
     )
 
 
@@ -376,7 +378,9 @@ def _osint_problems(
         raw_state = _identifier(raw_signal.get("status"), fallback="corrupt")
         deadline_value = raw_signal.get("freshness_deadline")
         deadline = _timestamp(deadline_value) if deadline_value is not None else None
-        configured = deadline_value is not None or raw_signal.get("source_timestamp") is not None
+        configured = (
+            deadline_value is not None or raw_signal.get("source_timestamp") is not None
+        )
 
         # An optional source with no current deployment is an honest absence,
         # not an outage. Once it has timestamps/deadlines, it is configured and
@@ -384,13 +388,19 @@ def _osint_problems(
         if optional and raw_state in {"missing", "corrupt"} and not configured:
             continue
         if deadline_value is not None and deadline is None:
-            problems.append(_problem("osint", signal_id, "corrupt", required=not optional))
+            problems.append(
+                _problem("osint", signal_id, "corrupt", required=not optional)
+            )
             continue
         if deadline is not None and now > deadline:
-            problems.append(_problem("osint", signal_id, "stale", required=not optional))
+            problems.append(
+                _problem("osint", signal_id, "stale", required=not optional)
+            )
             continue
         if raw_state in {"stale", "missing", "corrupt", "degraded"}:
-            problems.append(_problem("osint", signal_id, raw_state, required=not optional))
+            problems.append(
+                _problem("osint", signal_id, raw_state, required=not optional)
+            )
     return problems
 
 
@@ -562,6 +572,11 @@ def _condition_map(document: Mapping[str, Any]) -> dict[str, str]:
     return dict(sorted(out.items()))
 
 
+def _invocation_id() -> str:
+    value = os.getenv("INVOCATION_ID", "")
+    return value if _INVOCATION_ID.fullmatch(value) else "0" * 32
+
+
 def _load_state(path: Path) -> dict[str, str]:
     try:
         metadata = path.lstat()
@@ -575,7 +590,10 @@ def _load_state(path: Path) -> dict[str, str]:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, ValueError) as exc:
         raise WatchdogError("watchdog state is invalid") from exc
-    if not isinstance(document, dict) or document.get("schema_version") != STATE_SCHEMA_VERSION:
+    if (
+        not isinstance(document, dict)
+        or document.get("schema_version") != STATE_SCHEMA_VERSION
+    ):
         raise WatchdogError("watchdog state schema is invalid")
     conditions = document.get("conditions")
     if not isinstance(conditions, dict) or len(conditions) > MAX_CONDITIONS:
@@ -710,7 +728,9 @@ def _arguments(argv: Iterable[str] | None = None) -> argparse.Namespace:
             )
         ),
     )
-    parser.add_argument("--now", help="fixed timezone-aware ISO timestamp for offline replay")
+    parser.add_argument(
+        "--now", help="fixed timezone-aware ISO timestamp for offline replay"
+    )
     return parser.parse_args(list(argv) if argv is not None else None)
 
 
@@ -763,6 +783,7 @@ def run(
         now=observed_at,
         bundle_max_age_seconds=args.bundle_max_age_seconds,
     )
+    document["invocation_id"] = _invocation_id()
     try:
         previous = _load_state(args.state)
     except WatchdogError:
@@ -799,11 +820,14 @@ def run(
     # webhook is configured but delivery fails, leave newly opened conditions
     # unlatched so the next timer run retries the notification.
     if not opened or not webhook or delivered:
-        state = json.dumps(
-            {"schema_version": STATE_SCHEMA_VERSION, "conditions": current},
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode() + b"\n"
+        state = (
+            json.dumps(
+                {"schema_version": STATE_SCHEMA_VERSION, "conditions": current},
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+            + b"\n"
+        )
         _atomic_write(args.state, state, mode=0o600)
 
     print(

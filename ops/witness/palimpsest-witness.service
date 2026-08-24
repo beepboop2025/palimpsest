@@ -7,8 +7,14 @@ Wants=network-online.target
 Type=oneshot
 # Adjust User and the script path to the box's layout.
 User=palimpsest
+StateDirectory=palimpsest-witness
+StateDirectoryMode=0700
+# This root-only file supplies only optional Telegram credentials. ExecStart's
+# explicit env assignments below pin every release-safety input after it.
 EnvironmentFile=-/etc/palimpsest-witness.env
-ExecStart=/usr/bin/python3 /opt/palimpsest/ops/witness/palimpsest_witness.py
+# Preserve the canonical witness's append-only chain history in its original
+# home directory. StateDirectory owns only the new machine status envelope.
+ExecStart=/usr/bin/env PALIMPSEST_SITE=https://palimpsest.info PALIMPSEST_WITNESS_DIR=/home/palimpsest/.palimpsest-witness PALIMPSEST_WITNESS_STATUS_PATH=/var/lib/palimpsest-witness/status.json PALIMPSEST_WITNESS_REQUIRE_BLEEDTHROUGH=1 /usr/bin/python3 /opt/palimpsest/ops/witness/palimpsest_witness.py
 TimeoutStartSec=3m
 UMask=0077
 NoNewPrivileges=true

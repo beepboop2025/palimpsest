@@ -36,6 +36,7 @@ RELEASE_PROOF_SCHEMA = "palimpsest-public-osint-release-proof.v1"
 OSINT_SCHEMA = "osint-china.v1"
 REPOSITORY_URL = "https://github.com/beepboop2025/palimpsest.git"
 PUBLIC_URL = "https://palimpsest.info/readings/osint-china-latest.json"
+PUBLIC_LEDGER_URL = "https://palimpsest.info/readings/readings-ledger.jsonl"
 OSINT_REPOSITORY_PATH = "readings/osint-china-latest.json"
 LEDGER_REPOSITORY_PATH = "readings/readings-ledger.jsonl"
 OSINT_FILENAME = "osint-china-latest.json"
@@ -108,6 +109,7 @@ class Config:
     deployed_receipt: Path = DEFAULT_DEPLOYED_RECEIPT
     repository_url: str = REPOSITORY_URL
     public_url: str = PUBLIC_URL
+    public_ledger_url: str = PUBLIC_LEDGER_URL
     require_root: bool = True
     legacy_readings_mirror: bool = False
 
@@ -303,10 +305,10 @@ def _ensure_authority_directory(config: Config) -> Path:
     except OSError as exc:
         raise SyncFailure("unsafe-authority-directory") from exc
     metadata = _real_directory(authority, code="unsafe-authority-directory")
-    if (
-        (metadata.st_uid, metadata.st_gid) != (expected_uid, expected_gid)
-        or stat.S_IMODE(metadata.st_mode) != 0o755
-    ):
+    if (metadata.st_uid, metadata.st_gid) != (
+        expected_uid,
+        expected_gid,
+    ) or stat.S_IMODE(metadata.st_mode) != 0o755:
         raise SyncFailure("unsafe-authority-directory")
     return authority
 
@@ -521,9 +523,7 @@ def _legacy_pair(
     if install:
         # The ledger goes first so an interrupted bridge still leaves the old
         # artifact sealed by a prefix-compatible ledger.
-        ledger = _install_legacy_file(
-            config, ledger_path, ledger_raw, expected=ledger
-        )
+        ledger = _install_legacy_file(config, ledger_path, ledger_raw, expected=ledger)
         artifact = _install_legacy_file(
             config, artifact_path, artifact_raw, expected=artifact
         )
@@ -867,12 +867,13 @@ def _fetch_public(url: str, publication_commit: str) -> bytes:
         headers={"Accept": "application/json", "Cache-Control": "no-cache"},
     )
     opener = urllib.request.build_opener(_NoRedirect())
+    maximum = MAX_LEDGER_BYTES if url == PUBLIC_LEDGER_URL else MAX_OSINT_BYTES
     try:
         with opener.open(request, timeout=30) as response:
-            raw = response.read(MAX_OSINT_BYTES + 1)
+            raw = response.read(maximum + 1)
     except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
         raise SyncFailure("public-fetch-failed") from exc
-    if not raw or len(raw) > MAX_OSINT_BYTES:
+    if not raw or len(raw) > maximum:
         raise SyncFailure("public-artifact-invalid")
     return raw
 
@@ -954,7 +955,9 @@ def _existing_receipt(config: Config) -> dict[str, Any] | None:
     return value
 
 
-def _release_proof(config: Config, deployed_commit: str) -> tuple[dict[str, Any], str] | None:
+def _release_proof(
+    config: Config, deployed_commit: str
+) -> tuple[dict[str, Any], str] | None:
     snapshot = _read_optional_regular(
         config.release_proof_path,
         maximum=16 * 1024,
@@ -963,15 +966,12 @@ def _release_proof(config: Config, deployed_commit: str) -> tuple[dict[str, Any]
     if snapshot is None:
         return None
     expected_uid, expected_gid = _managed_identity(config)
-    if (
-        stat.S_IMODE(snapshot.metadata.st_mode) != 0o600
-        or (snapshot.metadata.st_uid, snapshot.metadata.st_gid)
-        != (expected_uid, expected_gid)
-    ):
+    if stat.S_IMODE(snapshot.metadata.st_mode) != 0o600 or (
+        snapshot.metadata.st_uid,
+        snapshot.metadata.st_gid,
+    ) != (expected_uid, expected_gid):
         raise SyncFailure("release-proof-unsafe")
-    value = _strict_json(
-        snapshot.raw, maximum=16 * 1024, code="release-proof-invalid"
-    )
+    value = _strict_json(snapshot.raw, maximum=16 * 1024, code="release-proof-invalid")
     if (
         not isinstance(value, dict)
         or set(value) != RELEASE_PROOF_FIELDS
@@ -1028,15 +1028,19 @@ def _validate_authority_pair(
     except SyncFailure as exc:
         raise SyncFailure(ledger_code) from exc
     canonical_digest = _sha256(_canonical(document))
-    osint_seals = [
-        entry for entry in entries if entry["source"] == "osint-china"
-    ]
-    if not osint_seals or (
-        require_newest_seal
-        and osint_seals[-1]["payload_sha256"] != canonical_digest
-    ) or (
-        not require_newest_seal
-        and not any(entry["payload_sha256"] == canonical_digest for entry in osint_seals)
+    osint_seals = [entry for entry in entries if entry["source"] == "osint-china"]
+    if (
+        not osint_seals
+        or (
+            require_newest_seal
+            and osint_seals[-1]["payload_sha256"] != canonical_digest
+        )
+        or (
+            not require_newest_seal
+            and not any(
+                entry["payload_sha256"] == canonical_digest for entry in osint_seals
+            )
+        )
     ):
         raise SyncFailure("osint-seal-mismatch")
     return document, generation, input_commit, entries, canonical_digest
@@ -1134,11 +1138,10 @@ def verify_installed(config: Config) -> dict[str, Any]:
         state_metadata.st_uid != 0 or stat.S_IMODE(state_metadata.st_mode) != 0o700
     ):
         raise SyncFailure("unsafe-state-directory")
-    if (
-        (authority_metadata.st_uid, authority_metadata.st_gid)
-        != (expected_uid, expected_gid)
-        or stat.S_IMODE(authority_metadata.st_mode) != 0o755
-    ):
+    if (authority_metadata.st_uid, authority_metadata.st_gid) != (
+        expected_uid,
+        expected_gid,
+    ) or stat.S_IMODE(authority_metadata.st_mode) != 0o755:
         raise SyncFailure("unsafe-authority-directory")
     receipt = _existing_receipt(config)
     if receipt is None:
@@ -1146,11 +1149,10 @@ def verify_installed(config: Config) -> dict[str, Any]:
     receipt_snapshot = _read_regular(
         config.receipt_path, maximum=64 * 1024, code="success-receipt-invalid"
     )
-    if (
-        stat.S_IMODE(receipt_snapshot.metadata.st_mode) != 0o444
-        or (receipt_snapshot.metadata.st_uid, receipt_snapshot.metadata.st_gid)
-        != (expected_uid, expected_gid)
-    ):
+    if stat.S_IMODE(receipt_snapshot.metadata.st_mode) != 0o444 or (
+        receipt_snapshot.metadata.st_uid,
+        receipt_snapshot.metadata.st_gid,
+    ) != (expected_uid, expected_gid):
         raise SyncFailure("success-receipt-unsafe")
     deployed_commit = _deployed_commit(config)
     artifact = _read_regular(
@@ -1211,11 +1213,35 @@ def verify_installed(config: Config) -> dict[str, Any]:
             "artifact_sha256": proof["artifact_sha256"],
             "ledger_sha256": proof["ledger_sha256"],
         }
-        if any(
-            receipt.get(field) != value for field, value in pinned_expected.items()
-        ):
+        if any(receipt.get(field) != value for field, value in pinned_expected.items()):
             raise SyncFailure("installed-release-proof-mismatch")
     return receipt
+
+
+def verify_public_installed(
+    config: Config,
+    *,
+    public_fetcher: Callable[[str, str], bytes] = _fetch_public,
+) -> dict[str, Any]:
+    """Reprove the installed authority against both mutable public latest paths."""
+    with _lock(config.state_directory):
+        receipt = verify_installed(config)
+        publication_commit = receipt["publication_commit"]
+        artifact = _read_regular(
+            config.authority_directory / OSINT_FILENAME,
+            maximum=MAX_OSINT_BYTES,
+            code="installed-osint-invalid",
+        )
+        ledger = _read_regular(
+            config.authority_directory / LEDGER_FILENAME,
+            maximum=MAX_LEDGER_BYTES,
+            code="installed-ledger-invalid",
+        )
+        if public_fetcher(config.public_url, publication_commit) != artifact.raw:
+            raise SyncFailure("public-installed-osint-mismatch")
+        if public_fetcher(config.public_ledger_url, publication_commit) != ledger.raw:
+            raise SyncFailure("public-installed-ledger-mismatch")
+        return receipt
 
 
 def synchronize(
@@ -1226,7 +1252,9 @@ def synchronize(
     if config.require_root and os.geteuid() != 0:
         raise SyncFailure("root-required")
     if config.require_root and (
-        config.repository_url != REPOSITORY_URL or config.public_url != PUBLIC_URL
+        config.repository_url != REPOSITORY_URL
+        or config.public_url != PUBLIC_URL
+        or config.public_ledger_url != PUBLIC_LEDGER_URL
     ):
         raise SyncFailure("authority-override-refused")
     if (
@@ -1360,6 +1388,11 @@ def synchronize(
             raise SyncFailure("release-proof-byte-mismatch")
         if public_fetcher(config.public_url, publication_commit) != candidate_artifact:
             raise SyncFailure("public-git-byte-mismatch")
+        if (
+            public_fetcher(config.public_ledger_url, publication_commit)
+            != candidate_ledger
+        ):
+            raise SyncFailure("public-ledger-git-byte-mismatch")
 
         artifact_path = config.authority_directory / OSINT_FILENAME
         ledger_path = config.authority_directory / LEDGER_FILENAME
@@ -1405,8 +1438,8 @@ def synchronize(
         ):
             receipt = previous_receipt
         else:
-            installed_at = _now().replace(microsecond=0).isoformat().replace(
-                "+00:00", "Z"
+            installed_at = (
+                _now().replace(microsecond=0).isoformat().replace("+00:00", "Z")
             )
             receipt = {**receipt_values, "installed_at": installed_at}
         # Replacing byte-identical receipts is intentional: it converges legacy
@@ -1444,6 +1477,7 @@ def _arguments(argv: list[str] | None = None) -> argparse.Namespace:
         "--deployed-receipt", type=Path, default=DEFAULT_DEPLOYED_RECEIPT
     )
     parser.add_argument("--verify-installed", action="store_true")
+    parser.add_argument("--verify-public-installed", action="store_true")
     parser.add_argument("--legacy-readings-mirror", action="store_true")
     return parser.parse_args(argv)
 
@@ -1457,9 +1491,14 @@ def main(argv: list[str] | None = None) -> int:
         legacy_readings_mirror=args.legacy_readings_mirror,
     )
     try:
-        receipt = (
-            verify_installed(config) if args.verify_installed else synchronize(config)
-        )
+        if args.verify_installed and args.verify_public_installed:
+            raise SyncFailure("verification-mode-conflict")
+        if args.verify_public_installed:
+            receipt = verify_public_installed(config)
+        elif args.verify_installed:
+            receipt = verify_installed(config)
+        else:
+            receipt = synchronize(config)
     except SyncFailure as exc:
         _write_failure(config, exc.code)
         print(f"public OSINT sync failed: {exc.code}", file=sys.stderr)

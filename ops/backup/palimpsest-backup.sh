@@ -32,6 +32,7 @@ repo_root="${PALIMPSEST_ROOT:-/home/deploy/palimpsest}"
 state_root="${PALIMPSEST_STATE_ROOT:-}"
 analysis_root="${PALIMPSEST_ANALYSIS_ROOT:-/var/lib/palimpsest-analysis}"
 newswire_root="${PALIMPSEST_NEWSWIRE_ROOT:-/var/lib/palimpsest/newswire}"
+witness_root="${PALIMPSEST_WITNESS_ROOT:-/home/palimpsest/.palimpsest-witness}"
 backup_root="${PALIMPSEST_BACKUP_DIR:-/home/deploy/backups/palimpsest}"
 retention_days="${PALIMPSEST_BACKUP_RETENTION_DAYS:-14}"
 minimum_free_mb="${PALIMPSEST_BACKUP_MIN_FREE_MB:-1024}"
@@ -44,6 +45,7 @@ artifact_service="${PALIMPSEST_BACKUP_ARTIFACT_SERVICE:-worker}"
 require_absolute_nonroot_path PALIMPSEST_ROOT "$repo_root"
 require_absolute_nonroot_path PALIMPSEST_ANALYSIS_ROOT "$analysis_root"
 require_absolute_nonroot_path PALIMPSEST_NEWSWIRE_ROOT "$newswire_root"
+require_absolute_nonroot_path PALIMPSEST_WITNESS_ROOT "$witness_root"
 require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
 [[ "$retention_days" =~ ^[0-9]+$ ]] || die "retention days must be an integer"
 (( retention_days >= 1 && retention_days <= 3650 )) || \
@@ -61,7 +63,7 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
 [[ "$artifact_service" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
   die "unsafe artifact service name: $artifact_service"
 
-for command_name in docker flock sha256sum tar find awk date hostname df \
+for command_name in docker flock sha256sum tar find awk date hostname df python3 \
   mkdir dirname basename mv rm; do
   require_command "$command_name"
 done
@@ -95,6 +97,39 @@ for newswire_file in \
       ! -L "$newswire_root/$newswire_file" ]] || \
     die "newswire recovery artifact is missing or unsafe: $newswire_file"
 done
+[[ -d "$witness_root" && ! -L "$witness_root" ]] || \
+  die "witness root is missing or is not a real directory: $witness_root"
+witness_root="$(cd "$witness_root" && pwd -P)"
+require_absolute_nonroot_path PALIMPSEST_WITNESS_ROOT "$witness_root"
+witness_identity="$(python3 - "$witness_root" <<'PY'
+import os
+import stat
+import sys
+
+path = sys.argv[1]
+try:
+    path_metadata = os.stat(path, follow_symlinks=False)
+    descriptor = os.open(
+        path,
+        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+    )
+except (AttributeError, OSError):
+    raise SystemExit(1)
+try:
+    descriptor_metadata = os.fstat(descriptor)
+finally:
+    os.close(descriptor)
+if (
+    not stat.S_ISDIR(path_metadata.st_mode)
+    or path_metadata.st_dev != descriptor_metadata.st_dev
+    or path_metadata.st_ino != descriptor_metadata.st_ino
+):
+    raise SystemExit(1)
+print(f"{descriptor_metadata.st_dev}:{descriptor_metadata.st_ino}")
+PY
+)" || die "witness root identity cannot be captured safely"
+[[ "$witness_identity" =~ ^[0-9]+:[0-9]+$ ]] || \
+  die "witness root identity is malformed"
 compose_file="$repo_root/ops/docker/docker-compose.prod.yml"
 compose_env="$repo_root/ops/docker/.env"
 [[ -r "$compose_file" ]] || die "Compose file is not readable: $compose_file"
@@ -145,6 +180,13 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
     "$analysis_root/" != "$newswire_root/"* && \
     "$newswire_root/" != "$analysis_root/"* ]] || \
   die "newswire root and analysis root must not contain one another"
+for witness_peer in "$repo_root" "$state_root" "$readings_root" "$data_root" \
+    "$analysis_root" "$newswire_root" "$backup_root"; do
+  [[ "$witness_root" != "$witness_peer" && \
+      "$witness_root/" != "$witness_peer/"* && \
+      "$witness_peer/" != "$witness_root/"* ]] || \
+    die "witness root must not overlap another backup source or destination"
+done
 
 exec 9>"$backup_root/.backup.lock"
 flock -n 9 || die "another backup is already running"
@@ -237,7 +279,7 @@ log "validating the PostgreSQL archive with pg_restore --list"
   <"$staging_dir/postgres.dump" >"$staging_dir/postgres.list"
 [[ -s "$staging_dir/postgres.list" ]] || die "pg_restore produced an empty listing"
 
-log "archiving readings/, data/, evidence wire, and private analysis state"
+log "archiving readings/, data/, evidence wire, private analysis, and witness history"
 # Use the exact content-addressed image from the inspected worker, but do not
 # execute inside that live process. The one-shot archive container has no
 # network, a read-only root and source mounts, and only CAP_DAC_READ_SEARCH so
@@ -251,6 +293,8 @@ docker run --rm --pull never --network none --read-only --log-driver none \
   --mount "type=bind,src=$data_root,dst=/source/data,readonly" \
   --mount "type=bind,src=$analysis_root,dst=/source/analysis,readonly" \
   --mount "type=bind,src=$newswire_root,dst=/source/newswire,readonly" \
+  --mount "type=bind,src=$witness_root,dst=/source/witness,readonly" \
+  --env "PALIMPSEST_EXPECTED_WITNESS_IDENTITY=$witness_identity" \
   --entrypoint /usr/local/bin/python3 "$artifact_image" -I -B \
   /app/scripts/palimpsest_backup_archive.py >"$staging_dir/artifacts.tar.gz"
 tar --list --gzip --file "$staging_dir/artifacts.tar.gz" \
@@ -264,13 +308,13 @@ postgres_version="$(
     2>/dev/null || printf 'unknown'
 )"
 {
-  printf 'format_version=3\n'
+  printf 'format_version=4\n'
   printf 'snapshot_id=%s\n' "$snapshot_id"
   printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf 'host=%s\n' "$(hostname)"
   printf 'compose_project=%s\n' "$compose_project"
   printf 'postgres_version=%s\n' "$postgres_version"
-  printf 'artifact_roots=readings,data,newswire,analysis\n'
+  printf 'artifact_roots=readings,data,newswire,analysis,witness\n'
   printf 'contents=postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list\n'
 } >"$staging_dir/MANIFEST.txt"
 
@@ -281,9 +325,54 @@ postgres_version="$(
   sha256sum --check SHA256SUMS >/dev/null
 )
 
+# A successful checksum is not yet a durable rollback point. Flush every exact
+# snapshot file and then the containing directory before publishing its name.
+python3 - "$staging_dir" <<'PY'
+import os
+import stat
+import sys
+
+root = sys.argv[1]
+names = (
+    "MANIFEST.txt",
+    "SHA256SUMS",
+    "artifacts.list",
+    "artifacts.tar.gz",
+    "postgres.dump",
+    "postgres.list",
+)
+directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+file_flags = os.O_RDONLY | os.O_NOFOLLOW
+directory = os.open(root, directory_flags)
+try:
+    for name in names:
+        descriptor = os.open(name, file_flags, dir_fd=directory)
+        try:
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+                raise SystemExit("backup durability preflight rejected a file")
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+
 # Only a completely validated directory gets the stable timestamp name.
 mv -- "$staging_dir" "$final_dir"
 staging_dir=""
+# Persist the rename itself before reporting the rollback point as published.
+python3 - "$backup_root" <<'PY'
+import os
+import sys
+
+descriptor = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+try:
+    os.fsync(descriptor)
+finally:
+    os.close(descriptor)
+PY
 log "published validated backup: $final_dir"
 
 # Retention is intentionally restricted to direct children with the exact UTC

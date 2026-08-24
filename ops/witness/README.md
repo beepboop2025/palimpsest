@@ -57,9 +57,63 @@ a broken or hostile edge cannot make the more frequent witness consume
 unbounded memory.
 
 One-off run: `python3 palimpsest_witness.py` (exit 0 consistent, 2 ALERT,
-3 unreachable). State lives in `~/.palimpsest-witness/` per chain, plus one
-bounded public-freshness condition latch
-(`PALIMPSEST_WITNESS_DIR` overrides).
+3 unreachable). By default, the two append-only chain histories, the bounded
+`public-freshness-state.json` condition latch, and the replaceable status
+document live in `~/.palimpsest-witness/`; `PALIMPSEST_WITNESS_DIR` changes
+that standalone state directory and `PALIMPSEST_WITNESS_STATUS_PATH` can place
+only the status document elsewhere.
+
+Every completed run atomically replaces a mode `0600` status document. The
+canonical systemd unit pins append-only history and its freshness latch at
+`/home/palimpsest/.palimpsest-witness`, and separately pins the replaceable
+status document at `/var/lib/palimpsest-witness/status.json`. Its explicit
+`ExecStart` assignments follow `EnvironmentFile`, so
+`/etc/palimpsest-witness.env` cannot override either release-safety path; that
+file is only for optional Telegram credentials. The v4 node backup includes
+the two histories and freshness latch, but deliberately excludes this transient
+machine-status envelope. The bounded `palimpsest-witness-status.v1` envelope is
+suitable for release non-regression checks:
+
+```json
+{
+  "schema_version": "palimpsest-witness-status.v1",
+  "generated_at": "2026-08-24T12:34:56Z",
+  "invocation_id": "0123456789abcdef0123456789abcdef",
+  "status": "degraded",
+  "active_count": 1,
+  "inventory_complete": true,
+  "chain_alerts": [],
+  "freshness_problems": [
+    {
+      "condition": "osint/gdelt",
+      "state": "stale",
+      "message": "osint-china: gdelt evidence deadline has passed"
+    }
+  ]
+}
+```
+
+`status` is `healthy`, `degraded`, or `unreachable`. Exit semantics do not
+change: freshness-only degradation still exits 2. Consumers that need to
+permit an already-known public freshness degradation can do so only after
+checking that `inventory_complete` is true, `active_count` exactly matches the
+two arrays, and `chain_alerts` is empty; fetch, integrity, rewrite, and
+truncation alerts are never represented as freshness problems. Each problem
+array contains at most 128 stable objects, and messages are capped at 512
+characters. `invocation_id` is exactly 32 lowercase hexadecimal characters;
+under the canonical unit it is the systemd invocation ID that the release gate
+also reads independently.
+
+The host release transaction does not reclassify exit `2` as success. It
+captures a fresh isolated witness baseline before mutation and validates the
+final status document with `ops/observer_release_gate.py`. A freshness-only
+alert may remain only when its semantic condition identity was present in the
+baseline, the observed baseline state is in the policy rule's
+`baseline_states`, and the complete final condition exactly matches that
+rule's reasoned final state. Thus a state transition is allowed only when the
+unexpired policy explicitly reviews it; unchanged condition names alone are
+insufficient. The service therefore stays failed and visible even when the
+separate non-regression proof allows the application release to commit.
 
 Anyone can run this witness — it needs nothing but Python 3 and HTTPS access.
 The more independent copies exist, the smaller the window in which a rewrite

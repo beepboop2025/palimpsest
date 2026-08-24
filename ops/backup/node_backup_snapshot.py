@@ -52,9 +52,25 @@ MANIFEST_FIELDS = frozenset(
         "contents",
     }
 )
-ARTIFACT_ROOTS = ("readings", "data", "newswire", "analysis")
+ARTIFACT_ROOTS = ("readings", "data", "newswire", "analysis", "witness")
 ARTIFACT_ROOT_SET = frozenset(ARTIFACT_ROOTS)
 ARTIFACT_CONTENTS = "postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list"
+WITNESS_UID = 1001
+WITNESS_GID = 1001
+WITNESS_HISTORY_FILES = frozenset(
+    {
+        "witness/erasure-ledger.witness.jsonl",
+        "witness/eval-registry.witness.jsonl",
+    }
+)
+WITNESS_FRESHNESS_FILE = "witness/public-freshness-state.json"
+WITNESS_MEMBERS = frozenset(
+    {"witness/", *WITNESS_HISTORY_FILES, WITNESS_FRESHNESS_FILE}
+)
+WITNESS_FRESHNESS_SCHEMA = "palimpsest-public-freshness-state.v1"
+LOWER_HEX_64 = re.compile(r"[0-9a-f]{64}")
+WITNESS_CONDITION = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}/[a-z0-9][a-z0-9._-]{0,63}")
+WITNESS_STATE = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 
 MAX_MANIFEST_BYTES = 64 * 1024
 MAX_CHECKSUM_BYTES = 8 * 1024
@@ -62,6 +78,10 @@ MAX_ARTIFACT_LIST_BYTES = 256 * 1024 * 1024
 MAX_ARTIFACT_MEMBERS = 1_100_000
 MAX_ARTIFACT_DEPTH = 65
 MAX_ARTIFACT_LIST_LINE_BYTES = 4098
+MAX_WITNESS_HISTORY_BYTES = 64 * 1024 * 1024
+MAX_WITNESS_HISTORY_RECORDS = 1_000_000
+MAX_WITNESS_HISTORY_LINE_BYTES = 4096
+MAX_WITNESS_FRESHNESS_BYTES = 64 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
 OUTER_SCHEMA = "palimpsest-node-backup-outer-archive.v1"
 PACK_SCHEMA = "palimpsest-node-backup-pack.v1"
@@ -364,8 +384,8 @@ def _parse_manifest(payload: bytes, *, snapshot_id: str) -> dict[str, str]:
 
     if set(fields) != MANIFEST_FIELDS:
         raise VerificationError("manifest field inventory is not exact")
-    if fields["format_version"] != "3":
-        raise VerificationError("manifest format version is not 3")
+    if fields["format_version"] != "4":
+        raise VerificationError("manifest format version is not 4")
     if fields["snapshot_id"] != snapshot_id:
         raise VerificationError("manifest snapshot id does not match")
     if fields["artifact_roots"] != ",".join(ARTIFACT_ROOTS):
@@ -486,6 +506,130 @@ def _canonical_artifact_member(member: tarfile.TarInfo) -> str:
     return name
 
 
+def _strict_json_object(payload: bytes, *, label: str) -> dict[str, object]:
+    if not payload.endswith(b"\n") or b"\r" in payload or b"\0" in payload:
+        raise VerificationError(f"{label} is not canonical UTF-8 JSON")
+
+    def unique_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+        value: dict[str, object] = {}
+        for key, item in pairs:
+            if key in value:
+                raise VerificationError(f"{label} contains duplicate JSON fields")
+            value[key] = item
+        return value
+
+    try:
+        decoded = json.loads(payload, object_pairs_hook=unique_object)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise VerificationError(f"{label} is not valid JSON") from exc
+    if not isinstance(decoded, dict):
+        raise VerificationError(f"{label} is not a JSON object")
+    return decoded
+
+
+def _validate_witness_history_payload(payload: bytes) -> int:
+    if (
+        not payload
+        or len(payload) > MAX_WITNESS_HISTORY_BYTES
+        or not payload.endswith(b"\n")
+        or b"\r" in payload
+        or b"\0" in payload
+    ):
+        raise VerificationError("witness history is empty, oversized, or non-canonical")
+    lines = payload.splitlines(keepends=True)
+    if len(lines) > MAX_WITNESS_HISTORY_RECORDS:
+        raise VerificationError("witness history exceeds its record bound")
+    for line in lines:
+        if len(line) > MAX_WITNESS_HISTORY_LINE_BYTES:
+            raise VerificationError("witness history contains an overlong record")
+        record = _strict_json_object(line, label="witness history record")
+        if set(record) != {"ts", "n", "head", "root", "alerts"}:
+            raise VerificationError("witness history record fields are not exact")
+        timestamp = record["ts"]
+        if not isinstance(timestamp, str) or len(timestamp) > 64:
+            raise VerificationError("witness history timestamp is malformed")
+        try:
+            parsed_timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise VerificationError("witness history timestamp is malformed") from exc
+        if parsed_timestamp.tzinfo is None or parsed_timestamp.utcoffset() is None:
+            raise VerificationError("witness history timestamp lacks a timezone")
+        for field in ("n", "alerts"):
+            value = record[field]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise VerificationError(
+                    f"witness history {field} is not a non-negative integer"
+                )
+        for field in ("head", "root"):
+            value = record[field]
+            if not isinstance(value, str) or LOWER_HEX_64.fullmatch(value) is None:
+                raise VerificationError(f"witness history {field} is malformed")
+    return len(lines)
+
+
+def _validate_witness_freshness_payload(payload: bytes) -> None:
+    if not payload or len(payload) > MAX_WITNESS_FRESHNESS_BYTES:
+        raise VerificationError("witness freshness state is empty or oversized")
+    document = _strict_json_object(payload, label="witness freshness state")
+    if (
+        set(document) != {"schema_version", "conditions"}
+        or document.get("schema_version") != WITNESS_FRESHNESS_SCHEMA
+        or not isinstance(document.get("conditions"), dict)
+        or len(document["conditions"]) > 128
+    ):
+        raise VerificationError("witness freshness state contract is invalid")
+    for condition, state_name in document["conditions"].items():
+        if (
+            not isinstance(condition, str)
+            or WITNESS_CONDITION.fullmatch(condition) is None
+            or not isinstance(state_name, str)
+            or WITNESS_STATE.fullmatch(state_name) is None
+        ):
+            raise VerificationError("witness freshness condition is malformed")
+
+
+def _inspect_witness_archive_member(
+    archive: tarfile.TarFile,
+    member: tarfile.TarInfo,
+    display_name: str,
+) -> int:
+    """Validate one witness member and return its history-record contribution."""
+
+    mode = stat.S_IMODE(member.mode)
+    if member.uid != WITNESS_UID or member.gid != WITNESS_GID:
+        raise VerificationError("witness archive ownership metadata is invalid")
+    if display_name == "witness/":
+        if not member.isdir() or mode not in {0o700, 0o750, 0o755}:
+            raise VerificationError("witness archive directory mode is invalid")
+        return 0
+    if not member.isreg() or member.issparse():
+        raise VerificationError("witness archive contains a non-regular state file")
+    if display_name in WITNESS_HISTORY_FILES:
+        if mode not in {0o600, 0o640, 0o644}:
+            raise VerificationError("witness archive history mode is invalid")
+        if member.size <= 0 or member.size > MAX_WITNESS_HISTORY_BYTES:
+            raise VerificationError("witness archive history size is invalid")
+    elif display_name == WITNESS_FRESHNESS_FILE:
+        if (
+            mode != 0o600
+            or member.size <= 0
+            or member.size > MAX_WITNESS_FRESHNESS_BYTES
+        ):
+            raise VerificationError("witness freshness archive metadata is invalid")
+    else:
+        raise VerificationError("witness archive inventory is not exact")
+    extracted = archive.extractfile(member)
+    if extracted is None:
+        raise VerificationError("witness archive payload cannot be read")
+    payload = extracted.read(member.size + 1)
+    if len(payload) != member.size:
+        raise VerificationError("witness archive payload is truncated")
+    if display_name in WITNESS_HISTORY_FILES:
+        return _validate_witness_history_payload(payload)
+    _validate_witness_freshness_payload(payload)
+    return 0
+
+
 def _inspect_artifact_archive(
     directory_descriptor: int,
     expected_metadata: os.stat_result,
@@ -493,7 +637,7 @@ def _inspect_artifact_archive(
     scratch_restore: bool,
     expected_uid: int,
     expected_gid: int,
-) -> tuple[tuple[str, ...], int, int]:
+) -> tuple[tuple[str, ...], int, int, int]:
     name = "artifacts.tar.gz"
     descriptor, opened_metadata = _open_regular_file(
         directory_descriptor,
@@ -507,6 +651,8 @@ def _inspect_artifact_archive(
     members: list[str] = []
     seen: set[str] = set()
     root_directories: set[str] = set()
+    witness_members: set[str] = set()
+    witness_history_records = 0
     files = 0
     directories = 0
     try:
@@ -521,6 +667,15 @@ def _inspect_artifact_archive(
                         )
                     seen.add(display_name)
                     members.append(display_name)
+                    if display_name == "witness/" or display_name.startswith(
+                        "witness/"
+                    ):
+                        witness_members.add(display_name)
+                        witness_history_records += _inspect_witness_archive_member(
+                            archive,
+                            member,
+                            display_name,
+                        )
                     if len(members) > MAX_ARTIFACT_MEMBERS:
                         raise VerificationError(
                             "artifact archive exceeds its entry bound"
@@ -547,7 +702,9 @@ def _inspect_artifact_archive(
         os.close(descriptor)
     if not members or root_directories != ARTIFACT_ROOT_SET:
         raise VerificationError("artifact archive root inventory is not exact")
-    return tuple(members), files, directories
+    if witness_members != WITNESS_MEMBERS:
+        raise VerificationError("witness archive inventory is not exact")
+    return tuple(members), files, directories, witness_history_records
 
 
 def _read_open_descriptor(
@@ -610,11 +767,13 @@ def _parse_artifact_listing_payload(
 def _inspect_artifact_open_descriptor(
     descriptor: int,
     opened_metadata: os.stat_result,
-) -> tuple[tuple[str, ...], int, int]:
+) -> tuple[tuple[str, ...], int, int, int]:
     source = os.fdopen(os.dup(descriptor), "rb")
     members: list[str] = []
     seen: set[str] = set()
     root_directories: set[str] = set()
+    witness_members: set[str] = set()
+    witness_history_records = 0
     files = 0
     directories = 0
     try:
@@ -629,6 +788,15 @@ def _inspect_artifact_open_descriptor(
                         )
                     seen.add(display_name)
                     members.append(display_name)
+                    if display_name == "witness/" or display_name.startswith(
+                        "witness/"
+                    ):
+                        witness_members.add(display_name)
+                        witness_history_records += _inspect_witness_archive_member(
+                            archive,
+                            member,
+                            display_name,
+                        )
                     if len(members) > MAX_ARTIFACT_MEMBERS:
                         raise VerificationError(
                             "artifact archive exceeds its entry bound"
@@ -652,7 +820,9 @@ def _inspect_artifact_open_descriptor(
         raise VerificationError("artifact archive changed during inspection")
     if not members or root_directories != ARTIFACT_ROOT_SET:
         raise VerificationError("artifact archive root inventory is not exact")
-    return tuple(members), files, directories
+    if witness_members != WITNESS_MEMBERS:
+        raise VerificationError("witness archive inventory is not exact")
+    return tuple(members), files, directories, witness_history_records
 
 
 def _open_all_snapshot_files(
@@ -731,11 +901,14 @@ def _verify_open_snapshot(
         artifact_listing_payload,
         expected_digest=actual_digests["artifacts.list"],
     )
-    archive_members, artifact_files, artifact_directories = (
-        _inspect_artifact_open_descriptor(
-            file_descriptors["artifacts.tar.gz"],
-            opened_metadata["artifacts.tar.gz"],
-        )
+    (
+        archive_members,
+        artifact_files,
+        artifact_directories,
+        witness_history_records,
+    ) = _inspect_artifact_open_descriptor(
+        file_descriptors["artifacts.tar.gz"],
+        opened_metadata["artifacts.tar.gz"],
     )
     archive_digest_after_inspection = _sha256_open_descriptor(
         file_descriptors["artifacts.tar.gz"],
@@ -769,6 +942,7 @@ def _verify_open_snapshot(
             "artifact_members": len(archive_members),
             "checksum_entries": len(actual_digests),
             "snapshot_files": len(SNAPSHOT_FILES),
+            "witness_history_records": witness_history_records,
         },
         "digests": dict(sorted(actual_digests.items())),
         "schema": SCHEMA,
@@ -1217,6 +1391,9 @@ def pack_snapshot(
         )
         if not _same_identity(output_metadata, path_metadata):
             raise VerificationError("output archive identity changed")
+        # _write_outer_archive fsyncs the file. Persist its directory entry too
+        # before returning a receipt that callers may treat as durable.
+        os.fsync(parent_descriptor)
         return {
             "archive_bytes": output_metadata.st_size,
             "archive_sha256": archive_sha256,

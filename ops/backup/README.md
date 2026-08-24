@@ -5,14 +5,16 @@ path because it contains private SQLite/WARC relationships and deliberately
 excludes the reconstructible bulk mirror. See
 [`COMMON-CRAWL-OFFSITE.md`](COMMON-CRAWL-OFFSITE.md). The generic nightly backup
 described below still covers PostgreSQL, `readings/`, `data/`, the private
-evidence-wire ledger, and the investigative-analysis state and immutable runs.
+evidence-wire ledger, the investigative-analysis state and immutable runs, and
+the independent witness's append-only observations.
 
 `palimpsest-backup.sh` creates one timestamped directory containing:
 
 - a PostgreSQL custom-format dump and the successful `pg_restore --list`
   output that validated it;
-- one gzip archive of `readings/`, `data/`, private `newswire/`, and private
-  `analysis/`, plus its successful tar listing;
+- one gzip archive of `readings/`, `data/`, private `newswire/`, private
+  `analysis/`, and bounded `witness/` recovery state, plus its successful tar
+  listing;
 - a small, secret-free manifest and SHA-256 checksums for every backup file.
 
 Work is written under `.incomplete-*` and renamed to `YYYYMMDDTHHMMSSZ` only
@@ -31,16 +33,37 @@ closed to the single bounded `wire-claim-audits-latest.json` projection and
 retains its analysis identity and mode-0644 delivery contract. The archive
 records the complete tree under the portable top-level name `analysis/`; it
 never writes the host path or private payloads into the text manifest.
-`PALIMPSEST_NEWSWIRE_ROOT` locates the exact latest/lineage/status triplet used
-by the analytical freezer (normally `/var/lib/palimpsest/newswire`). It is
-archived under the portable top-level name `newswire/`.
+`PALIMPSEST_NEWSWIRE_ROOT` locates the exact latest/lineage/status artifacts and
+their coordination lock used by the analytical freezer (normally
+`/var/lib/palimpsest/newswire`). That closed four-file inventory is archived
+under the portable top-level name `newswire/`.
+`PALIMPSEST_WITNESS_ROOT` locates the canonical independent observer directory
+(normally `/home/palimpsest/.palimpsest-witness`). The v4 archive requires
+exactly both nonempty `*.witness.jsonl` histories and the bounded public
+freshness latch. Every record is parsed with duplicate-field rejection and
+fixed fields, hashes, timestamps, and integer bounds; all three files must be
+single-link regular files owned by numeric UID/GID `1001`. A historical
+mode-`0755` directory with mode-`0644` histories is accepted because neither is
+group/world writable and the histories contain only observations of public
+bytes; newer mode-`0700`/`0600` state is also accepted. The freshness latch
+must be mode `0600` in either layout. The host captures the real directory's
+device/inode with `O_NOFOLLOW`; the container requires that same identity on
+its read-only bind before traversal. Numeric ownership and the exact source
+modes are preserved.
+
+Format v4 has exactly five portable artifact roots, in this order:
+`readings`, `data`, `newswire`, `analysis`, and `witness`. Neither the witness
+machine-status envelope nor an arbitrary file from its home directory is part
+of that archive; `witness/` is closed to the two append-only histories and
+`public-freshness-state.json`.
 
 ## Install the nightly timer
 
-From `/home/deploy/palimpsest` on the node:
+From `/home/palimpsest/palimpsest` on the node, as the `palimpsest` service
+account (which must also have access to the reviewed local Docker daemon):
 
 ```bash
-sudo install -d -o deploy -g deploy -m 0700 /home/deploy/backups/palimpsest
+sudo install -d -o palimpsest -g palimpsest -m 0700 /home/palimpsest/backups/node
 sudo install -d -o root -g root -m 0755 /etc/palimpsest
 sudo install -m 0600 ops/backup/backup.env.example /etc/palimpsest/backup.env
 sudo install -m 0644 ops/systemd/palimpsest-backup.service /etc/systemd/system/
@@ -56,9 +79,12 @@ systemctl list-timers palimpsest-backup.timer
 
 A node release stops this timer and service before changing the checkout, then
 records the newest complete snapshot name. Before an exact-SHA checkout, image
-build, migration, receipt change, or candidate process, it starts this service
-once while every receipt and immutable host bundle still names the old
-deployment. If the removable node-offsite `OnSuccess` drop-in is
+build, migration, receipt change, or candidate process, it starts the installed
+service once while every receipt and immutable host bundle still names the old
+deployment. That first snapshot is the exact database/core rollback point. If
+the installed image predates format v4, it may necessarily be a v3 snapshot;
+the release must preserve it rather than pretending the old image archived
+witness history. If the removable node-offsite `OnSuccess` drop-in is
 installed, the release first installs the reviewed lexically-last
 `zz-release-quiesce.conf` drop-in on this local backup service. Its empty
 `OnSuccess=` resets every success trigger while the transaction is in flight.
@@ -120,21 +146,31 @@ drop-in, reload systemd, and require the captured original `OnSuccess` value to
 be restored. A failed transaction leaves the quiesce installed and every
 captured timer stopped.
 
+When upgrading a node whose installed image cannot create v4, the runbook then
+builds the exact target image while the database and broker remain drained. It
+starts only the candidate default worker, proves that worker quiet and fences
+its consumer, and invokes the target backup once before migration or bundle
+installation. The target verifier must accept format v4, all five artifact
+roots, and a positive `witness_history_records` count. That verified candidate
+snapshot becomes the transaction's restore snapshot and the temporary worker
+is stopped. This bounded bootstrap does not replace the earlier core snapshot
+and does not authorize any producer, scheduler, migration, or public write.
+
 The backup verifies that the always-on `worker` Compose service's `/app/readings`
 and `/app/data` are bind-mounted from the exact configured state root. It then
-binds those two verified roots plus the exact newswire and analysis roots read-only
-into a one-shot container using the worker's exact image digest, no network, a
-read-only root, numeric archive ownership, and only `CAP_DAC_READ_SEARCH` as
-root. This reads producer-owned mode-0600 private state and immutable run
-artifacts without any ownership, mode, or ACL mutation. A missing analysis
-root/subtree, missing service, named volume, mismatched host source, or unpinned
-image identity fails the backup before publication.
+binds those two verified roots plus the exact `newswire`, `analysis`, and
+`witness` roots read-only into a one-shot container using the worker's exact
+image digest, no network, a read-only root, numeric archive ownership, and only
+`CAP_DAC_READ_SEARCH` as root. This reads producer-owned mode-0600 private state
+and immutable run artifacts without any ownership, mode, or ACL mutation. A
+missing artifact root/subtree, missing service, named volume, mismatched host
+source, or unpinned image identity fails the backup before publication.
 Before the archive stream starts, the image-bundled fixed helper opens
 `analysis/private/cascade.lock` without following symlinks and requires a
 one-link, mode-0600 regular file owned by numeric UID/GID `10001`. It takes a
 blocking shared lock while its in-process, fixed archive writer streams
-`analysis/`; it releases that lock before streaming `readings/`, `data/`, and
-`newswire/`. The writer stores numeric UID/GID values
+`analysis/`; it releases that lock before streaming `readings/`, `data/`,
+`newswire/`, and `witness/`. The writer stores numeric UID/GID values
 with blank account names, rejects links and special members, and reports only a
 generic helper failure so a read error cannot leak a private filename. The
 helper runs with the image's exact `/usr/local/bin/python3 -I -B`, requires
@@ -152,13 +188,15 @@ into Docker's root-disk JSON logs.
 `PALIMPSEST_BACKUP_ARTIFACT_SERVICE` can select another reviewed service with
 the same image and exact bind mounts.
 
-For an existing node under `/home/palimpsest/palimpsest`, also install
+If an existing node still has a pre-canonical base unit, also install
 `ops/systemd/palimpsest-backup.override.example.conf` as
 `/etc/systemd/system/palimpsest-backup.service.d/override.conf`, and set the
 matching `PALIMPSEST_ROOT`/`PALIMPSEST_BACKUP_DIR` paths in the environment
-file before reloading systemd. The ready-to-install
-`ops/backup/backup.palimpsest-layout.example.env` provides those paths; create
-`/home/palimpsest/backups/node` as mode `0700`, owned by `palimpsest`, first.
+file before reloading systemd. The compatibility drop-in deliberately matches
+the current base unit, so it can remain installed through a forward upgrade.
+The ready-to-install `ops/backup/backup.palimpsest-layout.example.env` provides
+those paths; create `/home/palimpsest/backups/node` as mode `0700`, owned by
+`palimpsest`, first.
 
 The repository script must be executable (`git` preserves that mode). Configure
 retention in `/etc/palimpsest/backup.env`. Off-host publication is intentionally
@@ -229,10 +267,12 @@ sudo tar --extract --gzip --numeric-owner --same-owner \
 ```
 
 The result must have exactly the reviewed top-level roots
-`readings/`, `data/`, `newswire/`, and `analysis/`. Verify the restored private
-modes, the exact `analysis/delivery/` inventory, and
+`readings/`, `data/`, `newswire/`, `analysis/`, and `witness/`. Verify the
+restored private modes, the exact `newswire/`, `analysis/delivery/`, and
+`witness/` inventories, and
 numeric owners before using them. Only after inspecting both restores should an
-operator schedule downtime and separately promote those four roots to
+operator schedule downtime and separately promote those five roots to
 `/var/lib/palimpsest/readings`, `/var/lib/palimpsest/data`,
-`/var/lib/palimpsest/newswire`, and `/var/lib/palimpsest-analysis`. Dropping the live database or replacing any
+`/var/lib/palimpsest/newswire`, `/var/lib/palimpsest-analysis`, and
+`/home/palimpsest/.palimpsest-witness`. Dropping the live database or replacing any
 live artifact tree is intentionally not automated by this repository.

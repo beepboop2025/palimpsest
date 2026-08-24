@@ -564,6 +564,7 @@ def test_systemd_lane_is_independent_and_cannot_write_readings() -> None:
     script = SCRIPT.read_text(encoding="utf-8")
 
     assert "StateDirectory=palimpsest-watchdog" in service
+    assert "ReadOnlyPaths=-/home/palimpsest/palimpsest" in service
     assert "ProtectSystem=strict" in service
     assert "NoNewPrivileges=true" in service
     assert "CapabilityBoundingSet=" in service
@@ -584,25 +585,30 @@ def test_watchdog_default_matches_the_production_compose_host_port() -> None:
 
     endpoint = "http://127.0.0.1:8010/api/v1/node/status"
     assert watchdog.DEFAULT_STATUS_URL == endpoint
-    assert f"PALIMPSEST_LOCAL_STATUS_URL={endpoint}" in service
+    assert f"--status-url {endpoint}" in service
+    assert "ExecStart=/usr/bin/python3 /opt/palimpsest/ops/watchdog/" in service
+    assert "--bundle-max-age-seconds 21600" in service
     assert "127.0.0.1:${PALIMPSEST_API_PORT:-8010}:8000" in compose
     assert "PALIMPSEST_API_PORT=8010" in env_example
 
 
 def test_deployment_installs_and_verifies_both_watchdog_units_after_api_probe() -> None:
     guide = DEPLOY_GUIDE.read_text(encoding="utf-8")
-    probe = guide.index("http://127.0.0.1:8010/api/v1/node/status")
     install_service = guide.index(
-        "sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.service"
+        'sudo install -o root -g root -m 0644 "$WATCHDOG_CONTROLLER_SERVICE"'
     )
     verify = guide.index("sudo systemd-analyze verify", install_service)
+    probe = guide.index("http://127.0.0.1:8010/api/v1/node/status", verify)
     restore = guide.index("restore_activator_enablement() {", verify)
 
     assert install_service < verify < probe < restore
-    verification = guide[verify:restore]
+    verification = guide[install_service:restore]
     assert "/etc/systemd/system/palimpsest-freshness-watchdog.service" in verification
     assert "/etc/systemd/system/palimpsest-freshness-watchdog.timer" in verification
     assert "/etc/systemd/system/palimpsest-witness.service" in verification
     assert "/etc/systemd/system/palimpsest-witness.timer" in verification
+    assert 'sudo cmp -s "$WATCHDOG_PREFLIGHT_SCRIPT"' in verification
+    assert 'sudo cmp -s "$WATCHDOG_CONTROLLER_SERVICE"' in verification
+    assert "NeedDaemonReload" in verification
     assert "InvocationID" in guide[verify:restore]
     assert "ExecMainStatus" in guide[verify:restore]

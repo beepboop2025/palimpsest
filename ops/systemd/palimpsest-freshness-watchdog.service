@@ -1,23 +1,26 @@
 [Unit]
 Description=Out-of-band Palimpsest node and evidence freshness watchdog
-Documentation=file:///home/palimpsest/palimpsest/ops/watchdog/README.md
+Documentation=file:///opt/palimpsest/ops/watchdog/README.md
 After=network-online.target palimpsest-public-osint-sync.service
 Wants=network-online.target palimpsest-public-osint-sync.service
 ConditionFileIsExecutable=/usr/bin/python3
-ConditionPathExists=/home/palimpsest/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py
+ConditionPathExists=/opt/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py
 
 [Service]
 Type=oneshot
 User=palimpsest
 Group=palimpsest
-WorkingDirectory=/home/palimpsest/palimpsest
+WorkingDirectory=/var/lib/palimpsest-watchdog
 Environment=PYTHONDONTWRITEBYTECODE=1
-Environment=PALIMPSEST_LOCAL_STATUS_URL=http://127.0.0.1:8010/api/v1/node/status
-Environment=PALIMPSEST_LOCAL_OSINT_PATH=/var/lib/palimpsest/readings/osint-china-latest.json
-Environment=PALIMPSEST_WATCHDOG_OUTPUT=/var/lib/palimpsest-watchdog/status.json
-Environment=PALIMPSEST_WATCHDOG_STATE=/var/lib/palimpsest-watchdog/alert-state.json
+# This file supplies only the optional webhook. Explicit arguments pin every
+# release-safety input even if a legacy file still contains old path values.
 EnvironmentFile=-/etc/palimpsest/freshness-watchdog.env
-ExecStart=/usr/bin/python3 /home/palimpsest/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py
+ExecStart=/usr/bin/python3 /opt/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py \
+  --status-url http://127.0.0.1:8010/api/v1/node/status \
+  --osint-path /var/lib/palimpsest/readings/osint-china-latest.json \
+  --output /var/lib/palimpsest-watchdog/status.json \
+  --state /var/lib/palimpsest-watchdog/alert-state.json \
+  --bundle-max-age-seconds 21600
 TimeoutStartSec=45s
 UMask=0077
 Nice=5
@@ -32,7 +35,7 @@ StateDirectoryMode=0700
 # only its systemd-owned state directory and can never advance a reading.
 ProtectSystem=strict
 ProtectHome=read-only
-ReadOnlyPaths=/home/palimpsest/palimpsest
+ReadOnlyPaths=-/home/palimpsest/palimpsest
 ReadOnlyPaths=-/var/lib/palimpsest/readings
 BindReadOnlyPaths=/var/lib/palimpsest-public-osint-sync/authoritative/osint-china-latest.json:/var/lib/palimpsest/readings/osint-china-latest.json
 BindReadOnlyPaths=/var/lib/palimpsest-public-osint-sync/authoritative/readings-ledger.jsonl:/var/lib/palimpsest/readings/readings-ledger.jsonl

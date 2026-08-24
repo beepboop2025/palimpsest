@@ -838,12 +838,14 @@ review-gated analytical runs and must be restored as a separate root.
 - **Validated node backup** — install the repository-managed nightly timer:
 
   ```bash
-  sudo install -d -o deploy -g deploy -m 0700 /home/deploy/backups/palimpsest
+  sudo install -d -o palimpsest -g palimpsest -m 0700 \
+    /home/palimpsest/backups/node
   sudo install -d -o root -g root -m 0755 /etc/palimpsest
   sudo install -m 0600 ops/backup/backup.env.example /etc/palimpsest/backup.env
   sudo install -m 0644 ops/systemd/palimpsest-backup.service /etc/systemd/system/
   sudo install -m 0644 ops/systemd/palimpsest-backup.timer /etc/systemd/system/
-  # Existing /home/palimpsest nodes: install the included override first.
+  # Nodes with a pre-canonical backup base unit: install the compatibility
+  # override. Its values match the current unit and are safe to retain.
   sudo install -d -o palimpsest -g palimpsest -m 0700 \
     /home/palimpsest/backups/node
   sudo install -m 0600 ops/backup/backup.palimpsest-layout.example.env \
@@ -901,7 +903,8 @@ review-gated analytical runs and must be restored as a separate root.
   is in [`ops/backup/README.md`](backup/README.md).
 
 - **Hetzner snapshots / backups** — enable the server's automatic backup option
-  (~20% surcharge) for whole-box rollback. Cheap insurance for a single node.
+  (~20% surcharge) for disaster recovery. Cheap insurance for a single node;
+  release repair still uses a reviewed forward commit.
 
 ---
 
@@ -928,28 +931,52 @@ example `collectors,warehouse,api`, adding `velocity` only when intentionally
 enabled). Deploy with this ordered sequence so the image, root-owned analytical
 bundle, and atomic commit receipt cannot describe different revisions:
 
-Choose three exact values before opening the release shell.
-`EXPECTED_PREVIOUS_DEPLOY_SHA` is the independently recorded commit that must
-already be deployed, `EXPECTED_DEPLOY_SHA` is the reviewed commit to install,
-and `TRANSACTION_DIRECTION` is `forward` or `rollback`.
-`COMPATIBLE_ROLLBACK_SHA` is the reviewed recovery commit and must equal the
-expected starting deployment. Both commits must contain every path in
-`ROLLBACK_CONTRACT_PATHS` below and be compatible with the database schema,
-persistent artifacts, immutable installers, protected OSINT store, and current
-restore contract. A forward transaction requires recovery to be an ancestor of
-the target. A rollback transaction requires the target to be an ancestor of
-recovery. Ancestry alone is not compatibility. A branch-only emergency commit
-such as the old `6de3` line is not a generic rollback target. The raw old
-deployment receipt is evidence checked against the reviewed expectation, not a
-rollback decision.
+Choose four exact values before opening the release shell.
+`EXPECTED_PREVIOUS_CHECKOUT_SHA` is the independently observed clean checkout
+and running application-image revision. `EXPECTED_PREVIOUS_DEPLOY_SHA` is the
+independently observed installed deployment receipt; it may be an older
+ancestor when a legacy release advanced the checkout without atomically
+advancing that receipt. `EXPECTED_DEPLOY_SHA` is the reviewed commit to install,
+and `TRANSACTION_DIRECTION` must be exactly `forward`.
+`COMPATIBLE_ROLLBACK_SHA` is the legacy-named reviewed operational baseline and
+must equal the expected previous checkout. The name is retained for the C0 seed
+interface and does not authorize reverse ancestry or historical checkout. The
+target must descend from both prior
+identities, and both the target and operational baseline must contain every path in
+`FORWARD_REPAIR_CONTRACT_PATHS` below and be compatible with the database
+schema, persistent artifacts, immutable installers, protected OSINT store, and
+current restore contract. The baseline must be an ancestor of the target.
+Ancestry alone is not compatibility. A branch-only emergency commit such as
+the old `6de3` line is not a generic recovery target. The raw old deployment
+receipt is evidence checked against the reviewed expectation, not a release
+decision.
+
+Before choosing `EXPECTED_DEPLOY_SHA`, publish one fresh Newswire candidate
+from reviewed `main` and wait for Pages to serve both
+`readings/newswire-latest.json` and `readings/china-situation-latest.json` from
+that descendant. The situation must embed the exact canonical Newswire digest
+and timestamp, and both publication clocks must be within the watchdog's
+two-hour window when Phase 1 starts. Scheduled publishers remain disabled
+during this release; this is an explicit, observed manual prerequisite, not a
+temporary policy exemption. Choose the resulting current `main` head as the
+deployment target. Phase 1 executes the target watchdog and refuses any
+remaining `publication/*` problem before the first host mutation.
+
+This transaction is deliberately forward-only. After a migration, publication,
+or append-only witness advance, checking out a historical commit cannot restore
+the complete state and can silently downgrade the release controller. Any
+failed or degraded rollout therefore remains quiesced while a reviewed
+main-line descendant fixes the problem. Node snapshots are inputs to that
+forward repair; they do not authorize historical code checkout.
 
 This hardening has a deliberate two-commit first rollout. Deploy the
 compatibility/base commit first with the legacy procedure in "First protected
-rollout" below. That commit lands the transitional provider and rollback
+rollout" below. That commit lands the transitional provider and forward-repair
 tooling, but does not change or install any consumer that requires the new
 authority. Verify and certify it before the feature commit is merged. Then use
 that exact deployed base SHA as both
-`EXPECTED_PREVIOUS_DEPLOY_SHA` and `COMPATIBLE_ROLLBACK_SHA` for the feature
+`EXPECTED_PREVIOUS_CHECKOUT_SHA`, `EXPECTED_PREVIOUS_DEPLOY_SHA`, and
+`COMPATIBLE_ROLLBACK_SHA` for the feature
 commit. No ancestor before that base contains the OSINT installer,
 release-quiesce file, and protected-state contract, so the generic transaction
 must reject it.
@@ -990,6 +1017,20 @@ PALIMPSEST_ALLOW_PREPARED_C0_RESUME=''
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
 export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
 export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
+unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG
+export DOCKER_HOST='unix:///var/run/docker.sock'
+unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES \
+  COMPOSE_PATH_SEPARATOR COMPOSE_IGNORE_ORPHANS COMPOSE_REMOVE_ORPHANS \
+  PALIMPSEST_ENV_FILE
+export COMPOSE_PROJECT_NAME=palimpsest
+export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
+test -f "$PALIMPSEST_ENV_FILE"
+test ! -L "$PALIMPSEST_ENV_FILE"
+test -r "$PALIMPSEST_ENV_FILE"
+RELEASE_DOCKER_CONFIG="$(mktemp -d /tmp/palimpsest-c0-docker.XXXXXX)"
+chmod 0700 "$RELEASE_DOCKER_CONFIG"
 release_git() {
   /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
     -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
@@ -1013,13 +1054,20 @@ release_git show "$C0_DEPLOY_SHA:$SEED_PATH" >"$SEED_TMP"
 test "$(release_git hash-object "$SEED_TMP")" \
   = "$(release_git rev-parse "$C0_DEPLOY_SHA:$SEED_PATH")"
 chmod 0700 "$SEED_TMP"
-PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \
-PALIMPSEST_ALLOW_PREPARED_C0_RESUME="$PALIMPSEST_ALLOW_PREPARED_C0_RESUME" \
-PREPARED_C0_SHA="$PREPARED_C0_SHA" \
-C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \
-EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
-COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
-  bash "$SEED_TMP"
+/usr/bin/env -i HOME=/root LANG=C LC_ALL=C \
+  PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null \
+  GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+  GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0 \
+  DOCKER_HOST=unix:///var/run/docker.sock \
+  DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG" \
+  COMPOSE_PROJECT_NAME=palimpsest PALIMPSEST_ENV_FILE="$PALIMPSEST_ENV_FILE" \
+  PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1 \
+  PALIMPSEST_ALLOW_PREPARED_C0_RESUME="$PALIMPSEST_ALLOW_PREPARED_C0_RESUME" \
+  PREPARED_C0_SHA="$PREPARED_C0_SHA" C0_DEPLOY_SHA="$C0_DEPLOY_SHA" \
+  EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
+  COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
+  /bin/bash "$SEED_TMP"
 rm -f -- "$SEED_TMP"
 trap - EXIT
 
@@ -1085,16 +1133,16 @@ SHA. Use that C0 SHA for both starting and recovery values in Phase 1:
 
 ```bash
 export EXPECTED_PREVIOUS_DEPLOY_SHA="$C0_DEPLOY_SHA"
+export EXPECTED_PREVIOUS_CHECKOUT_SHA="$C0_DEPLOY_SHA"
 export COMPATIBLE_ROLLBACK_SHA="$C0_DEPLOY_SHA"
 export EXPECTED_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C1_40_HEX_SHA'
 export TRANSACTION_DIRECTION=forward
 ```
 
-A later C1-to-C0 rollback uses the complete three-phase transaction. Checking
-out C0 makes its installer restore the reviewed compatibility drop-in, so its
-provider republishes the exact protected bytes into the legacy paths before
-the C0 consumers using that unchanged authority boundary start. This is why the
-C0 target is operational rollback code rather than an arbitrary ancestor.
+A later C1 failure is repaired by a reviewed C2 descendant through the complete
+three-phase transaction. C2 may restore compatible behavior, but it must do so
+without checking out C0 or weakening the current release controller, protected
+authority, durable receipts, or append-only witness state.
 
 The transaction preflights the Common Crawl Volume and both host tools before
 anything can replace `/etc/palimpsest/deployed-commit`. The official
@@ -1123,15 +1171,45 @@ known state. Do not reconstruct state from guesses.
 set -Eeuo pipefail
 cd /home/palimpsest/palimpsest
 test -e .git
+PALIMPSEST_REPO_ROOT="$(pwd -P)"
+test "$PALIMPSEST_REPO_ROOT" = /home/palimpsest/palimpsest
 
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
+unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG
+export DOCKER_HOST=unix:///var/run/docker.sock
+unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES \
+  COMPOSE_PATH_SEPARATOR COMPOSE_IGNORE_ORPHANS COMPOSE_REMOVE_ORPHANS \
+  PALIMPSEST_ENV_FILE
+export COMPOSE_PROJECT_NAME=palimpsest
+export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
+test -f "$PALIMPSEST_ENV_FILE"
+test ! -L "$PALIMPSEST_ENV_FILE"
+test -r "$PALIMPSEST_ENV_FILE"
+RELEASE_DOCKER_CONFIG="$(mktemp -d /tmp/palimpsest-release-docker.XXXXXX)"
+chmod 0700 "$RELEASE_DOCKER_CONFIG"
+export DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG"
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
 export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
 export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
 release_git() {
   /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
     -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c "safe.directory=$PALIMPSEST_REPO_ROOT" \
     -c credential.helper= -c protocol.allow=never \
     -c protocol.https.allow=always "$@"
+}
+release_compose() {
+  /usr/bin/env -i HOME=/root LANG=C LC_ALL=C \
+    PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+    GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0 \
+    DOCKER_HOST=unix:///var/run/docker.sock \
+    DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG" \
+    COMPOSE_PROJECT_NAME=palimpsest \
+    PALIMPSEST_ENV_FILE="$PALIMPSEST_ENV_FILE" \
+    "$PALIMPSEST_REPO_ROOT/ops/docker/prod-compose" "$@"
 }
 test -d .git
 test ! -L .git
@@ -1144,32 +1222,47 @@ if [[ -e .git/refs/replace || -L .git/refs/replace ]]; then
   test ! -L .git/refs/replace
   test -z "$(find .git/refs/replace -mindepth 1 -print -quit)"
 fi
-test ! -L .git/packed-refs
-! grep -Eq '[[:space:]]refs/replace/' .git/packed-refs 2>/dev/null
+if [[ -e .git/packed-refs || -L .git/packed-refs ]]; then
+  test -f .git/packed-refs
+  test ! -L .git/packed-refs
+  if grep -Eq '[[:space:]]refs/replace/' .git/packed-refs; then
+    printf 'packed replacement refs are forbidden\n' >&2
+    exit 1
+  fi
+fi
 
 EXPECTED_DEPLOY_SHA="${EXPECTED_DEPLOY_SHA:-REPLACE_WITH_REVIEWED_40_HEX_SHA}"
+EXPECTED_PREVIOUS_CHECKOUT_SHA="${EXPECTED_PREVIOUS_CHECKOUT_SHA:-REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA}"
 EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRENT_40_HEX_SHA}"
-COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_COMPATIBLE_40_HEX_SHA}"
-TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward_OR_rollback}"
+COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA}"
+TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward}"
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
 COMMON_CRAWL_DERIVED_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE/derived"
 COMMON_CRAWL_FEATURE_EXPORT="$COMMON_CRAWL_DERIVED_SOURCE/common-crawl-features.jsonl"
 COMMON_CRAWL_FEATURE_MAX_BYTES=16777216
+OBSERVER_POLICY_SOURCE='ops/observer-release-policy-20260824.json'
+OBSERVER_GATE_SOURCE='ops/observer_release_gate.py'
+CELERY_GATE_SOURCE='ops/celery_release_gate.py'
+RECOVERY_CONTROLLER_SOURCE='scripts/recover_deployment_snapshots.py'
 NODE_BACKUP_ROOT='/home/palimpsest/backups/node'
 BACKUP_RELEASE_QUIESCE_SOURCE='ops/systemd/palimpsest-backup.release-quiesce.conf'
 BACKUP_RELEASE_QUIESCE_TARGET='/etc/systemd/system/palimpsest-backup.service.d/zz-release-quiesce.conf'
 [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$EXPECTED_PREVIOUS_CHECKOUT_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$COMPATIBLE_ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
-[[ "$TRANSACTION_DIRECTION" == forward \
-  || "$TRANSACTION_DIRECTION" == rollback ]]
+test "$TRANSACTION_DIRECTION" = forward
 test "$EXPECTED_DEPLOY_SHA" != "$COMPATIBLE_ROLLBACK_SHA"
-test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
+test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
 test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
 PREVIOUS_DEPLOY_SHA="$(sudo cat /etc/palimpsest/deployed-commit)"
 [[ "$PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
-test "$(release_git rev-parse HEAD)" = "$PREVIOUS_DEPLOY_SHA"
+PREVIOUS_CHECKOUT_SHA="$(release_git rev-parse HEAD)"
+[[ "$PREVIOUS_CHECKOUT_SHA" =~ ^[0-9a-f]{40}$ ]]
+test "$PREVIOUS_CHECKOUT_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"
+[[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]]
 
 read_enablement() {
   local state
@@ -1180,6 +1273,56 @@ read_enablement() {
     *) printf 'unexpected enablement for %s: %s\n' "$1" "$state" >&2; return 1 ;;
   esac
   printf '%s\n' "$state"
+}
+
+fsync_installed_paths() {
+  (( $# > 0 ))
+  sudo python3 - "$@" <<'PY'
+import os
+import stat
+import sys
+
+directories: set[str] = set()
+anchors = ("/etc", "/opt", "/var/lib")
+for raw_path in sys.argv[1:]:
+    path = os.path.abspath(raw_path)
+    anchor = next(
+        (
+            candidate
+            for candidate in anchors
+            if os.path.commonpath((path, candidate)) == candidate
+        ),
+        None,
+    )
+    if anchor is None or path == anchor:
+        raise SystemExit(f"installed release file is outside bounded roots: {path}")
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
+            raise SystemExit(f"installed release file is unsafe: {path}")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    directory = os.path.dirname(path)
+    while True:
+        directories.add(directory)
+        if directory == anchor:
+            break
+        directory = os.path.dirname(directory)
+for path in sorted(
+    directories,
+    key=lambda value: (value.count(os.sep), value),
+    reverse=True,
+):
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        if not stat.S_ISDIR(os.fstat(descriptor).st_mode):
+            raise SystemExit(f"installed release parent is unsafe: {path}")
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+PY
 }
 
 test -x /usr/bin/systemd-run
@@ -1285,6 +1428,7 @@ RELEASE_SERVICES=(
   palimpsest-common-crawl-backup.service
   palimpsest-node-offsite-backup.service
   palimpsest-evidence-wire.service
+  palimpsest-event-analysis-live.service
   palimpsest-investigative-analysis.service
   palimpsest-common-crawl-import.service
   palimpsest-common-crawl-context.service
@@ -1293,6 +1437,284 @@ RELEASE_SERVICES=(
   palimpsest-freshness-watchdog.service
   palimpsest-witness.service
 )
+COMPOSE_ALL_PROFILES=(
+  --profile collectors
+  --profile warehouse
+  --profile velocity
+  --profile api
+)
+COMPOSE_WRITER_SERVICES=(
+  beat
+  worker
+  worker-collectors
+  worker-warehouse
+  worker-velocity
+)
+CELERY_WORKER_SERVICES=(
+  worker
+  worker-collectors
+  worker-warehouse
+  worker-velocity
+)
+declare -A COMPOSE_WAS_RUNNING COMPOSE_CONTAINER_ID_BEFORE
+declare -A COMPOSE_IMAGE_ID_BEFORE COMPOSE_HOSTNAME_BEFORE
+declare -A COMPOSE_NODE_BEFORE COMPOSE_QUEUE_BY_SERVICE
+COMPOSE_QUEUE_BY_SERVICE[worker]=celery
+COMPOSE_QUEUE_BY_SERVICE[worker-collectors]=collectors
+COMPOSE_QUEUE_BY_SERVICE[worker-warehouse]=warehouse
+COMPOSE_QUEUE_BY_SERVICE[worker-velocity]=censorwatch
+
+# Prove that the isolated Docker/Compose environment can load the reviewed
+# production file before the fail-safe is armed. A local plugin/configuration
+# failure must abort without turning a read-only preflight into an outage.
+EXPECTED_COMPOSE_CONFIG_SERVICES=$'api\nbeat\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
+ACTUAL_COMPOSE_CONFIG_SERVICES="$(release_compose \
+  "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
+test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"
+
+stop_loaded_unit() {
+  local unit="$1" load_state active_state
+  load_state="$(systemctl show --property=LoadState --value \
+    "$unit" 2>/dev/null || true)"
+  case "$load_state" in
+    ""|not-found) return 0 ;;
+    loaded|masked) ;;
+    *) printf 'unexpected load state for %s: %s\n' \
+         "$unit" "$load_state" >&2; return 1 ;;
+  esac
+  sudo systemctl stop "$unit"
+  active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  case "$active_state" in
+    inactive|failed|unknown|"") ;;
+    *) printf 'unit did not stop: %s (%s)\n' \
+         "$unit" "$active_state" >&2; return 1 ;;
+  esac
+}
+
+temporarily_disable_activator() {
+  local unit="$1" previous_enablement="${RELEASE_ENABLEMENT[$1]}"
+  case "$previous_enablement" in
+    enabled|enabled-runtime)
+      sudo systemctl disable "$unit"
+      test "$(read_enablement "$unit")" = "disabled"
+      ;;
+    disabled|static|indirect|not-found) ;;
+    *) printf 'refusing unsafe activator state: %s (%s)\n' \
+         "$unit" "$previous_enablement" >&2; return 1 ;;
+  esac
+}
+
+# This idempotent quiescer is inherited by Phase 3. It deliberately uses the
+# complete declared inventory rather than only units observed active, because
+# a reboot or concurrent dependency start must not escape the transaction.
+release_quiesce_all() {
+  local unit compose_service container_id compose_working_dir compose_config_file
+  set +e
+  for unit in "${RELEASE_ACTIVATORS[@]}"; do
+    sudo systemctl stop "$unit" >/dev/null 2>&1 || true
+    sudo systemctl disable "$unit" >/dev/null 2>&1 || true
+  done
+  for unit in "${RELEASE_SERVICES[@]}"; do
+    sudo systemctl stop "$unit" >/dev/null 2>&1 || true
+  done
+  sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' \
+    >/dev/null 2>&1 || true
+  sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' \
+    >/dev/null 2>&1 || true
+  sudo systemctl stop 'palimpsest-investigative-broker@*.service' \
+    >/dev/null 2>&1 || true
+  # The emergency path cannot depend on the Git-cleanliness checks in the
+  # Compose wrapper: the triggering failure may be the wrapper itself. Stop
+  # every running Compose container launched from the pinned Palimpsest
+  # production definition and carrying one of the controlled writer labels,
+  # including an alternate-project writer that appeared later. Service names
+  # alone are not host-global: unrelated shared-host projects also use generic
+  # names such as worker and beat.
+  compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  compose_config_file="$compose_working_dir/docker-compose.prod.yml"
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    while IFS= read -r container_id; do
+      if [[ "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
+        docker stop --time 180 "$container_id" >/dev/null 2>&1 || true
+      fi
+    done < <(docker ps --no-trunc --filter status=running \
+      --filter "label=com.docker.compose.project.working_dir=$compose_working_dir" \
+      --filter "label=com.docker.compose.project.config_files=$compose_config_file" \
+      --filter "label=com.docker.compose.service=$compose_service" \
+      --format '{{.ID}}' 2>/dev/null)
+  done
+  if [[ -n "${ACTIVE_PROOF_PIN:-}" ]]; then
+    release_proof_pin >/dev/null 2>&1 || {
+      sudo systemctl stop "$ACTIVE_PROOF_PIN" >/dev/null 2>&1 || true
+      ACTIVE_PROOF_PIN=''
+    }
+  fi
+  sudo systemctl daemon-reload >/dev/null 2>&1 || true
+}
+
+PHASE1_SHELL_PID="$$"
+[[ "$PHASE1_SHELL_PID" =~ ^[1-9][0-9]*$ ]]
+PHASE1_FAIL_SAFE_ARMED=1
+RELEASE_FAIL_SAFE_RUNNING=0
+phase1_fail_safe() {
+  local original_status="${1:-1}"
+  (( PHASE1_FAIL_SAFE_ARMED == 1 )) || return 0
+  (( RELEASE_FAIL_SAFE_RUNNING == 0 )) || return 0
+  RELEASE_FAIL_SAFE_RUNNING=1
+  trap - ERR EXIT HUP INT TERM
+  printf 'Phase 1 interrupted (%s); quiescing every release writer and activator\n' \
+    "$original_status" >&2
+  release_quiesce_all
+}
+trap 'phase1_fail_safe "$?"' ERR
+trap 'phase1_fail_safe "$?"' EXIT
+trap 'phase1_fail_safe 129; exit 129' HUP
+trap 'phase1_fail_safe 130; exit 130' INT
+trap 'phase1_fail_safe 143; exit 143' TERM
+
+compose_container_state() {
+  local service="$1" container_id state
+  container_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+    ps -q --all "$service")"
+  if [[ -z "$container_id" ]]; then
+    COMPOSE_WAS_RUNNING["$service"]=0
+    COMPOSE_CONTAINER_ID_BEFORE["$service"]=''
+    COMPOSE_IMAGE_ID_BEFORE["$service"]=''
+    COMPOSE_HOSTNAME_BEFORE["$service"]=''
+    return 0
+  fi
+  [[ "$container_id" =~ ^[0-9a-f]{64}$ ]]
+  state="$(docker inspect "$container_id" --format '{{.State.Status}}')"
+  case "$state" in
+    running) COMPOSE_WAS_RUNNING["$service"]=1 ;;
+    exited) COMPOSE_WAS_RUNNING["$service"]=0 ;;
+    *) printf 'Compose service is changing state: %s (%s)\n' \
+         "$service" "$state" >&2; return 1 ;;
+  esac
+  COMPOSE_CONTAINER_ID_BEFORE["$service"]="$container_id"
+  COMPOSE_IMAGE_ID_BEFORE["$service"]="$(docker inspect "$container_id" \
+    --format '{{.Image}}')"
+  COMPOSE_HOSTNAME_BEFORE["$service"]="$(docker inspect "$container_id" \
+    --format '{{.Config.Hostname}}')"
+  [[ "${COMPOSE_IMAGE_ID_BEFORE[$service]}" =~ ^sha256:[0-9a-f]{64}$ ]]
+  [[ "${COMPOSE_HOSTNAME_BEFORE[$service]}" \
+    =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]
+}
+
+verify_compose_container_inventory() {
+  local inventory_file compose_working_dir compose_config_file
+  inventory_file="$(mktemp)"
+  compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  compose_config_file="$compose_working_dir/docker-compose.prod.yml"
+  docker ps -a --no-trunc \
+    --filter label=com.docker.compose.project \
+    --format '{{.Label "com.docker.compose.project"}}\t{{.Label "com.docker.compose.service"}}\t{{.Label "com.docker.compose.project.working_dir"}}\t{{.Label "com.docker.compose.project.config_files"}}\t{{.ID}}' \
+    >"$inventory_file"
+  if ! python3 - "$inventory_file" \
+      "$compose_working_dir" "$compose_config_file" <<'PY'
+import pathlib
+import re
+import sys
+
+required = {
+    "api",
+    "beat",
+    "migrate",
+    "postgres",
+    "redis",
+    "worker",
+    "worker-collectors",
+    "worker-warehouse",
+}
+allowed = required | {"worker-velocity"}
+expected_working_dir, expected_config_file = sys.argv[2:]
+rows = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
+if len(rows) > 128:
+    raise SystemExit("global Compose inventory exceeds its row ceiling")
+seen: set[str] = set()
+for row in rows:
+    fields = row.split("\t")
+    if len(fields) != 5:
+        raise SystemExit("malformed global Compose inventory row")
+    project, service, working_dir, config_files, container_id = fields
+    if not project or len(project) > 128 or not service or len(service) > 128:
+        raise SystemExit("malformed Compose project or service label")
+    if len(working_dir) > 4096 or len(config_files) > 4096:
+        raise SystemExit("oversized Compose provenance label")
+    if re.fullmatch(r"[0-9a-f]{64}", container_id) is None:
+        raise SystemExit(f"malformed Compose container ID for {service!r}")
+    palimpsest_origin = (
+        working_dir == expected_working_dir
+        or config_files == expected_config_file
+    )
+    if project != "palimpsest" and palimpsest_origin:
+        raise SystemExit(
+            "Palimpsest Compose provenance exists in alternate project: "
+            f"{project!r}/{service!r}"
+        )
+    if project != "palimpsest":
+        continue
+    if (
+        working_dir != expected_working_dir
+        or config_files != expected_config_file
+    ):
+        raise SystemExit(
+            f"unexpected Palimpsest Compose provenance for {service!r}"
+        )
+    if service not in allowed or service in seen:
+        raise SystemExit(f"unexpected or duplicate Palimpsest service: {service!r}")
+    seen.add(service)
+if not required <= seen:
+    raise SystemExit(f"missing required Compose services: {sorted(required - seen)}")
+PY
+  then
+    rm -f -- "$inventory_file"
+    return 1
+  fi
+  rm -f -- "$inventory_file"
+}
+
+for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  compose_container_state "$compose_service"
+done
+verify_compose_container_inventory
+for compose_service in worker worker-collectors worker-warehouse; do
+  test "${COMPOSE_WAS_RUNNING[$compose_service]}" = 1
+done
+for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+    test "$(docker image inspect "${COMPOSE_IMAGE_ID_BEFORE[$compose_service]}" \
+      --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+      = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+  fi
+done
+for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+    case "$compose_service" in
+      worker) celery_prefix=default ;;
+      worker-collectors) celery_prefix=collectors ;;
+      worker-warehouse) celery_prefix=warehouse ;;
+      worker-velocity) celery_prefix=velocity ;;
+      *) exit 1 ;;
+    esac
+    COMPOSE_NODE_BEFORE["$compose_service"]="${celery_prefix}@${COMPOSE_HOSTNAME_BEFORE[$compose_service]}"
+  fi
+done
+for required_service in postgres redis api; do
+  required_container_id="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q "$required_service")"
+  [[ "$required_container_id" =~ ^[0-9a-f]{64}$ ]]
+  test "$(docker inspect "$required_container_id" \
+    --format '{{.State.Status}}')" = running
+done
+PREVIOUS_API_CONTAINER_ID="$(release_compose \
+  "${COMPOSE_ALL_PROFILES[@]}" ps -q api)"
+PREVIOUS_API_IMAGE_ID="$(docker inspect "$PREVIOUS_API_CONTAINER_ID" \
+  --format '{{.Image}}')"
+[[ "$PREVIOUS_API_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
+test "$(docker image inspect "$PREVIOUS_API_IMAGE_ID" --format \
+  '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+  = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
 
 # Installers replace /etc unit files and cannot preserve a masked load state.
 # Reject every release-controlled unit before fetch, checkout, stop, or write.
@@ -1334,27 +1756,193 @@ release_git merge-base --is-ancestor \
 release_git cat-file -e "${EXPECTED_PREVIOUS_DEPLOY_SHA}^{commit}"
 release_git merge-base --is-ancestor \
   "$EXPECTED_PREVIOUS_DEPLOY_SHA" refs/remotes/origin/main
-if [[ "$TRANSACTION_DIRECTION" == forward ]]; then
-  release_git merge-base --is-ancestor \
-    "$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_DEPLOY_SHA"
-else
-  release_git merge-base --is-ancestor \
-    "$EXPECTED_DEPLOY_SHA" "$COMPATIBLE_ROLLBACK_SHA"
-fi
-ROLLBACK_CONTRACT_PATHS=(
+release_git merge-base --is-ancestor \
+  "$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_DEPLOY_SHA"
+release_git merge-base --is-ancestor \
+  "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$EXPECTED_DEPLOY_SHA"
+FORWARD_REPAIR_CONTRACT_PATHS=(
   ops/investigative-analysis/install-host-bundle.sh
   ops/common-crawl/install-host-bundle.sh
   ops/osint-sync/install-host-bundle.sh
   ops/osint-sync/public_osint_sync.py
   ops/node-offsite/install-host-bundle.sh
+  ops/backup/palimpsest-backup.sh
+  ops/systemd/palimpsest-backup.service
+  ops/systemd/palimpsest-backup.timer
+  ops/systemd/palimpsest-backup.override.example.conf
+  ops/systemd/palimpsest-evidence-wire.service
+  ops/systemd/palimpsest-evidence-wire.timer
+  ops/systemd/palimpsest-event-analysis-live.service
   ops/systemd/palimpsest-public-osint-sync.service
   ops/systemd/palimpsest-backup.release-quiesce.conf
 )
 for contract_sha in "$EXPECTED_DEPLOY_SHA" "$COMPATIBLE_ROLLBACK_SHA"; do
-  for required_path in "${ROLLBACK_CONTRACT_PATHS[@]}"; do
+  for required_path in "${FORWARD_REPAIR_CONTRACT_PATHS[@]}"; do
     release_git cat-file -e "${contract_sha}:${required_path}"
   done
 done
+
+# Every repair moves the application and release controller together to the
+# reviewed descendant. Historical controller code is never reinstalled.
+OBSERVER_CONTROLLER_SHA="$EXPECTED_DEPLOY_SHA"
+for observer_path in \
+  "$OBSERVER_GATE_SOURCE" \
+  "$OBSERVER_POLICY_SOURCE" \
+  "$CELERY_GATE_SOURCE" \
+  "$RECOVERY_CONTROLLER_SOURCE" \
+  ops/watchdog/palimpsest_freshness_watchdog.py \
+  ops/systemd/palimpsest-freshness-watchdog.service \
+  ops/systemd/palimpsest-freshness-watchdog.timer \
+  ops/witness/palimpsest_witness.py \
+  ops/witness/palimpsest-witness.service \
+  ops/witness/palimpsest-witness.timer; do
+  release_git cat-file -e "${OBSERVER_CONTROLLER_SHA}:${observer_path}"
+done
+
+# Execute the reviewed target observers against the still-current node before
+# the first mutation. Their temporary state cannot alter production latches or
+# append-only witness logs. The baseline token binds semantic identities and
+# the exact expiring policy; it is evidence, not an allowlist by itself.
+OBSERVER_PREFLIGHT_DIR="$(mktemp -d /tmp/palimpsest-observer-release.XXXXXX)"
+chmod 0700 "$OBSERVER_PREFLIGHT_DIR"
+OBSERVER_GATE_PATH="$OBSERVER_PREFLIGHT_DIR/observer_release_gate.py"
+OBSERVER_POLICY_PATH="$OBSERVER_PREFLIGHT_DIR/observer-release-policy.json"
+CELERY_GATE_PATH="$OBSERVER_PREFLIGHT_DIR/celery_release_gate.py"
+RECOVERY_CONTROLLER_PATH="$OBSERVER_PREFLIGHT_DIR/recover_deployment_snapshots.py"
+WATCHDOG_PREFLIGHT_SCRIPT="$OBSERVER_PREFLIGHT_DIR/watchdog.py"
+WATCHDOG_CONTROLLER_SERVICE="$OBSERVER_PREFLIGHT_DIR/palimpsest-freshness-watchdog.service"
+WATCHDOG_CONTROLLER_TIMER="$OBSERVER_PREFLIGHT_DIR/palimpsest-freshness-watchdog.timer"
+WITNESS_PREFLIGHT_SCRIPT="$OBSERVER_PREFLIGHT_DIR/witness.py"
+WITNESS_CONTROLLER_SERVICE="$OBSERVER_PREFLIGHT_DIR/palimpsest-witness.service"
+WITNESS_CONTROLLER_TIMER="$OBSERVER_PREFLIGHT_DIR/palimpsest-witness.timer"
+for source_target in \
+  "$OBSERVER_GATE_SOURCE:$OBSERVER_GATE_PATH" \
+  "$OBSERVER_POLICY_SOURCE:$OBSERVER_POLICY_PATH" \
+  "$CELERY_GATE_SOURCE:$CELERY_GATE_PATH" \
+  "$RECOVERY_CONTROLLER_SOURCE:$RECOVERY_CONTROLLER_PATH" \
+  "ops/watchdog/palimpsest_freshness_watchdog.py:$WATCHDOG_PREFLIGHT_SCRIPT" \
+  "ops/systemd/palimpsest-freshness-watchdog.service:$WATCHDOG_CONTROLLER_SERVICE" \
+  "ops/systemd/palimpsest-freshness-watchdog.timer:$WATCHDOG_CONTROLLER_TIMER" \
+  "ops/witness/palimpsest_witness.py:$WITNESS_PREFLIGHT_SCRIPT" \
+  "ops/witness/palimpsest-witness.service:$WITNESS_CONTROLLER_SERVICE" \
+  "ops/witness/palimpsest-witness.timer:$WITNESS_CONTROLLER_TIMER"; do
+  source_path="${source_target%%:*}"
+  target_path="${source_target#*:}"
+  release_git show "${OBSERVER_CONTROLLER_SHA}:${source_path}" >"$target_path"
+  test -s "$target_path"
+  chmod 0500 "$target_path"
+done
+OBSERVER_GATE_SHA256="$(sha256sum "$OBSERVER_GATE_PATH" | awk '{print $1}')"
+OBSERVER_POLICY_SHA256="$(sha256sum "$OBSERVER_POLICY_PATH" | awk '{print $1}')"
+[[ "$OBSERVER_GATE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+[[ "$OBSERVER_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]]
+CONTROLLER_MANIFEST_PATH="$OBSERVER_PREFLIGHT_DIR/controller.sha256"
+for controller_file in \
+  "$OBSERVER_GATE_PATH" "$OBSERVER_POLICY_PATH" "$CELERY_GATE_PATH" \
+  "$RECOVERY_CONTROLLER_PATH" "$WATCHDOG_PREFLIGHT_SCRIPT" \
+  "$WATCHDOG_CONTROLLER_SERVICE" "$WATCHDOG_CONTROLLER_TIMER" \
+  "$WITNESS_PREFLIGHT_SCRIPT" "$WITNESS_CONTROLLER_SERVICE" \
+  "$WITNESS_CONTROLLER_TIMER"; do
+  printf '%s  %s\n' "$(sha256sum "$controller_file" | awk '{print $1}')" \
+    "$(basename "$controller_file")"
+done | LC_ALL=C sort >"$CONTROLLER_MANIFEST_PATH"
+CONTROLLER_TREE_SHA256="$(sha256sum "$CONTROLLER_MANIFEST_PATH" \
+  | awk '{print $1}')"
+[[ "$CONTROLLER_TREE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+
+celery_topology_arguments=()
+for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+    celery_topology_arguments+=(--pair \
+      "${COMPOSE_NODE_BEFORE[$compose_service]}=${COMPOSE_QUEUE_BY_SERVICE[$compose_service]}")
+  fi
+done
+CELERY_TOPOLOGY_BEFORE_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
+  encode-topology "${celery_topology_arguments[@]}")"
+[[ "$CELERY_TOPOLOGY_BEFORE_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+
+WATCHDOG_BASELINE_STATUS="$OBSERVER_PREFLIGHT_DIR/watchdog-status.json"
+WATCHDOG_BASELINE_STATE="$OBSERVER_PREFLIGHT_DIR/watchdog-state.json"
+WATCHDOG_BASELINE_INVOCATION_ID="$(openssl rand -hex 16)"
+[[ "$WATCHDOG_BASELINE_INVOCATION_ID" =~ ^[0-9a-f]{32}$ ]]
+watchdog_baseline_rc=0
+/usr/bin/env -i HOME="$OBSERVER_PREFLIGHT_DIR" LANG=C LC_ALL=C \
+  PATH=/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 \
+  INVOCATION_ID="$WATCHDOG_BASELINE_INVOCATION_ID" \
+  /usr/bin/python3 "$WATCHDOG_PREFLIGHT_SCRIPT" \
+  --status-url http://127.0.0.1:8010/api/v1/node/status \
+  --osint-path \
+    /var/lib/palimpsest-public-osint-sync/authoritative/osint-china-latest.json \
+  --output "$WATCHDOG_BASELINE_STATUS" \
+  --state "$WATCHDOG_BASELINE_STATE" \
+  --bundle-max-age-seconds 21600 \
+  >"$OBSERVER_PREFLIGHT_DIR/watchdog.stdout" \
+  2>"$OBSERVER_PREFLIGHT_DIR/watchdog.stderr" \
+  || watchdog_baseline_rc=$?
+[[ "$watchdog_baseline_rc" == 0 || "$watchdog_baseline_rc" == 2 ]]
+python3 - "$WATCHDOG_BASELINE_STATUS" "$watchdog_baseline_rc" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+expected = 0 if value.get("status") == "healthy" else 2
+if int(sys.argv[2]) != expected:
+    raise SystemExit("watchdog baseline exit and status disagree")
+problems = value.get("problems")
+if not isinstance(problems, list):
+    raise SystemExit("watchdog baseline problem inventory is invalid")
+if any(
+    not isinstance(problem, dict) or problem.get("scope") == "publication"
+    for problem in problems
+):
+    raise SystemExit(
+        "fresh, lineage-linked Newswire and China situation are required"
+    )
+PY
+WATCHDOG_BASELINE_B64="$(/usr/bin/python3 "$OBSERVER_GATE_PATH" baseline \
+  --observer watchdog --status "$WATCHDOG_BASELINE_STATUS" \
+  --policy "$OBSERVER_POLICY_PATH" \
+  --transaction-id "$RELEASE_RESUME_TOKEN" \
+  --deploy-sha "$EXPECTED_DEPLOY_SHA" \
+  --controller-sha "$OBSERVER_CONTROLLER_SHA")"
+[[ "$WATCHDOG_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+
+WITNESS_BASELINE_DIR="$OBSERVER_PREFLIGHT_DIR/witness-state"
+mkdir -m 0700 "$WITNESS_BASELINE_DIR"
+WITNESS_BASELINE_STATUS="$WITNESS_BASELINE_DIR/status.json"
+WITNESS_BASELINE_INVOCATION_ID="$(openssl rand -hex 16)"
+[[ "$WITNESS_BASELINE_INVOCATION_ID" =~ ^[0-9a-f]{32}$ ]]
+witness_baseline_rc=0
+/usr/bin/env -i HOME="$OBSERVER_PREFLIGHT_DIR" LANG=C LC_ALL=C \
+  PATH=/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 \
+  INVOCATION_ID="$WITNESS_BASELINE_INVOCATION_ID" \
+  PALIMPSEST_SITE=https://palimpsest.info \
+  PALIMPSEST_WITNESS_DIR="$WITNESS_BASELINE_DIR" \
+  PALIMPSEST_WITNESS_STATUS_PATH="$WITNESS_BASELINE_STATUS" \
+  PALIMPSEST_WITNESS_REQUIRE_BLEEDTHROUGH=1 \
+  /usr/bin/python3 "$WITNESS_PREFLIGHT_SCRIPT" \
+  >"$OBSERVER_PREFLIGHT_DIR/witness.stdout" \
+  2>"$OBSERVER_PREFLIGHT_DIR/witness.stderr" \
+  || witness_baseline_rc=$?
+[[ "$witness_baseline_rc" == 0 || "$witness_baseline_rc" == 2 ]]
+python3 - "$WITNESS_BASELINE_STATUS" "$witness_baseline_rc" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+expected = 0 if value.get("status") == "healthy" else 2
+if int(sys.argv[2]) != expected:
+    raise SystemExit("witness baseline exit and status disagree")
+PY
+WITNESS_BASELINE_B64="$(/usr/bin/python3 "$OBSERVER_GATE_PATH" baseline \
+  --observer witness --status "$WITNESS_BASELINE_STATUS" \
+  --policy "$OBSERVER_POLICY_PATH" \
+  --transaction-id "$RELEASE_RESUME_TOKEN" \
+  --deploy-sha "$EXPECTED_DEPLOY_SHA" \
+  --controller-sha "$OBSERVER_CONTROLLER_SHA")"
+[[ "$WITNESS_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
 
 # Fail before the receipt-changing analysis installer if the Common Crawl
 # storage or either audited host tool has drifted.
@@ -1496,13 +2084,161 @@ esac
 sudo test ! -e "$BACKUP_RELEASE_QUIESCE_TARGET"
 sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
 sudo systemctl daemon-reload
+test "$(systemctl show --property=LoadState --value \
+  palimpsest-backup.service)" = loaded
 BACKUP_ON_SUCCESS="$(systemctl show --property=OnSuccess --value \
-  palimpsest-backup.service 2>/dev/null || true)"
+  palimpsest-backup.service)"
 NODE_OFFSITE_ON_SUCCESS=0
-if grep -Fqw palimpsest-node-offsite-backup.service \
-    <<<"$BACKUP_ON_SUCCESS"; then
-  NODE_OFFSITE_ON_SUCCESS=1
+BACKUP_ON_SUCCESS_UNITS=()
+if [[ -n "$BACKUP_ON_SUCCESS" ]]; then
+  read -r -a BACKUP_ON_SUCCESS_UNITS <<<"$BACKUP_ON_SUCCESS"
 fi
+case "${#BACKUP_ON_SUCCESS_UNITS[@]}" in
+  0) ;;
+  1)
+    if [[ "${BACKUP_ON_SUCCESS_UNITS[0]}" \
+        != palimpsest-node-offsite-backup.service ]]; then
+      printf 'unexpected backup OnSuccess trigger: %s\n' \
+        "${BACKUP_ON_SUCCESS_UNITS[0]}" >&2
+      exit 1
+    fi
+    NODE_OFFSITE_ON_SUCCESS=1
+    ;;
+  *) printf 'unexpected backup OnSuccess trigger set: %s\n' \
+       "$BACKUP_ON_SUCCESS" >&2; exit 1 ;;
+esac
+
+git_blob_sha256() {
+  release_git show "$1:$2" | sha256sum | awk '{print $1}'
+}
+
+verify_installed_unit_blob() {
+  local commit="$1" repository_path="$2" installed_path="$3"
+  sudo test -f "$installed_path"
+  sudo test ! -L "$installed_path"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$installed_path")" = "0:0:644:1"
+  test "$(sudo sha256sum "$installed_path" | awk '{print $1}')" \
+    = "$(git_blob_sha256 "$commit" "$repository_path")"
+}
+
+verify_installed_unit_blob_one_of() {
+  local repository_path="$1" installed_path="$2"
+  local actual candidate commit matched=''
+  sudo test -f "$installed_path"
+  sudo test ! -L "$installed_path"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$installed_path")" = "0:0:644:1"
+  actual="$(sudo sha256sum "$installed_path" | awk '{print $1}')"
+  for commit in "$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_PREVIOUS_DEPLOY_SHA"; do
+    candidate="$(git_blob_sha256 "$commit" "$repository_path")"
+    if [[ "$actual" == "$candidate" ]]; then
+      matched="$commit"
+      break
+    fi
+  done
+  if [[ -z "$matched" ]]; then
+    printf 'installed unit matches neither pinned predecessor: %s\n' \
+      "$installed_path" >&2
+    return 1
+  fi
+  printf '%s\n' "$matched"
+}
+
+verify_backup_dropins() {
+  local commit="$1" expected_quiesce="$2" dropin actual expected
+  sudo test -d /etc/systemd/system/palimpsest-backup.service.d
+  sudo test ! -L /etc/systemd/system/palimpsest-backup.service.d
+  expected=''
+  while IFS= read -r dropin; do
+    [[ -n "$dropin" ]] || continue
+    case "$dropin" in
+      /etc/systemd/system/palimpsest-backup.service.d/override.conf)
+        verify_installed_unit_blob "$commit" \
+          ops/systemd/palimpsest-backup.override.example.conf "$dropin"
+        ;;
+      /etc/systemd/system/palimpsest-backup.service.d/offsite-trigger.conf)
+        verify_installed_unit_blob "$commit" \
+          ops/systemd/palimpsest-backup.offsite-trigger.conf "$dropin"
+        ;;
+      "$BACKUP_RELEASE_QUIESCE_TARGET")
+        test "$expected_quiesce" = 1
+        verify_installed_unit_blob "$commit" \
+          "$BACKUP_RELEASE_QUIESCE_SOURCE" "$dropin"
+        ;;
+      *) printf 'unexpected backup unit drop-in: %s\n' "$dropin" >&2; return 1 ;;
+    esac
+    expected+="${expected:+$'\n'}$dropin"
+  done < <(sudo find /etc/systemd/system/palimpsest-backup.service.d \
+    -mindepth 1 -maxdepth 1 \( -type f -o -type l \) -printf '%p\n' \
+    | LC_ALL=C sort)
+  actual="$(systemctl show --property=DropInPaths --value \
+    palimpsest-backup.service | tr ' ' '\n' | sed '/^$/d' | LC_ALL=C sort)"
+  test "$actual" = "$expected"
+  if (( expected_quiesce == 1 )); then
+    grep -Fxq "$BACKUP_RELEASE_QUIESCE_TARGET" <<<"$expected"
+  else
+    if grep -Fxq "$BACKUP_RELEASE_QUIESCE_TARGET" <<<"$expected"; then
+      printf 'unexpected release quiesce drop-in remains installed\n' >&2
+      return 1
+    fi
+  fi
+}
+
+verify_release_service_success_triggers() {
+  local expected_backup="$1" expected_evidence="$2"
+  local unit load_state actual expected
+  for unit in "${RELEASE_SERVICES[@]}"; do
+    load_state="$(systemctl show --property=LoadState --value "$unit")"
+    case "$load_state" in
+      loaded)
+        actual="$(systemctl show --property=OnSuccess --value "$unit")"
+        ;;
+      not-found) actual='' ;;
+      *) printf 'unexpected service load state: %s (%s)\n' \
+           "$unit" "$load_state" >&2; return 1 ;;
+    esac
+    case "$unit" in
+      palimpsest-backup.service) expected="$expected_backup" ;;
+      palimpsest-evidence-wire.service) expected="$expected_evidence" ;;
+      *) expected='' ;;
+    esac
+    if [[ "$actual" != "$expected" ]]; then
+      printf 'unexpected OnSuccess set for %s: %s\n' "$unit" "$actual" >&2
+      return 1
+    fi
+  done
+}
+
+# The pre-change backup executes script bytes from the clean current checkout,
+# but its loaded unit/drop-ins must be the exact prior deployment authority.
+verify_installed_unit_blob "$COMPATIBLE_ROLLBACK_SHA" \
+  ops/systemd/palimpsest-backup.service \
+  /etc/systemd/system/palimpsest-backup.service
+verify_backup_dropins "$COMPATIBLE_ROLLBACK_SHA" 0
+test "$(systemctl show --property=FragmentPath --value \
+  palimpsest-backup.service)" = /etc/systemd/system/palimpsest-backup.service
+test "$(systemctl show --property=User --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=Group --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=WorkingDirectory --value \
+  palimpsest-backup.service)" = /home/palimpsest/palimpsest
+PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY="$(verify_installed_unit_blob_one_of \
+  ops/systemd/palimpsest-evidence-wire.service \
+  /etc/systemd/system/palimpsest-evidence-wire.service)"
+PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY="$(verify_installed_unit_blob_one_of \
+  ops/systemd/palimpsest-evidence-wire.timer \
+  /etc/systemd/system/palimpsest-evidence-wire.timer)"
+[[ "$PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
+[[ "$PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
+EVIDENCE_WIRE_ON_SUCCESS="$(systemctl show --property=OnSuccess --value \
+  palimpsest-evidence-wire.service)"
+case "$EVIDENCE_WIRE_ON_SUCCESS" in
+  ''|palimpsest-event-analysis-live.service) ;;
+  *) printf 'unexpected evidence-wire OnSuccess set: %s\n' \
+       "$EVIDENCE_WIRE_ON_SUCCESS" >&2; exit 1 ;;
+esac
+verify_release_service_success_triggers \
+  "$BACKUP_ON_SUCCESS" "$EVIDENCE_WIRE_ON_SUCCESS"
 if (( NODE_OFFSITE_CONFIGURED == 0 )) \
     && { [[ "${RELEASE_ENABLEMENT[palimpsest-node-offsite-backup.timer]}" \
         == enabled* ]] \
@@ -1519,25 +2255,9 @@ uptime
 ps -eo pid,comm,%cpu,%mem,etime --sort=-%cpu | sed -n '1,15p'
 # Stop here until any unexplained high-load process has been cleared.
 
-stop_loaded_unit() {
-  local unit="$1" load_state active_state
-  load_state="$(systemctl show --property=LoadState --value \
-    "$unit" 2>/dev/null || true)"
-  case "$load_state" in
-    ""|not-found) return 0 ;;
-    loaded|masked) ;;
-    *) printf 'unexpected load state for %s: %s\n' \
-         "$unit" "$load_state" >&2; return 1 ;;
-  esac
-  sudo systemctl stop "$unit"
-  active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
-  case "$active_state" in
-    inactive|failed|unknown|"") ;;
-    *) printf 'unit did not stop: %s (%s)\n' \
-         "$unit" "$active_state" >&2; return 1 ;;
-  esac
-}
-
+# Stop and persistently disable every systemd producer before touching Beat or
+# asking a worker to drain. This closes the race where a timer, path, socket, or
+# OnCalendar invocation could enqueue new Celery work during the drain window.
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   stop_loaded_unit "$unit"
 done
@@ -1546,39 +2266,60 @@ for unit in "${RELEASE_SERVICES[@]}"; do
 done
 sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' 2>/dev/null || true
 sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' 2>/dev/null || true
+sudo systemctl stop 'palimpsest-investigative-broker@*.service' 2>/dev/null || true
 test -z "$(systemctl list-units --no-legend --plain \
   --state=active,activating,deactivating \
   'palimpsest-common-crawl-mirror@*.service' \
-  'palimpsest-common-crawl-filter@*.service')"
-test -z "$(systemctl list-units --no-legend --plain \
-  --state=active,activating,deactivating \
+  'palimpsest-common-crawl-filter@*.service' \
   'palimpsest-investigative-broker@*.service')"
-
-temporarily_disable_activator() {
-  local unit="$1" previous_enablement="${RELEASE_ENABLEMENT[$1]}"
-  case "$previous_enablement" in
-    enabled|enabled-runtime)
-      sudo systemctl disable "$unit"
-      test "$(read_enablement "$unit")" = "disabled"
-      ;;
-    disabled|static|indirect|not-found) ;;
-    *) printf 'refusing unsafe activator state: %s (%s)\n' \
-         "$unit" "$previous_enablement" >&2; return 1 ;;
-  esac
-}
-
-# Disable every captured activator persistently. This survives a host reboot
-# during the Phase 2 pause. Static/indirect units have no enablement link to
-# remove and remain stopped because every requiring activator is disabled.
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   temporarily_disable_activator "$unit"
 done
+
+# With every systemd producer held, stop Beat and let each already-running
+# worker drain its local reservations and all four broker queues. The reviewed
+# gate fences each exact node only after two consecutive zero-work samples; it
+# never purges, revokes, or terminates a task.
+if [[ "${COMPOSE_WAS_RUNNING[beat]}" == 1 ]]; then
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat
+fi
+for _ in 1 2; do
+  beat_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+    ps -q --all beat)"
+  if [[ -n "$beat_id" ]]; then
+    test "$(docker inspect "$beat_id" --format '{{.State.Status}}')" = exited
+  fi
+  sleep 2
+done
+CELERY_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-prechange.json"
+release_compose "${COMPOSE_ALL_PROFILES[@]}" exec -T worker \
+  /usr/bin/python3 - quiesce \
+  --topology-b64 "$CELERY_TOPOLOGY_BEFORE_B64" \
+  --timeout-seconds 10800 --interval-seconds 5 \
+  --inspect-timeout-seconds 15 \
+  <"$CELERY_GATE_PATH" >"$CELERY_PRECHANGE_RECEIPT_PATH"
+python3 - "$CELERY_PRECHANGE_RECEIPT_PATH" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+if (
+    value.get("schema_version") != "palimpsest-celery-release-gate.v1"
+    or value.get("status") != "fenced"
+    or value.get("consumer_state") != "fenced"
+    or value.get("required_zero_samples") != 2
+    or not value.get("cancellations")
+):
+    raise SystemExit("pre-change Celery quiescence receipt is invalid")
+PY
 
 # A runtime mask under /run cannot override a service installed under /etc.
 # Reset the producer's OnSuccess list through a lexically-last /etc drop-in.
 # The deployed compatibility/base commit must already contain this drop-in.
 # Any failure after installation leaves this safe quiesce in place.
 BACKUP_RELEASE_QUIESCE_ADDED=0
+BACKUP_RELEASE_QUIESCE_SHA256=''
 if (( NODE_OFFSITE_ON_SUCCESS == 1 )); then
   BACKUP_RELEASE_QUIESCE_TMP="$(mktemp)"
   release_git cat-file -e "HEAD:${BACKUP_RELEASE_QUIESCE_SOURCE}"
@@ -1594,10 +2335,14 @@ if (( NODE_OFFSITE_ON_SUCCESS == 1 )); then
   sudo cmp -s "$BACKUP_RELEASE_QUIESCE_TMP" \
     "$BACKUP_RELEASE_QUIESCE_TARGET"
   rm -f -- "$BACKUP_RELEASE_QUIESCE_TMP"
+  fsync_installed_paths "$BACKUP_RELEASE_QUIESCE_TARGET"
   sudo systemd-analyze verify /etc/systemd/system/palimpsest-backup.service
   sudo systemctl daemon-reload
   test -z "$(systemctl show --property=OnSuccess --value \
     palimpsest-backup.service)"
+  BACKUP_RELEASE_QUIESCE_SHA256="$(sudo sha256sum \
+    "$BACKUP_RELEASE_QUIESCE_TARGET" | awk '{print $1}')"
+  [[ "$BACKUP_RELEASE_QUIESCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
   BACKUP_RELEASE_QUIESCE_ADDED=1
 fi
 
@@ -1640,10 +2385,277 @@ if not all(checks):
     raise SystemExit("pre-change backup verification receipt failed")
 ' "$PRE_CHANGE_SNAPSHOT"
 
+# The backup has captured the drained database and artifact roots. Stop every
+# fenced worker before checkout or image replacement and prove that Beat plus
+# all worker services remain exited. Postgres, Redis, and the read-only API stay
+# available for candidate migration and observer preflight.
+for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+    release_compose "${COMPOSE_ALL_PROFILES[@]}" stop "$compose_service"
+  fi
+done
+for _ in 1 2; do
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all "$compose_service")"
+    if [[ -n "$writer_id" ]]; then
+      test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
+    fi
+  done
+  sleep 2
+done
+
 release_git switch --detach "$EXPECTED_DEPLOY_SHA"
 test "$(release_git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"
 test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
-ops/docker/prod-compose build
+release_compose build
+CANDIDATE_IMAGE_ID="$(docker image inspect palimpsest/app:local \
+  --format '{{.Id}}')"
+[[ "$CANDIDATE_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
+test "$(docker image inspect palimpsest/app:local --format \
+  '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+  = "$EXPECTED_DEPLOY_SHA"
+
+# Install the exact target backup/newsroom units while every producer is held.
+# The target backup unit is required before the v4 snapshot because it adds the
+# witness history root to the sandbox and switches the canonical service base.
+CANDIDATE_UNIT_SOURCES=(
+  ops/systemd/palimpsest-backup.service
+  ops/systemd/palimpsest-backup.timer
+  ops/systemd/palimpsest-backup.override.example.conf
+  ops/systemd/palimpsest-evidence-wire.service
+  ops/systemd/palimpsest-evidence-wire.timer
+  ops/systemd/palimpsest-event-analysis-live.service
+)
+CANDIDATE_UNIT_TARGETS=(
+  /etc/systemd/system/palimpsest-backup.service
+  /etc/systemd/system/palimpsest-backup.timer
+  /etc/systemd/system/palimpsest-backup.service.d/override.conf
+  /etc/systemd/system/palimpsest-evidence-wire.service
+  /etc/systemd/system/palimpsest-evidence-wire.timer
+  /etc/systemd/system/palimpsest-event-analysis-live.service
+)
+for unit_index in "${!CANDIDATE_UNIT_SOURCES[@]}"; do
+  candidate_unit_source="${CANDIDATE_UNIT_SOURCES[$unit_index]}"
+  candidate_unit_target="${CANDIDATE_UNIT_TARGETS[$unit_index]}"
+  sudo install -o root -g root -m 0644 \
+    "$candidate_unit_source" "$candidate_unit_target"
+  sudo cmp -s "$candidate_unit_source" "$candidate_unit_target"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$candidate_unit_target")" \
+    = "0:0:644:1"
+done
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  sudo install -o root -g root -m 0644 "$BACKUP_RELEASE_QUIESCE_SOURCE" \
+    "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo cmp -s "$BACKUP_RELEASE_QUIESCE_SOURCE" \
+    "$BACKUP_RELEASE_QUIESCE_TARGET"
+  BACKUP_RELEASE_QUIESCE_SHA256="$(sudo sha256sum \
+    "$BACKUP_RELEASE_QUIESCE_TARGET" | awk '{print $1}')"
+  [[ "$BACKUP_RELEASE_QUIESCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  CANDIDATE_UNIT_TARGETS+=("$BACKUP_RELEASE_QUIESCE_TARGET")
+fi
+fsync_installed_paths "${CANDIDATE_UNIT_TARGETS[@]}"
+sudo systemd-analyze verify \
+  /etc/systemd/system/palimpsest-backup.service \
+  /etc/systemd/system/palimpsest-backup.timer \
+  /etc/systemd/system/palimpsest-evidence-wire.service \
+  /etc/systemd/system/palimpsest-evidence-wire.timer \
+  /etc/systemd/system/palimpsest-event-analysis-live.service
+sudo systemctl daemon-reload
+for unit_index in "${!CANDIDATE_UNIT_SOURCES[@]}"; do
+  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+    "${CANDIDATE_UNIT_SOURCES[$unit_index]}" \
+    "${CANDIDATE_UNIT_TARGETS[$unit_index]}"
+done
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+test "$(systemctl show --property=FragmentPath --value \
+  palimpsest-backup.service)" = /etc/systemd/system/palimpsest-backup.service
+test "$(systemctl show --property=User --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=Group --value \
+  palimpsest-backup.service)" = palimpsest
+test "$(systemctl show --property=WorkingDirectory --value \
+  palimpsest-backup.service)" = /home/palimpsest/palimpsest
+for candidate_unit in \
+    palimpsest-evidence-wire.service \
+    palimpsest-evidence-wire.timer \
+    palimpsest-event-analysis-live.service; do
+  test "$(systemctl show --property=FragmentPath --value "$candidate_unit")" \
+    = "/etc/systemd/system/$candidate_unit"
+  test -z "$(systemctl show --property=DropInPaths --value "$candidate_unit")"
+  test "$(systemctl show --property=NeedDaemonReload --value "$candidate_unit")" \
+    = no
+done
+candidate_backup_on_success="$BACKUP_ON_SUCCESS"
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  candidate_backup_on_success=''
+fi
+verify_release_service_success_triggers \
+  "$candidate_backup_on_success" palimpsest-event-analysis-live.service
+
+# The old v3 snapshot above is still the exact core/database restore point, but
+# its old image could not archive witness history. Before migration or bundle
+# installation, start the three mandatory workers against the already empty
+# broker, prove them quiet, fence them, and use the content-addressed image to
+# create the required v4 snapshot with the append-only witness prefix.
+WITNESS_HISTORY_DIR='/home/palimpsest/.palimpsest-witness'
+sudo test -d "$WITNESS_HISTORY_DIR"
+sudo test ! -L "$WITNESS_HISTORY_DIR"
+test "$(sudo stat -c '%u:%g' "$WITNESS_HISTORY_DIR")" \
+  = "$(id -u palimpsest):$(id -g palimpsest)"
+case "$(sudo stat -c '%a' "$WITNESS_HISTORY_DIR")" in
+  700|750|755) ;;
+  *) printf 'witness history directory mode is unsafe\n' >&2; exit 1 ;;
+esac
+WITNESS_REQUIRED_FILES=(
+  erasure-ledger.witness.jsonl
+  eval-registry.witness.jsonl
+  public-freshness-state.json
+)
+WITNESS_ACTUAL_INVENTORY="$(sudo find "$WITNESS_HISTORY_DIR" \
+  -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"
+WITNESS_EXPECTED_INVENTORY="$(printf '%s\n' \
+  "${WITNESS_REQUIRED_FILES[@]}" | LC_ALL=C sort)"
+WITNESS_EXPECTED_WITH_STATUS="$(printf '%s\n' \
+  "${WITNESS_REQUIRED_FILES[@]}" status.json | LC_ALL=C sort)"
+LEGACY_WITNESS_STATUS_PATH=''
+LEGACY_WITNESS_STATUS_SHA256=''
+if [[ "$WITNESS_ACTUAL_INVENTORY" == "$WITNESS_EXPECTED_WITH_STATUS" ]]; then
+  sudo test -f "$WITNESS_HISTORY_DIR/status.json"
+  sudo test ! -L "$WITNESS_HISTORY_DIR/status.json"
+  (( $(sudo stat -c '%s' "$WITNESS_HISTORY_DIR/status.json") <= 4194304 ))
+  sudo python3 -m json.tool "$WITNESS_HISTORY_DIR/status.json" >/dev/null
+  sudo install -d -o root -g root -m 0700 \
+    /var/lib/palimpsest-release \
+    /var/lib/palimpsest-release/pre-release-witness-status
+  sudo test ! -L /var/lib/palimpsest-release
+  sudo test ! -L /var/lib/palimpsest-release/pre-release-witness-status
+  test "$(sudo stat -c '%u:%g:%a:%h' \
+    /var/lib/palimpsest-release/pre-release-witness-status)" = "0:0:700:1"
+  LEGACY_WITNESS_STATUS_PATH="/var/lib/palimpsest-release/pre-release-witness-status/${RELEASE_RESUME_TOKEN}.json"
+  sudo test ! -e "$LEGACY_WITNESS_STATUS_PATH"
+  sudo install -o root -g root -m 0600 \
+    "$WITNESS_HISTORY_DIR/status.json" "$LEGACY_WITNESS_STATUS_PATH"
+  LEGACY_WITNESS_STATUS_SHA256="$(sudo sha256sum \
+    "$LEGACY_WITNESS_STATUS_PATH" | awk '{print $1}')"
+  [[ "$LEGACY_WITNESS_STATUS_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  test "$(sudo sha256sum "$WITNESS_HISTORY_DIR/status.json" | awk '{print $1}')" \
+    = "$LEGACY_WITNESS_STATUS_SHA256"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$LEGACY_WITNESS_STATUS_PATH")" \
+    = "0:0:600:1"
+  fsync_installed_paths "$LEGACY_WITNESS_STATUS_PATH"
+  sudo rm -- "$WITNESS_HISTORY_DIR/status.json"
+  sudo python3 - "$WITNESS_HISTORY_DIR" <<'PY'
+import os
+import sys
+
+directory = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+elif [[ "$WITNESS_ACTUAL_INVENTORY" != "$WITNESS_EXPECTED_INVENTORY" ]]; then
+  printf 'witness history inventory is not exact\n' >&2
+  exit 1
+fi
+for witness_file in "${WITNESS_REQUIRED_FILES[@]}"; do
+  sudo test -f "$WITNESS_HISTORY_DIR/$witness_file"
+  sudo test ! -L "$WITNESS_HISTORY_DIR/$witness_file"
+  test "$(sudo stat -c '%u:%g' "$WITNESS_HISTORY_DIR/$witness_file")" \
+    = "$(id -u palimpsest):$(id -g palimpsest)"
+  case "$(sudo stat -c '%a' "$WITNESS_HISTORY_DIR/$witness_file")" in
+    600|640|644) ;;
+    *) printf 'witness history file mode is unsafe: %s\n' \
+         "$witness_file" >&2; exit 1 ;;
+  esac
+  (( $(sudo stat -c '%s' "$WITNESS_HISTORY_DIR/$witness_file") \
+    <= 67108864 ))
+done
+PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_SNAPSHOT"
+PRE_CHANGE_V4_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
+V4_BACKUP_WORKER_SERVICES=(worker worker-collectors worker-warehouse)
+release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+  "${V4_BACKUP_WORKER_SERVICES[@]}"
+declare -A V4_BACKUP_CONTAINER_ID V4_BACKUP_HOSTNAME
+v4_backup_topology_arguments=()
+for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
+  V4_BACKUP_CONTAINER_ID["$compose_service"]="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")"
+  [[ "${V4_BACKUP_CONTAINER_ID[$compose_service]}" =~ ^[0-9a-f]{64}$ ]]
+  v4_worker_ready=0
+  for (( v4_worker_attempt=1; v4_worker_attempt<=45; v4_worker_attempt++ )); do
+    if [[ "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" \
+        == healthy ]]; then
+      v4_worker_ready=1
+      break
+    fi
+    sleep 2
+  done
+  (( v4_worker_ready == 1 ))
+  test "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  V4_BACKUP_HOSTNAME["$compose_service"]="$(docker inspect \
+    "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+    --format '{{.Config.Hostname}}')"
+  case "$compose_service" in
+    worker) v4_prefix=default ;;
+    worker-collectors) v4_prefix=collectors ;;
+    worker-warehouse) v4_prefix=warehouse ;;
+    *) exit 1 ;;
+  esac
+  v4_backup_topology_arguments+=(--pair \
+    "${v4_prefix}@${V4_BACKUP_HOSTNAME[$compose_service]}=${COMPOSE_QUEUE_BY_SERVICE[$compose_service]}")
+done
+V4_BACKUP_WORKER_ID="${V4_BACKUP_CONTAINER_ID[worker]}"
+V4_BACKUP_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
+  encode-topology "${v4_backup_topology_arguments[@]}")"
+CELERY_V4_BACKUP_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-v4-backup-fenced.json"
+docker exec -i "$V4_BACKUP_WORKER_ID" /usr/bin/python3 - quiesce \
+  --topology-b64 "$V4_BACKUP_TOPOLOGY_B64" \
+  --timeout-seconds 300 --interval-seconds 5 \
+  --inspect-timeout-seconds 15 \
+  <"$CELERY_GATE_PATH" >"$CELERY_V4_BACKUP_RECEIPT_PATH"
+start_and_verify_oneshot palimpsest-backup.service
+PRE_CHANGE_V4_SNAPSHOT="$(latest_node_snapshot)"
+test -n "$PRE_CHANGE_V4_SNAPSHOT"
+test "$PRE_CHANGE_V4_SNAPSHOT" != "$PRE_CHANGE_V4_SNAPSHOT_BEFORE"
+sudo bash -c 'cd "$1" && sha256sum --check SHA256SUMS' \
+  _ "$NODE_BACKUP_ROOT/$PRE_CHANGE_V4_SNAPSHOT"
+V4_BACKUP_VERIFICATION_JSON="$(sudo python3 \
+  ops/backup/node_backup_snapshot.py verify \
+  "$NODE_BACKUP_ROOT/$PRE_CHANGE_V4_SNAPSHOT" \
+  --snapshot-id "$PRE_CHANGE_V4_SNAPSHOT")"
+printf '%s\n' "$V4_BACKUP_VERIFICATION_JSON" | python3 -c '
+import json
+import sys
+
+snapshot = sys.argv[1]
+value = json.load(sys.stdin)
+checks = (
+    value.get("schema") == "palimpsest-node-backup-verification.v1",
+    value.get("status") == "verified",
+    value.get("snapshot") == snapshot,
+    value.get("counts", {}).get("snapshot_files") == 6,
+    value.get("counts", {}).get("checksum_entries") == 5,
+    value.get("counts", {}).get("artifact_members", 0) > 0,
+    value.get("counts", {}).get("witness_history_records", 0) > 0,
+)
+if not all(checks):
+    raise SystemExit("pre-change v4 witness backup proof failed")
+' "$PRE_CHANGE_V4_SNAPSHOT"
+V4_BACKUP_VERIFICATION_PATH="$OBSERVER_PREFLIGHT_DIR/v4-backup-verification.json"
+printf '%s\n' "$V4_BACKUP_VERIFICATION_JSON" \
+  >"$V4_BACKUP_VERIFICATION_PATH"
+release_compose "${COMPOSE_ALL_PROFILES[@]}" stop \
+  "${V4_BACKUP_WORKER_SERVICES[@]}"
+for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
+  test "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+    --format '{{.State.Status}}')" = exited
+done
+PRE_CHANGE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
 
 # Certify the exact built image and receipt without installing a consumer unit.
 # Then install and run the provider before either Requires= consumer exists.
@@ -1680,6 +2692,10 @@ sudo /usr/local/libexec/palimpsest-network-lane/current/verify-host-bundle.sh
 sudo /usr/local/libexec/palimpsest-common-crawl/current/verify-host-bundle.sh
 sudo /usr/local/libexec/palimpsest-public-osint-sync/current/verify-host-bundle.sh
 sudo /usr/local/libexec/palimpsest-node-offsite/current/verify-host-bundle.sh
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+verify_release_service_success_triggers \
+  "$candidate_backup_on_success" palimpsest-event-analysis-live.service
 
 # All Requires=/After= providers now exist in /etc. Verify the installed graph
 # together before any candidate migration or long-lived process starts.
@@ -1689,31 +2705,86 @@ sudo systemd-analyze verify \
   /etc/systemd/system/palimpsest-investigative-analysis.service \
   /etc/systemd/system/palimpsest-common-crawl-context.service
 
-# Install the independent observers from the same exact checkout.
-sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.service \
-  /etc/systemd/system/
-sudo install -m 0644 ops/systemd/palimpsest-freshness-watchdog.timer \
-  /etc/systemd/system/
+# Install the independent observers from the reviewed forward target. The
+# controller and application always advance together.
+sudo install -d -o root -g root -m 0755 /opt/palimpsest/ops/release
+sudo install -d -o root -g root -m 0755 /opt/palimpsest/ops/watchdog
 sudo install -d -o root -g root -m 0755 /opt/palimpsest/ops/witness
-sudo install -o root -g root -m 0755 \
-  ops/witness/palimpsest_witness.py \
-  /opt/palimpsest/ops/witness/palimpsest_witness.py
-sudo install -o root -g root -m 0644 \
-  ops/witness/palimpsest-witness.service \
-  /etc/systemd/system/palimpsest-witness.service
-sudo install -o root -g root -m 0644 \
-  ops/witness/palimpsest-witness.timer \
-  /etc/systemd/system/palimpsest-witness.timer
-cmp -s ops/systemd/palimpsest-freshness-watchdog.service \
+sudo install -d -o root -g root -m 0755 /etc/palimpsest
+sudo install -o root -g root -m 0755 "$OBSERVER_GATE_PATH" \
+  /opt/palimpsest/ops/release/observer_release_gate.py
+sudo install -o root -g root -m 0755 "$CELERY_GATE_PATH" \
+  /opt/palimpsest/ops/release/celery_release_gate.py
+sudo install -o root -g root -m 0755 "$RECOVERY_CONTROLLER_PATH" \
+  /opt/palimpsest/ops/release/recover_deployment_snapshots.py
+sudo install -o root -g root -m 0444 "$OBSERVER_POLICY_PATH" \
+  /etc/palimpsest/observer-release-policy.json
+sudo install -o root -g root -m 0755 "$WATCHDOG_PREFLIGHT_SCRIPT" \
+  /opt/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py
+sudo install -o root -g root -m 0644 "$WATCHDOG_CONTROLLER_SERVICE" \
   /etc/systemd/system/palimpsest-freshness-watchdog.service
-cmp -s ops/systemd/palimpsest-freshness-watchdog.timer \
+sudo install -o root -g root -m 0644 "$WATCHDOG_CONTROLLER_TIMER" \
   /etc/systemd/system/palimpsest-freshness-watchdog.timer
-cmp -s ops/witness/palimpsest_witness.py \
+sudo install -o root -g root -m 0755 \
+  "$WITNESS_PREFLIGHT_SCRIPT" \
   /opt/palimpsest/ops/witness/palimpsest_witness.py
-cmp -s ops/witness/palimpsest-witness.service \
+sudo install -o root -g root -m 0644 \
+  "$WITNESS_CONTROLLER_SERVICE" \
   /etc/systemd/system/palimpsest-witness.service
-cmp -s ops/witness/palimpsest-witness.timer \
+sudo install -o root -g root -m 0644 \
+  "$WITNESS_CONTROLLER_TIMER" \
   /etc/systemd/system/palimpsest-witness.timer
+sudo cmp -s "$OBSERVER_GATE_PATH" \
+  /opt/palimpsest/ops/release/observer_release_gate.py
+sudo cmp -s "$CELERY_GATE_PATH" \
+  /opt/palimpsest/ops/release/celery_release_gate.py
+sudo cmp -s "$RECOVERY_CONTROLLER_PATH" \
+  /opt/palimpsest/ops/release/recover_deployment_snapshots.py
+sudo cmp -s "$OBSERVER_POLICY_PATH" \
+  /etc/palimpsest/observer-release-policy.json
+sudo cmp -s "$WATCHDOG_PREFLIGHT_SCRIPT" \
+  /opt/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py
+sudo cmp -s "$WATCHDOG_CONTROLLER_SERVICE" \
+  /etc/systemd/system/palimpsest-freshness-watchdog.service
+sudo cmp -s "$WATCHDOG_CONTROLLER_TIMER" \
+  /etc/systemd/system/palimpsest-freshness-watchdog.timer
+sudo cmp -s "$WITNESS_PREFLIGHT_SCRIPT" \
+  /opt/palimpsest/ops/witness/palimpsest_witness.py
+sudo cmp -s "$WITNESS_CONTROLLER_SERVICE" \
+  /etc/systemd/system/palimpsest-witness.service
+sudo cmp -s "$WITNESS_CONTROLLER_TIMER" \
+  /etc/systemd/system/palimpsest-witness.timer
+fsync_installed_paths \
+  /opt/palimpsest/ops/release/observer_release_gate.py \
+  /opt/palimpsest/ops/release/celery_release_gate.py \
+  /opt/palimpsest/ops/release/recover_deployment_snapshots.py \
+  /etc/palimpsest/observer-release-policy.json \
+  /opt/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py \
+  /etc/systemd/system/palimpsest-freshness-watchdog.service \
+  /etc/systemd/system/palimpsest-freshness-watchdog.timer \
+  /opt/palimpsest/ops/witness/palimpsest_witness.py \
+  /etc/systemd/system/palimpsest-witness.service \
+  /etc/systemd/system/palimpsest-witness.timer
+
+# The canonical unit deliberately retains the historical append-only prefix
+# under /home/palimpsest. Refuse symlinks, unexpected entries, permissive modes,
+# or an unbounded local history before the first invocation of the new unit.
+WITNESS_HISTORY_DIR='/home/palimpsest/.palimpsest-witness'
+sudo test -d "$WITNESS_HISTORY_DIR"
+sudo test ! -L "$WITNESS_HISTORY_DIR"
+sudo chmod 0700 "$WITNESS_HISTORY_DIR"
+for witness_file in "${WITNESS_REQUIRED_FILES[@]}"; do
+  sudo chmod 0600 "$WITNESS_HISTORY_DIR/$witness_file"
+done
+test "$(sudo stat -c '%u:%g:%a' "$WITNESS_HISTORY_DIR")" \
+  = "$(id -u palimpsest):$(id -g palimpsest):700"
+test "$(sudo find "$WITNESS_HISTORY_DIR" -mindepth 1 -maxdepth 1 \
+  -printf '%f\n' | LC_ALL=C sort)" = "$WITNESS_EXPECTED_INVENTORY"
+for witness_file in "${WITNESS_REQUIRED_FILES[@]}"; do
+  test "$(sudo stat -c '%u:%g:%a:%h' \
+    "$WITNESS_HISTORY_DIR/$witness_file")" \
+    = "$(id -u palimpsest):$(id -g palimpsest):600:1"
+done
 sudo systemd-analyze verify \
   /etc/systemd/system/palimpsest-freshness-watchdog.service \
   /etc/systemd/system/palimpsest-freshness-watchdog.timer \
@@ -1721,40 +2792,60 @@ sudo systemd-analyze verify \
   /etc/systemd/system/palimpsest-witness.timer
 sudo systemctl daemon-reload
 
-# Restore the exact captured trigger only after node-offsite parity. Remove no
-# other drop-in. A failure before this point deliberately leaves backups
-# quiesced instead of allowing mixed-revision offsite work.
+# `systemctl cat` is source display, not an effective-unit proof: a drop-in can
+# override the displayed fragment and systemd flattens continued ExecStart
+# lines. Prove the exact canonical fragment, absence of drop-ins, and effective
+# sandbox identity instead.
+verify_observer_unit_provenance() {
+  local unit="$1" expected_state_directory="${2:-}"
+  local fragment="/etc/systemd/system/$unit"
+  sudo test -f "$fragment"
+  sudo test ! -L "$fragment"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$fragment")" = "0:0:644:1"
+  test "$(systemctl show --property=FragmentPath --value "$unit")" \
+    = "$fragment"
+  test -z "$(systemctl show --property=DropInPaths --value "$unit")"
+  test "$(systemctl show --property=NeedDaemonReload --value "$unit")" = no
+  if [[ -n "$expected_state_directory" ]]; then
+    test "$(systemctl show --property=User --value "$unit")" = palimpsest
+    test "$(systemctl show --property=StateDirectory --value "$unit")" \
+      = "$expected_state_directory"
+  fi
+}
+
+verify_observer_units() {
+  verify_observer_unit_provenance \
+    palimpsest-freshness-watchdog.service palimpsest-watchdog
+  verify_observer_unit_provenance palimpsest-freshness-watchdog.timer
+  verify_observer_unit_provenance \
+    palimpsest-witness.service palimpsest-witness
+  verify_observer_unit_provenance palimpsest-witness.timer
+}
+verify_observer_units
+
+# Keep the exact quiesce through migration, recovery, external publication, and
+# proof-complete receipt persistence. It is removed only immediately before
+# captured activators are restored in Phase 3.
 if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
-  sudo rm -- "$BACKUP_RELEASE_QUIESCE_TARGET"
-  sudo test ! -e "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo test -f "$BACKUP_RELEASE_QUIESCE_TARGET"
   sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
-  sudo systemctl daemon-reload
-  test "$(systemctl show --property=OnSuccess --value \
-    palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
+  test -z "$(systemctl show --property=OnSuccess --value \
+    palimpsest-backup.service)"
 fi
 
-# The verified pre-change snapshot is already durable. Only now may Compose run
-# the candidate migration and start containers. Its authority directory mount
-# exists because the first provider sync succeeded above.
-ops/docker/prod-compose up -d
-test "$(ops/docker/prod-compose port api 8000)" = "127.0.0.1:8010"
-COLLECTOR_CONTAINER_ID="$(ops/docker/prod-compose ps -q worker-collectors)"
-[[ "$COLLECTOR_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
-test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
-  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.Source}}{{end}}{{end}}')" \
-  = "$COMMON_CRAWL_DERIVED_SOURCE"
-test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
-  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.RW}}{{end}}{{end}}')" \
-  = "false"
-test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
-  '{{range .Config.Env}}{{println .}}{{end}}' | \
-  grep -Fx 'PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl')" \
-  = "PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl"
-HOST_FEATURE_SHA256="$(sha256sum "$COMMON_CRAWL_FEATURE_EXPORT" | awk '{print $1}')"
-CONTAINER_FEATURE_SHA256="$(docker exec "$COLLECTOR_CONTAINER_ID" \
-  sha256sum /app/common-crawl-derived/common-crawl-features.jsonl | \
-  awk '{print $1}')"
-test "$CONTAINER_FEATURE_SHA256" = "$HOST_FEATURE_SHA256"
+# The verified pre-change snapshot is already durable. Run only the candidate
+# migration and read-only API first; no scheduler or worker may be started by a
+# broad Compose command. The authority mount exists because the first provider
+# sync succeeded above.
+release_compose --profile api up -d postgres redis migrate api
+for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+    ps -q --all "$compose_service")"
+  if [[ -n "$writer_id" ]]; then
+    test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
+  fi
+done
+test "$(release_compose port api 8000)" = "127.0.0.1:8010"
 api_ready=0
 for (( api_attempt=1; api_attempt<=30; api_attempt++ )); do
   if curl --fail --silent --connect-timeout 1 --max-time 2 \
@@ -1770,9 +2861,142 @@ if (( api_ready != 1 )); then
   exit 1
 fi
 
+# Start the three mandatory production roles. Beat and the optional velocity
+# consumer stay stopped; the exact gate proves the mandatory set before the
+# collector runs synchronous recovery.
+release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+  worker worker-collectors worker-warehouse
+CANDIDATE_WORKER_ID="$(release_compose ps -q worker)"
+COLLECTOR_CONTAINER_ID="$(release_compose \
+  --profile collectors ps -q worker-collectors)"
+WAREHOUSE_CONTAINER_ID="$(release_compose \
+  --profile warehouse ps -q worker-warehouse)"
+[[ "$CANDIDATE_WORKER_ID" =~ ^[0-9a-f]{64}$ ]]
+[[ "$COLLECTOR_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+[[ "$WAREHOUSE_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+for candidate_container_id in \
+    "$CANDIDATE_WORKER_ID" "$COLLECTOR_CONTAINER_ID" \
+    "$WAREHOUSE_CONTAINER_ID"; do
+  candidate_ready=0
+  for (( candidate_attempt=1; candidate_attempt<=45; candidate_attempt++ )); do
+    if [[ "$(docker inspect "$candidate_container_id" \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" \
+        == healthy ]]; then
+      candidate_ready=1
+      break
+    fi
+    sleep 2
+  done
+  (( candidate_ready == 1 ))
+  test "$(docker inspect "$candidate_container_id" --format '{{.Image}}')" \
+    = "$CANDIDATE_IMAGE_ID"
+done
+test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
+  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.Source}}{{end}}{{end}}')" \
+  = "$COMMON_CRAWL_DERIVED_SOURCE"
+test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
+  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.RW}}{{end}}{{end}}')" \
+  = "false"
+test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
+  '{{range .Config.Env}}{{println .}}{{end}}' | \
+  grep -Fx 'PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl')" \
+  = "PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl"
+HOST_FEATURE_SHA256="$(sha256sum "$COMMON_CRAWL_FEATURE_EXPORT" | awk '{print $1}')"
+CONTAINER_FEATURE_SHA256="$(docker exec "$COLLECTOR_CONTAINER_ID" \
+  sha256sum /app/common-crawl-derived/common-crawl-features.jsonl | \
+  awk '{print $1}')"
+test "$CONTAINER_FEATURE_SHA256" = "$HOST_FEATURE_SHA256"
+
+CANDIDATE_WORKER_HOSTNAME="$(docker inspect "$CANDIDATE_WORKER_ID" \
+  --format '{{.Config.Hostname}}')"
+CANDIDATE_COLLECTOR_HOSTNAME="$(docker inspect "$COLLECTOR_CONTAINER_ID" \
+  --format '{{.Config.Hostname}}')"
+WAREHOUSE_WORKER_HOSTNAME="$(docker inspect "$WAREHOUSE_CONTAINER_ID" \
+  --format '{{.Config.Hostname}}')"
+CELERY_CANDIDATE_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
+  encode-topology \
+  --pair "default@${CANDIDATE_WORKER_HOSTNAME}=celery" \
+  --pair "collectors@${CANDIDATE_COLLECTOR_HOSTNAME}=collectors" \
+  --pair "warehouse@${WAREHOUSE_WORKER_HOSTNAME}=warehouse")"
+[[ "$CELERY_CANDIDATE_TOPOLOGY_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-candidate-consuming.json"
+docker exec -i "$CANDIDATE_WORKER_ID" /usr/bin/python3 - check \
+  --consumer-state consuming \
+  --topology-b64 "$CELERY_CANDIDATE_TOPOLOGY_B64" \
+  --timeout-seconds 300 --interval-seconds 5 \
+  --inspect-timeout-seconds 15 \
+  <"$CELERY_GATE_PATH" >"$CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH"
+
 # Import the new Common Crawl bundle before any context run. Analysis and
 # context remain stopped until the public OSINT sync advances in Phase 3.
 start_and_verify_oneshot palimpsest-common-crawl-import.service
+
+# Run the exact controller bytes synchronously inside the candidate collector
+# image. It invokes no send_task/delay/apply_async seam, so there is no retry or
+# result-backend residue to survive the release boundary.
+COLLECTOR_RECOVERY_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/collector-recovery.json"
+docker exec -i -w /app "$COLLECTOR_CONTAINER_ID" /usr/bin/python3 -c '
+import sys
+
+source = sys.stdin.read()
+scope = {
+    "__file__": "/app/scripts/recover_deployment_snapshots.py",
+    "__name__": "__main__",
+}
+exec(compile(source, scope["__file__"], "exec"), scope)
+' <"$RECOVERY_CONTROLLER_PATH" >"$COLLECTOR_RECOVERY_RECEIPT_PATH"
+python3 - "$COLLECTOR_RECOVERY_RECEIPT_PATH" <<'PY'
+import json
+import sys
+
+expected = [
+    "wayback",
+    "public-deletion-ledgers",
+    "news-wire-live",
+    "silence-index",
+    "archive-news-context",
+    "social-spread",
+]
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+if (
+    value.get("schema_version")
+        != "palimpsest-deployment-snapshot-recovery.v1"
+    or value.get("status") != "ok"
+    or value.get("failed_stage") is not None
+    or value.get("failure_code") is not None
+    or [item.get("collector") for item in value.get("lanes", [])] != expected
+    or any(
+        item.get("status") not in {"success", "abstained"}
+        or (item.get("status") == "success" and not item.get("output"))
+        for item in value.get("lanes", [])
+    )
+    or not value.get("node_status", {}).get("generated_at")
+):
+    raise SystemExit("collector recovery receipt is invalid")
+PY
+
+# Re-prove every broker queue empty, fence both candidate consumers, and stop
+# them. No Compose writer is allowed to run during the external publication
+# pause or the final immutable-byte checks.
+CELERY_CANDIDATE_FENCED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-candidate-fenced.json"
+docker exec -i "$CANDIDATE_WORKER_ID" /usr/bin/python3 - quiesce \
+  --topology-b64 "$CELERY_CANDIDATE_TOPOLOGY_B64" \
+  --timeout-seconds 10800 --interval-seconds 5 \
+  --inspect-timeout-seconds 15 \
+  <"$CELERY_GATE_PATH" >"$CELERY_CANDIDATE_FENCED_RECEIPT_PATH"
+release_compose "${COMPOSE_ALL_PROFILES[@]}" stop \
+  worker worker-collectors worker-warehouse
+for _ in 1 2; do
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all "$compose_service")"
+    if [[ -n "$writer_id" ]]; then
+      test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
+    fi
+  done
+  sleep 2
+done
 
 OSINT_AUTHORITY='/var/lib/palimpsest-public-osint-sync/authoritative'
 OSINT_ARTIFACT="$OSINT_AUTHORITY/osint-china-latest.json"
@@ -1884,8 +3108,6 @@ LIVE_BLEED_SHA256="$(curl --fail --silent --show-error --location \
 test "$LIVE_BLEED_SHA256" = "$BLEED_ARTIFACT_AFTER_SHA256"
 BLEED_ARTIFACT_NORMALIZED_SHA256="$(normalized_bleed_sha256 "$BLEED_ARTIFACT")"
 [[ "$BLEED_ARTIFACT_NORMALIZED_SHA256" =~ ^[0-9a-f]{64}$ ]]
-RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"
-[[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]]
 printf 'Phase 1 complete: expected=%s raw=%s normalized=%s\n' \
   "$EXPECTED_DEPLOY_SHA" "$BLEED_ARTIFACT_AFTER_SHA256" \
   "$BLEED_ARTIFACT_NORMALIZED_SHA256"
@@ -1930,18 +3152,95 @@ MAIN_RELATION="$(gh api \
   --jq .status)"
 [[ "$MAIN_RELATION" == "ahead" || "$MAIN_RELATION" == "identical" ]]
 
-OSINT_LATEST_RUN_ID_BEFORE="$(gh run list \
-  --repo "$PALIMPSEST_REPOSITORY" --workflow osint-china-v2-refresh.yml \
-  --limit 1 --json databaseId \
-  --jq 'if length == 0 then 0 else .[0].databaseId end')"
-[[ "$OSINT_LATEST_RUN_ID_BEFORE" =~ ^[0-9]+$ ]]
-gh workflow run osint-china-v2-refresh.yml \
-  --repo "$PALIMPSEST_REPOSITORY" --ref main
+PHASE2_TMP_DIR="$(mktemp -d)"
+chmod 0700 "$PHASE2_TMP_DIR"
+OSINT_WORKFLOW='osint-china-v2-refresh.yml'
+OSINT_WORKFLOW_RESTORE_DISABLED=0
+osint_workflow_state() {
+  gh api \
+    "repos/$PALIMPSEST_REPOSITORY/actions/workflows/$OSINT_WORKFLOW" \
+    --jq .state
+}
+restore_osint_workflow_freeze() {
+  local workflow_state
+  (( OSINT_WORKFLOW_RESTORE_DISABLED == 1 )) || return 0
+  for _ in {1..3}; do
+    workflow_state="$(osint_workflow_state)" || workflow_state=''
+    if [[ "$workflow_state" == disabled_manually ]]; then
+      OSINT_WORKFLOW_RESTORE_DISABLED=0
+      return 0
+    fi
+    if gh workflow disable "$OSINT_WORKFLOW" \
+        --repo "$PALIMPSEST_REPOSITORY"; then
+      workflow_state="$(osint_workflow_state)" || workflow_state=''
+      if [[ "$workflow_state" == disabled_manually ]]; then
+        OSINT_WORKFLOW_RESTORE_DISABLED=0
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  printf 'failed to restore the OSINT workflow freeze\n' >&2
+  return 1
+}
+cleanup_phase2() {
+  local original_status=$? restore_status=0
+  trap - EXIT
+  set +e
+  restore_osint_workflow_freeze || restore_status=$?
+  rm -rf -- "$PHASE2_TMP_DIR"
+  if (( original_status != 0 )); then
+    exit "$original_status"
+  fi
+  exit "$restore_status"
+}
+trap cleanup_phase2 EXIT
+test "$(osint_workflow_state)" = disabled_manually
+OSINT_RUNS_BEFORE_TMP="$PHASE2_TMP_DIR/runs-before.json"
+OSINT_RUNS_AFTER_TMP="$PHASE2_TMP_DIR/runs-after.json"
 gh run list --repo "$PALIMPSEST_REPOSITORY" \
-  --workflow osint-china-v2-refresh.yml --event workflow_dispatch --limit 10
-OSINT_RUN_ID='REPLACE_WITH_NEW_NUMERIC_RUN_ID'
+  --workflow "$OSINT_WORKFLOW" --event workflow_dispatch \
+  --limit 100 --json databaseId,event,headSha >"$OSINT_RUNS_BEFORE_TMP"
+OSINT_WORKFLOW_RESTORE_DISABLED=1
+gh workflow enable "$OSINT_WORKFLOW" \
+  --repo "$PALIMPSEST_REPOSITORY"
+test "$(osint_workflow_state)" = active
+gh workflow run "$OSINT_WORKFLOW" \
+  --repo "$PALIMPSEST_REPOSITORY" --ref main \
+  -f expected_deploy_sha="$EXPECTED_DEPLOY_SHA" \
+  -f release_nonce="$RELEASE_RESUME_TOKEN"
+restore_osint_workflow_freeze
+OSINT_RUN_ID=''
+for _ in {1..30}; do
+  gh run list --repo "$PALIMPSEST_REPOSITORY" \
+    --workflow "$OSINT_WORKFLOW" --event workflow_dispatch \
+    --limit 100 --json databaseId,event,headSha >"$OSINT_RUNS_AFTER_TMP"
+  OSINT_RUN_ID="$(python3 - "$OSINT_RUNS_BEFORE_TMP" \
+    "$OSINT_RUNS_AFTER_TMP" "$EXPECTED_DEPLOY_SHA" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    before = {item["databaseId"] for item in json.load(handle)}
+with open(sys.argv[2], encoding="utf-8") as handle:
+    after = json.load(handle)
+candidates = [
+    item["databaseId"]
+    for item in after
+    if item["databaseId"] not in before
+    and item.get("event") == "workflow_dispatch"
+    and item.get("headSha") == sys.argv[3]
+]
+if len(candidates) > 1:
+    raise SystemExit("more than one new release workflow matches this SHA")
+if candidates:
+    print(candidates[0])
+PY
+)"
+  [[ -z "$OSINT_RUN_ID" ]] || break
+  sleep 2
+done
 [[ "$OSINT_RUN_ID" =~ ^[0-9]+$ ]]
-(( 10#$OSINT_RUN_ID > 10#$OSINT_LATEST_RUN_ID_BEFORE ))
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --json event --jq .event)" = "workflow_dispatch"
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
@@ -1950,14 +3249,56 @@ test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --json headBranch --jq .headBranch)" = "main"
 OSINT_HEAD_SHA="$(gh run view "$OSINT_RUN_ID" \
   --repo "$PALIMPSEST_REPOSITORY" --json headSha --jq .headSha)"
-[[ "$OSINT_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
-RUN_RELATION="$(gh api \
-  "repos/$PALIMPSEST_REPOSITORY/compare/${EXPECTED_DEPLOY_SHA}...${OSINT_HEAD_SHA}" \
-  --jq .status)"
-[[ "$RUN_RELATION" == "ahead" || "$RUN_RELATION" == "identical" ]]
+test "$OSINT_HEAD_SHA" = "$EXPECTED_DEPLOY_SHA"
 gh run watch "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" --exit-status
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --json conclusion --jq .conclusion)" = "success"
+OSINT_RUN_ATTEMPT="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/actions/runs/$OSINT_RUN_ID" \
+  --jq .run_attempt)"
+[[ "$OSINT_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+OSINT_RELEASE_ARTIFACT_DIR="$PHASE2_TMP_DIR/release-artifact"
+mkdir -m 0700 "$OSINT_RELEASE_ARTIFACT_DIR"
+gh run download "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+  --name "palimpsest-osint-release-$OSINT_RUN_ID" \
+  --dir "$OSINT_RELEASE_ARTIFACT_DIR"
+test "$(find "$OSINT_RELEASE_ARTIFACT_DIR" -mindepth 1 -maxdepth 1 \
+  | wc -l | tr -d ' ')" = 1
+OSINT_RELEASE_RUN_RECEIPT="$OSINT_RELEASE_ARTIFACT_DIR/osint-release-run.json"
+test -f "$OSINT_RELEASE_RUN_RECEIPT"
+test ! -L "$OSINT_RELEASE_RUN_RECEIPT"
+RELEASE_RUN_RECEIPT_JSON="$(python3 - "$OSINT_RELEASE_RUN_RECEIPT" \
+  "$OSINT_RUN_ID" "$OSINT_RUN_ATTEMPT" "$EXPECTED_DEPLOY_SHA" \
+  "$RELEASE_RESUME_TOKEN" <<'PY'
+import json
+import re
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    value = json.load(handle)
+fields = {
+    "schema_version", "run_id", "run_attempt", "head_sha",
+    "expected_deploy_sha", "release_nonce", "publication_commit",
+}
+checks = (
+    isinstance(value, dict) and set(value) == fields,
+    value.get("schema_version") == "palimpsest-osint-release-run.v1",
+    value.get("run_id") == int(sys.argv[2]),
+    value.get("run_attempt") == int(sys.argv[3]),
+    value.get("head_sha") == sys.argv[4],
+    value.get("expected_deploy_sha") == sys.argv[4],
+    value.get("release_nonce") == sys.argv[5],
+    re.fullmatch(r"[0-9a-f]{40}", value.get("publication_commit", ""))
+        is not None,
+)
+if not all(checks):
+    raise SystemExit("release workflow artifact is not causally bound")
+print(json.dumps(value, sort_keys=True, separators=(",", ":")))
+PY
+)"
+OSINT_PUBLICATION_SHA="$(printf '%s\n' "$RELEASE_RUN_RECEIPT_JSON" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["publication_commit"])')"
+[[ "$OSINT_PUBLICATION_SHA" =~ ^[0-9a-f]{40}$ ]]
 
 normalized_bleed_sha256() {
   python3 - "$1" <<'PY'
@@ -2030,10 +3371,13 @@ PUBLIC_BLEED_TMP="$(mktemp)"
 REPOSITORY_OSINT_TMP="$(mktemp)"
 REPOSITORY_LEDGER_TMP="$(mktemp)"
 PUBLIC_OSINT_TMP="$(mktemp)"
+PUBLIC_LEDGER_TMP="$(mktemp)"
 cleanup_publication_files() {
   rm -f -- \
     "$LIVE_BLEED_TMP" "$REPOSITORY_BLEED_TMP" "$PUBLIC_BLEED_TMP" \
-    "$REPOSITORY_OSINT_TMP" "$REPOSITORY_LEDGER_TMP" "$PUBLIC_OSINT_TMP"
+    "$REPOSITORY_OSINT_TMP" "$REPOSITORY_LEDGER_TMP" "$PUBLIC_OSINT_TMP" \
+    "$PUBLIC_LEDGER_TMP"
+  cleanup_phase2
 }
 trap cleanup_publication_files EXIT
 
@@ -2048,12 +3392,6 @@ MAIN_AFTER_RUN_RELATION="$(gh api \
   --jq .status)"
 [[ "$MAIN_AFTER_RUN_RELATION" == "ahead" \
     || "$MAIN_AFTER_RUN_RELATION" == "identical" ]]
-OSINT_PUBLICATION_SHA="$(gh api --method GET \
-  "repos/$PALIMPSEST_REPOSITORY/commits" \
-  -f sha="$OSINT_FETCHED_MAIN" \
-  -f path='readings/osint-china-latest.json' -f per_page=1 \
-  --jq '.[0].sha')"
-[[ "$OSINT_PUBLICATION_SHA" =~ ^[0-9a-f]{40}$ ]]
 PUBLICATION_RELATION="$(gh api \
   "repos/$PALIMPSEST_REPOSITORY/compare/${EXPECTED_DEPLOY_SHA}...${OSINT_PUBLICATION_SHA}" \
   --jq .status)"
@@ -2090,6 +3428,21 @@ for _ in {1..80}; do
 done
 test "$PUBLIC_OSINT_RAW_SHA256" = "$REPOSITORY_OSINT_RAW_SHA256"
 python3 -m json.tool "$PUBLIC_OSINT_TMP" >/dev/null
+PUBLIC_LEDGER_URL="https://palimpsest.info/readings/readings-ledger.jsonl?publication=$OSINT_PUBLICATION_SHA"
+PUBLIC_LEDGER_RAW_SHA256=''
+for _ in {1..80}; do
+  if curl --fail --silent --show-error --location --max-filesize 67108864 \
+      --max-time 30 --output "$PUBLIC_LEDGER_TMP" "$PUBLIC_LEDGER_URL"; then
+    PUBLIC_LEDGER_RAW_SHA256="$(file_sha256 "$PUBLIC_LEDGER_TMP")"
+    if [[ "$PUBLIC_LEDGER_RAW_SHA256" \
+        == "$REPOSITORY_LEDGER_RAW_SHA256" ]]; then
+      break
+    fi
+  fi
+  sleep 15
+done
+test "$PUBLIC_LEDGER_RAW_SHA256" = "$REPOSITORY_LEDGER_RAW_SHA256"
+test -s "$PUBLIC_LEDGER_TMP"
 
 LIVE_BLEED_URL="https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json?release=$OSINT_RUN_ID"
 curl --fail --silent --show-error --location --max-filesize 262144 \
@@ -2131,25 +3484,42 @@ test "$PUBLIC_BLEED_NORMALIZED_SHA256" \
 
 # This canonical handoff transfers the exact Phase 2 proof into the still-open
 # host shell. Phase 3 installs these bytes as the provider's root-only pin.
+RELEASE_RUN_RECEIPT_SHA256="$(file_sha256 "$OSINT_RELEASE_RUN_RECEIPT")"
+[[ "$RELEASE_RUN_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
 RELEASE_PROOF_JSON="$(python3 - \
   "$RELEASE_RESUME_TOKEN" "$EXPECTED_DEPLOY_SHA" "$OSINT_FETCHED_MAIN" \
   "$OSINT_PUBLICATION_SHA" "$REPOSITORY_OSINT_RAW_SHA256" \
-  "$REPOSITORY_LEDGER_RAW_SHA256" <<'PY'
+  "$REPOSITORY_LEDGER_RAW_SHA256" "$OSINT_RUN_ID" \
+  "$OSINT_RUN_ATTEMPT" "$OSINT_HEAD_SHA" \
+  "$RELEASE_RUN_RECEIPT_SHA256" <<'PY'
 import json
 import re
 import sys
 
-token, deployed, fetched, publication, artifact, ledger = sys.argv[1:]
+(
+    token,
+    deployed,
+    fetched,
+    publication,
+    artifact,
+    ledger,
+    run_id,
+    run_attempt,
+    workflow_head,
+    workflow_receipt,
+) = sys.argv[1:]
 if re.fullmatch(r"[0-9a-f]{32}", token) is None:
     raise SystemExit("invalid resume token")
 if any(re.fullmatch(r"[0-9a-f]{40}", value) is None for value in (
-    deployed, fetched, publication
+    deployed, fetched, publication, workflow_head
 )):
     raise SystemExit("invalid commit in release proof")
 if any(re.fullmatch(r"[0-9a-f]{64}", value) is None for value in (
-    artifact, ledger
+    artifact, ledger, workflow_receipt
 )):
     raise SystemExit("invalid digest in release proof")
+if not run_id.isdigit() or not run_attempt.isdigit() or int(run_attempt) < 1:
+    raise SystemExit("invalid workflow identity in release proof")
 value = {
     "schema": "palimpsest-public-osint-release-proof.v1",
     "resume_token": token,
@@ -2158,6 +3528,10 @@ value = {
     "publication_commit": publication,
     "artifact_sha256": artifact,
     "ledger_sha256": ledger,
+    "workflow_run_id": int(run_id),
+    "workflow_run_attempt": int(run_attempt),
+    "workflow_head_sha": workflow_head,
+    "workflow_receipt_sha256": workflow_receipt,
 }
 print(json.dumps(value, sort_keys=True, separators=(",", ":")))
 PY
@@ -2186,16 +3560,47 @@ Return to the still-open Phase 1 SSH shell and paste the exact Phase 2 handoff
 only after every publication proof passes. Recheck the public bytes from the host, advance and prove
 the local OSINT receipt, rerun both local consumers, then run both observers
 anew. Finalization accepts only a fresh invocation with
-`ConditionResult=yes`, `Result=success`, and `ExecMainStatus=0`. Exit 2 is
-printed with its evidence but remains a release-blocking failure.
+`ConditionResult=yes`. Generic services still require `Result=success` and
+`ExecMainStatus=0`. The watchdog and witness may retain exit 2 only when every
+fresh structured condition is bound to its pre-release identity and state, or
+follows an explicitly enumerated state transition in the exact reviewed,
+reasoned, expiring carry-forward policy.
+Their systemd units remain failed so the accepted degradation stays visible.
 
 ```bash
 set -Eeuo pipefail
 if ! declare -p \
-    RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT RELEASE_ACTIVATORS \
+    RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT RELEASE_ACTIVATORS RELEASE_SERVICES \
+    COMPOSE_ALL_PROFILES COMPOSE_WRITER_SERVICES CELERY_WORKER_SERVICES \
+    COMPOSE_WAS_RUNNING COMPOSE_CONTAINER_ID_BEFORE COMPOSE_IMAGE_ID_BEFORE \
+    COMPOSE_NODE_BEFORE COMPOSE_QUEUE_BY_SERVICE \
+    CANDIDATE_UNIT_SOURCES CANDIDATE_UNIT_TARGETS \
     RELEASE_HANDOFF_B64 \
     PROOF_PIN_SEQUENCE ACTIVE_PROOF_PIN \
+    OBSERVER_CONTROLLER_SHA OBSERVER_PREFLIGHT_DIR \
+    OBSERVER_GATE_PATH OBSERVER_POLICY_PATH \
+    OBSERVER_GATE_SHA256 OBSERVER_POLICY_SHA256 \
+    WATCHDOG_CONTROLLER_SERVICE WATCHDOG_CONTROLLER_TIMER \
+    WITNESS_CONTROLLER_SERVICE WITNESS_CONTROLLER_TIMER \
+    CONTROLLER_MANIFEST_PATH CONTROLLER_TREE_SHA256 \
+    CELERY_GATE_PATH RECOVERY_CONTROLLER_PATH \
+    CELERY_TOPOLOGY_BEFORE_B64 CELERY_CANDIDATE_TOPOLOGY_B64 \
+    CELERY_PRECHANGE_RECEIPT_PATH \
+    CELERY_V4_BACKUP_RECEIPT_PATH V4_BACKUP_VERIFICATION_PATH \
+    CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH \
+    CELERY_CANDIDATE_FENCED_RECEIPT_PATH \
+    COLLECTOR_RECOVERY_RECEIPT_PATH CANDIDATE_IMAGE_ID \
+    PRE_CHANGE_CORE_SNAPSHOT PRE_CHANGE_SNAPSHOT \
+    WATCHDOG_BASELINE_B64 WITNESS_BASELINE_B64 \
     NODE_OFFSITE_CONFIGURED EXPECTED_DEPLOY_SHA \
+    EXPECTED_PREVIOUS_CHECKOUT_SHA EXPECTED_PREVIOUS_DEPLOY_SHA \
+    PREVIOUS_CHECKOUT_SHA PREVIOUS_DEPLOY_SHA COMPATIBLE_ROLLBACK_SHA \
+    TRANSACTION_DIRECTION PHASE1_SHELL_PID PHASE1_FAIL_SAFE_ARMED \
+    RELEASE_DOCKER_CONFIG \
+    BACKUP_RELEASE_QUIESCE_ADDED BACKUP_RELEASE_QUIESCE_TARGET \
+    BACKUP_RELEASE_QUIESCE_SHA256 BACKUP_ON_SUCCESS \
+    LEGACY_WITNESS_STATUS_PATH \
+    LEGACY_WITNESS_STATUS_SHA256 \
     BLEED_ARTIFACT_AFTER_SHA256 BLEED_ARTIFACT_NORMALIZED_SHA256 \
     OSINT_ARTIFACT OSINT_LEDGER OSINT_ARTIFACT_BEFORE_SHA256 \
     OSINT_LEDGER_BEFORE_SHA256 OSINT_GENERATED_AT_BEFORE \
@@ -2207,34 +3612,100 @@ if ! declare -p \
     || ! [[ "$BLEED_ARTIFACT_NORMALIZED_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$OSINT_ARTIFACT_BEFORE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$OSINT_LEDGER_BEFORE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$EXPECTED_PREVIOUS_CHECKOUT_SHA" =~ ^[0-9a-f]{40}$ ]] \
+    || ! [[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] \
+    || ! [[ "$PREVIOUS_CHECKOUT_SHA" =~ ^[0-9a-f]{40}$ ]] \
+    || ! [[ "$PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] \
+    || ! [[ "$OBSERVER_CONTROLLER_SHA" =~ ^[0-9a-f]{40}$ ]] \
+    || ! [[ "$OBSERVER_GATE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$OBSERVER_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$CONTROLLER_TREE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
+    || ! [[ "$CANDIDATE_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || ! [[ "$WATCHDOG_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
+    || ! [[ "$WITNESS_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
     || ! [[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
-    || ! declare -F pin_unit_for_proof release_proof_pin \
+    || ! declare -F release_git release_compose read_enablement stop_loaded_unit \
+      temporarily_disable_activator release_quiesce_all phase1_fail_safe \
+      fsync_installed_paths git_blob_sha256 verify_installed_unit_blob \
+      verify_backup_dropins \
+      verify_release_service_success_triggers \
+      pin_unit_for_proof release_proof_pin normalized_bleed_sha256 \
+      verify_compose_container_inventory verify_observer_unit_provenance \
+      verify_observer_units \
       >/dev/null 2>&1; then
   printf 'Phase 3 must run in the original paused Phase 1 shell\n' >&2
   exit 1
 fi
 
+test "$PHASE1_SHELL_PID" = "$$"
+test "$PHASE1_FAIL_SAFE_ARMED" = 1
+test "$TRANSACTION_DIRECTION" = forward
+test "$PREVIOUS_CHECKOUT_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
+test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+test "$(release_git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"
+test "$(sudo cat /etc/palimpsest/deployed-commit)" = "$EXPECTED_DEPLOY_SHA"
+case "$BACKUP_RELEASE_QUIESCE_ADDED" in
+  0)
+    test -z "$BACKUP_RELEASE_QUIESCE_SHA256"
+    sudo test ! -e "$BACKUP_RELEASE_QUIESCE_TARGET"
+    test "$(systemctl show --property=OnSuccess --value \
+      palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
+    ;;
+  1)
+    [[ "$BACKUP_RELEASE_QUIESCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+    sudo test -f "$BACKUP_RELEASE_QUIESCE_TARGET"
+    sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
+    test "$(sudo sha256sum "$BACKUP_RELEASE_QUIESCE_TARGET" \
+      | awk '{print $1}')" = "$BACKUP_RELEASE_QUIESCE_SHA256"
+    test -z "$(systemctl show --property=OnSuccess --value \
+      palimpsest-backup.service)"
+    ;;
+  *) exit 1 ;;
+esac
+phase3_backup_on_success="$BACKUP_ON_SUCCESS"
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  phase3_backup_on_success=''
+fi
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+verify_release_service_success_triggers \
+  "$phase3_backup_on_success" palimpsest-event-analysis-live.service
+if [[ -n "$LEGACY_WITNESS_STATUS_PATH" ]]; then
+  test "$LEGACY_WITNESS_STATUS_PATH" \
+    = "/var/lib/palimpsest-release/pre-release-witness-status/${RELEASE_RESUME_TOKEN}.json"
+  [[ "$LEGACY_WITNESS_STATUS_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  sudo test -f "$LEGACY_WITNESS_STATUS_PATH"
+  sudo test ! -L "$LEGACY_WITNESS_STATUS_PATH"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$LEGACY_WITNESS_STATUS_PATH")" \
+    = "0:0:600:1"
+  test "$(sudo sha256sum "$LEGACY_WITNESS_STATUS_PATH" | awk '{print $1}')" \
+    = "$LEGACY_WITNESS_STATUS_SHA256"
+else
+  test -z "$LEGACY_WITNESS_STATUS_SHA256"
+fi
+
 release_finalized=0
+PHASE3_FAIL_SAFE_ARMED=1
 phase3_fail_safe() {
-  local unit
-  if (( release_finalized == 1 )); then
+  local original_status="${1:-1}"
+  if (( release_finalized == 1 || PHASE3_FAIL_SAFE_ARMED == 0 )); then
     return 0
   fi
-  trap - ERR HUP INT TERM
-  set +e
-  printf 'Phase 3 failed; quiescing every release activator\n' >&2
-  for unit in "${RELEASE_ACTIVATORS[@]}"; do
-    sudo systemctl stop "$unit" >/dev/null 2>&1 || true
-    sudo systemctl disable "$unit" >/dev/null 2>&1 || true
-  done
-  if [[ -n "${ACTIVE_PROOF_PIN:-}" ]]; then
-    sudo systemctl stop "$ACTIVE_PROOF_PIN" >/dev/null 2>&1 || true
-    ACTIVE_PROOF_PIN=''
-  fi
-  sudo systemctl daemon-reload >/dev/null 2>&1 || true
+  (( RELEASE_FAIL_SAFE_RUNNING == 0 )) || return 0
+  RELEASE_FAIL_SAFE_RUNNING=1
+  trap - ERR EXIT HUP INT TERM
+  printf 'Phase 3 interrupted (%s); quiescing every release writer and activator\n' \
+    "$original_status" >&2
+  release_quiesce_all
 }
-trap phase3_fail_safe ERR
-trap 'phase3_fail_safe; exit 1' HUP INT TERM
+trap 'phase3_fail_safe "$?"' ERR
+trap 'phase3_fail_safe "$?"' EXIT
+trap 'phase3_fail_safe 129; exit 129' HUP
+trap 'phase3_fail_safe 130; exit 130' INT
+trap 'phase3_fail_safe 143; exit 143' TERM
+PHASE1_FAIL_SAFE_ARMED=0
+RELEASE_FAIL_SAFE_RUNNING=0
 
 for held_unit in "${RELEASE_ACTIVATORS[@]}"; do
   held_state="$(systemctl is-active "$held_unit" 2>/dev/null || true)"
@@ -2244,6 +3715,32 @@ for held_unit in "${RELEASE_ACTIVATORS[@]}"; do
          "$held_unit" "$held_state" >&2; exit 1 ;;
   esac
 done
+for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  held_container_id="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
+  if [[ -n "$held_container_id" ]] \
+      && [[ "$(docker inspect "$held_container_id" \
+        --format '{{.State.Status}}')" != exited ]]; then
+    printf 'Compose writer restarted before finalization: %s\n' \
+      "$compose_service" >&2
+    exit 1
+  fi
+done
+test "$(sha256sum "$CONTROLLER_MANIFEST_PATH" | awk '{print $1}')" \
+  = "$CONTROLLER_TREE_SHA256"
+(
+  cd "$OBSERVER_PREFLIGHT_DIR"
+  sha256sum --check "$(basename "$CONTROLLER_MANIFEST_PATH")"
+)
+sudo cmp -s "$WATCHDOG_CONTROLLER_SERVICE" \
+  /etc/systemd/system/palimpsest-freshness-watchdog.service
+sudo cmp -s "$WATCHDOG_CONTROLLER_TIMER" \
+  /etc/systemd/system/palimpsest-freshness-watchdog.timer
+sudo cmp -s "$WITNESS_CONTROLLER_SERVICE" \
+  /etc/systemd/system/palimpsest-witness.service
+sudo cmp -s "$WITNESS_CONTROLLER_TIMER" \
+  /etc/systemd/system/palimpsest-witness.timer
+verify_observer_units
 
 # Decode, strictly validate, and canonically re-emit the Phase 2 handoff. The
 # fixed root-only path makes every Requires=/Wants= rerun select the same Git
@@ -2281,6 +3778,8 @@ except (UnicodeError, ValueError, binascii.Error) as error:
 fields = {
     "schema", "resume_token", "expected_deploy_sha", "fetched_main",
     "publication_commit", "artifact_sha256", "ledger_sha256",
+    "workflow_run_id", "workflow_run_attempt", "workflow_head_sha",
+    "workflow_receipt_sha256",
 }
 if not isinstance(value, dict) or set(value) != fields:
     raise SystemExit("invalid Phase 2 handoff fields")
@@ -2290,25 +3789,58 @@ if value.get("resume_token") != expected_token:
     raise SystemExit("Phase 2 handoff does not match the paused shell")
 if value.get("expected_deploy_sha") != expected_deploy:
     raise SystemExit("Phase 2 handoff does not match the deployed SHA")
+if value.get("workflow_head_sha") != expected_deploy:
+    raise SystemExit("Phase 2 workflow did not start at the deployed SHA")
 if any(re.fullmatch(r"[0-9a-f]{40}", value.get(field, "")) is None
-       for field in ("expected_deploy_sha", "fetched_main", "publication_commit")):
+       for field in (
+           "expected_deploy_sha", "fetched_main", "publication_commit",
+           "workflow_head_sha",
+       )):
     raise SystemExit("invalid Phase 2 handoff commit")
 if any(re.fullmatch(r"[0-9a-f]{64}", value.get(field, "")) is None
-       for field in ("artifact_sha256", "ledger_sha256")):
+       for field in (
+           "artifact_sha256", "ledger_sha256", "workflow_receipt_sha256",
+       )):
     raise SystemExit("invalid Phase 2 handoff digest")
+if type(value.get("workflow_run_id")) is not int \
+        or value["workflow_run_id"] < 1 \
+        or type(value.get("workflow_run_attempt")) is not int \
+        or value["workflow_run_attempt"] < 1:
+    raise SystemExit("invalid Phase 2 workflow identity")
 print(json.dumps(value, sort_keys=True, separators=(",", ":")))
 PY
+PHASE2_HANDOFF_JSON="$(cat "$RELEASE_PROOF_TMP")"
+SYNC_RELEASE_PROOF_TMP="$(mktemp /tmp/palimpsest-sync-release-proof.XXXXXX)"
+chmod 0600 "$SYNC_RELEASE_PROOF_TMP"
+python3 - "$RELEASE_PROOF_TMP" >"$SYNC_RELEASE_PROOF_TMP" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    handoff = json.load(handle)
+fields = (
+    "schema", "resume_token", "expected_deploy_sha", "fetched_main",
+    "publication_commit", "artifact_sha256", "ledger_sha256",
+)
+proof = {field: handoff[field] for field in fields}
+print(json.dumps(proof, sort_keys=True, separators=(",", ":")))
+PY
 RELEASE_PROOF_PATH='/var/lib/palimpsest-public-osint-sync/release-proof.json'
+sudo test ! -e "$RELEASE_PROOF_PATH"
 sudo test ! -L "$RELEASE_PROOF_PATH"
 sudo install -o root -g root -m 0600 \
-  "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
-sudo cmp -s "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
+  "$SYNC_RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
+sudo cmp -s "$SYNC_RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
 test "$(sudo stat -c '%u:%g:%a:%h' "$RELEASE_PROOF_PATH")" = "0:0:600:1"
 RELEASE_PROOF_JSON="$(sudo cat "$RELEASE_PROOF_PATH")"
 RELEASE_PROOF_FILE_SHA256="$(sudo sha256sum "$RELEASE_PROOF_PATH" \
   | awk '{print $1}')"
 [[ "$RELEASE_PROOF_FILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
-rm -f -- "$RELEASE_PROOF_TMP"
+RELEASE_PROOF_DIR="$(dirname "$RELEASE_PROOF_PATH")"
+sudo test -d "$RELEASE_PROOF_DIR"
+sudo test ! -L "$RELEASE_PROOF_DIR"
+fsync_installed_paths "$RELEASE_PROOF_PATH"
+rm -f -- "$RELEASE_PROOF_TMP" "$SYNC_RELEASE_PROOF_TMP"
 PUBLIC_BLEED_URL="https://palimpsest.info/readings/bleedthrough-latest.json?release=$EXPECTED_DEPLOY_SHA"
 PUBLIC_BLEED_TMP="$(mktemp /tmp/palimpsest-public-bleed.XXXXXX)"
 chmod 0600 "$PUBLIC_BLEED_TMP"
@@ -2321,10 +3853,14 @@ rm -f -- "$PUBLIC_BLEED_TMP"
 test "$PUBLIC_BLEED_NORMALIZED_SHA256" \
   = "$BLEED_ARTIFACT_NORMALIZED_SHA256"
 
+declare -A FINAL_OBSERVER_PROOF FINAL_OBSERVER_INVOCATION
+declare -A FINAL_OBSERVER_EXIT_PAIR
 run_final_observer() {
   local unit="$1" status_path="$2" pre_release_id="$3"
+  local observer="${4:-}" baseline="${5:-}"
   local previous_id invocation_id condition_result result exec_status started
   local start_rc release_rc
+  local observer_proof=''
   local observer_ok=1
   previous_id="$(systemctl show --property=InvocationID --value \
     "$unit" 2>/dev/null || true)"
@@ -2352,7 +3888,6 @@ run_final_observer() {
   release_rc=0
   release_proof_pin || release_rc=$?
 
-  (( start_rc == 0 )) || observer_ok=0
   (( release_rc == 0 )) || observer_ok=0
   [[ "$invocation_id" =~ ^[0-9a-f]{32}$ ]] || observer_ok=0
   [[ "$invocation_id" != "$previous_id" ]] || observer_ok=0
@@ -2360,9 +3895,59 @@ run_final_observer() {
     observer_ok=0
   fi
   [[ "$condition_result" == "yes" ]] || observer_ok=0
-  [[ "$result" == "success" ]] || observer_ok=0
-  [[ "$exec_status" == "0" ]] || observer_ok=0
   [[ "$started" =~ ^[1-9][0-9]*$ ]] || observer_ok=0
+
+  if [[ -z "$observer" ]]; then
+    (( start_rc == 0 )) || observer_ok=0
+    [[ "$result" == "success" ]] || observer_ok=0
+    [[ "$exec_status" == "0" ]] || observer_ok=0
+  else
+    [[ "$observer" == watchdog || "$observer" == witness ]] \
+      || observer_ok=0
+    [[ -n "$status_path" && "$baseline" =~ ^[A-Za-z0-9+/=]+$ ]] \
+      || observer_ok=0
+    case "$exec_status:$result" in
+      0:success) (( start_rc == 0 )) || observer_ok=0 ;;
+      2:exit-code) (( start_rc != 0 )) || observer_ok=0 ;;
+      *) observer_ok=0 ;;
+    esac
+    test "$(sha256sum "$OBSERVER_GATE_PATH" | awk '{print $1}')" \
+      = "$OBSERVER_GATE_SHA256" || observer_ok=0
+    test "$(sha256sum "$OBSERVER_POLICY_PATH" | awk '{print $1}')" \
+      = "$OBSERVER_POLICY_SHA256" || observer_ok=0
+    if (( observer_ok == 1 )); then
+      if observer_proof="$(/usr/bin/python3 "$OBSERVER_GATE_PATH" compare \
+          --observer "$observer" --status "$status_path" \
+          --policy "$OBSERVER_POLICY_PATH" --baseline "$baseline" \
+          --transaction-id "$RELEASE_RESUME_TOKEN" \
+          --deploy-sha "$EXPECTED_DEPLOY_SHA" \
+          --controller-sha "$OBSERVER_CONTROLLER_SHA" \
+          --expected-invocation-id "$invocation_id")"; then
+        printf '%s\n' "$observer_proof" | python3 -c '
+import json
+import sys
+
+observer, invocation, transaction, deployed, controller, exec_status = sys.argv[1:]
+value = json.load(sys.stdin)
+expected_status = "healthy" if exec_status == "0" else "reviewed-degradation"
+if (
+    value.get("schema_version") != "palimpsest-observer-release-proof.v1"
+    or value.get("observer") != observer
+    or value.get("status") != expected_status
+    or value.get("invocation_id") != invocation
+    or value.get("transaction_id") != transaction
+    or value.get("deploy_sha") != deployed
+    or value.get("controller_sha") != controller
+):
+    raise SystemExit("observer release proof is invalid")
+' "$observer" "$invocation_id" "$RELEASE_RESUME_TOKEN" \
+          "$EXPECTED_DEPLOY_SHA" "$OBSERVER_CONTROLLER_SHA" \
+          "$exec_status" || observer_ok=0
+      else
+        observer_ok=0
+      fi
+    fi
+  fi
 
   if (( observer_ok == 0 )); then
     printf '%s final invocation failed: id=%s condition=%s result=%s status=%s started=%s\n' \
@@ -2374,10 +3959,16 @@ run_final_observer() {
       sudo python3 -m json.tool "$status_path" || true
     fi
     if [[ "$exec_status" == "2" ]]; then
-      printf '%s reported a stale incident; exit 2 is not final success\n' \
+      printf '%s reported a stale incident; unproved exit 2 is not final success\n' \
         "$unit" >&2
     fi
     return 1
+  fi
+  if [[ -n "$observer_proof" ]]; then
+    FINAL_OBSERVER_PROOF["$observer"]="$observer_proof"
+    FINAL_OBSERVER_INVOCATION["$observer"]="$invocation_id"
+    FINAL_OBSERVER_EXIT_PAIR["$observer"]="$exec_status:$result:$start_rc"
+    printf '%s final release proof: %s\n' "$unit" "$observer_proof"
   fi
 }
 
@@ -2443,22 +4034,30 @@ SYNC_RECEIPT_SHA256="$(printf '%s\n' "$SYNC_RECEIPT_JSON" \
 # timer-disabled until its explicit post-import run succeeds.
 sudo systemctl start palimpsest-investigative-broker.socket
 run_final_observer palimpsest-investigative-analysis.service '' ''
+stop_loaded_unit palimpsest-investigative-broker.socket
+sudo systemctl stop 'palimpsest-investigative-broker@*.service' \
+  2>/dev/null || true
+test -z "$(systemctl list-units --no-legend --plain \
+  --state=active,activating,deactivating \
+  'palimpsest-investigative-broker@*.service')"
 run_final_observer palimpsest-common-crawl-context.service '' ''
 
 run_final_observer palimpsest-freshness-watchdog.service \
   /var/lib/palimpsest-watchdog/status.json \
-  "$WATCHDOG_PRE_RELEASE_INVOCATION_ID"
-run_final_observer palimpsest-witness.service '' \
-  "$WITNESS_PRE_RELEASE_INVOCATION_ID"
-systemctl cat palimpsest-witness.timer \
-  | grep -Fqx 'OnCalendar=*:0/15'
+  "$WATCHDOG_PRE_RELEASE_INVOCATION_ID" watchdog \
+  "$WATCHDOG_BASELINE_B64"
+run_final_observer palimpsest-witness.service \
+  /var/lib/palimpsest-witness/status.json \
+  "$WITNESS_PRE_RELEASE_INVOCATION_ID" witness \
+  "$WITNESS_BASELINE_B64"
+verify_observer_units
 
 # Every dependent start above may have requested the provider again. Prove the
 # final bytes and raw receipt after all consumers and observers while the exact
 # release proof is still installed.
 FINAL_SYNC_RECEIPT_JSON="$(sudo /usr/bin/python3 \
   /usr/local/libexec/palimpsest-public-osint-sync/current/public_osint_sync.py \
-  --verify-installed)"
+  --verify-public-installed)"
 FINAL_SYNC_RECEIPT_SHA256="$(printf '%s\n' "$FINAL_SYNC_RECEIPT_JSON" \
   | sha256sum | awk '{print $1}')"
 test "$FINAL_SYNC_RECEIPT_JSON" = "$SYNC_RECEIPT_JSON"
@@ -2469,11 +4068,235 @@ test "$(sudo sha256sum "$OSINT_LEDGER" | awk '{print $1}')" \
   = "$OSINT_LEDGER_AFTER_SHA256"
 test "$(sudo sha256sum "$RELEASE_PROOF_PATH" | awk '{print $1}')" \
   = "$RELEASE_PROOF_FILE_SHA256"
+FINAL_PUBLIC_BLEED_TMP="$(mktemp /tmp/palimpsest-final-public-bleed.XXXXXX)"
+chmod 0600 "$FINAL_PUBLIC_BLEED_TMP"
+curl --fail --silent --show-error --location --max-filesize 262144 \
+  --max-time 30 --output "$FINAL_PUBLIC_BLEED_TMP" \
+  "https://palimpsest.info/readings/bleedthrough-latest.json?final=$RELEASE_RESUME_TOKEN"
+FINAL_PUBLIC_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
+  "$FINAL_PUBLIC_BLEED_TMP")"
+rm -f -- "$FINAL_PUBLIC_BLEED_TMP"
+test "$FINAL_PUBLIC_BLEED_NORMALIZED_SHA256" \
+  = "$BLEED_ARTIFACT_NORMALIZED_SHA256"
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  test "$(sudo sha256sum "$BACKUP_RELEASE_QUIESCE_TARGET" \
+    | awk '{print $1}')" = "$BACKUP_RELEASE_QUIESCE_SHA256"
+  test -z "$(systemctl show --property=OnSuccess --value \
+    palimpsest-backup.service)"
+else
+  test "$(systemctl show --property=OnSuccess --value \
+    palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
+fi
+for unit_index in "${!CANDIDATE_UNIT_SOURCES[@]}"; do
+  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+    "${CANDIDATE_UNIT_SOURCES[$unit_index]}" \
+    "${CANDIDATE_UNIT_TARGETS[$unit_index]}"
+done
+verify_backup_dropins \
+  "$EXPECTED_DEPLOY_SHA" "$BACKUP_RELEASE_QUIESCE_ADDED"
+verify_release_service_success_triggers \
+  "$phase3_backup_on_success" palimpsest-event-analysis-live.service
+if [[ -n "$LEGACY_WITNESS_STATUS_PATH" ]]; then
+  test "$(sudo sha256sum "$LEGACY_WITNESS_STATUS_PATH" | awk '{print $1}')" \
+    = "$LEGACY_WITNESS_STATUS_SHA256"
+fi
+
+# Persist one canonical proof-complete receipt while the immutable Git/public
+# pin still exists. This is the deployment commit prerequisite, not a log line.
+COMPOSE_CAPTURE_PATH="$OBSERVER_PREFLIGHT_DIR/compose-before.tsv"
+: >"$COMPOSE_CAPTURE_PATH"
+for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  printf '%s\t%s\t%s\t%s\n' "$compose_service" \
+    "${COMPOSE_WAS_RUNNING[$compose_service]}" \
+    "${COMPOSE_CONTAINER_ID_BEFORE[$compose_service]}" \
+    "${COMPOSE_IMAGE_ID_BEFORE[$compose_service]}" \
+    >>"$COMPOSE_CAPTURE_PATH"
+done
+PHASE2_HANDOFF_PATH="$OBSERVER_PREFLIGHT_DIR/phase2-handoff.json"
+SYNC_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/final-sync-receipt.json"
+WATCHDOG_FINAL_PROOF_PATH="$OBSERVER_PREFLIGHT_DIR/watchdog-final-proof.json"
+WITNESS_FINAL_PROOF_PATH="$OBSERVER_PREFLIGHT_DIR/witness-final-proof.json"
+printf '%s\n' "$PHASE2_HANDOFF_JSON" >"$PHASE2_HANDOFF_PATH"
+printf '%s\n' "$FINAL_SYNC_RECEIPT_JSON" >"$SYNC_RECEIPT_PATH"
+printf '%s\n' "${FINAL_OBSERVER_PROOF[watchdog]}" \
+  >"$WATCHDOG_FINAL_PROOF_PATH"
+printf '%s\n' "${FINAL_OBSERVER_PROOF[witness]}" \
+  >"$WITNESS_FINAL_PROOF_PATH"
+RELEASE_RECEIPT_STAMP="$(date -u +'%Y%m%dT%H%M%SZ')"
+RELEASE_RECEIPT_STEM="${RELEASE_RECEIPT_STAMP}-${EXPECTED_DEPLOY_SHA:0:12}-${RELEASE_RESUME_TOKEN}"
+RELEASE_RECEIPT_TMP="$OBSERVER_PREFLIGHT_DIR/$RELEASE_RECEIPT_STEM.proof-complete.json"
+python3 - "$RELEASE_RECEIPT_TMP" "$PREVIOUS_CHECKOUT_SHA" \
+  "$PREVIOUS_DEPLOY_SHA" "$EXPECTED_DEPLOY_SHA" \
+  "$OBSERVER_CONTROLLER_SHA" \
+  "$CONTROLLER_TREE_SHA256" "$CANDIDATE_IMAGE_ID" \
+  "$RELEASE_RESUME_TOKEN" "$PRE_CHANGE_CORE_SNAPSHOT" \
+  "$PRE_CHANGE_SNAPSHOT" "$V4_BACKUP_VERIFICATION_PATH" \
+  "$LEGACY_WITNESS_STATUS_PATH" "$LEGACY_WITNESS_STATUS_SHA256" \
+  "$BLEED_ARTIFACT_NORMALIZED_SHA256" \
+  "$OSINT_ARTIFACT_AFTER_SHA256" "$OSINT_LEDGER_AFTER_SHA256" \
+  "$OBSERVER_POLICY_SHA256" "$WATCHDOG_BASELINE_B64" \
+  "$WITNESS_BASELINE_B64" "${FINAL_OBSERVER_EXIT_PAIR[watchdog]}" \
+  "${FINAL_OBSERVER_EXIT_PAIR[witness]}" "$PHASE2_HANDOFF_PATH" \
+  "$SYNC_RECEIPT_PATH" "$WATCHDOG_FINAL_PROOF_PATH" \
+  "$WITNESS_FINAL_PROOF_PATH" "$COMPOSE_CAPTURE_PATH" \
+  "$CELERY_PRECHANGE_RECEIPT_PATH" \
+  "$CELERY_V4_BACKUP_RECEIPT_PATH" \
+  "$CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH" \
+  "$CELERY_CANDIDATE_FENCED_RECEIPT_PATH" \
+  "$COLLECTOR_RECOVERY_RECEIPT_PATH" "$CONTROLLER_MANIFEST_PATH" <<'PY'
+import base64
+import hashlib
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+(
+    output, previous_checkout, previous_receipt, deployed, controller,
+    controller_tree, image_id,
+    transaction, core_snapshot, snapshot, backup_verification_path,
+    legacy_witness_path, legacy_witness_sha,
+    bleed_sha, osint_sha, ledger_sha, policy_sha,
+    watchdog_baseline, witness_baseline, watchdog_exit, witness_exit,
+    handoff_path, sync_path, watchdog_path, witness_path, compose_path,
+    prechange_celery_path, v4_backup_celery_path, consuming_celery_path,
+    fenced_celery_path,
+    recovery_path, controller_manifest_path,
+) = sys.argv[1:]
+
+if bool(legacy_witness_path) != bool(legacy_witness_sha):
+    raise SystemExit("legacy witness preservation fields are incomplete")
+if legacy_witness_sha and (
+    len(legacy_witness_sha) != 64
+    or any(character not in "0123456789abcdef" for character in legacy_witness_sha)
+):
+    raise SystemExit("legacy witness preservation digest is invalid")
+
+
+def load_json(name):
+    return json.loads(pathlib.Path(name).read_text(encoding="utf-8"))
+
+
+def digest_bytes(value):
+    return hashlib.sha256(value).hexdigest()
+
+
+compose = {}
+for line in pathlib.Path(compose_path).read_text(encoding="utf-8").splitlines():
+    service, running, container, image = line.split("\t")
+    compose[service] = {
+        "was_running": running == "1",
+        "container_id": container or None,
+        "image_id": image or None,
+    }
+units = {}
+for name in (
+    "/etc/systemd/system/palimpsest-backup.service",
+    "/etc/systemd/system/palimpsest-backup.timer",
+    "/etc/systemd/system/palimpsest-backup.service.d/override.conf",
+    "/etc/systemd/system/palimpsest-evidence-wire.service",
+    "/etc/systemd/system/palimpsest-evidence-wire.timer",
+    "/etc/systemd/system/palimpsest-event-analysis-live.service",
+    "/etc/systemd/system/palimpsest-freshness-watchdog.service",
+    "/etc/systemd/system/palimpsest-freshness-watchdog.timer",
+    "/etc/systemd/system/palimpsest-witness.service",
+    "/etc/systemd/system/palimpsest-witness.timer",
+):
+    payload = pathlib.Path(name).read_bytes()
+    units[name] = digest_bytes(payload)
+handoff = load_json(handoff_path)
+receipt = {
+    "schema_version": "palimpsest-host-release.v1",
+    "status": "proof-complete",
+    "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "transaction_id": transaction,
+    "deployment": {
+        "direction": "forward",
+        "previous_checkout_sha": previous_checkout,
+        "previous_deployment_receipt_sha": previous_receipt,
+        "deployed_sha": deployed,
+        "controller_sha": controller,
+        "controller_tree_sha256": controller_tree,
+        "candidate_image_id": image_id,
+    },
+    "backup": {
+        "core_snapshot": core_snapshot,
+        "pre_change_v4_snapshot": snapshot,
+        "verification": load_json(backup_verification_path),
+        "legacy_witness_status": {
+            "preserved": bool(legacy_witness_path),
+            "path": legacy_witness_path or None,
+            "sha256": legacy_witness_sha or None,
+        },
+    },
+    "publication": {
+        "handoff": handoff,
+        "osint_sha256": osint_sha,
+        "ledger_sha256": ledger_sha,
+        "bleedthrough_normalized_sha256": bleed_sha,
+        "sync_receipt": load_json(sync_path),
+    },
+    "observers": {
+        "policy_sha256": policy_sha,
+        "watchdog": {
+            "baseline_token_sha256": digest_bytes(
+                base64.b64decode(watchdog_baseline, validate=True)
+            ),
+            "exit_pair": watchdog_exit,
+            "proof": load_json(watchdog_path),
+        },
+        "witness": {
+            "baseline_token_sha256": digest_bytes(
+                base64.b64decode(witness_baseline, validate=True)
+            ),
+            "exit_pair": witness_exit,
+            "proof": load_json(witness_path),
+        },
+    },
+    "celery": {
+        "pre_change": load_json(prechange_celery_path),
+        "v4_backup_fenced": load_json(v4_backup_celery_path),
+        "candidate_consuming": load_json(consuming_celery_path),
+        "candidate_fenced": load_json(fenced_celery_path),
+    },
+    "recovery": load_json(recovery_path),
+    "compose_before": compose,
+    "controller_manifest_sha256": digest_bytes(
+        pathlib.Path(controller_manifest_path).read_bytes()
+    ),
+    "installed_unit_sha256": units,
+    "release_proof_present": True,
+    "writers_restored": False,
+}
+payload = json.dumps(
+    receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+if len(payload) > 512 * 1024:
+    raise SystemExit("release receipt exceeds 512 KiB")
+pathlib.Path(output).write_bytes(payload)
+PY
+RELEASE_RECEIPT_DIR='/var/lib/palimpsest-release/receipts'
+sudo install -d -o root -g root -m 0700 /var/lib/palimpsest-release \
+  "$RELEASE_RECEIPT_DIR"
+sudo test ! -L /var/lib/palimpsest-release
+sudo test ! -L "$RELEASE_RECEIPT_DIR"
+PROOF_COMPLETE_RECEIPT_PATH="$RELEASE_RECEIPT_DIR/$RELEASE_RECEIPT_STEM.proof-complete.json"
+sudo test ! -e "$PROOF_COMPLETE_RECEIPT_PATH"
+sudo install -o root -g root -m 0600 "$RELEASE_RECEIPT_TMP" \
+  "$PROOF_COMPLETE_RECEIPT_PATH"
+sudo cmp -s "$RELEASE_RECEIPT_TMP" "$PROOF_COMPLETE_RECEIPT_PATH"
+test "$(sudo stat -c '%u:%g:%a:%h' "$PROOF_COMPLETE_RECEIPT_PATH")" \
+  = "0:0:600:1"
+PROOF_COMPLETE_RECEIPT_SHA256="$(sudo sha256sum \
+  "$PROOF_COMPLETE_RECEIPT_PATH" | awk '{print $1}')"
+[[ "$PROOF_COMPLETE_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+fsync_installed_paths "$PROOF_COMPLETE_RECEIPT_PATH"
 
 restore_activator_enablement() {
   local unit="$1" previous="${RELEASE_ENABLEMENT[$1]}" first_install='disable'
   case "$unit" in
-    palimpsest-public-osint-sync.timer|palimpsest-freshness-watchdog.timer)
+    palimpsest-public-osint-sync.timer|palimpsest-freshness-watchdog.timer|palimpsest-witness.timer)
       first_install='enable'
       ;;
   esac
@@ -2496,9 +4319,106 @@ restore_activator_enablement() {
   esac
 }
 
-# Restore every captured activator. Only the two safety timers are enabled and
-# started on first installation. An unconfigured node-offsite lane can never be
-# restored to enabled or active because Phase 1 rejects that captured state.
+# Removing exactly the unchanged proof is the commit point. Until this line no
+# persistent activator or Compose writer has been restored.
+test "$(sudo sha256sum "$RELEASE_PROOF_PATH" | awk '{print $1}')" \
+  = "$RELEASE_PROOF_FILE_SHA256"
+sudo rm -- "$RELEASE_PROOF_PATH"
+sudo test ! -e "$RELEASE_PROOF_PATH"
+sudo python3 - "$RELEASE_PROOF_DIR" <<'PY'
+import os
+import sys
+
+directory = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+
+# Restore the captured worker set on the exact candidate image, but keep Beat
+# stopped. Prove the exact workers consume only their one reviewed queue and
+# that every broker queue remains empty before restoring systemd activators.
+compose_restore_services=()
+for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+    compose_restore_services+=("$compose_service")
+  fi
+done
+release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+  "${compose_restore_services[@]}"
+restored_topology_arguments=()
+for compose_service in "${compose_restore_services[@]}"; do
+  restored_container_id="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")"
+  [[ "$restored_container_id" =~ ^[0-9a-f]{64}$ ]]
+  restored_ready=0
+  for (( restored_attempt=1; restored_attempt<=45; restored_attempt++ )); do
+    if [[ "$(docker inspect "$restored_container_id" \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" \
+        == healthy ]]; then
+      restored_ready=1
+      break
+    fi
+    sleep 2
+  done
+  (( restored_ready == 1 ))
+  test "$(docker inspect "$restored_container_id" --format '{{.Image}}')" \
+    = "$CANDIDATE_IMAGE_ID"
+  restored_hostname="$(docker inspect "$restored_container_id" \
+    --format '{{.Config.Hostname}}')"
+  case "$compose_service" in
+    worker) restored_prefix=default ;;
+    worker-collectors) restored_prefix=collectors ;;
+    worker-warehouse) restored_prefix=warehouse ;;
+    worker-velocity) restored_prefix=velocity ;;
+    *) exit 1 ;;
+  esac
+  restored_topology_arguments+=(--pair \
+    "${restored_prefix}@${restored_hostname}=${COMPOSE_QUEUE_BY_SERVICE[$compose_service]}")
+done
+CELERY_RESTORED_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
+  encode-topology "${restored_topology_arguments[@]}")"
+CELERY_RESTORED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-restored.json"
+restored_default_id="$(release_compose ps -q worker)"
+docker exec -i "$restored_default_id" /usr/bin/python3 - check \
+  --consumer-state consuming --topology-b64 "$CELERY_RESTORED_TOPOLOGY_B64" \
+  --timeout-seconds 300 --interval-seconds 5 \
+  --inspect-timeout-seconds 15 \
+  <"$CELERY_GATE_PATH" >"$CELERY_RESTORED_RECEIPT_PATH"
+
+# Publication and the proof-complete receipt are now durable, and workers are
+# restored but Beat is still stopped. Remove only the exact release quiesce,
+# fsync its directory, reload systemd, and prove the captured OnSuccess value
+# immediately before restoring any activator.
+if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
+  test "$(sudo sha256sum "$BACKUP_RELEASE_QUIESCE_TARGET" \
+    | awk '{print $1}')" = "$BACKUP_RELEASE_QUIESCE_SHA256"
+  BACKUP_RELEASE_QUIESCE_DIR="$(dirname "$BACKUP_RELEASE_QUIESCE_TARGET")"
+  sudo rm -- "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo test ! -e "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
+  sudo python3 - "$BACKUP_RELEASE_QUIESCE_DIR" <<'PY'
+import os
+import sys
+
+directory = os.open(sys.argv[1], os.O_RDONLY | os.O_DIRECTORY)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+  sudo systemctl daemon-reload
+fi
+test "$(systemctl show --property=OnSuccess --value \
+  palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
+verify_backup_dropins "$EXPECTED_DEPLOY_SHA" 0
+verify_release_service_success_triggers \
+  "$BACKUP_ON_SUCCESS" palimpsest-event-analysis-live.service
+
+# Restore every captured systemd activator. All three first-install safety
+# timers (sync, watchdog, and witness) become enabled. An unconfigured
+# node-offsite lane can never be restored active because Phase 1 rejected it.
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   if [[ "$unit" == palimpsest-node-offsite-backup.timer ]] \
       && (( NODE_OFFSITE_CONFIGURED == 0 )); then
@@ -2513,22 +4433,258 @@ for unit in "${RELEASE_ACTIVATORS[@]}"; do
   if [[ "${RELEASE_WAS_ACTIVE[$unit]}" == "1" ]] \
       || { [[ "${RELEASE_ENABLEMENT[$unit]}" == not-found ]] \
         && [[ "$unit" == palimpsest-public-osint-sync.timer \
-          || "$unit" == palimpsest-freshness-watchdog.timer ]]; }; then
+          || "$unit" == palimpsest-freshness-watchdog.timer \
+          || "$unit" == palimpsest-witness.timer ]]; }; then
     sudo systemctl start "$unit"
   else
     stop_loaded_unit "$unit"
   fi
 done
 
-# Keep the pin through the complete state restoration. Removing exactly the
-# unchanged proof is the commit point that returns future timer runs to normal
-# newest-main operation.
-test "$(sudo sha256sum "$RELEASE_PROOF_PATH" | awk '{print $1}')" \
-  = "$RELEASE_PROOF_FILE_SHA256"
-sudo rm -- "$RELEASE_PROOF_PATH"
-sudo test ! -e "$RELEASE_PROOF_PATH"
+ACTIVATOR_RESTORED_PATH="$OBSERVER_PREFLIGHT_DIR/activators-restored.tsv"
+: >"$ACTIVATOR_RESTORED_PATH"
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  restored_enablement="$(read_enablement "$unit")"
+  restored_active="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  expected_active=0
+  if [[ "${RELEASE_WAS_ACTIVE[$unit]}" == 1 ]] \
+      || { [[ "${RELEASE_ENABLEMENT[$unit]}" == not-found ]] \
+        && [[ "$unit" == palimpsest-public-osint-sync.timer \
+          || "$unit" == palimpsest-freshness-watchdog.timer \
+          || "$unit" == palimpsest-witness.timer ]]; }; then
+    expected_active=1
+  fi
+  case "${RELEASE_ENABLEMENT[$unit]}" in
+    enabled) test "$restored_enablement" = enabled ;;
+    enabled-runtime) test "$restored_enablement" = enabled-runtime ;;
+    disabled) test "$restored_enablement" = disabled ;;
+    static|indirect)
+      test "$restored_enablement" = "${RELEASE_ENABLEMENT[$unit]}"
+      ;;
+    not-found)
+      if [[ "$unit" == palimpsest-public-osint-sync.timer \
+          || "$unit" == palimpsest-freshness-watchdog.timer \
+          || "$unit" == palimpsest-witness.timer ]]; then
+        test "$restored_enablement" = enabled
+      else
+        case "$restored_enablement" in disabled|not-found) ;; *) exit 1 ;; esac
+      fi
+      ;;
+    *) exit 1 ;;
+  esac
+  if (( expected_active == 1 )); then
+    test "$restored_active" = active
+  else
+    case "$restored_active" in inactive|failed|unknown|"") ;; *) exit 1 ;; esac
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\n' "$unit" \
+    "${RELEASE_ENABLEMENT[$unit]}" "${RELEASE_WAS_ACTIVE[$unit]}" \
+    "$restored_enablement" "$restored_active" \
+    >>"$ACTIVATOR_RESTORED_PATH"
+done
+
+# Beat is the final producer restored. Starting it earlier could enqueue work
+# between the last zero-queue proof and systemd state restoration.
+if [[ "${COMPOSE_WAS_RUNNING[beat]}" == 1 ]]; then
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps beat
+  restored_beat_id="$(release_compose ps -q beat)"
+  [[ "$restored_beat_id" =~ ^[0-9a-f]{64}$ ]]
+  test "$(docker inspect "$restored_beat_id" --format '{{.State.Status}}')" \
+    = running
+  test "$(docker inspect "$restored_beat_id" --format '{{.Image}}')" \
+    = "$CANDIDATE_IMAGE_ID"
+else
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat \
+    >/dev/null 2>&1 || true
+fi
+
+COMPOSE_RESTORED_PATH="$OBSERVER_PREFLIGHT_DIR/compose-restored.tsv"
+: >"$COMPOSE_RESTORED_PATH"
+for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  restored_container_id="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
+  restored_state=absent
+  restored_image_id=''
+  restored_hostname=''
+  if [[ -n "$restored_container_id" ]]; then
+    [[ "$restored_container_id" =~ ^[0-9a-f]{64}$ ]]
+    restored_state="$(docker inspect "$restored_container_id" \
+      --format '{{.State.Status}}')"
+    restored_image_id="$(docker inspect "$restored_container_id" \
+      --format '{{.Image}}')"
+    restored_hostname="$(docker inspect "$restored_container_id" \
+      --format '{{.Config.Hostname}}')"
+    [[ "$restored_image_id" =~ ^sha256:[0-9a-f]{64}$ ]]
+    [[ "$restored_hostname" \
+      =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]
+  fi
+  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+    test "$restored_state" = running
+    test "$restored_image_id" = "$CANDIDATE_IMAGE_ID"
+    test "$(docker image inspect "$restored_image_id" --format \
+      '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+      = "$EXPECTED_DEPLOY_SHA"
+  else
+    case "$restored_state" in absent|exited) ;; *) exit 1 ;; esac
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$compose_service" \
+    "${COMPOSE_WAS_RUNNING[$compose_service]}" "$restored_container_id" \
+    "$restored_image_id" "$restored_state" "$restored_hostname" \
+    >>"$COMPOSE_RESTORED_PATH"
+done
+verify_compose_container_inventory
+
+FINALIZED_RECEIPT_TMP="$OBSERVER_PREFLIGHT_DIR/$RELEASE_RECEIPT_STEM.finalized.json"
+python3 - "$FINALIZED_RECEIPT_TMP" "$RELEASE_RESUME_TOKEN" \
+  "$PREVIOUS_CHECKOUT_SHA" "$PREVIOUS_DEPLOY_SHA" \
+  "$EXPECTED_DEPLOY_SHA" "$PROOF_COMPLETE_RECEIPT_PATH" \
+  "$PROOF_COMPLETE_RECEIPT_SHA256" "$CELERY_RESTORED_RECEIPT_PATH" \
+  "$ACTIVATOR_RESTORED_PATH" "$COMPOSE_RESTORED_PATH" \
+  "$BACKUP_ON_SUCCESS" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+(
+    output, transaction, previous_checkout, previous_receipt, deployed,
+    proof_path, proof_sha, celery_path, activator_path, compose_path,
+    backup_on_success,
+) = sys.argv[1:]
+celery = json.loads(pathlib.Path(celery_path).read_text(encoding="utf-8"))
+
+activators = {}
+for line in pathlib.Path(activator_path).read_text(encoding="utf-8").splitlines():
+    unit, before_enablement, before_active, enablement, active = line.split("\t")
+    if unit in activators or before_active not in {"0", "1"}:
+        raise SystemExit("invalid restored activator inventory")
+    activators[unit] = {
+        "before_enablement": before_enablement,
+        "was_active": before_active == "1",
+        "enablement": enablement,
+        "active_state": active,
+    }
+
+compose = {}
+for line in pathlib.Path(compose_path).read_text(encoding="utf-8").splitlines():
+    service, before_running, container, image, state, hostname = line.split("\t")
+    if service in compose or before_running not in {"0", "1"}:
+        raise SystemExit("invalid restored Compose inventory")
+    compose[service] = {
+        "was_running": before_running == "1",
+        "container_id": container or None,
+        "image_id": image or None,
+        "state": state,
+        "hostname": hostname or None,
+    }
+expected_compose = {
+    "beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"
+}
+if set(compose) != expected_compose or len(activators) != 12:
+    raise SystemExit("restored release inventory is incomplete")
+value = {
+    "schema_version": "palimpsest-host-release-finalization.v1",
+    "status": "finalized",
+    "finalized_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "transaction_id": transaction,
+    "previous_checkout_sha": previous_checkout,
+    "previous_deployment_receipt_sha": previous_receipt,
+    "deployed_sha": deployed,
+    "proof_complete_receipt": proof_path,
+    "proof_complete_receipt_sha256": proof_sha,
+    "release_proof_present": False,
+    "writers_restored": True,
+    "restored_celery": celery,
+    "restored_activators": activators,
+    "restored_compose_writers": compose,
+    "restored_beat": compose["beat"],
+    "backup_on_success": backup_on_success,
+    "backup_release_quiesce_present": False,
+}
+payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode() + b"\n"
+pathlib.Path(output).write_bytes(payload)
+PY
+FINALIZED_RECEIPT_PATH="$RELEASE_RECEIPT_DIR/$RELEASE_RECEIPT_STEM.finalized.json"
+sudo test ! -e "$FINALIZED_RECEIPT_PATH"
+sudo install -o root -g root -m 0600 "$FINALIZED_RECEIPT_TMP" \
+  "$FINALIZED_RECEIPT_PATH"
+sudo cmp -s "$FINALIZED_RECEIPT_TMP" "$FINALIZED_RECEIPT_PATH"
+test "$(sudo stat -c '%u:%g:%a:%h' "$FINALIZED_RECEIPT_PATH")" \
+  = "0:0:600:1"
+FINALIZED_RECEIPT_SHA256="$(sudo sha256sum "$FINALIZED_RECEIPT_PATH" \
+  | awk '{print $1}')"
+[[ "$FINALIZED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test "$FINALIZED_RECEIPT_SHA256" \
+  = "$(sha256sum "$FINALIZED_RECEIPT_TMP" | awk '{print $1}')"
+sudo python3 - "$FINALIZED_RECEIPT_PATH" "$RELEASE_RESUME_TOKEN" \
+  "$EXPECTED_PREVIOUS_CHECKOUT_SHA" "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
+  "$EXPECTED_DEPLOY_SHA" "$PROOF_COMPLETE_RECEIPT_PATH" \
+  "$PROOF_COMPLETE_RECEIPT_SHA256" <<'PY'
+import json
+import pathlib
+import sys
+
+
+def reject_duplicates(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate key: {key}")
+        result[key] = value
+    return result
+
+
+(
+    receipt_path, transaction, previous_checkout, previous_receipt, deployed,
+    proof_path, proof_sha,
+) = sys.argv[1:]
+payload = pathlib.Path(receipt_path).read_bytes()
+if not payload.endswith(b"\n") or len(payload) > 512 * 1024:
+    raise SystemExit("finalized receipt framing is invalid")
+value = json.loads(
+    payload.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicates,
+    parse_constant=lambda item: (_ for _ in ()).throw(
+        ValueError(f"non-finite value: {item}")
+    ),
+)
+expected_fields = {
+    "schema_version", "status", "finalized_at", "transaction_id",
+    "previous_checkout_sha", "previous_deployment_receipt_sha",
+    "deployed_sha", "proof_complete_receipt",
+    "proof_complete_receipt_sha256", "release_proof_present",
+    "writers_restored", "restored_celery", "restored_activators",
+    "restored_compose_writers", "restored_beat", "backup_on_success",
+    "backup_release_quiesce_present",
+}
+checks = (
+    isinstance(value, dict) and set(value) == expected_fields,
+    value.get("schema_version") == "palimpsest-host-release-finalization.v1",
+    value.get("status") == "finalized",
+    value.get("transaction_id") == transaction,
+    value.get("previous_checkout_sha") == previous_checkout,
+    value.get("previous_deployment_receipt_sha") == previous_receipt,
+    value.get("deployed_sha") == deployed,
+    value.get("proof_complete_receipt") == proof_path,
+    value.get("proof_complete_receipt_sha256") == proof_sha,
+    value.get("release_proof_present") is False,
+    value.get("writers_restored") is True,
+    value.get("backup_release_quiesce_present") is False,
+    isinstance(value.get("restored_activators"), dict)
+        and len(value["restored_activators"]) == 12,
+    isinstance(value.get("restored_compose_writers"), dict)
+        and set(value["restored_compose_writers"])
+        == {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"},
+    value.get("restored_beat")
+        == value.get("restored_compose_writers", {}).get("beat"),
+)
+if not all(checks):
+    raise SystemExit("finalized receipt readback is invalid")
+PY
+fsync_installed_paths "$FINALIZED_RECEIPT_PATH"
 release_finalized=1
-trap - ERR HUP INT TERM
+PHASE3_FAIL_SAFE_ARMED=0
+trap - ERR EXIT HUP INT TERM
 
 systemctl list-timers palimpsest-backup.timer \
   palimpsest-common-crawl-backup.timer \
@@ -2540,32 +4696,67 @@ systemctl list-timers palimpsest-backup.timer \
   palimpsest-witness.timer --no-pager
 ```
 
-### Executing a compatible rollback
+### Executing a forward repair
 
-A rollback is a new three-phase transaction, not a receipt edit. Select a
-reviewed main-line target that still contains every installer, unit, verifier,
-and state contract used above. Independently record the exact deployment that
-is currently running; it is the compatible recovery point if the rollback
-transaction itself fails. A branch-only emergency commit is not a generic
-rollback target. In a fresh Phase 1 shell, run this preflight, then execute
-Phase 1 unchanged; its environment-aware assignments retain these exact
-values. Run Phase 2 against `ROLLBACK_TARGET_SHA`, and finish Phase 3 in the
-paused shell.
+A repair is a new three-phase transaction, not a receipt edit or historical
+checkout. Merge a reviewed main-line descendant that contains every installer,
+unit, verifier, and state contract used above. Independently record the exact
+deployment that is currently running; it is the repair baseline. A branch-only
+emergency commit is not a generic recovery target. In a fresh Phase 1 shell,
+run this preflight, then execute all three phases against `REPAIR_TARGET_SHA`.
 
 ```bash
 set -Eeuo pipefail
 cd /home/palimpsest/palimpsest
-ROLLBACK_TARGET_SHA='REPLACE_WITH_REVIEWED_MAIN_LINE_40_HEX_SHA'
-CURRENT_DEPLOY_SHA='REPLACE_WITH_CURRENT_DEPLOYED_40_HEX_SHA'
-[[ "$ROLLBACK_TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
-[[ "$CURRENT_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
-git fetch --prune origin '+refs/heads/main:refs/remotes/origin/main'
-git cat-file -e "${ROLLBACK_TARGET_SHA}^{commit}"
-git cat-file -e "${CURRENT_DEPLOY_SHA}^{commit}"
-git merge-base --is-ancestor \
-  "$ROLLBACK_TARGET_SHA" "$CURRENT_DEPLOY_SHA"
-git merge-base --is-ancestor \
-  "$CURRENT_DEPLOY_SHA" refs/remotes/origin/main
+test -e .git
+PALIMPSEST_REPO_ROOT="$(pwd -P)"
+test "$PALIMPSEST_REPO_ROOT" = /home/palimpsest/palimpsest
+
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_NAMESPACE
+unset DOCKER_CONTEXT DOCKER_TLS_VERIFY DOCKER_CERT_PATH DOCKER_CONFIG
+export DOCKER_HOST=unix:///var/run/docker.sock
+unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES \
+  COMPOSE_PATH_SEPARATOR COMPOSE_IGNORE_ORPHANS COMPOSE_REMOVE_ORPHANS \
+  PALIMPSEST_ENV_FILE
+export COMPOSE_PROJECT_NAME=palimpsest
+export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
+test -f "$PALIMPSEST_ENV_FILE"
+test ! -L "$PALIMPSEST_ENV_FILE"
+test -r "$PALIMPSEST_ENV_FILE"
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null
+export GIT_CONFIG_GLOBAL=/dev/null GIT_NO_REPLACE_OBJECTS=1
+export GIT_NO_LAZY_FETCH=1 GIT_TERMINAL_PROMPT=0 GIT_PROTOCOL_FROM_USER=0
+release_git() {
+  /usr/bin/git --no-replace-objects -c core.fsmonitor=false \
+    -c core.hooksPath=/dev/null -c core.attributesFile=/dev/null \
+    -c "safe.directory=$PALIMPSEST_REPO_ROOT" \
+    -c credential.helper= -c protocol.allow=never \
+    -c protocol.https.allow=always "$@"
+}
+
+REPAIR_TARGET_SHA='REPLACE_WITH_REVIEWED_DESCENDANT_40_HEX_SHA'
+CURRENT_CHECKOUT_SHA='REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA'
+CURRENT_RECEIPT_SHA='REPLACE_WITH_CURRENT_DEPLOYMENT_RECEIPT_40_HEX_SHA'
+[[ "$REPAIR_TARGET_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$CURRENT_CHECKOUT_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$CURRENT_RECEIPT_SHA" =~ ^[0-9a-f]{40}$ ]]
+test -d .git
+test ! -L .git
+test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
+test "$(release_git rev-parse HEAD)" = "$CURRENT_CHECKOUT_SHA"
+release_git -c fetch.fsckObjects=true -c transfer.fsckObjects=true fetch \
+  --force --prune --no-tags https://github.com/beepboop2025/palimpsest.git \
+  '+refs/heads/main:refs/remotes/origin/main'
+release_git cat-file -e "${REPAIR_TARGET_SHA}^{commit}"
+release_git cat-file -e "${CURRENT_CHECKOUT_SHA}^{commit}"
+release_git cat-file -e "${CURRENT_RECEIPT_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$CURRENT_CHECKOUT_SHA" "$REPAIR_TARGET_SHA"
+release_git merge-base --is-ancestor \
+  "$CURRENT_RECEIPT_SHA" "$REPAIR_TARGET_SHA"
+release_git merge-base --is-ancestor \
+  "$REPAIR_TARGET_SHA" refs/remotes/origin/main
 for required_path in \
     ops/investigative-analysis/install-host-bundle.sh \
     ops/common-crawl/install-host-bundle.sh \
@@ -2573,14 +4764,16 @@ for required_path in \
     ops/node-offsite/install-host-bundle.sh \
     ops/systemd/palimpsest-public-osint-sync.service \
     ops/systemd/palimpsest-backup.release-quiesce.conf; do
-  git cat-file -e "${ROLLBACK_TARGET_SHA}:${required_path}"
+  release_git cat-file -e "${REPAIR_TARGET_SHA}:${required_path}"
 done
-export EXPECTED_PREVIOUS_DEPLOY_SHA="$CURRENT_DEPLOY_SHA"
-export COMPATIBLE_ROLLBACK_SHA="$CURRENT_DEPLOY_SHA"
-export EXPECTED_DEPLOY_SHA="$ROLLBACK_TARGET_SHA"
-export TRANSACTION_DIRECTION=rollback
-printf 'Rollback transaction pinned: current=%s target=%s\n' \
-  "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$EXPECTED_DEPLOY_SHA"
+export EXPECTED_PREVIOUS_CHECKOUT_SHA="$CURRENT_CHECKOUT_SHA"
+export EXPECTED_PREVIOUS_DEPLOY_SHA="$CURRENT_RECEIPT_SHA"
+export COMPATIBLE_ROLLBACK_SHA="$CURRENT_CHECKOUT_SHA"
+export EXPECTED_DEPLOY_SHA="$REPAIR_TARGET_SHA"
+export TRANSACTION_DIRECTION=forward
+printf 'Forward repair pinned: checkout=%s receipt=%s target=%s\n' \
+  "$EXPECTED_PREVIOUS_CHECKOUT_SHA" "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
+  "$EXPECTED_DEPLOY_SHA"
 # Execute the complete Phase 1 block now, then Phases 2 and 3 as documented.
 ```
 
@@ -2588,8 +4781,8 @@ Record `PREVIOUS_DEPLOY_SHA`, `EXPECTED_DEPLOY_SHA`,
 `COMPATIBLE_ROLLBACK_SHA`, `PRE_CHANGE_SNAPSHOT`, the backup checksum output,
 the full backup-verifier receipt, both BLEED digests, the exact OSINT workflow
 run ID, its repository/static raw digest, and the final local OSINT sync receipt
-and hashes. Never use the raw previous receipt as the rollback decision, and
-never roll back only the receipt or one bundle.
+and hashes. Never use the raw previous receipt as the repair decision, and
+never restore only the receipt or one bundle.
 
 The canonical witness is currently reinstalled on this same host and its
 existing root-only `/etc/palimpsest-witness.env` is deliberately left in place.

@@ -18,9 +18,7 @@ def test_backup_units_use_valid_executable_condition():
 
 def test_backup_archive_and_restore_preserve_numeric_producer_ownership():
     script = (ROOT / "ops/backup/palimpsest-backup.sh").read_text(encoding="utf-8")
-    helper = (ROOT / "scripts/palimpsest_backup_archive.py").read_text(
-        encoding="utf-8"
-    )
+    helper = (ROOT / "scripts/palimpsest_backup_archive.py").read_text(encoding="utf-8")
     documentation = (ROOT / "ops/backup/README.md").read_text(encoding="utf-8")
 
     assert "/app/scripts/palimpsest_backup_archive.py" in script
@@ -31,15 +29,19 @@ def test_backup_archive_and_restore_preserve_numeric_producer_ownership():
     assert 'mode="w|gz"' in helper
     assert "format=tarfile.PAX_FORMAT" in helper
     assert "dereference=False" in helper
-    assert 'ARCHIVE_ROOTS = ("readings", "data", "analysis", "newswire")' in helper
+    assert (
+        'ARCHIVE_ROOTS = ("readings", "data", "analysis", "newswire", "witness")'
+        in helper
+    )
     assert 'member.uname = ""' in helper
     assert 'member.gname = ""' in helper
     assert "subprocess" not in helper
     assert "--log-driver none" in script
-    assert "format_version=3" in script
-    assert "artifact_roots=readings,data,newswire,analysis" in script
+    assert "format_version=4" in script
+    assert "artifact_roots=readings,data,newswire,analysis,witness" in script
     assert "dst=/source/analysis,readonly" in script
     assert "dst=/source/newswire,readonly" in script
+    assert "dst=/source/witness,readonly" in script
     assert "PALIMPSEST_BACKUP_COPY_DIR is retired" in script
     assert "PALIMPSEST_BACKUP_HOOK is retired" in script
     assert "PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED is retired" in script
@@ -69,6 +71,41 @@ def test_backup_unit_exposes_analysis_tree_read_only():
     )
 
     assert (
-        "ReadOnlyPaths=/var/lib/palimpsest-analysis /var/lib/palimpsest/newswire"
+        "ReadOnlyPaths=/var/lib/palimpsest-analysis /var/lib/palimpsest/newswire "
+        "/home/palimpsest/.palimpsest-witness" in service
+    )
+
+
+def test_backup_unit_runs_as_the_private_witness_owner():
+    service = (ROOT / "ops/systemd/palimpsest-backup.service").read_text(
+        encoding="utf-8"
+    )
+    environment = (ROOT / "ops/backup/backup.env.example").read_text(encoding="utf-8")
+
+    assert "User=palimpsest\n" in service
+    assert "Group=palimpsest\n" in service
+    assert "WorkingDirectory=/home/palimpsest/palimpsest\n" in service
+    assert (
+        "ExecStart=/home/palimpsest/palimpsest/ops/backup/palimpsest-backup.sh\n"
         in service
+    )
+    assert "PALIMPSEST_ROOT=/home/palimpsest/palimpsest\n" in environment
+    assert (
+        "PALIMPSEST_WITNESS_ROOT=/home/palimpsest/.palimpsest-witness\n" in environment
+    )
+    assert "PALIMPSEST_BACKUP_DIR=/home/palimpsest/backups/node\n" in environment
+
+
+def test_backup_publication_is_fsynced_before_success_is_reported():
+    script = (ROOT / "ops/backup/palimpsest-backup.sh").read_text(encoding="utf-8")
+
+    validation = script.index("sha256sum --check SHA256SUMS")
+    file_flush = script.index("os.fsync(descriptor)", validation)
+    staging_flush = script.index("os.fsync(directory)", file_flush)
+    publication = script.index('mv -- "$staging_dir" "$final_dir"', staging_flush)
+    parent_flush = script.index("os.fsync(descriptor)", publication)
+    success = script.index('log "published validated backup: $final_dir"', parent_flush)
+
+    assert (
+        validation < file_flush < staging_flush < publication < parent_flush < success
     )

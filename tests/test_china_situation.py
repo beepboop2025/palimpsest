@@ -250,6 +250,7 @@ def test_cgtn_rss_and_telegram_keep_one_publisher_lineage():
     assert social_source.platform == "telegram"
     fixture_time = _minutes_after(reference["published_at"])
     record = _social_record(reference, observed_at=fixture_time)
+    assert record["related_urls"] == [reference["url"]]
     social, _ledger = social_observations.build_latest(
         [record],
         registry=registry,
@@ -265,7 +266,9 @@ def test_cgtn_rss_and_telegram_keep_one_publisher_lineage():
     assert reference["independence_group"] == "china-media-group-state-media"
     assert context["independence_group"] == "china-media-group-state-media"
     assert context["same_publisher_lineage"] is True
+    assert context["matched_article_url"] == reference["url"]
     assert row["reporting"]["independent_groups"] == len(event["evidence_groups"])
+    assert row["reporting"]["independent_groups"] == 1
 
     forged = copy.deepcopy(document)
     forged_row = next(

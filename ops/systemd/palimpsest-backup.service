@@ -1,17 +1,17 @@
 [Unit]
 Description=Create and validate a Palimpsest node backup
-Documentation=file:///home/deploy/palimpsest/ops/backup/README.md
+Documentation=file:///home/palimpsest/palimpsest/ops/backup/README.md
 Requires=docker.service
 After=docker.service
-ConditionFileIsExecutable=/home/deploy/palimpsest/ops/backup/palimpsest-backup.sh
+ConditionFileIsExecutable=/home/palimpsest/palimpsest/ops/backup/palimpsest-backup.sh
 
 [Service]
 Type=oneshot
-User=deploy
-Group=deploy
-WorkingDirectory=/home/deploy/palimpsest
+User=palimpsest
+Group=palimpsest
+WorkingDirectory=/home/palimpsest/palimpsest
 EnvironmentFile=-/etc/palimpsest/backup.env
-ExecStart=/home/deploy/palimpsest/ops/backup/palimpsest-backup.sh
+ExecStart=/home/palimpsest/palimpsest/ops/backup/palimpsest-backup.sh
 UMask=0077
 Nice=10
 IOSchedulingClass=best-effort
@@ -21,7 +21,7 @@ NoNewPrivileges=true
 PrivateNetwork=true
 PrivateTmp=true
 ProtectSystem=full
-ReadOnlyPaths=/var/lib/palimpsest-analysis /var/lib/palimpsest/newswire
+ReadOnlyPaths=/var/lib/palimpsest-analysis /var/lib/palimpsest/newswire /home/palimpsest/.palimpsest-witness
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
