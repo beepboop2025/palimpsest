@@ -1098,6 +1098,7 @@ def test_tests_workflow_checks_out_and_proves_the_dispatched_publication_sha() -
     assert "source|complete) ;;" in workflow
     assert 'test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"' in workflow
     assert 'git merge-base --is-ancestor "$PUBLICATION_SHA" origin/main' in workflow
+    assert "complete publication is not the current main tip" in workflow
 
 
 def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() -> None:
@@ -1135,8 +1136,18 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     )
     assert "actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e" in workflow
     assert pages_artifact < deploy_pages
+    pages_permissions = workflow[pages_artifact:deploy_pages]
+    assert "contents: read" in pages_permissions
+    assert "pages: write" in pages_permissions
+    assert "id-token: write" not in pages_permissions
     assert "pages: write" in workflow[deploy_pages:]
     assert "id-token: write" in workflow[deploy_pages:]
+    assert "group: pages-production" in workflow[deploy_pages:]
+    assert "cancel-in-progress: false" in workflow[deploy_pages:]
+    assert "Refuse a superseded Pages deployment" in workflow[deploy_pages:]
+    assert (
+        workflow.count('test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"') == 2
+    )
     assert "name: github-pages" in workflow[deploy_pages:]
 
 

@@ -103,6 +103,7 @@ jobs:
         env:
           PUBLICATION_SHA: ${{ github.event.client_payload.sha }}
           PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
+          PUBLICATION_SCOPE: ${{ github.event.client_payload.scope }}
         run: |
           if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
             publication_sha=$PUBLICATION_SHA
@@ -148,6 +149,11 @@ jobs:
             +refs/heads/main:refs/remotes/origin/main
           if ! git merge-base --is-ancestor "$PUBLICATION_SHA" origin/main; then
             echo "dispatched publication is not reachable from main" >&2
+            exit 1
+          fi
+          if [ "$PUBLICATION_SCOPE" = "complete" ] &&
+             [ "$(git rev-parse origin/main)" != "$PUBLICATION_SHA" ]; then
+            echo "complete publication is not the current main tip" >&2
             exit 1
           fi
 
@@ -270,6 +276,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
@@ -286,6 +293,9 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"
           if git ls-files -s | awk '$1 == "120000" { found=1 } END { exit found ? 0 : 1 }'; then
             echo "Pages artifact refuses tracked symbolic links" >&2
             exit 1
@@ -320,13 +330,31 @@ jobs:
       needs.contract.outputs.scope == 'complete' &&
       github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages-production
+      cancel-in-progress: false
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+
+      - name: Refuse a superseded Pages deployment
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"
+
       - name: Deploy the exact accepted edition
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4
