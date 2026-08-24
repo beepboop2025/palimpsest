@@ -20,6 +20,7 @@ from core.china_econ_export import (
     ChinaEconExportError,
     build_export as _core_build_export,
     load_source_policy,
+    validate_public_wdi_lineage_transition,
     validate_export_bundle,
 )
 from core.collector_artifact import build_artifact
@@ -111,6 +112,22 @@ def _other_observation(source_id: str) -> EconomicObservation:
         evidence_url="https://example.invalid/aggregate",
         raw_sha256="b" * 64,
         metadata={"family": "test", "method_version": "v1"},
+    )
+
+
+def _wdi_observation_for_year(
+    year: int,
+    *,
+    value: float = 652_290_000,
+    collected_minute: int = 0,
+) -> EconomicObservation:
+    return replace(
+        _wdi_observation(),
+        value=value,
+        period_start=date(year, 1, 1),
+        period_end=date(year, 12, 31),
+        collected_at=datetime(2026, 8, 24, 9, collected_minute, tzinfo=UTC),
+        raw_sha256=hashlib.sha256(f"cereal/{year}/{value}".encode()).hexdigest(),
     )
 
 
@@ -1307,6 +1324,192 @@ def test_export_cli_refuses_partial_workflow_locator_without_outputs(
     assert not manifest.exists()
 
 
+def test_public_lineage_accepts_only_an_explicit_empty_initial_seed(tmp_path: Path):
+    ledger = _ledger(tmp_path / "current.jsonl", _wdi_observation())
+    availability_path = _availability_receipt(ledger, public=True)
+    availability = json.loads(availability_path.read_bytes())
+    availability["ledger_before"] = {
+        "sha256": hashlib.sha256(b"").hexdigest(),
+        "bytes": 0,
+        "records": 0,
+    }
+    availability["appended_observations"] = 1
+    _reseal_collector_artifact(availability)
+    availability_path = _write_json(availability_path, availability)
+
+    transition = validate_public_wdi_lineage_transition(
+        first_parent_sha="a" * 40,
+        current_ledger_bytes=ledger.read_bytes(),
+        current_availability_receipt_bytes=availability_path.read_bytes(),
+        previous_ledger_bytes=None,
+        previous_availability_receipt_bytes=None,
+        previous_ledger_history_sha=None,
+        previous_availability_history_sha=None,
+        series_registry_path=SERIES,
+    )
+
+    assert transition["state"] == "initial_seed"
+    assert transition["previous_ledger"] == {
+        "present": False,
+        "path": "readings/china-econ-wdi-observations.jsonl",
+        "sha256": hashlib.sha256(b"").hexdigest(),
+        "bytes": 0,
+        "records": 0,
+    }
+    assert transition["transition_records"] == 1
+
+    availability["appended_observations"] = 0
+    availability["ledger_before"] = availability["ledger_after"]
+    _reseal_collector_artifact(availability)
+    with pytest.raises(ChinaEconExportError, match="exact empty ledger"):
+        validate_public_wdi_lineage_transition(
+            first_parent_sha="a" * 40,
+            current_ledger_bytes=ledger.read_bytes(),
+            current_availability_receipt_bytes=(
+                json.dumps(
+                    availability,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode(),
+            previous_ledger_bytes=None,
+            previous_availability_receipt_bytes=None,
+            previous_ledger_history_sha=None,
+            previous_availability_history_sha=None,
+            series_registry_path=SERIES,
+        )
+
+
+def test_public_lineage_accepts_unchanged_first_parent_bytes(tmp_path: Path):
+    ledger = _ledger(tmp_path / "current.jsonl", _wdi_observation())
+    availability = _availability_receipt(ledger, public=True).read_bytes()
+
+    transition = validate_public_wdi_lineage_transition(
+        first_parent_sha="b" * 40,
+        current_ledger_bytes=ledger.read_bytes(),
+        current_availability_receipt_bytes=availability,
+        previous_ledger_bytes=ledger.read_bytes(),
+        previous_availability_receipt_bytes=availability,
+        previous_ledger_history_sha="e" * 40,
+        previous_availability_history_sha="e" * 40,
+        series_registry_path=SERIES,
+    )
+
+    assert transition["state"] == "unchanged"
+    assert transition["transition_records"] == 0
+    assert transition["previous_ledger"]["present"] is True
+
+
+def test_public_lineage_rejects_delete_then_reseed_reset(tmp_path: Path):
+    ledger = _ledger(tmp_path / "current.jsonl", _wdi_observation())
+    availability_path = _availability_receipt(ledger, public=True)
+    availability = json.loads(availability_path.read_bytes())
+    availability["ledger_before"] = {
+        "sha256": hashlib.sha256(b"").hexdigest(),
+        "bytes": 0,
+        "records": 0,
+    }
+    availability["appended_observations"] = 1
+    _reseal_collector_artifact(availability)
+    availability_path = _write_json(availability_path, availability)
+
+    with pytest.raises(ChinaEconExportError, match="appeared in ancestry"):
+        validate_public_wdi_lineage_transition(
+            first_parent_sha="b" * 40,
+            current_ledger_bytes=ledger.read_bytes(),
+            current_availability_receipt_bytes=availability_path.read_bytes(),
+            previous_ledger_bytes=None,
+            previous_availability_receipt_bytes=None,
+            previous_ledger_history_sha="a" * 40,
+            previous_availability_history_sha="a" * 40,
+            series_registry_path=SERIES,
+        )
+
+
+def test_public_lineage_accepts_reviewed_first_parent_prefix_extension(tmp_path: Path):
+    previous_ledger = _ledger(
+        tmp_path / "previous.jsonl",
+        _wdi_observation_for_year(2023),
+    )
+    previous_availability = _availability_receipt(
+        previous_ledger, public=True
+    ).read_bytes()
+    previous_snapshot = load_snapshot(previous_ledger)
+    current_ledger = tmp_path / "current.jsonl"
+    current_ledger.write_bytes(previous_ledger.read_bytes())
+    append_vintages(
+        current_ledger,
+        [_wdi_observation_for_year(2024, collected_minute=1)],
+    )
+    current_availability_path = _availability_receipt(current_ledger, public=True)
+    current_availability = json.loads(current_availability_path.read_bytes())
+    current_availability["ledger_before"] = {
+        "sha256": previous_snapshot.byte_sha256,
+        "bytes": previous_snapshot.byte_size,
+        "records": previous_snapshot.records,
+    }
+    current_availability["appended_observations"] = 1
+    _reseal_collector_artifact(current_availability)
+    current_availability_path = _write_json(
+        current_availability_path, current_availability
+    )
+
+    transition = validate_public_wdi_lineage_transition(
+        first_parent_sha="c" * 40,
+        current_ledger_bytes=current_ledger.read_bytes(),
+        current_availability_receipt_bytes=current_availability_path.read_bytes(),
+        previous_ledger_bytes=previous_ledger.read_bytes(),
+        previous_availability_receipt_bytes=previous_availability,
+        previous_ledger_history_sha="e" * 40,
+        previous_availability_history_sha="e" * 40,
+        series_registry_path=SERIES,
+    )
+
+    assert transition["state"] == "reviewed_prefix_extension"
+    assert transition["prefix_bytes"] == previous_snapshot.byte_size
+    assert transition["transition_records"] == 1
+
+
+@pytest.mark.parametrize("mutation", ["rewrite", "truncate"])
+def test_public_lineage_rejects_first_parent_history_loss(
+    tmp_path: Path,
+    mutation: str,
+):
+    previous_ledger = _ledger(
+        tmp_path / "previous.jsonl",
+        _wdi_observation_for_year(2023),
+        _wdi_observation_for_year(2024, collected_minute=1),
+    )
+    previous_availability = _availability_receipt(
+        previous_ledger, public=True
+    ).read_bytes()
+    if mutation == "rewrite":
+        current_rows = (
+            _wdi_observation_for_year(2023, value=1),
+            _wdi_observation_for_year(2024, collected_minute=1),
+        )
+    else:
+        current_rows = (_wdi_observation_for_year(2023),)
+    current_ledger = _ledger(tmp_path / "current.jsonl", *current_rows)
+    current_availability = _availability_receipt(
+        current_ledger, public=True
+    ).read_bytes()
+
+    with pytest.raises(ChinaEconExportError, match="byte prefix extension"):
+        validate_public_wdi_lineage_transition(
+            first_parent_sha="d" * 40,
+            current_ledger_bytes=current_ledger.read_bytes(),
+            current_availability_receipt_bytes=current_availability,
+            previous_ledger_bytes=previous_ledger.read_bytes(),
+            previous_availability_receipt_bytes=previous_availability,
+            previous_ledger_history_sha="e" * 40,
+            previous_availability_history_sha="e" * 40,
+            series_registry_path=SERIES,
+        )
+
+
 def test_exact_main_workflow_builds_and_attests_non_pages_handoff():
     workflow = (ROOT / ".github" / "workflows" / "tests.yml").read_text(
         encoding="utf-8"
@@ -1337,6 +1540,13 @@ def test_exact_main_workflow_builds_and_attests_non_pages_handoff():
     assert 'verification.get("verified") is not True' in workflow
     assert 'verification.get("reason") != "valid"' in workflow
     assert '"producer_commit_evidence": {' in workflow
+    assert "validate_public_wdi_lineage_transition" in workflow
+    assert '["git", "ls-tree", first_parent_sha, "--", path]' in workflow
+    assert '"state": state' in (ROOT / "core" / "china_econ_export.py").read_text(
+        encoding="utf-8"
+    )
+    assert '"transition": lineage_transition' in workflow
+    assert '"cross_run_revision_authority": True' in workflow
     assert "china-econ-wdi-observations.jsonl" in workflow
     assert "china-econ-wdi-live-check.json" in workflow
     assert '--availability-receipt "$REVIEW_DIR/china-econ-wdi-latest.json"' in workflow
@@ -1357,6 +1567,9 @@ def test_handoff_documentation_requires_external_attestation_and_hash_review():
     assert 'value["author"]["login"] == "beepboop2025"' in documentation
     assert 'value["committer"]["login"] == "web-flow"' in documentation
     assert 'handoff["producer_commit_evidence"] == commit_evidence' in documentation
+    assert "neither path ever to have appeared" in documentation
+    assert "validate_public_wdi_lineage_transition" in documentation
+    assert 'handoff["revision_lineage"]["transition"]' in documentation
     assert "formerly numeric identity that is now null or absent" in documentation
     assert "--signer-workflow \"$repo/.github/workflows/tests.yml\"" in documentation
     assert "--source-digest \"$sha\"" in documentation

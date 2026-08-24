@@ -183,13 +183,20 @@ A later main advance makes the older handoff non-current even if all of its
 bytes still verify.
 
 `handoff-receipt.json` identifies this as
-`git_tracked_seeded_append_only`, pins the prior public-ledger hash, and sets
-`cross_run_revision_authority` true. The inner pull receipt remains
-conservatively labelled `local_review_append_only`; authority comes only from
-the outer exact-seed receipt plus the release-reviewed Git history and attested
-workflow bytes. The 90-day workflow artifact is a transport retention window,
-not the source of durable lineage. Raw responses remain review artifacts rather
-than a permanent public archive.
+`git_tracked_seeded_append_only` and sets `cross_run_revision_authority` true
+only after checking the exact first parent. Its transition is one of
+`initial_seed`, `unchanged`, or `reviewed_prefix_extension`. The seed requires
+both first-parent paths to be absent, neither path ever to have appeared in the
+first-parent ancestry, and an exact empty `ledger_before`; an unchanged
+carry-forward requires byte-identical ledger and latest receipt; and an
+extension requires the current ledger to begin with every prior byte while the
+current receipt starts from the exact prior-ledger digest, byte count and record
+count. A deletion-and-reseed, rewrite or truncation fails before attestation. The inner live
+pull receipt remains conservatively labelled `local_review_append_only`;
+authority comes from the outer first-parent transition, release-reviewed Git
+history and attested workflow bytes. The 90-day workflow artifact is a
+transport retention window, not the source of durable lineage. Raw responses
+remain review artifacts rather than a permanent public archive.
 
 Before an owner signs a Seiche acceptance receipt, download the artifact named
 `china-economic-review-v3-<sha>-<run>-<attempt>` and independently require all
@@ -199,6 +206,7 @@ of the following:
 repo=beepboop2025/palimpsest
 sha=<exact-40-hex-main-merge>
 run=<tests-run-id>
+checkout=<path-to-a-fresh-palimpsest-checkout>
 gh api "repos/$repo/actions/runs/$run" > run.json
 gh api \
   -H 'Accept: application/vnd.github+json' \
@@ -219,6 +227,10 @@ gh attestation verify china-economic-review-v3/SHA256SUMS \
   --source-digest "$sha" \
   --source-ref refs/heads/main \
   --deny-self-hosted-runners
+git -C "$checkout" fetch --no-tags origin "$sha"
+test "$(git -C "$checkout" rev-parse FETCH_HEAD)" = "$sha"
+git -C "$checkout" checkout --detach "$sha"
+test "$(git -C "$checkout" rev-parse HEAD)" = "$sha"
 ```
 
 Do not feed unvalidated checksum paths to a checksum utility. The handoff has
@@ -226,12 +238,16 @@ this exact bounded checksum subject set; reject missing, extra, duplicate,
 non-basename or malformed entries, then recompute every digest:
 
 ```bash
-PALIMPSEST_SHA="$sha" PALIMPSEST_RUN="$run" python3 - <<'PY'
-import hashlib, json, os, re
+PALIMPSEST_SHA="$sha" PALIMPSEST_RUN="$run" \
+PALIMPSEST_CHECKOUT="$checkout" python3 - <<'PY'
+import hashlib, json, os, re, subprocess, sys
 from datetime import datetime
 from pathlib import Path
 
 root = Path("china-economic-review-v3")
+checkout = Path(os.environ["PALIMPSEST_CHECKOUT"]).resolve()
+sys.path.insert(0, str(checkout))
+from core.china_econ_export import validate_public_wdi_lineage_transition
 allowed = {
     "china-econ-wdi-latest.json",
     "china-econ-wdi-live-check.json",
@@ -348,6 +364,61 @@ assert {key: owner_commit_evidence[key] for key in identity_keys} == {
     key: commit_evidence[key] for key in identity_keys
 }
 assert handoff["producer_commit_evidence"] == commit_evidence
+
+first_parent_sha = commit_evidence["parent_shas"][0]
+def first_parent_blob(path):
+    listing = subprocess.run(
+        ["git", "ls-tree", first_parent_sha, "--", path],
+        cwd=checkout,
+        check=True,
+        capture_output=True,
+    ).stdout
+    if not listing:
+        return None
+    return subprocess.run(
+        ["git", "show", f"{first_parent_sha}:{path}"],
+        cwd=checkout,
+        check=True,
+        capture_output=True,
+    ).stdout
+
+def first_parent_last_change(path):
+    value = subprocess.run(
+        [
+            "git",
+            "log",
+            "--max-count=1",
+            "--format=%H",
+            first_parent_sha,
+            "--",
+            path,
+        ],
+        cwd=checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return value or None
+
+lineage_transition = validate_public_wdi_lineage_transition(
+    first_parent_sha=first_parent_sha,
+    current_ledger_bytes=ledger,
+    current_availability_receipt_bytes=availability,
+    previous_ledger_bytes=first_parent_blob(
+        "readings/china-econ-wdi-observations.jsonl"
+    ),
+    previous_availability_receipt_bytes=first_parent_blob(
+        "readings/china-econ-wdi-latest.json"
+    ),
+    previous_ledger_history_sha=first_parent_last_change(
+        "readings/china-econ-wdi-observations.jsonl"
+    ),
+    previous_availability_history_sha=first_parent_last_change(
+        "readings/china-econ-wdi-latest.json"
+    ),
+    series_registry_path=root / manifest["series_registry"]["path"],
+)
+assert handoff["revision_lineage"]["transition"] == lineage_transition
 assert handoff["artifact"] == manifest["artifact"]
 assert handoff["input_ledger"] == manifest["input_ledger"]
 assert handoff["reviewed_availability_receipt"] == manifest["availability_receipt"]

@@ -558,10 +558,14 @@ jobs:
           import json
           import os
           import re
+          import subprocess
           from datetime import datetime
           from pathlib import Path
 
-          from core.china_econ_export import canonical_json_bytes
+          from core.china_econ_export import (
+              canonical_json_bytes,
+              validate_public_wdi_lineage_transition,
+          )
 
           root = Path(os.environ["REVIEW_DIR"])
           manifest_path = root / "palimpsest-china-economic-export-v3-manifest.json"
@@ -655,6 +659,59 @@ jobs:
               raise SystemExit("GitHub verified_at clock is invalid") from exc
           if parsed_verified_at.isoformat().replace("+00:00", "Z") != verified_at:
               raise SystemExit("GitHub verified_at clock is not canonical")
+
+          first_parent_sha = parent_shas[0]
+          def first_parent_blob(path):
+              listing = subprocess.run(
+                  ["git", "ls-tree", first_parent_sha, "--", path],
+                  check=True,
+                  capture_output=True,
+              ).stdout
+              if not listing:
+                  return None
+              return subprocess.run(
+                  ["git", "show", f"{first_parent_sha}:{path}"],
+                  check=True,
+                  capture_output=True,
+              ).stdout
+
+          def first_parent_last_change(path):
+              value = subprocess.run(
+                  [
+                      "git",
+                      "log",
+                      "--max-count=1",
+                      "--format=%H",
+                      first_parent_sha,
+                      "--",
+                      path,
+                  ],
+                  check=True,
+                  capture_output=True,
+                  text=True,
+              ).stdout.strip()
+              return value or None
+
+          lineage_transition = validate_public_wdi_lineage_transition(
+              first_parent_sha=first_parent_sha,
+              current_ledger_bytes=(
+                  root / "china-econ-wdi-observations.jsonl"
+              ).read_bytes(),
+              current_availability_receipt_bytes=latest_path.read_bytes(),
+              previous_ledger_bytes=first_parent_blob(
+                  "readings/china-econ-wdi-observations.jsonl"
+              ),
+              previous_availability_receipt_bytes=first_parent_blob(
+                  "readings/china-econ-wdi-latest.json"
+              ),
+              previous_ledger_history_sha=first_parent_last_change(
+                  "readings/china-econ-wdi-observations.jsonl"
+              ),
+              previous_availability_history_sha=first_parent_last_change(
+                  "readings/china-econ-wdi-latest.json"
+              ),
+              series_registry_path=Path("config/china_econ_wdi_series.json"),
+          )
           workflow_run = manifest["producer"]["workflow_run"]
           if workflow_run != {
               "provider": "github_actions",
@@ -727,14 +784,11 @@ jobs:
               },
               "revision_lineage": {
                   "mode": "git_tracked_seeded_append_only",
-                  "prior_ledger": {
-                      "path": "readings/china-econ-wdi-observations.jsonl",
-                      "sha256": manifest["input_ledger"]["sha256"],
-                      "bytes": manifest["input_ledger"]["bytes"],
-                      "records": manifest["input_ledger"]["records"],
-                  },
+                  "transition": lineage_transition,
                   "cross_run_revision_authority": True,
-                  "new_vintages_appended": live["appended_observations"],
+                  "live_check_new_vintages_appended": live[
+                      "appended_observations"
+                  ],
               },
               "artifact": manifest["artifact"],
               "input_ledger": manifest["input_ledger"],
