@@ -565,7 +565,7 @@ def test_catalog_page_and_assets_exist():
 
 
 def test_hourly_rollup_rebuilds_and_commits_catalog_views():
-    workflow = (ROOT / ".github" / "workflows" / "osint-china-refresh.yml").read_text(
+    workflow = (ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml").read_text(
         encoding="utf-8"
     )
     assert workflow.count("python -m scripts.build_data_catalog") == 3

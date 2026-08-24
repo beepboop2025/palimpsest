@@ -398,7 +398,7 @@ def test_import_and_local_bleed_precede_external_publication_and_timers() -> Non
     live_api = transaction.index(
         "https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json"
     )
-    dispatch = transaction.index("gh workflow run osint-china-refresh.yml")
+    dispatch = transaction.index("gh workflow run osint-china-v2-refresh.yml")
     publication_success = transaction.index(
         '--json conclusion --jq .conclusion)" = "success"', dispatch
     )
@@ -545,7 +545,7 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         'OSINT_LATEST_RUN_ID_BEFORE="$(gh run list',
         "(( 10#$OSINT_RUN_ID > 10#$OSINT_LATEST_RUN_ID_BEFORE ))",
         '--json event --jq .event)" = "workflow_dispatch"',
-        '--json workflowName --jq .workflowName)" = "Refresh OSINT China roll-up"',
+        '--json workflowName --jq .workflowName)" = "Refresh OSINT China roll-up v2"',
         '--json headBranch --jq .headBranch)" = "main"',
         "compare/${EXPECTED_DEPLOY_SHA}...${OSINT_HEAD_SHA}",
         'gh run watch "$OSINT_RUN_ID"',

@@ -12,7 +12,7 @@ import scripts.import_host_snapshot as importer
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
 CADDY = ROOT / "ops" / "caddy" / "palimpsest-host-snapshots.caddy"
 NOW = datetime(2026, 8, 22, 12, tzinfo=timezone.utc).timestamp()
 CURRENT_FIXTURE_NOW = datetime(2026, 8, 24, 12, tzinfo=timezone.utc).timestamp()

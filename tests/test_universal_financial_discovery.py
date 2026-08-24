@@ -1,5 +1,6 @@
 """Static contracts for bounded financial-evidence and agent discovery surfaces."""
 
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -11,6 +12,45 @@ CATALOG_PATH = ROOT / ".well-known" / "ai-catalog.json"
 SERVER_VERSION = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))[
     "version"
 ]
+MCP_RELEASE_SHA = "135d8f332d7eaeb48f793ecaa47ee1e13708c1ac"
+MCP_DEPLOY_RUN_URL = (
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32734455304"
+)
+MCP_DEPLOY_RECEIPT_PATH = (
+    ROOT / ".well-known" / "receipts" / "mcp-deployment-1.9.0.json"
+)
+MCP_DEPLOY_RECEIPT_URL = (
+    "https://palimpsest.info/.well-known/receipts/mcp-deployment-1.9.0.json"
+)
+MCP_DEPLOY_RECEIPT_SHA256 = (
+    "sha256:8570b4fcc138461be34f17c8257f4f6dbef5242336f533411b56d5d747a27154"
+)
+MCP_REGISTRY_RUN_URL = (
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32735073973"
+)
+MCP_REGISTRY_RECEIPT_PATH = (
+    ROOT / ".well-known" / "receipts" / "mcp-registry-publication-1.9.0.json"
+)
+MCP_REGISTRY_RECEIPT_URL = (
+    "https://palimpsest.info/.well-known/receipts/mcp-registry-publication-1.9.0.json"
+)
+MCP_REGISTRY_RECEIPT_SHA256 = (
+    "sha256:6014b600a2115acb05dc59a60e0595c0de4424907e074fcc08b465dcea09cfa7"
+)
+MCP_REGISTRY_SNAPSHOT_PATH = (
+    ROOT / ".well-known" / "receipts" / "mcp-registry-latest-1.9.0.json"
+)
+MCP_REGISTRY_SNAPSHOT_URL = (
+    "https://palimpsest.info/.well-known/receipts/mcp-registry-latest-1.9.0.json"
+)
+MCP_REGISTRY_SNAPSHOT_SHA256 = (
+    "sha256:5af0c21c5818c0ca4983040410b52061026c0261e54bdaab8668fd5592b6c389"
+)
+MCP_REGISTRY_VERSION_URL = (
+    "https://registry.modelcontextprotocol.io/v0.1/servers/"
+    "io.github.beepboop2025%2Fpalimpsest/versions/1.9.0"
+)
+MCP_REGISTRY_PUBLISHED_AT = "2026-08-24T13:51:23.905708Z"
 PAGES = {
     "china/money-markets/index.html": ("https://palimpsest.info/china/money-markets/"),
     "china/capital-markets/index.html": (
@@ -67,7 +107,20 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     )
     assert mcp["data"]["version"] == SERVER_VERSION
     assert mcp["version"] == SERVER_VERSION
-    assert mcp["metadata"]["deploymentBoundary"] == "release-bound"
+    assert mcp["updatedAt"] == MCP_REGISTRY_PUBLISHED_AT
+    assert mcp["metadata"]["deploymentBoundary"] == "production-verified"
+    assert mcp["metadata"]["deploymentCommit"] == MCP_RELEASE_SHA
+    assert mcp["metadata"]["deploymentReceipt"] == MCP_DEPLOY_RECEIPT_URL
+    assert mcp["metadata"]["deploymentReceiptSha256"] == (MCP_DEPLOY_RECEIPT_SHA256)
+    assert mcp["metadata"]["deploymentRun"] == MCP_DEPLOY_RUN_URL
+    assert mcp["metadata"]["registryReceipt"] == MCP_REGISTRY_RECEIPT_URL
+    assert mcp["metadata"]["registryReceiptSha256"] == (MCP_REGISTRY_RECEIPT_SHA256)
+    assert mcp["metadata"]["registryRun"] == MCP_REGISTRY_RUN_URL
+    assert mcp["metadata"]["registrySnapshot"] == MCP_REGISTRY_SNAPSHOT_URL
+    assert mcp["metadata"]["registrySnapshotSha256"] == (MCP_REGISTRY_SNAPSHOT_SHA256)
+    assert mcp["metadata"]["registryVersion"] == MCP_REGISTRY_VERSION_URL
+    assert mcp["metadata"]["registryPublishedAt"] == MCP_REGISTRY_PUBLISHED_AT
+    assert "deployed and independently re-probed" in mcp["metadata"]["deploymentNote"]
     assert "serverInfo.version" in mcp["metadata"]["liveVersionAuthority"]
     assert mcp["metadata"]["publicToolCount"] == 6
     assert mcp["capabilities"] == [
@@ -85,6 +138,55 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
         }
     ]
     assert SERVER_VERSION in mcp["description"]
+
+
+def test_mcp_release_receipts_are_durable_exact_bytes():
+    deployment = json.loads(MCP_DEPLOY_RECEIPT_PATH.read_text(encoding="utf-8"))
+    registry = json.loads(MCP_REGISTRY_RECEIPT_PATH.read_text(encoding="utf-8"))
+    registry_snapshot = json.loads(
+        MCP_REGISTRY_SNAPSHOT_PATH.read_text(encoding="utf-8")
+    )
+
+    assert "sha256:" + hashlib.sha256(
+        MCP_DEPLOY_RECEIPT_PATH.read_bytes()
+    ).hexdigest() == (MCP_DEPLOY_RECEIPT_SHA256)
+    assert (
+        "sha256:" + hashlib.sha256(MCP_REGISTRY_RECEIPT_PATH.read_bytes()).hexdigest()
+        == MCP_REGISTRY_RECEIPT_SHA256
+    )
+    assert (
+        "sha256:" + hashlib.sha256(MCP_REGISTRY_SNAPSHOT_PATH.read_bytes()).hexdigest()
+        == MCP_REGISTRY_SNAPSHOT_SHA256
+    )
+
+    assert deployment == {
+        "forced_command_deploy": "passed",
+        "public_mcp_url": "https://api.seiche.info/palimpsest/mcp",
+        "public_smoke": "passed",
+        "repository": "beepboop2025/palimpsest",
+        "schema": "palimpsest.mcp-deployment-receipt.v1",
+        "server_version": SERVER_VERSION,
+        "target_sha": MCP_RELEASE_SHA,
+        "workflow": ".github/workflows/deploy-mcp.yml",
+        "workflow_run_attempt": 1,
+        "workflow_run_id": 32734455304,
+    }
+    assert registry["schema"] == "palimpsest.mcp-registry-publication-receipt.v2"
+    assert registry["target_sha"] == MCP_RELEASE_SHA
+    assert registry["server_version"] == SERVER_VERSION
+    assert registry["deploy_run_id"] == deployment["workflow_run_id"]
+    assert registry["workflow_run_id"] == 32735073973
+    assert registry["published_at"] == MCP_REGISTRY_PUBLISHED_AT
+    assert registry["registry_response_sha256"] == (
+        MCP_REGISTRY_SNAPSHOT_SHA256.removeprefix("sha256:")
+    )
+    assert registry_snapshot["server"] == json.loads(
+        (ROOT / "server.json").read_text(encoding="utf-8")
+    )
+    official = registry_snapshot["_meta"]["io.modelcontextprotocol.registry/official"]
+    assert official["status"] == "active"
+    assert official["isLatest"] is True
+    assert official["publishedAt"] == MCP_REGISTRY_PUBLISHED_AT
 
 
 def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
@@ -123,6 +225,8 @@ def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
 
     assert f"Agentmap: {catalog_url}" in robots
     assert catalog_url in llms
+    assert f"MCP server v{SERVER_VERSION}" in llms
+    assert "MCP server v1.6.0" not in llms
     assert 'type="application/ai-catalog+json"' in developers
     assert 'href="/.well-known/ai-catalog.json"' in developers
     assert f"release-bound MCP <code>{SERVER_VERSION}</code>" in developers

@@ -527,14 +527,14 @@ def test_import_state_has_a_closed_public_schema():
 
 def test_refresh_workflow_conditionally_commits_the_monotonic_import_state():
     workflow = (
-        importer.ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+        importer.ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
     ).read_text()
     assert workflow.count("readings/social-observations-import-state.json") == 3
 
 
 def test_refresh_workflow_pins_instagram_accounts_in_every_retry_path():
     workflow = (
-        importer.ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+        importer.ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
     ).read_text()
 
     assert workflow.count(

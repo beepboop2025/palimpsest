@@ -49,7 +49,7 @@ def test_stale_silence_and_nemesis_get_reviewed_recovery_workflows() -> None:
     )
     assert plan["dispatch"] == [
         "silence-index-refresh.yml",
-        "osint-china-refresh.yml",
+        "osint-china-v2-refresh.yml",
     ]
 
 
@@ -88,7 +88,7 @@ def test_old_command_bundle_is_refreshed_before_embedded_states_are_trusted() ->
         NOW,
     )
     assert plan["bundle_stale"] is True
-    assert plan["dispatch"] == ["osint-china-refresh.yml"]
+    assert plan["dispatch"] == ["osint-china-v2-refresh.yml"]
     assert [row["signal_id"] for row in plan["problems"]] == ["osint-china"]
 
 

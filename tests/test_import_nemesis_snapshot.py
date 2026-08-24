@@ -15,7 +15,7 @@ import scripts.import_nemesis_snapshot as importer
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
 NOW = 1_800_000_100.0
 DATA_TIME = 1_800_000_000.0
 KEY = b"publication-contract-test-key-32-bytes-minimum"

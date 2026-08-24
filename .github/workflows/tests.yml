@@ -311,9 +311,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Prove the exact successful MCP deployment receipt
+      - name: Bind Pages to the catalog-declared deployed MCP release
+        id: mcp_release
         env:
-          GH_TOKEN: ${{ github.token }}
           PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
         run: |
           set -euo pipefail
@@ -323,24 +323,135 @@ jobs:
             +refs/heads/main:refs/remotes/origin/main
           test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"
 
+          deployment_sha=$(jq -er '
+            [.entries[]
+             | select(.identifier ==
+                 "urn:air:palimpsest.info:mcp:evidence-observatory")
+             | .metadata.deploymentCommit]
+            | select(length == 1)
+            | .[0]
+            | select(type == "string" and test("^[0-9a-f]{40}$"))
+          ' .well-known/ai-catalog.json)
+          deployment_receipt_url=$(jq -er '
+            [.entries[]
+             | select(.identifier ==
+                 "urn:air:palimpsest.info:mcp:evidence-observatory")
+             | .metadata.deploymentReceipt]
+            | select(length == 1)
+            | .[0]
+            | select(type == "string")
+          ' .well-known/ai-catalog.json)
+          deployment_receipt_digest=$(jq -er '
+            [.entries[]
+             | select(.identifier ==
+                 "urn:air:palimpsest.info:mcp:evidence-observatory")
+             | .metadata.deploymentReceiptSha256]
+            | select(length == 1)
+            | .[0]
+            | select(type == "string" and test("^sha256:[0-9a-f]{64}$"))
+          ' .well-known/ai-catalog.json)
+          deployment_run_url=$(jq -er '
+            [.entries[]
+             | select(.identifier ==
+                 "urn:air:palimpsest.info:mcp:evidence-observatory")
+             | .metadata.deploymentRun]
+            | select(length == 1)
+            | .[0]
+            | select(type == "string")
+          ' .well-known/ai-catalog.json)
+
+          server_version=$(jq -er '
+            .version
+            | select(type == "string" and test("^[0-9]+[.][0-9]+[.][0-9]+$"))
+          ' server.json)
+          deployment_receipt_path=".well-known/receipts/mcp-deployment-${server_version}.json"
+          test "$deployment_receipt_url" = \
+            "https://palimpsest.info/$deployment_receipt_path"
+          test -f "$deployment_receipt_path"
+          test ! -L "$deployment_receipt_path"
+          test "sha256:$(sha256sum "$deployment_receipt_path" | awk '{print $1}')" \
+            = "$deployment_receipt_digest"
+          receipt_deployment_sha=$(jq -er '
+            .target_sha
+            | select(type == "string" and test("^[0-9a-f]{40}$"))
+          ' "$deployment_receipt_path")
+          deploy_run_id=$(jq -er '
+            .workflow_run_id
+            | select(type == "number" and . >= 1 and floor == .)
+          ' "$deployment_receipt_path")
+          test "$receipt_deployment_sha" = "$deployment_sha"
+          test "$deployment_run_url" = \
+            "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${deploy_run_id}"
+          git merge-base --is-ancestor "$deployment_sha" "$PUBLICATION_SHA"
+
+          # Pages may carry a reviewed data-only publication beyond the deployed
+          # MCP commit, but it may not carry changed runtime or manifest bytes.
+          # Exact Git blob identity makes this a fail-closed release boundary.
+          for contract_path in mcp/palimpsest_mcp.py server.json; do
+            deployed_object=$(git rev-parse "$deployment_sha:$contract_path")
+            publication_object=$(git rev-parse "$PUBLICATION_SHA:$contract_path")
+            test "$(git cat-file -t "$deployed_object")" = blob
+            test "$(git cat-file -t "$publication_object")" = blob
+            test "$deployed_object" = "$publication_object"
+          done
+
+          # Execute the verifier and smoke contract from the receipt-bound commit,
+          # rather than allowing a later data publication to weaken either probe.
+          contract_dir="$RUNNER_TEMP/deployed-mcp-contract"
+          test ! -e "$contract_dir"
+          install -d -m 0700 "$contract_dir"
+          git show "$deployment_sha:ops/mcp-deploy/verify_registry_release.py" \
+            > "$contract_dir/verify_registry_release.py"
+          git show "$deployment_sha:scripts/smoke_palimpsest_mcp.py" \
+            > "$contract_dir/smoke_palimpsest_mcp.py"
+          git show "$deployment_sha:mcp/palimpsest_mcp.py" \
+            > "$contract_dir/palimpsest_mcp.py"
+          git show "$deployment_sha:server.json" > "$contract_dir/server.json"
+          chmod 0500 \
+            "$contract_dir/verify_registry_release.py" \
+            "$contract_dir/smoke_palimpsest_mcp.py"
+          chmod 0400 \
+            "$contract_dir/palimpsest_mcp.py" \
+            "$contract_dir/server.json"
+          {
+            echo "deployment_sha=$deployment_sha"
+            echo "deployment_run_id=$deploy_run_id"
+            echo "deployment_receipt_path=$deployment_receipt_path"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Prove the exact successful MCP deployment receipt
+        env:
+          DEPLOYMENT_RECEIPT_PATH: ${{ steps.mcp_release.outputs.deployment_receipt_path }}
+          DEPLOY_RUN_ID: ${{ steps.mcp_release.outputs.deployment_run_id }}
+          DEPLOYMENT_SHA: ${{ steps.mcp_release.outputs.deployment_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deploy_run_id=$DEPLOY_RUN_ID
+          case "$deploy_run_id" in
+            ''|*[!0-9]*) echo "catalog deploy run ID is invalid" >&2; exit 1 ;;
+          esac
+
           runs_json="$RUNNER_TEMP/mcp-deploy-runs.json"
           gh api --method GET \
             "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-mcp.yml/runs" \
             -f event=workflow_dispatch \
             -f status=success \
-            -f head_sha="$PUBLICATION_SHA" \
+            -f head_sha="$DEPLOYMENT_SHA" \
             -F per_page=100 > "$runs_json"
-          deploy_run_id=$(jq -er --arg sha "$PUBLICATION_SHA" '
+          jq -er \
+            --arg sha "$DEPLOYMENT_SHA" \
+            --argjson run_id "$deploy_run_id" '
             [.workflow_runs[]
+             | select(.id == $run_id)
              | select(.head_sha == $sha)
              | select(.head_branch == "main")
              | select(.event == "workflow_dispatch")
              | select(.status == "completed" and .conclusion == "success")
              | select((.path | split("@")[0]) == ".github/workflows/deploy-mcp.yml")]
-            | sort_by(.id)
-            | last
-            | .id
-          ' "$runs_json")
+            | select(length == 1)
+            | .[0].id == $run_id
+          ' "$runs_json" >/dev/null
           run_json="$RUNNER_TEMP/mcp-deploy-run.json"
           gh api \
             "repos/$GITHUB_REPOSITORY/actions/runs/$deploy_run_id" \
@@ -348,27 +459,23 @@ jobs:
           run_attempt=$(jq -er '
             .run_attempt | select(type == "number" and . >= 1)
           ' "$run_json")
-          receipt_dir="$RUNNER_TEMP/mcp-deployment-receipt"
-          install -d -m 0700 "$receipt_dir"
-          gh run download "$deploy_run_id" \
-            --repo "$GITHUB_REPOSITORY" \
-            --name "palimpsest-mcp-deployment-${PUBLICATION_SHA}-run-${deploy_run_id}-attempt-${run_attempt}" \
-            --dir "$receipt_dir"
-          python3 ops/mcp-deploy/verify_registry_release.py deployment \
-            --receipt "$receipt_dir/deployment-receipt.json" \
+          test "$run_attempt" -ge 1
+          python3 "$RUNNER_TEMP/deployed-mcp-contract/verify_registry_release.py" \
+            deployment \
+            --receipt "$DEPLOYMENT_RECEIPT_PATH" \
             --run-json "$run_json" \
-            --manifest server.json \
-            --target-sha "$PUBLICATION_SHA" \
+            --manifest "$RUNNER_TEMP/deployed-mcp-contract/server.json" \
+            --target-sha "$DEPLOYMENT_SHA" \
             --deploy-run-id "$deploy_run_id" \
             --repository "$GITHUB_REPOSITORY"
 
       - name: Re-probe the deployed public MCP release
         run: |
           set -euo pipefail
-          python3 scripts/smoke_palimpsest_mcp.py \
+          python3 "$RUNNER_TEMP/deployed-mcp-contract/smoke_palimpsest_mcp.py" \
             --url https://api.seiche.info/palimpsest/mcp \
-            --module mcp/palimpsest_mcp.py \
-            --manifest server.json \
+            --module "$RUNNER_TEMP/deployed-mcp-contract/palimpsest_mcp.py" \
+            --manifest "$RUNNER_TEMP/deployed-mcp-contract/server.json" \
             --timeout 20
 
   pages-artifact:

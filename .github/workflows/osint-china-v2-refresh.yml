@@ -1,4 +1,9 @@
-name: Refresh OSINT China roll-up
+name: Refresh OSINT China roll-up v2
+
+# This distinct v2 path intentionally supersedes the retired workflow identity.
+# Do not restore the former filename unless every historical run for that ID is
+# terminal; an old queued workflow_run must never inherit this controller's
+# schedule or write authority.
 
 # Deterministic recomputation over committed China-facing readings plus one optional,
 # authenticated private-runtime public snapshot. The hourly cadence makes source aging

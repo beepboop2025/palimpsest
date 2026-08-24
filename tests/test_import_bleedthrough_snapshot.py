@@ -14,7 +14,7 @@ import scripts.import_bleedthrough_snapshot as importer
 
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-refresh.yml"
+WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
 CADDY = ROOT / "ops" / "caddy" / "palimpsest-bleedthrough.caddy"
 NOW = 1_800_000_000.0
 GENERATED = "2027-01-15T07:58:20Z"
