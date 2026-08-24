@@ -2,12 +2,12 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 21 are live. Health qualifiers: 4 degraded, 14 stale.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 21 are live. Health qualifiers: 2 degraded, 16 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-24T17:22:36Z",
+  "generated_at": "2026-08-24T18:56:44Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "25356d68a5b5779376bc940eabb0cbf2c89f62e8",
+  "source_commit": "58d3b0b990fe4b10f508fc5b248c878cdbc126ba",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
@@ -17,8 +17,8 @@
     "status": "degraded",
     "counts": {
       "live": 21,
-      "degraded": 4,
-      "stale": 14,
+      "degraded": 2,
+      "stale": 16,
       "missing": 0,
       "corrupt": 0
     }
@@ -88,7 +88,7 @@
       "status": "live",
       "published_at": "2026-08-24T17:22:36Z",
       "modified_at": "2026-08-24T17:22:36Z",
-      "claim_fingerprint": "sha256:0cdf7ba861b019d4ec58a3feecf4f536646c99522dfee24739c31e887f7dcdef",
+      "claim_fingerprint": "sha256:64a6741f75895ab63750dca90973c4e044cd8a8af081f85927f0b7462c5031be",
       "metric": {
         "label": "board e-value",
         "value": 8.79,
@@ -101,7 +101,7 @@
       "claims": [
         {
           "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 21 are live. Health qualifiers: 4 degraded, 14 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
+          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 21 are live. Health qualifiers: 2 degraded, 16 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
         }
       ],
       "evidence": {
@@ -499,15 +499,15 @@
       "url": "https://palimpsest.info/news/silence-index/",
       "signal_id": "silence-index",
       "headline": "Silence index: no current finding",
-      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "degraded",
+      "status": "stale",
       "published_at": "2026-08-24T15:19:03Z",
       "modified_at": "2026-08-24T15:19:03Z",
-      "claim_fingerprint": "sha256:0aaa02fcf26cf2cb3f6a9bc1cbc9d5cd42cf48a141926be5afdeb224c4e6e529",
+      "claim_fingerprint": "sha256:dd0cef3624285bdb741fadf4ad138ac30cc90a95d271c28721e470c25febbfee",
       "metric": {
         "label": null,
         "value": null,
@@ -520,7 +520,7 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for Silence index because the source status is degraded."
+          "statement": "No current finding is published for Silence index because the source status is stale."
         }
       ],
       "evidence": {
@@ -537,7 +537,7 @@
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: declared measurement is incomplete: metric /n_blackout is absent or non-scalar",
+        "Current finding withheld: freshness deadline has passed",
         "Domestic absence can reflect disinterest or incomplete proxy coverage; topics without required corroboration abstain."
       ],
       "related_signal_ids": [
@@ -1651,15 +1651,15 @@
       "url": "https://palimpsest.info/news/baike-public-snapshot/",
       "signal_id": "baike-public-snapshot",
       "headline": "Baike public snapshot: no current finding",
-      "dek": "The source is degraded. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "erasure",
       "order": 7,
       "type": "measurement",
       "priority": "background",
-      "status": "degraded",
+      "status": "stale",
       "published_at": "2026-08-24T04:52:24Z",
       "modified_at": "2026-08-24T04:52:24Z",
-      "claim_fingerprint": "sha256:65a2c83079a606d40c89f337c76e5d50dd5e303d7c5bf4c90253d87ff988be91",
+      "claim_fingerprint": "sha256:0f8fe35d47cba08cb1365f2b19099d4a1c3890fd7c4ad14506f41c9e1bcf521e",
       "metric": {
         "label": null,
         "value": null,
@@ -1672,7 +1672,7 @@
       "claims": [
         {
           "type": "availability",
-          "statement": "No current finding is published for Baike public snapshot because the source status is degraded."
+          "statement": "No current finding is published for Baike public snapshot because the source status is stale."
         }
       ],
       "evidence": {
@@ -1689,7 +1689,7 @@
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: upstream status is unreachable; collector status is source_refused",
+        "Current finding withheld: freshness deadline has passed",
         "A refused fetch is evidence about this vantage reaching Baike, not a count of encyclopedia rewrites."
       ],
       "related_signal_ids": [

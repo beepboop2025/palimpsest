@@ -1,17 +1,29 @@
 name: Refresh China econ telemetry
 
-# Official CFETS/NIFC money-market benchmarks (SHIBOR fixings, pledged-repo
-# fixing rates incl. FDR007, USD/CNY central parity) pulled from the keyless
-# chinamoney English portal. State-PUBLISHED numbers — the economic half of
-# the latent-state read, complementing the censorship signals. The portal is
-# range-limited and burst-throttled, so the script makes three spaced calls
-# per run and the Git-tracked compatibility/vintage ledgers are the long record. Stdlib-only,
-# vantage-insensitive — runs correctly from a GitHub runner (no box egress).
+# Reviewed World Bank WDI China history under CC BY 4.0. CFETS/ChinaMoney
+# collection is intentionally absent because the China economic source policy
+# denies copying/transmitting/storing/publishing/processing those values without
+# written licensing. The Git-tracked WDI ledger is the durable revision seed;
+# raw responses remain in the attested review handoff rather than Pages.
 
 on:
-  schedule:
-    - cron: "41 */6 * * *"     # every 6 hours, offset from the other signals
-  workflow_dispatch: {}
+  # Deliberately manual through this release. Every refresh pushes a uniquely
+  # named candidate branch for a human to turn into a PR; no scheduled or
+  # action-token path may write the governed WDI files to main.
+  workflow_dispatch:
+    inputs:
+      registry_ref:
+        description: >-
+          Optional data-only refs/heads/review/china-econ-registry-* ref.
+          Run this workflow from main, never from the feature ref.
+        required: false
+        default: ""
+        type: string
+      registry_sha:
+        description: Optional exact 40-hex head SHA for registry_ref.
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -27,6 +39,8 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -38,18 +52,95 @@ jobs:
           -r .github/osint-china-ci-requirements.txt
 
       - name: Synchronize inputs before collection
+        env:
+          REGISTRY_REF_INPUT: ${{ inputs.registry_ref }}
+          REGISTRY_SHA_INPUT: ${{ inputs.registry_sha }}
         run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
           git config user.name "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
-          git fetch origin main
-          git rebase origin/main
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          candidate_sha=$GITHUB_SHA
+          refresh_mode=main
+          if [ -n "$REGISTRY_REF_INPUT" ] || [ -n "$REGISTRY_SHA_INPUT" ]; then
+            test -n "$REGISTRY_REF_INPUT"
+            test -n "$REGISTRY_SHA_INPUT"
+            candidate_sha=$(bash scripts/validate_china_econ_registry_candidate.sh \
+              "$GITHUB_SHA" "$REGISTRY_REF_INPUT" "$REGISTRY_SHA_INPUT")
+            refresh_mode=registry_expansion
+          fi
+          branch="automation/china-econ-refresh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          bash scripts/prepare_china_econ_refresh_branch.sh \
+            "$GITHUB_SHA" "$candidate_sha" "$branch"
+          {
+            echo "REFRESH_BRANCH=$branch"
+            echo "REFRESH_MODE=$refresh_mode"
+            echo "CANDIDATE_SHA=$candidate_sha"
+            echo "REGISTRY_REF_INPUT=$REGISTRY_REF_INPUT"
+            echo "REGISTRY_SHA_INPUT=$REGISTRY_SHA_INPUT"
+          } >> "$GITHUB_ENV"
+          bash scripts/extract_china_econ_prior_registry.sh "$candidate_sha" \
+            > "$RUNNER_TEMP/china-econ-prior-registry.json"
+          if [ "$refresh_mode" = main ]; then
+            if ! cmp --silent config/china_econ_wdi_series.json \
+              "$RUNNER_TEMP/china-econ-prior-registry.json"; then
+              echo "current main contains a non-atomic registry-only transition" >&2
+              exit 1
+            fi
+          else
+            python - <<'PY'
+          import os
+          from pathlib import Path
 
-      - name: Pull CFETS benchmarks and publish the china-econ signal
-        run: python -m scripts.china_econ_pull
+          from core.china_econ_export import validate_wdi_registry_evolution
+
+          transition = validate_wdi_registry_evolution(
+              (Path(os.environ["RUNNER_TEMP"]) / "china-econ-prior-registry.json").read_bytes(),
+              Path("config/china_econ_wdi_series.json").read_bytes(),
+          )
+          if (
+              transition["state"] != "append_only_addition"
+              or not transition["added_source_indicators"]
+          ):
+              raise SystemExit(
+                  "registry expansion requires a nonempty append-only indicator addition"
+              )
+          print(
+              "registry expansion: "
+              + ",".join(transition["added_source_indicators"])
+          )
+          PY
+          fi
+
+      - name: Pull reviewed WDI values into the durable attributed ledger
+        run: |
+          args=(
+            --prior-registry "$RUNNER_TEMP/china-econ-prior-registry.json"
+            --ledger readings/china-econ-wdi-observations.jsonl
+            --latest readings/china-econ-wdi-latest.json
+            --public-context-only
+          )
+          if [ "$REFRESH_MODE" = registry_expansion ]; then
+            args+=(--require-registry-addition)
+          fi
+          python -m scripts.china_econ_wdi_pull "${args[@]}"
 
       - name: Validate the append-only economic observation ledger
         run: |
-          python -m scripts.china_econ_pull --validate-only
+          args=(
+            --prior-registry "$RUNNER_TEMP/china-econ-prior-registry.json"
+            --ledger readings/china-econ-wdi-observations.jsonl
+            --latest readings/china-econ-wdi-latest.json
+            --public-context-only
+            --validate-only
+          )
+          if [ "$REFRESH_MODE" = registry_expansion ]; then
+            args+=(--require-registry-addition)
+          fi
+          python -m scripts.china_econ_wdi_pull "${args[@]}"
           python -m scripts.build_china_econ_manifest --check
 
       - name: Rebuild and seal every dependent public surface
@@ -83,6 +174,8 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_china_econ_observatory.py \
+            tests/test_world_bank_wdi.py \
+            tests/test_china_econ_export.py \
             tests/test_china_econ_pull_publish.py \
             tests/test_econ_ledger.py \
             tests/test_china_econ_manifest.py \
@@ -124,13 +217,16 @@ jobs:
           PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}
         run: python scripts/verify_public_surface.py
 
-      - name: Commit and publish one guarded graph if the signal changed
+      - name: Commit and push one human-review candidate if the signal changed
         run: |
+          set -euo pipefail
           git add \
             readings/china-econ-latest.json \
             readings/china-econ-history.jsonl \
             readings/china-econ-observations.jsonl \
             readings/china-econ-observations-latest.json \
+            readings/china-econ-wdi-observations.jsonl \
+            readings/china-econ-wdi-latest.json \
             readings/china-econ-forecast-latest.json \
             readings/china-economic-pulse-latest.json \
             readings/china-index-latest.json \
@@ -162,15 +258,36 @@ jobs:
             git status --porcelain=v1 --untracked-files=all | head -80
           fi
           if git diff --cached --quiet; then
+            if [ "$REFRESH_MODE" = registry_expansion ]; then
+              echo "registry expansion produced no compatible ledger/receipt update" >&2
+              exit 1
+            fi
             echo "no change"
           else
-            git commit -m "data: china econ telemetry refresh ($(date -u +%FT%TZ)) [skip pytest]"
-            # The direct observations stay byte-identical on a race. Refuse the
-            # candidate if any transitive generator/input tree changed on main;
-            # the next scheduled run will rebuild from that newer graph.
-            guarded=()
-            for path in scripts core processors config protocol assets dashboards/assets readings; do
-              guarded+=(--input-path "$path")
-            done
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --contract-scope complete "${guarded[@]}"
+            git commit -m "data: propose China econ telemetry refresh ($(date -u +%FT%TZ))"
+            if [ "$REFRESH_MODE" = registry_expansion ]; then
+              rechecked_sha=$(bash scripts/validate_china_econ_registry_candidate.sh \
+                "$GITHUB_SHA" "$REGISTRY_REF_INPUT" "$REGISTRY_SHA_INPUT")
+              test "$rechecked_sha" = "$CANDIDATE_SHA"
+            else
+              git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+              test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+            fi
+            test "$(git rev-parse HEAD^)" = "$CANDIDATE_SHA"
+            test "$(git merge-base "$GITHUB_SHA" HEAD)" = "$GITHUB_SHA"
+            git push --set-upstream origin "HEAD:refs/heads/$REFRESH_BRANCH"
+            compare_url="https://github.com/${GITHUB_REPOSITORY}/compare/main...${REFRESH_BRANCH}?expand=1"
+            {
+              echo "## China economic refresh human handoff"
+              echo
+              echo "Candidate branch: \`$REFRESH_BRANCH\`"
+              echo
+              echo "Open the exact compare page and create the PR: [$compare_url]($compare_url)"
+              echo
+              echo "A human repository operator must approve any held workflow run, wait for the complete hosted contract, and merge with GitHub **Create a merge commit** only. Do not squash, rebase, auto-merge, or push these governed paths directly to main."
+              echo
+              echo "After merge, independently verify the bounded raw GitHub commit response: author \`beepboop2025\`, committer \`web-flow\`, at least two parents, and signature verification \`verified=true\` with reason \`valid\`."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "candidate branch: $REFRESH_BRANCH"
+            echo "human compare URL: $compare_url"
           fi

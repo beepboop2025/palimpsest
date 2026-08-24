@@ -352,7 +352,8 @@ def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
     assert "scheduled-workflows.tsv" in text
     assert "reuse that gate's" in text
     assert "original preservation manifest" in text
-    assert 'test "$(wc -l <"$schedule_manifest"' in text
+    assert 'build_schedule_manifest "$premerge_schedule_paths"' in text
+    assert '"$schedule_manifest" "$premerge_schedule_count"' in text
     assert "expected_state workflow_file" in text
     assert 'status == "queued" or .status == "in_progress"' in text
     assert 'test "$(git rev-parse origin/main)" = "$frozen_main"' in text
@@ -390,6 +391,293 @@ def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
     assert "## Rollback after a completed release" in text
     assert "never edit `deployed-sha`" in text
     assert "monotonically higher server version" in text
+
+
+def test_release_runbook_pins_china_schedule_transition() -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    workflows = ROOT / ".github/workflows"
+    scheduled_paths = sorted(
+        path.relative_to(ROOT).as_posix()
+        for path in workflows.iterdir()
+        if path.suffix in {".yml", ".yaml"}
+        if "\n  schedule:" in path.read_text(encoding="utf-8")
+    )
+
+    assert len(scheduled_paths) == 33
+    assert ".github/workflows/china-econ-refresh.yml" not in scheduled_paths
+    assert 'premerge_schedule_paths="$release_gate_dir/' in text
+    assert 'postmerge_schedule_paths="$release_gate_dir/' in text
+    assert 'scheduled_paths_at "$frozen_main"' in text
+    assert 'validate_schedule_transition "$frozen_main" "$target_sha"' in text
+    assert 'build_schedule_manifest "$premerge_schedule_paths"' in text
+    assert "34:33" in text
+    assert "33:33" in text
+    assert "LC_ALL=C comm -23" in text
+    assert "LC_ALL=C comm -13" in text
+    assert ".github/workflows/*.yml|.github/workflows/*.yaml" in text
+    assert ".github/workflows/china-econ-refresh.yml" in text
+    assert ".github/workflows/osint-china-refresh.yml" in text
+    assert ".github/workflows/osint-china-v2-refresh.yml" in text
+    assert "original 34 intentions" in text
+    assert "exposes its reviewed" in text
+    assert "manual dispatch" in text
+    assert "cannot recreate the" in text
+    assert "removed schedule" in text
+    assert "33-to-33" in text
+    assert 'workflow_replacements="$release_gate_dir/' in text
+    assert "replacement_live_runs=$(gh api --paginate" in text
+    assert 'test -z "$replacement_live_runs"' in text
+    assert 'test "$expected_state" = disabled_manually' in text
+    assert 'test "$resolved_id" != "$captured_id"' in text
+
+
+def test_release_runbook_executes_exact_tree_schedule_transitions(
+    tmp_path: Path,
+) -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    marker = "# BEGIN exact-tree scheduled path extractor"
+    start = text.index(marker) + len(marker)
+    end = text.index("# END exact-tree scheduled path extractor", start)
+    function_source = text[start:end].strip()
+    repository = tmp_path / "repository"
+    workflows = repository / ".github/workflows"
+    workflows.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
+
+    for number in range(31):
+        (workflows / f"writer-{number:02d}.yml").write_text(
+            f"name: writer-{number:02d}\non:\n"
+            "  schedule:\n    - cron: '0 0 * * *'\n",
+            encoding="utf-8",
+        )
+    yaml_writer = workflows / "writer-yaml.yaml"
+    yaml_writer.write_text(
+        "name: yaml writer\non:\n  schedule:\n    - cron: '1 0 * * *'\n",
+        encoding="utf-8",
+    )
+    china = workflows / "china-econ-refresh.yml"
+    china.write_text(
+        "name: China econ\non:\n"
+        "  schedule:\n    - cron: '41 */6 * * *'\n"
+        "  workflow_dispatch: {}\n",
+        encoding="utf-8",
+    )
+    old_osint = workflows / "osint-china-refresh.yml"
+    old_osint.write_text(
+        "name: OSINT China\non:\n  schedule:\n    - cron: '7 * * * *'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", ".github/workflows"], cwd=repository, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Palimpsest Test",
+            "-c",
+            "user.email=test@palimpsest.info",
+            "commit",
+            "-qm",
+            "premerge tree",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    premerge_tree = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repository, text=True
+    ).strip()
+
+    china.write_text(
+        "name: China econ\non:\n  workflow_dispatch: {}\n",
+        encoding="utf-8",
+    )
+    old_osint.unlink()
+    (workflows / "osint-china-v2-refresh.yml").write_text(
+        "name: OSINT China v2\non:\n  schedule:\n    - cron: '7 * * * *'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "-A", ".github/workflows"], cwd=repository, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Palimpsest Test",
+            "-c",
+            "user.email=test@palimpsest.info",
+            "commit",
+            "-qm",
+            "one-time transition",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    transition_tree = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repository, text=True
+    ).strip()
+
+    (repository / "README.md").write_text("steady state\n", encoding="utf-8")
+    subprocess.run(["git", "add", "README.md"], cwd=repository, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Palimpsest Test",
+            "-c",
+            "user.email=test@palimpsest.info",
+            "commit",
+            "-qm",
+            "steady state",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    steady_tree = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repository, text=True
+    ).strip()
+
+    def validate_transition(
+        premerge: str,
+        target: str,
+        stem: str,
+        *,
+        check: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        premerge_paths = tmp_path / f"{stem}-pre.txt"
+        postmerge_paths = tmp_path / f"{stem}-post.txt"
+        replacements = tmp_path / f"{stem}-replacements.tsv"
+        return subprocess.run(
+            [
+                "bash",
+                "-c",
+                (
+                    f"set -euo pipefail\n{function_source}\n"
+                    'scheduled_paths_at "$1" >"$3"\n'
+                    'validate_schedule_transition "$1" "$2" "$3" "$4" "$5"'
+                ),
+                "scheduled-path-test",
+                premerge,
+                target,
+                str(premerge_paths),
+                str(postmerge_paths),
+                str(replacements),
+            ],
+            cwd=repository,
+            check=check,
+            capture_output=True,
+            text=True,
+        )
+
+    assert validate_transition(premerge_tree, transition_tree, "one-time").returncode == 0
+    assert validate_transition(transition_tree, steady_tree, "steady").returncode == 0
+    premerge_paths = (tmp_path / "one-time-pre.txt").read_text(
+        encoding="utf-8"
+    ).splitlines()
+    postmerge_paths = (tmp_path / "one-time-post.txt").read_text(
+        encoding="utf-8"
+    ).splitlines()
+    replacements = (tmp_path / "one-time-replacements.tsv").read_text(
+        encoding="utf-8"
+    )
+    assert len(premerge_paths) == 34
+    assert len(postmerge_paths) == 33
+    assert ".github/workflows/writer-yaml.yaml" in premerge_paths
+    assert all(":" not in path for path in premerge_paths + postmerge_paths)
+    assert replacements == (
+        ".github/workflows/osint-china-refresh.yml\t"
+        ".github/workflows/osint-china-v2-refresh.yml\n"
+    )
+
+    (workflows / "writer-00.yml").write_text(
+        "name: writer-00\non:\n  workflow_dispatch: {}\n",
+        encoding="utf-8",
+    )
+    (workflows / "replacement.yml").write_text(
+        "name: replacement\non:\n"
+        "  schedule:\n    - cron: '5 0 * * *'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", ".github/workflows"], cwd=repository, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Palimpsest Test",
+            "-c",
+            "user.email=test@palimpsest.info",
+            "commit",
+            "-qm",
+            "invalid set substitution",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    changed_set_tree = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repository, text=True
+    ).strip()
+    assert (
+        validate_transition(
+            steady_tree,
+            changed_set_tree,
+            "changed-set",
+            check=False,
+        ).returncode
+        != 0
+    )
+
+
+def test_release_runbook_manifest_join_is_an_exact_bijection(
+    tmp_path: Path,
+) -> None:
+    text = RUNBOOK.read_text(encoding="utf-8")
+    marker = "# BEGIN exact workflow manifest join"
+    start = text.index(marker) + len(marker)
+    end = text.index("# END exact workflow manifest join", start)
+    function_source = text[start:end].strip()
+    paths = [f".github/workflows/writer-{number:02d}.yml" for number in range(34)]
+    paths_file = tmp_path / "paths.txt"
+    inventory_file = tmp_path / "inventory.json"
+    manifest_file = tmp_path / "manifest.tsv"
+    paths_file.write_text("".join(f"{path}\n" for path in paths), encoding="utf-8")
+
+    def build_manifest(
+        inventory: list[dict[str, object]],
+        *,
+        check: bool = True,
+    ) -> subprocess.CompletedProcess[str]:
+        inventory_file.write_text(json.dumps(inventory), encoding="utf-8")
+        return subprocess.run(
+            [
+                "bash",
+                "-c",
+                (
+                    f"set -euo pipefail\n{function_source}\n"
+                    'build_schedule_manifest "$1" "$2" "$3" 34'
+                ),
+                "manifest-join-test",
+                str(paths_file),
+                str(inventory_file),
+                str(manifest_file),
+            ],
+            check=check,
+            capture_output=True,
+            text=True,
+        )
+
+    inventory = [
+        {"id": number + 1, "state": "active", "path": path}
+        for number, path in enumerate(paths)
+    ]
+    assert build_manifest(inventory).returncode == 0
+    rows = [row.split("\t") for row in manifest_file.read_text().splitlines()]
+    assert len(rows) == 34
+    assert sorted(row[2] for row in rows) == paths
+    assert len({row[0] for row in rows}) == 34
+
+    duplicate_path = [*inventory, {"id": 99, "state": "active", "path": paths[0]}]
+    assert build_manifest(duplicate_path, check=False).returncode != 0
+    assert build_manifest(inventory[:-1], check=False).returncode != 0
+    duplicate_id = [dict(row) for row in inventory]
+    duplicate_id[-1]["id"] = duplicate_id[0]["id"]
+    assert build_manifest(duplicate_id, check=False).returncode != 0
 
 
 def test_emergency_rollback_is_receipt_bound_atomic_and_syntax_valid() -> None:

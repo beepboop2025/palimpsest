@@ -80,6 +80,13 @@ _SINKS = re.compile(
 #   exact repository root. Commit IDs and paths come from the closed incident
 #   specification, replacement objects are disabled, stdin is closed, and no
 #   shell or fetched evidence enters argv.
+#   build_china_econ_export.py: invokes only fixed `git rev-parse --verify HEAD`
+#   to label a local review bundle. Stdin is closed, the repository root is
+#   fixed, and no source or observation bytes enter argv.
+#   build_china_econ_lineage.py: invokes fixed Git object-reading commands and a
+#   fixed `gh api` endpoint for validated full commit SHAs. Paths are closed
+#   constants, stdin is closed, no shell is used, and fetched response bytes are
+#   captured as data rather than reintroduced into argv.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
@@ -87,11 +94,41 @@ _ALLOWED = {
     ("ops/osint-sync/public_osint_sync.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
     ("scripts/dispatch_publication_contract.py", "subprocess."),
+    ("scripts/build_china_econ_export.py", "subprocess."),
+    ("scripts/build_china_econ_lineage.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
     ("scripts/recover_readings_ledger.py", "subprocess."),
     ("scripts/reproduce_all.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
 }
+
+
+def test_china_economic_git_helpers_keep_a_closed_subprocess_boundary():
+    export = (ROOT / "scripts" / "build_china_econ_export.py").read_text(
+        encoding="utf-8"
+    )
+    lineage = (ROOT / "scripts" / "build_china_econ_lineage.py").read_text(
+        encoding="utf-8"
+    )
+
+    for text in (export, lineage):
+        assert "shell=True" not in text
+        assert "stdin=subprocess.DEVNULL" in text
+        assert "timeout=" in text
+        assert "cwd=ROOT" in text
+        assert "env=" in text
+    assert 'GIT_EXECUTABLE = "/usr/bin/git"' in export
+    assert "[GIT_EXECUTABLE, \"--no-replace-objects\", \"rev-parse\"" in export
+    assert 'GIT_EXECUTABLE = "/usr/bin/git"' in lineage
+    assert 'GH_EXECUTABLE = "/usr/bin/gh"' in lineage
+    assert lineage.count("_git(") == 6  # one definition plus five reviewed call sites
+    assert lineage.count("_gh(") == 2  # one definition plus one reviewed API call
+    assert '_git("ls-tree", "-z", commit_sha, "--", path)' in lineage
+    assert '_git("cat-file", "blob", entry["object_sha"])' in lineage
+    assert '"repos/{PRODUCER_REPOSITORY}/commits/{commit_sha}?per_page=1"' in lineage
+    assert 'revision != "HEAD"' in lineage
+    assert 're.fullmatch(r"[0-9a-f]{40}", revision)' in lineage
+    assert "--max-count={MAX_WDI_LINEAGE_NODES + 1}" in lineage
 
 
 def _py_files():

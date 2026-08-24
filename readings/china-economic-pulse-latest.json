@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-08-24T17:22:36Z",
+  "as_of": "2026-08-23T17:27:00Z",
   "comparisons": [
     {
       "baseline_observations": 1,
@@ -168,6 +168,25 @@
         "independence_group": "viirs_radiance",
         "name": "VIIRS night-light composites",
         "source_id": "viirs_nightlights"
+      },
+      {
+        "cadence": "annual",
+        "domains": [
+          "activity",
+          "agriculture",
+          "commodities",
+          "consumer_digital",
+          "credit",
+          "inflation",
+          "investment",
+          "labor",
+          "logistics",
+          "trade"
+        ],
+        "evidence_url": "https://datacatalog.worldbank.org/search/dataset/0037712/world-development-indicators",
+        "independence_group": "wdi_officially_recognized_sources",
+        "name": "World Development Indicators China history",
+        "source_id": "world_bank_wdi"
       }
     ],
     "live_independent_group_ids": [
@@ -191,7 +210,8 @@
           "pboc_enterprise_survey",
           "sentinel5p_atmosphere",
           "spb_postal_statistics",
-          "viirs_radiance"
+          "viirs_radiance",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "activity",
         "observed_groups": [
@@ -203,7 +223,8 @@
       },
       {
         "adapter_ready_groups": [
-          "gacc_trade_statistics"
+          "gacc_trade_statistics",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "agriculture",
         "observed_groups": [],
@@ -216,7 +237,8 @@
           "imf_portwatch_ais",
           "nea_energy_statistics",
           "sentinel5p_atmosphere",
-          "viirs_radiance"
+          "viirs_radiance",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "commodities",
         "observed_groups": [
@@ -228,7 +250,8 @@
       {
         "adapter_ready_groups": [
           "nea_energy_statistics",
-          "spb_postal_statistics"
+          "spb_postal_statistics",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "consumer_digital",
         "observed_groups": [],
@@ -239,7 +262,8 @@
         "adapter_ready_groups": [
           "pboc_credit_statistics",
           "pboc_enterprise_survey",
-          "safe_external_statistics"
+          "safe_external_statistics",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "credit",
         "observed_groups": [
@@ -272,7 +296,8 @@
       {
         "adapter_ready_groups": [
           "nbs_housing_prices",
-          "pboc_enterprise_survey"
+          "pboc_enterprise_survey",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "inflation",
         "observed_groups": [
@@ -292,7 +317,8 @@
           "pboc_credit_statistics",
           "pboc_enterprise_survey",
           "safe_external_statistics",
-          "viirs_radiance"
+          "viirs_radiance",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "investment",
         "observed_groups": [
@@ -308,7 +334,8 @@
       {
         "adapter_ready_groups": [
           "nbs_enterprise_survey",
-          "pboc_enterprise_survey"
+          "pboc_enterprise_survey",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "labor",
         "observed_groups": [],
@@ -322,7 +349,8 @@
           "mot_transport_statistics",
           "sentinel5p_atmosphere",
           "spb_postal_statistics",
-          "viirs_radiance"
+          "viirs_radiance",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "logistics",
         "observed_groups": [
@@ -347,7 +375,8 @@
           "imf_portwatch_ais",
           "mot_transport_statistics",
           "nbs_enterprise_survey",
-          "safe_external_statistics"
+          "safe_external_statistics",
+          "wdi_officially_recognized_sources"
         ],
         "domain": "trade",
         "observed_groups": [
@@ -373,7 +402,8 @@
       "safe_external_accounts",
       "sentinel5p_no2",
       "spb_parcels",
-      "viirs_nightlights"
+      "viirs_nightlights",
+      "world_bank_wdi"
     ],
     "observed_independent_group_ids": [
       "cfets_benchmarks",
@@ -429,11 +459,12 @@
       "tax_invoice_aggregate",
       "unionpay_transactions",
       "viirs_radiance",
+      "wdi_officially_recognized_sources",
       "wind_licensed_aggregation",
       "zhaopin_jobs_panel"
     ],
-    "registered_independent_groups": 33,
-    "registered_sources": 33
+    "registered_independent_groups": 34,
+    "registered_sources": 34
   },
   "desks": [
     {
@@ -471,7 +502,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -507,7 +538,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -543,7 +574,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -579,7 +610,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -615,7 +646,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -651,7 +682,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -687,7 +718,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -723,7 +754,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -759,7 +790,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -795,7 +826,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -831,7 +862,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -867,7 +898,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -903,7 +934,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -939,7 +970,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -975,7 +1006,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 39.583,
+            "age_hours": 15.656,
             "budget_hours": 96.0,
             "status": "current"
           },
@@ -1011,7 +1042,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 23.927,
+            "age_hours": 0.0,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1047,7 +1078,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 23.927,
+            "age_hours": 0.0,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1083,7 +1114,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 23.927,
+            "age_hours": 0.0,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1119,7 +1150,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 23.927,
+            "age_hours": 0.0,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1172,7 +1203,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 75.321,
+            "age_hours": 51.395,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1208,7 +1239,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 75.321,
+            "age_hours": 51.395,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1244,7 +1275,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 75.321,
+            "age_hours": 51.395,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1280,7 +1311,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 75.321,
+            "age_hours": 51.395,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1316,7 +1347,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 75.321,
+            "age_hours": 51.395,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1352,7 +1383,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 75.321,
+            "age_hours": 51.395,
             "budget_hours": 120.0,
             "status": "current"
           },
@@ -1405,7 +1436,7 @@
           },
           "frequency": "M",
           "freshness": {
-            "age_hours": 153.991,
+            "age_hours": 130.064,
             "budget_hours": 1200.0,
             "status": "current"
           },
@@ -1468,7 +1499,7 @@
           },
           "frequency": "D",
           "freshness": {
-            "age_hours": 30.831,
+            "age_hours": 6.904,
             "budget_hours": 50.0,
             "status": "current"
           },
@@ -1511,7 +1542,7 @@
     ],
     "status": "warming_up"
   },
-  "generated_at": "2026-08-24T17:22:36Z",
+  "generated_at": "2026-08-23T17:27:00Z",
   "input_integrity": [
     {
       "check_id": "cfets-wide-ledger-alignment",
@@ -1639,7 +1670,7 @@
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 30.831,
+          "age_hours": 6.904,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1682,7 +1713,7 @@
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 30.831,
+          "age_hours": 6.904,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1725,7 +1756,7 @@
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 30.831,
+          "age_hours": 6.904,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1768,7 +1799,7 @@
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 30.831,
+          "age_hours": 6.904,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1811,7 +1842,7 @@
         },
         "frequency": "M",
         "freshness": {
-          "age_hours": 30.831,
+          "age_hours": 6.904,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1854,7 +1885,7 @@
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 30.831,
+          "age_hours": 6.904,
           "budget_hours": 50.0,
           "status": "current"
         },
@@ -1897,7 +1928,7 @@
         },
         "frequency": "D",
         "freshness": {
-          "age_hours": 30.831,
+          "age_hours": 6.904,
           "budget_hours": 50.0,
           "status": "current"
         },

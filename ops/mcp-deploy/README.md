@@ -333,9 +333,15 @@ tip. Freeze every scheduled workflow before the release merge, wait for all
 already-started runs, and keep that gate closed through deployment and Registry
 verification.
 
-Create a fresh state manifest from the reviewed checkout. The expected count is
-an intentional drift alarm: review this transaction whenever a scheduled
-workflow is added or removed. Do not use a shell variable named `path` in zsh;
+Create the state manifest from the exact pre-merge `origin/main` tree, not from
+the candidate checkout. The China WDI release deliberately changes
+`china-econ-refresh.yml` from scheduled to manual-only: the live pre-merge union
+has 34 scheduled workflow paths, including China econ, while the reviewed
+post-merge tree has 33. Both exact counts and the one-path difference are drift
+alarms. A release that also crosses the reviewed OSINT workflow rename records
+the one allowed old-path-to-new-path translation explicitly; it does not infer
+workflow identity from a similar name. Later steady-state releases require an
+exact 33-to-33 path-set match. Do not use a shell variable named `path` in zsh;
 it aliases the executable search path.
 
 If this release continues an already-open publication gate, reuse that gate's
@@ -349,18 +355,171 @@ repo=beepboop2025/palimpsest
 release_gate_dir=$(mktemp -d /tmp/palimpsest-mcp-release-gate.XXXXXX)
 schedule_manifest="$release_gate_dir/scheduled-workflows.tsv"
 workflow_inventory="$release_gate_dir/workflows.json"
+premerge_schedule_paths="$release_gate_dir/premerge-scheduled-paths.txt"
+postmerge_schedule_paths="$release_gate_dir/postmerge-scheduled-paths.txt"
+workflow_replacements="$release_gate_dir/workflow-replacements.tsv"
+
+# BEGIN exact-tree scheduled path extractor
+scheduled_paths_at() {
+  treeish=$1
+  git ls-tree -r "$treeish" -- .github/workflows |
+    while IFS=$'\t' read -r object_metadata workflow_file; do
+      case "$workflow_file" in
+        .github/workflows/*.yml|.github/workflows/*.yaml) ;;
+        *) continue ;;
+      esac
+      case "$object_metadata" in
+        "100644 blob "*) ;;
+        *)
+          printf 'workflow is not an exact regular blob: %s\n' \
+            "$workflow_file" >&2
+          return 1
+          ;;
+      esac
+      if git grep -q '^  schedule:' "$treeish" -- "$workflow_file"; then
+        printf '%s\n' "$workflow_file"
+      fi
+    done | LC_ALL=C sort
+}
+
+normalize_schedule_paths() {
+  input_file=$1
+  replacements_file=$2
+  output_file=$3
+  while IFS= read -r workflow_file; do
+    replacement=$(awk -F '\t' -v workflow_file="$workflow_file" '
+      $1 == workflow_file { print $2 }
+    ' "$replacements_file")
+    replacement_count=$(printf '%s\n' "$replacement" | sed '/^$/d' | wc -l |
+      tr -d '[:space:]')
+    test "$replacement_count" -le 1
+    if [[ "$replacement_count" = 1 ]]; then
+      printf '%s\n' "$replacement"
+    else
+      printf '%s\n' "$workflow_file"
+    fi
+  done <"$input_file" | LC_ALL=C sort >"$output_file"
+  test "$(wc -l <"$output_file" | tr -d '[:space:]')" = \
+    "$(wc -l <"$input_file" | tr -d '[:space:]')"
+  test "$(LC_ALL=C sort -u "$output_file" | wc -l | tr -d '[:space:]')" = \
+    "$(wc -l <"$output_file" | tr -d '[:space:]')"
+}
+
+validate_schedule_transition() {
+  premerge_tree=$1
+  target_tree=$2
+  premerge_paths_file=$3
+  postmerge_paths_file=$4
+  replacements_file=$5
+  verified_premerge_paths="${premerge_paths_file}.verify"
+  normalized_premerge_paths="${premerge_paths_file}.normalized"
+  china_workflow=.github/workflows/china-econ-refresh.yml
+  old_osint_workflow=.github/workflows/osint-china-refresh.yml
+  new_osint_workflow=.github/workflows/osint-china-v2-refresh.yml
+
+  scheduled_paths_at "$premerge_tree" >"$verified_premerge_paths"
+  cmp -s "$verified_premerge_paths" "$premerge_paths_file"
+  rm -f -- "$verified_premerge_paths"
+  scheduled_paths_at "$target_tree" >"$postmerge_paths_file"
+  : >"$replacements_file"
+  if grep -Fxq "$old_osint_workflow" "$premerge_paths_file" &&
+     ! grep -Fxq "$old_osint_workflow" "$postmerge_paths_file" &&
+     grep -Fxq "$new_osint_workflow" "$postmerge_paths_file"; then
+    printf '%s\t%s\n' "$old_osint_workflow" "$new_osint_workflow" \
+      >"$replacements_file"
+  fi
+  awk -F '\t' '
+    NF != 2 || $1 == "" || $2 == "" || $1 == $2 { exit 1 }
+  ' "$replacements_file"
+  test "$(wc -l <"$replacements_file" | tr -d '[:space:]')" -le 1
+  normalize_schedule_paths "$premerge_paths_file" "$replacements_file" \
+    "$normalized_premerge_paths"
+
+  premerge_count=$(wc -l <"$normalized_premerge_paths" | tr -d '[:space:]')
+  postmerge_count=$(wc -l <"$postmerge_paths_file" | tr -d '[:space:]')
+  case "$premerge_count:$postmerge_count" in
+    34:33)
+      test "$(LC_ALL=C comm -23 "$normalized_premerge_paths" \
+        "$postmerge_paths_file")" = "$china_workflow"
+      test -z "$(LC_ALL=C comm -13 "$normalized_premerge_paths" \
+        "$postmerge_paths_file")"
+      ;;
+    33:33)
+      cmp -s "$normalized_premerge_paths" "$postmerge_paths_file"
+      ;;
+    *)
+      printf 'unexpected scheduled workflow transition: %s to %s\n' \
+        "$premerge_count" "$postmerge_count" >&2
+      return 1
+      ;;
+  esac
+  rm -f -- "$normalized_premerge_paths"
+
+  test "$(git ls-tree "$target_tree" -- "$china_workflow" | \
+    awk '$1 == "100644" && $2 == "blob" { print $1 " " $2 }')" = \
+    '100644 blob'
+  git grep -q '^  workflow_dispatch:' "$target_tree" -- "$china_workflow"
+  if git grep -q '^  schedule:' "$target_tree" -- "$china_workflow"; then
+    printf 'target China econ workflow unexpectedly retains a schedule\n' >&2
+    return 1
+  fi
+}
+# END exact-tree scheduled path extractor
+
+# BEGIN exact workflow manifest join
+build_schedule_manifest() {
+  schedule_paths_file=$1
+  inventory_file=$2
+  manifest_file=$3
+  expected_count=$4
+  manifest_paths="${manifest_file}.paths"
+
+  : >"$manifest_file"
+  while IFS= read -r workflow_file; do
+    workflow_row=$(jq -er --arg workflow_file "$workflow_file" '
+      [.[] | select(.path == $workflow_file)] |
+      select(length == 1) | .[0] |
+      [.id, .state, .path] | @tsv
+    ' "$inventory_file")
+    printf '%s\n' "$workflow_row" >>"$manifest_file"
+  done <"$schedule_paths_file"
+  LC_ALL=C sort -o "$manifest_file" "$manifest_file"
+  test "$(wc -l <"$manifest_file" | tr -d '[:space:]')" = \
+    "$expected_count"
+  awk -F '\t' '
+    NF != 3 || $1 !~ /^[1-9][0-9]*$/ || $2 == "" || $3 == "" { exit 1 }
+  ' "$manifest_file"
+  test "$(cut -f1 "$manifest_file" | LC_ALL=C sort -u | wc -l | \
+    tr -d '[:space:]')" = "$expected_count"
+  cut -f3 "$manifest_file" | LC_ALL=C sort >"$manifest_paths"
+  cmp -s "$manifest_paths" "$schedule_paths_file"
+  rm -f -- "$manifest_paths"
+}
+# END exact workflow manifest join
+
+git fetch --force --no-tags origin \
+  '+refs/heads/main:refs/remotes/origin/main'
+frozen_main=$(git rev-parse origin/main)
+scheduled_paths_at "$frozen_main" >"$premerge_schedule_paths"
+premerge_schedule_count=$(wc -l <"$premerge_schedule_paths" | \
+  tr -d '[:space:]')
+case "$premerge_schedule_count" in
+  33) ;;
+  34)
+    grep -Fx '.github/workflows/china-econ-refresh.yml' \
+      "$premerge_schedule_paths"
+    ;;
+  *)
+    printf 'unexpected pre-merge scheduled workflow count: %s\n' \
+      "$premerge_schedule_count" >&2
+    exit 1
+    ;;
+esac
 
 gh workflow list --repo "$repo" --all --json id,path,state \
   >"$workflow_inventory"
-: >"$schedule_manifest"
-for workflow_file in $(rg -l '^  schedule:' .github/workflows/*.yml); do
-  jq -r --arg workflow_file "$workflow_file" \
-    '.[] | select(.path == $workflow_file) | [.id,.state,.path] | @tsv' \
-    "$workflow_inventory" >>"$schedule_manifest"
-done
-LC_ALL=C sort -o "$schedule_manifest" "$schedule_manifest"
-test "$(wc -l <"$schedule_manifest" | tr -d '[:space:]')" = 34
-awk -F '\t' 'NF != 3 { exit 1 }' "$schedule_manifest"
+build_schedule_manifest "$premerge_schedule_paths" "$workflow_inventory" \
+  "$schedule_manifest" "$premerge_schedule_count"
 
 while IFS=$'\t' read -r workflow_id expected_state workflow_file; do
   if [[ "$expected_state" = active ]]; then
@@ -373,10 +532,9 @@ while gh run list --repo "$repo" --limit 1000 \
   grep -q .; do
   sleep 15
 done
-git fetch origin --prune
-frozen_main=$(git rev-parse origin/main)
 sleep 10
-git fetch origin --prune
+git fetch --force --no-tags origin \
+  '+refs/heads/main:refs/remotes/origin/main'
 test "$(git rev-parse origin/main)" = "$frozen_main"
 printf 'release gate: %s\nschedule manifest: %s\n' \
   "$frozen_main" "$schedule_manifest"
@@ -391,6 +549,9 @@ place if either workflow needs a retry.
 git fetch origin --prune
 target_sha=$(git rev-parse origin/main)
 test "$target_sha" != "$frozen_main"
+validate_schedule_transition "$frozen_main" "$target_sha" \
+  "$premerge_schedule_paths" "$postmerge_schedule_paths" \
+  "$workflow_replacements"
 gh api "repos/$repo/commits/$target_sha" --jq \
   'select(.author.login == "beepboop2025") |
    select(.committer.login == "web-flow") |
@@ -619,23 +780,87 @@ test "$(git rev-parse origin/main)" = "$target_sha"
 Only after the live smoke, host receipt, deployment artifact, Registry receipt,
 official latest record, exact complete Tests run, Pages deployment, and served
 bytes all agree may the states captured in the manifest be restored. An
-intentionally disabled workflow stays disabled.
+intentionally disabled workflow stays disabled. The one-time release restores
+the original 34 intentions even though the target has only 33 scheduled paths:
+re-enabling the China econ workflow exposes its reviewed manual dispatch but
+cannot recreate the removed schedule. If the original manifest names the
+deleted OSINT workflow, resolve only the explicitly recorded replacement path,
+require its new API identity to stay disabled, and refuse every restoration
+while a queued or running job still exists on the deleted workflow ID.
 
 ```bash
-while IFS=$'\t' read -r workflow_id expected_state workflow_file; do
+restore_inventory="$release_gate_dir/workflows-before-restore.json"
+restore_manifest="$release_gate_dir/workflows-resolved-for-restore.tsv"
+gh workflow list --repo "$repo" --all --json id,path,state \
+  >"$restore_inventory"
+: >"$restore_manifest"
+while IFS=$'\t' read -r captured_id expected_state captured_file; do
+  resolved_file=$captured_file
+  replacement=$(awk -F '\t' -v captured_file="$captured_file" '
+    $1 == captured_file { print $2 }
+  ' "$workflow_replacements")
+  replacement_count=$(printf '%s\n' "$replacement" | sed '/^$/d' | wc -l |
+    tr -d '[:space:]')
+  test "$replacement_count" -le 1
+  if [[ "$replacement_count" = 1 ]]; then
+    resolved_file=$replacement
+    test "$expected_state" = disabled_manually
+    replacement_live_runs=$(gh api --paginate \
+      "repos/$repo/actions/workflows/$captured_id/runs?per_page=100" --jq '
+        .workflow_runs[] |
+        select(.status == "queued" or .status == "in_progress") | .id
+      ')
+    test -z "$replacement_live_runs"
+  fi
+  resolved_row=$(jq -er --arg resolved_file "$resolved_file" '
+    [.[] | select(.path == $resolved_file)] |
+    select(length == 1) | .[0] |
+    [.id, .state, .path] | @tsv
+  ' "$restore_inventory")
+  IFS=$'\t' read -r resolved_id current_state current_file <<<"$resolved_row"
+  [[ "$resolved_id" =~ ^[1-9][0-9]*$ ]]
+  test "$current_file" = "$resolved_file"
+  if [[ "$resolved_file" = "$captured_file" ]]; then
+    test "$resolved_id" = "$captured_id"
+  else
+    test "$resolved_id" != "$captured_id"
+    test "$current_state" = disabled_manually
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\n' \
+    "$resolved_id" "$expected_state" "$resolved_file" \
+    "$captured_id" "$captured_file" >>"$restore_manifest"
+done <"$schedule_manifest"
+
+test "$(wc -l <"$restore_manifest" | tr -d '[:space:]')" = \
+  "$(wc -l <"$schedule_manifest" | tr -d '[:space:]')"
+awk -F '\t' '
+  NF != 5 || $1 !~ /^[1-9][0-9]*$/ || $2 == "" || $3 == "" ||
+    $4 !~ /^[1-9][0-9]*$/ || $5 == "" { exit 1 }
+' "$restore_manifest"
+test "$(cut -f1 "$restore_manifest" | LC_ALL=C sort -u | wc -l | \
+  tr -d '[:space:]')" = "$(wc -l <"$restore_manifest" | tr -d '[:space:]')"
+test "$(cut -f3 "$restore_manifest" | LC_ALL=C sort -u | wc -l | \
+  tr -d '[:space:]')" = "$(wc -l <"$restore_manifest" | tr -d '[:space:]')"
+
+while IFS=$'\t' read -r workflow_id expected_state workflow_file \
+    captured_id captured_file; do
   if [[ "$expected_state" = active ]]; then
     gh workflow enable "$workflow_id" --repo "$repo"
   fi
-done <"$schedule_manifest"
+done <"$restore_manifest"
 
 gh workflow list --repo "$repo" --all --json id,path,state \
   >"$release_gate_dir/workflows-restored.json"
-while IFS=$'\t' read -r workflow_id expected_state workflow_file; do
-  actual_state=$(jq -r --argjson workflow_id "$workflow_id" \
-    '.[] | select(.id == $workflow_id) | .state' \
+while IFS=$'\t' read -r workflow_id expected_state workflow_file \
+    captured_id captured_file; do
+  actual_row=$(jq -er --argjson workflow_id "$workflow_id" \
+    '[.[] | select(.id == $workflow_id)] |
+     select(length == 1) | .[0] | [.state, .path] | @tsv' \
     "$release_gate_dir/workflows-restored.json")
+  IFS=$'\t' read -r actual_state actual_file <<<"$actual_row"
   test "$actual_state" = "$expected_state"
-done <"$schedule_manifest"
+  test "$actual_file" = "$workflow_file"
+done <"$restore_manifest"
 ```
 
 Archive the manifest beside the deployment and Registry receipts. If the
