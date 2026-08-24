@@ -1307,6 +1307,16 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
                 raise ChinaSituationError(
                     f"{social_path}.same_publisher_lineage must be boolean"
                 )
+            expected_same_publisher_lineage = (
+                social_row["independence_group"] in local_groups
+            )
+            if (
+                social_row["same_publisher_lineage"]
+                is not expected_same_publisher_lineage
+            ):
+                raise ChinaSituationError(
+                    f"{social_path}.same_publisher_lineage does not match publisher groups"
+                )
             if social_row["relation"] not in ALLOWED_SOCIAL_RELATIONS:
                 raise ChinaSituationError(f"{social_path}.relation is invalid")
 

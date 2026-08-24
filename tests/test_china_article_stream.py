@@ -5,6 +5,8 @@ from __future__ import annotations
 import copy
 import json
 import xml.etree.ElementTree as ET
+from dataclasses import replace
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -20,6 +22,72 @@ from scripts import review_scamshield_summary
 
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _collect_synthetic_stream(
+    source_id: str, rss: bytes
+) -> tuple[dict, dict, dict]:
+    source = replace(
+        next(
+            source
+            for source in newswire.load_source_registry().sources
+            if source.id == source_id
+        ),
+        declared_scan_ids=(),
+        declared_economic_ids=(),
+    )
+    registry = newswire.SourceRegistry(
+        schema_version=newswire.REGISTRY_SCHEMA_VERSION,
+        window_hours=168,
+        max_items_per_source=128,
+        max_events=2_048,
+        sources=(source,),
+        sha256="0" * 64,
+    )
+    wire = newswire.collect_newswire(
+        registry,
+        lambda _url, **_kwargs: rss,
+        now=datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc),
+    )
+    analyses = event_analysis.build_event_analyses(
+        wire, {"schema_version": "palimpsest-news.v1", "stories": []}
+    )
+    stream = china_article_stream.build_china_article_stream(wire, analyses)
+    return wire, analyses, stream
+
+
+def _synthetic_same_group_stream() -> tuple[dict, dict, dict]:
+    rss = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<rss version="2.0"><channel>'
+        '<item><title>China publisher bulletin</title>'
+        '<link>https://news.cgtn.com/news/2026-08-25/china-publisher-bulletin-a</link>'
+        '<description>A bounded China report.</description>'
+        '<pubDate>Tue, 25 Aug 2026 10:00:00 +0000</pubDate></item>'
+        '<item><title>China publisher bulletin</title>'
+        '<link>https://news.cgtn.com/news/2026-08-25/china-publisher-bulletin-b</link>'
+        '<description>A second bounded China report.</description>'
+        '<pubDate>Tue, 25 Aug 2026 10:01:00 +0000</pubDate></item>'
+        '</channel></rss>'
+    ).encode()
+    return _collect_synthetic_stream("cgtn-china", rss)
+
+
+def _synthetic_mixed_scope_stream() -> tuple[dict, dict, dict]:
+    rss = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<rss version="2.0"><channel>'
+        '<item><title>China site policy update</title>'
+        '<link>https://github.com/github/site-policy/commit/aaaaaaaa</link>'
+        '<description>A China-related policy metadata update.</description>'
+        '<pubDate>Tue, 25 Aug 2026 10:00:00 +0000</pubDate></item>'
+        '<item><title>Site policy update</title>'
+        '<link>https://github.com/github/site-policy/commit/bbbbbbbb</link>'
+        '<description>A general policy metadata update.</description>'
+        '<pubDate>Tue, 25 Aug 2026 10:01:00 +0000</pubDate></item>'
+        '</channel></rss>'
+    ).encode()
+    return _collect_synthetic_stream("github-site-policy", rss)
 
 
 @pytest.fixture(scope="module")
@@ -146,13 +214,18 @@ def test_each_item_reuses_exactly_one_validated_event_analysis(publication):
 
 
 def test_runtime_validator_and_json_schemas_are_closed(publication):
-    _wire, _feed, _analyses, stream = publication
+    wire, _feed, analyses, stream = publication
     china_article_stream.validate_china_article_stream(stream)
+    china_article_stream.validate_china_article_stream(
+        stream, wire=wire, analyses=analyses
+    )
 
     mutated = copy.deepcopy(stream)
     mutated["telegram_watch"]["raw_text"] = "must never publish"
     with pytest.raises(china_article_stream.ChinaArticleStreamError):
-        china_article_stream.validate_china_article_stream(mutated)
+        china_article_stream.validate_china_article_stream(
+            mutated, wire=wire, analyses=analyses
+        )
 
     jsonschema = pytest.importorskip("jsonschema")
     stream_schema = json.loads(
@@ -165,6 +238,75 @@ def test_runtime_validator_and_json_schemas_are_closed(publication):
     stream_schema["properties"]["telegram_watch"]["oneOf"][0] = watch_schema
     jsonschema.Draft202012Validator.check_schema(stream_schema)
     jsonschema.Draft202012Validator(stream_schema).validate(stream)
+
+
+def test_runtime_validator_binds_entries_to_the_source_graph():
+    wire, analyses, stream = _synthetic_same_group_stream()
+    assert len(stream["entries"]) == 2
+    assert len({row["dossier"]["event_id"] for row in stream["entries"]}) == 1
+    china_article_stream.validate_china_article_stream(
+        stream, wire=wire, analyses=analyses
+    )
+
+    forged_count = copy.deepcopy(stream)
+    for entry in forged_count["entries"]:
+        entry["dossier"]["source_items"] += 1
+        entry["analysis"]["evidence_assessment"]["source_count"] += 1
+    with pytest.raises(
+        china_article_stream.ChinaArticleStreamError,
+        match="source wire and event analysis",
+    ):
+        china_article_stream.validate_china_article_stream(
+            forged_count, wire=wire, analyses=analyses
+        )
+
+    forged_analysis = copy.deepcopy(stream)
+    current_id = forged_analysis["entries"][0]["analysis"]["analysis_id"]
+    replacement = "analysisv-" + (
+        "f" * 24 if current_id != "analysisv-" + "f" * 24 else "e" * 24
+    )
+    for entry in forged_analysis["entries"]:
+        entry["analysis"]["analysis_id"] = replacement
+    with pytest.raises(
+        china_article_stream.ChinaArticleStreamError,
+        match="source wire and event analysis",
+    ):
+        china_article_stream.validate_china_article_stream(
+            forged_analysis, wire=wire, analyses=analyses
+        )
+
+    forged_position = copy.deepcopy(stream)
+    for entry in forged_position["entries"]:
+        entry["analysis"]["position"] = "A self-consistent but unsupported position."
+    with pytest.raises(
+        china_article_stream.ChinaArticleStreamError,
+        match="source wire and event analysis",
+    ):
+        china_article_stream.validate_china_article_stream(
+            forged_position, wire=wire, analyses=analyses
+        )
+
+    forged_coverage = copy.deepcopy(stream)
+    forged_coverage["coverage"]["accepted_wire_items"] += 1
+    with pytest.raises(
+        china_article_stream.ChinaArticleStreamError,
+        match="coverage does not match",
+    ):
+        china_article_stream.validate_china_article_stream(
+            forged_coverage, wire=wire, analyses=analyses
+        )
+
+
+def test_runtime_validator_preserves_a_partial_event_projection():
+    wire, analyses, stream = _synthetic_mixed_scope_stream()
+    assert len(wire["items"]) == 2
+    assert len(wire["events"]) == 1
+    assert len(stream["entries"]) == 1
+    assert stream["entries"][0]["dossier"]["source_items"] == 2
+    china_article_stream.validate_china_article_stream(stream)
+    china_article_stream.validate_china_article_stream(
+        stream, wire=wire, analyses=analyses
+    )
 
 
 def test_rss_json_feed_and_html_publish_every_entry_with_analysis(publication):
