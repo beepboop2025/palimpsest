@@ -41,7 +41,7 @@ jobs:
 
       - name: Inject the latest index into the dashboards + readings
         run: |
-          IDX=$(ls -t data/ddti/index_*.json 2>/dev/null | head -1)
+          IDX=$(find data/ddti -maxdepth 1 -type f -name 'index_*.json' -print | sort -r | sed -n '1p')
           if [ -z "$IDX" ]; then echo "no index produced (feeds unreachable?) — skipping"; exit 0; fi
           echo "injecting $IDX"
           python inject_ddti.py --index "$IDX" --repo .
