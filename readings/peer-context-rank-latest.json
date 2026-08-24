@@ -1,7 +1,7 @@
 {
   "schema_version": "palimpsest-peer-context-rank/v1",
   "job": "peer-context-rank",
-  "generated_at": "2026-08-23T12:46:16Z",
+  "generated_at": "2026-08-24T01:51:44Z",
   "source": "Cached GreatFire verdicts, OONI host/ASN or on-disk ooni-gfw history, and bounded CDT titles. Warehouse files are optional.",
   "method": "Per-peer robust MAD (prequential-robust-mad/v1) against that peer series' own history, then a fail-closed join onto a Palimpsest object by term/host/ASN/day. Review rank only. No generative brief. Weiboscope is cited as a literature pointer only; the 2012 dump is not loaded or trained on",
   "scope": "Per-peer unusualness vs that peer series' own history, plus a fail-closed join onto Palimpsest objects. No causal attribution. No Weiboscope dump. No GreatFire catalog crawl.",
@@ -13,7 +13,7 @@
   "n_peer_series_warming_up": 42,
   "n_cdt_items": 19,
   "n_joins": 0,
-  "n_objects_considered": 726,
+  "n_objects_considered": 733,
   "peer_series": [
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -571,8 +571,8 @@
       "series_id": "cn-aggregate",
       "field": "gfw_index",
       "peer_date": "2026-08-23",
-      "current_value": 58.5,
-      "n_history": 178,
+      "current_value": 58.4,
+      "n_history": 179,
       "minimum_prior": 6,
       "state": "scored",
       "unusualness": 0.0,
@@ -585,7 +585,7 @@
       "citation": null,
       "kind": "country",
       "probe_cc": "CN",
-      "public_copy": "OONI 2026-08-23: this series is within its own 178 prior points"
+      "public_copy": "OONI 2026-08-23: this series is within its own 179 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -611,15 +611,67 @@
     {
       "schema_version": "palimpsest-peer-context-features/v1",
       "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-you-cant-address-sexual-assault-at-banquets-without-addressing-the-nature-of-power/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "caixin"
+      ],
+      "peer_date": "2026-08-23",
+      "day": "2026-08-23",
+      "title": "Translation: “You Can’t Address Sexual Assault at Banquets Without Addressing the Nature of Power”",
+      "excerpt": "Translation: “You Can’t Address Sexual Assault at Banquets Without Addressing the Nature of Power”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-you-cant-address-sexual-assault-at-banquets-without-addressing-the-nature-of-power/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-23: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "caixin"
+      ],
+      "peer_date": "2026-08-23",
+      "day": "2026-08-23",
+      "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "excerpt": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-23: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
       "series_id": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
       "field": "title_cluster",
       "kind": "item",
       "host": "chinadigitaltimes.net",
       "terms": [
-        "chinese opera"
+        "censorship"
       ],
-      "peer_date": "2026-08-20",
-      "day": "2026-08-20",
+      "peer_date": "2026-08-23",
+      "day": "2026-08-23",
       "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
       "excerpt": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
       "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
@@ -632,7 +684,111 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+      "public_copy": "CDT 2026-08-23: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "peer_date": "2026-08-23",
+      "day": "2026-08-23",
+      "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "excerpt": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-23: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "peer_date": "2026-08-23",
+      "day": "2026-08-23",
+      "title": "Translation: No Scaling the Great Firewall in the Library",
+      "excerpt": "Translation: No Scaling the Great Firewall in the Library",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-23: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "peer_date": "2026-08-23",
+      "day": "2026-08-23",
+      "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "excerpt": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-23: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "peer_date": "2026-08-23",
+      "day": "2026-08-23",
+      "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "excerpt": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-23: this series is warming up vs its own 0 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -649,58 +805,6 @@
       "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
       "excerpt": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
       "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/",
-      "n_history": 0,
-      "state": "warming_up",
-      "unusualness": null,
-      "unusual": null,
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
-    },
-    {
-      "schema_version": "palimpsest-peer-context-features/v1",
-      "peer": "CDT",
-      "series_id": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-      "field": "title_cluster",
-      "kind": "item",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "netizen comments"
-      ],
-      "peer_date": "2026-08-20",
-      "day": "2026-08-20",
-      "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-      "excerpt": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-      "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-      "n_history": 0,
-      "state": "warming_up",
-      "unusualness": null,
-      "unusual": null,
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
-    },
-    {
-      "schema_version": "palimpsest-peer-context-features/v1",
-      "peer": "CDT",
-      "series_id": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
-      "field": "title_cluster",
-      "kind": "item",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "netizen comments"
-      ],
-      "peer_date": "2026-08-20",
-      "day": "2026-08-20",
-      "title": "Translation: “How Do These Comments Break the Rules?”",
-      "excerpt": "Translation: “How Do These Comments Break the Rules?”",
-      "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
       "n_history": 0,
       "state": "warming_up",
       "unusualness": null,
@@ -741,122 +845,44 @@
     {
       "schema_version": "palimpsest-peer-context-features/v1",
       "peer": "CDT",
-      "series_id": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
-      "field": "title_cluster",
-      "kind": "item",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "subway"
-      ],
-      "peer_date": "2026-08-19",
-      "day": "2026-08-19",
-      "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-      "excerpt": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-      "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
-      "n_history": 0,
-      "state": "warming_up",
-      "unusualness": null,
-      "unusual": null,
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "public_copy": "CDT 2026-08-19: this series is warming up vs its own 0 prior points"
-    },
-    {
-      "schema_version": "palimpsest-peer-context-features/v1",
-      "peer": "CDT",
-      "series_id": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-      "field": "title_cluster",
-      "kind": "item",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "censorship"
-      ],
-      "peer_date": "2026-08-20",
-      "day": "2026-08-20",
-      "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-      "excerpt": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-      "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-      "n_history": 0,
-      "state": "warming_up",
-      "unusualness": null,
-      "unusual": null,
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
-    },
-    {
-      "schema_version": "palimpsest-peer-context-features/v1",
-      "peer": "CDT",
-      "series_id": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
-      "field": "title_cluster",
-      "kind": "item",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "censorship"
-      ],
-      "peer_date": "2026-08-20",
-      "day": "2026-08-20",
-      "title": "Translation: No Scaling the Great Firewall in the Library",
-      "excerpt": "Translation: No Scaling the Great Firewall in the Library",
-      "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
-      "n_history": 0,
-      "state": "warming_up",
-      "unusualness": null,
-      "unusual": null,
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
-    },
-    {
-      "schema_version": "palimpsest-peer-context-features/v1",
-      "peer": "CDT",
-      "series_id": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
-      "field": "title_cluster",
-      "kind": "item",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "censorship"
-      ],
-      "peer_date": "2026-08-20",
-      "day": "2026-08-20",
-      "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-      "excerpt": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-      "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
-      "n_history": 0,
-      "state": "warming_up",
-      "unusualness": null,
-      "unusual": null,
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
-    },
-    {
-      "schema_version": "palimpsest-peer-context-features/v1",
-      "peer": "CDT",
       "series_id": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
       "field": "title_cluster",
       "kind": "item",
       "host": "chinadigitaltimes.net",
       "terms": [
-        "humor"
+        "culture & the arts"
       ],
       "peer_date": "2026-08-20",
       "day": "2026-08-20",
       "title": "Translation: “AI Has Determined That My Press Card Is a Fake”",
       "excerpt": "Translation: “AI Has Determined That My Press Card Is a Fake”",
       "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
+      "n_history": 0,
+      "state": "warming_up",
+      "unusualness": null,
+      "unusual": null,
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "public_copy": "CDT 2026-08-20: this series is warming up vs its own 0 prior points"
+    },
+    {
+      "schema_version": "palimpsest-peer-context-features/v1",
+      "peer": "CDT",
+      "series_id": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "field": "title_cluster",
+      "kind": "item",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "translation excerpt"
+      ],
+      "peer_date": "2026-08-20",
+      "day": "2026-08-20",
+      "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "excerpt": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
       "n_history": 0,
       "state": "warming_up",
       "unusualness": null,
@@ -1006,7 +1032,7 @@
       "kind": "item",
       "host": "chinadigitaltimes.net",
       "terms": [
-        "social media censorship"
+        "internet censorship"
       ],
       "peer_date": "2026-08-19",
       "day": "2026-08-19",
@@ -1053,32 +1079,6 @@
     {
       "schema_version": "palimpsest-peer-context-features/v1",
       "peer": "CDT",
-      "series_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
-      "field": "title_cluster",
-      "kind": "item",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "social media"
-      ],
-      "peer_date": "2026-08-14",
-      "day": "2026-08-14",
-      "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
-      "excerpt": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
-      "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
-      "n_history": 0,
-      "state": "warming_up",
-      "unusualness": null,
-      "unusual": null,
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "public_copy": "CDT 2026-08-14: this series is warming up vs its own 0 prior points"
-    },
-    {
-      "schema_version": "palimpsest-peer-context-features/v1",
-      "peer": "CDT",
       "series_id": "https://chinadigitaltimes.net/2026/07/translation-education-for-migrant-workers-children-cant-wait-any-longer/",
       "field": "title_cluster",
       "kind": "item",
@@ -1105,16 +1105,94 @@
   ],
   "cdt_items": [
     {
+      "item_id": "https://chinadigitaltimes.net/2026/08/translation-you-cant-address-sexual-assault-at-banquets-without-addressing-the-nature-of-power/",
+      "title": "Translation: “You Can’t Address Sexual Assault at Banquets Without Addressing the Nature of Power”",
+      "excerpt": "Translation: “You Can’t Address Sexual Assault at Banquets Without Addressing the Nature of Power”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-you-cant-address-sexual-assault-at-banquets-without-addressing-the-nature-of-power/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "caixin"
+      ],
+      "day": "2026-08-23",
+      "peer_date": "2026-08-23",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "excerpt": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "caixin"
+      ],
+      "day": "2026-08-23",
+      "peer_date": "2026-08-23",
+      "peer": "CDT"
+    },
+    {
       "item_id": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
       "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
       "excerpt": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
       "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/",
       "host": "chinadigitaltimes.net",
       "terms": [
-        "chinese opera"
+        "censorship"
       ],
-      "day": "2026-08-20",
-      "peer_date": "2026-08-20",
+      "day": "2026-08-23",
+      "peer_date": "2026-08-23",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "excerpt": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+      "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "day": "2026-08-23",
+      "peer_date": "2026-08-23",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "title": "Translation: No Scaling the Great Firewall in the Library",
+      "excerpt": "Translation: No Scaling the Great Firewall in the Library",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "day": "2026-08-23",
+      "peer_date": "2026-08-23",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "excerpt": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+      "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "day": "2026-08-23",
+      "peer_date": "2026-08-23",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "excerpt": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
+      "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "censorship"
+      ],
+      "day": "2026-08-23",
+      "peer_date": "2026-08-23",
       "peer": "CDT"
     },
     {
@@ -1125,32 +1203,6 @@
       "host": "chinadigitaltimes.net",
       "terms": [
         "freedom of expression"
-      ],
-      "day": "2026-08-20",
-      "peer_date": "2026-08-20",
-      "peer": "CDT"
-    },
-    {
-      "item_id": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-      "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-      "excerpt": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
-      "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "netizen comments"
-      ],
-      "day": "2026-08-20",
-      "peer_date": "2026-08-20",
-      "peer": "CDT"
-    },
-    {
-      "item_id": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
-      "title": "Translation: “How Do These Comments Break the Rules?”",
-      "excerpt": "Translation: “How Do These Comments Break the Rules?”",
-      "url": "https://chinadigitaltimes.net/2026/07/translation-how-do-these-comments-break-the-rules/",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "netizen comments"
       ],
       "day": "2026-08-20",
       "peer_date": "2026-08-20",
@@ -1170,65 +1222,26 @@
       "peer": "CDT"
     },
     {
-      "item_id": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
-      "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-      "excerpt": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
-      "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "subway"
-      ],
-      "day": "2026-08-19",
-      "peer_date": "2026-08-19",
-      "peer": "CDT"
-    },
-    {
-      "item_id": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-      "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-      "excerpt": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
-      "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "censorship"
-      ],
-      "day": "2026-08-20",
-      "peer_date": "2026-08-20",
-      "peer": "CDT"
-    },
-    {
-      "item_id": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
-      "title": "Translation: No Scaling the Great Firewall in the Library",
-      "excerpt": "Translation: No Scaling the Great Firewall in the Library",
-      "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "censorship"
-      ],
-      "day": "2026-08-20",
-      "peer_date": "2026-08-20",
-      "peer": "CDT"
-    },
-    {
-      "item_id": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
-      "title": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-      "excerpt": "Translation: Euphemism and Censorship Surround Guangxi Flooding, Dam Breach News",
-      "url": "https://chinadigitaltimes.net/2026/07/translation-euphemism-and-censorship-surround-guangxi-flooding-dam-breach-news/",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "censorship"
-      ],
-      "day": "2026-08-20",
-      "peer_date": "2026-08-20",
-      "peer": "CDT"
-    },
-    {
       "item_id": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
       "title": "Translation: “AI Has Determined That My Press Card Is a Fake”",
       "excerpt": "Translation: “AI Has Determined That My Press Card Is a Fake”",
       "url": "https://chinadigitaltimes.net/2026/08/translation-ai-has-determined-that-my-press-card-is-a-fake/",
       "host": "chinadigitaltimes.net",
       "terms": [
-        "humor"
+        "culture & the arts"
+      ],
+      "day": "2026-08-20",
+      "peer_date": "2026-08-20",
+      "peer": "CDT"
+    },
+    {
+      "item_id": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "excerpt": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+      "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/",
+      "host": "chinadigitaltimes.net",
+      "terms": [
+        "translation excerpt"
       ],
       "day": "2026-08-20",
       "peer_date": "2026-08-20",
@@ -1306,7 +1319,7 @@
       "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/",
       "host": "chinadigitaltimes.net",
       "terms": [
-        "social media censorship"
+        "internet censorship"
       ],
       "day": "2026-08-19",
       "peer_date": "2026-08-19",
@@ -1323,19 +1336,6 @@
       ],
       "day": "2026-08-19",
       "peer_date": "2026-08-19",
-      "peer": "CDT"
-    },
-    {
-      "item_id": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
-      "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
-      "excerpt": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
-      "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/",
-      "host": "chinadigitaltimes.net",
-      "terms": [
-        "social media"
-      ],
-      "day": "2026-08-14",
-      "peer_date": "2026-08-14",
       "peer": "CDT"
     },
     {
@@ -1869,15 +1869,15 @@
           "peer": "OONI",
           "series_id": "cn-aggregate",
           "field": "gfw_index",
-          "n": 179,
+          "n": 180,
           "n_prior": 144,
           "state": "scored",
           "holdout": {
             "split": "time",
-            "n_extracted": 179,
+            "n_extracted": 180,
             "n_prior": 144,
-            "n_holdout": 35,
-            "n_holdout_scored": 35,
+            "n_holdout": 36,
+            "n_holdout_scored": 36,
             "n_holdout_unusual": 0,
             "holdout_unusualness_median": 0.0,
             "holdout_flag_rate": 0.0,
@@ -1935,31 +1935,31 @@
         "same_day_diff_host"
       ],
       "split": "time",
-      "n_examples": 6064,
-      "n_train": 2474,
-      "n_holdout": 3590,
-      "n_days": 22,
-      "n_train_days": 18,
+      "n_examples": 6113,
+      "n_train": 2478,
+      "n_holdout": 3635,
+      "n_days": 21,
+      "n_train_days": 17,
       "n_holdout_days": 4,
       "reason": null,
       "train": {
-        "n_objects": 381,
-        "n_positive": 884,
-        "n_negative": 1590,
-        "n_pairs": 5539,
-        "n_correct": 5539,
+        "n_objects": 379,
+        "n_positive": 880,
+        "n_negative": 1598,
+        "n_pairs": 5578,
+        "n_correct": 5578,
         "pairwise_accuracy": 1.0,
-        "n_negatives_fail_closed": 1590,
+        "n_negatives_fail_closed": 1598,
         "n_negatives_leaked": 0
       },
       "holdout": {
-        "n_objects": 345,
-        "n_positive": 1216,
-        "n_negative": 2374,
-        "n_pairs": 9253,
-        "n_correct": 9253,
+        "n_objects": 354,
+        "n_positive": 1206,
+        "n_negative": 2429,
+        "n_pairs": 9256,
+        "n_correct": 9256,
         "pairwise_accuracy": 1.0,
-        "n_negatives_fail_closed": 2374,
+        "n_negatives_fail_closed": 2429,
         "n_negatives_leaked": 0
       },
       "join_meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission",
@@ -1976,5 +1976,5 @@
     "generative_model": "prohibited",
     "event_analysis_prose": "unchanged"
   },
-  "analysis_sha256": "2c5f072bf416dc127bb21e5e2adf4ab6ae72d052a5af8318b3e716f2804f045e"
+  "analysis_sha256": "15e1014cbc00cb6358632ed2b0ac895889cd9598068eb3bf51534cb4d8c010b1"
 }
