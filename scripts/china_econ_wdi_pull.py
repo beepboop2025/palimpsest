@@ -23,7 +23,9 @@ from collectors.world_bank_wdi import (
 )
 from core.china_econ_export import (
     load_availability_receipt,
+    load_market_registry,
     load_source_policy,
+    require_world_bank_wdi_rights,
     validate_wdi_registry_evolution,
 )
 from core.collector_artifact import build_artifact, canonical_json_bytes
@@ -134,18 +136,16 @@ def _period_coverage(observations) -> tuple[str | None, str | None]:
     )
 
 
-def _require_public_wdi_rights(policy, *, evaluated_at: datetime) -> None:
-    decision = policy.decisions.get("world_bank_wdi")
-    if (
-        decision is None
-        or decision.decision != "allow"
-        or not decision.values_allowed
-        or not decision.seiche_export_allowed
-        or decision.license != "CC-BY-4.0"
-        or decision.reviewed_at_value > evaluated_at
-        or decision.expires_at_value <= evaluated_at
-    ):
-        raise WDIError("world_bank_wdi is not currently allowed for publication")
+def _canonical_timestamp(value: str) -> datetime:
+    if not value.endswith("Z"):
+        raise argparse.ArgumentTypeError("collected-at must end in Z")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("collected-at must be ISO-8601") from exc
+    if parsed.isoformat().replace("+00:00", "Z") != value:
+        raise argparse.ArgumentTypeError("collected-at must be canonically encoded")
+    return parsed
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -170,11 +170,26 @@ def _parser() -> argparse.ArgumentParser:
         help="read exact response bytes from disk instead of making an outbound request",
     )
     parser.add_argument(
+        "--collected-at",
+        type=_canonical_timestamp,
+        help=(
+            "exact post-response clock for offline replay; accepted only with --input"
+        ),
+    )
+    parser.add_argument(
         "--public-context-only",
         action="store_true",
         help=(
             "write only the reviewed, attributed readings paths after the exact "
             "source-policy gate; values remain context-only and non-scoring"
+        ),
+    )
+    parser.add_argument(
+        "--require-registry-addition",
+        action="store_true",
+        help=(
+            "require a nonempty append-only prior-to-current registry expansion; "
+            "accepted only with --public-context-only and --prior-registry"
         ),
     )
     modes = parser.add_mutually_exclusive_group()
@@ -203,6 +218,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         registry = load_registry(args.registry)
         policy = None
+        market_registry = None
+        if args.collected_at is not None and args.input is None:
+            raise WDIError("collected-at is accepted only with an exact input file")
+        if args.require_registry_addition and (
+            not args.public_context_only or args.prior_registry is None
+        ):
+            raise WDIError(
+                "require-registry-addition needs public-context-only and prior-registry"
+            )
         if args.public_context_only:
             if args.input is not None:
                 raise WDIError(
@@ -222,18 +246,46 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "public-context-only writes require the exact reviewed inputs and readings paths"
                 )
             policy = load_source_policy(args.policy)
-            _require_public_wdi_rights(policy, evaluated_at=datetime.now(UTC))
+            market_registry = load_market_registry(args.registry)
+            require_world_bank_wdi_rights(
+                policy,
+                market_registry,
+                evaluated_at=datetime.now(UTC),
+            )
         before = load_snapshot(args.ledger)
-        if args.validate_only:
-            if args.public_context_only:
-                prior_registry_path = args.prior_registry or args.registry
-                validate_wdi_registry_evolution(
-                    prior_registry_path.read_bytes(),
-                    args.registry.read_bytes(),
+        prior_availability = None
+        if args.public_context_only:
+            prior_registry_path = args.prior_registry or args.registry
+            registry_transition = validate_wdi_registry_evolution(
+                prior_registry_path.read_bytes(),
+                args.registry.read_bytes(),
+            )
+            if args.require_registry_addition:
+                if (
+                    registry_transition["state"] != "append_only_addition"
+                    or not registry_transition["added_source_indicators"]
+                ):
+                    raise WDIError(
+                        "registry expansion requires a nonempty append-only addition"
+                    )
+            elif registry_transition["state"] != "unchanged":
+                raise WDIError(
+                    "registry addition requires the explicit registry-expansion gate"
                 )
-                public_availability = load_availability_receipt(
+            if args.latest.exists() and not args.validate_only:
+                prior_availability = load_availability_receipt(
                     args.latest,
                     series_registry_path=prior_registry_path,
+                )
+                if prior_availability.ledger_after != _ledger_receipt(before):
+                    raise WDIError(
+                        "public availability receipt is not bound to the exact prior ledger"
+                    )
+        if args.validate_only:
+            if args.public_context_only:
+                public_availability = load_availability_receipt(
+                    args.latest,
+                    series_registry_path=args.registry,
                 )
                 if public_availability.ledger_after != _ledger_receipt(before):
                     raise WDIError(
@@ -254,9 +306,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         # This is the collection clock: it is deliberately sampled only after
         # the exact response bytes have returned.  Rights are re-evaluated at
         # this boundary so a licence expiry crossed during a retry cannot publish.
-        collected_at = datetime.now(UTC)
+        collected_at = args.collected_at or datetime.now(UTC)
         if args.public_context_only:
-            _require_public_wdi_rights(policy, evaluated_at=collected_at)
+            require_world_bank_wdi_rights(
+                policy,
+                market_registry,
+                evaluated_at=collected_at,
+            )
         response = parse_response(
             raw,
             registry=registry,
@@ -265,20 +321,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             end_year=args.end_year,
             collected_at=collected_at,
         )
-        if args.public_context_only and args.latest.exists():
-            prior_registry_path = args.prior_registry or args.registry
-            validate_wdi_registry_evolution(
-                prior_registry_path.read_bytes(),
-                args.registry.read_bytes(),
-            )
-            prior_availability = load_availability_receipt(
-                args.latest,
-                series_registry_path=prior_registry_path,
-            )
-            if prior_availability.ledger_after != _ledger_receipt(before):
-                raise WDIError(
-                    "public availability receipt is not bound to the exact prior ledger"
-                )
+        if args.public_context_only and prior_availability is not None:
             current_identities = {
                 (row.indicator_id, row.year)
                 for row in response.availability
@@ -304,7 +347,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 0
         if args.public_context_only:
-            _require_public_wdi_rights(policy, evaluated_at=datetime.now(UTC))
+            require_world_bank_wdi_rights(
+                policy,
+                market_registry,
+                evaluated_at=datetime.now(UTC),
+            )
         appended = append_vintages(args.ledger, response.observations)
         after = load_snapshot(args.ledger)
     except (

@@ -618,6 +618,46 @@ def test_pull_samples_collection_clock_only_after_exact_fetch_returns(
     }
 
 
+def test_offline_pull_reuses_one_sealed_request_year_across_utc_rollover(
+    tmp_path: Path,
+):
+    registry = _small_registry_path(tmp_path)
+    raw_path = tmp_path / "world-bank-response.json"
+    raw_path.write_bytes(_response())
+    ledger = tmp_path / "observations.jsonl"
+    latest = tmp_path / "latest.json"
+    collected_at = "2027-01-01T00:00:00Z"
+
+    assert (
+        pull_main(
+            [
+                "--registry",
+                str(registry),
+                "--input",
+                str(raw_path),
+                "--ledger",
+                str(ledger),
+                "--latest",
+                str(latest),
+                "--start-year",
+                "2023",
+                "--end-year",
+                "2026",
+                "--collected-at",
+                collected_at,
+            ]
+        )
+        == 0
+    )
+
+    receipt = json.loads(latest.read_text(encoding="utf-8"))
+    assert receipt["generated_at"] == collected_at
+    assert receipt["response_coverage"]["requested_end_year"] == 2026
+    assert "date=2023%3A2026" in receipt["collector_artifact"]["source_receipt"][
+        "url"
+    ]
+
+
 def test_public_pull_rechecks_rights_after_fetch_and_refuses_expiry_crossing(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -677,6 +717,63 @@ def test_public_pull_rechecks_rights_after_fetch_and_refuses_expiry_crossing(
             "--public-context-only",
         ]
     ) == 2
+    assert not ledger.exists()
+    assert not latest.exists()
+
+
+@pytest.mark.parametrize("candidate_state", ["unchanged", "remapped"])
+def test_public_registry_addition_preflight_never_fetches_invalid_candidate(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    candidate_state: str,
+):
+    prior_registry = _small_registry_path(tmp_path)
+    current_registry = tmp_path / "current-registry.json"
+    current_document = json.loads(prior_registry.read_text(encoding="utf-8"))
+    if candidate_state == "remapped":
+        current_document["series"][0]["name"] = "Unreviewed remap"
+    current_registry.write_text(
+        json.dumps(
+            current_document,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    ledger = tmp_path / "readings" / "china-econ-wdi-observations.jsonl"
+    latest = tmp_path / "readings" / "china-econ-wdi-latest.json"
+    fetch_calls = 0
+
+    def forbidden_fetch(_url: str) -> bytes:
+        nonlocal fetch_calls
+        fetch_calls += 1
+        raise AssertionError("invalid registry candidate reached the network")
+
+    monkeypatch.setattr(wdi_pull, "DEFAULT_REGISTRY", current_registry)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LEDGER", ledger)
+    monkeypatch.setattr(wdi_pull, "PUBLIC_LATEST", latest)
+    monkeypatch.setattr(wdi_pull, "fetch_bytes", forbidden_fetch)
+
+    assert (
+        wdi_pull.main(
+            [
+                "--registry",
+                str(current_registry),
+                "--prior-registry",
+                str(prior_registry),
+                "--ledger",
+                str(ledger),
+                "--latest",
+                str(latest),
+                "--public-context-only",
+                "--require-registry-addition",
+            ]
+        )
+        == 2
+    )
+    assert fetch_calls == 0
     assert not ledger.exists()
     assert not latest.exists()
 
@@ -775,6 +872,7 @@ def test_public_context_mode_authenticates_prior_receipt_with_prior_registry(
             str(current_registry),
             "--prior-registry",
             str(previous_registry),
+            "--require-registry-addition",
             *common,
         ]
     ) == 0

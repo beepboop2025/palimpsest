@@ -766,6 +766,32 @@ def _validate_wdi_rights_alignment(
         )
 
 
+def require_world_bank_wdi_rights(
+    policy: SourcePolicy,
+    registry: MarketRegistry,
+    *,
+    evaluated_at: datetime,
+) -> SourcePolicyDecision:
+    """Require the exact reviewed WDI rights authority at one aware clock."""
+
+    if evaluated_at.tzinfo is None or evaluated_at.utcoffset() is None:
+        raise ChinaEconExportError("WDI rights evaluation clock must be timezone-aware")
+    evaluated_at = evaluated_at.astimezone(UTC)
+    _validate_wdi_rights_alignment(policy, registry)
+    decision = policy.decisions.get(WDI_SOURCE_ID)
+    if (
+        decision is None
+        or _effective_decision(decision, evaluated_at=evaluated_at) != "allowed"
+        or not decision.values_allowed
+        or not decision.seiche_export_allowed
+        or decision.license != WDI_LICENSE
+    ):
+        raise ChinaEconExportError(
+            "world_bank_wdi is not currently allowed for collection and export"
+        )
+    return decision
+
+
 def load_market_bindings(path: str | Path) -> Mapping[str, MarketBinding]:
     """Compatibility helper returning the registry's series bindings."""
 
@@ -2875,6 +2901,7 @@ __all__ = [
     "load_availability_receipt",
     "load_source_policy",
     "parse_github_commit_evidence",
+    "require_world_bank_wdi_rights",
     "validate_export_bundle",
     "validate_public_wdi_lineage_transition",
     "validate_wdi_registry_evolution",

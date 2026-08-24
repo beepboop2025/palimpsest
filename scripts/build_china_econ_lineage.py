@@ -9,6 +9,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from typing import Sequence
 
@@ -30,6 +31,13 @@ GOVERNED_PATHS = (REGISTRY_PATH, PUBLIC_WDI_LEDGER_PATH, PUBLIC_WDI_AVAILABILITY
 ROOT = Path(__file__).resolve().parents[1]
 GIT_EXECUTABLE = "/usr/bin/git"
 GH_EXECUTABLE = "/usr/bin/gh"
+LINEAGE_RECEIPT_FILENAME = "china-econ-wdi-lineage-receipt.json"
+_PROTECTED_REPOSITORY_INPUTS = (
+    ROOT / "config" / "china_econ_source_policy.json",
+    ROOT / REGISTRY_PATH,
+    ROOT / PUBLIC_WDI_LEDGER_PATH,
+    ROOT / PUBLIC_WDI_AVAILABILITY_PATH,
+)
 _BASE_ENVIRONMENT = {
     "GIT_CONFIG_GLOBAL": "/dev/null",
     "GIT_CONFIG_NOSYSTEM": "1",
@@ -45,6 +53,83 @@ _TREE_ENTRY = re.compile(
 
 class LineageBuildError(ValueError):
     """The local Git graph cannot prove the governed public lineage."""
+
+
+def _resolved(path: Path, *, label: str) -> Path:
+    try:
+        return path.expanduser().resolve(strict=False)
+    except (OSError, RuntimeError) as exc:
+        raise LineageBuildError(f"cannot resolve {label}: {exc}") from exc
+
+
+def _same_existing_file(left: Path, right: Path) -> bool:
+    try:
+        return left.exists() and right.exists() and left.samefile(right)
+    except OSError:
+        return False
+
+
+def _atomic_write(path: Path, payload: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fchmod(handle.fileno(), 0o644)
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        directory = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _refuse_output_collisions(
+    *,
+    current_evidence: Path,
+    outputs: dict[str, Path],
+) -> None:
+    inputs = {
+        "current commit evidence": current_evidence,
+        "source policy": _PROTECTED_REPOSITORY_INPUTS[0],
+        "series registry": _PROTECTED_REPOSITORY_INPUTS[1],
+        "public WDI ledger": _PROTECTED_REPOSITORY_INPUTS[2],
+        "public WDI availability": _PROTECTED_REPOSITORY_INPUTS[3],
+    }
+    resolved_outputs = {
+        label: _resolved(path, label=label) for label, path in outputs.items()
+    }
+    resolved_inputs = {
+        label: _resolved(path, label=label) for label, path in inputs.items()
+    }
+    output_items = list(outputs.items())
+    for position, (left_label, left_path) in enumerate(output_items):
+        for right_label, right_path in output_items[position + 1 :]:
+            if (
+                resolved_outputs[left_label] == resolved_outputs[right_label]
+                or _same_existing_file(left_path, right_path)
+            ):
+                raise LineageBuildError(
+                    f"mutable outputs {left_label} and {right_label} collide"
+                )
+        for input_label, input_path in inputs.items():
+            if (
+                resolved_outputs[left_label] == resolved_inputs[input_label]
+                or _same_existing_file(left_path, input_path)
+            ):
+                raise LineageBuildError(
+                    f"mutable output {left_label} collides with {input_label}"
+                )
 
 
 def _run(arguments: tuple[str, ...], *, gh_token: str | None = None) -> bytes:
@@ -301,24 +386,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise LineageBuildError(
                 f"lineage evidence filename must be {WDI_LINEAGE_EVIDENCE_PATH}"
             )
-        resolved_outputs = {
-            args.output_chain.resolve(strict=False),
-            args.output_evidence.resolve(strict=False),
-            args.output_receipt.resolve(strict=False),
-        }
-        if len(resolved_outputs) != 3 or args.current_commit_evidence.resolve(
-            strict=False
-        ) in resolved_outputs:
-            raise LineageBuildError("lineage inputs and outputs must be distinct files")
+        if args.output_receipt.name != LINEAGE_RECEIPT_FILENAME:
+            raise LineageBuildError(
+                f"lineage receipt filename must be {LINEAGE_RECEIPT_FILENAME}"
+            )
+        _refuse_output_collisions(
+            current_evidence=args.current_commit_evidence,
+            outputs={
+                "lineage chain": args.output_chain,
+                "lineage evidence": args.output_evidence,
+                "lineage receipt": args.output_receipt,
+            },
+        )
         lineage = build_lineage(
             revision=args.revision,
             current_evidence_path=args.current_commit_evidence,
         )
-        for path in (args.output_chain, args.output_evidence, args.output_receipt):
-            path.parent.mkdir(parents=True, exist_ok=True)
-        args.output_chain.write_bytes(lineage.records_bytes)
-        args.output_evidence.write_bytes(lineage.evidence_bytes)
-        args.output_receipt.write_bytes(canonical_json_bytes(lineage.receipt))
+        _atomic_write(args.output_chain, lineage.records_bytes)
+        _atomic_write(args.output_evidence, lineage.evidence_bytes)
+        _atomic_write(args.output_receipt, canonical_json_bytes(lineage.receipt))
     except (LineageBuildError, OSError, ValueError) as exc:
         print(f"china-econ-lineage refused: {exc}")
         return 2
@@ -338,6 +424,7 @@ if __name__ == "__main__":
 
 __all__ = [
     "GOVERNED_PATHS",
+    "LINEAGE_RECEIPT_FILENAME",
     "LineageBuildError",
     "build_lineage",
     "main",

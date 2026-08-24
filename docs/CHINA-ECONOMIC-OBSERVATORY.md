@@ -216,11 +216,53 @@ and prints an exact GitHub compare/new-PR URL. The Actions token does not create
 or approve the PR. A human repository operator must create the PR, approve any
 held workflow run, wait for the complete hosted contract, and select GitHub
 **Create a merge commit**. Squash, rebase, auto-merge and direct-main pushes are
-not valid lineage transitions. After merge, the operator re-fetches the bounded
+not valid lineage transitions. Before collection, the workflow re-fetches
+`origin/main` and requires both it and the checkout to equal the dispatch's exact
+`GITHUB_SHA`; an intervening main advance aborts the run without creating a
+candidate branch. After merge, the operator re-fetches the bounded
 raw GitHub commit response and verifies author `beepboop2025`, committer
 `web-flow`, at least two parents and signature verification `verified=true` with
 reason `valid`. Registry expansion or data revision becomes authoritative only
 through that reviewed and independently rechecked merge-commit path.
+
+For an additive registry expansion, the refresh does not pretend the new
+registry authenticated the older tracked availability receipt. It finds the
+last first-parent commit that changed
+`readings/china-econ-wdi-latest.json`, requires the receipt and registry at that
+tree to be exact regular `100644` blobs with replacement objects disabled, and
+uses those historical registry bytes as `--prior-registry`. Unrelated commits
+and a later reviewed append to the current registry therefore do not break or
+weaken the evolution proof.
+
+Registry expansion is atomic with its data transition. The operator runs the
+workflow from exact current `main` and supplies a sanitized
+`refs/heads/review/china-econ-registry-*` ref plus its full commit SHA as data;
+feature-ref workflow code is never executed. Trusted-main code fetches that
+exact ref, requires current main as its merge base and requires its complete
+tree diff to be one modification of `config/china_econ_wdi_series.json`. It
+also requires the parsed transition to report a nonempty
+`append_only_addition`; re-encoding or whitespace-only churn is refused. It
+then builds the compatible ledger/latest receipt on a new automation branch.
+The human PR contains the registry and compatible data bytes in the same GitHub
+merge commit. A registry-only change already present on main is refused rather
+than laundered by a later data PR, and main plus the pinned registry ref are
+re-fetched and rechecked immediately before candidate push. The automation data
+commit must have the pinned registry candidate as its exact first parent.
+The public pull CLI repeats the prior-registry evolution and prior
+receipt/ledger binding checks before its HTTP getter can run; registry mode
+requires the explicit `--require-registry-addition` flag and the same nonempty
+append-only result. Workflow validation after collection reuses the current
+registry against the newly written receipt.
+
+The exact-main handoff job applies the same rights boundary to collection. It
+loads and cross-checks the reviewed policy and registry, requires the WDI allow
+decision to be currently effective before any outbound request, snapshots one
+UTC request end year, then rechecks the decision immediately after the exact
+response returns. Only after that second check does it persist the raw bytes,
+canonical request URL, end year, digest and post-response collection clock. The
+offline parser receives those same sealed year and clock values; it never
+resamples the year across a UTC rollover. An expiry crossed during transport
+therefore produces no review response or handoff.
 
 The cross-repository lineage contract is exact. The handoff's
 `revision_lineage` object has only `mode`, `chain`,
@@ -546,6 +588,15 @@ joins, and OpenLineage for run/dataset lineage. Raster assets belong in COG/Zarr
 with STAC; vector features belong in GeoParquet with effective-dated boundaries.
 Kafka is unnecessary for mostly monthly releases; add streaming infrastructure only
 for genuinely high-rate licensed feeds.
+
+GitHub Pages is the compact catalog, latest-reading and human-navigation layer; it
+is not the durable warehouse for every raw response or historical revision. The
+August 2026 release audit measured a 957,941,760-byte Pages artifact against the
+996,147,200-byte workflow ceiling, leaving only 38,205,440 bytes of headroom before
+this WDI publication. New high-volume source families must therefore use
+partitioned, content-addressed object storage with hash-pinned catalog references
+and independently verified retention. Do not duplicate their raw or long-history
+corpora across Pages surfaces.
 
 Every collector should migrate toward the shared governance path: kill switch,
 rate ceiling, bounded response size, redirect/host validation, raw immutable capture,
