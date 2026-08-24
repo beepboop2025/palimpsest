@@ -1,39 +1,39 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-899b67a3c1aa146a32a84c2f",
+  "analysis_id": "instrumentv-989e357cdab4300f1d4b53ce",
   "signal_id": "cross-layer",
   "story_url": "https://palimpsest.info/news/cross-layer-lead-lag/",
   "url": "https://palimpsest.info/news/cross-layer-lead-lag/analysis.json",
   "reading_url": "https://palimpsest.info/readings/cross-layer-latest.json",
   "reading_analysis_url": "https://palimpsest.info/readings/cross-layer-analysis.json",
   "generated_at": "2026-08-24T17:22:36Z",
-  "disposition": "live-reading",
-  "status": "live",
-  "position": "Palimpsest's view: cross-layer is live. The current number is 0 over 9 pairs tested. This is the instrument reading, not a national censorship rate.",
+  "disposition": "availability-brief",
+  "status": "stale",
+  "position": "Palimpsest withholds a current finding for cross-layer: the source status is stale. This is an availability brief, not a measurement.",
   "key_numbers": [
     {
-      "value": "0",
-      "label": "confirmed pairs",
-      "note": "9 pairs tested",
+      "value": "withheld",
+      "label": "headline metric",
+      "note": "withheld because the source is not live",
       "citation_ids": [
-        "instrumentevidence-72741b5fa4fba2d12577"
+        "instrumentevidence-ca80491d71a4879520a9"
       ]
     }
   ],
   "brief": {
     "current_number": {
-      "status": "present",
+      "status": "abstained",
       "sentences": [
         {
-          "text": "The current confirmed pairs is 0 over 9 pairs tested.",
+          "text": "No current number is published for cross-layer because the newsroom status is stale. The retained metric is withheld.",
           "citation_ids": [
-            "instrumentevidence-72741b5fa4fba2d12577"
+            "instrumentevidence-ca80491d71a4879520a9"
           ]
         },
         {
-          "text": "0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test.",
+          "text": "No current finding is published for Cross-layer lead and lag because the source status is stale.",
           "citation_ids": [
-            "instrumentevidence-72741b5fa4fba2d12577"
+            "instrumentevidence-ca80491d71a4879520a9"
           ]
         }
       ]
@@ -42,15 +42,15 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: board-alarm, coverage-guard, forecast-ledger, undertext, censored-planet, erasure-observatory, wayback, apple-censorship, cny-fix-gap, data-darkness, generative-firewall, anchors.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: undertext, censored-planet, wayback, apple-censorship, cny-fix-gap, data-darkness, generative-firewall, anchors.",
           "citation_ids": [
-            "instrumentevidence-72741b5fa4fba2d12577"
+            "instrumentevidence-ca80491d71a4879520a9"
           ]
         },
         {
           "text": "No editorial_priority or MAD score is treated as a finding on this reading.",
           "citation_ids": [
-            "instrumentevidence-72741b5fa4fba2d12577"
+            "instrumentevidence-ca80491d71a4879520a9"
           ]
         }
       ]
@@ -59,21 +59,21 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another.",
+          "text": "Current finding withheld: freshness deadline has passed",
           "citation_ids": [
-            "instrumentevidence-72741b5fa4fba2d12577"
+            "instrumentevidence-ca80491d71a4879520a9"
           ]
         },
         {
           "text": "The brief does not assign motive, identify a person, merge unlike denominators, or treat a missing reading as a zero.",
           "citation_ids": [
-            "instrumentevidence-72741b5fa4fba2d12577"
+            "instrumentevidence-ca80491d71a4879520a9"
           ]
         },
         {
           "text": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
           "citation_ids": [
-            "instrumentevidence-72741b5fa4fba2d12577"
+            "instrumentevidence-ca80491d71a4879520a9"
           ]
         }
       ]
@@ -83,49 +83,31 @@
     {
       "text": "A current or withheld instrument value is not independent corroboration of any publisher article, and it is not a cause.",
       "citation_ids": [
-        "instrumentevidence-72741b5fa4fba2d12577"
+        "instrumentevidence-ca80491d71a4879520a9"
       ]
     },
     {
       "text": "Co-movement with another live signal on this edition is layer context, not a shared rate or a coordinated action.",
       "citation_ids": [
-        "instrumentevidence-72741b5fa4fba2d12577"
+        "instrumentevidence-ca80491d71a4879520a9"
       ]
     }
   ],
   "limitations": [
     {
-      "text": "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another.",
+      "text": "Current finding withheld: freshness deadline has passed",
       "citation_ids": [
-        "instrumentevidence-72741b5fa4fba2d12577"
+        "instrumentevidence-ca80491d71a4879520a9"
       ]
     },
     {
       "text": "The companion copies newsroom templates only; it adds no interview, article body, or generative prose.",
       "citation_ids": [
-        "instrumentevidence-72741b5fa4fba2d12577"
+        "instrumentevidence-ca80491d71a4879520a9"
       ]
     }
   ],
   "elevated_peers": [
-    {
-      "signal_id": "board-alarm",
-      "section": "command",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
-      "signal_id": "coverage-guard",
-      "section": "command",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "forecast-ledger",
-      "section": "command",
-      "status": "live",
-      "priority": "standard"
-    },
     {
       "signal_id": "undertext",
       "section": "attention",
@@ -137,12 +119,6 @@
       "section": "network",
       "status": "live",
       "priority": "high"
-    },
-    {
-      "signal_id": "erasure-observatory",
-      "section": "erasure",
-      "status": "live",
-      "priority": "lead"
     },
     {
       "signal_id": "wayback",
@@ -189,17 +165,17 @@
   },
   "evidence": [
     {
-      "evidence_id": "instrumentevidence-72741b5fa4fba2d12577",
+      "evidence_id": "instrumentevidence-ca80491d71a4879520a9",
       "kind": "newsroom-story",
       "signal_id": "cross-layer",
-      "headline": "0 cross-layer relationships are confirmed across 9 eligible tests",
-      "status": "live",
-      "claim": "0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test.",
+      "headline": "Cross-layer lead and lag: no current finding",
+      "status": "stale",
+      "claim": "No current finding is published for Cross-layer lead and lag because the source status is stale.",
       "story_url": "https://palimpsest.info/news/cross-layer-lead-lag/",
       "reading_url": "https://palimpsest.info/readings/cross-layer-latest.json",
       "source_timestamp": "2026-08-24T17:22:36Z",
       "input_sha256": "fefb6c36c763bcd0d75ac4b1dc0986871e887a7eb74bbca9870c22d1ea824f55",
-      "interpretation_limit": "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another."
+      "interpretation_limit": "Current finding withheld: freshness deadline has passed"
     }
   ],
   "publication_receipt": {
@@ -208,7 +184,9 @@
     "automatic_publication": false,
     "citation_coverage": 1.0,
     "human_review_required": true,
-    "availability_warnings": [],
+    "availability_warnings": [
+      "cross-layer"
+    ],
     "gates": [
       {
         "gate_id": "closed-source-set",
@@ -220,7 +198,7 @@
         "gate_id": "availability-honesty",
         "label": "Non-live instruments publish availability, not retained findings",
         "passed": true,
-        "detail": "Story status is live; metric publication is 0."
+        "detail": "Story status is stale; metric publication is withheld."
       },
       {
         "gate_id": "sentence-citations",
