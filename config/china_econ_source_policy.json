@@ -1,0 +1,46 @@
+{
+  "schema_version": "palimpsest.china-economic-source-policy.v1",
+  "policy_scope": "china_economic_values_and_seiche_export",
+  "default_decision": "deny",
+  "sources": [
+    {
+      "source_id": "world_bank_wdi",
+      "decision": "allow",
+      "values_allowed": true,
+      "seiche_export_allowed": true,
+      "license": "CC-BY-4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "rights_evidence_url": "https://datacatalog.worldbank.org/search/dataset/0037712/world-development-indicators",
+      "attribution": "World Bank, World Development Indicators",
+      "reviewed_at": "2026-08-24T00:00:00Z",
+      "expires_at": "2027-08-24T00:00:00Z",
+      "reason": "The World Development Indicators catalog declares CC BY 4.0 for this aggregate dataset; attribution and provenance must travel with every export."
+    },
+    {
+      "source_id": "cfets_benchmarks",
+      "decision": "deny",
+      "values_allowed": false,
+      "seiche_export_allowed": false,
+      "license": null,
+      "license_url": null,
+      "rights_evidence_url": "https://www.shibor.org/english/svcmds/",
+      "attribution": "China Foreign Exchange Trade System",
+      "reviewed_at": "2026-08-24T00:00:00Z",
+      "expires_at": "2027-08-24T00:00:00Z",
+      "reason": "The ChinaMoney information usage notice requires written licensing for copying, transmitting, storing, publishing, or processing its information; no such Seiche redistribution license is recorded."
+    },
+    {
+      "source_id": "chinamoney",
+      "decision": "deny",
+      "values_allowed": false,
+      "seiche_export_allowed": false,
+      "license": null,
+      "license_url": null,
+      "rights_evidence_url": "https://www.shibor.org/english/svcmds/",
+      "attribution": "China Foreign Exchange Trade System",
+      "reviewed_at": "2026-08-24T00:00:00Z",
+      "expires_at": "2027-08-24T00:00:00Z",
+      "reason": "ChinaMoney is explicitly denied because its information usage notice requires written licensing for copying, transmitting, storing, publishing, or processing, and no such license is recorded."
+    }
+  ]
+}
