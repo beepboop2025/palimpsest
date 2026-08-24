@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from scripts import build_erasure_trail
 from core.evidence_mesh import (
     EvidenceMeshError,
     build_evidence_mesh,
@@ -48,6 +49,18 @@ def _resource(document: dict, resource_id: str) -> dict:
 
 def _receipt(document: dict, input_id: str) -> dict:
     return next(row for row in document["inputs"] if row["input_id"] == input_id)
+
+
+def test_erasure_trail_declares_every_runtime_dependency_in_the_mesh() -> None:
+    config = json.loads((ROOT / "config/evidence_mesh.json").read_text())
+    declared = set(config["derived_dependencies"]["erasure-trail"])
+    runtime = {
+        filename.removesuffix("-latest.json")
+        for filename in build_erasure_trail.INPUT_FILES
+    }
+
+    assert all(filename.endswith("-latest.json") for filename in build_erasure_trail.INPUT_FILES)
+    assert declared == runtime
 
 
 def _isolated_root(tmp_path: Path) -> Path:
