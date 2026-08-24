@@ -10,8 +10,8 @@
   "type": "methodology",
   "priority": "standard",
   "status": "live",
-  "published_at": "2026-08-24T04:44:50Z",
-  "modified_at": "2026-08-24T04:44:50Z",
+  "published_at": "2026-08-24T05:26:35Z",
+  "modified_at": "2026-08-24T05:26:35Z",
   "claim_fingerprint": "sha256:224edf6bd755f9d04b107bc4de2bf7fa3ae492d54eac6f3c6bcea94bfa5324e8",
   "metric": {
     "label": "empirical coverage",
@@ -32,10 +32,10 @@
     "url": "https://palimpsest.info/readings/forecast-ledger-latest.json",
     "input": {
       "filename": "forecast-ledger-latest.json",
-      "sha256": "da07fb64afba3a20b615d49bc9bb9fd8a5518bb574d60d1e32c60d72ce3f874f",
+      "sha256": "a343ed4af1d7639d29a00dceb070a9c57697af8358ef7bf047c942a30229f113",
       "bytes": 13971
     },
-    "source_timestamp": "2026-08-24T04:44:50Z"
+    "source_timestamp": "2026-08-24T05:26:35Z"
   },
   "method": {
     "summary": "strictly prequential (Dawid 1984): each reading is forecast from only its own past, never refit with hindsight. Point forecast = previous value (random walk). Band = adaptive conformal quantile of past absolute one-step changes, updated by alpha_{t+1} = alpha_t + gamma_t*(alpha - err_t) with decaying gamma (ACI, arXiv:2106.00170; decaying steps, arXiv:2402.01139), valid under arbitrary distribution shift. Scored by the Weighted Interval Score (arXiv:2005.12881), a proper rule, against the same forecast using a fixed quantile. Lower WIS is better.",

@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:cross-layer",
+  "slug": "cross-layer-lead-lag",
+  "url": "https://palimpsest.info/news/cross-layer-lead-lag/",
+  "signal_id": "cross-layer",
+  "headline": "0 cross-layer relationships are confirmed across 9 eligible tests",
+  "dek": "Pairs enter testing only after enough overlapping history exists; an empty test set is a warm-up state, not a null result.",
+  "section": "command",
+  "order": 5,
+  "type": "methodology",
+  "priority": "background",
+  "status": "live",
+  "published_at": "2026-08-24T05:26:35Z",
+  "modified_at": "2026-08-24T05:26:35Z",
+  "claim_fingerprint": "sha256:0f13b88ae8d9b076d69bf7a966d1b5bb3e51b6b80b8928661aba7a7996d0f4fc",
+  "metric": {
+    "label": "confirmed pairs",
+    "value": 0,
+    "unit": "count",
+    "denominator": {
+      "label": "pairs tested",
+      "value": 9
+    }
+  },
+  "claims": [
+    {
+      "type": "method",
+      "statement": "0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/cross-layer-latest.json",
+    "input": {
+      "filename": "cross-layer-latest.json",
+      "sha256": "20fe8a3a82aee08ffb542cbcf000c018e2b90a17aefc89cbd08d7ff246593e9b",
+      "bytes": 10513
+    },
+    "source_timestamp": "2026-08-24T05:26:35Z"
+  },
+  "method": {
+    "summary": "each signal collapsed to a daily mean and DIFFERENCED (day-over-day change), then for every CROSS-layer pair the lag in [-7,7] days maximising |Pearson r|. Significance against a CIRCULAR-SHIFT null: one series is rotated against the other over every admissible offset (shifts within 7d of zero excluded), which preserves each series' own autocorrelation while destroying true alignment; p = (#{null >= observed}+1)/(n+1), exact and deterministic. Holm-Bonferroni step-down at alpha=0.05 across all pairs.",
+    "version": 1
+  },
+  "limitations": [
+    "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another."
+  ],
+  "related_signal_ids": [
+    "forecast-ledger",
+    "board-alarm"
+  ]
+}

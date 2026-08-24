@@ -1,0 +1,51 @@
+{
+  "id": "palimpsest-news:blocklist",
+  "slug": "platform-blocklist-archaeology",
+  "url": "https://palimpsest.info/news/platform-blocklist-archaeology/",
+  "signal_id": "blocklist",
+  "headline": "Attributable blocklist versions added 503 keywords",
+  "dek": "Version-to-version diffs preserve provenance and decoding gaps instead of flattening client blocklists into one count.",
+  "section": "attention",
+  "order": 5,
+  "type": "measurement",
+  "priority": "standard",
+  "status": "live",
+  "published_at": "2026-08-24T05:07:24Z",
+  "modified_at": "2026-08-24T05:07:24Z",
+  "claim_fingerprint": "sha256:7682a248d56bf9a9091373bd04d1febf194263e78702bcd23752c304c706993c",
+  "metric": {
+    "label": "keyword additions",
+    "value": 503,
+    "unit": "count",
+    "denominator": {
+      "label": null,
+      "value": null
+    }
+  },
+  "claims": [
+    {
+      "type": "finding",
+      "statement": "The compared attributable client blocklists contain 503 keyword additions."
+    }
+  ],
+  "evidence": {
+    "url": "https://palimpsest.info/readings/blocklist-latest.json",
+    "input": {
+      "filename": "blocklist-latest.json",
+      "sha256": "44808b997d27f5f04027066afbe0bf174faf3404737a97d1fed4389508dab267",
+      "bytes": 8594
+    },
+    "source_timestamp": "2026-08-24T05:07:24Z"
+  },
+  "method": {
+    "summary": "See the complete embedded upstream payload and its raw feed",
+    "version": 1
+  },
+  "limitations": [
+    "Available client versions and successful decoding bound the observed additions; the result is not a platform-wide census."
+  ],
+  "related_signal_ids": [
+    "ddti",
+    "net4people"
+  ]
+}
