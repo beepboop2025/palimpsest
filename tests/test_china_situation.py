@@ -5,12 +5,19 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
-from core import china_situation, dragon_whispers, event_analysis, social_observations
+from core import (
+    china_situation,
+    dragon_whispers,
+    event_analysis,
+    newswire,
+    social_observations,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -96,6 +103,40 @@ def _social_receipts(registry, successful_source):
         }
         for source in registry.sources
     ]
+
+
+def _synthetic_cgtn_wire():
+    source = replace(
+        next(
+            source
+            for source in newswire.load_source_registry().sources
+            if source.id == "cgtn-china"
+        ),
+        declared_scan_ids=(),
+        declared_economic_ids=(),
+    )
+    registry = newswire.SourceRegistry(
+        schema_version=newswire.REGISTRY_SCHEMA_VERSION,
+        window_hours=168,
+        max_items_per_source=128,
+        max_events=2048,
+        sources=(source,),
+        sha256="0" * 64,
+    )
+    rss = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<rss version="2.0"><channel><item>'
+        '<title>China publisher bulletin</title>'
+        '<link>https://news.cgtn.com/news/2026-08-25/china-publisher-bulletin</link>'
+        '<description>A bounded China report.</description>'
+        '<pubDate>Tue, 25 Aug 2026 10:00:00 +0000</pubDate>'
+        '</item></channel></rss>'
+    ).encode()
+    return newswire.collect_newswire(
+        registry,
+        lambda _url, **_kwargs: rss,
+        now=datetime(2026, 8, 25, 12, 0, tzinfo=timezone.utc),
+    )
 
 
 @pytest.fixture(scope="module")
@@ -194,16 +235,19 @@ def test_social_url_index_excludes_outside_remit_events(inputs):
     assert all(not row["social_context"] for row in document["situations"])
 
 
-def test_cgtn_rss_and_telegram_keep_one_publisher_lineage(inputs):
-    wire, _feed, analyses = inputs
-    event, reference = next(
-        (event, reference)
-        for event in wire["events"]
-        if analyses[event["event_id"]]["scope_status"] == "in-scope"
-        for reference in event["evidence_refs"]
-        if reference["source_id"] == "cgtn-china"
+def test_cgtn_rss_and_telegram_keep_one_publisher_lineage():
+    wire = _synthetic_cgtn_wire()
+    analyses = event_analysis.build_event_analyses(
+        wire, {"schema_version": "palimpsest-news.v1", "stories": []}
     )
+    event = wire["events"][0]
+    reference = event["evidence_refs"][0]
     registry = social_observations.load_source_registry()
+    social_source = next(
+        source for source in registry.sources if source.id == "cgtn-telegram"
+    )
+    assert reference["independence_group"] == social_source.independence_group
+    assert social_source.platform == "telegram"
     fixture_time = _minutes_after(reference["published_at"])
     record = _social_record(reference, observed_at=fixture_time)
     social, _ledger = social_observations.build_latest(

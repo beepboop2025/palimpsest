@@ -110,6 +110,7 @@ def test_stream_contains_each_and_only_china_relevant_wire_item(publication):
 
 def test_each_item_reuses_exactly_one_validated_event_analysis(publication):
     wire, _feed, analyses, stream = publication
+    items = {item["item_id"]: item for item in wire["items"]}
     event_for_item = {
         ref["item_id"]: event
         for event in wire["events"]
@@ -123,17 +124,25 @@ def test_each_item_reuses_exactly_one_validated_event_analysis(publication):
         assert entry["analysis"]["position"] == analysis["position"]
         assert entry["analysis"]["next_checks"]
 
-    same_group_event = next(
-        event for event in wire["events"]
-        if len(event["evidence_refs"]) > 1 and len(event["evidence_groups"]) == 1
-    )
-    matching = [
-        entry for entry in stream["entries"]
-        if entry["dossier"]["event_id"] == same_group_event["event_id"]
-    ]
-    assert len(matching) == len(same_group_event["evidence_refs"])
-    assert {entry["dossier"]["independent_groups"] for entry in matching} == {1}
-    assert len({entry["analysis"]["analysis_id"] for entry in matching}) == 1
+    entries_by_event: dict[str, list[dict]] = {}
+    for entry in stream["entries"]:
+        entries_by_event.setdefault(entry["dossier"]["event_id"], []).append(entry)
+
+    for event in wire["events"]:
+        expected_ids = {
+            reference["item_id"]
+            for reference in event["evidence_refs"]
+            if newswire.is_china_relevant_item(items[reference["item_id"]])
+        }
+        matching = entries_by_event.get(event["event_id"], [])
+        assert {entry["entry_id"] for entry in matching} == expected_ids
+        if matching:
+            assert {
+                entry["dossier"]["independent_groups"] for entry in matching
+            } == {len(event["evidence_groups"])}
+            assert {entry["analysis"]["analysis_id"] for entry in matching} == {
+                analyses[event["event_id"]]["analysis_id"]
+            }
 
 
 def test_runtime_validator_and_json_schemas_are_closed(publication):
