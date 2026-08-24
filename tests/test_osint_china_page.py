@@ -195,6 +195,106 @@ listeners.fetch({
     assert result.returncode == 0, result.stderr
 
 
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node.js is unavailable")
+def test_situation_pages_fail_closed_without_changing_other_navigation_fallbacks():
+    harness = r'''
+const fs = require("fs");
+const vm = require("vm");
+const listeners = {};
+global.self = {
+  location: { origin: "https://palimpsest.info" },
+  addEventListener: (kind, callback) => { listeners[kind] = callback; },
+  skipWaiting: () => {},
+  clients: { claim: () => {} }
+};
+global.location = self.location;
+let cacheMatches = 0;
+let cacheOpens = 0;
+global.caches = {
+  match: async () => { cacheMatches += 1; return { stale: true }; },
+  open: async () => { cacheOpens += 1; return { put: async () => {} }; },
+  keys: async () => []
+};
+const fetchCalls = [];
+global.fetch = (request, options) => {
+  fetchCalls.push({ request, options });
+  return Promise.reject(new Error("network unavailable"));
+};
+vm.runInThisContext(fs.readFileSync("sw.js", "utf8"), { filename: "sw.js" });
+
+async function dispatch(path) {
+  let response;
+  listeners.fetch({
+    request: {
+      method: "GET",
+      mode: "navigate",
+      url: "https://palimpsest.info" + path
+    },
+    respondWith: (promise) => { response = promise; }
+  });
+  return response;
+}
+
+(async () => {
+  const livePaths = [
+    "/news/china/situation/",
+    "/news/china/situation/index.html",
+    "/news/china/situation/page/1/",
+    "/news/china/situation/page/27/index.html"
+  ];
+  for (const path of livePaths) {
+    let failedClosed = false;
+    try {
+      await dispatch(path);
+    } catch (error) {
+      failedClosed = error.message === "network unavailable";
+    }
+    if (!failedClosed) throw new Error(path + " did not fail closed");
+  }
+  if (cacheMatches !== 0 || cacheOpens !== 0) {
+    throw new Error("situation navigation consulted Cache Storage");
+  }
+  if (fetchCalls.length !== livePaths.length) {
+    throw new Error("unexpected situation page fetch count");
+  }
+  if (fetchCalls.some(({ options }) => !options || options.cache !== "no-store")) {
+    throw new Error("situation page fetch was not no-store");
+  }
+
+  const fallbackPaths = [
+    "/news/china/situation",
+    "/news/china/situation/page/0/",
+    "/news/china/situation/page/01/",
+    "/news/china/situation/page/2/feed.json",
+    "/news/china/analysis/"
+  ];
+  for (const path of fallbackPaths) {
+    const fallback = await dispatch(path);
+    if (!fallback || fallback.stale !== true) {
+      throw new Error(path + " lost the existing navigation fallback");
+    }
+  }
+  if (cacheMatches !== fallbackPaths.length || cacheOpens !== 0) {
+    throw new Error("non-matching navigation did not use the existing fallback path");
+  }
+  if (fetchCalls.at(-1).options !== undefined) {
+    throw new Error("unrelated navigation was forced into no-store");
+  }
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+'''
+    result = subprocess.run(
+        [shutil.which("node"), "-e", harness],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_route_is_present_on_every_discovery_surface():
     assert '"osint-china.html": "/osint-china.html"' in _text("scripts/sync_nav.py")
     assert '("/osint-china.html", "Signal board"' in _text("scripts/site_nav.py")

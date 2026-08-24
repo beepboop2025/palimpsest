@@ -176,10 +176,11 @@ _ALLOWED = {
     "implementation that must be able to check the observatory without sharing the "
     "observatory's code, so it must never import core/.",
     "ops/watchdog/palimpsest_freshness_watchdog.py": "Host-level monitoring intentionally stays stdlib-only and outside the Celery/app "
-    "dependency graph. Its GET is restricted to loopback HTTP with a 4 MiB cap; its "
-    "optional POST accepts only credential-free public-DNS HTTPS, refuses redirects, "
-    "caps payload/response bytes and suppresses URL-bearing errors. safe_fetch is GET-only "
-    "and rejects the loopback status endpoint, so neither call fits that boundary.",
+    "dependency graph. Its GETs are restricted to loopback HTTP with a 4 MiB cap and two "
+    "fixed first-party HTTPS publication URLs with 12 MiB caps; all refuse redirects. Its "
+    "optional POST accepts only credential-free public-DNS HTTPS, caps payload/response "
+    "bytes and suppresses URL-bearing errors. safe_fetch rejects the loopback endpoint, "
+    "while importing application code would defeat this watchdog's independent boundary.",
     "ops/osint-sync/public_osint_sync.py": "Immutable host bundle GET of the one fixed first-party palimpsest.info OSINT object; "
     "production refuses authority overrides, redirects are disabled, the response is "
     "capped at 4 MiB, and its bytes must exactly match the fetched Git blob plus verified "

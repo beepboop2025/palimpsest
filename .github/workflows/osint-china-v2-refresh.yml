@@ -26,6 +26,8 @@ permissions:
   contents: write
 
 concurrency:
+  # Hourly and workflow_run triggers are level-triggered. Coalesce pending runs;
+  # the eventual run rebuilds from latest main and therefore closes every input.
   group: derived-graph-publish
   cancel-in-progress: false
 

@@ -1,14 +1,32 @@
 # Out-of-band freshness watchdog
 
 This host timer is independent of Celery Beat. Every five minutes it reads the
-dynamic loopback node-status endpoint and separately evaluates the local
-`osint-china.v1` evidence deadlines against its own UTC clock. An unavailable
-API is itself a condition and does not prevent the evidence-file check.
+dynamic loopback node-status endpoint, evaluates the local `osint-china.v1`
+evidence deadlines against its own UTC clock, and independently checks the two
+public publication heads:
 
-The watchdog does not dispatch jobs, run probes, or edit `readings/`. Its only
-writes are the bounded status and condition-latch files in the systemd-managed
-`/var/lib/palimpsest-watchdog` directory. Exit `2` means a condition is active,
-so the unit remains visible in `systemctl --failed` even without a webhook.
+- `https://palimpsest.info/readings/newswire-latest.json`
+- `https://palimpsest.info/readings/china-situation-latest.json`
+
+Those HTTPS authorities are fixed in code and cannot be replaced by an
+environment value or CLI flag. Redirects are refused; requests ask for JSON and
+cache revalidation, time out after ten seconds, and stop at 12 MiB per artifact.
+Both requests share one internally generated five-minute cache-busting token so
+an edge cache cannot mix two independently cached publication generations.
+Both heads have a two-hour freshness deadline. The situation check also proves
+that its embedded newswire clock and SHA-256 match the independently fetched
+newswire, using the publisher's canonical sorted compact JSON plus one trailing
+newline. A freshly rebuilt situation over an old or different wire therefore
+still fails as `publication/china-situation`.
+
+An unavailable API or publication is itself a condition and does not prevent
+the other independent checks.
+
+The watchdog does not call the GitHub API, dispatch jobs, run probes, or edit
+`readings/`. Its only writes are the bounded status and condition-latch files in
+the systemd-managed `/var/lib/palimpsest-watchdog` directory. Exit `2` means a
+condition is active, so the unit remains visible in `systemctl --failed` even
+without a webhook.
 
 ## Install beside the collector stack
 

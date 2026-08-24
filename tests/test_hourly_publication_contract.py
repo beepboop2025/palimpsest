@@ -12,13 +12,13 @@ def _read(relative: str) -> str:
     return (ROOT / relative).read_text(encoding="utf-8")
 
 
-def test_public_edition_is_hourly_and_keeps_a_bounded_board_queue() -> None:
+def test_public_edition_is_hourly_and_coalesces_board_dirty_events() -> None:
     workflow = _read(".github/workflows/board-alarm-refresh.yml")
     assert 'cron: "53 * * * *"' in workflow
     assert "publication_graph_dirty" in workflow
     assert "group: derived-graph-publish" in workflow
     assert "cancel-in-progress: false" in workflow
-    assert "queue:" not in workflow
+    assert "queue: max" not in workflow
     assert "timeout-minutes: 90" in workflow
     assert "Validate the complete public edition" in workflow
     assert "tests/test_publication_contract.py" in workflow

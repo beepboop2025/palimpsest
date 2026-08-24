@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: "5 * * * *"
   workflow_dispatch: {}
+  workflow_run:
+    workflows:
+      - Refresh board-level judgements
+      - Refresh OSINT China roll-up v2
+    types: [completed]
 
 permissions:
   contents: read
@@ -18,23 +23,36 @@ concurrency:
 
 jobs:
   recover:
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       PYTHONPATH: ${{ github.workspace }}
       GH_TOKEN: ${{ github.token }}
+      WATCHDOG_TRIGGER: ${{ github.event_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: main
 
       - name: Plan recoveries from evidence deadlines
         run: |
-          python -m scripts.collector_health_watchdog --format workflows > "$RUNNER_TEMP/recoveries.txt"
-          python -m scripts.collector_health_watchdog --format summary >> "$GITHUB_STEP_SUMMARY"
+          watchdog_now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          printf '%s\n' "$watchdog_now" > "$RUNNER_TEMP/watchdog-now.txt"
+          python -m scripts.collector_health_watchdog --now "$watchdog_now" --format workflows > "$RUNNER_TEMP/recoveries.txt"
+          python -m scripts.collector_health_watchdog --now "$watchdog_now" --format summary >> "$GITHUB_STEP_SUMMARY"
+          python -m scripts.collector_health_watchdog --now "$watchdog_now" --format escalations > "$RUNNER_TEMP/escalations.txt"
 
       - name: Dispatch idle producer workflows
         run: |
           while IFS= read -r workflow; do
             [ -n "$workflow" ] || continue
+            if [ "$WATCHDOG_TRIGGER" = "workflow_run" ] && [ "$workflow" != "newswire-refresh.yml" ]; then
+              echo "$workflow is left to the hourly collector pass after a producer completion"
+              continue
+            fi
             active=$(gh run list \
               --workflow "$workflow" \
               --limit 20 \
@@ -47,3 +65,17 @@ jobs:
             echo "dispatching recovery: $workflow"
             gh workflow run "$workflow" --ref main
           done < "$RUNNER_TEMP/recoveries.txt"
+
+      - name: Escalate persistent publication freshness failures
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/escalations.txt" ] || exit 0
+          [ -s "$RUNNER_TEMP/escalations.txt" ] || exit 0
+          while IFS= read -r signal_id; do
+            case "$signal_id" in
+              publication/newswire|publication/china-situation) ;;
+              *) echo "invalid escalation identifier"; exit 1 ;;
+            esac
+            echo "::error title=Persistent publication freshness failure::$signal_id remains outside its publication contract after recovery planning"
+          done < "$RUNNER_TEMP/escalations.txt"
+          exit 1

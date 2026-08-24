@@ -898,6 +898,7 @@ def test_workflow_is_hourly_serial_and_gates_the_bot_commit():
     )
     assert "github.event.workflow_run.conclusion == 'success'" in text
     assert "group: derived-graph-publish" in text
+    assert "queue: max" not in text
     assert "cancel-in-progress: false" in text
     economic_pulse = text.index("python -m scripts.build_economic_pulse")
     undertext = text.index("python -m scripts.undertext_pull")

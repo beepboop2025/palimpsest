@@ -1,25 +1,29 @@
 name: Refresh evidence wire
 
 # Pull a closed RSS/Atom registry, then rebuild every deterministic publication that
-# depends on it. The two scheduled starts keep the wire current without overlapping
-# the :58 OSINT aging run in the normal case. A push race still rebuilds, reseals and
-# rechecks the exact rebased tree before publication.
+# depends on it. The dedicated hourly lane has capacity for a complete build plus
+# one base-advance rebuild. Cross-publisher push races are handled by the exact-base
+# rebuild paths below rather than allowing unrelated level-triggered jobs to cancel
+# this reader-facing refresh.
 
 on:
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: derived-graph-publish
+  group: newswire-derived-publish
+  # Preserve scheduled and watchdog recovery runs in this capacity-bounded lane.
+  queue: max
   cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       PYTHONPATH: ${{ github.workspace }}
     steps:

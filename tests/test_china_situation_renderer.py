@@ -61,11 +61,17 @@ def test_builder_emits_structured_index_page_and_two_feed_views():
 
     published = json.loads(outputs[builder.OUTPUT_PATH])
     json_feed = json.loads(outputs[builder.JSON_FEED_PATH])
-    ET.fromstring(outputs[builder.RSS_FEED_PATH])
+    rss = ET.fromstring(outputs[builder.RSS_FEED_PATH])
     assert published == document
     assert json_feed["home_page_url"] == "https://palimpsest.info/news/china/situation/"
     assert json_feed["items"]
     assert len(json_feed["items"]) <= builder.FEED_LIMIT
+    first = document["situations"][0]
+    assert json_feed["items"][0]["date_published"] == first["published_at"]
+    assert json_feed["items"][0]["date_modified"] == first["updated_at"]
+    assert rss.findtext("channel/item/pubDate") == builder._rfc2822(
+        first["published_at"]
+    )
 
 
 def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
@@ -97,6 +103,11 @@ def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
     assert str(document["coverage"]["in_scope_events"]) in page
     assert "Page 1 of " in page
     assert "Search this archive page" in page
+    assert "newest report" in page
+    assert "news collected" in page
+    assert "synthesis rebuilt" in page
+    assert "Reported " in page
+    assert "Analysis refreshed " in page
     assert len(page) < 700_000
 
 

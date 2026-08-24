@@ -3,7 +3,7 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v18";
+const CACHE = "palimpsest-v19";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
 const LIVE_EVIDENCE_READINGS = new Set([
@@ -38,6 +38,7 @@ const LIVE_EVIDENCE_READINGS = new Set([
 const LIVE_INVESTIGATION_CASE = /^\/news\/investigations\/[a-z0-9]+(?:-[a-z0-9]+)*\/case\.json$/;
 const LIVE_MACHINE_ANALYSIS_REPORT = /^\/news\/analysis\/[a-z0-9]+(?:-[a-z0-9]+)*\/report\.json$/;
 const LIVE_EVENT_ANALYSIS = /^\/news\/wire\/event-[0-9a-f]{24}\/analysis\.json$/;
+const LIVE_CHINA_SITUATION_PAGE = /^\/news\/china\/situation\/(?:index\.html|page\/[1-9][0-9]*\/(?:index\.html)?)?$/;
 const LIVE_NEWSROOM_SYNDICATION = new Set([
   "/news/feed.json",
   "/news/feed.xml",
@@ -185,6 +186,13 @@ self.addEventListener("fetch", (e) => {
   // revisions may be cached, but feeds must never hide a failed refresh behind
   // an older edition.
   if (LIVE_JOURNAL_SYNDICATION.has(url.pathname)) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // Situation pages are rebuilt views over the mutable wire and synthesis heads.
+  // An offline shell fallback would make a failed publication look current, so the
+  // canonical page and its generated pagination fail closed just like their feeds.
+  if (LIVE_CHINA_SITUATION_PAGE.test(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

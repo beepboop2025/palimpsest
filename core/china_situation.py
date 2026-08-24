@@ -950,7 +950,12 @@ def build_china_situation(
         )
 
     situations.sort(
-        key=lambda row: (row["updated_at"], row["situation_id"]), reverse=True
+        key=lambda row: (
+            row["published_at"],
+            row["updated_at"],
+            row["situation_id"],
+        ),
+        reverse=True,
     )
     if len(situations) > MAX_SITUATIONS:
         raise ChinaSituationError("situation index exceeds its publication cap")
@@ -1209,7 +1214,11 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
             raise ChinaSituationError(f"{path}.posture is invalid")
         if row["measurement_state"] not in _MEASUREMENT_STATES:
             raise ChinaSituationError(f"{path}.measurement_state is invalid")
-        order_key = (row["updated_at"], row["situation_id"])
+        order_key = (
+            row["published_at"],
+            row["updated_at"],
+            row["situation_id"],
+        )
         if previous_key is not None and order_key > previous_key:
             raise ChinaSituationError("situations are not reverse chronological")
         previous_key = order_key
@@ -1495,6 +1504,53 @@ def validate_china_situation(document: Mapping[str, Any]) -> None:
     canonical_json_bytes(document)
 
 
+def validate_prior_china_situation(document: Mapping[str, Any]) -> None:
+    """Validate a prior head while allowing only the superseded display order.
+
+    The prior order used synthesis ``updated_at`` as the primary key. It is safe
+    only for recovering the previous wire clock: every field, identity, count,
+    relation, and URL is revalidated after rows are normalized to the current
+    report-time presentation order.
+    """
+
+    try:
+        validate_china_situation(document)
+        return
+    except ChinaSituationError as current_error:
+        if type(document) is not dict or type(document.get("situations")) is not list:
+            raise current_error
+        rows = document["situations"]
+        try:
+            prior_keys = [
+                (row["updated_at"], row["situation_id"])
+                for row in rows
+                if type(row) is dict
+            ]
+        except (KeyError, TypeError):
+            raise current_error
+        if len(prior_keys) != len(rows) or prior_keys != sorted(
+            prior_keys, reverse=True
+        ):
+            raise current_error
+        try:
+            normalized_rows = sorted(
+                rows,
+                key=lambda row: (
+                    row["published_at"],
+                    row["updated_at"],
+                    row["situation_id"],
+                ),
+                reverse=True,
+            )
+        except (KeyError, TypeError):
+            raise current_error
+        normalized = {
+            **document,
+            "situations": normalized_rows,
+        }
+        validate_china_situation(normalized)
+
+
 __all__ = [
     "SCHEMA_VERSION",
     "RELATION_POLICY",
@@ -1503,4 +1559,5 @@ __all__ = [
     "build_china_situation",
     "canonical_json_bytes",
     "validate_china_situation",
+    "validate_prior_china_situation",
 ]

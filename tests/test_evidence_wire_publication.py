@@ -434,7 +434,7 @@ def test_human_and_agent_discovery_expose_desks_feeds_registry_and_schemas():
 
 def test_mutable_evidence_heads_are_network_only_and_never_fall_back():
     worker = (ROOT / "sw.js").read_text(encoding="utf-8")
-    assert 'const CACHE = "palimpsest-v18"' in worker
+    assert 'const CACHE = "palimpsest-v19"' in worker
     assert '"/readings/newswire-latest.json"' in worker
     assert '"/readings/china-economic-pulse-latest.json"' in worker
     assert '"/readings/china-econ-observations-latest.json"' in worker
@@ -499,14 +499,19 @@ def test_mutable_machine_reports_are_network_only_but_revisions_are_not():
 def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
     ddti_workflow = DDTI_WORKFLOW.read_text(encoding="utf-8")
-    assert 'cron: "17,47 * * * *"' in workflow
+    assert 'cron: "17 * * * *"' in workflow
     assert "workflow_dispatch" in workflow
-    # Same derived graph as the OSINT hourly roll-up. One group serializes both
-    # publishers so a push race cannot interleave two official rebuilds.
-    assert "group: derived-graph-publish" in workflow
+    # The evidence wire has a capacity-bounded FIFO lane. Bursty level-triggered
+    # publishers coalesce separately and any cross-lane push race takes the full
+    # rebuild/retest path asserted below.
+    assert "group: newswire-derived-publish" in workflow
     assert "group: derived-graph-publish" in ddti_workflow
+    assert "queue: max" in workflow
+    assert "queue: max" not in ddti_workflow
     assert "cancel-in-progress: false" in workflow
     assert "cancel-in-progress: false" in ddti_workflow
+    assert "timeout-minutes: 90" in workflow
+    assert 'cron: "43 */3 * * *"' in ddti_workflow
     assert workflow.count("python -m scripts.newswire_pull") == 3
 
     build_graph = re.findall(

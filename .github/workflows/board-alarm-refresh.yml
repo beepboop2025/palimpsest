@@ -44,8 +44,9 @@ permissions:
 
 concurrency:
   # Source-dirty events are level-triggered: each run closes the latest main, not
-  # merely the SHA that requested it. GitHub may coalesce pending runs while this
-  # shared group serializes every full-graph publisher.
+  # merely the SHA that requested it. Default pending-run coalescing keeps a burst
+  # of publication_graph_dirty events bounded while this group serializes the
+  # non-wire graph publishers.
   group: derived-graph-publish
   cancel-in-progress: false
 
