@@ -17,11 +17,15 @@ from core.china_econ_export import (
     PRODUCER_RECEIPT_SCHEMA,
     PRODUCER_REPOSITORY,
     PRODUCER_WORKFLOW_FILE,
+    WDIHistoryNode,
     ChinaEconExportError,
     build_export as _core_build_export,
+    build_public_wdi_lineage_chain,
     load_source_policy,
+    parse_github_commit_evidence,
     validate_public_wdi_lineage_transition,
     validate_export_bundle,
+    validate_wdi_registry_evolution,
 )
 from core.collector_artifact import build_artifact
 from core.econ_ledger import append_vintages, load_snapshot
@@ -147,6 +151,76 @@ def _write_json(path: Path, value: object) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def _github_commit_bytes(
+    sha: str,
+    *,
+    author_login: str = "beepboop2025",
+    committer_login: str = "web-flow",
+    verified: bool = True,
+) -> bytes:
+    return json.dumps(
+        {
+            "sha": sha,
+            "url": (
+                "https://api.github.com/repos/beepboop2025/palimpsest/commits/"
+                f"{sha}"
+            ),
+            "author": {"login": author_login},
+            "committer": {"login": committer_login},
+            "parents": [{"sha": "8" * 40}, {"sha": "9" * 40}],
+            "commit": {
+                "verification": {
+                    "verified": verified,
+                    "reason": "valid" if verified else "unsigned",
+                    "verified_at": "2026-08-24T10:20:00Z" if verified else None,
+                }
+            },
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+def _make_genesis_receipt(
+    path: Path,
+    ledger: Path,
+    *,
+    series_registry: Path,
+) -> bytes:
+    receipt = json.loads(path.read_bytes())
+    receipt["ledger_before"] = {
+        "sha256": hashlib.sha256(b"").hexdigest(),
+        "bytes": 0,
+        "records": 0,
+    }
+    receipt["appended_observations"] = load_snapshot(ledger).records
+    _reseal_collector_artifact(receipt, series_registry=series_registry)
+    return _write_json(path, receipt).read_bytes()
+
+
+def _tree_entries(
+    registry: bytes,
+    ledger: bytes,
+    latest: bytes,
+) -> dict[str, dict[str, str]]:
+    payloads = {
+        "config/china_econ_wdi_series.json": registry,
+        "readings/china-econ-wdi-observations.jsonl": ledger,
+        "readings/china-econ-wdi-latest.json": latest,
+    }
+    return {
+        path: {
+            "mode": "100644",
+            "type": "blob",
+            "object_sha": hashlib.sha1(
+                f"blob {len(payload)}\0".encode("ascii") + payload,
+                usedforsecurity=False,
+            ).hexdigest(),
+        }
+        for path, payload in payloads.items()
+    }
 
 
 def _availability_path(ledger: Path) -> Path:
@@ -1510,6 +1584,253 @@ def test_public_lineage_rejects_first_parent_history_loss(
         )
 
 
+def test_github_commit_evidence_requires_a_verified_web_flow_merge():
+    sha = "1" * 40
+    parsed = parse_github_commit_evidence(
+        _github_commit_bytes(sha),
+        expected_sha=sha,
+    )
+
+    assert parsed == {
+        "sha": sha,
+        "request_url": (
+            "https://api.github.com/repos/beepboop2025/palimpsest/commits/"
+            f"{sha}?per_page=1"
+        ),
+        "api_url": (
+            "https://api.github.com/repos/beepboop2025/palimpsest/commits/"
+            f"{sha}"
+        ),
+        "author_login": "beepboop2025",
+        "committer_login": "web-flow",
+        "parent_shas": ["8" * 40, "9" * 40],
+        "verification": {
+            "verified": True,
+            "reason": "valid",
+            "verified_at": "2026-08-24T10:20:00Z",
+        },
+    }
+    with pytest.raises(ChinaEconExportError, match="verified reviewed merge"):
+        parse_github_commit_evidence(
+            _github_commit_bytes(sha, committer_login="github-actions[bot]"),
+            expected_sha=sha,
+        )
+
+
+def test_registry_evolution_allows_append_only_addition_and_refuses_remap_or_delete(
+    tmp_path: Path,
+):
+    document = json.loads(SERIES.read_bytes())
+    previous_path = _write_json(
+        tmp_path / "previous.json",
+        {**document, "series": document["series"][:1]},
+    )
+    current_path = _write_json(
+        tmp_path / "current.json",
+        {**document, "series": document["series"][:2]},
+    )
+
+    transition = validate_wdi_registry_evolution(
+        previous_path.read_bytes(),
+        current_path.read_bytes(),
+    )
+    assert transition["state"] == "append_only_addition"
+    assert transition["previous"]["series_records"] == 1
+    assert transition["current"]["series_records"] == 2
+    assert transition["added_source_indicators"] == [
+        document["series"][1]["indicator_id"]
+    ]
+
+    remapped = deepcopy(document)
+    remapped["series"] = deepcopy(document["series"][:2])
+    remapped["series"][0]["name"] = "Invented remap"
+    with pytest.raises(ChinaEconExportError, match="reorder or remap"):
+        validate_wdi_registry_evolution(
+            previous_path.read_bytes(),
+            _write_json(tmp_path / "remapped.json", remapped).read_bytes(),
+        )
+    with pytest.raises(ChinaEconExportError, match="cannot delete"):
+        validate_wdi_registry_evolution(
+            current_path.read_bytes(),
+            previous_path.read_bytes(),
+        )
+
+
+def test_governed_lineage_chain_allows_reviewed_indicator_expansion(tmp_path: Path):
+    document = json.loads(SERIES.read_bytes())
+    previous_registry = _write_json(
+        tmp_path / "previous-registry.json",
+        {**document, "series": document["series"][:1]},
+    )
+    current_registry = _write_json(
+        tmp_path / "current-registry.json",
+        {**document, "series": document["series"][:2]},
+    )
+    ledger = _ledger(tmp_path / "ledger.jsonl", _wdi_observation())
+    previous_latest_path = _availability_receipt(
+        ledger,
+        series_registry=previous_registry,
+        public=True,
+    )
+    previous_latest = _make_genesis_receipt(
+        previous_latest_path,
+        ledger,
+        series_registry=previous_registry,
+    )
+    current_latest = _availability_receipt(
+        ledger,
+        series_registry=current_registry,
+        public=True,
+    ).read_bytes()
+    first_sha = "1" * 40
+    second_sha = "2" * 40
+
+    chain = build_public_wdi_lineage_chain(
+        [
+            WDIHistoryNode(
+                commit_sha=first_sha,
+                previous_change_sha=None,
+                github_commit_bytes=_github_commit_bytes(first_sha),
+                tree_entries=_tree_entries(
+                    previous_registry.read_bytes(),
+                    ledger.read_bytes(),
+                    previous_latest,
+                ),
+                series_registry_bytes=previous_registry.read_bytes(),
+                ledger_bytes=ledger.read_bytes(),
+                availability_receipt_bytes=previous_latest,
+            ),
+            WDIHistoryNode(
+                commit_sha=second_sha,
+                previous_change_sha=first_sha,
+                github_commit_bytes=_github_commit_bytes(second_sha),
+                tree_entries=_tree_entries(
+                    current_registry.read_bytes(),
+                    ledger.read_bytes(),
+                    current_latest,
+                ),
+                series_registry_bytes=current_registry.read_bytes(),
+                ledger_bytes=ledger.read_bytes(),
+                availability_receipt_bytes=current_latest,
+            ),
+        ],
+        evaluated_at_commit_sha=second_sha,
+    )
+
+    rows = [json.loads(line) for line in chain.records_bytes.splitlines()]
+    evidence = [json.loads(line) for line in chain.evidence_bytes.splitlines()]
+    assert chain.receipt["root_commit_sha"] == first_sha
+    assert chain.receipt["tip_commit_sha"] == second_sha
+    assert chain.receipt["evaluated_at_commit_sha"] == second_sha
+    assert chain.receipt["records"] == 2
+    assert chain.receipt["sha256"] == hashlib.sha256(chain.records_bytes).hexdigest()
+    assert chain.receipt["evidence"]["sha256"] == hashlib.sha256(
+        chain.evidence_bytes
+    ).hexdigest()
+    assert rows[0]["ledger_transition"]["state"] == "initial_seed"
+    assert rows[1]["registry_transition"]["state"] == "append_only_addition"
+    assert rows[1]["ledger_transition"]["state"] == "unchanged"
+    assert evidence[1]["commit_sha"] == second_sha
+    assert evidence[1]["encoding"] == "base64"
+
+    symlink_entries = _tree_entries(
+        previous_registry.read_bytes(), ledger.read_bytes(), previous_latest
+    )
+    symlink_entries["readings/china-econ-wdi-latest.json"]["mode"] = "120000"
+    with pytest.raises(ChinaEconExportError, match="non-regular or mismatched Git blob"):
+        build_public_wdi_lineage_chain(
+            [
+                WDIHistoryNode(
+                    commit_sha=first_sha,
+                    previous_change_sha=None,
+                    github_commit_bytes=_github_commit_bytes(first_sha),
+                    tree_entries=symlink_entries,
+                    series_registry_bytes=previous_registry.read_bytes(),
+                    ledger_bytes=ledger.read_bytes(),
+                    availability_receipt_bytes=previous_latest,
+                )
+            ],
+            evaluated_at_commit_sha=first_sha,
+        )
+
+
+def test_governed_lineage_chain_rejects_unsigned_intermediate_rewrite_laundering(
+    tmp_path: Path,
+):
+    source_document = json.loads(SERIES.read_bytes())
+    registry = _write_json(
+        tmp_path / "registry.json",
+        {
+            **source_document,
+            "series": source_document["series"][:1],
+        },
+    )
+    ledger = _ledger(tmp_path / "ledger.jsonl", _wdi_observation())
+    latest_path = _availability_receipt(
+        ledger,
+        series_registry=registry,
+        public=True,
+    )
+    genesis_latest = _make_genesis_receipt(
+        latest_path,
+        ledger,
+        series_registry=registry,
+    )
+    unsigned_latest = _availability_receipt(
+        ledger,
+        series_registry=registry,
+        public=True,
+        extra_availability={(source_document["series"][0]["indicator_id"], 2023): False},
+    ).read_bytes()
+    genesis_sha = "3" * 40
+    unsigned_sha = "4" * 40
+    final_sha = "5" * 40
+
+    with pytest.raises(ChinaEconExportError, match="verified reviewed merge"):
+        build_public_wdi_lineage_chain(
+            [
+                WDIHistoryNode(
+                    commit_sha=genesis_sha,
+                    previous_change_sha=None,
+                    github_commit_bytes=_github_commit_bytes(genesis_sha),
+                    tree_entries=_tree_entries(
+                        registry.read_bytes(), ledger.read_bytes(), genesis_latest
+                    ),
+                    series_registry_bytes=registry.read_bytes(),
+                    ledger_bytes=ledger.read_bytes(),
+                    availability_receipt_bytes=genesis_latest,
+                ),
+                WDIHistoryNode(
+                    commit_sha=unsigned_sha,
+                    previous_change_sha=genesis_sha,
+                    github_commit_bytes=_github_commit_bytes(
+                        unsigned_sha,
+                        committer_login="github-actions[bot]",
+                        verified=False,
+                    ),
+                    tree_entries=_tree_entries(
+                        registry.read_bytes(), ledger.read_bytes(), unsigned_latest
+                    ),
+                    series_registry_bytes=registry.read_bytes(),
+                    ledger_bytes=ledger.read_bytes(),
+                    availability_receipt_bytes=unsigned_latest,
+                ),
+                WDIHistoryNode(
+                    commit_sha=final_sha,
+                    previous_change_sha=unsigned_sha,
+                    github_commit_bytes=_github_commit_bytes(final_sha),
+                    tree_entries=_tree_entries(
+                        registry.read_bytes(), ledger.read_bytes(), unsigned_latest
+                    ),
+                    series_registry_bytes=registry.read_bytes(),
+                    ledger_bytes=ledger.read_bytes(),
+                    availability_receipt_bytes=unsigned_latest,
+                ),
+            ],
+            evaluated_at_commit_sha=final_sha,
+        )
+
+
 def test_exact_main_workflow_builds_and_attests_non_pages_handoff():
     workflow = (ROOT / ".github" / "workflows" / "tests.yml").read_text(
         encoding="utf-8"
@@ -1535,17 +1856,21 @@ def test_exact_main_workflow_builds_and_attests_non_pages_handoff():
     assert "world-bank-wdi-response.json" in workflow
     assert "github-commit.json" in workflow
     assert "commits/$GITHUB_SHA?per_page=1" in workflow
-    assert 'author.get("login") != "beepboop2025"' in workflow
-    assert 'committer.get("login") != "web-flow"' in workflow
+    assert 'value.get("author", {}).get("login") != "beepboop2025"' in workflow
+    assert 'value.get("committer", {}).get("login") != "web-flow"' in workflow
     assert 'verification.get("verified") is not True' in workflow
     assert 'verification.get("reason") != "valid"' in workflow
     assert '"producer_commit_evidence": {' in workflow
-    assert "validate_public_wdi_lineage_transition" in workflow
-    assert '["git", "ls-tree", first_parent_sha, "--", path]' in workflow
-    assert '"state": state' in (ROOT / "core" / "china_econ_export.py").read_text(
-        encoding="utf-8"
-    )
-    assert '"transition": lineage_transition' in workflow
+    lineage_builder = (
+        ROOT / "scripts" / "build_china_econ_lineage.py"
+    ).read_text(encoding="utf-8")
+    assert "python -m scripts.build_china_econ_lineage" in workflow
+    assert '"git",\n        "log",\n        "--first-parent"' in lineage_builder
+    assert '"git", "ls-tree", "-z", commit_sha, "--", path' in lineage_builder
+    assert 'entry["mode"] != "100644"' in lineage_builder
+    assert "china-econ-wdi-lineage-chain.jsonl" in workflow
+    assert "github-commit-lineage-evidence.jsonl" in workflow
+    assert '"chain": lineage_receipt' in workflow
     assert '"cross_run_revision_authority": True' in workflow
     assert "china-econ-wdi-observations.jsonl" in workflow
     assert "china-econ-wdi-live-check.json" in workflow
@@ -1564,12 +1889,14 @@ def test_handoff_documentation_requires_external_attestation_and_hash_review():
     assert "gh attestation verify china-economic-review-v3/SHA256SUMS" in documentation
     assert '"repos/$repo/commits/$sha?per_page=1"' in documentation
     assert '"github-commit.json"' in documentation
-    assert 'value["author"]["login"] == "beepboop2025"' in documentation
-    assert 'value["committer"]["login"] == "web-flow"' in documentation
-    assert 'handoff["producer_commit_evidence"] == commit_evidence' in documentation
-    assert "neither path ever to have appeared" in documentation
-    assert "validate_public_wdi_lineage_transition" in documentation
-    assert 'handoff["revision_lineage"]["transition"]' in documentation
+    assert "parse_github_commit_evidence" in documentation
+    assert "git_tracked_reviewed_merge_chain" in documentation
+    assert "every first-parent commit" in documentation
+    assert "exact `100644 blob`" in documentation
+    assert "never self-" in documentation
+    assert "build_public_wdi_lineage_chain" in documentation
+    assert "rebuild_lineage_from_evidence" in documentation
+    assert 'handoff["revision_lineage"]["chain"]' in documentation
     assert "formerly numeric identity that is now null or absent" in documentation
     assert "--signer-workflow \"$repo/.github/workflows/tests.yml\"" in documentation
     assert "--source-digest \"$sha\"" in documentation
