@@ -145,14 +145,6 @@
       "title": "Believability read: degraded"
     },
     {
-      "id": "health-anchors",
-      "kind": "health",
-      "severity": "warning",
-      "source_id": "anchors",
-      "summary": "integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
-      "title": "Integrity anchors: degraded"
-    },
-    {
       "id": "health-nemesis",
       "kind": "health",
       "severity": "notice",
@@ -162,23 +154,23 @@
     }
   ],
   "generated_at": "2026-08-24T17:22:36Z",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 20 are live. Health qualifiers: 5 degraded, 14 stale.",
+  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 21 are live. Health qualifiers: 4 degraded, 14 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
-      "degraded": 5,
-      "live": 20,
+      "degraded": 4,
+      "live": 21,
       "missing": 0,
       "stale": 14
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 18,
+    "required_live": 19,
     "required_reporting": 31,
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "d51662893a2557ad60b1a7eff11e1fc35cdc2a25",
+  "input_commit": "25356d68a5b5779376bc940eabb0cbf2c89f62e8",
   "layers": [
     {
       "id": "command",
@@ -285,14 +277,14 @@
     },
     {
       "id": "integrity",
-      "n_degraded": 1,
-      "n_live": 0,
+      "n_degraded": 0,
+      "n_live": 1,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "anchors"
       ],
-      "status": "degraded",
+      "status": "healthy",
       "title": "Integrity and witnessing"
     },
     {
@@ -310,7 +302,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Source payloads that fit the public embed bound are retained in full; larger source files keep health, metrics and a compact prefix, with complete bytes at raw_url matching input.sha256. Freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 20,
+  "n_signals_live": 21,
   "n_signals_reporting": 39,
   "n_signals_total": 39,
   "schema_version": "osint-china.v1",
@@ -16057,49 +16049,53 @@
     },
     {
       "cadence_hours": 6,
-      "freshness_deadline": "2026-08-24T20:31:32Z",
+      "freshness_deadline": "2026-08-25T06:50:02Z",
       "health": {
-        "age_hours": 10.851,
+        "age_hours": 0.543,
         "collector_reason": null,
         "collector_status": null,
-        "ok": false,
+        "ok": true,
         "pipeline_checked_at": null,
-        "reason": "integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded",
+        "reason": "source timestamp is within its declared freshness deadline",
         "upstream_status": null
       },
       "id": "anchors",
       "input": {
-        "bytes": 532,
+        "bytes": 1175,
         "filename": "anchors-latest.json",
-        "sha256": "150b9b67a4d83c26937be96a8fcbc8e84d8ec5a1697ce0aab9b2a465cc143a22"
+        "sha256": "2a2488618ae17607fa93ac80057ca02bc205f86a48c6b272765be18c0c09143b"
       },
       "layer": "integrity",
-      "live": false,
+      "live": true,
       "method": "Merkle roots over committed ledgers with external timestamp witnesses",
       "method_version": null,
       "metric": null,
       "optional": false,
       "payload": {
         "erasure_root": "6a59f7002aa2ddbcdbd5f136f02e83763ef195bde5df370eda6f7881dfbfd4d6",
-        "ots": "readings/anchors/roots-20260824T063132Z.txt.ots",
+        "ots": "readings/anchors/roots-20260824T165002Z.txt.ots",
         "ots_reused": false,
         "ots_status": "stamped",
         "readings_chain": "verified",
         "readings_problems": [],
-        "readings_root": "d35b864d81c155e9bb5542f5015577123c3ba88db2e0f546e9b68db11fe88043",
+        "readings_root": "8cffdf5f15a2418ec72db73076bc2ab10677fe484a45a079f02b801da8dbeddf",
         "registry_root": "00660161aa177039ceb55c5f688ade2a3e920e8ab86e771babe52bbbe24852e7",
-        "ts": "2026-08-24T06:31:32.321772+00:00",
-        "wayback_ok": 0,
+        "ts": "2026-08-24T16:50:02.488084+00:00",
+        "wayback_ok": 3,
         "wayback_reused": 0,
-        "wayback_snapshots": []
+        "wayback_snapshots": [
+          "https://web.archive.org/web/20260824165116/https://palimpsest.info/readings/eval-registry.jsonl?palimpsest_sha256=de8e8e6638cb116f52b5234c69579aa624300a1163ef0ff44589ff60ec2cab18&palimpsest_capture_version=3",
+          "https://web.archive.org/web/20260824143909/https://palimpsest.info/readings/erasure-ledger.jsonl?palimpsest_sha256=44b5c304e4cdb88620768f4b6ee9d38c2d1a63c4b46c5bcbdcf89745c4145b57&palimpsest_capture_version=3",
+          "https://web.archive.org/web/20260824165250/https://palimpsest.info/readings/readings-ledger.jsonl?palimpsest_sha256=528075907bd41614b4a6e53bbbe8d95ee48aa1022edb34e20f99ca172a032f5b&palimpsest_capture_version=3"
+        ]
       },
       "payload_complete": true,
       "raw_url": "https://palimpsest.info/readings/anchors-latest.json",
       "scope": "Publishes ledger roots and external witness status for independent integrity checks.",
       "source": "Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
-      "source_timestamp": "2026-08-24T06:31:32Z",
-      "status": "degraded",
-      "summary": "Publishes ledger roots and external witness status for independent integrity checks. Semantic health limitation: integrity semantic checks failed: wayback_ok is zero; no Internet Archive witness succeeded.",
+      "source_timestamp": "2026-08-24T16:50:02Z",
+      "status": "live",
+      "summary": "Publishes ledger roots and external witness status for independent integrity checks.",
       "title": "Integrity anchors"
     },
     {
