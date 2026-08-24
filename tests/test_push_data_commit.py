@@ -1171,6 +1171,7 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     replay = workflow.index("Rebuild and prove the deterministic graph is unchanged")
     public_surface = workflow.index("Read the public surface")
     admission = workflow.index("  publication-admission:")
+    mcp_admission = workflow.index("  mcp-deployment-admission:")
     pages_artifact = workflow.index("  pages-artifact:")
     deploy_pages = workflow.index("  deploy-pages:")
 
@@ -1180,11 +1181,15 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
         < replay
         < public_surface
         < admission
+        < mcp_admission
         < pages_artifact
     )
     assert workflow.count("steps.identity.outputs.scope == 'complete'") == 3
-    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 2
-    assert workflow.count("github.event_name != 'pull_request'") == 2
+    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 3
+    assert (
+        workflow[mcp_admission:].count("github.event_name == 'repository_dispatch'")
+        == 3
+    )
     assert (
         "python -m scripts.build_data_catalog --check"
         in workflow[source_gate:complete_gate]
@@ -1221,7 +1226,7 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     assert "cancel-in-progress: false" in workflow[deploy_pages:]
     assert "Refuse a superseded Pages deployment" in workflow[deploy_pages:]
     assert (
-        workflow.count('test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"') == 2
+        workflow.count('test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"') == 3
     )
     assert "name: github-pages" in workflow[deploy_pages:]
 
@@ -1277,15 +1282,43 @@ def test_pages_packaging_waits_for_contract_and_exact_sha_pytest_admission() -> 
             completed.stderr,
         )
 
+    mcp_admission = jobs["mcp-deployment-admission"]
+    assert set(mcp_admission["needs"]) == {"contract", "publication-admission"}
+    assert "github.event_name == 'repository_dispatch'" in mcp_admission["if"]
+    assert mcp_admission["permissions"] == {"actions": "read", "contents": "read"}
+    mcp_gate = "\n".join(
+        step.get("run", "") for step in mcp_admission["steps"] if isinstance(step, dict)
+    )
+    for required in (
+        "actions/workflows/deploy-mcp.yml/runs",
+        '-f head_sha="$PUBLICATION_SHA"',
+        "select(.head_sha == $sha)",
+        'select(.status == "completed" and .conclusion == "success")',
+        'gh run download "$deploy_run_id"',
+        "verify_registry_release.py deployment",
+        "scripts/smoke_palimpsest_mcp.py",
+        'test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"',
+    ):
+        assert required in mcp_gate
+
     pages_artifact = jobs["pages-artifact"]
-    assert set(pages_artifact["needs"]) == {"contract", "publication-admission"}
+    assert set(pages_artifact["needs"]) == {
+        "contract",
+        "mcp-deployment-admission",
+        "publication-admission",
+    }
+    assert "needs.mcp-deployment-admission.result == 'success'" in pages_artifact["if"]
+    assert "github.event_name == 'repository_dispatch'" in pages_artifact["if"]
     assert "needs.publication-admission.result == 'success'" in pages_artifact["if"]
     deploy_pages = jobs["deploy-pages"]
     assert set(deploy_pages["needs"]) == {
         "contract",
+        "mcp-deployment-admission",
         "publication-admission",
         "pages-artifact",
     }
+    assert "needs.mcp-deployment-admission.result == 'success'" in deploy_pages["if"]
+    assert "github.event_name == 'repository_dispatch'" in deploy_pages["if"]
     assert "needs.publication-admission.result == 'success'" in deploy_pages["if"]
 
 

@@ -290,8 +290,8 @@ jobs:
             esac
           fi
 
-  pages-artifact:
-    name: Package exact complete Pages edition
+  mcp-deployment-admission:
+    name: Admit exact deployed MCP release before Pages
     needs:
       - contract
       - publication-admission
@@ -299,7 +299,90 @@ jobs:
       needs.contract.result == 'success' &&
       needs.publication-admission.result == 'success' &&
       needs.contract.outputs.scope == 'complete' &&
-      github.event_name != 'pull_request'
+      github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Prove the exact successful MCP deployment receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+        run: |
+          set -euo pipefail
+          test "$GITHUB_EVENT_NAME" = repository_dispatch
+          test "$(git rev-parse HEAD)" = "$PUBLICATION_SHA"
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse origin/main)" = "$PUBLICATION_SHA"
+
+          runs_json="$RUNNER_TEMP/mcp-deploy-runs.json"
+          gh api --method GET \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-mcp.yml/runs" \
+            -f event=workflow_dispatch \
+            -f status=success \
+            -f head_sha="$PUBLICATION_SHA" \
+            -F per_page=100 > "$runs_json"
+          deploy_run_id=$(jq -er --arg sha "$PUBLICATION_SHA" '
+            [.workflow_runs[]
+             | select(.head_sha == $sha)
+             | select(.head_branch == "main")
+             | select(.event == "workflow_dispatch")
+             | select(.status == "completed" and .conclusion == "success")
+             | select((.path | split("@")[0]) == ".github/workflows/deploy-mcp.yml")]
+            | sort_by(.id)
+            | last
+            | .id
+          ' "$runs_json")
+          run_json="$RUNNER_TEMP/mcp-deploy-run.json"
+          gh api \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$deploy_run_id" \
+            > "$run_json"
+          run_attempt=$(jq -er '
+            .run_attempt | select(type == "number" and . >= 1)
+          ' "$run_json")
+          receipt_dir="$RUNNER_TEMP/mcp-deployment-receipt"
+          install -d -m 0700 "$receipt_dir"
+          gh run download "$deploy_run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "palimpsest-mcp-deployment-${PUBLICATION_SHA}-run-${deploy_run_id}-attempt-${run_attempt}" \
+            --dir "$receipt_dir"
+          python3 ops/mcp-deploy/verify_registry_release.py deployment \
+            --receipt "$receipt_dir/deployment-receipt.json" \
+            --run-json "$run_json" \
+            --manifest server.json \
+            --target-sha "$PUBLICATION_SHA" \
+            --deploy-run-id "$deploy_run_id" \
+            --repository "$GITHUB_REPOSITORY"
+
+      - name: Re-probe the deployed public MCP release
+        run: |
+          set -euo pipefail
+          python3 scripts/smoke_palimpsest_mcp.py \
+            --url https://api.seiche.info/palimpsest/mcp \
+            --module mcp/palimpsest_mcp.py \
+            --manifest server.json \
+            --timeout 20
+
+  pages-artifact:
+    name: Package exact complete Pages edition
+    needs:
+      - contract
+      - mcp-deployment-admission
+      - publication-admission
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.mcp-deployment-admission.result == 'success' &&
+      needs.publication-admission.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -413,13 +496,15 @@ jobs:
     name: Deploy exact complete Pages edition
     needs:
       - contract
+      - mcp-deployment-admission
       - publication-admission
       - pages-artifact
     if: >-
       needs.contract.result == 'success' &&
+      needs.mcp-deployment-admission.result == 'success' &&
       needs.publication-admission.result == 'success' &&
       needs.contract.outputs.scope == 'complete' &&
-      github.event_name != 'pull_request'
+      github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     concurrency:
       group: pages-production

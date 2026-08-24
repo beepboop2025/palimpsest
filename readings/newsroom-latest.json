@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 27 are live. Health qualifiers: 4 degraded, 8 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 25 are live. Health qualifiers: 4 degraded, 10 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-24T09:29:31Z",
+  "generated_at": "2026-08-24T10:34:36Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "9d2ee02b767c7783710e923e6d9487494c14fdac",
+  "source_commit": "d42a2b4e0e94e078a54c97062214073d27d92eaf",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 27,
+    "live": 25,
     "status": "degraded",
     "counts": {
-      "live": 27,
+      "live": 25,
       "degraded": 4,
-      "stale": 8,
+      "stale": 10,
       "missing": 0,
       "corrupt": 0
     }
@@ -79,20 +79,20 @@
       "slug": "board-alarm",
       "url": "https://palimpsest.info/news/board-alarm/",
       "signal_id": "board-alarm",
-      "headline": "Multiple layers elevated together in the latest board synthesis",
-      "dek": "The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
+      "headline": "Board alarm: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "command",
       "order": 1,
       "type": "analysis",
       "priority": "lead",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T06:38:00Z",
       "modified_at": "2026-08-24T06:38:00Z",
-      "claim_fingerprint": "sha256:0ebd798adbc0ef75fdedfeda172ff5e03216402e3912e9bd6420bb92299d15d3",
+      "claim_fingerprint": "sha256:c0788ccc78f46090c692b48e8a79ab4fe10aa4b662dd8568d548e79d718f59bb",
       "metric": {
-        "label": "board e-value",
-        "value": 8.79,
-        "unit": "e-value",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -100,8 +100,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 27 are live. Health qualifiers: 4 degraded, 8 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
+          "type": "availability",
+          "statement": "No current finding is published for Board alarm because the source status is stale."
         }
       ],
       "evidence": {
@@ -118,6 +118,7 @@
         "version": null
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement."
       ],
       "related_signal_ids": [
@@ -183,20 +184,20 @@
       "slug": "coverage-guard",
       "url": "https://palimpsest.info/news/coverage-guard/",
       "signal_id": "coverage-guard",
-      "headline": "Coverage changes confound 0 current signal",
-      "dek": "The guard withholds a censorship interpretation when movement can be explained by a changing measurement base.",
+      "headline": "Coverage guard: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "command",
       "order": 3,
       "type": "methodology",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T06:38:00Z",
       "modified_at": "2026-08-24T06:38:00Z",
-      "claim_fingerprint": "sha256:00ce2857f7b3d161951c22846e1b4ef3ffb18ed26b896aad05369cf445534aa3",
+      "claim_fingerprint": "sha256:39f118511a298751747f3024d160ea3930dc576f09ebe7c889af9111025dec45",
       "metric": {
-        "label": "confounded signals",
-        "value": 0,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -204,8 +205,8 @@
       },
       "claims": [
         {
-          "type": "method",
-          "statement": "The current coverage audit marks 0 signal as confounded by its measurement coverage."
+          "type": "availability",
+          "statement": "No current finding is published for Coverage guard because the source status is stale."
         }
       ],
       "evidence": {
@@ -222,6 +223,7 @@
         "version": null
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "A coverage-confounded signal is inconclusive about substantive change, not evidence that no change occurred."
       ],
       "related_signal_ids": [
@@ -235,29 +237,29 @@
       "slug": "forecast-ledger",
       "url": "https://palimpsest.info/news/forecast-ledger/",
       "signal_id": "forecast-ledger",
-      "headline": "Forecast bands covered 84.4% of 1,606 scored readings",
-      "dek": "Prequential scoring shows whether the observatory's uncertainty bands remain calibrated over time.",
+      "headline": "Forecast ledger: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "command",
       "order": 4,
       "type": "methodology",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T06:38:00Z",
       "modified_at": "2026-08-24T06:38:00Z",
-      "claim_fingerprint": "sha256:d5d1947e597c598efee43ff304845c9f3e7c41dd2436ce8b654e31a3f1d4bb7d",
+      "claim_fingerprint": "sha256:3d05e6e1c36889daba17b7a08dc79976ddf8e0070f67af47905005a0edaf6d14",
       "metric": {
-        "label": "empirical coverage",
-        "value": 0.844,
-        "unit": "ratio",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "forecasts",
-          "value": 1606
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "method",
-          "statement": "Empirical forecast coverage is 84.4% across 1,606 scored forecasts."
+          "type": "availability",
+          "statement": "No current finding is published for Forecast ledger because the source status is stale."
         }
       ],
       "evidence": {
@@ -274,6 +276,7 @@
         "version": null
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Calibration describes aggregate historical coverage and does not guarantee that any one next reading falls inside its band."
       ],
       "related_signal_ids": [
@@ -286,29 +289,29 @@
       "slug": "cross-layer-lead-lag",
       "url": "https://palimpsest.info/news/cross-layer-lead-lag/",
       "signal_id": "cross-layer",
-      "headline": "0 cross-layer relationships are confirmed across 9 eligible tests",
-      "dek": "Pairs enter testing only after enough overlapping history exists; an empty test set is a warm-up state, not a null result.",
+      "headline": "Cross-layer lead and lag: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "command",
       "order": 5,
       "type": "methodology",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T06:38:00Z",
       "modified_at": "2026-08-24T06:38:00Z",
-      "claim_fingerprint": "sha256:0f13b88ae8d9b076d69bf7a966d1b5bb3e51b6b80b8928661aba7a7996d0f4fc",
+      "claim_fingerprint": "sha256:0162a90bf58d9bdceca4a092ea7f87557c6256a92e07c12c2b7faa8a9e2f3cd1",
       "metric": {
-        "label": "confirmed pairs",
-        "value": 0,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "pairs tested",
-          "value": 9
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "method",
-          "statement": "0 cross-layer pairs are confirmed among 9 pairs with enough shared history to test."
+          "type": "availability",
+          "statement": "No current finding is published for Cross-layer lead and lag because the source status is stale."
         }
       ],
       "evidence": {
@@ -325,6 +328,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Lead-lag association can establish temporal co-movement but cannot establish that one layer caused another."
       ],
       "related_signal_ids": [
@@ -658,8 +662,8 @@
       "type": "measurement",
       "priority": "standard",
       "status": "stale",
-      "published_at": "2026-08-23T01:08:00Z",
-      "modified_at": "2026-08-23T01:08:00Z",
+      "published_at": "2026-08-23T23:08:00Z",
+      "modified_at": "2026-08-23T23:08:00Z",
       "claim_fingerprint": "sha256:670f74d33c22e664b9cd74d929b665cb479d28b318998ead2d8cb1ecc78c1429",
       "metric": {
         "label": null,
@@ -680,10 +684,10 @@
         "url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
         "input": {
           "filename": "public-deletion-ledgers-latest.json",
-          "sha256": "92c2aaa009d90f00fde4d2133a1bd67353f80d8c77db336dbb4d06d392e713e0",
+          "sha256": "90f2c637c54919d7bd9bc3d62ed4ad701570c1bb1eac4b0d70355795d1bf08a8",
           "bytes": 65782
         },
-        "source_timestamp": "2026-08-23T01:08:00Z"
+        "source_timestamp": "2026-08-23T23:08:00Z"
       },
       "method": {
         "summary": "Keyless RSS/Atom ingest through collectors.feed_parse.parse_feed_items and core.safe_fetch; each feed is a candidate and reports its own reachability.",
@@ -807,20 +811,20 @@
       "slug": "attributed-peer-context",
       "url": "https://palimpsest.info/news/attributed-peer-context/",
       "signal_id": "peer-context",
-      "headline": "Attributed peer-context warehouse: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "Peer-context joins 22 already-held Palimpsest hosts",
+      "dek": "GreatFire, OONI, bounded CDT excerpts, and a Weiboscope abstention stay named as peer context. They never become Palimpsest capture.",
       "section": "attention",
       "order": 10,
       "type": "analysis",
       "priority": "background",
-      "status": "stale",
-      "published_at": "2026-08-23T00:48:00Z",
-      "modified_at": "2026-08-23T00:48:00Z",
-      "claim_fingerprint": "sha256:390f4ecae19ce16f52553a3c134b1eaf29cbca0171069ce17b474fdb7d160f4b",
+      "status": "live",
+      "published_at": "2026-08-24T06:48:00Z",
+      "modified_at": "2026-08-24T06:48:00Z",
+      "claim_fingerprint": "sha256:4ad2189f6a73c2e91d5a4aa849cacc012e14b13b6511a2c5938d16753ac23c8a",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "hosts joined",
+        "value": 22,
+        "unit": "count",
         "denominator": {
           "label": null,
           "value": null
@@ -828,25 +832,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Attributed peer-context warehouse because the source status is stale."
+          "type": "observation",
+          "statement": "The current peer-context warehouse joins 22 already-held hosts."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/peer-context-latest.json",
         "input": {
           "filename": "peer-context-latest.json",
-          "sha256": "8445abb881d51d8389438f2f846852a9bf2064c54ad03eefede03bad7aaea15b",
-          "bytes": 78007
+          "sha256": "dc6853ccb7317dbcea98de4f536f043af344958fd06504326379d22c31f82d25",
+          "bytes": 80880
         },
-        "source_timestamp": "2026-08-23T00:48:00Z"
+        "source_timestamp": "2026-08-24T06:48:00Z"
       },
       "method": {
         "summary": "GreatFire lookups are cached by the greatfire-context job. OONI is an exact host join against already-held ooni-gfw-latest / ooni-bulk warehouse objects. CDT keeps titles, links, and excerpts bounded at 280 characters. Weiboscope is a documented abstention.",
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "Peer rows name GreatFire, OONI, CDT, or Weiboscope and the date of that peer's verdict. They do not share Palimpsest's denominator."
       ],
       "related_signal_ids": [
@@ -1278,46 +1281,45 @@
       "slug": "greatfire-attributed-verdicts",
       "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
       "signal_id": "greatfire-context",
-      "headline": "GreatFire attributed verdicts: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "GreatFire's cache holds 22 90-day verdicts for already-held Palimpsest URLs",
+      "dek": "The GreatFire Analyzer open API is credited by name and date. Palimpsest is not the origin of these measurements and does not crawl the catalog.",
       "section": "network",
       "order": 9,
       "type": "measurement",
       "priority": "background",
-      "status": "stale",
-      "published_at": "2026-08-23T00:33:01Z",
-      "modified_at": "2026-08-23T00:33:01Z",
-      "claim_fingerprint": "sha256:b3454f495a8be309e4212ca1f602e4a34b54992e80667f291c519ce5a3576a88",
+      "status": "live",
+      "published_at": "2026-08-24T06:33:11Z",
+      "modified_at": "2026-08-24T06:33:11Z",
+      "claim_fingerprint": "sha256:9f4d966f0ea9513d567dd2554e6c82b60cd55d4659c039132bff9b582fdf349e",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "GreatFire verdicts",
+        "value": 22,
+        "unit": "count",
         "denominator": {
-          "label": null,
-          "value": null
+          "label": "URLs queried",
+          "value": 55
         }
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for GreatFire attributed verdicts because the source status is stale."
+          "type": "observation",
+          "statement": "The current GreatFire context cache contains 22 compact 90-day verdicts."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/greatfire-context-latest.json",
         "input": {
           "filename": "greatfire-context-latest.json",
-          "sha256": "26f91ef40abe2f3b8ff99573eeb8ab83476daa378120e08101d507632e5237e0",
-          "bytes": 59404
+          "sha256": "4d5715dd5101d63103cee737aead33677ea8f1d09b1d4ba13ae3da7b02b6836d",
+          "bytes": 62277
         },
-        "source_timestamp": "2026-08-23T00:33:01Z"
+        "source_timestamp": "2026-08-24T06:33:11Z"
       },
       "method": {
         "summary": "Keyless /api/url/ and /api/verdict lookups for already-held Palimpsest URLs. Per-test history discarded. Not a 700k catalog crawl.",
         "version": 1
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive."
       ],
       "related_signal_ids": [

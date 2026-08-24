@@ -1,15 +1,16 @@
 {
   "schema_version": "palimpsest-reading-analysis/v1",
   "job": "reading-analysis",
-  "generated_at": "2026-08-24T02:24:10Z",
+  "generated_at": "2026-08-24T10:34:36Z",
   "source": "Committed public instrument histories, live newswire and newsroom stories, and archive-news-context when present",
   "method": "per-instrument robust MAD (prequential-robust-mad/v1) or the instrument's existing board/believability gate against that instrument's own history; story rows are review rank only; no generative model, causal attribution, or cross-instrument censorship rate",
   "scope": "Per-instrument unusualness vs that instrument's own history, plus review rank for news rows. No causal attribution. No cross-instrument censorship rate. Common Crawl host scores stay null until six crawls.",
   "n_instruments_considered": 39,
   "n_instruments_scored": 26,
-  "n_instruments_warming_up": 11,
+  "n_instruments_warming_up": 9,
   "n_instruments_missing": 2,
-  "n_instruments_abstained": 0,
+  "n_instruments_abstained": 2,
+  "n_instruments_quarantined": 2,
   "n_story_ranks": 554,
   "story_ranks_label_source": "human-editorial-review-required",
   "live_inventory": {
@@ -84,7 +85,8 @@
       "n_instruments": 39,
       "by_state": {
         "scored": 26,
-        "warming_up": 11,
+        "warming_up": 9,
+        "abstain": 2,
         "missing": 2
       },
       "instruments": [
@@ -129,16 +131,16 @@
           "instrument_id": "ddti",
           "field": "top_threat",
           "trainer": "conformal_events+robust-mad",
-          "n": 351,
-          "n_extracted": 351,
-          "n_prior": 311,
+          "n": 352,
+          "n_extracted": 352,
+          "n_prior": 312,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 323,
           "holdout": {
             "split": "time",
-            "n_extracted": 351,
-            "n_prior": 311,
+            "n_extracted": 352,
+            "n_prior": 312,
             "n_holdout": 40,
             "n_holdout_scored": 40,
             "n_holdout_unusual": 0,
@@ -151,10 +153,10 @@
               "instrument_id": "ddti",
               "field": "top_threat",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 351,
-              "n_history": 350,
-              "current_value": 1.954,
-              "unusualness": 0.469712
+              "n_file_lines": 352,
+              "n_history": 351,
+              "current_value": 1.8956,
+              "unusualness": 0.404761
             }
           ],
           "rights": {
@@ -166,21 +168,21 @@
           "instrument_id": "weibo-hotsearch",
           "field": "suppressed_invisible",
           "trainer": "conformal_events+robust-mad",
-          "n": 145,
-          "n_extracted": 145,
-          "n_prior": 116,
+          "n": 149,
+          "n_extracted": 149,
+          "n_prior": 120,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 300,
           "holdout": {
             "split": "time",
-            "n_extracted": 145,
-            "n_prior": 116,
+            "n_extracted": 149,
+            "n_prior": 120,
             "n_holdout": 29,
             "n_holdout_scored": 29,
-            "n_holdout_unusual": 4,
+            "n_holdout_unusual": 8,
             "holdout_unusualness_median": 0.0,
-            "holdout_flag_rate": 0.1379,
+            "holdout_flag_rate": 0.2759,
             "threshold": 4.5
           },
           "feature_citations": [
@@ -188,8 +190,8 @@
               "instrument_id": "weibo-hotsearch",
               "field": "suppressed_invisible",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 145,
-              "n_history": 144,
+              "n_file_lines": 149,
+              "n_history": 148,
               "current_value": 1.0,
               "unusualness": 20.0
             }
@@ -203,16 +205,16 @@
           "instrument_id": "censored-planet",
           "field": "cn_interference_rate_pct",
           "trainer": "conformal_events+robust-mad",
-          "n": 30,
-          "n_extracted": 30,
-          "n_prior": 24,
+          "n": 31,
+          "n_extracted": 31,
+          "n_prior": 25,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 28,
           "holdout": {
             "split": "time",
-            "n_extracted": 30,
-            "n_prior": 24,
+            "n_extracted": 31,
+            "n_prior": 25,
             "n_holdout": 6,
             "n_holdout_scored": 6,
             "n_holdout_unusual": 0,
@@ -225,9 +227,9 @@
               "instrument_id": "censored-planet",
               "field": "cn_interference_rate_pct",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 30,
-              "n_history": 29,
-              "current_value": 4.34,
+              "n_file_lines": 31,
+              "n_history": 30,
+              "current_value": 4.27,
               "unusualness": 0.0
             }
           ],
@@ -462,7 +464,7 @@
           "instrument_id": "silence-index",
           "field": "n_blackout",
           "trainer": "conformal_events+robust-mad",
-          "n": 94,
+          "n": 98,
           "n_extracted": 0,
           "n_prior": 0,
           "minimum_prior": 8,
@@ -484,7 +486,7 @@
               "instrument_id": "silence-index",
               "field": "n_blackout",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 94,
+              "n_file_lines": 98,
               "n_history": 0,
               "current_value": null,
               "unusualness": null
@@ -499,7 +501,7 @@
           "instrument_id": "refusal-drift",
           "field": "panel_suppression_rate",
           "trainer": "conformal_events+robust-mad",
-          "n": 120,
+          "n": 121,
           "n_extracted": 81,
           "n_prior": 65,
           "minimum_prior": 8,
@@ -521,7 +523,7 @@
               "instrument_id": "refusal-drift",
               "field": "panel_suppression_rate",
               "trainer": "conformal_events+robust-mad",
-              "n_file_lines": 120,
+              "n_file_lines": 121,
               "n_history": 80,
               "current_value": 6.25,
               "unusualness": 20.0
@@ -536,20 +538,20 @@
           "instrument_id": "board-alarm",
           "field": "board_e_value",
           "trainer": "board_alarm+robust-mad",
-          "n": 30,
-          "n_extracted": 30,
-          "n_prior": 24,
+          "n": 31,
+          "n_extracted": 31,
+          "n_prior": 25,
           "minimum_prior": 8,
           "state": "scored",
           "live_inventory_n": 17,
           "holdout": {
             "split": "time",
-            "n_extracted": 30,
-            "n_prior": 24,
+            "n_extracted": 31,
+            "n_prior": 25,
             "n_holdout": 6,
             "n_holdout_scored": 6,
             "n_holdout_unusual": 3,
-            "holdout_unusualness_median": 4.267008,
+            "holdout_unusualness_median": 3.735018,
             "holdout_flag_rate": 0.5,
             "threshold": 4.5
           },
@@ -558,10 +560,10 @@
               "instrument_id": "board-alarm",
               "field": "board_e_value",
               "trainer": "board_alarm+robust-mad",
-              "n_file_lines": 30,
-              "n_history": 29,
-              "current_value": 20.444,
-              "unusualness": 0.28643
+              "n_file_lines": 31,
+              "n_history": 30,
+              "current_value": 8.79,
+              "unusualness": 0.0
             }
           ],
           "rights": {
@@ -647,16 +649,16 @@
           "instrument_id": "baike-public-snapshot",
           "field": "n_ok",
           "trainer": "prequential-robust-mad/v1",
-          "n": 3,
-          "n_extracted": 3,
-          "n_prior": 2,
+          "n": 4,
+          "n_extracted": 0,
+          "n_prior": 0,
           "minimum_prior": 6,
-          "state": "warming_up",
+          "state": "abstain",
           "live_inventory_n": null,
           "holdout": {
-            "split": "warming_up",
-            "n_extracted": 3,
-            "n_prior": 2,
+            "split": "quarantined",
+            "n_extracted": 0,
+            "n_prior": 0,
             "n_holdout": 0,
             "n_holdout_scored": 0,
             "n_holdout_unusual": 0,
@@ -669,16 +671,19 @@
               "instrument_id": "baike-public-snapshot",
               "field": "n_ok",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 3,
-              "n_history": 2,
-              "current_value": 0.0,
+              "n_file_lines": 4,
+              "n_history": 0,
+              "current_value": null,
               "unusualness": null
             }
           ],
           "rights": {
-            "training_use": "derived_only"
+            "training_use": "prohibited",
+            "retention": "audit_only"
           },
-          "reason": "series too short: 2 prior points (6 required)"
+          "reason": "history mixes GitHub-hosted and fixed Hetzner collection vantages; the retained values are not exchangeable",
+          "quarantined": true,
+          "scoring_eligible": false
         },
         {
           "instrument_id": "vantage-fusion",
@@ -758,21 +763,21 @@
           "instrument_id": "erasure-observatory",
           "field": "erasure_index",
           "trainer": "prequential-robust-mad/v1",
-          "n": 160,
-          "n_extracted": 160,
-          "n_prior": 128,
+          "n": 162,
+          "n_extracted": 162,
+          "n_prior": 130,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 122,
           "holdout": {
             "split": "time",
-            "n_extracted": 160,
-            "n_prior": 128,
+            "n_extracted": 162,
+            "n_prior": 130,
             "n_holdout": 32,
             "n_holdout_scored": 32,
-            "n_holdout_unusual": 24,
-            "holdout_unusualness_median": 5.14,
-            "holdout_flag_rate": 0.75,
+            "n_holdout_unusual": 22,
+            "holdout_unusualness_median": 5.11,
+            "holdout_flag_rate": 0.6875,
             "threshold": 4.5
           },
           "feature_citations": [
@@ -780,10 +785,10 @@
               "instrument_id": "erasure-observatory",
               "field": "erasure_index",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 160,
-              "n_history": 159,
-              "current_value": 41.7,
-              "unusualness": 0.16
+              "n_file_lines": 162,
+              "n_history": 161,
+              "current_value": 41.6,
+              "unusualness": 0.13
             }
           ],
           "rights": {
@@ -906,18 +911,18 @@
           "instrument_id": "forecast-ledger",
           "field": "pooled_empirical_coverage",
           "trainer": "prequential-robust-mad/v1",
-          "n": 119,
-          "n_extracted": 119,
-          "n_prior": 96,
+          "n": 124,
+          "n_extracted": 124,
+          "n_prior": 100,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 63,
           "holdout": {
             "split": "time",
-            "n_extracted": 119,
-            "n_prior": 96,
-            "n_holdout": 23,
-            "n_holdout_scored": 23,
+            "n_extracted": 124,
+            "n_prior": 100,
+            "n_holdout": 24,
+            "n_holdout_scored": 24,
             "n_holdout_unusual": 0,
             "holdout_unusualness_median": 0.67,
             "holdout_flag_rate": 0.0,
@@ -928,10 +933,10 @@
               "instrument_id": "forecast-ledger",
               "field": "pooled_empirical_coverage",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 119,
-              "n_history": 118,
-              "current_value": 0.845,
-              "unusualness": 0.9
+              "n_file_lines": 124,
+              "n_history": 123,
+              "current_value": 0.844,
+              "unusualness": 0.45
             }
           ],
           "rights": {
@@ -943,20 +948,20 @@
           "instrument_id": "erasure-trail",
           "field": "n_rows",
           "trainer": "prequential-robust-mad/v1",
-          "n": 32,
-          "n_extracted": 32,
-          "n_prior": 26,
+          "n": 37,
+          "n_extracted": 37,
+          "n_prior": 30,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": null,
           "holdout": {
             "split": "time",
-            "n_extracted": 32,
-            "n_prior": 26,
-            "n_holdout": 6,
-            "n_holdout_scored": 6,
+            "n_extracted": 37,
+            "n_prior": 30,
+            "n_holdout": 7,
+            "n_holdout_scored": 7,
             "n_holdout_unusual": 0,
-            "holdout_unusualness_median": 2.31254,
+            "holdout_unusualness_median": 1.433293,
             "holdout_flag_rate": 0.0,
             "threshold": 4.5
           },
@@ -965,10 +970,10 @@
               "instrument_id": "erasure-trail",
               "field": "n_rows",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 32,
-              "n_history": 31,
-              "current_value": 73.0,
-              "unusualness": 0.899321
+              "n_file_lines": 37,
+              "n_history": 36,
+              "current_value": 78.0,
+              "unusualness": 0.955529
             }
           ],
           "rights": {
@@ -980,16 +985,16 @@
           "instrument_id": "cross-layer",
           "field": "n_pairs_tested",
           "trainer": "prequential-robust-mad/v1",
-          "n": 4,
-          "n_extracted": 4,
-          "n_prior": 3,
+          "n": 5,
+          "n_extracted": 5,
+          "n_prior": 4,
           "minimum_prior": 6,
           "state": "warming_up",
           "live_inventory_n": 1,
           "holdout": {
             "split": "warming_up",
-            "n_extracted": 4,
-            "n_prior": 3,
+            "n_extracted": 5,
+            "n_prior": 4,
             "n_holdout": 0,
             "n_holdout_scored": 0,
             "n_holdout_unusual": 0,
@@ -1002,16 +1007,16 @@
               "instrument_id": "cross-layer",
               "field": "n_pairs_tested",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 4,
-              "n_history": 3,
-              "current_value": 8.0,
+              "n_file_lines": 5,
+              "n_history": 4,
+              "current_value": 9.0,
               "unusualness": null
             }
           ],
           "rights": {
             "training_use": "derived_only"
           },
-          "reason": "series too short: 3 prior points (6 required)"
+          "reason": "series too short: 4 prior points (6 required)"
         },
         {
           "instrument_id": "cny-fix-gap",
@@ -1091,16 +1096,16 @@
           "instrument_id": "blocklist",
           "field": "n_additions",
           "trainer": "prequential-robust-mad/v1",
-          "n": 4,
-          "n_extracted": 4,
-          "n_prior": 3,
+          "n": 5,
+          "n_extracted": 5,
+          "n_prior": 4,
           "minimum_prior": 6,
           "state": "warming_up",
           "live_inventory_n": 5,
           "holdout": {
             "split": "warming_up",
-            "n_extracted": 4,
-            "n_prior": 3,
+            "n_extracted": 5,
+            "n_prior": 4,
             "n_holdout": 0,
             "n_holdout_scored": 0,
             "n_holdout_unusual": 0,
@@ -1113,8 +1118,8 @@
               "instrument_id": "blocklist",
               "field": "n_additions",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 4,
-              "n_history": 3,
+              "n_file_lines": 5,
+              "n_history": 4,
               "current_value": 503.0,
               "unusualness": null
             }
@@ -1122,22 +1127,22 @@
           "rights": {
             "training_use": "derived_only"
           },
-          "reason": "series too short: 3 prior points (6 required)"
+          "reason": "series too short: 4 prior points (6 required)"
         },
         {
           "instrument_id": "baike-redaction",
           "field": "n_forked",
           "trainer": "prequential-robust-mad/v1",
           "n": 5,
-          "n_extracted": 4,
-          "n_prior": 3,
+          "n_extracted": 0,
+          "n_prior": 0,
           "minimum_prior": 6,
-          "state": "warming_up",
+          "state": "abstain",
           "live_inventory_n": 5,
           "holdout": {
-            "split": "warming_up",
-            "n_extracted": 4,
-            "n_prior": 3,
+            "split": "quarantined",
+            "n_extracted": 0,
+            "n_prior": 0,
             "n_holdout": 0,
             "n_holdout_scored": 0,
             "n_holdout_unusual": 0,
@@ -1151,15 +1156,18 @@
               "field": "n_forked",
               "trainer": "prequential-robust-mad/v1",
               "n_file_lines": 5,
-              "n_history": 3,
-              "current_value": 0.0,
+              "n_history": 0,
+              "current_value": null,
               "unusualness": null
             }
           ],
           "rights": {
-            "training_use": "derived_only"
+            "training_use": "prohibited",
+            "retention": "audit_only"
           },
-          "reason": "series too short: 3 prior points (6 required)"
+          "reason": "legacy rows include a method-invalid observation and runner-generated status records; retained for audit only",
+          "quarantined": true,
+          "scoring_eligible": false
         },
         {
           "instrument_id": "peer-context-rank",
@@ -1202,16 +1210,16 @@
           "instrument_id": "apple-censorship",
           "field": "unavailable_pct",
           "trainer": "prequential-robust-mad/v1",
-          "n": 26,
-          "n_extracted": 26,
-          "n_prior": 21,
+          "n": 27,
+          "n_extracted": 27,
+          "n_prior": 22,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": 23,
           "holdout": {
             "split": "time",
-            "n_extracted": 26,
-            "n_prior": 21,
+            "n_extracted": 27,
+            "n_prior": 22,
             "n_holdout": 5,
             "n_holdout_scored": 5,
             "n_holdout_unusual": 0,
@@ -1224,8 +1232,8 @@
               "instrument_id": "apple-censorship",
               "field": "unavailable_pct",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 26,
-              "n_history": 25,
+              "n_file_lines": 27,
+              "n_history": 26,
               "current_value": 28.13,
               "unusualness": 0.0
             }
@@ -1313,19 +1321,19 @@
           "instrument_id": "undertext",
           "field": "n_observations",
           "trainer": "prequential-robust-mad/v1",
-          "n": 19,
-          "n_extracted": 19,
-          "n_prior": 16,
+          "n": 24,
+          "n_extracted": 24,
+          "n_prior": 20,
           "minimum_prior": 6,
           "state": "scored",
           "live_inventory_n": null,
           "holdout": {
             "split": "time",
-            "n_extracted": 19,
-            "n_prior": 16,
-            "n_holdout": 3,
-            "n_holdout_scored": 3,
-            "n_holdout_unusual": 3,
+            "n_extracted": 24,
+            "n_prior": 20,
+            "n_holdout": 4,
+            "n_holdout_scored": 4,
+            "n_holdout_unusual": 4,
             "holdout_unusualness_median": 20.0,
             "holdout_flag_rate": 1.0,
             "threshold": 4.5
@@ -1335,9 +1343,9 @@
               "instrument_id": "undertext",
               "field": "n_observations",
               "trainer": "prequential-robust-mad/v1",
-              "n_file_lines": 19,
-              "n_history": 18,
-              "current_value": 6655.0,
+              "n_file_lines": 24,
+              "n_history": 23,
+              "current_value": 7310.0,
               "unusualness": 20.0
             }
           ],
@@ -1644,35 +1652,35 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 351,
+      "n_file_lines": 352,
       "state": "scored",
-      "n_history": 350,
-      "current_value": 1.954,
-      "unusualness": 0.469712,
+      "n_history": 351,
+      "current_value": 1.8956,
+      "unusualness": 0.404761,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 3.5,
+        "score": 3.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "board_state": "calm",
-      "board_stat": 14.0079,
-      "public_copy": "this instrument is within its own 350 prior points",
+      "board_stat": 23.8648,
+      "public_copy": "this instrument is within its own 351 prior points",
       "feature_citations": [
         {
           "instrument_id": "ddti",
           "field": "top_threat",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 351,
-          "n_history": 350,
-          "current_value": 1.954,
-          "unusualness": 0.469712
+          "n_file_lines": 352,
+          "n_history": 351,
+          "current_value": 1.8956,
+          "unusualness": 0.404761
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 351,
-        "n_prior": 311,
+        "n_extracted": 352,
+        "n_prior": 312,
         "n_holdout": 40,
         "n_holdout_scored": 40,
         "n_holdout_unusual": 0,
@@ -1693,9 +1701,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 145,
+      "n_file_lines": 149,
       "state": "scored",
-      "n_history": 144,
+      "n_history": 148,
       "current_value": 1.0,
       "unusualness": 20.0,
       "unusual": true,
@@ -1704,29 +1712,29 @@
         "score": 100.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "board_state": "watch",
-      "board_stat": 423.8329,
-      "public_copy": "this instrument is unusual vs its own 144 prior points",
+      "board_state": "warming_up",
+      "board_stat": 0.0,
+      "public_copy": "this instrument is unusual vs its own 148 prior points",
       "feature_citations": [
         {
           "instrument_id": "weibo-hotsearch",
           "field": "suppressed_invisible",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 145,
-          "n_history": 144,
+          "n_file_lines": 149,
+          "n_history": 148,
           "current_value": 1.0,
           "unusualness": 20.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 145,
-        "n_prior": 116,
+        "n_extracted": 149,
+        "n_prior": 120,
         "n_holdout": 29,
         "n_holdout_scored": 29,
-        "n_holdout_unusual": 4,
+        "n_holdout_unusual": 8,
         "holdout_unusualness_median": 0.0,
-        "holdout_flag_rate": 0.1379,
+        "holdout_flag_rate": 0.2759,
         "threshold": 4.5
       }
     },
@@ -1742,10 +1750,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 30,
+      "n_file_lines": 31,
       "state": "scored",
-      "n_history": 29,
-      "current_value": 4.34,
+      "n_history": 30,
+      "current_value": 4.27,
       "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
@@ -1755,22 +1763,22 @@
       },
       "board_state": "warming_up",
       "board_stat": 0.0,
-      "public_copy": "this instrument is within its own 29 prior points",
+      "public_copy": "this instrument is within its own 30 prior points",
       "feature_citations": [
         {
           "instrument_id": "censored-planet",
           "field": "cn_interference_rate_pct",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 30,
-          "n_history": 29,
-          "current_value": 4.34,
+          "n_file_lines": 31,
+          "n_history": 30,
+          "current_value": 4.27,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 30,
-        "n_prior": 24,
+        "n_extracted": 31,
+        "n_prior": 25,
         "n_holdout": 6,
         "n_holdout_scored": 6,
         "n_holdout_unusual": 0,
@@ -2083,7 +2091,7 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 94,
+      "n_file_lines": 98,
       "state": "warming_up",
       "n_history": 0,
       "current_value": null,
@@ -2099,7 +2107,7 @@
           "instrument_id": "silence-index",
           "field": "n_blackout",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 94,
+          "n_file_lines": 98,
           "n_history": 0,
           "current_value": null,
           "unusualness": null
@@ -2131,7 +2139,7 @@
         "training_use": "derived_only"
       },
       "closed": true,
-      "n_file_lines": 120,
+      "n_file_lines": 121,
       "state": "scored",
       "n_history": 80,
       "current_value": 6.25,
@@ -2150,7 +2158,7 @@
           "instrument_id": "refusal-drift",
           "field": "panel_suppression_rate",
           "trainer": "conformal_events+robust-mad",
-          "n_file_lines": 120,
+          "n_file_lines": 121,
           "n_history": 80,
           "current_value": 6.25,
           "unusualness": 20.0
@@ -2180,37 +2188,37 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 30,
+      "n_file_lines": 31,
       "state": "scored",
-      "n_history": 29,
-      "current_value": 20.444,
-      "unusualness": 0.28643,
+      "n_history": 30,
+      "current_value": 8.79,
+      "unusualness": 0.0,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 2.1,
+        "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 29 prior points",
+      "public_copy": "this instrument is within its own 30 prior points",
       "feature_citations": [
         {
           "instrument_id": "board-alarm",
           "field": "board_e_value",
           "trainer": "board_alarm+robust-mad",
-          "n_file_lines": 30,
-          "n_history": 29,
-          "current_value": 20.444,
-          "unusualness": 0.28643
+          "n_file_lines": 31,
+          "n_history": 30,
+          "current_value": 8.79,
+          "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 30,
-        "n_prior": 24,
+        "n_extracted": 31,
+        "n_prior": 25,
         "n_holdout": 6,
         "n_holdout_scored": 6,
         "n_holdout_unusual": 3,
-        "holdout_unusualness_median": 4.267008,
+        "holdout_unusualness_median": 3.735018,
         "holdout_flag_rate": 0.5,
         "threshold": 4.5
       }
@@ -2319,12 +2327,13 @@
       "label": null,
       "label_source": "human-editorial-review-required",
       "rights": {
-        "training_use": "derived_only"
+        "training_use": "prohibited",
+        "retention": "audit_only"
       },
-      "n_file_lines": 3,
-      "state": "warming_up",
-      "n_history": 2,
-      "current_value": 0.0,
+      "n_file_lines": 4,
+      "state": "abstain",
+      "n_history": 0,
+      "current_value": null,
       "unusualness": null,
       "unusual": null,
       "review_rank": {
@@ -2332,22 +2341,26 @@
         "score": null,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is warming up vs its own 2 prior points (2 of 6 required)",
+      "quarantined": true,
+      "scoring_eligible": false,
+      "quarantine_reason": "history mixes GitHub-hosted and fixed Hetzner collection vantages; the retained values are not exchangeable",
       "feature_citations": [
         {
           "instrument_id": "baike-public-snapshot",
           "field": "n_ok",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 3,
-          "n_history": 2,
-          "current_value": 0.0,
-          "unusualness": null
+          "n_file_lines": 4,
+          "n_history": 0,
+          "current_value": null,
+          "unusualness": null,
+          "quarantined": true
         }
       ],
+      "public_copy": "this instrument abstains; its retained Baike history is quarantined from scoring",
       "holdout": {
-        "split": "warming_up",
-        "n_extracted": 3,
-        "n_prior": 2,
+        "split": "quarantined",
+        "n_extracted": 0,
+        "n_prior": 0,
         "n_holdout": 0,
         "n_holdout_scored": 0,
         "n_holdout_unusual": 0,
@@ -2462,38 +2475,38 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 160,
+      "n_file_lines": 162,
       "state": "scored",
-      "n_history": 159,
-      "current_value": 41.7,
-      "unusualness": 0.16,
+      "n_history": 161,
+      "current_value": 41.6,
+      "unusualness": 0.13,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 1.2,
+        "score": 1.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 159 prior points",
+      "public_copy": "this instrument is within its own 161 prior points",
       "feature_citations": [
         {
           "instrument_id": "erasure-observatory",
           "field": "erasure_index",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 160,
-          "n_history": 159,
-          "current_value": 41.7,
-          "unusualness": 0.16
+          "n_file_lines": 162,
+          "n_history": 161,
+          "current_value": 41.6,
+          "unusualness": 0.13
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 160,
-        "n_prior": 128,
+        "n_extracted": 162,
+        "n_prior": 130,
         "n_holdout": 32,
         "n_holdout_scored": 32,
-        "n_holdout_unusual": 24,
-        "holdout_unusualness_median": 5.14,
-        "holdout_flag_rate": 0.75,
+        "n_holdout_unusual": 22,
+        "holdout_unusualness_median": 5.11,
+        "holdout_flag_rate": 0.6875,
         "threshold": 4.5
       }
     },
@@ -2650,35 +2663,35 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 119,
+      "n_file_lines": 124,
       "state": "scored",
-      "n_history": 118,
-      "current_value": 0.845,
-      "unusualness": 0.9,
+      "n_history": 123,
+      "current_value": 0.844,
+      "unusualness": 0.45,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 6.7,
+        "score": 3.3,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 118 prior points",
+      "public_copy": "this instrument is within its own 123 prior points",
       "feature_citations": [
         {
           "instrument_id": "forecast-ledger",
           "field": "pooled_empirical_coverage",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 119,
-          "n_history": 118,
-          "current_value": 0.845,
-          "unusualness": 0.9
+          "n_file_lines": 124,
+          "n_history": 123,
+          "current_value": 0.844,
+          "unusualness": 0.45
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 119,
-        "n_prior": 96,
-        "n_holdout": 23,
-        "n_holdout_scored": 23,
+        "n_extracted": 124,
+        "n_prior": 100,
+        "n_holdout": 24,
+        "n_holdout_scored": 24,
         "n_holdout_unusual": 0,
         "holdout_unusualness_median": 0.67,
         "holdout_flag_rate": 0.0,
@@ -2697,37 +2710,37 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 32,
+      "n_file_lines": 37,
       "state": "scored",
-      "n_history": 31,
-      "current_value": 73.0,
-      "unusualness": 0.899321,
+      "n_history": 36,
+      "current_value": 78.0,
+      "unusualness": 0.955529,
       "unusual": false,
       "review_rank": {
         "status": "configured",
-        "score": 6.7,
+        "score": 7.1,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 31 prior points",
+      "public_copy": "this instrument is within its own 36 prior points",
       "feature_citations": [
         {
           "instrument_id": "erasure-trail",
           "field": "n_rows",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 32,
-          "n_history": 31,
-          "current_value": 73.0,
-          "unusualness": 0.899321
+          "n_file_lines": 37,
+          "n_history": 36,
+          "current_value": 78.0,
+          "unusualness": 0.955529
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 32,
-        "n_prior": 26,
-        "n_holdout": 6,
-        "n_holdout_scored": 6,
+        "n_extracted": 37,
+        "n_prior": 30,
+        "n_holdout": 7,
+        "n_holdout_scored": 7,
         "n_holdout_unusual": 0,
-        "holdout_unusualness_median": 2.31254,
+        "holdout_unusualness_median": 1.433293,
         "holdout_flag_rate": 0.0,
         "threshold": 4.5
       }
@@ -2744,10 +2757,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 4,
+      "n_file_lines": 5,
       "state": "warming_up",
-      "n_history": 3,
-      "current_value": 8.0,
+      "n_history": 4,
+      "current_value": 9.0,
       "unusualness": null,
       "unusual": null,
       "review_rank": {
@@ -2755,22 +2768,22 @@
         "score": null,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is warming up vs its own 3 prior points (3 of 6 required)",
+      "public_copy": "this instrument is warming up vs its own 4 prior points (4 of 6 required)",
       "feature_citations": [
         {
           "instrument_id": "cross-layer",
           "field": "n_pairs_tested",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 4,
-          "n_history": 3,
-          "current_value": 8.0,
+          "n_file_lines": 5,
+          "n_history": 4,
+          "current_value": 9.0,
           "unusualness": null
         }
       ],
       "holdout": {
         "split": "warming_up",
-        "n_extracted": 4,
-        "n_prior": 3,
+        "n_extracted": 5,
+        "n_prior": 4,
         "n_holdout": 0,
         "n_holdout_scored": 0,
         "n_holdout_unusual": 0,
@@ -2885,9 +2898,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 4,
+      "n_file_lines": 5,
       "state": "warming_up",
-      "n_history": 3,
+      "n_history": 4,
       "current_value": 503.0,
       "unusualness": null,
       "unusual": null,
@@ -2896,22 +2909,22 @@
         "score": null,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is warming up vs its own 3 prior points (3 of 6 required)",
+      "public_copy": "this instrument is warming up vs its own 4 prior points (4 of 6 required)",
       "feature_citations": [
         {
           "instrument_id": "blocklist",
           "field": "n_additions",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 4,
-          "n_history": 3,
+          "n_file_lines": 5,
+          "n_history": 4,
           "current_value": 503.0,
           "unusualness": null
         }
       ],
       "holdout": {
         "split": "warming_up",
-        "n_extracted": 4,
-        "n_prior": 3,
+        "n_extracted": 5,
+        "n_prior": 4,
         "n_holdout": 0,
         "n_holdout_scored": 0,
         "n_holdout_unusual": 0,
@@ -2930,12 +2943,13 @@
       "label": null,
       "label_source": "human-editorial-review-required",
       "rights": {
-        "training_use": "derived_only"
+        "training_use": "prohibited",
+        "retention": "audit_only"
       },
       "n_file_lines": 5,
-      "state": "warming_up",
-      "n_history": 3,
-      "current_value": 0.0,
+      "state": "abstain",
+      "n_history": 0,
+      "current_value": null,
       "unusualness": null,
       "unusual": null,
       "review_rank": {
@@ -2943,22 +2957,26 @@
         "score": null,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is warming up vs its own 3 prior points (3 of 6 required)",
+      "quarantined": true,
+      "scoring_eligible": false,
+      "quarantine_reason": "legacy rows include a method-invalid observation and runner-generated status records; retained for audit only",
       "feature_citations": [
         {
           "instrument_id": "baike-redaction",
           "field": "n_forked",
           "trainer": "prequential-robust-mad/v1",
           "n_file_lines": 5,
-          "n_history": 3,
-          "current_value": 0.0,
-          "unusualness": null
+          "n_history": 0,
+          "current_value": null,
+          "unusualness": null,
+          "quarantined": true
         }
       ],
+      "public_copy": "this instrument abstains; its retained Baike history is quarantined from scoring",
       "holdout": {
-        "split": "warming_up",
-        "n_extracted": 4,
-        "n_prior": 3,
+        "split": "quarantined",
+        "n_extracted": 0,
+        "n_prior": 0,
         "n_holdout": 0,
         "n_holdout_scored": 0,
         "n_holdout_unusual": 0,
@@ -3026,9 +3044,9 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 26,
+      "n_file_lines": 27,
       "state": "scored",
-      "n_history": 25,
+      "n_history": 26,
       "current_value": 28.13,
       "unusualness": 0.0,
       "unusual": false,
@@ -3037,22 +3055,22 @@
         "score": 0.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is within its own 25 prior points",
+      "public_copy": "this instrument is within its own 26 prior points",
       "feature_citations": [
         {
           "instrument_id": "apple-censorship",
           "field": "unavailable_pct",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 26,
-          "n_history": 25,
+          "n_file_lines": 27,
+          "n_history": 26,
           "current_value": 28.13,
           "unusualness": 0.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 26,
-        "n_prior": 21,
+        "n_extracted": 27,
+        "n_prior": 22,
         "n_holdout": 5,
         "n_holdout_scored": 5,
         "n_holdout_unusual": 0,
@@ -3167,10 +3185,10 @@
       "rights": {
         "training_use": "derived_only"
       },
-      "n_file_lines": 19,
+      "n_file_lines": 24,
       "state": "scored",
-      "n_history": 18,
-      "current_value": 6655.0,
+      "n_history": 23,
+      "current_value": 7310.0,
       "unusualness": 20.0,
       "unusual": true,
       "review_rank": {
@@ -3178,25 +3196,25 @@
         "score": 100.0,
         "meaning": "review rank only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
-      "public_copy": "this instrument is unusual vs its own 18 prior points",
+      "public_copy": "this instrument is unusual vs its own 23 prior points",
       "feature_citations": [
         {
           "instrument_id": "undertext",
           "field": "n_observations",
           "trainer": "prequential-robust-mad/v1",
-          "n_file_lines": 19,
-          "n_history": 18,
-          "current_value": 6655.0,
+          "n_file_lines": 24,
+          "n_history": 23,
+          "current_value": 7310.0,
           "unusualness": 20.0
         }
       ],
       "holdout": {
         "split": "time",
-        "n_extracted": 19,
-        "n_prior": 16,
-        "n_holdout": 3,
-        "n_holdout_scored": 3,
-        "n_holdout_unusual": 3,
+        "n_extracted": 24,
+        "n_prior": 20,
+        "n_holdout": 4,
+        "n_holdout_scored": 4,
+        "n_holdout_unusual": 4,
         "holdout_unusualness_median": 20.0,
         "holdout_flag_rate": 1.0,
         "threshold": 4.5
@@ -17372,19 +17390,19 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:board-alarm",
       "signal_id": "board-alarm",
-      "published_at": "2026-08-24T00:26:26Z",
+      "published_at": "2026-08-24T06:38:00Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
         "archive_anomalies": 0,
         "linked_signals": 3,
-        "live_linked_signals": 1,
+        "live_linked_signals": 0,
         "independent_evidence_groups": 3,
         "evidence_strength_ordinal": 2
       },
       "editorial_priority": {
         "status": "configured",
-        "score": 31.5,
+        "score": 24.0,
         "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "label": null,
@@ -17393,14 +17411,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "8ba35d4bfbf36c88fa6ac91636c27d23fe09a5f67e5a8695d25eaf00a13bb10f"
+      "row_sha256": "7fd03da28e7ae8179cb6621b58dbca0ce935b95e35f11863a772e6ba3a0cc8b3"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:event-flags",
       "signal_id": "event-flags",
-      "published_at": "2026-08-23T13:29:24Z",
+      "published_at": "2026-08-24T02:21:11Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17421,26 +17439,26 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "2057c72fc87eea945f870c413adcd590f65a00ff44ab5354ff4ba4f6106977ee"
+      "row_sha256": "39962036edd35a8edc223628d6ffb5670aa6cc7f2d268b925d94eeb3ffeb8841"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:coverage-guard",
       "signal_id": "coverage-guard",
-      "published_at": "2026-08-24T00:26:26Z",
+      "published_at": "2026-08-24T06:38:00Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
         "archive_anomalies": 0,
         "linked_signals": 3,
-        "live_linked_signals": 1,
+        "live_linked_signals": 0,
         "independent_evidence_groups": 3,
         "evidence_strength_ordinal": 2
       },
       "editorial_priority": {
         "status": "configured",
-        "score": 31.5,
+        "score": 24.0,
         "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "label": null,
@@ -17449,26 +17467,26 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "8ff2ebd33ca98f1093d725a44ce9adf8af4d3cb1862d33ebae9e0ff09c0c4eda"
+      "row_sha256": "d53f1f4bf662122339134c5d153e2e982d61964efc077ae3d9b207fdf32f0231"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:forecast-ledger",
       "signal_id": "forecast-ledger",
-      "published_at": "2026-08-24T00:26:26Z",
+      "published_at": "2026-08-24T06:38:00Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
         "archive_anomalies": 0,
         "linked_signals": 2,
-        "live_linked_signals": 1,
+        "live_linked_signals": 0,
         "independent_evidence_groups": 2,
         "evidence_strength_ordinal": 2
       },
       "editorial_priority": {
         "status": "configured",
-        "score": 38.2,
+        "score": 30.7,
         "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "label": null,
@@ -17477,26 +17495,26 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "2b5fc5dc9f07c7b2c8055e54bbabf7df362ae80ef0e12d1b9a87df7fe1dfd4db"
+      "row_sha256": "8b61fccce78ad23cf0a398b7040e4f10daf3872a337fe52930a47ce88ba07b48"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:cross-layer",
       "signal_id": "cross-layer",
-      "published_at": "2026-08-24T00:26:26Z",
+      "published_at": "2026-08-24T06:38:00Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
         "archive_anomalies": 0,
         "linked_signals": 2,
-        "live_linked_signals": 1,
+        "live_linked_signals": 0,
         "independent_evidence_groups": 2,
         "evidence_strength_ordinal": 2
       },
       "editorial_priority": {
         "status": "configured",
-        "score": 38.2,
+        "score": 30.7,
         "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "label": null,
@@ -17505,26 +17523,26 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "bce0925ae0ba48449822f7e0f593911019a40fe0eb829538c8762f156e3b392d"
+      "row_sha256": "41356c0a0df269e6b2b4f9c046b6a69a5eec7f3d592b97093dfe0f8015bb5e57"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:ddti",
       "signal_id": "ddti",
-      "published_at": "2026-08-23T15:35:47Z",
+      "published_at": "2026-08-24T04:07:05Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
         "archive_anomalies": 0,
         "linked_signals": 4,
-        "live_linked_signals": 0,
+        "live_linked_signals": 1,
         "independent_evidence_groups": 4,
-        "evidence_strength_ordinal": 0
+        "evidence_strength_ordinal": 1
       },
       "editorial_priority": {
         "status": "configured",
-        "score": 10.0,
+        "score": 27.5,
         "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "label": null,
@@ -17533,14 +17551,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "96e0ddacb5072d6539465a2147ee93fe5508bb4f2d7f5eb8d2c8b1128185d8bd"
+      "row_sha256": "8c9d3f49dedfe09b146ee319bb78f9ba4049dd2db6fccd5989419deba7767c05"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:gdelt",
       "signal_id": "gdelt",
-      "published_at": "2026-08-23T13:26:05Z",
+      "published_at": "2026-08-24T02:17:50Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17561,126 +17579,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "8b701c667d9ef1884e170f4ae0d7519591b76f845fdf3a1716b7cc20ea0afa13"
+      "row_sha256": "a7a8ecd22816f74683ba5d10abfe50d483cd9b0aeffc3b87e674a89ab9bc2069"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:weibo-hotsearch",
       "signal_id": "weibo-hotsearch",
-      "published_at": "2026-08-23T23:38:00Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 3,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 27.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "b27a4b3d3ee4ab2feff04146147f757ba903d9a01a5059ce978fedfd76018eb6"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:silence-index",
-      "signal_id": "silence-index",
-      "published_at": "2026-08-23T23:47:08Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 3,
-        "live_linked_signals": 0,
-        "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 2
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 24.0,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "b2cb071008abce891d7680e099d717e92d6a36edf139b0232019d2e9958ff3aa"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:blocklist",
-      "signal_id": "blocklist",
-      "published_at": "2026-08-17T05:08:57Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 2,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 2,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 34.2,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "aff20c240dfe1cbced8159273a8d7c5752b30f50f00785ea5813d195d3ab95be"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:net4people",
-      "signal_id": "net4people",
-      "published_at": "2026-08-23T13:17:55Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 3,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 27.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "bf11bea147d6dc2e6cfd50f8a146f6f0424210ec59cb684092823600fe281025"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:public-deletion-ledgers",
-      "signal_id": "public-deletion-ledgers",
-      "published_at": "2026-08-23T01:08:00Z",
+      "published_at": "2026-08-24T05:55:38Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17701,70 +17607,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "bb767dd36980ea810803af835100aee5a81bee21a8103914ec7b2a190e84e4e0"
+      "row_sha256": "71fed46ea4b0771f6dc7da63e6020101ce92957df3177b1f3a29dc4b3849fd76"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
-      "event_id": "palimpsest-news:undertext",
-      "signal_id": "undertext",
-      "published_at": "2026-08-23T23:38:00Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 3,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 2
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 31.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "4c378cfe47517938a97162c23a6034ac2ecece1d81b615712a4a87dd1fee2bf7"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:research-corpus",
-      "signal_id": "research-corpus",
-      "published_at": "2026-08-23T13:21:03Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 2,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 2,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 34.2,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "6b916c0e0fbf9886d95d874dec1b26d234a2ab1ab77bbe92bfcccdeac518231b"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:peer-context",
-      "signal_id": "peer-context",
-      "published_at": "2026-08-23T00:48:00Z",
+      "event_id": "palimpsest-news:silence-index",
+      "signal_id": "silence-index",
+      "published_at": "2026-08-24T06:04:23Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17785,126 +17635,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "680900964ba61cadaf491dfa25d5c22f48bfde609ffea0188f943745526f396e"
+      "row_sha256": "d9d3887729b47dc31d2c7e3fc1ea8cd54aa3c4d7a39a43c2b5cb903bc0bcf6e5"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
-      "event_id": "palimpsest-news:ooni-gfw",
-      "signal_id": "ooni-gfw",
-      "published_at": "2026-08-23T13:07:07Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 4,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 4,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 27.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "cf04e4e248289c88e740665e6047e3e4c0cfe98d0f6d02bad07435790864c9b0"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:in-path-interference",
-      "signal_id": "in-path-interference",
-      "published_at": "2026-08-23T13:08:42Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 3,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 27.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "6b20efa69cb958c4f53436f19fa1dbe6231c2983baf320c2aabbce5176e8acc9"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:censored-planet",
-      "signal_id": "censored-planet",
-      "published_at": "2026-08-23T05:58:48Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 3,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 27.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "2250e848cf652f969033962eea08c7c8e54c1e93e48cca4268c60bf191ba67fd"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:inside-view",
-      "signal_id": "inside-view",
-      "published_at": "2026-08-23T13:16:45Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 4,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 4,
-        "evidence_strength_ordinal": 1
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 27.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "7ca349810804ee03013125895b5b422750cbc71b46dca9375fe856e6d4c0436e"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:ioda-outages",
-      "signal_id": "ioda-outages",
-      "published_at": "2026-08-23T13:09:02Z",
+      "event_id": "palimpsest-news:blocklist",
+      "signal_id": "blocklist",
+      "published_at": "2026-08-24T05:07:24Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17925,14 +17663,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "c04c77e712d02ec69af9721ad5a1f896b4f9d20ccbe636e4b37b6b642ec2f507"
+      "row_sha256": "fc85090fa9076d4110e520cab2abf2297c9fcef49996c03fd3cb68c9aca0f9c0"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
-      "event_id": "palimpsest-news:circumvention-demand",
-      "signal_id": "circumvention-demand",
-      "published_at": "2026-08-23T05:43:38Z",
+      "event_id": "palimpsest-news:net4people",
+      "signal_id": "net4people",
+      "published_at": "2026-08-24T02:10:22Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17953,14 +17691,294 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "9d329b1107b3e14d1401cfe27bfad2e050cf9f556b24ab8e211a2fa6c84eed49"
+      "row_sha256": "91e5f3a27a92a751b295f755707dbdc9e713983207cf2829d5982972a145372a"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:public-deletion-ledgers",
+      "signal_id": "public-deletion-ledgers",
+      "published_at": "2026-08-23T23:08:00Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 3,
+        "live_linked_signals": 0,
+        "independent_evidence_groups": 3,
+        "evidence_strength_ordinal": 0
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 10.0,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "5c8de12645f4e1153f9cb306f39d417a37ddc59a8e37b09107470b75cd92f6e4"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:undertext",
+      "signal_id": "undertext",
+      "published_at": "2026-08-24T05:55:38Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 3,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 3,
+        "evidence_strength_ordinal": 2
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 31.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "0f5a67b0f2a6bbb07cf487c0a3b089436aa22768ec843ac16e43899e4b72606c"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:research-corpus",
+      "signal_id": "research-corpus",
+      "published_at": "2026-08-24T02:11:10Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 2,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 2,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 34.2,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "47166fad3b1d23edf521d0c03606e4a71d0e8e58b65cb2fcc69909c7af8c2214"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:peer-context",
+      "signal_id": "peer-context",
+      "published_at": "2026-08-24T06:48:00Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 3,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 3,
+        "evidence_strength_ordinal": 2
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 31.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "252c2801d1f8b2b51710ce012502c9e5e70d10b79637b89672e4dc3637138759"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:ooni-gfw",
+      "signal_id": "ooni-gfw",
+      "published_at": "2026-08-24T02:00:59Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 4,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 4,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 27.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "d8eadbca12d0ff3875870fbeb830912e717c6f8cdcfcd923d44cc34eff94c997"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:in-path-interference",
+      "signal_id": "in-path-interference",
+      "published_at": "2026-08-24T02:07:57Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 3,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 3,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 27.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "b2cb73741adb85d87617fc1af2e139c19a4cae8f42f297cc10d1d9ed30583ddd"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:censored-planet",
+      "signal_id": "censored-planet",
+      "published_at": "2026-08-24T06:07:17Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 3,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 3,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 27.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "a2612f47f4045c9ac939c4383ab34d6a35dce06774817a131d6221c171759f68"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:inside-view",
+      "signal_id": "inside-view",
+      "published_at": "2026-08-24T02:10:02Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 4,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 4,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 27.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "456e3ee15bc8f738643c8cf97718e436614f5a6d207b48dd162b3f1bf7211c09"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:ioda-outages",
+      "signal_id": "ioda-outages",
+      "published_at": "2026-08-24T02:04:27Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 2,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 2,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 34.2,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "ad44dc09fdd96babb6e0409a6ed5df7d753d882621b5e33dd3d1e935b129255c"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:circumvention-demand",
+      "signal_id": "circumvention-demand",
+      "published_at": "2026-08-24T05:52:26Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 3,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 3,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 27.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "483bc29175be9a0654af6a316b774e73c54f139ad882411f4e6cfba53a7aad60"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:vantage-fusion",
       "signal_id": "vantage-fusion",
-      "published_at": "2026-08-23T19:11:44Z",
+      "published_at": "2026-08-24T02:27:09Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -17981,7 +17999,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "974a9133644650802d658c3eeb7940675e183a7f91db4d93399893f7f9dc18f2"
+      "row_sha256": "8972cd5493493683ff2a466932113da1f79d45700206ebab800ed5921719fe7f"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18016,63 +18034,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:greatfire-context",
       "signal_id": "greatfire-context",
-      "published_at": "2026-08-23T00:33:01Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 3,
-        "live_linked_signals": 0,
-        "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 0
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 10.0,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "1de70af25b56476ec72ef632f82a32705f8d6732b2d352dbe0c3d0ef2ab1c574"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:erasure-observatory",
-      "signal_id": "erasure-observatory",
-      "published_at": "2026-08-23T13:40:05Z",
-      "features": {
-        "archive_targets": 0,
-        "archive_anomaly_max": null,
-        "archive_anomalies": 0,
-        "linked_signals": 5,
-        "live_linked_signals": 1,
-        "independent_evidence_groups": 5,
-        "evidence_strength_ordinal": 2
-      },
-      "editorial_priority": {
-        "status": "configured",
-        "score": 31.5,
-        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
-      },
-      "label": null,
-      "label_source": "human-editorial-review-required",
-      "rights": {
-        "training_use": "derived_only"
-      },
-      "automatic_publication_eligible": false,
-      "row_sha256": "98e340e6ea3ceaedd699ef2234dfa4e92ed580179a9f45d82b7b898417d153db"
-    },
-    {
-      "schema_version": "palimpsest-story-ranking-features/v1",
-      "source": "newsroom",
-      "event_id": "palimpsest-news:wayback",
-      "signal_id": "wayback",
-      "published_at": "2026-08-23T13:12:44Z",
+      "published_at": "2026-08-24T06:33:11Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18093,7 +18055,63 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "561ffe65a49fc524e1ba9454d3e0b36631e5d5c8e82e3aefd082cd40a489f087"
+      "row_sha256": "11e59e1ac00c8cf5aaf797456abc38d0460fd5faff645ca941fbbe3bbb1bb518"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:erasure-observatory",
+      "signal_id": "erasure-observatory",
+      "published_at": "2026-08-24T06:31:11Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 5,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 5,
+        "evidence_strength_ordinal": 2
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 31.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "67df89d10b42e0ab187adc23da503f9f8da9f1dd16d364292d2e08498193f95d"
+    },
+    {
+      "schema_version": "palimpsest-story-ranking-features/v1",
+      "source": "newsroom",
+      "event_id": "palimpsest-news:wayback",
+      "signal_id": "wayback",
+      "published_at": "2026-08-24T02:10:39Z",
+      "features": {
+        "archive_targets": 0,
+        "archive_anomaly_max": null,
+        "archive_anomalies": 0,
+        "linked_signals": 3,
+        "live_linked_signals": 1,
+        "independent_evidence_groups": 3,
+        "evidence_strength_ordinal": 1
+      },
+      "editorial_priority": {
+        "status": "configured",
+        "score": 27.5,
+        "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
+      },
+      "label": null,
+      "label_source": "human-editorial-review-required",
+      "rights": {
+        "training_use": "derived_only"
+      },
+      "automatic_publication_eligible": false,
+      "row_sha256": "32223ae75d0c73dcbe84e2034ffdd72797a43f6267109a01a8420e162780980c"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18128,7 +18146,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:github-refuge",
       "signal_id": "github-refuge",
-      "published_at": "2026-08-23T13:12:06Z",
+      "published_at": "2026-08-24T02:10:18Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18149,14 +18167,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "28c5eb528ce61b3f2919aec1039094b6b9b76c2fcdf9b205df1b695b7644fc36"
+      "row_sha256": "f7454663e762d6ce260349d7875841534ce229a1010d63b9acd8c1a20690d9bf"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:app-storefront",
       "signal_id": "app-storefront",
-      "published_at": "2026-08-23T22:34:08Z",
+      "published_at": "2026-08-24T02:13:36Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18177,14 +18195,14 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "c3b9107bde1c252da2d1ce4190a639049e077bcac598ab54dd5d7dcfd81b36f9"
+      "row_sha256": "a9be5861cc39b9fb78c698ce03699e24678eb63ff2dd5feba322239552500879"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:apple-censorship",
       "signal_id": "apple-censorship",
-      "published_at": "2026-08-23T05:58:36Z",
+      "published_at": "2026-08-24T06:06:32Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18205,26 +18223,26 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "51a6efbe8dc63b728a753ec61790075df99488b1c9a298947f0c80c6a76b2c1f"
+      "row_sha256": "c9c7ac4b87058ba9fcb63cdee7f4a10660b2a8cfb7532115bb0b4f427890d218"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
       "source": "newsroom",
       "event_id": "palimpsest-news:baike-public-snapshot",
       "signal_id": "baike-public-snapshot",
-      "published_at": "2026-08-23T12:58:20Z",
+      "published_at": "2026-08-24T04:52:24Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
         "archive_anomalies": 0,
         "linked_signals": 3,
-        "live_linked_signals": 1,
+        "live_linked_signals": 0,
         "independent_evidence_groups": 3,
-        "evidence_strength_ordinal": 1
+        "evidence_strength_ordinal": 0
       },
       "editorial_priority": {
         "status": "configured",
-        "score": 27.5,
+        "score": 10.0,
         "meaning": "review priority only under the high-novelty/high-evidence policy; not truth, causality, global exclusivity, public importance, or publication permission"
       },
       "label": null,
@@ -18233,7 +18251,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "e50140c377a88b4a76f7a08b28ede4bc453fb861ca3ad8359d8b22b1442e1e3d"
+      "row_sha256": "d2741780d3b3aa844601b40de323ac94903f96160eeee5409ca888e1d6be23ab"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18408,7 +18426,7 @@
       "source": "newsroom",
       "event_id": "palimpsest-news:anchors",
       "signal_id": "anchors",
-      "published_at": "2026-08-23T13:40:19Z",
+      "published_at": "2026-08-24T06:31:32Z",
       "features": {
         "archive_targets": 0,
         "archive_anomaly_max": null,
@@ -18429,7 +18447,7 @@
         "training_use": "derived_only"
       },
       "automatic_publication_eligible": false,
-      "row_sha256": "0da1dc76b8e7db02bd0ea5f7fdaa4df5aba8f379777b44e729e496450793af06"
+      "row_sha256": "76f632596183b81330df0527bf18ebe8b878e92760af3fda4997006c53e1094e"
     },
     {
       "schema_version": "palimpsest-story-ranking-features/v1",
@@ -18467,5 +18485,5 @@
     "person_level_analysis": "prohibited",
     "generative_model": "prohibited"
   },
-  "analysis_sha256": "ac1eaccd64f2db7b954545916b7243bfa0493c6e6a89e85f236f0a130737d797"
+  "analysis_sha256": "fa998aafd04ee66a44f76b74651756efd773e5e5e98dddafef99edd80378f002"
 }

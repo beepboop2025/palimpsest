@@ -1,7 +1,7 @@
 {
   "schema_version": "palimpsest-peer-context-rank/v1",
   "job": "peer-context-rank",
-  "generated_at": "2026-08-24T01:51:44Z",
+  "generated_at": "2026-08-24T10:34:36Z",
   "source": "Cached GreatFire verdicts, OONI host/ASN or on-disk ooni-gfw history, and bounded CDT titles. Warehouse files are optional.",
   "method": "Per-peer robust MAD (prequential-robust-mad/v1) against that peer series' own history, then a fail-closed join onto a Palimpsest object by term/host/ASN/day. Review rank only. No generative brief. Weiboscope is cited as a literature pointer only; the 2012 dump is not loaded or trained on",
   "scope": "Per-peer unusualness vs that peer series' own history, plus a fail-closed join onto Palimpsest objects. No causal attribution. No Weiboscope dump. No GreatFire catalog crawl.",
@@ -95,7 +95,7 @@
       "peer": "GreatFire",
       "series_id": "gov.cn",
       "field": "block_share_90d",
-      "peer_date": "2026-08-22",
+      "peer_date": "2026-08-24",
       "current_value": 0.0,
       "n_history": 0,
       "minimum_prior": 6,
@@ -111,9 +111,9 @@
       "host": "gov.cn",
       "window_days": 90,
       "blocked": false,
-      "tested": 119,
+      "tested": 121,
       "source": "cached-verdicts-only",
-      "public_copy": "GreatFire 2026-08-22: this series is warming up vs its own 0 prior points"
+      "public_copy": "GreatFire 2026-08-24: this series is warming up vs its own 0 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -545,7 +545,7 @@
       "peer": "GreatFire",
       "series_id": "torproject.org",
       "field": "block_share_90d",
-      "peer_date": "2026-08-18",
+      "peer_date": "2026-08-23",
       "current_value": 1.0,
       "n_history": 0,
       "minimum_prior": 6,
@@ -561,18 +561,18 @@
       "host": "torproject.org",
       "window_days": 90,
       "blocked": true,
-      "tested": 13,
+      "tested": 14,
       "source": "cached-verdicts-only",
-      "public_copy": "GreatFire 2026-08-18: this series is warming up vs its own 0 prior points"
+      "public_copy": "GreatFire 2026-08-23: this series is warming up vs its own 0 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
       "peer": "OONI",
       "series_id": "cn-aggregate",
       "field": "gfw_index",
-      "peer_date": "2026-08-23",
-      "current_value": 58.4,
-      "n_history": 179,
+      "peer_date": "2026-08-24",
+      "current_value": 58.3,
+      "n_history": 180,
       "minimum_prior": 6,
       "state": "scored",
       "unusualness": 0.0,
@@ -585,7 +585,7 @@
       "citation": null,
       "kind": "country",
       "probe_cc": "CN",
-      "public_copy": "OONI 2026-08-23: this series is within its own 179 prior points"
+      "public_copy": "OONI 2026-08-24: this series is within its own 180 prior points"
     },
     {
       "schema_version": "palimpsest-peer-context-features/v1",
@@ -1869,13 +1869,13 @@
           "peer": "OONI",
           "series_id": "cn-aggregate",
           "field": "gfw_index",
-          "n": 180,
-          "n_prior": 144,
+          "n": 181,
+          "n_prior": 145,
           "state": "scored",
           "holdout": {
             "split": "time",
-            "n_extracted": 180,
-            "n_prior": 144,
+            "n_extracted": 181,
+            "n_prior": 145,
             "n_holdout": 36,
             "n_holdout_scored": 36,
             "n_holdout_unusual": 0,
@@ -1976,5 +1976,5 @@
     "generative_model": "prohibited",
     "event_analysis_prose": "unchanged"
   },
-  "analysis_sha256": "15e1014cbc00cb6358632ed2b0ac895889cd9598068eb3bf51534cb4d8c010b1"
+  "analysis_sha256": "b41c7b42a52fd713cf3a1455d2f77ad7caa7b043c9a5d11e4f54997382cac325"
 }

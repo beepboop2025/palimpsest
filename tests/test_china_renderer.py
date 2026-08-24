@@ -89,7 +89,10 @@ def test_exact_static_route_inventory_is_server_rendered():
         4 + counts["sources"] + counts["release_monitors"] + counts["domains"]
     )
     assert len(list((CHINA / "sources").glob("*/index.html"))) == counts["sources"]
-    assert len(list((CHINA / "releases").glob("*/index.html"))) == counts["release_monitors"]
+    assert (
+        len(list((CHINA / "releases").glob("*/index.html")))
+        == counts["release_monitors"]
+    )
     assert len(list((CHINA / "domains").glob("*/index.html"))) == counts["domains"]
     assert (CHINA / "index.html") in pages
     assert (CHINA / "sources" / "index.html") in pages
@@ -102,7 +105,10 @@ def test_every_page_has_compact_versioned_head_real_nav_and_unique_ids():
         page = path.read_text(encoding="utf-8")
         parsed = _parser(path)
         assert page.startswith("<!doctype html>")
-        assert '<meta name="palimpsest:schema-version" content="palimpsest-china-index.v1">' in page
+        assert (
+            '<meta name="palimpsest:schema-version" content="palimpsest-china-index.v1">'
+            in page
+        )
         assert '<nav class="ps-nav" aria-label="Primary">' in page
         assert '<nav class="cn-local" aria-label="China Observatory">' in page
         assert '<main id="main" class="cn-main">' in page
@@ -114,9 +120,10 @@ def test_every_page_has_compact_versioned_head_real_nav_and_unique_ids():
         assert len(parsed.ids) == len(set(parsed.ids)), path
         assert len(parsed.json_ld) == 1
         assert parsed.json_ld[0]["url"] == parsed.canonicals[0]
-        assert page.count('aria-current="page"') + page.count(
-            'aria-current="location"'
-        ) >= 1
+        assert (
+            page.count('aria-current="page"') + page.count('aria-current="location"')
+            >= 1
+        )
 
 
 def test_local_navigation_wins_the_shell_cascade_and_has_touch_targets():
@@ -132,13 +139,12 @@ def test_local_navigation_wins_the_shell_cascade_and_has_touch_targets():
     assert ".cn-page .ps-share__dot" in css
 
     root = (CHINA / "index.html").read_text(encoding="utf-8")
-    source = (
-        CHINA / "sources" / "cfets_benchmarks" / "index.html"
-    ).read_text(encoding="utf-8")
+    source = (CHINA / "sources" / "cfets_benchmarks" / "index.html").read_text(
+        encoding="utf-8"
+    )
     assert '<a href="/china/" aria-current="page">Current read</a>' in root
     assert (
-        '<a href="/china/sources/" aria-current="location">Source ledger</a>'
-        in source
+        '<a href="/china/sources/" aria-current="location">Source ledger</a>' in source
     )
 
 
@@ -161,7 +167,7 @@ def test_root_page_leads_with_abstention_and_retains_all_reporting_releases():
     assert "4 of 4 gates" not in page
     assert page.count('class="cn-desk"') == 6
     assert release_monitors > 0
-    assert page.count('/china/releases/cn-release-lag-') >= release_monitors
+    assert page.count("/china/releases/cn-release-lag-") >= release_monitors
     assert "Four rails, six desks, gaps left visible" in page
     assert page.count("cn-loom__cell--present") > 0
     assert page.count("cn-loom__cell--gap") > 0
@@ -189,12 +195,16 @@ def test_root_page_leads_with_abstention_and_retains_all_reporting_releases():
     assert "Northbound turnover" in page
     assert "/readings/stock-connect-latest.json" in page
     assert 'id="stock-connect-title"' in page
-    assert '<details open>' in page
+    assert "<details open>" in page
 
 
 def test_source_details_expose_all_clocks_receipts_without_claiming_private_datasets():
-    live = (CHINA / "sources" / "cfets_benchmarks" / "index.html").read_text(encoding="utf-8")
-    blocked = (CHINA / "sources" / "cbb_private_panel" / "index.html").read_text(encoding="utf-8")
+    live = (CHINA / "sources" / "cfets_benchmarks" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    blocked = (CHINA / "sources" / "cbb_private_panel" / "index.html").read_text(
+        encoding="utf-8"
+    )
 
     for label in ("Period end", "Released", "Collected", "Revision", "Checksums"):
         assert label in live
@@ -212,7 +222,7 @@ def test_progressive_controls_are_revealed_only_after_successful_initialization(
 
 def test_progressive_filter_never_fetches_or_injects_markup():
     script = (ROOT / "assets" / "china.js").read_text(encoding="utf-8")
-    assert "querySelectorAll(\"[data-cn-record]\")" in script
+    assert 'querySelectorAll("[data-cn-record]")' in script
     assert "record.hidden = !show" in script
     assert "count.textContent" in script
     assert "fetch(" not in script

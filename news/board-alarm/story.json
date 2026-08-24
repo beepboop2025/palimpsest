@@ -3,20 +3,20 @@
   "slug": "board-alarm",
   "url": "https://palimpsest.info/news/board-alarm/",
   "signal_id": "board-alarm",
-  "headline": "Multiple layers elevated together in the latest board synthesis",
-  "dek": "The merged board read remains a measure of cross-signal movement, not a verdict about any single cause.",
+  "headline": "Board alarm: no current finding",
+  "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
   "section": "command",
   "order": 1,
   "type": "analysis",
   "priority": "lead",
-  "status": "live",
+  "status": "stale",
   "published_at": "2026-08-24T06:38:00Z",
   "modified_at": "2026-08-24T06:38:00Z",
-  "claim_fingerprint": "sha256:0ebd798adbc0ef75fdedfeda172ff5e03216402e3912e9bd6420bb92299d15d3",
+  "claim_fingerprint": "sha256:c0788ccc78f46090c692b48e8a79ab4fe10aa4b662dd8568d548e79d718f59bb",
   "metric": {
-    "label": "board e-value",
-    "value": 8.79,
-    "unit": "e-value",
+    "label": null,
+    "value": null,
+    "unit": null,
     "denominator": {
       "label": null,
       "value": null
@@ -24,8 +24,8 @@
   },
   "claims": [
     {
-      "type": "observation",
-      "statement": "Upstream board reports: MULTI-LAYER CO-MOVEMENT: content + network elevated together. 39 of 39 configured sources report; 27 are live. Health qualifiers: 4 degraded, 8 stale. The board-wide e-value is 8.79; the predeclared board alarm threshold is 20."
+      "type": "availability",
+      "statement": "No current finding is published for Board alarm because the source status is stale."
     }
   ],
   "evidence": {
@@ -42,6 +42,7 @@
     "version": null
   },
   "limitations": [
+    "Current finding withheld: freshness deadline has passed",
     "A merged e-value measures evidence against no change; it does not identify a common cause for co-movement."
   ],
   "related_signal_ids": [
