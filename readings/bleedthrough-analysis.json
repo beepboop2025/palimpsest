@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-1c00eb1b9aee06d3bf8c21e6",
+  "analysis_id": "instrumentv-66981593809585fab8ef3968",
   "signal_id": "bleedthrough",
   "story_url": "https://palimpsest.info/news/bleedthrough-injector-tomography/",
   "url": "https://palimpsest.info/news/bleedthrough-injector-tomography/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: content, network. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, ddti, weibo-hotsearch, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: event-flags, ddti, undertext, ooni-gfw, in-path-interference, censored-planet, inside-view, ioda-outages, vantage-fusion, erasure-observatory, wayback, app-storefront, apple-censorship, cny-fix-gap, data-darkness, generative-firewall.",
           "citation_ids": [
             "instrumentevidence-054435a7a9125b181741"
           ]
@@ -109,31 +109,13 @@
   ],
   "elevated_peers": [
     {
-      "signal_id": "board-alarm",
-      "section": "command",
-      "status": "live",
-      "priority": "lead"
-    },
-    {
       "signal_id": "event-flags",
       "section": "command",
       "status": "live",
       "priority": "high"
     },
     {
-      "signal_id": "coverage-guard",
-      "section": "command",
-      "status": "live",
-      "priority": "high"
-    },
-    {
       "signal_id": "ddti",
-      "section": "attention",
-      "status": "live",
-      "priority": "high"
-    },
-    {
-      "signal_id": "weibo-hotsearch",
       "section": "attention",
       "status": "live",
       "priority": "high"
@@ -203,6 +185,24 @@
       "section": "erasure",
       "status": "live",
       "priority": "high"
+    },
+    {
+      "signal_id": "cny-fix-gap",
+      "section": "economy",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "data-darkness",
+      "section": "economy",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "generative-firewall",
+      "section": "models",
+      "status": "live",
+      "priority": "lead"
     }
   ],
   "review_rank": {
