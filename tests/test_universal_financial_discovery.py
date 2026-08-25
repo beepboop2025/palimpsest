@@ -9,53 +9,49 @@ from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / ".well-known" / "ai-catalog.json"
-CANDIDATE_SERVER_VERSION = json.loads(
+MANIFEST_SERVER_VERSION = json.loads(
     (ROOT / "server.json").read_text(encoding="utf-8")
-)[
-    "version"
-]
-# Public discovery stays bound to the last independently deployed and registered
-# release until a new exact-SHA receipt exists.
-SERVER_VERSION = "1.9.0"
-MCP_RELEASE_SHA = "135d8f332d7eaeb48f793ecaa47ee1e13708c1ac"
+)["version"]
+SERVER_VERSION = "1.9.1"
+MCP_RELEASE_SHA = "9b3d71422b01252907a02530708e45682a2320b4"
 MCP_DEPLOY_RUN_URL = (
-    "https://github.com/beepboop2025/palimpsest/actions/runs/32734455304"
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32889866464"
 )
 MCP_DEPLOY_RECEIPT_PATH = (
-    ROOT / ".well-known" / "receipts" / "mcp-deployment-1.9.0.json"
+    ROOT / ".well-known" / "receipts" / "mcp-deployment-1.9.1.json"
 )
 MCP_DEPLOY_RECEIPT_URL = (
-    "https://palimpsest.info/.well-known/receipts/mcp-deployment-1.9.0.json"
+    "https://palimpsest.info/.well-known/receipts/mcp-deployment-1.9.1.json"
 )
 MCP_DEPLOY_RECEIPT_SHA256 = (
-    "sha256:8570b4fcc138461be34f17c8257f4f6dbef5242336f533411b56d5d747a27154"
+    "sha256:ce70a88f6d91fb4178ebec33601f35068814e9c715da77673847f6f0266524bf"
 )
 MCP_REGISTRY_RUN_URL = (
-    "https://github.com/beepboop2025/palimpsest/actions/runs/32735073973"
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32890131146"
 )
 MCP_REGISTRY_RECEIPT_PATH = (
-    ROOT / ".well-known" / "receipts" / "mcp-registry-publication-1.9.0.json"
+    ROOT / ".well-known" / "receipts" / "mcp-registry-publication-1.9.1.json"
 )
 MCP_REGISTRY_RECEIPT_URL = (
-    "https://palimpsest.info/.well-known/receipts/mcp-registry-publication-1.9.0.json"
+    "https://palimpsest.info/.well-known/receipts/mcp-registry-publication-1.9.1.json"
 )
 MCP_REGISTRY_RECEIPT_SHA256 = (
-    "sha256:6014b600a2115acb05dc59a60e0595c0de4424907e074fcc08b465dcea09cfa7"
+    "sha256:45d73064331da36a6156af487046bdc5acd42c01b247ff10982b08c545bd8e85"
 )
 MCP_REGISTRY_SNAPSHOT_PATH = (
-    ROOT / ".well-known" / "receipts" / "mcp-registry-latest-1.9.0.json"
+    ROOT / ".well-known" / "receipts" / "mcp-registry-latest-1.9.1.json"
 )
 MCP_REGISTRY_SNAPSHOT_URL = (
-    "https://palimpsest.info/.well-known/receipts/mcp-registry-latest-1.9.0.json"
+    "https://palimpsest.info/.well-known/receipts/mcp-registry-latest-1.9.1.json"
 )
 MCP_REGISTRY_SNAPSHOT_SHA256 = (
-    "sha256:5af0c21c5818c0ca4983040410b52061026c0261e54bdaab8668fd5592b6c389"
+    "sha256:2c5f605168fd41556532c6fffb3384af00277a7c66f3d23a164730b90167d93a"
 )
 MCP_REGISTRY_VERSION_URL = (
     "https://registry.modelcontextprotocol.io/v0.1/servers/"
-    "io.github.beepboop2025%2Fpalimpsest/versions/1.9.0"
+    "io.github.beepboop2025%2Fpalimpsest/versions/1.9.1"
 )
-MCP_REGISTRY_PUBLISHED_AT = "2026-08-24T13:51:23.905708Z"
+MCP_REGISTRY_PUBLISHED_AT = "2026-08-25T19:33:43.311753Z"
 PAGES = {
     "china/money-markets/index.html": ("https://palimpsest.info/china/money-markets/"),
     "china/capital-markets/index.html": (
@@ -110,6 +106,7 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
         "Live censorship, China economic, and tamper-evident AI evaluation "
         "tools with bounded analysis."
     )
+    assert mcp["data"] == json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     assert mcp["data"]["version"] == SERVER_VERSION
     assert mcp["version"] == SERVER_VERSION
     assert mcp["updatedAt"] == MCP_REGISTRY_PUBLISHED_AT
@@ -145,12 +142,8 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     assert SERVER_VERSION in mcp["description"]
 
 
-def test_unreleased_candidate_does_not_rewrite_live_release_evidence():
-    deployed = tuple(int(part) for part in SERVER_VERSION.split("."))
-    candidate = tuple(int(part) for part in CANDIDATE_SERVER_VERSION.split("."))
-
-    assert candidate == (*deployed[:2], deployed[2] + 1)
-    assert CANDIDATE_SERVER_VERSION == "1.9.1"
+def test_manifest_matches_the_proven_live_release():
+    assert MANIFEST_SERVER_VERSION == SERVER_VERSION == "1.9.1"
 
 
 def test_mcp_release_receipts_are_durable_exact_bytes():
@@ -182,26 +175,25 @@ def test_mcp_release_receipts_are_durable_exact_bytes():
         "target_sha": MCP_RELEASE_SHA,
         "workflow": ".github/workflows/deploy-mcp.yml",
         "workflow_run_attempt": 1,
-        "workflow_run_id": 32734455304,
+        "workflow_run_id": 32889866464,
     }
     assert registry["schema"] == "palimpsest.mcp-registry-publication-receipt.v2"
     assert registry["target_sha"] == MCP_RELEASE_SHA
     assert registry["server_version"] == SERVER_VERSION
     assert registry["deploy_run_id"] == deployment["workflow_run_id"]
-    assert registry["workflow_run_id"] == 32735073973
+    assert registry["workflow_run_id"] == 32890131146
+    assert registry["workflow_run_attempt"] == 1
+    assert registry["publication_mode"] == "published"
+    assert registry["official_status"] == "active"
+    assert registry["official_is_latest"] is True
     assert registry["published_at"] == MCP_REGISTRY_PUBLISHED_AT
     assert registry["registry_response_sha256"] == (
         MCP_REGISTRY_SNAPSHOT_SHA256.removeprefix("sha256:")
     )
-    candidate_manifest = json.loads(
-        (ROOT / "server.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     deployed_manifest = registry_snapshot["server"]
-    assert deployed_manifest["version"] == SERVER_VERSION
-    assert candidate_manifest["version"] == CANDIDATE_SERVER_VERSION
-    assert deployed_manifest | {"version": CANDIDATE_SERVER_VERSION} == (
-        candidate_manifest
-    )
+    assert deployed_manifest == manifest
+    assert manifest["version"] == SERVER_VERSION
     official = registry_snapshot["_meta"]["io.modelcontextprotocol.registry/official"]
     assert official["status"] == "active"
     assert official["isLatest"] is True
