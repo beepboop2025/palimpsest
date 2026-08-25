@@ -5487,7 +5487,6 @@ gh workflow run "$OSINT_WORKFLOW" \
   --repo "$PALIMPSEST_REPOSITORY" --ref main \
   -f expected_deploy_sha="$EXPECTED_DEPLOY_SHA" \
   -f release_nonce="$RELEASE_RESUME_TOKEN"
-restore_osint_workflow_freeze
 OSINT_RUN_ID=''
 for _ in {1..30}; do
   gh run list --repo "$PALIMPSEST_REPOSITORY" \
@@ -5529,6 +5528,7 @@ OSINT_HEAD_SHA="$(gh run view "$OSINT_RUN_ID" \
   --repo "$PALIMPSEST_REPOSITORY" --json headSha --jq .headSha)"
 test "$OSINT_HEAD_SHA" = "$EXPECTED_DEPLOY_SHA"
 gh run watch "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" --exit-status
+restore_osint_workflow_freeze
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --json conclusion --jq .conclusion)" = "success"
 OSINT_RUN_ATTEMPT="$(gh api \

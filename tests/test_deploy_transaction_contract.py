@@ -2828,8 +2828,12 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
     enable = transaction.index('gh workflow enable "$OSINT_WORKFLOW"', arm_restore)
     active = transaction.index('test "$(osint_workflow_state)" = active', enable)
     dispatch = transaction.index('gh workflow run "$OSINT_WORKFLOW"', active)
-    immediate_restore = transaction.index("restore_osint_workflow_freeze\n", dispatch)
-    discover = transaction.index("OSINT_RUN_ID=''", immediate_restore)
+    discover = transaction.index("OSINT_RUN_ID=''", dispatch)
+    watch = transaction.index('gh run watch "$OSINT_RUN_ID"', discover)
+    terminal_restore = transaction.index("restore_osint_workflow_freeze\n", watch)
+    conclusion = transaction.index(
+        'test "$(gh run view "$OSINT_RUN_ID"', terminal_restore
+    )
     assert (
         cleanup
         < cleanup_restore
@@ -2839,8 +2843,10 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         < enable
         < active
         < dispatch
-        < immediate_restore
         < discover
+        < watch
+        < terminal_restore
+        < conclusion
     )
 
     public_match = transaction.index(
