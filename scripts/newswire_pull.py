@@ -16,6 +16,7 @@ import os
 import re
 import stat
 import tempfile
+import threading
 import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,7 +25,9 @@ from typing import Any, Sequence
 from core.newswire import (
     DEFAULT_CONFIG_PATH,
     DEFAULT_OUTPUT_PATH,
+    MAX_FEED_BYTES,
     NoSuccessfulSources,
+    SourceRegistry,
     canonical_json_bytes,
     collect_newswire,
     load_source_registry,
@@ -39,6 +42,9 @@ STATUS_SCHEMA = "palimpsest-evidence-wire-attempt.v1"
 MAX_LEDGER_RECORDS = 16384
 MAX_LEDGER_BYTES = 32 * 1024 * 1024
 MAX_PREVIOUS_BYTES = 64 * 1024 * 1024
+SNAPSHOT_SCHEMA = "palimpsest-newswire-acquisition.v1"
+MAX_SNAPSHOT_MANIFEST_BYTES = 256 * 1024
+MAX_SNAPSHOT_BYTES = 256 * 1024 * 1024
 _TEMP_SUFFIX_RE = re.compile(r"^[a-z0-9_]{8}$")
 _EVENT_ID_RE = re.compile(r"^event-[0-9a-f]{24}$")
 _EVENT_VERSION_ID_RE = re.compile(r"^eventv-[0-9a-f]{24}$")
@@ -191,13 +197,13 @@ def _next_ledger(
     return (prior + appended)[-MAX_LEDGER_RECORDS:]
 
 
-def _atomic_write(path: Path, payload: bytes) -> None:
+def _atomic_write(path: Path, payload: bytes, *, mode: int = 0o644) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     temporary = Path(temporary_name)
     try:
         with os.fdopen(fd, "wb") as handle:
-            os.fchmod(handle.fileno(), 0o644)
+            os.fchmod(handle.fileno(), mode)
             handle.write(payload)
             handle.flush()
             os.fsync(handle.fileno())
@@ -213,6 +219,284 @@ def _atomic_write(path: Path, payload: bytes) -> None:
     finally:
         if temporary.exists():
             temporary.unlink()
+
+
+class AcquisitionFetchError(RuntimeError):
+    """Normalized transport failure retained in a replayable acquisition."""
+
+
+_SNAPSHOT_FIELDS = frozenset(
+    {"schema_version", "registry_sha256", "observed_at", "total_bytes", "sources"}
+)
+_SNAPSHOT_SOURCE_FIELDS = frozenset(
+    {"source_id", "feed_url", "status", "bytes", "sha256"}
+)
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def _snapshot_timestamp(now: datetime) -> str:
+    return now.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _snapshot_blob_path(root: Path, source_id: str) -> Path:
+    if not _SOURCE_ID_RE.fullmatch(source_id):
+        raise ValueError("acquisition snapshot source id is unsafe")
+    return root / "blobs" / f"{source_id}.feed"
+
+
+def _read_snapshot_file(path: Path, maximum: int) -> bytes:
+    try:
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW,
+        )
+    except OSError as exc:
+        raise ValueError("acquisition snapshot file cannot be opened safely") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or metadata.st_uid != os.geteuid()
+            or metadata.st_gid != os.getegid()
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+            or metadata.st_size > maximum
+        ):
+            raise ValueError("acquisition snapshot file contract is invalid")
+        chunks: list[bytes] = []
+        received = 0
+        while True:
+            chunk = os.read(descriptor, min(64 * 1024, maximum - received + 1))
+            if not chunk:
+                break
+            received += len(chunk)
+            if received > maximum:
+                raise ValueError("acquisition snapshot file exceeds its byte limit")
+            chunks.append(chunk)
+        return b"".join(chunks)
+    finally:
+        os.close(descriptor)
+
+
+class AcquisitionSnapshotWriter:
+    """Capture the first and only network acquisition for deterministic replay."""
+
+    def __init__(
+        self,
+        root: Path,
+        registry: SourceRegistry,
+        observed_at: datetime,
+        network_fetch,
+    ) -> None:
+        self.root = root
+        self.registry = registry
+        self.observed_at = observed_at
+        self._network_fetch = network_fetch
+        self._sources_by_url = {source.feed_url: source for source in registry.sources}
+        if len(self._sources_by_url) != len(registry.sources):
+            raise ValueError("acquisition snapshot requires unique source URLs")
+        self._records: dict[str, dict[str, Any]] = {}
+        self._seen: set[str] = set()
+        self._total_bytes = 0
+        self._fatal: BaseException | None = None
+        self._lock = threading.Lock()
+        root.mkdir(mode=0o700, parents=False, exist_ok=False)
+        os.chmod(root, 0o700)
+        (root / "blobs").mkdir(mode=0o700)
+
+    def __call__(self, url: str, **kwargs: Any) -> bytes:
+        source = self._sources_by_url.get(url)
+        if source is None:
+            self._fatal = ValueError("collector requested a URL outside the snapshot registry")
+            raise AcquisitionFetchError("acquisition snapshot rejected an unknown URL")
+        with self._lock:
+            if source.id in self._seen:
+                self._fatal = ValueError("collector requested one snapshot source more than once")
+                raise AcquisitionFetchError("acquisition snapshot rejected a duplicate fetch")
+            self._seen.add(source.id)
+        try:
+            raw = self._network_fetch(url, **kwargs)
+        except Exception as exc:
+            with self._lock:
+                self._records[source.id] = {
+                    "source_id": source.id,
+                    "feed_url": source.feed_url,
+                    "status": "fetch_error",
+                    "bytes": 0,
+                    "sha256": None,
+                }
+            raise AcquisitionFetchError("source acquisition failed") from exc
+        if type(raw) is not bytes or not raw or len(raw) > MAX_FEED_BYTES:
+            with self._lock:
+                self._records[source.id] = {
+                    "source_id": source.id,
+                    "feed_url": source.feed_url,
+                    "status": "fetch_error",
+                    "bytes": 0,
+                    "sha256": None,
+                }
+            raise AcquisitionFetchError("source acquisition returned invalid bytes")
+        try:
+            with self._lock:
+                if self._total_bytes + len(raw) > MAX_SNAPSHOT_BYTES:
+                    raise ValueError("acquisition snapshot exceeds its total byte limit")
+                self._total_bytes += len(raw)
+            _atomic_write(
+                _snapshot_blob_path(self.root, source.id),
+                raw,
+                mode=0o600,
+            )
+            record = {
+                "source_id": source.id,
+                "feed_url": source.feed_url,
+                "status": "success",
+                "bytes": len(raw),
+                "sha256": hashlib.sha256(raw).hexdigest(),
+            }
+            with self._lock:
+                self._records[source.id] = record
+            return raw
+        except Exception as exc:
+            self._fatal = exc
+            raise AcquisitionFetchError("acquisition snapshot could not retain bytes") from exc
+
+    def finalize(self) -> None:
+        if self._fatal is not None:
+            raise ValueError("acquisition snapshot capture failed") from self._fatal
+        expected = {source.id for source in self.registry.sources}
+        if self._seen != expected or set(self._records) != expected:
+            raise ValueError("acquisition snapshot did not observe every registry source")
+        document = {
+            "schema_version": SNAPSHOT_SCHEMA,
+            "registry_sha256": self.registry.sha256,
+            "observed_at": _snapshot_timestamp(self.observed_at),
+            "total_bytes": self._total_bytes,
+            "sources": [self._records[source_id] for source_id in sorted(self._records)],
+        }
+        rendered = canonical_json_bytes(document) + b"\n"
+        if len(rendered) > MAX_SNAPSHOT_MANIFEST_BYTES:
+            raise ValueError("acquisition snapshot manifest exceeds its byte limit")
+        _atomic_write(self.root / "manifest.json", rendered, mode=0o600)
+
+
+class AcquisitionSnapshotReader:
+    """Replay exact retained source outcomes; this class has no network path."""
+
+    def __init__(self, root: Path, registry: SourceRegistry) -> None:
+        self.root = root
+        self.registry = registry
+        self._fatal: BaseException | None = None
+        self._seen: set[str] = set()
+        try:
+            root_metadata = root.lstat()
+        except OSError as exc:
+            raise ValueError("acquisition snapshot directory is unavailable") from exc
+        if (
+            not stat.S_ISDIR(root_metadata.st_mode)
+            or root_metadata.st_uid != os.geteuid()
+            or root_metadata.st_gid != os.getegid()
+            or stat.S_IMODE(root_metadata.st_mode) != 0o700
+        ):
+            raise ValueError("acquisition snapshot directory contract is invalid")
+        raw_manifest = _read_snapshot_file(
+            root / "manifest.json", MAX_SNAPSHOT_MANIFEST_BYTES
+        )
+        manifest = strict_json_loads(raw_manifest, label="acquisition snapshot manifest")
+        if type(manifest) is not dict or set(manifest) != _SNAPSHOT_FIELDS:
+            raise ValueError("acquisition snapshot manifest fields do not match")
+        if (
+            manifest["schema_version"] != SNAPSHOT_SCHEMA
+            or manifest["registry_sha256"] != registry.sha256
+        ):
+            raise ValueError("acquisition snapshot does not match the source registry")
+        observed_at = _parse_now(manifest["observed_at"])
+        if _snapshot_timestamp(observed_at) != manifest["observed_at"]:
+            raise ValueError("acquisition snapshot clock is not normalized")
+        self.observed_at = observed_at
+        rows = manifest["sources"]
+        if type(rows) is not list or len(rows) != len(registry.sources):
+            raise ValueError("acquisition snapshot source count does not match")
+        self._records: dict[str, dict[str, Any]] = {}
+        expected_by_id = {source.id: source for source in registry.sources}
+        total_bytes = 0
+        expected_blobs: set[str] = set()
+        for row in rows:
+            if type(row) is not dict or set(row) != _SNAPSHOT_SOURCE_FIELDS:
+                raise ValueError("acquisition snapshot source fields do not match")
+            source = expected_by_id.get(row["source_id"])
+            if (
+                source is None
+                or row["source_id"] in self._records
+                or row["feed_url"] != source.feed_url
+                or row["status"] not in {"success", "fetch_error"}
+            ):
+                raise ValueError("acquisition snapshot source identity is invalid")
+            if row["status"] == "success":
+                if (
+                    type(row["bytes"]) is not int
+                    or row["bytes"] < 1
+                    or row["bytes"] > MAX_FEED_BYTES
+                    or type(row["sha256"]) is not str
+                    or not _SHA256_RE.fullmatch(row["sha256"])
+                ):
+                    raise ValueError("acquisition snapshot success receipt is invalid")
+                total_bytes += row["bytes"]
+                expected_blobs.add(f"{source.id}.feed")
+            elif row["bytes"] != 0 or row["sha256"] is not None:
+                raise ValueError("acquisition snapshot failure receipt is invalid")
+            self._records[source.id] = row
+        if (
+            set(self._records) != set(expected_by_id)
+            or type(manifest["total_bytes"]) is not int
+            or manifest["total_bytes"] != total_bytes
+            or total_bytes > MAX_SNAPSHOT_BYTES
+        ):
+            raise ValueError("acquisition snapshot total does not match its receipts")
+        try:
+            blobs_metadata = (root / "blobs").lstat()
+            if (
+                not stat.S_ISDIR(blobs_metadata.st_mode)
+                or blobs_metadata.st_uid != os.geteuid()
+                or blobs_metadata.st_gid != os.getegid()
+                or stat.S_IMODE(blobs_metadata.st_mode) != 0o700
+            ):
+                raise ValueError("acquisition snapshot blob directory is unsafe")
+            actual_root = {entry.name for entry in root.iterdir()}
+            actual_blobs = {entry.name for entry in (root / "blobs").iterdir()}
+        except OSError as exc:
+            raise ValueError("acquisition snapshot inventory cannot be read") from exc
+        if actual_root != {"manifest.json", "blobs"} or actual_blobs != expected_blobs:
+            raise ValueError("acquisition snapshot inventory contains unexpected paths")
+        self._sources_by_url = {source.feed_url: source for source in registry.sources}
+
+    def __call__(self, url: str, **_kwargs: Any) -> bytes:
+        source = self._sources_by_url.get(url)
+        if source is None or source.id in self._seen:
+            self._fatal = ValueError("snapshot replay received an invalid source request")
+            raise AcquisitionFetchError("snapshot replay rejected a source request")
+        self._seen.add(source.id)
+        record = self._records[source.id]
+        if record["status"] == "fetch_error":
+            raise AcquisitionFetchError("source acquisition failed")
+        try:
+            raw = _read_snapshot_file(
+                _snapshot_blob_path(self.root, source.id), MAX_FEED_BYTES
+            )
+            if (
+                len(raw) != record["bytes"]
+                or hashlib.sha256(raw).hexdigest() != record["sha256"]
+            ):
+                raise ValueError("snapshot replay bytes do not match their receipt")
+            return raw
+        except Exception as exc:
+            self._fatal = exc
+            raise AcquisitionFetchError("snapshot replay validation failed") from exc
+
+    def finalize(self) -> None:
+        if self._fatal is not None:
+            raise ValueError("acquisition snapshot replay failed") from self._fatal
+        if self._seen != set(self._records):
+            raise ValueError("acquisition snapshot replay did not consume every source")
 
 
 def _reconcile_atomic_temporaries(paths: Sequence[Path | None]) -> None:
@@ -353,6 +637,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="persistent exclusive attempt lock (required by the scheduled service)",
     )
     parser.add_argument("--workers", type=int, default=6)
+    snapshot = parser.add_mutually_exclusive_group()
+    snapshot.add_argument(
+        "--snapshot-out",
+        type=Path,
+        help="new private directory for exact acquisition bytes used by race replays",
+    )
+    snapshot.add_argument(
+        "--snapshot-in",
+        type=Path,
+        help="validated private acquisition directory to replay without network access",
+    )
     parser.add_argument(
         "--now", help="fixed ISO-8601 clock for reproducible/offline runs"
     )
@@ -413,23 +708,47 @@ def _main_locked(args: argparse.Namespace) -> int:
     )
 
     try:
-        now = _parse_now(args.now)
         previous = _load_previous(args.output)
         last_generated_at, last_sha256 = _last_good_receipt(args.output, previous)
         registry = load_source_registry(args.config)
         prior_ledger = _load_ledger(args.ledger)
-        proxy = os.environ.get("PALIMPSEST_PROXY") or None
+        snapshot_transport: AcquisitionSnapshotWriter | AcquisitionSnapshotReader | None
+        if args.snapshot_in is not None:
+            snapshot_transport = AcquisitionSnapshotReader(args.snapshot_in, registry)
+            now = snapshot_transport.observed_at
+            if args.now is not None and _parse_now(args.now) != now:
+                raise ValueError("--now does not match the acquisition snapshot clock")
+            fetch = snapshot_transport
+        else:
+            now = _parse_now(args.now)
+            proxy = os.environ.get("PALIMPSEST_PROXY") or None
 
-        def fetch(url: str, **kwargs: Any) -> bytes:
-            return safe_fetch_bytes(url, proxy=proxy, **kwargs)
+            def network_fetch(url: str, **kwargs: Any) -> bytes:
+                return safe_fetch_bytes(url, proxy=proxy, **kwargs)
 
-        document = collect_newswire(
-            registry,
-            fetch,
-            now=now,
-            previous=previous,
-            max_workers=args.workers,
-        )
+            if args.snapshot_out is not None:
+                snapshot_transport = AcquisitionSnapshotWriter(
+                    args.snapshot_out,
+                    registry,
+                    now,
+                    network_fetch,
+                )
+                fetch = snapshot_transport
+            else:
+                snapshot_transport = None
+                fetch = network_fetch
+
+        try:
+            document = collect_newswire(
+                registry,
+                fetch,
+                now=now,
+                previous=previous,
+                max_workers=args.workers,
+            )
+        finally:
+            if snapshot_transport is not None:
+                snapshot_transport.finalize()
     except NoSuccessfulSources as exc:
         _write_status(
             args.status,

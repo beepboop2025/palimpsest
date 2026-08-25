@@ -282,6 +282,15 @@ def test_eval_assurance_is_rebuilt_after_every_chain_reconciliation():
     assert "journal/" in text
 
 
+def test_root_anchoring_client_is_hash_locked():
+    text = WORKFLOW.read_text(encoding="utf-8")
+    anchor = text[text.index("Anchor only the reconciled roots") :]
+    anchor = anchor[: anchor.index("Read the reconciled public surface")]
+
+    assert "python -m pip install --quiet --require-hashes" in anchor
+    assert "-r .github/anchor-requirements.txt" in anchor
+
+
 def test_eval_article_scenarios_gate_reconciliation_and_every_race_retry():
     text = WORKFLOW.read_text(encoding="utf-8")
     command = "python -m pytest -q"

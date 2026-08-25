@@ -83,13 +83,35 @@ class CensorwatchSettings:
     # existing behavior; deployments set CENSORWATCH_HOST_MIN_INTERVAL_S.
     host_min_interval_s: float = 0.0
 
+    # ── Hostile-response budgets ────────────────────────────────
+    # These are hard per-process acquisition ceilings, not publication limits.
+    # The transport enforces them before decompression and caching.
+    max_page_bytes: int = 8 * 1024 * 1024
+    max_image_bytes: int = 8 * 1024 * 1024
+    max_post_image_bytes: int = 32 * 1024 * 1024
+    max_cycle_image_bytes: int = 256 * 1024 * 1024
+    max_cache_bytes: int = 32 * 1024 * 1024
+    max_redirects: int = 5
+    min_archive_free_bytes: int = 1024 * 1024 * 1024
+
+    # Browser execution belongs in the credential-free render gateway.  Blank
+    # means JS-required sources abstain; the worker never falls back to a local
+    # browser in the database/Redis trust zone.
+    render_gateway_url: str | None = None
+
     user_agents: tuple[str, ...] = field(default=(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
-        "(KHTML, like Gecko) Version/17.4 Safari/605.1.15",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/123.0 Safari/537.36",
+        (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        ),
+        (
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "
+            "(KHTML, like Gecko) Version/17.4 Safari/605.1.15"
+        ),
+        (
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/123.0 Safari/537.36"
+        ),
     ))
 
 
@@ -113,6 +135,38 @@ def get_settings() -> CensorwatchSettings:
         velocity_baseline_windows=_int("CENSORWATCH_BASELINE_WINDOWS", 24),
         spike_z_threshold=_float("CENSORWATCH_SPIKE_Z", 3.0),
         host_min_interval_s=_float("CENSORWATCH_HOST_MIN_INTERVAL_S", 0.0),
+        max_page_bytes=max(
+            1024, min(16 * 1024 * 1024, _int("CENSORWATCH_MAX_PAGE_BYTES", 8 * 1024 * 1024))
+        ),
+        max_image_bytes=max(
+            1024, min(16 * 1024 * 1024, _int("CENSORWATCH_MAX_IMAGE_BYTES", 8 * 1024 * 1024))
+        ),
+        max_post_image_bytes=max(
+            1024,
+            min(
+                64 * 1024 * 1024,
+                _int("CENSORWATCH_MAX_POST_IMAGE_BYTES", 32 * 1024 * 1024),
+            ),
+        ),
+        max_cycle_image_bytes=max(
+            1024,
+            min(
+                512 * 1024 * 1024,
+                _int("CENSORWATCH_MAX_CYCLE_IMAGE_BYTES", 256 * 1024 * 1024),
+            ),
+        ),
+        max_cache_bytes=max(
+            1024, min(64 * 1024 * 1024, _int("CENSORWATCH_MAX_CACHE_BYTES", 32 * 1024 * 1024))
+        ),
+        max_redirects=max(0, min(8, _int("CENSORWATCH_MAX_REDIRECTS", 5))),
+        min_archive_free_bytes=max(
+            64 * 1024 * 1024,
+            min(
+                16 * 1024 * 1024 * 1024,
+                _int("CENSORWATCH_MIN_ARCHIVE_FREE_BYTES", 1024 * 1024 * 1024),
+            ),
+        ),
+        render_gateway_url=(os.getenv("CENSORWATCH_RENDER_GATEWAY_URL") or "").strip() or None,
     )
 
 

@@ -50,10 +50,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-import urllib.error
-import urllib.parse
-import urllib.request
+import re
+from collections.abc import Callable
 from datetime import datetime, timezone
+
+from core.safe_fetch import FetchError, SafeFetchResponse, safe_fetch_response
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,18 @@ except Exception as e:  # pragma: no cover - bare test env without httpx/pandas
 
 GITHUB_API = "https://api.github.com"
 USER_AGENT = "Palimpsest/0.2 (open-source censorship research; github-refuge)"
+MAX_REPO_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_WATCHLIST_REPOS = 64
+MAX_TERMS_PER_REPO = 32
+MAX_TERM_CHARS = 160
+MAX_BASELINE_BYTES = 64 * 1024
+_FULL_NAME = re.compile(
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9_.-]{1,100}\Z"
+)
+_REPO_URL = re.compile(
+    r"https://api\.github\.com/repos/"
+    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})/[A-Za-z0-9_.-]{1,100}\Z"
+)
 
 # Known censor-aligned complainants — substring-matched in DMCA / gov-takedown notice text.
 # Human-authored and auditable; a match is evidence, not a model's opinion. Extend per deployment.
@@ -137,7 +150,7 @@ def classify_repo_status(http_status: int, repo_json, *, was_present: bool = Fal
     if http_status == 0 or http_status >= 500:
         return {"status": "unreachable", "pressure_likelihood": None}
 
-    j = repo_json or {}
+    j = repo_json if isinstance(repo_json, dict) else {}
     if j.get("private") or j.get("archived") or j.get("disabled"):
         return {"status": "visibility_down", "pressure_likelihood": 0.6}
     return {"status": "present", "pressure_likelihood": 0.0}
@@ -343,7 +356,9 @@ class GithubBaselineStore:
         os.makedirs(root, exist_ok=True)
 
     def _path(self, full_name: str) -> str:
-        safe = full_name.replace("/", "__").replace("..", "_")
+        if type(full_name) is not str or not _FULL_NAME.fullmatch(full_name):
+            raise ValueError("invalid GitHub repository name")
+        safe = full_name.replace("/", "__")
         return os.path.join(self.root, safe + ".json")
 
     def get(self, full_name: str):
@@ -351,9 +366,12 @@ class GithubBaselineStore:
         if not os.path.exists(p):
             return None
         try:
+            if os.path.islink(p) or os.path.getsize(p) > MAX_BASELINE_BYTES:
+                return None
             with open(p, encoding="utf-8") as f:
-                return json.load(f)
-        except (OSError, json.JSONDecodeError):
+                record = json.load(f)
+            return record if isinstance(record, dict) else None
+        except (OSError, json.JSONDecodeError, UnicodeError):
             return None
 
     def put(self, full_name: str, record: dict) -> None:
@@ -377,7 +395,111 @@ def _parse_iso(ts):
         return None
 
 
-def github_fetch(url: str, *, token: str = None, proxy: str = None, timeout: float = 20.0) -> tuple:
+def _reject_constant(_value: str):
+    raise ValueError("non-finite JSON number")
+
+
+def _reject_duplicates(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate JSON key")
+        out[key] = value
+    return out
+
+
+def _bounded_text(value: object, limit: int) -> str | None:
+    if (
+        type(value) is not str
+        or not value
+        or len(value) > limit
+        or any(ord(char) < 0x20 or ord(char) == 0x7F for char in value)
+    ):
+        return None
+    return value
+
+
+def _bounded_count(value: object) -> int | None:
+    if type(value) is not int or not 0 <= value <= 10**12:
+        return None
+    return value
+
+
+def _normalize_watchlist(raw: object) -> list[dict]:
+    if not isinstance(raw, list) or len(raw) > MAX_WATCHLIST_REPOS:
+        return []
+    out = []
+    seen = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        full_name = entry.get("full_name") or entry.get("repo")
+        if (
+            type(full_name) is not str
+            or not _FULL_NAME.fullmatch(full_name)
+            or full_name in seen
+        ):
+            continue
+        terms = entry.get("terms") or []
+        if not isinstance(terms, list) or len(terms) > MAX_TERMS_PER_REPO:
+            continue
+        bounded_terms = []
+        valid = True
+        for term in terms:
+            bounded = _bounded_text(term, MAX_TERM_CHARS)
+            if bounded is None:
+                valid = False
+                break
+            bounded_terms.append(bounded)
+        if not valid:
+            continue
+        seen.add(full_name)
+        out.append({"full_name": full_name, "terms": bounded_terms})
+    return out
+
+
+def _repo_document(body: str, expected_full_name: str) -> dict | None:
+    try:
+        document = json.loads(
+            body,
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
+    if not isinstance(document, dict) or document.get("full_name") != expected_full_name:
+        return None
+    counts = {}
+    for name in ("forks_count", "stargazers_count"):
+        value = _bounded_count(document.get(name, 0))
+        if value is None:
+            return None
+        counts[name] = value
+    flags = {}
+    for name in ("private", "archived", "disabled"):
+        value = document.get(name, False)
+        if type(value) is not bool:
+            return None
+        flags[name] = value
+    created_at = _bounded_text(document.get("created_at"), 64)
+    if created_at is not None and _parse_iso(created_at) is None:
+        return None
+    return {
+        "full_name": expected_full_name,
+        "created_at": created_at,
+        **counts,
+        **flags,
+    }
+
+
+def github_fetch(
+    url: str,
+    *,
+    token: str = None,
+    proxy: str = None,
+    timeout: float = 20.0,
+    fetcher: Callable[..., SafeFetchResponse] = safe_fetch_response,
+) -> tuple:
     """Anonymous (or optionally token-raised) read-only GET. Returns (status_int, body_or_None).
 
     NEVER raises and NEVER writes: captures HTTPError to recover the status code (404/451/403 are
@@ -385,26 +507,40 @@ def github_fetch(url: str, *, token: str = None, proxy: str = None, timeout: flo
     rather than fabricating a takedown. An optional read-only token only raises the rate limit
     (60->5000/hr); correctness never needs auth. This is NOT the collector default — a deployer
     must opt in by injecting it, keeping the collector INERT out of the box."""
-    handlers = [urllib.request.HTTPRedirectHandler()]
-    if proxy:
-        handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
-    opener = urllib.request.build_opener(*handlers)
+    if type(url) is not str or not _REPO_URL.fullmatch(url):
+        logger.info("[github_refuge] refused an unreviewed GitHub endpoint")
+        return 0, None
     headers = {"User-Agent": USER_AGENT, "Accept": "application/vnd.github+json",
                "X-GitHub-Api-Version": "2022-11-28"}
     if token:
+        if (
+            type(token) is not str
+            or len(token) > 4096
+            or any(ord(char) < 0x21 or ord(char) > 0x7E for char in token)
+        ):
+            logger.info("[github_refuge] refused an invalid API token")
+            return 0, None
         headers["Authorization"] = f"Bearer {token}"
-    req = urllib.request.Request(url, headers=headers)
+
+    def exact_repo_url(candidate: str) -> None:
+        if candidate != url or not _REPO_URL.fullmatch(candidate):
+            raise FetchError("GitHub repository URL changed")
+
     try:
-        with opener.open(req, timeout=timeout) as r:
-            return r.getcode(), r.read(8 * 1024 * 1024).decode("utf-8", "replace")
-    except urllib.error.HTTPError as e:
-        try:
-            body = e.read(1024 * 1024).decode("utf-8", "replace")
-        except Exception:
-            body = None
-        return e.code, body
-    except (urllib.error.URLError, OSError) as e:
-        logger.info("[github_refuge] fetch failed for %s (%s)", url, type(e).__name__)
+        response = fetcher(
+            url,
+            timeout=timeout,
+            max_bytes=MAX_REPO_RESPONSE_BYTES,
+            max_redirects=0,
+            headers=headers,
+            proxy=proxy,
+            url_policy=exact_repo_url,
+        )
+        if len(response.body) > MAX_REPO_RESPONSE_BYTES:
+            raise FetchError("GitHub response exceeded its byte budget")
+        return response.status, response.body.decode("utf-8")
+    except Exception as exc:  # noqa: BLE001 — status 0 means transport abstention
+        logger.info("[github_refuge] fetch failed (%s)", type(exc).__name__)
         return 0, None
 
 
@@ -436,7 +572,7 @@ class GitHubRefugeCollector(BaseCollector):
         else:  # bare env: keep the pure core usable without httpx/pandas
             self.config = cfg
             self.name = type(self).name
-        self.watchlist = cfg.get("watchlist", [])            # empty => inert
+        self.watchlist = _normalize_watchlist(cfg.get("watchlist", []))  # empty => inert
         self.complainants = cfg.get("complainants", list(DEFAULT_COMPLAINANTS))
         self._fetch = fetch or _inert_fetch                  # no-op default => INERT
         self._fetch_dmca = fetch_dmca                        # None => no DMCA scan this cycle
@@ -458,13 +594,14 @@ class GitHubRefugeCollector(BaseCollector):
             return (0, None)
 
     def _get_repo(self, full_name: str) -> tuple:
+        if type(full_name) is not str or not _FULL_NAME.fullmatch(full_name):
+            return 0, None
         status, body = self._guarded_fetch(f"{GITHUB_API}/repos/{full_name}")
         repo_json = None
-        if body:
-            try:
-                repo_json = json.loads(body)
-            except json.JSONDecodeError:
-                repo_json = None
+        if body and status == 200:
+            repo_json = _repo_document(body, full_name)
+            if repo_json is None:
+                return 0, None
         return status, repo_json
 
     def _bursts(self, full_name: str, repo_json, prev, now) -> tuple:
@@ -483,8 +620,10 @@ class GitHubRefugeCollector(BaseCollector):
             prev_age_days = max(1.0, (prev_at - created).total_seconds() / 86400.0)
 
         def one(metric):
-            now_n = float(repo_json.get(metric, 0) or 0)
-            prev_n = float(prev.get(metric, 0) or 0)
+            now_n = _bounded_count(repo_json.get(metric, 0))
+            prev_n = _bounded_count(prev.get(metric, 0))
+            if now_n is None or prev_n is None:
+                return dict(_ZERO_BURST)
             delta = max(0.0, now_n - prev_n)
             baseline_rate = prev_n / prev_age_days  # avg gain/day over the repo's life so far
             return burst(delta, baseline_rate, window_days)

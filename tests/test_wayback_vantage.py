@@ -281,26 +281,33 @@ def test_vantage_does_not_treat_a_malformed_response_as_an_archive_gap(payload):
 
 
 def test_default_fetch_rejects_a_truncated_response(monkeypatch):
-    class Response:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def read(self, limit):
-            assert limit == 9
-            return b"x" * limit
-
     monkeypatch.setattr(wayback, "_MAX_BYTES", 8)
-    monkeypatch.setattr(
-        wayback.urllib.request,
-        "urlopen",
-        lambda _request, timeout: Response(),
-    )
 
     with pytest.raises(wayback.InvalidCDXResponse, match="byte cap"):
-        wayback.default_cdx_fetch("https://example.cn/watched")
+        wayback.default_cdx_fetch(
+            "https://example.cn/watched",
+            fetcher=lambda _url, **_kwargs: b"x" * 9,
+        )
+
+
+def test_default_fetch_pins_the_exact_cdx_query_and_transport_limits():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        with pytest.raises(wayback.FetchError):
+            kwargs["url_policy"]("https://web.archive.org/redirected")
+        return b"[]"
+
+    assert wayback.default_cdx_fetch(
+        "https://example.cn/watched?unsafe=1",
+        fetcher=fetcher,
+    ) == "[]"
+    assert seen["url"].startswith(wayback.CDX_API + "?")
+    assert "unsafe%3D1" in seen["url"]
+    assert seen["max_bytes"] == wayback._MAX_BYTES
+    assert seen["max_redirects"] == 0
 
 
 def test_vantage_applies_time_window_clientside():

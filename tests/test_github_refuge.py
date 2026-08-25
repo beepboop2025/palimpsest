@@ -11,21 +11,22 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from collectors.github_refuge import (
-    REFUGE_PRESERVATION,
-    REFUGE_PRESSURE,
-    REFUGE_TAKEDOWN,
-    GitHubRefugeCollector,
-    GithubBaselineStore,
-    burst,
-    classify_repo_status,
-    dmca_hits,
-    emit_observations,
-    refuge_event,
-    refuge_to_observation,
-    _inert_fetch,
-)
+import collectors.github_refuge as refuge
 from core.governance import KillSwitch
+from core.safe_fetch import FetchError, SafeFetchResponse
+
+REFUGE_PRESERVATION = refuge.REFUGE_PRESERVATION
+REFUGE_PRESSURE = refuge.REFUGE_PRESSURE
+REFUGE_TAKEDOWN = refuge.REFUGE_TAKEDOWN
+GitHubRefugeCollector = refuge.GitHubRefugeCollector
+GithubBaselineStore = refuge.GithubBaselineStore
+burst = refuge.burst
+classify_repo_status = refuge.classify_repo_status
+dmca_hits = refuge.dmca_hits
+emit_observations = refuge.emit_observations
+refuge_event = refuge.refuge_event
+refuge_to_observation = refuge.refuge_to_observation
+_inert_fetch = refuge._inert_fetch
 
 NOW = datetime(2026, 7, 1, tzinfo=timezone.utc)
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "github"
@@ -227,6 +228,82 @@ def test_inert_default_makes_zero_calls():
     assert out["observations"] == [] and out["reachability"] == {}
     assert calls == []                          # empty watchlist => fetch never called
     assert _inert_fetch("https://api.github.com/repos/x/y") == (0, None)
+
+
+def test_live_fetch_preserves_status_with_exact_bounded_transport():
+    seen = {}
+    url = "https://api.github.com/repos/github/dmca"
+
+    def fetcher(candidate, **kwargs):
+        seen.update(url=candidate, **kwargs)
+        kwargs["url_policy"](candidate)
+        return SafeFetchResponse(
+            status=451,
+            headers={},
+            body=b'{"message":"Unavailable For Legal Reasons"}',
+            url=candidate,
+        )
+
+    status, body = refuge.github_fetch(
+        url,
+        token="read-only-token",
+        fetcher=fetcher,
+    )
+    assert status == 451
+    assert "Unavailable" in body
+    assert seen["max_bytes"] == refuge.MAX_REPO_RESPONSE_BYTES
+    assert seen["max_redirects"] == 0
+    assert seen["headers"]["Authorization"] == "Bearer read-only-token"
+
+
+def test_live_fetch_refuses_unreviewed_or_changed_repository_urls():
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("invalid repository must fail before egress")
+
+    assert refuge.github_fetch(
+        "https://evil.example/repos/github/dmca", fetcher=no_fetch
+    ) == (0, None)
+
+    def changed(url, **kwargs):
+        kwargs["url_policy"]("http://169.254.169.254/latest/meta-data")
+        raise FetchError("changed URL")
+
+    assert refuge.github_fetch(
+        "https://api.github.com/repos/github/dmca", fetcher=changed
+    ) == (0, None)
+
+
+def test_malformed_200_is_abstention_and_cannot_seed_a_baseline(tmp_path):
+    calls = []
+    store = GithubBaselineStore(str(tmp_path / "baselines"))
+    collector = GitHubRefugeCollector(
+        {"watchlist": [{"full_name": "github/dmca"}]},
+        fetch=lambda _url: (200, '{"full_name":"github/dmca","forks_count":NaN}'),
+        baseline_store=store,
+    )
+    out = collector.scan()
+    calls.extend(out["observations"])
+    assert calls == []
+    assert out["reachability"]["github/dmca"] == "0:unreachable"
+    assert store.get("github/dmca") is None
+
+
+def test_watchlist_fanout_and_repository_names_are_fail_closed():
+    calls = []
+    too_many = [
+        {"full_name": f"owner/repo-{index}"}
+        for index in range(refuge.MAX_WATCHLIST_REPOS + 1)
+    ]
+    too_many_result = GitHubRefugeCollector(
+        {"watchlist": too_many}, fetch=lambda url: calls.append(url) or (200, "{}")
+    ).scan()
+    invalid_name_result = GitHubRefugeCollector(
+        {"watchlist": [{"full_name": "../../private"}]},
+        fetch=lambda url: calls.append(url) or (200, "{}"),
+    ).scan()
+    assert too_many_result["readings"] == []
+    assert invalid_name_result["readings"] == []
+    assert calls == []
 
 
 def test_star_burst_emits_preservation(tmp_path):

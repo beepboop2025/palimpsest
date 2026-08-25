@@ -23,17 +23,20 @@ _Q = {"queue": "censorwatch"}
 
 def build_censorwatch_schedule() -> dict:
     """Return the censorwatch beat_schedule fragment."""
-    return {
-        # ── CAPTURE ──────────────────────────────────────────────
-        # Eastmoney guba is proven first; xueqiu/weibo are added as they come
-        # online (their sources.yaml entries stay enabled:false until then).
-        "cw-collect-eastmoney_guba": {
-            "task": "censorwatch.tasks.cw_collect",
-            "schedule": crontab(minute="*/10"),
-            "args": ["eastmoney_guba"],
-            "options": _Q,
-        },
+    from censorwatch.registry import load_sources
 
+    sources = load_sources()
+    schedule = {
+        f"cw-collect-{name}": {
+            "task": "censorwatch.tasks.cw_collect",
+            "schedule": crontab(minute=f"*/{config['capture_interval_min']}"),
+            "args": [name],
+            "options": _Q,
+        }
+        for name, config in sorted(sources.items())
+        if config["enabled"]
+    }
+    schedule.update({
         # ── RE-CHECK (tiered by post age) ────────────────────────
         "cw-recheck-fresh": {                       # posts < 6h old
             "task": "censorwatch.tasks.cw_recheck",
@@ -60,4 +63,5 @@ def build_censorwatch_schedule() -> dict:
             "schedule": crontab(minute="*/20"),
             "options": _Q,
         },
-    }
+    })
+    return schedule

@@ -1,27 +1,12 @@
-"""Proxy-aware, polite HTTP fetcher — shared by collectors and the detector.
+"""Bounded hostile-content acquisition for CensorWatch.
 
-Responsibilities:
-- Honor ``settings.proxy_url`` (we run from outside China; datacenter exits get
-  403'd by Weibo, so the proxy is load-bearing for the velocity signal).
-- Apply a randomized inter-request delay in ``[min_delay_s, max_delay_s]`` and
-  rotate User-Agents (politeness / ban-avoidance).
-- Enforce a per-host minimum interval (``settings.host_min_interval_s``) on top of
-  the jitter: the jitter spaces requests globally, this bounds pressure per origin,
-  so one collector fanning out over many posts on one platform can never hammer it.
-  Off by default (0), preserving prior behavior.
-- Revalidate with conditional GETs: when a prior response carried an ``ETag`` /
-  ``Last-Modified`` validator, the next fetch of the same URL sends
-  ``If-None-Match`` / ``If-Modified-Since`` and maps a 304 back to the cached body
-  (``FetchResult.not_modified=True``). Politeness (the origin skips re-sending an
-  unchanged body — most re-check fetches) and signal at once: a 304 is the origin
-  itself asserting the post is unchanged, a strong LIVE tell for the detector.
-- Optionally render JS-heavy pages via Playwright (Weibo search) behind the same
-  ``fetch()`` signature, so callers don't care which engine ran.
+Every ordinary page and asset read passes through :mod:`core.safe_fetch`: exact source
+authority, public-IP validation and pinning, redirect replay, TLS verification, and body /
+decompression limits are therefore one contract. Browser-required sources abstain unless
+the credential-free render gateway is configured; this worker never launches a local browser.
 
-Always returns an ``interfaces.FetchResult`` — transport failures become
-``status=None`` + ``error`` rather than exceptions, so the classifier can map them
-to ``UNKNOWN`` uniformly (a thrown exception mid-cycle would otherwise look like a
-deletion to careless callers).
+Transport refusal becomes ``FetchResult(status=None)``. That maps to UNKNOWN downstream,
+never to a deletion, preserving the detector's evidence semantics.
 """
 
 from __future__ import annotations
@@ -29,57 +14,81 @@ from __future__ import annotations
 import asyncio
 import logging
 import random
+import re
 import time
+from collections.abc import Callable, Mapping
 from urllib.parse import urlparse
-
-import httpx
 
 from censorwatch.config import CensorwatchSettings, get_settings
 from censorwatch.interfaces import FetchResult
+from censorwatch.source_policy import source_network_policy, source_url_policy
+from core.safe_fetch import (
+    FetchError,
+    ResponseTooLarge,
+    SafeFetchResponse,
+    safe_fetch_response,
+)
 
 logger = logging.getLogger(__name__)
 
-# Conditional-GET cache bound. Per-Fetcher (a Fetcher lives for one collector run), so
-# this only needs to cover one cycle's URLs; oldest-inserted entries are evicted first.
 _CACHE_MAX_ENTRIES = 512
+_CHARSET = re.compile(
+    r"(?:^|;)\s*charset\s*=\s*['\"]?([A-Za-z0-9._-]+)", re.IGNORECASE
+)
+_ALLOWED_CHARSETS = frozenset({"utf-8", "utf8", "gb18030", "gbk", "big5"})
+
+ResponseFetcher = Callable[..., SafeFetchResponse]
+
+
+def _header(headers: Mapping[str, str], name: str) -> str | None:
+    wanted = name.casefold()
+    for key, value in headers.items():
+        if str(key).casefold() == wanted:
+            return str(value)
+    return None
+
+
+def _decode_text(response: SafeFetchResponse) -> str:
+    content_type = _header(response.headers, "Content-Type") or ""
+    match = _CHARSET.search(content_type)
+    charset = match.group(1).casefold() if match else "utf-8"
+    if charset not in _ALLOWED_CHARSETS:
+        charset = "utf-8"
+    try:
+        return response.body.decode(charset, "replace")
+    except LookupError:  # defensive; the allowlist above should make this unreachable
+        return response.body.decode("utf-8", "replace")
 
 
 class Fetcher:
-    """Async fetcher with proxy, jitter, UA rotation, per-host pacing, and
-    conditional-GET revalidation.
-
-    A ``transport`` may be injected (e.g. ``httpx.MockTransport``) for tests so the
-    full path is exercised without a network. ``clock`` (monotonic seconds) is
-    injectable so the per-host pacer is deterministic under test.
-    """
+    """Async facade over the pinned, bounded CensorWatch acquisition transport."""
 
     def __init__(
         self,
         settings: CensorwatchSettings | None = None,
         *,
-        transport: httpx.AsyncBaseTransport | None = None,
+        source: str,
+        response_fetcher: ResponseFetcher = safe_fetch_response,
         rng: random.Random | None = None,
         clock=time.monotonic,
     ):
         self.s = settings or get_settings()
+        self.source = source
+        self._response_fetcher = response_fetcher
         self._rng = rng or random.Random()
         self._clock = clock
-        self._host_last: dict[str, float] = {}   # host → last-request time (pacer)
-        self._cache: dict[str, dict] = {}        # url → {etag, last_modified, status, text, final_url}
-        # httpx reads no_proxy/env separately; we pass proxy explicitly so the
-        # censorwatch proxy is independent of any ambient HTTP_PROXY for other code.
-        client_kwargs = dict(
-            timeout=self.s.request_timeout_s,
-            follow_redirects=True,
-        )
-        if self.s.proxy_url:
-            client_kwargs["proxy"] = self.s.proxy_url
-        if transport is not None:
-            client_kwargs["transport"] = transport
-        self._client = httpx.AsyncClient(**client_kwargs)
+        self._host_last: dict[str, float] = {}
+        self._cache: dict[str, dict] = {}
+        self._cache_bytes = 0
+        self._cycle_image_bytes = 0
+        # Resolve policy at construction so an unregistered source cannot create
+        # an ambiently privileged client and fail only after its task starts.
+        policy = source_network_policy(source)
+        self._page_policy = source_url_policy(source, purpose="page")
+        self._page_policy("https://" + next(iter(policy.page_hosts)) + "/")
 
     async def aclose(self):
-        await self._client.aclose()
+        """Compatibility hook; the hardened transport owns no persistent connection."""
 
     async def __aenter__(self):
         return self
@@ -87,21 +96,13 @@ class Fetcher:
     async def __aexit__(self, *exc):
         await self.aclose()
 
-    # ── politeness ───────────────────────────────────────────────
     async def _jitter(self):
-        """Sleep a uniform-random interval to look human and avoid bans."""
         lo, hi = self.s.min_delay_s, self.s.max_delay_s
         delay = self._rng.uniform(lo, hi) if hi > lo else lo
         if delay > 0:
             await asyncio.sleep(delay)
 
     async def _host_pace(self, url: str):
-        """Enforce the per-host minimum interval (if configured) before a request.
-
-        Applies to page fetches only — fetch_bytes (image archiving) deliberately
-        keeps its own polite=False fast path, since a post may reference dozens of
-        images and per-image pacing would make first-capture archiving too slow to
-        beat the censor."""
         interval = self.s.host_min_interval_s
         if interval <= 0:
             return
@@ -116,43 +117,99 @@ class Fetcher:
                 await asyncio.sleep(wait)
         self._host_last[host] = self._clock()
 
-    # ── conditional-GET revalidation ─────────────────────────────
-    def _conditional_headers(self, url: str) -> dict:
-        """If-None-Match / If-Modified-Since from the cached validators, if any."""
-        c = self._cache.get(url)
-        if not c:
+    def _conditional_headers(self, url: str) -> dict[str, str]:
+        cached = self._cache.get(url)
+        if not cached:
             return {}
-        h = {}
-        if c.get("etag"):
-            h["If-None-Match"] = c["etag"]
-        if c.get("last_modified"):
-            h["If-Modified-Since"] = c["last_modified"]
-        return h
+        headers = {}
+        if cached.get("etag"):
+            headers["If-None-Match"] = cached["etag"]
+        if cached.get("last_modified"):
+            headers["If-Modified-Since"] = cached["last_modified"]
+        return headers
 
-    def _remember_validators(self, url: str, resp) -> None:
-        """Cache the body of a 200 that carries a validator, for the next revalidation."""
-        etag = resp.headers.get("ETag")
-        last_modified = resp.headers.get("Last-Modified")
+    def _forget(self, url: str) -> None:
+        old = self._cache.pop(url, None)
+        if old:
+            self._cache_bytes = max(0, self._cache_bytes - int(old["bytes"]))
+
+    def _remember_validators(
+        self, url: str, response: SafeFetchResponse, text: str
+    ) -> None:
+        etag = _header(response.headers, "ETag")
+        last_modified = _header(response.headers, "Last-Modified")
         if not (etag or last_modified):
+            self._forget(url)
             return
-        if url not in self._cache and len(self._cache) >= _CACHE_MAX_ENTRIES:
-            self._cache.pop(next(iter(self._cache)))   # evict oldest-inserted
+        size = len(response.body)
+        self._forget(url)
+        if size > self.s.max_cache_bytes:
+            return
+        while self._cache and (
+            len(self._cache) >= _CACHE_MAX_ENTRIES
+            or self._cache_bytes + size > self.s.max_cache_bytes
+        ):
+            self._forget(next(iter(self._cache)))
         self._cache[url] = {
-            "etag": etag, "last_modified": last_modified,
-            "status": resp.status_code, "text": resp.text, "final_url": str(resp.url),
+            "etag": etag,
+            "last_modified": last_modified,
+            "status": response.status,
+            "text": text,
+            "final_url": response.url,
+            "bytes": size,
         }
+        self._cache_bytes += size
 
-    def _headers(self, referer: str | None = None) -> dict:
-        h = {
+    def _headers(self, referer: str | None = None) -> dict[str, str]:
+        headers = {
             "User-Agent": self._rng.choice(self.s.user_agents),
             "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.5",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
         if referer:
-            h["Referer"] = referer
-        return h
+            try:
+                self._page_policy(referer)
+            except FetchError:
+                logger.warning("[censorwatch:%s] refused unreviewed Referer", self.source)
+            else:
+                headers["Referer"] = referer
+        return headers
 
-    # ── fetch ────────────────────────────────────────────────────
+    async def _acquire(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        max_bytes: int,
+        purpose: str,
+    ) -> SafeFetchResponse:
+        policy = source_url_policy(self.source, purpose=purpose)
+        policy(url)
+        response = await asyncio.to_thread(
+            self._response_fetcher,
+            url,
+            max_bytes=max_bytes,
+            timeout=self.s.request_timeout_s,
+            max_redirects=self.s.max_redirects,
+            headers=headers,
+            proxy=self.s.proxy_url,
+            url_policy=policy,
+        )
+        if len(response.body) > max_bytes:
+            raise ResponseTooLarge("acquisition seam exceeded its byte budget")
+        return response
+
+    @staticmethod
+    def _error_result(url: str, exc: BaseException) -> FetchResult:
+        # Do not echo attacker-controlled paths, proxy credentials, or upstream
+        # response text into durable Celery results and logs.
+        return FetchResult(
+            url=url,
+            status=None,
+            text=None,
+            error=f"fetch_refused:{type(exc).__name__}",
+        )
+
     async def fetch(
         self,
         url: str,
@@ -161,29 +218,30 @@ class Fetcher:
         render: bool = False,
         polite: bool = True,
     ) -> FetchResult:
-        """GET ``url`` and return a FetchResult. Never raises on transport errors.
-
-        ``render=True`` routes through Playwright for JS-heavy pages.
-        ``polite=False`` skips the jitter (used by the liveness probe, which we
-        want fast and which is a single known-stable URL).
-        """
+        """Fetch one reviewed page; all ambiguity becomes an UNKNOWN-compatible result."""
+        if render:
+            return await self._render(url, referer=referer)
+        try:
+            self._page_policy(url)
+        except FetchError as exc:
+            return self._error_result(url, exc)
         await self._host_pace(url)
         if polite:
             await self._jitter()
-        if render:
-            return await self._render(url, referer=referer)
         headers = self._headers(referer)
         headers.update(self._conditional_headers(url))
         try:
-            resp = await self._client.get(url, headers=headers)
-        except httpx.TimeoutException as e:
-            return FetchResult(url=url, status=None, text=None, error=f"timeout:{e}")
-        except httpx.HTTPError as e:
-            return FetchResult(url=url, status=None, text=None, error=f"http_error:{e}")
+            response = await self._acquire(
+                url,
+                headers=headers,
+                max_bytes=self.s.max_page_bytes,
+                purpose="page",
+            )
+        except (FetchError, OSError, TimeoutError) as exc:
+            return self._error_result(url, exc)
+
         cached = self._cache.get(url)
-        if resp.status_code == 304 and cached:
-            # The origin asserted "unchanged since your validator" — replay the cached
-            # body so the classifier sees the same LIVE content it saw last time.
+        if response.status == 304 and cached:
             return FetchResult(
                 url=url,
                 status=cached["status"],
@@ -191,64 +249,66 @@ class Fetcher:
                 final_url=cached["final_url"],
                 not_modified=True,
             )
-        if resp.status_code == 200:
-            self._remember_validators(url, resp)
+        text = _decode_text(response)
+        if response.status == 200:
+            self._remember_validators(url, response, text)
         return FetchResult(
             url=url,
-            status=resp.status_code,
-            text=resp.text,
-            final_url=str(resp.url),
+            status=response.status,
+            text=text,
+            final_url=response.url,
         )
 
     async def fetch_bytes(
-        self, url: str, *, referer: str | None = None, polite: bool = False
+        self,
+        url: str,
+        *,
+        referer: str | None = None,
+        polite: bool = False,
+        max_bytes: int | None = None,
     ) -> tuple[int | None, bytes | None, str | None]:
-        """GET raw bytes (for archiving images). Returns (status, content, error).
-
-        Never raises — a failed image download must not abort an archive run.
-        Defaults to ``polite=False`` since a post may reference many images and
-        per-image jitter would make archiving impractically slow.
-        """
+        """Fetch one reviewed asset through the same redirect and size boundary."""
         if polite:
             await self._jitter()
+        remaining_cycle = self.s.max_cycle_image_bytes - self._cycle_image_bytes
+        requested = self.s.max_image_bytes if max_bytes is None else max_bytes
+        cap = min(self.s.max_image_bytes, requested, remaining_cycle)
+        if cap <= 0:
+            return None, None, "fetch_refused:image_budget_exhausted"
         try:
-            resp = await self._client.get(url, headers=self._headers(referer))
-            return resp.status_code, resp.content, None
-        except httpx.HTTPError as e:
-            return None, None, f"http_error:{e}"
+            response = await self._acquire(
+                url,
+                headers=self._headers(referer),
+                max_bytes=cap,
+                purpose="asset",
+            )
+        except (FetchError, OSError, TimeoutError) as exc:
+            return None, None, f"fetch_refused:{type(exc).__name__}"
+        self._cycle_image_bytes += len(response.body)
+        return response.status, response.body, None
 
     async def _render(self, url: str, referer: str | None = None) -> FetchResult:
-        """Render a JS-heavy page with Playwright (lazy import).
+        """Render only through the fixed, bounded, credential-free gateway."""
+        try:
+            self._page_policy(url)
+            if referer:
+                self._page_policy(referer)
+        except FetchError as exc:
+            return self._error_result(url, exc)
+        if not self.s.render_gateway_url:
+            return FetchResult(
+                url=url,
+                status=None,
+                text=None,
+                error="render_gateway_unconfigured",
+            )
+        from censorwatch.render_client import render_via_gateway
 
-        If Playwright isn't installed/usable, return a transport error → UNKNOWN,
-        never a false deletion.
-        """
-        try:
-            from playwright.async_api import async_playwright
-        except Exception as e:  # pragma: no cover - optional dependency
-            return FetchResult(url=url, status=None, text=None,
-                               error=f"playwright_unavailable:{e}")
-        try:
-            async with async_playwright() as p:
-                launch_kwargs = {}
-                if self.s.proxy_url:
-                    launch_kwargs["proxy"] = {"server": self.s.proxy_url}
-                browser = await p.chromium.launch(headless=True, **launch_kwargs)
-                try:
-                    page = await browser.new_page(
-                        user_agent=self._rng.choice(self.s.user_agents),
-                        extra_http_headers={"Accept-Language": "zh-CN,zh;q=0.9"},
-                    )
-                    resp = await page.goto(url, wait_until="networkidle",
-                                           timeout=self.s.request_timeout_s * 1000)
-                    text = await page.content()
-                    return FetchResult(
-                        url=url,
-                        status=resp.status if resp else None,
-                        text=text,
-                        final_url=page.url,
-                    )
-                finally:
-                    await browser.close()
-        except Exception as e:  # pragma: no cover - runtime/network dependent
-            return FetchResult(url=url, status=None, text=None, error=f"render_error:{e}")
+        return await render_via_gateway(
+            self.s.render_gateway_url,
+            source=self.source,
+            url=url,
+            referer=referer,
+            timeout=self.s.request_timeout_s,
+            max_bytes=self.s.max_page_bytes,
+        )

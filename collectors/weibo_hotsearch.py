@@ -41,7 +41,7 @@ read as the ordinary sense, and every gated-out hit is recorded in the output,
 never silently dropped. See _SENSE_RULES for the rule, its stated direction of
 error, and the method-change note that goes with it.
 
-Standard-library only (urllib + json). Fetch is fail-soft: a missing day is a
+Standard-library only (shared safe transport + json). Fetch is fail-soft: a missing day is a
 statement of absence, never zero.
 """
 from __future__ import annotations
@@ -50,9 +50,10 @@ import json
 import logging
 import re
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
+from collections.abc import Callable
+from datetime import datetime
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 log = logging.getLogger(__name__)
 
@@ -61,18 +62,56 @@ RAW_URL = ("https://raw.githubusercontent.com/justjavac/"
 USER_AGENT = ("palimpsest.info observatory (public-archive ingest; "
               "contact desk@palimpsest.info)")
 SPACING_S = 0.6            # polite gap between per-day fetches
+MAX_BYTES = 4 * 1024 * 1024
+MAX_DAYS_PER_RUN = 32
+MAX_ROWS_PER_DAY = 10_000
 _BAND_RANK = re.compile(r"band_rank=(\d+)")
+_DATE = re.compile(r"\d{4}-\d{2}-\d{2}\Z")
 
 
-def _get_raw(date_iso: str, timeout: float = 30.0) -> str | None:
-    """Fetch one day's archive file. Fail-soft: None on any transport error."""
-    req = urllib.request.Request(
-        RAW_URL.format(date=date_iso), headers={"User-Agent": USER_AGENT})
+def _valid_date(date_iso: object) -> bool:
+    if type(date_iso) is not str or _DATE.fullmatch(date_iso) is None:
+        return False
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read().decode("utf-8", "replace")
+        datetime.strptime(date_iso, "%Y-%m-%d")
+    except ValueError:
+        return False
+    return True
+
+
+def _get_raw(
+    date_iso: str,
+    timeout: float = 30.0,
+    *,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> str | None:
+    """Fetch one exact bounded archive object, abstaining on any refusal."""
+    if not _valid_date(date_iso):
+        log.warning("weibo-hotsearch refused an invalid archive date")
+        return None
+    url = RAW_URL.format(date=date_iso)
+
+    def exact_url(candidate: str) -> None:
+        if candidate != url:
+            raise FetchError("Weibo archive URL changed")
+
+    try:
+        payload = fetcher(
+            url,
+            timeout=timeout,
+            max_bytes=MAX_BYTES,
+            max_redirects=0,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
+            },
+            url_policy=exact_url,
+        )
+        if len(payload) > MAX_BYTES:
+            raise FetchError("Weibo archive exceeded its byte budget")
+        return payload.decode("utf-8", "replace")
     except Exception as exc:  # noqa: BLE001 — abstain, never fake
-        log.warning("weibo-hotsearch %s fetch failed: %s", date_iso, exc)
+        log.warning("weibo-hotsearch fetch failed (%s)", type(exc).__name__)
         return None
 
 
@@ -86,22 +125,29 @@ def parse_day(raw: str) -> list[dict] | None:
     """
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, RecursionError):
         return None
-    if not isinstance(data, list):
+    if not isinstance(data, list) or len(data) > MAX_ROWS_PER_DAY:
         return None
     out = []
     for item in data:
         if not isinstance(item, dict):
             continue
-        title = (item.get("title") or "").strip()
-        if not title:
+        title_value = item.get("title")
+        url_value = item.get("url")
+        if not isinstance(title_value, str) or not isinstance(url_value, str):
             continue
-        url = item.get("url") or ""
+        title = title_value.strip()
+        if not title or len(title) > 512 or len(url_value) > 4096:
+            continue
+        url = url_value
         m = _BAND_RANK.search(url)
+        rank = int(m.group(1)) if m else None
+        if rank is not None and not 1 <= rank <= 100:
+            rank = None
         out.append({
             "title": title,
-            "rank": int(m.group(1)) if m else None,
+            "rank": rank,
             "pinned": "Refer=new_time" in url,
         })
     return out or None
@@ -110,6 +156,13 @@ def parse_day(raw: str) -> list[dict] | None:
 def collect_range(dates: list[str], fetch=_get_raw) -> dict[str, list[dict]]:
     """Fetch + parse a list of ISO dates. Missing/unparseable days are absent
     from the result — absence is reported, never imputed."""
+    if (
+        not isinstance(dates, list)
+        or not 1 <= len(dates) <= MAX_DAYS_PER_RUN
+        or any(not _valid_date(day) for day in dates)
+    ):
+        log.warning("weibo-hotsearch refused an invalid or oversized date window")
+        return {}
     out: dict[str, list[dict]] = {}
     for i, d in enumerate(dates):
         if i:

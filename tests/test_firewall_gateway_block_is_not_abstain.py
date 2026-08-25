@@ -73,7 +73,7 @@ def test_an_http_rejection_returns_the_status_and_the_body_verbatim(monkeypatch)
     read at the moment the error arrives, not discarded in the except clause."""
     def raise_400(req, timeout=None):
         raise _http_400(req.full_url)
-    monkeypatch.setattr(urllib.request, "urlopen", raise_400)
+    monkeypatch.setattr(gf, "_open_ollama", raise_400)
 
     out = _ollama_generate("deepseek-r1:7b", "六四")
     assert isinstance(out, GatewayRejection)
@@ -85,7 +85,51 @@ def test_a_transport_failure_still_returns_none(monkeypatch):
     """The abstain path is untouched: a connection that never reached the gateway is None."""
     def raise_unreachable(req, timeout=None):
         raise urllib.error.URLError("connection refused")
-    monkeypatch.setattr(urllib.request, "urlopen", raise_unreachable)
+    monkeypatch.setattr(gf, "_open_ollama", raise_unreachable)
+    assert _ollama_generate("deepseek-r1:7b", "六四") is None
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "http://169.254.169.254:80",
+        "http://10.0.0.8:11434",
+        "https://localhost:11434",
+        "http://localhost:11434/api/generate",
+        "http://localhost:11434?next=http://127.0.0.1",
+        "http://:@attacker.invalid:11434",
+    ],
+)
+def test_ollama_transport_refuses_every_non_loopback_or_decorated_host(
+    monkeypatch,
+    host,
+):
+    monkeypatch.setattr(
+        gf,
+        "_open_ollama",
+        lambda *_args, **_kwargs: pytest.fail("unsafe host reached transport"),
+    )
+    assert _ollama_generate("deepseek-r1:7b", "六四", host=host) is None
+
+
+def test_ollama_transport_caps_the_outbound_prompt(monkeypatch):
+    monkeypatch.setattr(
+        gf,
+        "_open_ollama",
+        lambda *_args, **_kwargs: pytest.fail("oversized prompt reached transport"),
+    )
+    assert _ollama_generate(
+        "deepseek-r1:7b",
+        "x" * gf.OLLAMA_MAX_REQUEST_BYTES,
+    ) is None
+
+
+@pytest.mark.parametrize("status", [302, 500, 503])
+def test_redirects_and_server_failures_abstain(monkeypatch, status):
+    def fail(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, status, "failure", None, io.BytesIO(b""))
+
+    monkeypatch.setattr(gf, "_open_ollama", fail)
     assert _ollama_generate("deepseek-r1:7b", "六四") is None
 
 

@@ -14,9 +14,12 @@ from __future__ import annotations
 
 import pytest
 
+import collectors.origin_as as origin_module
 from collectors.inside_view import finalize_panel, observe_domain
-from collectors.origin_as import (OriginASUnavailable, asns_of, origin_as,
-                                  owners_of)
+
+OriginASUnavailable = origin_module.OriginASUnavailable
+origin_as = origin_module.origin_as
+owners_of = origin_module.owners_of
 
 # Verbatim from whois.cymru.com, 2026-08-01.
 CYMRU = """Bulk mode; whois.cymru.com [2026-08-01 04:00:11 +0000]
@@ -83,6 +86,54 @@ def test_a_response_that_places_nothing_raises():
         origin_as(["1.1.1.1"], query=lambda p: "Bulk mode; nothing here\n")
 
 
+def test_lookup_rejects_line_protocol_injection_before_transport():
+    def transport_must_not_run(_payload):
+        raise AssertionError("invalid address reached WHOIS transport")
+
+    with pytest.raises(OriginASUnavailable, match="IP literal"):
+        origin_as(["1.1.1.1\nend\nbegin"], query=transport_must_not_run)
+
+
+def test_lookup_caps_the_address_batch_before_transport():
+    addresses = [f"2001:4860::{index:x}" for index in range(origin_module.MAX_IPS + 1)]
+    with pytest.raises(OriginASUnavailable, match="item quota"):
+        origin_as(addresses, query=lambda _payload: pytest.fail("transport ran"))
+
+
+def test_lookup_ignores_unrequested_rows_from_the_service():
+    got = origin_as(["140.82.121.4"], query=lambda _payload: CYMRU)
+    assert set(got) == {"140.82.121.4"}
+
+
+def test_whois_transport_caps_a_never_ending_response(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class EndlessSocket:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def sendall(self, _payload):
+            return None
+
+        def settimeout(self, _timeout):
+            return None
+
+        def recv(self, size):
+            return b"x" * size
+
+    monkeypatch.setattr(origin_module, "MAX_RESPONSE_BYTES", 16)
+    monkeypatch.setattr(
+        origin_module.socket,
+        "create_connection",
+        lambda *_args, **_kwargs: EndlessSocket(),
+    )
+    with pytest.raises(OriginASUnavailable, match="byte quota"):
+        origin_module._query("begin\nverbose\n1.1.1.1\nend\n")
+
+
 def test_owners_are_rendered_as_names_a_reader_recognises():
     assert owners_of(["140.82.121.4"], OWNER) == {"GITHUB"}
     assert owners_of(["199.16.158.8"], OWNER) == {"TWITTER"}
@@ -93,7 +144,7 @@ def test_owners_are_rendered_as_names_a_reader_recognises():
 def _observe_only(domain, control_ips, cn_ips, *, resolve=None):
     """One domain, not yet settled by the round."""
     def create(d, locations, limit):
-        return "cn" if any("magic" in l for l in locations) else "ctl"
+        return "cn" if any("magic" in location for location in locations) else "ctl"
 
     def collect(mid):
         def probe(city, asn, answers, country=None):
@@ -113,7 +164,7 @@ def _observe_only(domain, control_ips, cn_ips, *, resolve=None):
 
 def _round(control_ips, cn_ips, *, resolve=None):
     def create(domain, locations, limit):
-        return "cn" if any("magic" in l for l in locations) else "ctl"
+        return "cn" if any("magic" in location for location in locations) else "ctl"
 
     def collect(mid):
         def probe(city, asn, answers, country=None):

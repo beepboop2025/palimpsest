@@ -34,8 +34,10 @@ from __future__ import annotations
 
 import json
 import logging
-import urllib.error
-import urllib.request
+import math
+from collections.abc import Callable
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +52,8 @@ TARGET_CODE = "CN"
 # rather than at the world.
 MIN_COUNTRIES = 20
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+MAX_COUNTRIES = 512
+MAX_TAGS = 256
 
 
 def _num(row: dict, *names, default=None):
@@ -61,34 +65,75 @@ def _num(row: dict, *names, default=None):
     return default
 
 
-def _fetch_year(year: int, page_size: int, timeout: float, opener) -> list | None:
+def _reject_constant(_value: str):
+    raise ValueError("non-finite JSON number")
+
+
+def _reject_duplicates(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate JSON key")
+        out[key] = value
+    return out
+
+
+def _fetch_year(
+    year: int,
+    page_size: int,
+    timeout: float,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> list | None:
     """One attempt at one `timeModes` year. Returns None on any failure."""
+    if (
+        type(year) is not int
+        or not 2000 <= year <= 2200
+        or type(page_size) is not int
+        or not MIN_COUNTRIES <= page_size <= MAX_COUNTRIES
+    ):
+        log.warning("applecensorship refused invalid request parameters")
+        return None
     url = (f"{OVERVIEW}?pageNum=0&pageSize={page_size}"
            f"&timeModes={year}&needTotalApps=false")
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    _open = opener or urllib.request.urlopen
+
+    def exact_url(candidate: str) -> None:
+        if candidate != url:
+            raise FetchError("AppleCensorship request URL changed")
+
     try:
-        with _open(req, timeout=timeout) as resp:
-            raw = resp.read(MAX_RESPONSE_BYTES + 1)
-            if len(raw) > MAX_RESPONSE_BYTES:
-                log.warning(
-                    "applecensorship overview %s exceeded %s bytes",
-                    year, MAX_RESPONSE_BYTES,
-                )
-                return None
-            doc = json.loads(raw.decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        log.warning("applecensorship overview %s failed: %s", year, e.code)
+        raw = fetcher(
+            url,
+            timeout=timeout,
+            max_bytes=MAX_RESPONSE_BYTES,
+            max_redirects=0,
+            headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+            url_policy=exact_url,
+        )
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise FetchError("AppleCensorship response exceeded its byte budget")
+        doc = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+    except Exception as exc:                                 # noqa: BLE001
+        log.warning("applecensorship overview failed (%s)", type(exc).__name__)
         return None
-    except Exception as e:                                    # noqa: BLE001
-        log.warning("applecensorship overview %s failed: %s", year, e)
+    if not isinstance(doc, dict):
         return None
     rows = doc.get("apps")
-    return rows if isinstance(rows, list) else None
+    if (
+        not isinstance(rows, list)
+        or not 1 <= len(rows) <= min(page_size, MAX_COUNTRIES)
+        or any(not isinstance(row, dict) for row in rows)
+    ):
+        return None
+    return rows
 
 
 def fetch_overview(*, page_size: int = 250, timeout: float = 30.0,
-                   opener=None, today=None) -> list | None:
+                   fetcher: Callable[..., bytes] = safe_fetch_bytes,
+                   today=None) -> list | None:
     """Return the per-country rows, or None if GreatFire did not answer.
 
     `timeModes` is a YEAR, and the API rejects `all` with a 400. Hardcoding the
@@ -100,7 +145,7 @@ def fetch_overview(*, page_size: int = 250, timeout: float = 30.0,
     import datetime as _dt
     year = (today or _dt.datetime.now(_dt.timezone.utc).date()).year
     for candidate in (year, year - 1):
-        rows = _fetch_year(candidate, page_size, timeout, opener)
+        rows = _fetch_year(candidate, page_size, timeout, fetcher)
         if rows:
             return rows
     return None
@@ -108,21 +153,60 @@ def fetch_overview(*, page_size: int = 250, timeout: float = 30.0,
 
 def parse_country(rows: list, code: str = TARGET_CODE) -> dict | None:
     """Pull one country's row out of the corpus."""
-    for r in rows or []:
+    if (
+        not isinstance(rows, list)
+        or len(rows) > MAX_COUNTRIES
+        or type(code) is not str
+        or len(code) != 2
+    ):
+        return None
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
         if (r.get("code") or "").upper() == code.upper():
             tested = _num(r, "totalTested", default=0) or 0
             unavailable = _num(r, "unavalibeApps", "unavailableApps", default=0) or 0
             pct = _num(r, "unavalibeAppsPercent", "unavailableAppsPercent")
-            tags = r.get("tags") if isinstance(r.get("tags"), dict) else {}
+            if (
+                type(tested) is not int
+                or type(unavailable) is not int
+                or not 0 <= tested <= 100_000_000
+                or not 0 <= unavailable <= 100_000_000
+            ):
+                return None
+            if (
+                pct is not None
+                and (
+                    isinstance(pct, bool)
+                    or not isinstance(pct, (int, float))
+                    or not math.isfinite(float(pct))
+                    or not 0 <= float(pct) <= 100
+                )
+            ):
+                return None
+            raw_tags = r.get("tags") if isinstance(r.get("tags"), dict) else {}
+            if len(raw_tags) > MAX_TAGS:
+                return None
+            tags = {
+                key[:100]: value
+                for key, value in raw_tags.items()
+                if type(key) is str
+                and key
+                and type(value) is int
+                and 0 <= value <= 100_000_000
+            }
+            deletion = _num(r, "deletion", "deletions", default=0) or 0
+            if type(deletion) is not int or not 0 <= deletion <= 100_000_000:
+                return None
             return {
-                "code": r.get("code"),
-                "country": r.get("country"),
+                "code": str(r.get("code"))[:2],
+                "country": str(r.get("country") or "")[:200],
                 "total_tested": tested,
                 "unavailable": unavailable,
                 # Prefer our own arithmetic; fall back to theirs only if tested is 0.
                 "unavailable_pct": (round(100 * unavailable / tested, 2)
                                     if tested else (round(pct, 2) if pct is not None else None)),
-                "deletions": _num(r, "deletion", "deletions", default=0) or 0,
+                "deletions": deletion,
                 "tags": dict(sorted(tags.items(), key=lambda kv: -kv[1])),
             }
     return None
@@ -131,13 +215,27 @@ def parse_country(rows: list, code: str = TARGET_CODE) -> dict | None:
 def peer_rank(rows: list, code: str = TARGET_CODE) -> dict | None:
     """Where the target sits among all surveyed storefronts. Context matters
     here: a high unavailability share is only meaningful against the spread."""
+    if (
+        not isinstance(rows, list)
+        or len(rows) > MAX_COUNTRIES
+        or type(code) is not str
+        or len(code) != 2
+    ):
+        return None
     scored = []
-    for r in rows or []:
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
         tested = _num(r, "totalTested", default=0) or 0
         unavailable = _num(r, "unavalibeApps", "unavailableApps", default=0) or 0
-        if tested >= 1000:                 # thin storefronts distort the ranking
+        if (
+            type(tested) is int
+            and type(unavailable) is int
+            and 1000 <= tested <= 100_000_000
+            and 0 <= unavailable <= tested
+        ):                                 # thin storefronts distort the ranking
             scored.append(((100 * unavailable / tested), (r.get("code") or "").upper(),
-                           r.get("country")))
+                           str(r.get("country") or "")[:200]))
     if not scored:
         return None
     scored.sort(reverse=True)

@@ -11,7 +11,7 @@ name: Tests
 #                       publication contracts.
 #   censorwatch/tests — the velocity leg's suite, which DOES need the installed
 #                       dependencies (pandas et al.); it is only meaningful after
-#                       `pip install -r requirements.txt`, which is why this
+#                       `pip install --require-hashes -r requirements.lock`, which is why this
 #                       workflow installs before running rather than relying on the
 #                       stdlib-only invocation the README documents for local use.
 #
@@ -65,10 +65,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: requirements.lock
 
       - name: Install runtime + test dependencies
         # censorwatch/tests need these; tests/ deliberately does not.
-        run: pip install --quiet -r requirements.txt
+        run: pip install --quiet --require-hashes -r requirements.lock
 
       - name: Exercise the validated backup contract
         run: |

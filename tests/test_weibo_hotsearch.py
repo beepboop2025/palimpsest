@@ -2,9 +2,16 @@
 gate (offline)."""
 import json
 
-from collectors.weibo_hotsearch import (
-    carries_sensitive_sense, collect_range, join_ddti, parse_day,
-    pinned_series, term_presence, withdrawal_candidates)
+import collectors.weibo_hotsearch as hotsearch
+from core.safe_fetch import FetchError
+
+carries_sensitive_sense = hotsearch.carries_sensitive_sense
+collect_range = hotsearch.collect_range
+join_ddti = hotsearch.join_ddti
+parse_day = hotsearch.parse_day
+pinned_series = hotsearch.pinned_series
+term_presence = hotsearch.term_presence
+withdrawal_candidates = hotsearch.withdrawal_candidates
 
 DAY = json.dumps([
     {"url": "/weibo?q=%23a%23&Refer=new_time", "title": "向上向善造福人类"},
@@ -32,6 +39,40 @@ def test_collect_range_fail_soft_absence():
     fetched = collect_range(["2026-01-01", "2026-01-02"],
                             fetch=lambda d: DAY if d == "2026-01-02" else None)
     assert list(fetched) == ["2026-01-02"]
+
+
+def test_archive_fetch_is_exact_bounded_and_redirect_free():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        try:
+            kwargs["url_policy"]("https://raw.githubusercontent.com/other/repo.json")
+        except FetchError:
+            pass
+        else:
+            raise AssertionError("changed archive object must be refused")
+        return DAY.encode("utf-8")
+
+    assert hotsearch._get_raw("2026-01-02", fetcher=fetcher) == DAY
+    assert seen["max_bytes"] == hotsearch.MAX_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_archive_window_refuses_bad_dates_and_excessive_fanout_before_fetch():
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("invalid window must fail before fetch")
+
+    assert hotsearch._get_raw("../../secret", fetcher=no_fetch) is None
+    assert collect_range(["2026-02-30"], fetch=no_fetch) == {}
+    assert collect_range(["2026-01-01"] * 33, fetch=no_fetch) == {}
+
+
+def test_day_parser_bounds_hostile_cardinality_and_fields(monkeypatch):
+    monkeypatch.setattr(hotsearch, "MAX_ROWS_PER_DAY", 2)
+    assert parse_day(json.dumps([{"title": "x", "url": "/x"}] * 3)) is None
+    assert parse_day(json.dumps([{"title": "x" * 513, "url": "/x"}])) is None
 
 
 def test_term_presence_substring_and_best_rank():

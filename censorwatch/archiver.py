@@ -21,16 +21,37 @@ import shutil
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
 from censorwatch.config import get_settings
 from censorwatch.interfaces import LivenessState, content_hash
+from censorwatch.source_policy import source_url_is_allowed
 
 logger = logging.getLogger(__name__)
 
 MAX_IMAGES = 30
+
+
+def _raster_extension(content: bytes) -> str | None:
+    """Return a safe extension only for a small set of inert raster signatures."""
+    if content.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if content.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if content.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    if len(content) >= 12 and content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+def _has_archive_space(path: Path, *, needed: int, reserve: int) -> bool:
+    try:
+        return shutil.disk_usage(path).free >= reserve + needed
+    except OSError:
+        return False
 
 
 def _safe_component(value: str) -> str:
@@ -39,8 +60,13 @@ def _safe_component(value: str) -> str:
     return cleaned or "unknown"
 
 
-def extract_image_urls(html: str, base_url: str, limit: int = MAX_IMAGES) -> list[str]:
-    """Absolute image URLs referenced by the page (deduped, capped, data: skipped)."""
+def extract_image_urls(
+    html: str,
+    base_url: str,
+    source: str,
+    limit: int = MAX_IMAGES,
+) -> list[str]:
+    """Reviewed absolute raster candidates from hostile HTML (deduped and capped)."""
     soup = BeautifulSoup(html or "", "html.parser")
     seen: set[str] = set()
     out: list[str] = []
@@ -49,6 +75,8 @@ def extract_image_urls(html: str, base_url: str, limit: int = MAX_IMAGES) -> lis
         if not src or src.startswith("data:"):
             continue
         absolute = urljoin(base_url, src)
+        if not source_url_is_allowed(source, absolute, purpose="asset"):
+            continue
         if absolute in seen:
             continue
         seen.add(absolute)
@@ -75,6 +103,9 @@ async def archive_post(
     the post page is fetched via ``fetcher``.
     """
     settings = settings or get_settings()
+    if not source_url_is_allowed(source, url, purpose="page"):
+        logger.warning("[archiver] %s/%s: unreviewed page URL refused", source, post_id)
+        return None
     base = Path(settings.archive_dir) / _safe_component(source) / _safe_component(post_id)
     page_path = base / "page.html"
 
@@ -83,6 +114,9 @@ async def archive_post(
         # structurally LIVE first capture is immutable; anything else remains
         # retryable and is handled by the quarantine repair utility.
         meta_path = base / "meta.json"
+        if base.is_symlink() or page_path.is_symlink() or meta_path.is_symlink():
+            logger.warning("[archiver] %s/%s: symlinked archive refused", source, post_id)
+            return None
         try:
             existing = page_path.read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
@@ -121,15 +155,18 @@ async def archive_post(
                            source, post_id, getattr(res, "status", None))
             return None
 
+    html_bytes = html.encode("utf-8")
+    if len(html_bytes) > settings.max_page_bytes:
+        logger.warning("[archiver] %s/%s: page exceeds archive byte budget", source, post_id)
+        return None
+
     # Classification happens before the archive directory or any image is
     # created.  This is the fail-closed boundary that prevents an HTTP-200 WAF
     # shell from becoming canonical evidence.
-    if source == "eastmoney_guba":
-        from censorwatch.collectors.eastmoney_guba import EastmoneyGubaCollector
-        if EastmoneyGubaCollector._resolve_post_url(validation_url) is None:
-            logger.warning("[archiver] %s/%s: final URL left Eastmoney allowlist — not archived",
-                           source, post_id)
-            return None
+    if not source_url_is_allowed(source, validation_url, purpose="page"):
+        logger.warning("[archiver] %s/%s: final URL left source policy — not archived",
+                       source, post_id)
+        return None
     from censorwatch.classifier import classify_state
     state, reason = classify_state(
         200, html, final_url=validation_url, extra_markers=deletion_markers
@@ -140,22 +177,53 @@ async def archive_post(
         return None
 
     base.parent.mkdir(parents=True, exist_ok=True)
+    if not _has_archive_space(
+        base.parent,
+        needed=len(html_bytes),
+        reserve=settings.min_archive_free_bytes,
+    ):
+        logger.warning("[archiver] %s/%s: archive free-space reserve reached", source, post_id)
+        return None
     staging = Path(tempfile.mkdtemp(prefix=f".{base.name}.staging-", dir=base.parent))
     images: list[dict] = []
+    image_bytes = 0
+    skipped_images = 0
     try:
-        (staging / "page.html").write_text(html, encoding="utf-8")
+        (staging / "page.html").write_bytes(html_bytes)
         if download_images:
             img_dir = staging / "images"
-            for i, img_url in enumerate(extract_image_urls(html, url)):
-                status, content, err = await fetcher.fetch_bytes(img_url)
-                if status == 200 and content:
+            candidates = extract_image_urls(html, validation_url, source)
+            for i, img_url in enumerate(candidates):
+                remaining = settings.max_post_image_bytes - image_bytes
+                if remaining <= 0:
+                    skipped_images += len(candidates) - i
+                    break
+                status, content, _err = await fetcher.fetch_bytes(
+                    img_url,
+                    referer=validation_url,
+                    max_bytes=remaining,
+                )
+                extension = _raster_extension(content or b"")
+                if (
+                    status == 200
+                    and content
+                    and extension
+                    and len(content) <= settings.max_image_bytes
+                    and len(content) <= remaining
+                    and _has_archive_space(
+                        staging,
+                        needed=len(content),
+                        reserve=settings.min_archive_free_bytes,
+                    )
+                ):
                     img_dir.mkdir(parents=True, exist_ok=True)
-                    ext = os.path.splitext(urlparse(img_url).path)[1][:5] or ".img"
-                    fname = f"{i:03d}{ext}"
+                    fname = f"{i:03d}{extension}"
                     (img_dir / fname).write_bytes(content)
                     images.append({"url": img_url, "file": f"images/{fname}",
                                    "bytes": len(content)})
+                    image_bytes += len(content)
                 else:
+                    skipped_images += 1
                     logger.debug("[archiver] image skip %s (status=%s)", img_url, status)
 
         meta = {
@@ -166,6 +234,8 @@ async def archive_post(
             "content_hash": content_hash(html),
             "classification": {"state": state.value, "reason": reason},
             "n_images": len(images),
+            "image_bytes": image_bytes,
+            "skipped_images": skipped_images,
             "images": images,
         }
         (staging / "meta.json").write_text(

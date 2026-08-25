@@ -14,7 +14,7 @@ There are two tiers:
 - **Tier 1 — Eastmoney guba only.** Works from any host, no proxy. Live in ~10 min.
 - **Tier 2 — + Weibo & Xueqiu.** The rich censorship signal, but both are blocked
   from outside China (Aliyun WAF / login-wall / 403). Needs a residential or
-  in-China proxy + the Playwright image.
+  in-China proxy + the isolated Playwright gateway.
 
 ---
 
@@ -34,15 +34,19 @@ There are two tiers:
    ```dotenv
    POSTGRES_PASSWORD=choose-a-strong-password   # required by compose
    CENSORWATCH_ENABLED=1
+   PALIMPSEST_CENSORWATCH_DATA_HOST_PATH=/var/lib/palimpsest/censorwatch
    # optional tuning:
    # CENSORWATCH_CONFIRMATIONS=3                 # consecutive GONEs before "deleted"
    ```
 
+   The velocity worker receives only the CensorWatch settings plus its database
+   and broker endpoints. It does not inherit the full env file and can write
+   only this dedicated host subtree.
+
 2. Bring up the stack:
 
    ```bash
-   WITH_BROWSER=true ops/docker/prod-compose \
-     --profile velocity --profile api up -d --build
+   ops/docker/prod-compose --profile velocity --profile api up -d --build
    ```
 
    This starts `postgres`, `redis`, `api`, `beat`, and `worker-velocity`
@@ -63,6 +67,7 @@ There are two tiers:
 |---------|------|
 | `beat` | Schedules `cw_collect` (every 10m), tiered `cw_recheck` (15m/2h/12h), `cw_signal` (20m) |
 | `worker-velocity` | Runs those tasks off the isolated `censorwatch` queue (so it can't starve production collectors) |
+| `censorwatch-render-gateway` | Executes hostile JS without DB credentials, durable mounts, backend network access, or a host port |
 | `api` | Serves the dashboard + JSON API at `/api/v5/censorwatch/*` |
 
 ---
@@ -70,8 +75,9 @@ There are two tiers:
 ## Tier 2 — add Weibo + Xueqiu (needs a proxy)
 
 These sources are behind anti-bot defenses that block datacenter/foreign egress.
-You need a **residential or in-China proxy** and the Playwright render path. The
-`WITH_BROWSER=true` build setting installs Chromium in `Dockerfile.app`.
+You need a **residential or in-China proxy** and the Playwright render path.
+Chromium exists only in `Dockerfile.render-gateway`; the database-bearing worker
+contains neither Chromium nor a local-browser fallback.
 
 1. Add the proxy to `ops/docker/.env`:
 
@@ -101,8 +107,8 @@ You need a **residential or in-China proxy** and the Playwright render path. The
    schedule, then rebuild:
 
    ```bash
-   WITH_BROWSER=true ops/docker/prod-compose \
-     --profile velocity --profile api up -d --build worker-velocity beat api
+   ops/docker/prod-compose --profile velocity --profile api up -d --build \
+     censorwatch-render-gateway worker-velocity beat api
    ```
 
 ---
@@ -133,9 +139,9 @@ Then watch the dashboard at `/api/v5/censorwatch/`. Flower (task monitor) is at
 
 ## Operations
 
-- **Archive disk** — captured snapshots live in the `censorwatch_archive` volume
-  (`/app/data/censorwatch/archive`). It grows with every new post; prune or cap it
-  periodically.
+- **Archive disk** — captured snapshots live under the configured durable data
+  mount. Per-object, per-post, per-cycle, and free-space-reserve caps prevent a
+  hostile page from filling the host.
 - **DB growth** — `censored_posts` accumulates. Old, still-live posts past the
   mature cohort window can be pruned.
 - **Health** — `GET /api/v5/censorwatch/health` shows per-source liveness; a source
@@ -149,7 +155,7 @@ Set `CENSORWATCH_ENABLED=` (empty) in `ops/docker/.env`, then apply the change t
 every long-lived service that caches the flag:
 
 ```bash
-ops/docker/prod-compose --profile velocity stop worker-velocity
+ops/docker/prod-compose --profile velocity stop worker-velocity censorwatch-render-gateway
 ops/docker/prod-compose up -d --force-recreate beat
 # Run this too when the API profile is deployed:
 ops/docker/prod-compose --profile api up -d --force-recreate api

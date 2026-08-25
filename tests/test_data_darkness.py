@@ -14,15 +14,18 @@ from __future__ import annotations
 
 import json
 
-from collectors.data_darkness import (
-    parse_calendar_row,
-    parse_mb_stats,
-    parse_nbs_listing,
-    parse_nra,
-    parse_omo,
-    parse_safe_settlement,
-    read_cfets_freshness,
-)
+import pytest
+
+import collectors.data_darkness as darkness
+from core.safe_fetch import FetchError
+
+parse_calendar_row = darkness.parse_calendar_row
+parse_mb_stats = darkness.parse_mb_stats
+parse_nbs_listing = darkness.parse_nbs_listing
+parse_nra = darkness.parse_nra
+parse_omo = darkness.parse_omo
+parse_safe_settlement = darkness.parse_safe_settlement
+read_cfets_freshness = darkness.read_cfets_freshness
 
 OMO_PAGE = """
 <a href="/zhengcehuobisi/125207/125213/125431/125475/2026073108575959224/index.html"
@@ -190,6 +193,55 @@ NRA_PAGE = """
 <a href="./202606/t20260615_351434.shtml" target="_blank"
    title='2026年5月份全国铁路主要指标完成情况'>2026年5月份全国铁路主要指标完成情况</a>
 """
+
+
+def test_get_uses_bounded_same_host_hardened_transport():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"]("https://www.stats.gov.cn/sj/zxfb/next.html")
+        return b"<html>ok</html>"
+
+    got = darkness._get(darkness.ZXFB_URL, retries=0, fetcher=fetcher)
+
+    assert got == "<html>ok</html>"
+    assert seen["max_bytes"] == darkness.MAX_BYTES
+    assert seen["max_redirects"] == 3
+    assert seen["headers"]["User-Agent"] == darkness.USER_AGENT
+
+
+def test_get_refuses_unreviewed_initial_and_redirect_authorities_before_egress():
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("unreviewed initial URL must fail before egress")
+
+    assert darkness._get(
+        "http://169.254.169.254/latest/meta-data/",
+        retries=0,
+        fetcher=no_fetch,
+    ) is None
+
+    def redirecting_fetcher(_url, **kwargs):
+        with pytest.raises(FetchError):
+            kwargs["url_policy"]("https://www.pbc.gov.cn/unrelated")
+        raise FetchError("stop after policy assertion")
+
+    assert darkness._get(
+        darkness.ZXFB_URL,
+        retries=0,
+        fetcher=redirecting_fetcher,
+    ) is None
+
+
+def test_money_statistics_year_is_bounded_before_url_formatting(monkeypatch):
+    monkeypatch.setattr(
+        darkness,
+        "_get",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("invalid year must fail before egress")
+        ),
+    )
+    assert darkness.fetch_mb_stats(2200) is None
 
 
 def test_nbs_listing_dedups_responsive_anchors_and_reads_period_from_title():

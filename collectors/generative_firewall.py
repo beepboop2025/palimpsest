@@ -61,6 +61,7 @@ import os
 import re
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import namedtuple
 from dataclasses import dataclass, field
@@ -102,6 +103,12 @@ COHORT_ZHT = "ask-zht"
 # flip across runs is a real weights/policy change, not sampling noise. Make it a module constant
 # so every re-run replays identically (see §5 version-drift: determinism is what makes drift real).
 DEFAULT_SEED = 7
+OLLAMA_MAX_URL_CHARS = 2048
+OLLAMA_MAX_MODEL_CHARS = 256
+OLLAMA_MAX_REQUEST_BYTES = 1024 * 1024
+OLLAMA_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
+OLLAMA_MAX_ERROR_BYTES = 64 * 1024
+OLLAMA_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
 
 # Streaming (layer-2) config flag. INERT until explicitly enabled AND a backend is supplied AND
 # the kill switch / rate ceiling allow it. The streaming path is the only part that touches a
@@ -561,6 +568,86 @@ def _split_think(text: str):
 GatewayRejection = namedtuple("GatewayRejection", "status body")
 
 
+class _NoOllamaRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *_args, **_kwargs):
+        return None
+
+
+def _ollama_endpoint(host: str) -> str:
+    if type(host) is not str or not host or len(host) > OLLAMA_MAX_URL_CHARS:
+        raise ValueError("Ollama host must be non-empty bounded text")
+    if any(ord(char) < 0x20 or ord(char) == 0x7f for char in host):
+        raise ValueError("Ollama host contains control characters")
+    try:
+        parsed = urllib.parse.urlsplit(host)
+        port = parsed.port
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise ValueError("Ollama host could not be parsed") from exc
+    if (
+        parsed.scheme != "http"
+        or not parsed.netloc
+        or "%" in parsed.netloc
+        or "\\" in parsed.netloc
+        or any(ord(char) < 0x21 or ord(char) > 0x7e for char in parsed.netloc)
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.hostname not in OLLAMA_LOOPBACK_HOSTS
+        or parsed.path not in {"", "/"}
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("Ollama host must be a credential-free loopback HTTP authority")
+    if port is not None and not 1 <= port <= 65535:
+        raise ValueError("Ollama host has an invalid port")
+    authority = parsed.netloc
+    return urllib.parse.urlunsplit(("http", authority, "/api/generate", "", ""))
+
+
+def _open_ollama(request: urllib.request.Request, timeout: float):
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoOllamaRedirect(),
+    )
+    return opener.open(request, timeout=timeout)
+
+
+def _bounded_ollama_body(response, max_bytes: int) -> bytes:
+    headers = getattr(response, "headers", None)
+    length = headers.get("Content-Length") if headers is not None else None
+    if length is not None:
+        normalized = str(length).strip()
+        if not normalized.isascii() or not normalized.isdecimal():
+            raise ValueError("invalid Ollama Content-Length")
+        if int(normalized) > max_bytes:
+            raise ValueError("Ollama response exceeded its byte quota")
+    data = response.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise ValueError("Ollama response exceeded its byte quota")
+    return data
+
+
+def _strict_ollama_json(data: bytes) -> dict:
+    def reject_constant(value: str):
+        raise ValueError(f"non-finite JSON number: {value}")
+
+    def strict_object(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out:
+                raise ValueError("duplicate JSON key")
+            out[key] = value
+        return out
+
+    decoded = json.loads(
+        data.decode("utf-8"),
+        object_pairs_hook=strict_object,
+        parse_constant=reject_constant,
+    )
+    if type(decoded) is not dict:
+        raise ValueError("Ollama response was not a JSON object")
+    return decoded
+
+
 def _ollama_generate(model_id: str, prompt: str, *, host: str = None, seed: int = DEFAULT_SEED,
                      timeout: float = 120.0):
     """Deterministic local generation via an Ollama HTTP endpoint (stdlib urllib). temperature 0
@@ -576,24 +663,71 @@ def _ollama_generate(model_id: str, prompt: str, *, host: str = None, seed: int 
         zero).
     Blocked and abstain are disjoint by construction: an HTTPError proves the gateway
     answered, a URLError proves it did not."""
-    host = host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-    body = json.dumps({
-        "model": model_id, "prompt": prompt, "stream": False,
-        "options": {"temperature": 0, "seed": seed},
-    }).encode("utf-8")
-    req = urllib.request.Request(host.rstrip("/") + "/api/generate", data=body,
-                                 headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return json.loads(r.read().decode("utf-8", "replace")).get("response", "")
+        if (
+            type(model_id) is not str
+            or not model_id
+            or len(model_id) > OLLAMA_MAX_MODEL_CHARS
+            or any(ord(char) < 0x20 or ord(char) == 0x7f for char in model_id)
+        ):
+            raise ValueError("invalid Ollama model ID")
+        if type(prompt) is not str:
+            raise ValueError("Ollama prompt must be text")
+        if type(seed) is not int or not -(2**63) <= seed < 2**63:
+            raise ValueError("invalid Ollama seed")
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not 0.1 <= timeout <= 600
+        ):
+            raise ValueError("invalid Ollama timeout")
+        endpoint = _ollama_endpoint(
+            host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+        )
+        body = json.dumps({
+            "model": model_id, "prompt": prompt, "stream": False,
+            "options": {"temperature": 0, "seed": seed},
+        }, allow_nan=False, separators=(",", ":")).encode("utf-8")
+        if len(body) > OLLAMA_MAX_REQUEST_BYTES:
+            raise ValueError("Ollama request exceeded its byte quota")
+        req = urllib.request.Request(
+            endpoint,
+            data=body,
+            headers={
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "Palimpsest-generative-firewall/1",
+            },
+            method="POST",
+        )
+        with _open_ollama(req, timeout=timeout) as response:
+            if getattr(response, "status", 200) != 200:
+                raise ValueError("Ollama returned a non-success status")
+            headers = getattr(response, "headers", None)
+            content_type = headers.get_content_type() if headers is not None else None
+            if content_type != "application/json":
+                raise ValueError("Ollama response was not JSON")
+            encoding = headers.get("Content-Encoding", "") if headers is not None else ""
+            if encoding.lower().strip() not in {"", "identity"}:
+                raise ValueError("Ollama response used unsupported content encoding")
+            payload = _strict_ollama_json(
+                _bounded_ollama_body(response, OLLAMA_MAX_RESPONSE_BYTES)
+            )
+            answer = payload.get("response")
+            if type(answer) is not str:
+                raise ValueError("Ollama response field was not text")
+            return answer
     except urllib.error.HTTPError as e:
+        if not 400 <= e.code < 500:
+            logger.info("ollama generate HTTP %s -> abstain", e.code)
+            return None
         try:
-            err_body = e.read().decode("utf-8", "replace")
-        except OSError:
+            err_body = _bounded_ollama_body(e, OLLAMA_MAX_ERROR_BYTES).decode("utf-8")
+        except (OSError, UnicodeDecodeError, ValueError):
             err_body = ""
-        logger.info("ollama generate HTTP %s for %s -> blocked", e.code, model_id)
+        logger.info("ollama generate HTTP %s -> blocked", e.code)
         return GatewayRejection(status=e.code, body=err_body)
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
+    except (urllib.error.URLError, OSError, UnicodeDecodeError, ValueError, json.JSONDecodeError) as e:
         logger.info("ollama generate unreachable for %s (%s) -> abstain", model_id, type(e).__name__)
         return None
 

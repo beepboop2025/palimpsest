@@ -38,11 +38,19 @@ Standard library only, like the collector it serves.
 """
 from __future__ import annotations
 
+import ipaddress
 import socket
+import time
 
 CYMRU_HOST = "whois.cymru.com"
 CYMRU_PORT = 43
 TIMEOUT = 20.0
+MAX_IPS = 2048
+MAX_REQUEST_BYTES = 128 * 1024
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+MAX_RESPONSE_LINES = MAX_IPS + 32
+MAX_LINE_CHARS = 8192
+MAX_NAME_CHARS = 1024
 
 
 class OriginASUnavailable(Exception):
@@ -55,7 +63,7 @@ class OriginASUnavailable(Exception):
     """
 
 
-def _parse(payload: str) -> dict:
+def _parse(payload: str, *, wanted: set[str] | None = None) -> dict:
     """Parse Cymru's bulk verbose format into {ip: {asn, name, prefix}}.
 
     Lines look like:
@@ -64,11 +72,18 @@ def _parse(payload: str) -> dict:
     address with no announced origin is unknown, which is not the same as an
     address owned by nobody, and the caller must be able to tell those apart.
     """
+    if type(payload) is not str or len(payload) > MAX_RESPONSE_BYTES:
+        raise OriginASUnavailable("WHOIS response exceeded its text quota")
+    lines = payload.splitlines()
+    if len(lines) > MAX_RESPONSE_LINES:
+        raise OriginASUnavailable("WHOIS response exceeded its line quota")
     out = {}
-    for line in payload.splitlines():
+    for line in lines:
+        if len(line) > MAX_LINE_CHARS:
+            raise OriginASUnavailable("WHOIS response contained an oversized line")
         if "|" not in line or line.lower().startswith("bulk mode"):
             continue
-        parts = [p.strip() for p in line.split("|")]
+        parts = [p.strip() for p in line.split("|", 6)]
         if len(parts) < 3:
             continue
         asn_raw, ip, prefix = parts[0], parts[1], parts[2]
@@ -77,24 +92,64 @@ def _parse(payload: str) -> dict:
         first = asn_raw.split()[0] if asn_raw and asn_raw != "NA" else ""
         if not first.isdigit():
             continue
+        try:
+            address = ipaddress.ip_address(ip)
+            network = ipaddress.ip_network(prefix, strict=False)
+        except ValueError:
+            continue
+        canonical_ip = str(address)
+        if wanted is not None and canonical_ip not in wanted:
+            continue
+        asn = int(first)
+        if not 1 <= asn <= 4_294_967_295:
+            continue
+        if address.version != network.version or address not in network:
+            continue
         name = parts[6] if len(parts) > 6 else ""
-        out[ip] = {"asn": int(first), "name": name, "prefix": prefix}
+        if len(name) > MAX_NAME_CHARS:
+            raise OriginASUnavailable("WHOIS response contained an oversized owner name")
+        record = {"asn": asn, "name": name, "prefix": str(network)}
+        if canonical_ip in out and out[canonical_ip] != record:
+            raise OriginASUnavailable("WHOIS response contained conflicting records")
+        out[canonical_ip] = record
     return out
 
 
 def _query(payload: str) -> str:
+    if type(payload) is not str:
+        raise OriginASUnavailable("WHOIS request must be text")
+    try:
+        request = payload.encode("ascii")
+    except UnicodeEncodeError as exc:
+        raise OriginASUnavailable("WHOIS request was not ASCII") from exc
+    if len(request) > MAX_REQUEST_BYTES:
+        raise OriginASUnavailable("WHOIS request exceeded its byte quota")
+    deadline = time.monotonic() + TIMEOUT
     try:
         with socket.create_connection((CYMRU_HOST, CYMRU_PORT), timeout=TIMEOUT) as s:
-            s.sendall(payload.encode("ascii"))
+            s.sendall(request)
             chunks = []
+            received = 0
             while True:
-                b = s.recv(4096)
+                remaining_time = deadline - time.monotonic()
+                if remaining_time <= 0:
+                    raise socket.timeout("WHOIS response deadline exceeded")
+                s.settimeout(remaining_time)
+                b = s.recv(min(4096, MAX_RESPONSE_BYTES - received + 1))
                 if not b:
                     break
+                received += len(b)
+                if received > MAX_RESPONSE_BYTES:
+                    raise OriginASUnavailable("WHOIS response exceeded its byte quota")
                 chunks.append(b)
-    except OSError as e:
-        raise OriginASUnavailable(f"{CYMRU_HOST}:{CYMRU_PORT} — {e}") from e
-    return b"".join(chunks).decode("utf-8", errors="replace")
+    except OriginASUnavailable:
+        raise
+    except OSError as exc:
+        raise OriginASUnavailable("WHOIS transport failed") from exc
+    try:
+        return b"".join(chunks).decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise OriginASUnavailable("WHOIS response was not UTF-8") from exc
 
 
 def origin_as(ips, *, query=_query) -> dict:
@@ -104,11 +159,27 @@ def origin_as(ips, *, query=_query) -> dict:
     service could place. Addresses it could not place are simply absent, so a
     caller can distinguish "unknown owner" from "owner differs".
     """
-    wanted = sorted({str(i) for i in ips if i})
+    wanted_set: set[str] = set()
+    try:
+        iterator = iter(ips)
+    except TypeError as exc:
+        raise OriginASUnavailable("addresses must be iterable") from exc
+    for raw in iterator:
+        if raw is None or raw == "":
+            continue
+        try:
+            address = ipaddress.ip_address(str(raw))
+        except ValueError as exc:
+            raise OriginASUnavailable("address input was not a canonical IP literal") from exc
+        wanted_set.add(str(address))
+        if len(wanted_set) > MAX_IPS:
+            raise OriginASUnavailable("address batch exceeded its item quota")
+    wanted = sorted(wanted_set)
     if not wanted:
         return {}
     payload = "begin\nverbose\n" + "\n".join(wanted) + "\nend\n"
-    got = _parse(query(payload))
+    response = query(payload)
+    got = _parse(response, wanted=wanted_set)
     if not got:
         raise OriginASUnavailable(
             f"asked for {len(wanted)} address(es) and the service placed none")

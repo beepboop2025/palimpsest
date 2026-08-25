@@ -29,6 +29,10 @@ Production collectors are untouched.
 | Storage | 3 dedicated tables; `db.create_tables()` uses `create_all(tables=[...])` so it can never create/alter/drop a production table |
 | Schedule | beat fragment merged only when flag set, inside try/except |
 | Workers | dedicated `censorwatch` queue — run a separate worker so it can't starve production: `celery -A core.scheduler worker -Q censorwatch -c 2` |
+| Hostile JS | separate render gateway with no DB/application env, durable mounts, backend network, or host port; exact-host routing + DNS pins |
+| Egress | shared public-IP-pinned safe fetch, per-hop redirect policy, decompression/body caps, and exact source authority |
+| Worker blast radius | explicit non-secret environment allowlist; only the dedicated CensorWatch host subtree is writable; no public-reading or fleet-data mount |
+| Source admission | closed adapter registry; reviewed network policy, public-only access, bounded retention, and approved admission are all required before scheduling |
 | Tasks | each guards on `settings.enabled` and swallows its own errors |
 
 ## Detector state machine (Step 4)
@@ -70,6 +74,9 @@ never sent to a third-party model.
 | `CENSORWATCH_MIN_DELAY_S` / `_MAX_DELAY_S` | `2` / `6` | Randomized inter-request delay |
 | `CENSORWATCH_TIMEOUT_S` | `30` | Per-request timeout |
 | `CENSORWATCH_ARCHIVE_DIR` | `./data/censorwatch/archive` | Snapshot root |
+| `CENSORWATCH_MAX_PAGE_BYTES` / `_MAX_IMAGE_BYTES` | `8 MiB` / `8 MiB` | Per-response acquisition caps |
+| `CENSORWATCH_MAX_POST_IMAGE_BYTES` / `_MAX_CYCLE_IMAGE_BYTES` | `32 MiB` / `256 MiB` | Aggregate hostile-asset budgets |
+| `CENSORWATCH_MIN_ARCHIVE_FREE_BYTES` | `1 GiB` | Reserved free space below which archiving abstains |
 | `CENSORWATCH_VELOCITY_WINDOW_MIN` | `60` | Velocity bucket width |
 | `CENSORWATCH_BASELINE_WINDOWS` | `24` | Windows forming the spike baseline |
 | `CENSORWATCH_SPIKE_Z` | `3.0` | Z-score that flags a scrub-cluster |
@@ -78,8 +85,8 @@ never sent to a third-party model.
 
 - [x] **Step 0** — scaffold, feature flag, isolated tables, contract interfaces, guarded wiring
 - [x] **Step 1** — `classifier.py` + 9 fixtures + 6 tests (HTML → LivenessState); reuses `ddti_probe` marker table, adds outside-China interstitial guards
-- [x] **Step 2** — `fetcher.py` (proxy/jitter/UA, MockTransport-tested) + `base_post_collector.py` (BaseCollector `_upsert` override) + `eastmoney_guba.py` (parser tested vs real captured page) + isolated `registry.py`/`sources.yaml`; `cw_collect` wired. _DB write path needs `docker compose up` to verify._
-- [x] **Step 3** — `archiver.py` (page + images → disk, idempotent first-capture snapshot; wired into `_archive_new`). 3 tests.
+- [x] **Step 2** — `fetcher.py` (proxy/jitter/UA plus public-IP pinning, redirect replay, response/cache caps, exact source policy) + `base_post_collector.py` (BaseCollector `_upsert` override) + `eastmoney_guba.py` (parser tested vs real captured page) + isolated `registry.py`/`sources.yaml`; `cw_collect` wired. _DB write path needs `docker compose up` to verify._
+- [x] **Step 3** — `archiver.py` (bounded page + reviewed raster images → disk, idempotent first-capture snapshot; wired into `_archive_new`) plus aggregate/free-space budgets.
 - [x] **Step 4** — `detector.py`: LIVE/GONE/UNKNOWN/DEGRADED machine, liveness-probe gate, pure decision core (6 tests). Ships a default confirmation predicate — **owner may override `is_confirmed_deletion()`**. DB orchestration needs `docker compose up` to verify.
 - [x] **Step 5** — `signal.py`: deletion-velocity per term, rolling-baseline z-score spike flag, ranked output → snapshot + Redis. Reuses DDTI term extraction. 4 tests.
 - [x] **Step 6** — `routes.py` (`/api/v5/censorwatch/*`, graceful degrade, strict response security headers, bounded Redis timeouts, validated query limits) + XSS-hardened `dashboard.html`; guarded mount in `api/main.py`. TestClient-verified.

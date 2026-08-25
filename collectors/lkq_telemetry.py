@@ -38,9 +38,11 @@ from __future__ import annotations
 import logging
 import re
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
+
+from collections.abc import Callable
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +54,11 @@ NBS_EN_URL = "https://www.stats.gov.cn/english/PressRelease/"
 PBC_LIST_URL = "https://www.pbc.gov.cn/goutongjiaoliu/113456/113469/index.html"
 NRA_NEWS_URL = "https://www.nra.gov.cn/xwzx/xwxx/xwlb/"
 PBC_MAX_LIST_PAGES = 4
+_REVIEWED_SOURCE_HOSTS = frozenset({
+    "www.nra.gov.cn",
+    "www.pbc.gov.cn",
+    "www.stats.gov.cn",
+})
 
 _ANCHOR_TAG = re.compile(r"<a\b[^>]*>")
 _ATTR_HREF = re.compile(r"""href=["']([^"']+)["']""")
@@ -70,19 +77,92 @@ _YOY_EN = (r"(?:(?:a year-on-year (?:increase|growth) of|increased by|grew by|"
            r"decreased by|declined by|down by)\s*([0-9.]+)\s*%)")
 
 
-def _get(url: str, timeout: float = 30.0, retries: int = 2) -> str | None:
-    """Fail-soft fetch with retries: stats.gov.cn's WZWS layer intermittently
-    resets first connections, and a reset is vantage noise, not an answer."""
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+def _source_host(url: str) -> str:
+    """Return one reviewed HTTPS authority, or refuse it before network I/O."""
+    if type(url) is not str:
+        raise FetchError("LKQ source URL must be text")
+    try:
+        parts = urllib.parse.urlsplit(url)
+        port = parts.port
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise FetchError("LKQ source URL could not be parsed") from exc
+    authority = parts.netloc
+    host = parts.hostname.lower() if parts.hostname else ""
+    if (
+        parts.scheme != "https"
+        or not authority
+        or "%" in authority
+        or "\\" in authority
+        or any(ord(char) < 0x21 or ord(char) > 0x7e for char in authority)
+        or parts.username is not None
+        or parts.password is not None
+        or port not in (None, 443)
+        or host not in _REVIEWED_SOURCE_HOSTS
+    ):
+        raise FetchError("LKQ URL is outside the reviewed source authorities")
+    return host
+
+
+def _same_source_url(listing_url: str, target: str) -> tuple[str, str]:
+    """Join one hostile link while retaining the listing's exact authority."""
+    expected_host = _source_host(listing_url)
+    candidate = urllib.parse.urljoin(listing_url, target)
+    if _source_host(candidate) != expected_host:
+        raise FetchError("LKQ discovered link changed source authority")
+    return candidate, expected_host
+
+
+def _get(
+    url: str,
+    timeout: float = 30.0,
+    retries: int = 2,
+    *,
+    expected_host: str | None = None,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> str | None:
+    """Fetch one reviewed source through the shared hostile-egress boundary.
+
+    NBS's WZWS layer intermittently resets first connections, so transport
+    failures remain fail-soft retries. The initial URL and every redirect must
+    preserve the exact source host; DNS is separately pinned and public-only by
+    :mod:`core.safe_fetch`.
+    """
+    try:
+        initial_host = _source_host(url)
+        source_host = expected_host or initial_host
+        if source_host not in _REVIEWED_SOURCE_HOSTS or initial_host != source_host:
+            raise FetchError("LKQ request changed source authority")
+    except FetchError:
+        log.warning("lkq_telemetry refused a URL outside its source policy")
+        return None
+
+    def same_host_policy(candidate: str) -> None:
+        if _source_host(candidate) != source_host:
+            raise FetchError("LKQ redirect changed source authority")
+
     for attempt in range(retries + 1):
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                body = r.read(MAX_BYTES).decode("utf-8", "replace").strip()
+            body = fetcher(
+                url,
+                timeout=timeout,
+                max_bytes=MAX_BYTES,
+                max_redirects=3,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml;q=0.9,text/plain;q=0.5",
+                    "User-Agent": USER_AGENT,
+                },
+                url_policy=same_host_policy,
+            ).decode("utf-8", "replace").strip()
             if not body:
                 raise ValueError("empty body")
             return body
         except Exception as exc:  # noqa: BLE001 — abstain, never fake
-            log.warning("lkq_telemetry %s attempt %d failed: %s", url, attempt, exc)
+            log.warning(
+                "lkq_telemetry host=%s attempt=%d failed=%s",
+                source_host,
+                attempt,
+                type(exc).__name__,
+            )
             if attempt < retries:
                 time.sleep(15.0 * (attempt + 1))
     return None
@@ -153,7 +233,12 @@ def next_listing_page(listing_url: str, listing: str) -> str | None:
         return None
     attrs = match.group("attrs")
     target = _ATTR_HREF.search(attrs) or _ATTR_TAGNAME.search(attrs)
-    return urllib.parse.urljoin(listing_url, target.group(1)) if target else None
+    if not target:
+        return None
+    try:
+        return _same_source_url(listing_url, target.group(1))[0]
+    except FetchError:
+        return None
 
 
 def period_from_en_title(title: str) -> str | None:
@@ -322,7 +407,12 @@ def _fetch_article(listing_url: str, listing: str, stem: str) -> tuple[str, str]
     if not hit:
         return None
     href, title = hit
-    body = _get(urllib.parse.urljoin(listing_url, href))
+    try:
+        article_url, source_host = _same_source_url(listing_url, href)
+    except FetchError:
+        log.warning("lkq_telemetry refused a cross-authority article link")
+        return None
+    body = _get(article_url, expected_host=source_host)
     return (body, title) if body else None
 
 
@@ -338,14 +428,19 @@ def _fetch_pbc_report(first_listing: str, expected_period: str) -> tuple[str, st
     for page_number in range(PBC_MAX_LIST_PAGES):
         for href, title in find_articles(listing, "金融统计数据报告"):
             if pbc_period(title) == expected_period:
-                body = _get(urllib.parse.urljoin(listing_url, href))
+                try:
+                    report_url, source_host = _same_source_url(listing_url, href)
+                except FetchError:
+                    log.warning("lkq_telemetry refused a cross-authority report link")
+                    return None
+                body = _get(report_url, expected_host=source_host)
                 return (body, title) if body else None
 
         next_url = next_listing_page(listing_url, listing)
         if not next_url or page_number + 1 >= PBC_MAX_LIST_PAGES:
             return None
         time.sleep(SPACING_S)
-        listing = _get(next_url)
+        listing = _get(next_url, expected_host=_source_host(listing_url))
         if not listing:
             return None
         listing_url = next_url
@@ -395,7 +490,12 @@ def collect(expected_period: str) -> dict:
         hit = find_rail_article(got_nra)
         if hit:
             href, title = hit
-            body = _get(urllib.parse.urljoin(NRA_NEWS_URL, href))
+            try:
+                article_url, source_host = _same_source_url(NRA_NEWS_URL, href)
+            except FetchError:
+                log.warning("lkq_telemetry refused a cross-authority rail link")
+                return out
+            body = _get(article_url, expected_host=source_host)
             if body:
                 rail = parse_nra_rail(body)
                 if rail_period(title, body) == expected_period:

@@ -20,16 +20,22 @@ availability in 2026 is exactly what the probe measures — do not assume any of
 them work; let the reachability matrix report the truth.
 """
 
+import asyncio
 import hashlib
 import logging
 import math
+import re
+from collections.abc import Callable
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
+from urllib.parse import urlsplit
 
 import pandas as pd
 
+from collectors.feed_parse import parse_feed_items
 from core.base_collector import BaseCollector
 from core.exceptions import RateLimitError, SourceDownError
+from core.safe_fetch import FetchError, SafeFetchResponse, safe_fetch_response
 
 logger = logging.getLogger(__name__)
 
@@ -37,11 +43,11 @@ PALIMPSEST_UA = (
     "Palimpsest/0.2 (+https://palimpsest.info; open-source censorship "
     "research; use=reference)"
 )
-
-# Deletion feeds are untrusted external XML — use defusedxml to block XXE and
-# billion-laughs attacks. Fall back to stdlib only if defusedxml is absent, and
-# say so loudly so the gap is visible rather than silent.
-from collectors.feed_parse import parse_feed_items
+MAX_FEEDS = 16
+MAX_FEED_BYTES = 8 * 1024 * 1024
+MAX_LIVENESS_BYTES = 2 * 1024 * 1024
+MAX_TOTAL_FEED_ITEMS = 4_000
+_FEED_NAME = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}\Z")
 
 # Cumulative survival buckets (seconds). Zhu et al. (2013) reference values, to
 # be RE-MEASURED not assumed: ~5% @ 8min, ~30% @ 30min, ~90% @ 24h.
@@ -116,23 +122,84 @@ def survival_curve(latencies_seconds: list[float]) -> dict:
     return {"n": n, "cumulative_deleted_within": curve}
 
 
-async def check_liveness(client, url: str) -> dict:
+def _canonical_https_url(value: object) -> str:
+    if type(value) is not str or not value or len(value) > 4096:
+        raise ValueError("source URL must be bounded text")
+    try:
+        parts = urlsplit(value)
+        port = parts.port
+    except ValueError as exc:
+        raise ValueError("source URL is invalid") from exc
+    if (
+        parts.scheme != "https"
+        or not parts.hostname
+        or parts.username is not None
+        or parts.password is not None
+        or port not in (None, 443)
+        or parts.fragment
+        or parts.netloc != parts.hostname
+    ):
+        raise ValueError("source URL must be canonical credential-free HTTPS")
+    return value
+
+
+def _feed_registry(value: object) -> list[dict[str, str]]:
+    if not isinstance(value, list) or len(value) > MAX_FEEDS:
+        raise ValueError("deletion feed registry is invalid or oversized")
+    feeds = []
+    seen = set()
+    for index, entry in enumerate(value):
+        if not isinstance(entry, dict):
+            raise ValueError("deletion feed registry entry must be an object")
+        url = _canonical_https_url(entry.get("url"))
+        name = entry.get("name") or f"feed-{index + 1}"
+        if type(name) is not str or not _FEED_NAME.fullmatch(name):
+            raise ValueError("deletion feed name is invalid")
+        if url in seen:
+            raise ValueError("deletion feed registry contains a duplicate URL")
+        seen.add(url)
+        feeds.append({"name": name, "url": url})
+    return feeds
+
+
+async def check_liveness(
+    _client,
+    url: str,
+    *,
+    fetcher: Callable[..., SafeFetchResponse] = safe_fetch_response,
+) -> dict:
     """Active liveness check for one post URL (the controllable-resolution path).
 
     Returns a classification dict; on transport failure returns status
     'unreachable' so the caller can measure reachability rather than crash.
     """
     try:
-        resp = await client.get(url, headers={
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-            ),
-        })
-        return classify_post_status(resp.status_code, resp.text)
-    except Exception as e:
-        logger.debug(f"[DDTI] liveness check failed for {url}: {e}")
-        return {"status": "unreachable", "censorship_likelihood": None, "error": str(e)}
+        source_url = _canonical_https_url(url)
+
+        def exact_url(candidate: str) -> None:
+            if candidate != source_url:
+                raise FetchError("DDTI liveness URL changed")
+
+        response = await asyncio.to_thread(
+            fetcher,
+            source_url,
+            timeout=20,
+            max_bytes=MAX_LIVENESS_BYTES,
+            max_redirects=0,
+            headers={"User-Agent": PALIMPSEST_UA},
+            url_policy=exact_url,
+        )
+        return classify_post_status(
+            response.status,
+            response.body.decode("utf-8", "replace"),
+        )
+    except Exception as exc:  # noqa: BLE001 — an untrusted post becomes abstention
+        logger.debug("[DDTI] liveness check failed (%s)", type(exc).__name__)
+        return {
+            "status": "unreachable",
+            "censorship_likelihood": None,
+            "error": type(exc).__name__,
+        }
 
 
 # ── robust feed parsing (RSS + Atom, namespace-tolerant) ──────────────────────────
@@ -157,11 +224,24 @@ class DDTIProbeCollector(BaseCollector):
     name = "ddti_probe"
     source_type = "social_media"
 
-    def __init__(self, config: dict):
+    def __init__(
+        self,
+        config: dict,
+        *,
+        fetch_response: Callable[..., SafeFetchResponse] = safe_fetch_response,
+    ):
         super().__init__(config)
         # [{name, url}] candidate deletion feeds, from sources.yaml.
-        self.feeds = config.get("deletion_feeds", [])
-        self.user_agent = config.get("user_agent", PALIMPSEST_UA)
+        self.feeds = _feed_registry(config.get("deletion_feeds", []))
+        configured_ua = config.get("user_agent", PALIMPSEST_UA)
+        self.user_agent = (
+            configured_ua
+            if type(configured_ua) is str
+            and 1 <= len(configured_ua) <= 512
+            and not any(ord(char) < 0x20 or ord(char) == 0x7F for char in configured_ua)
+            else PALIMPSEST_UA
+        )
+        self._fetch_response = fetch_response
         self.reachability = {}
 
     async def collect(self) -> list[dict]:
@@ -170,22 +250,44 @@ class DDTIProbeCollector(BaseCollector):
         successful_feeds = 0
         rate_limited = False
         for feed in self.feeds:
-            name, url = feed.get("name", feed["url"]), feed["url"]
+            name, url = feed["name"], feed["url"]
+
+            def exact_url(candidate: str, expected: str = url) -> None:
+                if candidate != expected:
+                    raise FetchError("DDTI feed URL changed")
+
             try:
-                resp = await self._http.get(url, headers={"User-Agent": self.user_agent})
-                reachability[name] = resp.status_code
-                if resp.status_code == 429:
+                response = await asyncio.to_thread(
+                    self._fetch_response,
+                    url,
+                    timeout=self.timeout,
+                    max_bytes=MAX_FEED_BYTES,
+                    max_redirects=0,
+                    headers={
+                        "Accept": (
+                            "application/rss+xml, application/atom+xml, "
+                            "application/xml, text/xml;q=0.9"
+                        ),
+                        "User-Agent": self.user_agent,
+                    },
+                    url_policy=exact_url,
+                )
+                reachability[name] = response.status
+                if response.status == 429:
                     rate_limited = True
-                    logger.warning(f"[DDTI] {name} → HTTP 429")
+                    logger.warning("[DDTI] %s returned HTTP 429", name)
                     continue
-                if resp.status_code != 200:
-                    logger.warning(f"[DDTI] {name} → HTTP {resp.status_code}")
+                if response.status != 200:
+                    logger.warning("[DDTI] %s returned HTTP %s", name, response.status)
                     continue
                 successful_feeds += 1
-                records.extend(self._parse_feed_items(name, resp.text))
-            except Exception as e:
-                reachability[name] = f"error:{type(e).__name__}"
-                logger.warning(f"[DDTI] {name} unreachable: {e}")
+                remaining = MAX_TOTAL_FEED_ITEMS - len(records)
+                if remaining > 0:
+                    text = response.body.decode("utf-8", "replace")
+                    records.extend(self._parse_feed_items(name, text)[:remaining])
+            except Exception as exc:  # noqa: BLE001 — fail soft per hostile feed
+                reachability[name] = f"error:{type(exc).__name__}"
+                logger.warning("[DDTI] %s unreachable (%s)", name, type(exc).__name__)
 
         self.reachability = reachability
         logger.info(f"[DDTI] reachability={reachability} | observations={len(records)}")

@@ -65,9 +65,11 @@ from __future__ import annotations
 import ipaddress
 import json
 import logging
+import math
 import os
 import selectors
 import socket
+import stat
 import struct
 import time
 from collections import Counter
@@ -77,6 +79,13 @@ from collectors.undertext import content_key  # one fingerprint scheme across th
 from core.claim_support import has_quorum      # one definition of "enough to claim this"
 
 logger = logging.getLogger(__name__)
+
+MAX_TARGET_FILE_BYTES = 2 * 1024 * 1024
+MAX_TARGETS = 4096
+MAX_CLEAN_DOMAINS = 128
+MAX_CLEAN_ANSWERS_PER_DOMAIN = 256
+MAX_DNS_WAIT_SECONDS = 10.0
+MAX_BURST = 1000
 
 
 # ── known GFW forgery pool (illustrative / partial) ────────────────────────────────────
@@ -92,12 +101,71 @@ KNOWN_FORGED_IPS = frozenset({
 
 # ── minimal DNS wire codec (stdlib struct; no dnspython) ───────────────────────────────
 
+def _encoded_dns_name(domain: str) -> list[bytes]:
+    if type(domain) is not str or not domain or len(domain) > 253:
+        raise ValueError("DNS domain must be non-empty bounded text")
+    if domain.startswith(".") or domain.endswith(".") or ".." in domain:
+        raise ValueError("DNS domain must use canonical labels")
+    if any(ord(char) < 0x20 or ord(char) == 0x7f for char in domain):
+        raise ValueError("DNS domain contains control characters")
+    encoded = []
+    for label in domain.split("."):
+        try:
+            wire_label = label.encode("idna")
+        except UnicodeError as exc:
+            raise ValueError("DNS domain could not be IDNA-encoded") from exc
+        if (
+            not 1 <= len(wire_label) <= 63
+            or wire_label.startswith(b"-")
+            or wire_label.endswith(b"-")
+            or any(
+                not (byte == 45 or 48 <= byte <= 57 or 65 <= byte <= 90 or 97 <= byte <= 122)
+                for byte in wire_label
+            )
+        ):
+            raise ValueError("DNS domain contains an invalid label")
+        encoded.append(wire_label)
+    if sum(len(label) + 1 for label in encoded) + 1 > 255:
+        raise ValueError("DNS domain exceeds the wire-format quota")
+    return encoded
+
+
+def _validated_probe_ipv4(ip: str) -> str:
+    if type(ip) is not str:
+        raise ValueError("probe target must be an IPv4 literal")
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError as exc:
+        raise ValueError("probe target must be an IPv4 literal") from exc
+    if address.version != 4 or str(address) != ip or not address.is_global:
+        raise ValueError("probe target must be canonical globally routable IPv4")
+    return ip
+
+
+def _validated_wait(wait: float) -> float:
+    if (
+        isinstance(wait, bool)
+        or not isinstance(wait, (int, float))
+        or not math.isfinite(wait)
+        or not 0 < wait <= MAX_DNS_WAIT_SECONDS
+    ):
+        raise ValueError(f"wait must be in (0, {MAX_DNS_WAIT_SECONDS}]")
+    return float(wait)
+
+
 def build_query(domain: str, txid: int, qtype: int = 1, qclass: int = 1) -> bytes:
     """Encode a standard recursive DNS query. qtype 1 = A. Deterministic in txid so a
     caller (or test) controls the transaction id."""
-    header = struct.pack(">HHHHHH", txid & 0xFFFF, 0x0100, 1, 0, 0, 0)  # RD=1
-    qname = b"".join(bytes([len(l)]) + l.encode("idna" if any(ord(c) > 127 for c in l) else "ascii")
-                     for l in domain.split(".") if l) + b"\x00"
+    if type(txid) is not int or not 0 <= txid <= 0xFFFF:
+        raise ValueError("DNS transaction ID must be in 0..65535")
+    if type(qtype) is not int or not 1 <= qtype <= 0xFFFF:
+        raise ValueError("DNS qtype must be in 1..65535")
+    if type(qclass) is not int or not 1 <= qclass <= 0xFFFF:
+        raise ValueError("DNS qclass must be in 1..65535")
+    header = struct.pack(">HHHHHH", txid, 0x0100, 1, 0, 0, 0)  # RD=1
+    qname = b"".join(
+        bytes([len(label)]) + label for label in _encoded_dns_name(domain)
+    ) + b"\x00"
     return header + qname + struct.pack(">HH", qtype, qclass)
 
 
@@ -405,6 +473,10 @@ def _dns_exchange(domain: str, ip: str, *, port: int = 53, wait: float = 1.2,
     injectors, and that multiplicity is signal). Returns raw answer dicts; the caller decides
     what counts as a forgery. Stdlib socket only; proxy/rotation is applied by the deployment
     at the network layer (SOCKS via a wrapper), not here."""
+    _validated_probe_ipv4(ip)
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise ValueError("port must be in 1..65535")
+    wait = _validated_wait(wait)
     tid = txid if txid is not None else struct.unpack(">H", os.urandom(2))[0]
     query = build_query(domain, tid, qtype=1)
     out = []
@@ -602,17 +674,18 @@ class DirectUDPBurstTransport:
     """Direct transport with a rate-limiter-aware overlapped burst protocol."""
 
     def __init__(self, *, wait: float = 1.2, port: int = 53):
-        if wait <= 0:
-            raise ValueError("wait must be positive")
-        if not 1 <= port <= 65535:
+        wait = _validated_wait(wait)
+        if type(port) is not int or not 1 <= port <= 65535:
             raise ValueError("port must be in 1..65535")
-        self.wait = float(wait)
-        self.port = int(port)
+        self.wait = wait
+        self.port = port
 
     def __call__(self, domain: str, target_ip: str) -> list:
         return _udp_transport(domain, target_ip, port=self.port, wait=self.wait)
 
     def start_burst(self, domain: str, target_ip: str) -> _DirectUDPBurstSession:
+        _encoded_dns_name(domain)
+        _validated_probe_ipv4(target_ip)
         return _DirectUDPBurstSession(
             domain,
             target_ip,
@@ -831,17 +904,122 @@ def load_targets(path: str) -> dict:
     """Load a per-province target file into {probe, dark, resolver}. Each target carries a
     `kind` ('dark' | 'resolver', default 'dark') routing it to the right transport. The file
     is expected to be a CURATED product of build_target_file / curate_*, not raw guesses."""
-    with open(path, encoding="utf-8") as f:
-        d = json.load(f)
+    if not isinstance(path, (str, os.PathLike)):
+        raise ValueError("target path must be filesystem text")
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0)
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    elif stat.S_ISLNK(os.lstat(path).st_mode):
+        raise ValueError("target file may not be a symlink")
+    descriptor = os.open(path, flags)
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise ValueError("target file must be regular")
+        if metadata.st_size > MAX_TARGET_FILE_BYTES:
+            raise ValueError("target file exceeded its byte quota")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            raw = handle.read(MAX_TARGET_FILE_BYTES + 1)
+    finally:
+        os.close(descriptor)
+    if len(raw) > MAX_TARGET_FILE_BYTES:
+        raise ValueError("target file exceeded its byte quota")
+
+    def reject_constant(value: str):
+        raise ValueError(f"non-finite JSON number: {value}")
+
+    def strict_object(pairs):
+        out = {}
+        for key, value in pairs:
+            if key in out:
+                raise ValueError("target file contained a duplicate JSON key")
+            out[key] = value
+        return out
+
+    try:
+        d = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=strict_object,
+            parse_constant=reject_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("target file was not strict UTF-8 JSON") from exc
+    if type(d) is not dict:
+        raise ValueError("target file root must be an object")
+    meta = d.get("_meta", {})
+    if type(meta) is not dict:
+        raise ValueError("target metadata must be an object")
+    if meta.get("placeholder") is True:
+        raise ValueError("target file is the shipped placeholder")
     pd = d.get("probe", {})
-    probe = InjectorProbe(domain=pd.get("domain", ""), qtype=int(pd.get("qtype", 1)),
-                          ddti=pd.get("ddti", ""))
+    if type(pd) is not dict:
+        raise ValueError("probe configuration must be an object")
+    domain = pd.get("domain", "")
+    _encoded_dns_name(domain)
+    qtype = pd.get("qtype", 1)
+    if type(qtype) is not int or qtype != 1:
+        raise ValueError("probe qtype must be exactly A (1)")
+    ddti = pd.get("ddti", "")
+    if (
+        type(ddti) is not str
+        or len(ddti) > 64
+        or any(not (char.isupper() or char.isdigit() or char == "_") for char in ddti)
+    ):
+        raise ValueError("probe DDTI category is invalid")
+    probe = InjectorProbe(domain=domain, qtype=qtype, ddti=ddti)
+    target_rows = d.get("targets", [])
+    if type(target_rows) is not list or len(target_rows) > MAX_TARGETS:
+        raise ValueError("target list exceeded its item quota")
     dark, resolver = [], []
-    for t in d.get("targets", []):
-        tv = TargetVantage(t["ip"], t.get("province", "CN"), t.get("asn", ""))
-        (resolver if t.get("kind") == "resolver" else dark).append(tv)
+    seen_ips = set()
+    for target in target_rows:
+        if type(target) is not dict:
+            raise ValueError("target row must be an object")
+        ip = _validated_probe_ipv4(target.get("ip"))
+        if ip in seen_ips:
+            raise ValueError("target list contained a duplicate IP")
+        seen_ips.add(ip)
+        kind = target.get("kind")
+        if kind not in {"dark", "resolver"}:
+            raise ValueError("target kind must be exactly dark or resolver")
+        province = target.get("province", "CN")
+        if not (
+            province == "CN"
+            or (
+                type(province) is str
+                and len(province) == 5
+                and province.startswith("CN-")
+                and province[3:].isalpha()
+                and province[3:].isupper()
+            )
+        ):
+            raise ValueError("target province is invalid")
+        asn = target.get("asn", "")
+        if asn:
+            if type(asn) is not str or not asn.startswith("AS") or not asn[2:].isdigit():
+                raise ValueError("target ASN is invalid")
+            if not 1 <= int(asn[2:]) <= 4_294_967_295:
+                raise ValueError("target ASN is outside its numeric range")
+        tv = TargetVantage(ip, province, asn)
+        (resolver if kind == "resolver" else dark).append(tv)
+
+    clean = d.get("clean_answers")
+    if clean is not None:
+        if type(clean) is not dict or len(clean) > MAX_CLEAN_DOMAINS:
+            raise ValueError("clean-answer map exceeded its domain quota")
+        normalized_clean = {}
+        for clean_domain, answers in clean.items():
+            _encoded_dns_name(clean_domain)
+            if type(answers) not in {list, tuple} or len(answers) > (
+                MAX_CLEAN_ANSWERS_PER_DOMAIN
+            ):
+                raise ValueError("clean-answer row exceeded its item quota")
+            normalized_clean[clean_domain] = [
+                _validated_probe_ipv4(answer) for answer in answers
+            ]
+        clean = normalized_clean
     return {"probe": probe, "dark": tuple(dark), "resolver": tuple(resolver),
-            "clean_answers": d.get("clean_answers")}
+            "clean_answers": clean}
 
 
 # ── persistence: disk-backed fleet baseline (rotation/capacity across scheduled runs) ──
@@ -892,6 +1070,8 @@ class InjectionProbe:
 
     def __init__(self, *, transport=None, kill_switch=None, rate_ceiling=None,
                  burst: int = 24):
+        if type(burst) is not int or not 1 <= burst <= MAX_BURST:
+            raise ValueError(f"burst must be in 1..{MAX_BURST}")
         self._transport = transport or _udp_transport
         self._kill = kill_switch
         self._rate = rate_ceiling
@@ -1043,8 +1223,11 @@ if __name__ == "__main__":  # offline demo: a canned two-injector fleet, then a 
 
     # open-resolver fallback — same fingerprint via a resolver's outbound recursion (the
     # channel that survives inbound-injection decay). Canned exchange, no network.
-    exchange = lambda dom, rip: [{"ip": ip, "ttl": 300}
-                                 for ip in {"202.0.0.10": ["8.7.198.45", "2.1.1.2"]}.get(rip, [])]
+    def exchange(dom, rip):
+        return [
+            {"ip": ip, "ttl": 300}
+            for ip in {"202.0.0.10": ["8.7.198.45", "2.1.1.2"]}.get(rip, [])
+        ]
     res_probe = InjectionProbe(transport=open_resolver_transport(exchange=exchange), burst=6)
     rfp = res_probe.measure(q, TargetVantage("202.0.0.10", "CN"))
     print(f"resolver: pool={rfp.pool} (fleet-size weak on this path, by design)")

@@ -27,7 +27,6 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-pytest.importorskip("httpx", reason="the CDT ingest needs the collector HTTP stack")
 pytest.importorskip("pandas", reason="collectors.ddti_probe needs the collector stack")
 
 import sys                                              # noqa: E402
@@ -37,6 +36,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "scripts"))
 
 import ddti_live_pull as dlp                            # noqa: E402
+from core.safe_fetch import FetchError, SafeFetchResponse  # noqa: E402
 
 NOW = datetime(2026, 7, 31, 12, 0, 0, tzinfo=timezone.utc)
 
@@ -106,27 +106,25 @@ def _page(n, *, days_back_start, cats=()):
     ])
 
 
-class _Resp:
-    def __init__(self, status, text=""):
-        self.status_code, self.text = status, text
+def _Resp(status, text=""):
+    return SafeFetchResponse(
+        status=status,
+        headers={"Content-Type": "application/rss+xml"},
+        body=text.encode("utf-8"),
+        url=dlp.CDT_ROOT_FEED,
+    )
 
 
-class _FakeClient:
-    """Stands in for httpx.AsyncClient. `plan` maps page number -> _Resp or an Exception
-    instance to raise."""
+class _FakeFetch:
+    """Stands in for safe_fetch_response with a page-indexed response plan."""
 
     def __init__(self, plan):
-        self.plan, self.requested = plan, []
+        self.plan, self.requested, self.calls = plan, [], []
 
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, *a):
-        return False
-
-    async def get(self, url):
+    def __call__(self, url, **kwargs):
         page = int(url.split("paged=")[1]) if "paged=" in url else 1
         self.requested.append(page)
+        self.calls.append((url, kwargs))
         out = self.plan.get(page, _Resp(200, _feed([])))
         if isinstance(out, Exception):
             raise out
@@ -141,9 +139,9 @@ def fast(monkeypatch):
     monkeypatch.setattr(dlp, "FEED_PAGE_DELAY_S", 0.0)
 
     def _install(plan):
-        client = _FakeClient(plan)
-        monkeypatch.setattr(dlp.httpx, "AsyncClient", lambda *a, **k: client)
-        return client
+        fetch = _FakeFetch(plan)
+        monkeypatch.setattr(dlp, "safe_fetch_response", fetch)
+        return fetch
 
     return _install
 
@@ -176,16 +174,15 @@ def test_transport_failure_is_not_an_exhausted_archive(fast, monkeypatch):
     """The house rule, applied here: a network error must be recorded as an error and
     must not be reported as 'the feed simply had nothing older'."""
     monkeypatch.setattr(dlp, "FEED_HISTORY_DAYS", 400.0)
-    import httpx
     client = fast({
         1: _Resp(200, _page(1, days_back_start=0)),
-        2: httpx.ConnectError("connection reset"),
+        2: FetchError("connection reset at a hostile URL"),
     })
 
     obs, reach, health = _run()
 
     assert health["stopped_because"] == "transport-error"
-    assert reach["cdt_root_p2"] == "error:ConnectError"
+    assert reach["cdt_root_p2"] == "error:FetchError"
     assert health["history_window_covered"] is False   # honest: we did NOT cover it
     assert health["pages_ok"] == 1                     # page 2 never counted as read
     assert len(obs) == 15                              # page 1's real data is still kept
@@ -285,3 +282,39 @@ def test_the_user_agent_identifies_us_and_carries_a_contact(fast, monkeypatch):
     assert "palimpsest.info" in dlp.PALIMPSEST_UA
     assert "Palimpsest" in dlp.PALIMPSEST_UA
     assert "Chrome" not in dlp.PALIMPSEST_UA and "Safari" not in dlp.PALIMPSEST_UA
+
+
+def test_transport_is_fixed_bounded_and_redirect_free(fast, monkeypatch):
+    monkeypatch.setattr(dlp, "FEED_HISTORY_DAYS", 5.0)
+    fetch = fast({1: _Resp(200, _page(1, days_back_start=0))})
+
+    _run()
+
+    url, request = fetch.calls[0]
+    assert url == dlp.CDT_ROOT_FEED
+    assert request["max_bytes"] == dlp.MAX_FEED_BYTES
+    assert request["timeout"] == 25
+    assert request["max_redirects"] == 0
+    assert request["headers"]["User-Agent"] == dlp.PALIMPSEST_UA
+    request["url_policy"](url)
+    with pytest.raises(FetchError):
+        request["url_policy"]("https://127.0.0.1/feed/")
+    with pytest.raises(FetchError):
+        request["url_policy"]("https://chinadigitaltimes.net/private")
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("FEED_HISTORY_DAYS", float("nan")),
+        ("FEED_HISTORY_DAYS", dlp.MAX_HISTORY_DAYS + 1),
+        ("FEED_MAX_PAGES", 0),
+        ("FEED_MAX_PAGES", dlp.MAX_FEED_PAGES + 1),
+        ("FEED_PAGE_DELAY_S", -1),
+        ("FEED_PAGE_DELAY_S", dlp.MAX_PAGE_DELAY_S + 1),
+    ],
+)
+def test_environment_derived_crawl_budgets_are_bounded(monkeypatch, field, value):
+    monkeypatch.setattr(dlp, field, value)
+    with pytest.raises(ValueError):
+        dlp._feed_budgets()

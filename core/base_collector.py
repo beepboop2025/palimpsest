@@ -18,7 +18,6 @@ import time
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from pathlib import Path
-import httpx
 import pandas as pd
 
 from core.circuit_breaker import CircuitBreaker
@@ -44,6 +43,13 @@ class BaseCollector(ABC):
 
     name: str = "base"
     source_type: str = "unknown"  # "api", "rss", "scraper", "file"
+    hostile_input_boundary: bool = False
+
+    def _error_detail(self, error: BaseException) -> str:
+        """Return durable diagnostics without leaking hostile payload text."""
+        if self.hostile_input_boundary:
+            return type(error).__name__
+        return str(error)
 
     def __init__(self, config: dict):
         self.config = config
@@ -56,11 +62,6 @@ class BaseCollector(ABC):
 
         self._consecutive_failures = 0
         self._last_request_at = 0.0
-        self._http = httpx.AsyncClient(
-            timeout=self.timeout,
-            headers={"User-Agent": "EconScraper/4.0"},
-            follow_redirects=True,
-        )
         self._circuit_breaker = CircuitBreaker(
             name=self.name,
             failure_threshold=config.get("circuit_breaker_threshold", 5),
@@ -68,8 +69,7 @@ class BaseCollector(ABC):
         )
 
     async def close(self):
-        """Close the HTTP client."""
-        await self._http.aclose()
+        """Lifecycle hook retained for collectors with their own bounded clients."""
 
     # ── Abstract methods (subclass MUST implement) ────────────
 
@@ -95,13 +95,6 @@ class BaseCollector(ABC):
 
         Returns a summary dict with status, records_collected, duration.
         """
-        if self._http.is_closed:
-            self._http = httpx.AsyncClient(
-                timeout=self.timeout,
-                headers={"User-Agent": "EconScraper/4.0"},
-                follow_redirects=True,
-            )
-
         start = time.monotonic()
 
         # Circuit breaker check — skip collection if circuit is open
@@ -161,31 +154,37 @@ class BaseCollector(ABC):
             self._circuit_breaker.record_failure()
             self._consecutive_failures = self._circuit_breaker.failure_count
             duration = time.monotonic() - start
-            self._report_health("failed", str(e))
-            self._log_collection("failed", 0, duration, str(e))
+            detail = self._error_detail(e)
+            self._report_health("failed", detail)
+            self._log_collection("failed", 0, duration, detail)
             self._maybe_alert()
-            logger.error(f"[{self.name}] Collection failed: {e}")
-            return self._result("failed", 0, duration, str(e))
+            logger.error("[%s] Collection failed (%s)", self.name, detail)
+            return self._result("failed", 0, duration, detail)
 
         except (SchemaChangedError, ParseError) as e:
             self._circuit_breaker.record_failure()
             self._consecutive_failures = self._circuit_breaker.failure_count
             duration = time.monotonic() - start
-            self._report_health("failed", str(e))
-            self._log_collection("failed", 0, duration, str(e))
+            detail = self._error_detail(e)
+            self._report_health("failed", detail)
+            self._log_collection("failed", 0, duration, detail)
             self._maybe_alert()
-            logger.error(f"[{self.name}] Data error: {e}")
-            return self._result("failed", 0, duration, str(e))
+            logger.error("[%s] Data error (%s)", self.name, detail)
+            return self._result("failed", 0, duration, detail)
 
         except Exception as e:
             self._circuit_breaker.record_failure()
             self._consecutive_failures = self._circuit_breaker.failure_count
             duration = time.monotonic() - start
-            self._report_health("failed", str(e))
-            self._log_collection("failed", 0, duration, str(e))
+            detail = self._error_detail(e)
+            self._report_health("failed", detail)
+            self._log_collection("failed", 0, duration, detail)
             self._maybe_alert()
-            logger.exception(f"[{self.name}] Unexpected error")
-            return self._result("failed", 0, duration, str(e))
+            if self.hostile_input_boundary:
+                logger.error("[%s] Unexpected error (%s)", self.name, detail)
+            else:
+                logger.exception("[%s] Unexpected error", self.name)
+            return self._result("failed", 0, duration, detail)
 
         finally:
             await self.close()
@@ -212,7 +211,7 @@ class BaseCollector(ABC):
                         extra={
                             "source": self.name,
                             "error_type": type(e).__name__,
-                            "error": str(e),
+                            "error": self._error_detail(e),
                             "retry": attempt,
                             "max_retries": self.retry_count,
                             "next_delay": round(delay, 1),
@@ -398,8 +397,9 @@ class BaseCollector(ABC):
             finally:
                 db.close()
         except Exception as e:
-            logger.error(f"[{self.name}] Upsert failed: {e}")
-            raise StorageError(raw_path, str(e)) from e
+            detail = self._error_detail(e)
+            logger.error("[%s] Upsert failed (%s)", self.name, detail)
+            raise StorageError(raw_path, detail) from e
 
     @staticmethod
     def _result(status: str, records: int, duration: float, error: str = "") -> dict:

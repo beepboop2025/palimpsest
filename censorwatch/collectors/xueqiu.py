@@ -24,13 +24,15 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
+from urllib.parse import quote, urljoin
 
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from core.exceptions import SchemaChangedError
 from censorwatch.collectors.base_post_collector import BasePostCollector
 from censorwatch.interfaces import content_hash
+from censorwatch.source_policy import source_url_is_allowed
+from core.exceptions import SchemaChangedError
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +57,22 @@ class XueqiuCollector(BasePostCollector):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.symbols = [str(s) for s in config.get("symbols", ["SH600519"])]
-        self.count = int(config.get("count", 20))
+        configured = config.get("symbols", ["SH600519"])
+        count = config.get("count", 20)
+        if (
+            not isinstance(configured, list)
+            or not 1 <= len(configured) <= 32
+            or any(
+                type(symbol) is not str
+                or re.fullmatch(r"(?:SH|SZ)\d{6}", symbol) is None
+                for symbol in configured
+            )
+            or type(count) is not int
+            or not 1 <= count <= 100
+        ):
+            raise ValueError("xueqiu symbols/count are outside acquisition limits")
+        self.symbols = list(dict.fromkeys(configured))
+        self.count = count
 
     async def collect(self) -> list[dict]:
         """Fetch each symbol's timeline JSON via Playwright (WAF/cookie path).
@@ -79,7 +95,10 @@ class XueqiuCollector(BasePostCollector):
     async def parse(self, raw_data: list[dict]) -> pd.DataFrame:
         rows = []
         for entry in raw_data:
-            rows.extend(self._parse_statuses(entry["data"]))
+            remaining = self.max_records_per_cycle - len(rows)
+            if remaining <= 0:
+                break
+            rows.extend(self._parse_statuses(entry["data"], limit=remaining))
         logger.info("[xueqiu] parsed %d statuses from %d symbol(s)", len(rows), len(raw_data))
         return pd.DataFrame(rows)
 
@@ -95,7 +114,7 @@ class XueqiuCollector(BasePostCollector):
         except (ValueError, TypeError):
             pass
         # Playwright may wrap raw JSON in <html><body><pre>…</pre>. Find the object.
-        m = re.search(r"(\{.*\})", text, re.S)
+        m = re.search(r"(\{.*\})", text, re.DOTALL)
         if not m:
             return None
         try:
@@ -104,11 +123,18 @@ class XueqiuCollector(BasePostCollector):
             return None
 
     @classmethod
-    def _parse_statuses(cls, data: dict) -> list[dict]:
+    def _parse_statuses(cls, data: dict, *, limit: int = 1000) -> list[dict]:
         """Documented Xueqiu stock-timeline JSON → list of Post dicts."""
+        if type(limit) is not int or limit <= 0 or not isinstance(data, dict):
+            return []
+        limit = min(limit, 1000)
         items = (data or {}).get("list") or (data or {}).get("statuses") or []
+        if not isinstance(items, list):
+            return []
         out = []
-        for s in items:
+        for s in items[:limit]:
+            if not isinstance(s, dict):
+                continue
             sid = s.get("id")
             if sid is None:
                 continue
@@ -119,8 +145,10 @@ class XueqiuCollector(BasePostCollector):
             full_text = BeautifulSoup(text_html, "html.parser").get_text(" ", strip=True)
             if not full_text:
                 full_text = (s.get("title") or "").strip()
-            target = s.get("target") or f"/{post_id}"
-            url = target if target.startswith("http") else _BASE + target
+            target = s.get("target") or f"/{quote(post_id, safe='')}"
+            url = cls._resolve_target(target) or (
+                f"{_BASE}/{quote(post_id, safe='')}"
+            )
             out.append({
                 "post_id": post_id,
                 "author": author or None,
@@ -130,6 +158,14 @@ class XueqiuCollector(BasePostCollector):
                 "content_hash": content_hash(full_text),
             })
         return out
+
+    @staticmethod
+    def _resolve_target(target: str | None) -> str | None:
+        """Resolve only canonical Xueqiu HTTPS targets from hostile JSON."""
+        if not isinstance(target, str) or not target.strip():
+            return None
+        candidate = urljoin(_BASE + "/", target.strip())
+        return candidate if source_url_is_allowed("xueqiu", candidate) else None
 
     @staticmethod
     def _parse_ms(ms) -> datetime | None:

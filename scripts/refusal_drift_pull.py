@@ -60,8 +60,6 @@ import json
 import os
 import sys
 import time
-import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -74,6 +72,13 @@ from core import eval_stats as st  # noqa: E402
 from core import frontier_probes as fpb  # noqa: E402
 from core import judge_anchors as ja  # noqa: E402
 from core import refusal_drift as drift  # noqa: E402
+from core.openrouter_client import (  # noqa: E402
+    OpenRouterAPIError,
+    OpenRouterHTTPError,
+    OpenRouterResponseError,
+    OpenRouterTransportError,
+    chat_completion,
+)
 from core.sealed_ledger import _sha256  # noqa: E402
 
 READINGS = os.path.join(ROOT, "readings")
@@ -134,25 +139,27 @@ CHURN_BURN_IN = st.CHURN_BURN_IN
 
 
 def _query(key: str, model: str, prompt: str) -> str | None:
-    body = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}],
-                       "temperature": 0, "max_tokens": 500}).encode()
-    req = urllib.request.Request(URL, data=body, headers={
-        "Authorization": f"Bearer {key}", "Content-Type": "application/json",
-        "X-Title": "palimpsest-refusal-drift"})
     for attempt in range(2):
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
-                d = json.loads(r.read().decode("utf-8", "replace"))
-            return (d.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt == 0:
+            return chat_completion(
+                key,
+                model,
+                prompt,
+                max_tokens=500,
+                title="palimpsest-refusal-drift",
+                timeout=30,
+            )
+        except OpenRouterHTTPError as exc:
+            if exc.status == 429 and attempt == 0:
                 time.sleep(2)
                 continue
             return None
-        except (urllib.error.URLError, OSError, json.JSONDecodeError):
+        except (OpenRouterTransportError, OpenRouterResponseError):
             if attempt == 0:
                 time.sleep(1)
                 continue
+            return None
+        except (OpenRouterAPIError, ValueError):
             return None
     return None
 

@@ -3,14 +3,11 @@
 # This is the long-running service image, distinct from ops/docker/Dockerfile,
 # which is the single-purpose, stdlib-only, throwaway sandbox for the weekly GFI
 # reading. This image DOES install requirements.txt because the collectors,
-# scheduler, and (optional) velocity leg need httpx, celery, sqlalchemy, etc.
-#
-# Chromium for the CensorWatch velocity leg is heavy (~400MB) and only needed
-# when CENSORWATCH_ENABLED is set, so it is gated behind WITH_BROWSER. Build the
-# lean image by default; pass --build-arg WITH_BROWSER=true only if you run the
-# velocity worker.
+# scheduler, and velocity worker need httpx, celery, sqlalchemy, etc. Hostile
+# browser execution lives in Dockerfile.render-gateway; this privileged image
+# deliberately contains no Chromium runtime.
 
-FROM python:3.12-slim AS base
+FROM python:3.12-slim@sha256:7a8b475003c4fe15a2cd4e55e5cfc2f3560bdc9333d624f24cdd6d4340fd7a17 AS base
 
 ARG PALIMPSEST_REVISION=unversioned
 LABEL org.opencontainers.image.revision=$PALIMPSEST_REVISION
@@ -32,18 +29,8 @@ RUN groupadd --gid 10001 palimpsest \
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-
-# Optional: install the Chromium runtime for the velocity leg. --with-deps pulls
-# the system libraries Chromium needs; it runs as root here (before USER) because
-# it writes into /usr/lib and the browser cache under /root, which we relocate.
-ARG WITH_BROWSER=false
-ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
-RUN if [ "$WITH_BROWSER" = "true" ]; then \
-        playwright install --with-deps chromium \
-        && chown -R palimpsest:palimpsest /opt/pw-browsers ; \
-    fi
+COPY requirements.lock .
+RUN pip install --require-hashes --requirement requirements.lock
 
 # Application code. Copy the packages the services import; leave out tests, docs,
 # git history, and the ops/ deploy scaffolding.

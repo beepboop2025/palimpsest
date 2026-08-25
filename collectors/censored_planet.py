@@ -1,30 +1,105 @@
-"""Censored Planet signal — independent DNS/HTTP censorship measurement for
-China, via the open GraphQL API (data.censoredplanet.org/query).
+"""Bounded Censored Planet aggregate ingestion.
 
-Censored Planet (U. Michigan) measures interference from 95k+ vantage points
-using remote side-channel techniques (Satellite/DNS, Hyperquack/HTTP-SNI) —
-a *different method* from OONI's active probes. Ingesting it gives Palimpsest
-methodological triangulation: two independent measurement approaches agreeing
-on what China blocks is far stronger than one. Vantage-insensitive (we query
-their public aggregated API; we probe nothing), keyless, stdlib-only.
-
-Schema (introspected 2026-07): interferenceRateByCountry{country,unexpectedRate},
-cenalertEvents{country,startDate,endDate,peak,impact,cause,reportedBy},
-cenalertTimeseries{value,date,country}. DateRange = {startDate,endDate}.
+Censored Planet provides an independent public GraphQL view of DNS/HTTP
+interference. Palimpsest probes nothing here: it reads three reviewed aggregate
+queries from one fixed endpoint. The remote service is nevertheless treated as
+hostile input, so both the HTTP capability and every returned collection are
+bounded before evidence reaches publication code.
 """
 from __future__ import annotations
 
 import json
 import logging
+import math
 import time
-import urllib.error
-import urllib.request
+from datetime import date
+from typing import Any
+
+from core.safe_fetch import FetchError, ResponseTooLarge, safe_fetch_bytes
 
 log = logging.getLogger(__name__)
 
 ENDPOINT = "https://data.censoredplanet.org/query"
 USER_AGENT = "palimpsest.info observatory (Censored Planet open-data ingest)"
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+MAX_REQUEST_BYTES = 64 * 1024
+MAX_WINDOW_DAYS = 370
+MAX_COUNTRY_ROWS = 512
+MAX_EVENT_ROWS = 5_000
+MAX_TIMESERIES_ROWS = 1_000
+
+INTERFERENCE_QUERY = (
+    "query($range:DateRange!){ interferenceRateByCountry(range:$range){ "
+    "country unexpectedRate } }"
+)
+EVENTS_QUERY = (
+    "query($range:DateRange!,$c:String){ cenalertEvents(range:$range, country:$c){ "
+    "country startDate endDate peak impact cause reportedBy } }"
+)
+TIMESERIES_QUERY = (
+    "query($range:DateRange!,$c:String!){ cenalertTimeseries(range:$range, country:$c){ "
+    "date value } }"
+)
+_ALLOWED_QUERIES = frozenset({INTERFERENCE_QUERY, EVENTS_QUERY, TIMESERIES_QUERY})
+_EVENT_FIELDS = {
+    "country": 64,
+    "startDate": 32,
+    "endDate": 32,
+    "cause": 4_096,
+    "reportedBy": 1_024,
+}
+
+
+def _endpoint_policy(url: str) -> None:
+    if url != ENDPOINT:
+        raise FetchError("Censored Planet URL is not the reviewed endpoint")
+
+
+def _reject_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON number {value!r}")
+
+
+def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate JSON key")
+        out[key] = value
+    return out
+
+
+def _strict_json(raw: bytes) -> Any:
+    return json.loads(
+        raw.decode("utf-8", "strict"),
+        object_pairs_hook=_reject_duplicates,
+        parse_constant=_reject_constant,
+    )
+
+
+def _window(since: str, until: str) -> dict[str, str]:
+    if type(since) is not str or type(until) is not str:
+        raise ValueError("Censored Planet dates must be canonical text")
+    try:
+        start = date.fromisoformat(since)
+        end = date.fromisoformat(until)
+    except ValueError as exc:
+        raise ValueError("Censored Planet dates must use YYYY-MM-DD") from exc
+    if start.isoformat() != since or end.isoformat() != until:
+        raise ValueError("Censored Planet dates must use canonical YYYY-MM-DD")
+    if end < start or (end - start).days > MAX_WINDOW_DAYS:
+        raise ValueError(
+            f"Censored Planet window must span 0..{MAX_WINDOW_DAYS} days"
+        )
+    return {"startDate": since, "endDate": until}
+
+
+def _finite_number(value: Any, *, low: float, high: float) -> float | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    number = float(value)
+    if not math.isfinite(number) or not low <= number <= high:
+        return None
+    return number
 
 
 def _gql(
@@ -34,66 +109,161 @@ def _gql(
     *,
     retries: int = 2,
     sleeper=time.sleep,
+    fetch_bytes=None,
 ):
-    """One GraphQL call. Fail-soft: returns None on transport error or GraphQL
-    error, so the caller abstains rather than publishing a false zero."""
-    body = json.dumps({"query": query, "variables": variables or {}}).encode()
-    req = urllib.request.Request(ENDPOINT, data=body,
-                                 headers={"content-type": "application/json",
-                                          "User-Agent": USER_AGENT})
-    doc = None
+    """Run one reviewed GraphQL query and fail soft on hostile/unavailable input."""
+    if query not in _ALLOWED_QUERIES:
+        raise ValueError("Censored Planet query is not in the reviewed set")
+    if variables is not None and type(variables) is not dict:
+        raise ValueError("Censored Planet variables must be an object")
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not 0 < timeout <= 120
+    ):
+        raise ValueError("Censored Planet timeout must be in (0, 120]")
+    if type(retries) is not int or not 0 <= retries <= 4:
+        raise ValueError("Censored Planet retries must be in 0..4")
+
+    body = json.dumps(
+        {"query": query, "variables": variables or {}},
+        ensure_ascii=True,
+        allow_nan=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    if len(body) > MAX_REQUEST_BYTES:
+        raise ValueError("Censored Planet request exceeds its byte ceiling")
+
+    fetch = fetch_bytes or safe_fetch_bytes
     for attempt in range(retries + 1):
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as response:
-                raw = response.read(MAX_RESPONSE_BYTES + 1)
-            if len(raw) > MAX_RESPONSE_BYTES:
-                log.warning("Censored Planet response exceeded %s bytes", MAX_RESPONSE_BYTES)
-                return None
-            doc = json.loads(raw)
-            break
-        except (urllib.error.URLError, urllib.error.HTTPError, ValueError, OSError) as exc:
+            raw = fetch(
+                ENDPOINT,
+                method="POST",
+                body=body,
+                headers={
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "User-Agent": USER_AGENT,
+                },
+                max_bytes=MAX_RESPONSE_BYTES,
+                timeout=float(timeout),
+                max_redirects=0,
+                url_policy=_endpoint_policy,
+            )
+        except ResponseTooLarge:
+            log.warning("Censored Planet response exceeded its byte ceiling")
+            return None
+        except FetchError:
             if attempt >= retries:
-                log.warning("Censored Planet fetch failed after %s attempts: %s", attempt + 1, exc)
+                log.warning(
+                    "Censored Planet transport failed after %s attempts",
+                    attempt + 1,
+                )
                 return None
             sleeper(2 ** attempt)
-    if not isinstance(doc, dict):
-        return None
-    if doc.get("errors"):
-        log.warning("Censored Planet GraphQL error: %s", doc["errors"])
-        return None
-    return doc.get("data")
+            continue
+
+        try:
+            doc = _strict_json(raw)
+        except (UnicodeDecodeError, ValueError):
+            log.warning("Censored Planet returned invalid JSON")
+            return None
+        if type(doc) is not dict:
+            return None
+        errors = doc.get("errors")
+        if errors:
+            count = len(errors) if isinstance(errors, list) else 1
+            log.warning("Censored Planet returned %s GraphQL error(s)", min(count, 999))
+            return None
+        data = doc.get("data")
+        return data if type(data) is dict else None
+    return None  # pragma: no cover - bounded loop always returns
 
 
 def cn_interference_rate(since: str, until: str) -> float | None:
-    """China's 'unexpected' (interfered) resolution rate over the window — CP's
-    headline interference measure, in percent. None if CN isn't in the result."""
-    d = _gql(
-        "query($range:DateRange!){ interferenceRateByCountry(range:$range){ country unexpectedRate } }",
-        {"range": {"startDate": since, "endDate": until}})
-    rows = (d or {}).get("interferenceRateByCountry") or []
-    for r in rows:
-        if r.get("country") in ("CN", "China"):
-            v = r.get("unexpectedRate")
-            return round(float(v), 2) if v is not None else None
+    """China's unexpected resolution rate over a bounded date window."""
+    window = _window(since, until)
+    data = _gql(INTERFERENCE_QUERY, {"range": window})
+    rows = (data or {}).get("interferenceRateByCountry")
+    if type(rows) is not list or len(rows) > MAX_COUNTRY_ROWS:
+        return None
+    for row in rows:
+        if type(row) is not dict:
+            return None
+        country = row.get("country")
+        if country in ("CN", "China"):
+            value = _finite_number(row.get("unexpectedRate"), low=0.0, high=100.0)
+            return round(value, 2) if value is not None else None
     return None
 
 
 def cn_events(since: str, until: str) -> list[dict]:
-    """Discrete China censorship-alert events in the window (start/end, peak,
-    impact, cause, who reported). Empty list if none / unavailable."""
-    d = _gql(
-        "query($range:DateRange!,$c:String){ cenalertEvents(range:$range, country:$c){ "
-        "country startDate endDate peak impact cause reportedBy } }",
-        {"range": {"startDate": since, "endDate": until}, "c": "CN"})
-    ev = (d or {}).get("cenalertEvents") or []
-    return ev if isinstance(ev, list) else []
+    """Return bounded, normalized China censorship-alert events."""
+    window = _window(since, until)
+    data = _gql(EVENTS_QUERY, {"range": window, "c": "CN"})
+    rows = (data or {}).get("cenalertEvents")
+    if type(rows) is not list or len(rows) > MAX_EVENT_ROWS:
+        return []
+    normalized: list[dict] = []
+    for row in rows:
+        if type(row) is not dict:
+            return []
+        event: dict[str, Any] = {}
+        for field, maximum in _EVENT_FIELDS.items():
+            value = row.get(field)
+            if value is None:
+                event[field] = None
+            elif type(value) is str and len(value) <= maximum:
+                event[field] = value
+            else:
+                return []
+        peak = row.get("peak")
+        if peak is None:
+            event["peak"] = None
+        else:
+            number = _finite_number(peak, low=-1_000_000.0, high=1_000_000.0)
+            if number is None:
+                return []
+            event["peak"] = number
+        impact = row.get("impact")
+        if impact is None:
+            event["impact"] = None
+        elif type(impact) is str and len(impact) <= 1_024:
+            event["impact"] = impact
+        else:
+            number = _finite_number(
+                impact, low=-1_000_000.0, high=1_000_000.0
+            )
+            if number is None:
+                return []
+            event["impact"] = number
+        normalized.append(event)
+    return normalized
 
 
 def cn_timeseries(since: str, until: str) -> list[dict]:
-    """China alert-intensity time series {date, value} for charting/history."""
-    d = _gql(
-        "query($range:DateRange!,$c:String!){ cenalertTimeseries(range:$range, country:$c){ "
-        "date value } }",
-        {"range": {"startDate": since, "endDate": until}, "c": "CN"})
-    ts = (d or {}).get("cenalertTimeseries") or []
-    return ts if isinstance(ts, list) else []
+    """Return a bounded, canonical China alert-intensity time series."""
+    window = _window(since, until)
+    start = date.fromisoformat(since)
+    end = date.fromisoformat(until)
+    data = _gql(TIMESERIES_QUERY, {"range": window, "c": "CN"})
+    rows = (data or {}).get("cenalertTimeseries")
+    if type(rows) is not list or len(rows) > MAX_TIMESERIES_ROWS:
+        return []
+    normalized: list[dict] = []
+    for row in rows:
+        if type(row) is not dict:
+            return []
+        raw_date = row.get("date")
+        if type(raw_date) is not str:
+            return []
+        try:
+            observed = date.fromisoformat(raw_date)
+        except ValueError:
+            return []
+        value = _finite_number(row.get("value"), low=-1_000_000.0, high=1_000_000.0)
+        if observed.isoformat() != raw_date or not start <= observed <= end or value is None:
+            return []
+        normalized.append({"date": raw_date, "value": value})
+    return normalized

@@ -8,7 +8,7 @@
 #
 # Optional pieces are behind compose profiles so the base `up` stays lean:
 #   --profile warehouse adds the bounded OONI bulk worker
-#   --profile velocity  adds the CensorWatch (Playwright) worker
+#   --profile velocity  adds the CensorWatch worker + quarantined renderer
 #   --profile api       adds the FastAPI service on a localhost-only port
 #
 # Usage:
@@ -59,9 +59,6 @@ x-app: &app
     context: ../..
     dockerfile: ops/docker/Dockerfile.app
     args:
-      # Flip to "true" only if you enable the velocity leg (see the velocity
-      # worker below). The lean default keeps the image ~400MB smaller.
-      WITH_BROWSER: ${WITH_BROWSER:-false}
       # The private analysis runner refuses to claim a Git revision unless the
       # exact value is baked into the OCI image it executes.
       PALIMPSEST_REVISION: ${PALIMPSEST_IMAGE_REVISION:-unversioned}
@@ -258,17 +255,90 @@ services:
       retries: 3
       start_period: 45s
 
-  # --- optional: CensorWatch velocity leg (Playwright) --------------------
-  # Requires WITH_BROWSER=true at build time and CENSORWATCH_ENABLED=1 in .env.
+  # --- optional: CensorWatch velocity leg ----------------------------------
+  # Hostile JS executes only in the adjacent credential-free renderer. The
+  # database-bearing worker keeps the lean application image and never starts
+  # Chromium locally.
+  censorwatch-render-gateway:
+    profiles: ["velocity"]
+    build:
+      context: ../..
+      dockerfile: ops/docker/Dockerfile.render-gateway
+      args:
+        PALIMPSEST_REVISION: ${PALIMPSEST_IMAGE_REVISION:-unversioned}
+    image: palimpsest/censorwatch-render-gateway:local
+    restart: unless-stopped
+    environment:
+      CENSORWATCH_GATEWAY_PROXY_URL: ${CENSORWATCH_PROXY_URL:-}
+      CENSORWATCH_GATEWAY_MAX_HTML_BYTES: ${CENSORWATCH_MAX_PAGE_BYTES:-8388608}
+      CENSORWATCH_GATEWAY_TIMEOUT_S: ${CENSORWATCH_TIMEOUT_S:-30}
+      CENSORWATCH_GATEWAY_SETTLE_MS: ${CENSORWATCH_GATEWAY_SETTLE_MS:-1500}
+    networks: [render-handoff, render-egress]
+    expose: ["8080"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+      - /home/renderer:size=16m,mode=0700,uid=10002,gid=10002
+    shm_size: 128m
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    pids_limit: 256
+    cpus: 1.0
+    logging: *bounded-logging
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 45s
+
   worker-velocity:
     <<: *app
     profiles: ["velocity"]
-    depends_on: *runtime-depends
+    # Do not inherit the application's shared secret-bearing env file. This
+    # worker parses hostile public content, so it receives an explicit runtime
+    # allowlist and nothing for Radar, OpenRouter, webhooks, or unrelated jobs.
+    env_file: []
+    depends_on:
+      <<: *runtime-depends
+      censorwatch-render-gateway: {condition: service_healthy}
     command: ["celery", "-A", "core.scheduler", "worker", "-c", "1", "-Q", "censorwatch", "-n", "velocity@%h"]
-    mem_limit: 2048m
-    memswap_limit: 2048m
-    pids_limit: 384
-    cpus: 2.0
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in ops/docker/.env}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      CENSORWATCH_ENABLED: ${CENSORWATCH_ENABLED:-0}
+      CENSORWATCH_PROXY_URL: ${CENSORWATCH_PROXY_URL:-}
+      CENSORWATCH_CONFIRMATIONS: ${CENSORWATCH_CONFIRMATIONS:-3}
+      CENSORWATCH_MIN_DELAY_S: ${CENSORWATCH_MIN_DELAY_S:-2}
+      CENSORWATCH_MAX_DELAY_S: ${CENSORWATCH_MAX_DELAY_S:-6}
+      CENSORWATCH_TIMEOUT_S: ${CENSORWATCH_TIMEOUT_S:-30}
+      CENSORWATCH_HOST_MIN_INTERVAL_S: ${CENSORWATCH_HOST_MIN_INTERVAL_S:-0}
+      CENSORWATCH_MAX_PAGE_BYTES: ${CENSORWATCH_MAX_PAGE_BYTES:-8388608}
+      CENSORWATCH_MAX_IMAGE_BYTES: ${CENSORWATCH_MAX_IMAGE_BYTES:-8388608}
+      CENSORWATCH_MAX_POST_IMAGE_BYTES: ${CENSORWATCH_MAX_POST_IMAGE_BYTES:-33554432}
+      CENSORWATCH_MAX_CYCLE_IMAGE_BYTES: ${CENSORWATCH_MAX_CYCLE_IMAGE_BYTES:-268435456}
+      CENSORWATCH_MAX_CACHE_BYTES: ${CENSORWATCH_MAX_CACHE_BYTES:-33554432}
+      CENSORWATCH_MAX_REDIRECTS: ${CENSORWATCH_MAX_REDIRECTS:-5}
+      CENSORWATCH_MIN_ARCHIVE_FREE_BYTES: ${CENSORWATCH_MIN_ARCHIVE_FREE_BYTES:-1073741824}
+      CENSORWATCH_VELOCITY_WINDOW_MIN: ${CENSORWATCH_VELOCITY_WINDOW_MIN:-60}
+      CENSORWATCH_BASELINE_WINDOWS: ${CENSORWATCH_BASELINE_WINDOWS:-24}
+      CENSORWATCH_SPIKE_Z: ${CENSORWATCH_SPIKE_Z:-3.0}
+      CENSORWATCH_ARCHIVE_DIR: /app/data/censorwatch/archive
+      RAW_DATA_DIR: /app/data/censorwatch/raw
+      CENSORWATCH_RENDER_GATEWAY_URL: http://censorwatch-render-gateway:8080
+    # The hostile-content lane can write only its own archive/raw subtree. It
+    # cannot alter public readings or any other collector's durable evidence.
+    volumes:
+      - ${PALIMPSEST_CENSORWATCH_DATA_HOST_PATH:-../../data/censorwatch}:/app/data/censorwatch:rw
+    networks: [default, render-handoff]
+    mem_limit: 1024m
+    memswap_limit: 1024m
+    pids_limit: 128
+    cpus: 1.0
     healthcheck:
       test: ["CMD-SHELL", "celery -A core.scheduler inspect ping -d \"velocity@$$HOSTNAME\" --timeout 5 | grep -q pong"]
       interval: 60s
@@ -304,6 +374,11 @@ services:
 volumes:
   pgdata:
   redisdata:
+
+networks:
+  render-handoff:
+    internal: true
+  render-egress: {}
 
 secrets:
   # The committed default is intentionally empty. To enable Radar, point this

@@ -233,6 +233,56 @@ def test_list_objects_v2_rejects_scope_confusion():
         )
 
 
+def test_list_objects_v2_requires_hardened_xml_parser(monkeypatch):
+    monkeypatch.setattr("collectors.ooni_bulk.ET", None)
+    with pytest.raises(ValidationError, match="hardened XML parser"):
+        parse_list_objects_v2(
+            b"<ListBucketResult/>",
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
+            country="CN",
+            test="webconnectivity",
+        )
+
+
+def test_list_objects_v2_rejects_entities():
+    payload = b'''<!DOCTYPE x [<!ENTITY hostile "expanded">]>
+    <ListBucketResult><Name>&hostile;</Name></ListBucketResult>'''
+    with pytest.raises(ValidationError, match="invalid S3 ListObjectsV2 XML"):
+        parse_list_objects_v2(
+            payload,
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
+            country="CN",
+            test="webconnectivity",
+        )
+
+
+def test_list_objects_v2_rejects_structural_amplification(monkeypatch):
+    monkeypatch.setattr("collectors.ooni_bulk._S3_XML_MAX_DEPTH", 3)
+    deep = b"<ListBucketResult><a><b><c/></b></a></ListBucketResult>"
+    with pytest.raises(ValidationError, match="structural limits"):
+        parse_list_objects_v2(
+            deep,
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
+            country="CN",
+            test="webconnectivity",
+        )
+
+    monkeypatch.setattr("collectors.ooni_bulk._S3_XML_MAX_DEPTH", 16)
+    monkeypatch.setattr("collectors.ooni_bulk._S3_XML_MAX_ELEMENTS", 3)
+    wide = b"<ListBucketResult><a/><b/><c/></ListBucketResult>"
+    with pytest.raises(ValidationError, match="structural limits"):
+        parse_list_objects_v2(
+            wide,
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
+            country="CN",
+            test="webconnectivity",
+        )
+
+
 def test_unsigned_list_objects_v2_paginates_the_exact_hourly_scope(tmp_path):
     config = load_config(_write_config(tmp_path / "config.json"))
     prefix = "raw/20260810/08/CN/webconnectivity/"

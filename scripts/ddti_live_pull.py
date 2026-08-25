@@ -19,15 +19,15 @@ Usage:  python -m scripts.ddti_live_pull
 
 import asyncio
 import json
+import math
 import os
 import re
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-import httpx
-
 from collectors.ddti_probe import DDTIProbeCollector
+from core.safe_fetch import FetchError, safe_fetch_response
 from processors.ddti_index import compute_selectivity_novelty, extract_terms, load_domain_map
 from processors.zh_finance import load_lexicon
 
@@ -74,6 +74,13 @@ PALIMPSEST_UA = ("Palimpsest/0.2 (+https://palimpsest.info; open-source censorsh
 FEED_HISTORY_DAYS = float(os.getenv("DDTI_FEED_HISTORY_DAYS", "180"))
 FEED_MAX_PAGES = int(os.getenv("DDTI_FEED_MAX_PAGES", "10"))       # politeness ceiling
 FEED_PAGE_DELAY_S = float(os.getenv("DDTI_FEED_PAGE_DELAY_S", "2.0"))
+MAX_FEED_BYTES = 8 * 1024 * 1024
+MAX_HISTORY_DAYS = 3_650.0
+MAX_FEED_PAGES = 100
+MAX_PAGE_DELAY_S = 60.0
+_CDT_FEED_URL = re.compile(
+    r"https://chinadigitaltimes\.net/feed/(?:\?paged=(?:[2-9]|[1-9][0-9]|100))?\Z"
+)
 
 # The dead category feeds, recovered from each item's <category> tags. Lowercased exact
 # match. Roles are resolved in the priority order below so an item tagged both
@@ -96,6 +103,34 @@ def page_url(page: int) -> str:
     """Root feed for page 1, ?paged=N thereafter. Page 1 has no query string so the
     routine request is byte-identical to what any feed reader sends."""
     return CDT_ROOT_FEED if page <= 1 else f"{CDT_ROOT_FEED}?paged={page}"
+
+
+def _cdt_url_policy(url: str) -> None:
+    if not _CDT_FEED_URL.fullmatch(url):
+        raise FetchError("DDTI URL is outside the reviewed CDT feed")
+
+
+def _feed_budgets() -> tuple[float, int, float]:
+    history = FEED_HISTORY_DAYS
+    pages = FEED_MAX_PAGES
+    delay = FEED_PAGE_DELAY_S
+    if (
+        isinstance(history, bool)
+        or not isinstance(history, (int, float))
+        or not math.isfinite(history)
+        or not 1 <= history <= MAX_HISTORY_DAYS
+    ):
+        raise ValueError(f"DDTI history window must be in 1..{MAX_HISTORY_DAYS:g} days")
+    if type(pages) is not int or not 1 <= pages <= MAX_FEED_PAGES:
+        raise ValueError(f"DDTI page budget must be in 1..{MAX_FEED_PAGES}")
+    if (
+        isinstance(delay, bool)
+        or not isinstance(delay, (int, float))
+        or not math.isfinite(delay)
+        or not 0 <= delay <= MAX_PAGE_DELAY_S
+    ):
+        raise ValueError(f"DDTI page delay must be in 0..{MAX_PAGE_DELAY_S:g} seconds")
+    return float(history), pages, float(delay)
 
 
 def role_for(tags) -> str:
@@ -146,7 +181,7 @@ def _clean_terms(terms):
             if t.strip().lower() not in STOP_TAGS and len(t.strip()) > 1]
 
 
-async def pull(now: datetime | None = None):
+async def pull(now: datetime | None = None, *, fetch_response=None):
     """Walk /feed/?paged=N until the archive predates the history window.
 
     Returns (observations, reachability, health). `reachability` keeps the per-request
@@ -155,7 +190,8 @@ async def pull(now: datetime | None = None):
     `health` is the roll-up a human reads.
     """
     now = now or datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=FEED_HISTORY_DAYS)
+    history_days, max_pages, page_delay = _feed_budgets()
+    cutoff = now - timedelta(days=history_days)
     lexicon = load_lexicon()
     collector = DDTIProbeCollector({"deletion_feeds": []})  # reuse its RSS/Atom parser
 
@@ -165,92 +201,107 @@ async def pull(now: datetime | None = None):
               "no_terms_dropped": 0}
     by_role, pages_ok, oldest, stopped = {}, 0, None, "page-ceiling"
 
-    async with httpx.AsyncClient(timeout=25, follow_redirects=True,
-                                 headers={"User-Agent": PALIMPSEST_UA}) as client:
-        for page in range(1, max(1, FEED_MAX_PAGES) + 1):
-            if page > 1:
-                await asyncio.sleep(FEED_PAGE_DELAY_S)      # stay slow, stay welcome
-            key = f"cdt_root_p{page}"
-            try:
-                r = await client.get(page_url(page))
-            except Exception as e:
-                # A transport failure is not "the archive ended here". Stop and say so;
-                # never let a network error masquerade as an exhausted feed.
-                reachability[key] = f"error:{type(e).__name__}"
-                stopped = "transport-error"
-                break
-            reachability[key] = r.status_code
-            if r.status_code != 200:
-                stopped = f"http-{r.status_code}"
-                break
+    fetch = fetch_response or safe_fetch_response
+    for page in range(1, max_pages + 1):
+        if page > 1:
+            await asyncio.sleep(page_delay)      # stay slow, stay welcome
+        key = f"cdt_root_p{page}"
+        try:
+            response = await asyncio.to_thread(
+                fetch,
+                page_url(page),
+                headers={
+                    "Accept": "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8",
+                    "User-Agent": PALIMPSEST_UA,
+                },
+                max_bytes=MAX_FEED_BYTES,
+                timeout=25,
+                max_redirects=0,
+                url_policy=_cdt_url_policy,
+            )
+        except (FetchError, OSError, ValueError) as exc:
+            # A transport failure is not "the archive ended here". Stop and say so;
+            # never let a network error masquerade as an exhausted feed.
+            reachability[key] = f"error:{type(exc).__name__}"
+            stopped = "transport-error"
+            break
+        reachability[key] = response.status
+        if response.status != 200:
+            stopped = f"http-{response.status}"
+            break
+        try:
+            text = response.body.decode("utf-8", "strict")
+        except UnicodeDecodeError:
+            stopped = "invalid-utf8"
+            break
 
-            items = collector._parse_feed_items(key, r.text)
-            if not items:
-                # A 200 carrying no <item> is either the end of the archive or an
-                # interstitial served with a 200. Either way we have no data — stop,
-                # and record which page went quiet.
-                stopped = "no-items"
-                break
-            pages_ok += 1
+        items = collector._parse_feed_items(key, text)
+        if not items:
+            # A 200 carrying no <item> is either the end of the archive or an
+            # interstitial served with a 200. Either way we have no data — stop,
+            # and record which page went quiet.
+            stopped = "no-items"
+            break
+        pages_ok += 1
 
-            for it in items:
-                counts["items_seen"] += 1
-                url = (it.get("url") or "").strip()
-                if url and url in seen_urls:
-                    counts["duplicates_dropped"] += 1     # page overlap as CDT publishes
-                    continue
-                if url:
-                    seen_urls.add(url)
-                detected_at = _parse_date(it.get("published_at", ""))
-                if detected_at is None:
-                    counts["undated_dropped"] += 1
-                    continue
-                if oldest is None or detected_at < oldest:
-                    oldest = detected_at
-                tags = it.get("tags", [])
-                terms = _clean_terms(extract_terms(it["title"], it["text"], tags, lexicon))
-                if not terms:
-                    counts["no_terms_dropped"] += 1
-                    continue
-                role = role_for(tags)
-                by_role[role] = by_role.get(role, 0) + 1
-                from core.china_observation import enrich_observation
+        for it in items:
+            counts["items_seen"] += 1
+            url = (it.get("url") or "").strip()
+            if url and url in seen_urls:
+                counts["duplicates_dropped"] += 1     # page overlap as CDT publishes
+                continue
+            if url:
+                seen_urls.add(url)
+            detected_at = _parse_date(it.get("published_at", ""))
+            if detected_at is None:
+                counts["undated_dropped"] += 1
+                continue
+            if oldest is None or detected_at < oldest:
+                oldest = detected_at
+            tags = it.get("tags", [])
+            terms = _clean_terms(extract_terms(it["title"], it["text"], tags, lexicon))
+            if not terms:
+                counts["no_terms_dropped"] += 1
+                continue
+            role = role_for(tags)
+            by_role[role] = by_role.get(role, 0) + 1
+            from core.china_observation import enrich_observation
 
-                title = _strip_angles(it["title"])
-                body = _strip_angles(it.get("text") or "")
-                observations.append(enrich_observation(
-                    {
-                        "terms": terms,
-                        "detected_at": detected_at,
-                        "title": title,
-                        "text": body,
-                        "url": url,
-                        "source": role,
-                    },
-                    text=body,
-                    source_url=url,
-                    first_seen=detected_at,
-                    last_seen=detected_at,
-                    confirmations=[{
-                        "status": "ledger-reported",
-                        "observed_at": detected_at,
-                        "source": role,
-                        "note": "CDT public feed item; not a Palimpsest liveness check",
-                    }],
-                    cdt={"id": role, "url": url, "title": title},
-                    provenance={
-                        "collector": "ddti",
-                        "method": "CDT root-feed pagination",
-                        "vantage": "outside-china-public-source",
-                        "feed_page": key,
-                        "schema_version": "palimpsest-china-observation.v1",
-                        "method_version": 1,
-                    },
-                ))
+            title = _strip_angles(it["title"])
+            body = _strip_angles(it.get("text") or "")
+            observations.append(enrich_observation(
+                {
+                    "terms": terms,
+                    "detected_at": detected_at,
+                    "title": title,
+                    "text": body,
+                    "url": url,
+                    "source": role,
+                },
+                text=body,
+                source_url=url,
+                first_seen=detected_at,
+                last_seen=detected_at,
+                confirmations=[{
+                    "status": "ledger-reported",
+                    "observed_at": detected_at,
+                    "source": role,
+                    "note": "CDT public feed item; not a Palimpsest liveness check",
+                }],
+                cdt={"id": role, "url": url, "title": title},
+                provenance={
+                    "collector": "ddti",
+                    "method": "CDT root-feed pagination",
+                    "vantage": "outside-china-public-source",
+                    "feed_page": key,
+                    "schema_version": "palimpsest-china-observation.v1",
+                    "method_version": 1,
+                },
+            ))
 
-            if oldest is not None and oldest <= cutoff:
-                stopped = "history-window-covered"
-                break
+        if oldest is not None and oldest <= cutoff:
+            stopped = "history-window-covered"
+            break
 
     health = {
         "endpoint": CDT_ROOT_FEED,
@@ -258,7 +309,7 @@ async def pull(now: datetime | None = None):
         "stopped_because": stopped,
         "oldest_item": oldest.isoformat() if oldest else None,
         "days_covered": round((now - oldest).total_seconds() / 86400, 1) if oldest else 0.0,
-        "history_window_days": FEED_HISTORY_DAYS,
+        "history_window_days": history_days,
         "history_window_covered": bool(oldest and oldest <= cutoff),
         "observations": len(observations),
         "by_role": by_role,

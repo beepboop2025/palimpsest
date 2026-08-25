@@ -34,15 +34,16 @@ VANTAGE: vantage-insensitive. Apple serves storefront metadata for any country
 to any requester, so this runs correctly from a GitHub runner and never touches
 the box's egress. No key, no auth.
 
-Standard-library only (urllib + json).
+Standard-library only (shared safe transport + json).
 """
 from __future__ import annotations
 
 import json
 import logging
 import time
-import urllib.error
-import urllib.request
+from collections.abc import Callable
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +58,8 @@ TARGET_STOREFRONT = "cn"
 # One round is 2 * len(PANEL) requests, so a small delay keeps a full round well
 # under any sane threshold.
 REQUEST_DELAY = 0.4
+MAX_BYTES = 1024 * 1024
+MAX_PANEL_APPS = 64
 
 # `control=True` apps must be present in both storefronts. They validate the API
 # rather than measure censorship, and are excluded from the delisting rate.
@@ -81,19 +84,66 @@ PANEL = [
 ]
 
 
-def _lookup(track_id: int, storefront: str, *, timeout: float = 20.0) -> int | None:
+def _reject_constant(_value: str):
+    raise ValueError("non-finite JSON number")
+
+
+def _reject_duplicates(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate JSON key")
+        out[key] = value
+    return out
+
+
+def _lookup(
+    track_id: int,
+    storefront: str,
+    *,
+    timeout: float = 20.0,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> int | None:
     """Return resultCount for one app in one storefront, or None if Apple did
     not answer. None is deliberately distinct from 0: 'we could not ask' must
     not be recorded as 'the app is not offered'."""
+    if (
+        type(track_id) is not int
+        or not 1 <= track_id <= 10**12
+        or storefront not in {CONTROL_STOREFRONT, TARGET_STOREFRONT}
+    ):
+        log.warning("apple lookup refused invalid request parameters")
+        return None
     url = f"{LOOKUP}?id={track_id}&country={storefront}"
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+
+    def exact_url(candidate: str) -> None:
+        if candidate != url:
+            raise FetchError("Apple lookup URL changed")
+
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return json.loads(resp.read().decode("utf-8")).get("resultCount")
-    except urllib.error.HTTPError as e:
-        log.warning("apple lookup %s/%s failed: %s", track_id, storefront, e.code)
-    except Exception as e:                                    # noqa: BLE001
-        log.warning("apple lookup %s/%s failed: %s", track_id, storefront, e)
+        payload = fetcher(
+            url,
+            timeout=timeout,
+            max_bytes=MAX_BYTES,
+            max_redirects=0,
+            headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+            url_policy=exact_url,
+        )
+        if len(payload) > MAX_BYTES:
+            raise FetchError("Apple lookup exceeded its byte budget")
+        document = json.loads(
+            payload.decode("utf-8"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+        if not isinstance(document, dict):
+            raise ValueError("Apple lookup response is not an object")
+        count = document.get("resultCount")
+        if type(count) is not int or not 0 <= count <= 100:
+            raise ValueError("Apple lookup resultCount is invalid")
+        return count
+    except Exception as exc:  # noqa: BLE001
+        log.warning("apple lookup failed (%s)", type(exc).__name__)
     return None
 
 
@@ -128,8 +178,11 @@ def observe_app(entry: dict, *, lookup=_lookup, delay: float = REQUEST_DELAY) ->
 
 def observe_panel(panel: list = None, *, lookup=_lookup,
                   delay: float = REQUEST_DELAY) -> list:
-    return [observe_app(e, lookup=lookup, delay=delay)
-            for e in (panel if panel is not None else PANEL)]
+    selected = panel if panel is not None else PANEL
+    if not isinstance(selected, list) or not 1 <= len(selected) <= MAX_PANEL_APPS:
+        log.warning("apple lookup refused an invalid or oversized panel")
+        return []
+    return [observe_app(e, lookup=lookup, delay=delay) for e in selected]
 
 
 def control_state(observations: list) -> dict:

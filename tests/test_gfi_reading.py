@@ -184,15 +184,11 @@ def test_failures_are_counted_by_model_and_reason():
 def test_a_200_carrying_an_error_object_is_an_abstain_not_an_empty_answer():
     """An empty string is classified as a refusal, so a failed read must never
     become one — that would report a transport fault as censorship."""
-    import io
-    import json as _json
     m = _gfr()
 
-    class _Resp:
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def read(self): return _json.dumps({"error": {"message": "no credits"}}).encode()
+    def api_error(*_args, **_kwargs):
+        raise m.OpenRouterAPIError("bounded API error")
 
-    m.urllib.request.urlopen = lambda *a, **k: _Resp()
+    m.chat_completion = api_error
     assert m.fetch_one("k", "some/model", "prompt") is None
     assert any("api-error" in reason for reason in m.TRANSPORT_ERRORS)

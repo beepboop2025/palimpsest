@@ -15,6 +15,10 @@ RestartSec=3s
 TimeoutStartSec=20s
 TimeoutStopSec=20s
 UMask=0077
+MemoryHigh=384M
+MemoryMax=512M
+TasksMax=64
+LimitNOFILE=1024
 
 # The server needs outbound HTTPS to read the same public artifacts as readers.
 # It needs no writable application path, private home, device, capability, or key.

@@ -32,10 +32,13 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .github/ddti-requirements.txt
 
       - name: Install engine dependencies
-        # Pinned for reproducible, supply-chain-safe builds; kept current by dependabot.
-        run: pip install --quiet httpx==0.28.1 pandas==2.2.3 defusedxml==0.7.1
+        run: >-
+          python -m pip install --quiet --require-hashes
+          -r .github/ddti-requirements.txt
 
       - name: Compute live DDTI index from China Digital Times
         run: python -m scripts.ddti_live_pull

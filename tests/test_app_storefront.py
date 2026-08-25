@@ -5,8 +5,13 @@ Apple and the suite stays fast.
 """
 from __future__ import annotations
 
-from collectors.app_storefront import (control_state, delisting_rate,
-                                       observe_app, observe_panel)
+import collectors.app_storefront as storefront
+from core.safe_fetch import FetchError
+
+control_state = storefront.control_state
+delisting_rate = storefront.delisting_rate
+observe_app = storefront.observe_app
+observe_panel = storefront.observe_panel
 
 SIGNAL = {"name": "Signal", "id": 874139669, "category": "SECURE_MESSAGING"}
 WECHAT = {"name": "WeChat", "id": 414478124, "category": "CONTROL", "control": True}
@@ -107,3 +112,36 @@ def test_observe_panel_walks_every_entry():
              (414478124, "us"): 1, (414478124, "cn"): 1}
     obs = observe_panel([SIGNAL, WECHAT], lookup=_lookup_from(table), delay=0)
     assert [o["state"] for o in obs] == ["DELISTED", "AVAILABLE"]
+
+
+def test_lookup_is_exact_bounded_and_redirect_free():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        try:
+            kwargs["url_policy"]("https://evil.example/lookup")
+        except FetchError:
+            pass
+        else:
+            raise AssertionError("changed lookup URL must be refused")
+        return b'{"resultCount":1,"results":[]}'
+
+    assert storefront._lookup(874139669, "cn", fetcher=fetcher) == 1
+    assert seen["max_bytes"] == storefront.MAX_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_lookup_rejects_bad_parameters_and_ambiguous_json_before_egress():
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("invalid parameters must fail before egress")
+
+    assert storefront._lookup(-1, "cn", fetcher=no_fetch) is None
+    assert storefront._lookup(1, "xx", fetcher=no_fetch) is None
+    assert storefront._lookup(
+        1,
+        "cn",
+        fetcher=lambda *_args, **_kwargs: b'{"resultCount":1,"resultCount":0}',
+    ) is None
+    assert observe_panel([SIGNAL] * 65, lookup=no_fetch, delay=0) == []

@@ -1,7 +1,7 @@
 {
   "author": "Palimpsest Eval Lab",
   "claim": "The first guarded GFI v2 run now provides live evidence for exact-prompt precommitment and complete response recomputation. It does not by itself validate the classifier's construct or generalize beyond the declared panel and prompt bank.",
-  "content_sha256": "4c30b2050d24d9aba9ed8e31021a3f4891cc83dca1d3f905ec571098600efeb5",
+  "content_sha256": "b35c4896f7196d5c5a4ddf668c557d275195f097adcc66ff9c8cdb40a712caff",
   "dek": "The first guarded Generative Firewall v2 run published its exact protocol before sampling, retained all 660 sampled responses, and survived a concurrent-main publication race without re-querying.",
   "evidence": [
     {
@@ -21,11 +21,11 @@
       "url": "/scripts/preregister_gfi_v2.py"
     },
     {
-      "bytes": 58279,
+      "bytes": 58258,
       "label": "Guarded GFI collector",
       "path": "scripts/generative_firewall_reading.py",
       "role": "Refuses the first model call without a matching public protocol receipt and captures complete responses",
-      "sha256": "e96db8d936351d65adf09011f18a521176d9672182bac86a23b5805e14f2aa65",
+      "sha256": "c078888692400b452e692f805fd7cacf55ffb041091e76ba26015cecddbfda92",
       "url": "/scripts/generative_firewall_reading.py"
     },
     {
@@ -37,11 +37,11 @@
       "url": "/scripts/verify_gfi_transcripts.py"
     },
     {
-      "bytes": 16110,
+      "bytes": 16280,
       "label": "Two-stage publication workflow",
       "path": ".github/workflows/gfi-refresh.yml",
       "role": "Publishes the protocol before collection and preserves measured bytes across push races",
-      "sha256": "c492496f31b818373fbdd3b7b24f8d9abb42de055a88e53f574afdd78910dddb",
+      "sha256": "311909f4c42db5dbbdd32b047a6edc4706f2111cece14ef06af31fb929b31dc6",
       "url": "/.github/workflows/gfi-refresh.yml"
     },
     {

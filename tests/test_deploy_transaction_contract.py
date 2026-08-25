@@ -1618,7 +1618,10 @@ def test_compose_inventory_is_exact_before_capture_and_after_restoration() -> No
         "--filter label=com.docker.compose.project", docker_inventory
     )
     required = transaction.index("required = {", global_projects)
-    optional = transaction.index('allowed = required | {"worker-velocity"}', required)
+    optional = transaction.index(
+        'allowed = required | {"censorwatch-render-gateway", "worker-velocity"}',
+        required,
+    )
     provenance_labels = transaction.index(
         'com.docker.compose.project.working_dir"', global_projects
     )
@@ -1691,6 +1694,7 @@ def test_compose_inventory_allows_unrelated_shared_host_workers(
     required = (
         "api",
         "beat",
+        "censorwatch-render-gateway",
         "migrate",
         "postgres",
         "redis",
@@ -1998,6 +2002,7 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
     for service in (
         "api",
         "beat",
+        "censorwatch-render-gateway",
         "migrate",
         "postgres",
         "redis",
@@ -2013,6 +2018,30 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
     )
     assert expected < render < exact < interpreter_preflight < interpreter_exec
     assert interpreter_exec < fail_safe
+
+
+def test_velocity_renderer_is_exact_sha_and_restored_before_its_worker() -> None:
+    transaction = _transaction()
+    checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
+    build = transaction.index(
+        "--profile velocity build censorwatch-render-gateway", checkout
+    )
+    candidate = transaction.index("CANDIDATE_RENDER_IMAGE_ID=", build)
+    revision = transaction.index(
+        'org.opencontainers.image.revision', candidate
+    )
+    proof_field = transaction.index("candidate_render_gateway_image_id", revision)
+    restore = transaction.index("RESTORED_RENDER_GATEWAY_ID=", proof_field)
+    force_recreate = transaction.index("--force-recreate", restore)
+    gateway_service = transaction.index("censorwatch-render-gateway", force_recreate)
+    healthy = transaction.index("restored_renderer_ready", gateway_service)
+    worker_restore = transaction.index(
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps',
+        healthy,
+    )
+    assert checkout < build < candidate < revision < proof_field
+    assert proof_field < restore < force_recreate < gateway_service
+    assert gateway_service < healthy < worker_restore
 
 
 def test_release_compose_authentication_cannot_be_masked_by_conditional_call(
@@ -4213,6 +4242,7 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
             "7" * 40,
             "8" * 64,
             f"sha256:{'9' * 64}",
+            "absent",
             "1" * 32,
             "20260825T074000Z",
             "20260825T074000Z",
@@ -4264,6 +4294,7 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
     }
     assert set(ordinary_value) == ordinary_fields
     assert ordinary_value["schema_version"] == "palimpsest-host-release.v1"
+    assert ordinary_value["deployment"]["candidate_render_gateway_image_id"] is None
     assert "interrupted_phase1_resume" not in ordinary_value
 
     recovery_output = tmp_path / "recovery-proof-complete.json"

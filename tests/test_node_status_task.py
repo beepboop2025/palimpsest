@@ -6,9 +6,9 @@ import json
 import stat
 import sys
 from types import SimpleNamespace
-import urllib.request
 
 from core import tasks
+from core.safe_fetch import SafeFetchResponse
 
 
 def test_alert_webhook_requires_public_https_without_url_credentials(monkeypatch):
@@ -140,37 +140,82 @@ def test_new_source_condition_alerts_while_another_incident_is_open(
 
     posted = []
 
-    class Response:
-        def __enter__(self):
-            return self
+    def fetch(url, **kwargs):
+        posted.append((url, kwargs))
+        return SafeFetchResponse(status=204, headers={}, body=b"", url=url)
 
-        def __exit__(self, *_args):
-            return None
-
-        def read(self, _limit):
-            return b"ok"
-
-    class Opener:
-        def open(self, request, timeout):
-            assert timeout == 10
-            posted.append(json.loads(request.data))
-            return Response()
-
-    monkeypatch.setattr(urllib.request, "build_opener", lambda *_args: Opener())
+    monkeypatch.setattr(tasks, "safe_fetch_response", fetch)
 
     tasks.refresh_node_status.run()
     tasks.refresh_node_status.run()
 
     assert len(posted) == 1
-    assert posted[0]["schema_version"] == "palimpsest-node-alert.v2"
-    assert posted[0]["opened"] == [
+    url, request = posted[0]
+    payload = json.loads(request["body"])
+    assert url == "https://alerts.example/hook"
+    assert request["method"] == "POST"
+    assert request["max_redirects"] == 0
+    assert request["max_bytes"] == 1024
+    assert request["timeout"] == 10
+    request["url_policy"](url)
+    assert payload["schema_version"] == "palimpsest-node-alert.v2"
+    assert payload["opened"] == [
         {"condition": "evidence/weibo-hotsearch", "state": "stale"}
     ]
-    assert posted[0]["active_count"] == 2
+    assert payload["active_count"] == 2
     assert tasks._load_alert_conditions(store[tasks._ALERT_STATE_KEY]) == {
         "evidence/weibo-hotsearch": "stale",
         "pipeline/ddti": "failed",
     }
+
+
+def test_non_success_webhook_response_does_not_latch_the_incident(
+    tmp_path, monkeypatch
+):
+    import core.observability as observability
+
+    status = {
+        "status": "degraded",
+        "generated_at": "2026-08-11T12:00:00Z",
+        "pipeline": {"sources": {"ddti": {"state": "failed"}}},
+        "evidence": {"sources": {"ddti": {"state": "fresh"}}},
+    }
+    monkeypatch.setattr(observability, "collect_node_status", lambda: status)
+    monkeypatch.setenv("PALIMPSEST_STATUS_PATH", str(tmp_path / "status.json"))
+    monkeypatch.setenv("PALIMPSEST_ALERT_WEBHOOK_URL", "https://alerts.example/hook")
+    monkeypatch.setattr(tasks, "_alert_webhook_is_public_https", lambda _url: True)
+
+    store = {}
+
+    class Redis:
+        def get(self, key):
+            return store.get(key)
+
+        def set(self, key, value, **_kwargs):
+            store[key] = value
+            return True
+
+        def close(self):
+            pass
+
+    monkeypatch.setitem(
+        sys.modules,
+        "redis",
+        SimpleNamespace(from_url=lambda *_args, **_kwargs: Redis()),
+    )
+    calls = []
+
+    def fetch(url, **_kwargs):
+        calls.append(url)
+        return SafeFetchResponse(status=503, headers={}, body=b"", url=url)
+
+    monkeypatch.setattr(tasks, "safe_fetch_response", fetch)
+
+    tasks.refresh_node_status.run()
+    tasks.refresh_node_status.run()
+
+    assert calls == ["https://alerts.example/hook"] * 2
+    assert tasks._ALERT_STATE_KEY not in store
 
 
 def test_condition_state_change_and_recovery_are_independent_transitions():

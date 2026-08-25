@@ -20,6 +20,8 @@ import io
 import json
 import os
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -148,7 +150,7 @@ def _economic_manifest(raw, **artifact_changes):
 
 
 class _BytesResponse:
-    def __init__(self, url, body, declared_bytes=None):
+    def __init__(self, url, body, declared_bytes=None, *, headers=None, status=200):
         self._url = url
         self._body = body
         self.headers = {
@@ -156,6 +158,8 @@ class _BytesResponse:
                 len(body) if declared_bytes is None else declared_bytes
             )
         }
+        self.headers.update(headers or {})
+        self.status = status
 
     def __enter__(self):
         return self
@@ -168,6 +172,175 @@ class _BytesResponse:
 
     def read(self, size):
         return self._body[:size]
+
+
+def _clear_signal_cache():
+    with mcp._cache_lock:
+        mcp._cache.clear()
+
+
+def test_generic_signal_fetch_is_bounded_validated_and_cached(monkeypatch):
+    name = "ooni-gfw"
+    url = mcp.SITE + mcp.SIGNALS[name][0]
+    raw = b'{"generated_at":"2026-08-25T00:00:00Z"}'
+    calls = []
+
+    def urlopen(request, timeout):
+        calls.append((request, timeout))
+        return _BytesResponse(
+            url,
+            raw,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+        )
+
+    _clear_signal_cache()
+    monkeypatch.setattr(mcp, "_urlopen", urlopen)
+
+    assert mcp._fetch(name)["generated_at"].endswith("Z")
+    assert mcp._fetch(name)["generated_at"].endswith("Z")
+    assert len(calls) == 1
+    assert calls[0][0].get_header("Accept") == "application/json"
+    assert calls[0][0].get_header("Accept-encoding") == "identity"
+    assert calls[0][1] == 15
+
+
+@pytest.mark.parametrize(
+    ("response", "message"),
+    (
+        (
+            _BytesResponse(
+                "https://attacker.example/reading.json",
+                b"{}",
+                headers={"Content-Type": "application/json"},
+            ),
+            "redirected",
+        ),
+        (
+            _BytesResponse(
+                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                b"{}",
+                9,
+            ),
+            "length",
+        ),
+        (
+            _BytesResponse(
+                "https://palimpsest.info/readings/ooni-gfw-latest.json", b"[]"
+            ),
+            "JSON object",
+        ),
+        (
+            _BytesResponse(
+                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                b'{"x":1,"x":2}',
+            ),
+            "duplicate",
+        ),
+        (
+            _BytesResponse(
+                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                b'{"x":NaN}',
+            ),
+            "non-finite",
+        ),
+        (
+            _BytesResponse(
+                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                b"{}",
+                headers={"Content-Encoding": "gzip"},
+            ),
+            "encoding",
+        ),
+    ),
+)
+def test_generic_signal_fetch_rejects_ambiguous_responses(
+    monkeypatch, response, message
+):
+    _clear_signal_cache()
+    monkeypatch.setattr(mcp, "_urlopen", lambda request, timeout: response)
+    with pytest.raises(mcp.SignalFetchError, match=message):
+        mcp._fetch("ooni-gfw")
+
+
+def test_generic_signal_fetch_rejects_declared_oversize_before_read(monkeypatch):
+    class OversizedResponse(_BytesResponse):
+        def read(self, size):
+            raise AssertionError("oversized source must be rejected before reading")
+
+    url = mcp.SITE + mcp.SIGNALS["ooni-gfw"][0]
+    response = OversizedResponse(url, b"", mcp.MAX_SIGNAL_SOURCE_BYTES + 1)
+    _clear_signal_cache()
+    monkeypatch.setattr(mcp, "_urlopen", lambda request, timeout: response)
+
+    with pytest.raises(mcp.SignalFetchError, match="byte limit"):
+        mcp._fetch("ooni-gfw")
+
+
+def test_concurrent_cache_misses_coalesce_to_one_signal_fetch(monkeypatch):
+    name = "ooni-gfw"
+    url = mcp.SITE + mcp.SIGNALS[name][0]
+    raw = b'{"generated_at":"2026-08-25T00:00:00Z"}'
+    entered = threading.Event()
+    release = threading.Event()
+    calls = 0
+    calls_lock = threading.Lock()
+
+    def urlopen(request, timeout):
+        nonlocal calls
+        with calls_lock:
+            calls += 1
+        entered.set()
+        assert release.wait(timeout=2)
+        return _BytesResponse(url, raw)
+
+    _clear_signal_cache()
+    monkeypatch.setattr(mcp, "_urlopen", urlopen)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(mcp._fetch, name) for _ in range(8)]
+        assert entered.wait(timeout=2)
+        release.set()
+        results = [future.result(timeout=2) for future in futures]
+
+    assert calls == 1
+    assert all(result == results[0] for result in results)
+
+
+def test_standalone_mcp_transport_refuses_private_dns_before_connect(monkeypatch):
+    request = mcp.urllib.request.Request(
+        mcp.SITE + mcp.SIGNALS["ooni-gfw"][0],
+        headers={"Accept-Encoding": "identity"},
+    )
+    monkeypatch.setattr(
+        mcp.socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [
+            (
+                mcp.socket.AF_INET,
+                mcp.socket.SOCK_STREAM,
+                mcp.socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", 443),
+            )
+        ],
+    )
+
+    with pytest.raises(OSError, match="non-public"):
+        mcp._pinned_urlopen(request, timeout=15)
+
+
+def test_standalone_mcp_transport_refuses_non_allowlisted_url_before_dns(monkeypatch):
+    called = False
+
+    def dns(*_args, **_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("unreviewed URL must fail before DNS")
+
+    monkeypatch.setattr(mcp.socket, "getaddrinfo", dns)
+    request = mcp.urllib.request.Request("https://palimpsest.info/private")
+    with pytest.raises(OSError, match="allowlisted"):
+        mcp._pinned_urlopen(request, timeout=15)
+    assert called is False
 
 
 # ------------------------------------------------------------- initialize --
@@ -731,8 +904,8 @@ def test_economic_source_caps_are_checked_before_parsing(monkeypatch):
             return _BytesResponse(request.full_url, manifest_raw)
         return OversizedResponse()
 
-    monkeypatch.setattr(mcp.urllib.request, "urlopen", urlopen)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_urlopen", urlopen)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     result = mcp.dispatch(_rpc("tools/call", {
         "name": "query_economic_observations", "arguments": {},
     }))["result"]
@@ -763,8 +936,8 @@ def test_economic_fetch_pins_ledger_to_fixed_manifest_before_rows(monkeypatch):
         }
         return _BytesResponse(request.full_url, bodies[request.full_url])
 
-    monkeypatch.setattr(mcp.urllib.request, "urlopen", urlopen)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_urlopen", urlopen)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     rows, source, manifest = mcp._fetch_economic_observations()
 
     assert requested == [
@@ -816,9 +989,9 @@ def test_economic_manifest_receipt_mismatch_is_typed_and_precedes_row_parsing(
         )
         return _BytesResponse(request.full_url, body)
 
-    monkeypatch.setattr(mcp.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(mcp, "_urlopen", urlopen)
     monkeypatch.setattr(mcp, "_parse_economic_jsonl", must_not_parse)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     result = mcp.dispatch(_rpc("tools/call", {
         "name": "query_economic_observations", "arguments": {},
     }))["result"]
@@ -836,8 +1009,8 @@ def test_economic_fetch_failure_is_a_typed_tool_error_with_no_rows(monkeypatch):
     def unavailable(request, timeout):
         raise OSError("offline")
 
-    monkeypatch.setattr(mcp.urllib.request, "urlopen", unavailable)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_urlopen", unavailable)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     result = mcp.dispatch(_rpc("tools/call", {
         "name": "query_economic_observations", "arguments": {},
     }))["result"]
@@ -979,12 +1152,7 @@ def test_nested_row_arrays_are_capped_and_reported_not_just_top_level_ones(monke
         "returned": mcp._DEFAULT_MAX_ROWS, "total": 40}
 
 
-def test_content_too_deep_to_neutralize_is_declared_not_passed_off_as_clean(monkeypatch):
-    """The walker stops at a depth bound so a pathological payload cannot
-    exhaust the stack of a listener anyone can reach. What it did not reach is
-    unneutralized third-party text, and this board does not hide a gap by
-    staying quiet about it.
-    """
+def test_every_admitted_depth_is_neutralized_without_a_live_gap(monkeypatch):
     node = {"excerpt": "deep​text"}
     for _ in range(12):
         node = {"nested": node}
@@ -993,10 +1161,25 @@ def test_content_too_deep_to_neutralize_is_declared_not_passed_off_as_clean(monk
         "name": "get_signal",
         "arguments": {"name": "ooni-gfw"}}))["result"]["structuredContent"]
 
-    gap = body["neutralization_gap"]
-    assert gap["subtrees_left_unneutralized"] >= 1
-    assert gap["max_depth"] == mcp._MAX_WALK_DEPTH
-    assert "unneutralized" in gap["note"]
+    assert "neutralization_gap" not in body
+    assert "deep​text" not in json.dumps(body, ensure_ascii=False)
+    assert "deeptext" in json.dumps(body, ensure_ascii=False)
+
+
+def test_unknown_text_fields_and_objects_under_untrusted_keys_are_neutralized():
+    node = mcp._neutralize_in_place({
+        "future_field": "future​text",
+        "excerpt": {"opaque_child": "nested‮text"},
+    })
+    assert node == {
+        "future_field": "futuretext",
+        "excerpt": {"opaque_child": "nestedtext"},
+    }
+
+
+def test_invisible_json_keys_are_refused_instead_of_normalized_into_collisions():
+    with pytest.raises(mcp.SignalFetchError, match="unsafe JSON key"):
+        mcp._neutralize_in_place({"head​line": "hostile"})
 
 
 def test_unreachable_signal_fails_loud_and_serves_nothing_invented(monkeypatch):
@@ -1162,7 +1345,7 @@ def test_the_served_version_and_the_published_manifest_agree():
     assert 1 <= len(manifest["description"]) <= 100
 
 
-def test_economic_query_version_and_discovery_surfaces_agree():
+def test_candidate_version_advances_without_rewriting_proven_live_surfaces():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     with open(os.path.join(root, "openapi.json"), encoding="utf-8") as fh:
         openapi = json.load(fh)
@@ -1174,8 +1357,14 @@ def test_economic_query_version_and_discovery_surfaces_agree():
     docs = open(os.path.join(root, "docs", "MCP-SERVER.md"), encoding="utf-8").read()
     agents = open(os.path.join(root, "llms.txt"), encoding="utf-8").read()
 
-    assert mcp.SERVER_VERSION == "1.9.0"
-    assert openapi["info"]["version"] == mcp.SERVER_VERSION
+    deployed_version = card["access"]["mcp_version"]
+    deployed_semver = tuple(int(part) for part in deployed_version.split("."))
+    candidate_semver = tuple(int(part) for part in mcp.SERVER_VERSION.split("."))
+
+    assert mcp.SERVER_VERSION == "1.9.1"
+    assert deployed_version == "1.9.0"
+    assert candidate_semver == (*deployed_semver[:2], deployed_semver[2] + 1)
+    assert openapi["info"]["version"] == deployed_version
     assert "/readings/china-index-latest.json" in openapi["paths"]
     assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
     assert "/readings/china-econ-observations-latest.json" in openapi["paths"]
@@ -1198,7 +1387,7 @@ def test_economic_query_version_and_discovery_surfaces_agree():
         )
     }
     assert "All six hosted MCP tools" in card["access"]["authentication"]
-    assert card["access"]["mcp_version"] == mcp.SERVER_VERSION
+    assert card["access"]["mcp_version"] == deployed_version
     assert card["evidence"]["china_observatory_index_schema"] == (
         "https://palimpsest.info/protocol/china-index-v1.schema.json"
     )
@@ -1208,58 +1397,8 @@ def test_economic_query_version_and_discovery_surfaces_agree():
     for label, text in (
         ("developer page", developers), ("MCP docs", docs), ("llms", agents)
     ):
-        assert "query_economic_observations" in text, label
-        assert "china-econ-forecast-latest.json" in text, label
-    assert "The six tools" in developers
-    assert "The six tools" in docs
-
-
-def test_economic_query_version_and_discovery_surfaces_agree():
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    with open(os.path.join(root, "openapi.json"), encoding="utf-8") as fh:
-        openapi = json.load(fh)
-    with open(os.path.join(root, "product-card.json"), encoding="utf-8") as fh:
-        card = json.load(fh)
-    developers = open(
-        os.path.join(root, "developers.html"), encoding="utf-8"
-    ).read()
-    docs = open(os.path.join(root, "docs", "MCP-SERVER.md"), encoding="utf-8").read()
-    agents = open(os.path.join(root, "llms.txt"), encoding="utf-8").read()
-
-    assert mcp.SERVER_VERSION == "1.9.0"
-    assert openapi["info"]["version"] == "1.9.0"
-    assert "/readings/china-index-latest.json" in openapi["paths"]
-    assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
-    assert "/readings/china-econ-observations-latest.json" in openapi["paths"]
-    assert "/readings/china-econ-observations.jsonl" in openapi["paths"]
-    assert openapi["components"]["schemas"]["ChinaEconomicObservation"] == {
-        "$ref": "https://palimpsest.info/protocol/economic-observation-v1.schema.json"
-    }
-    assert openapi["components"]["schemas"]["ChinaIndex"] == {
-        "$ref": "https://palimpsest.info/protocol/china-index-v1.schema.json"
-    }
-    assert openapi["components"]["schemas"]["ChinaEconomicForecast"] == {
-        "$ref": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
-    }
-    assert openapi["components"]["schemas"][
-        "ChinaEconomicObservationManifest"
-    ] == {
-        "$ref": (
-            "https://palimpsest.info/protocol/"
-            "economic-observation-manifest-v1.schema.json"
-        )
-    }
-    assert "All six hosted MCP tools" in card["access"]["authentication"]
-    assert card["access"]["mcp_version"] == mcp.SERVER_VERSION
-    assert card["evidence"]["china_observatory_index_schema"] == (
-        "https://palimpsest.info/protocol/china-index-v1.schema.json"
-    )
-    assert card["evidence"]["china_economic_forecast_schema"] == (
-        "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
-    )
-    for label, text in (
-        ("developer page", developers), ("MCP docs", docs), ("llms", agents)
-    ):
+        assert deployed_version in text, label
+        assert mcp.SERVER_VERSION not in text, label
         assert "query_economic_observations" in text, label
         assert "china-econ-forecast-latest.json" in text, label
     assert "The six tools" in developers
@@ -1269,6 +1408,9 @@ def test_economic_query_version_and_discovery_surfaces_agree():
 # --------------------------------------------------------- request-size cap --
 def test_request_body_cap_is_bounded():
     assert 0 < mcp.MAX_BODY_BYTES <= 1024 * 1024
+    assert 0 < mcp.MAX_REQUEST_THREADS <= 32
+    assert 0 < mcp.MAX_CONCURRENT_FETCHES <= mcp.MAX_REQUEST_THREADS
+    assert mcp.BoundedThreadingHTTPServer.request_queue_size == mcp.REQUEST_QUEUE_SIZE
 
 
 # ---------------------------------------------------- browser-origin policy --
@@ -1325,6 +1467,27 @@ def test_http_rejects_an_unsupported_mcp_protocol_header():
 
     assert handler.sent[0] == 400
     assert "unsupported MCP protocol version" in handler.sent[1]["error"]["message"]
+
+
+def test_http_rejects_short_or_transfer_encoded_request_bodies():
+    handler = _handler_for()
+    handler.headers = {"Content-Length": "20"}
+    handler.rfile = io.BytesIO(b"{}")
+    handler._send = lambda code, payload=None: setattr(
+        handler, "sent", (code, payload)
+    )
+    handler.do_POST()
+    assert handler.sent[0] == 400
+    assert "shorter" in handler.sent[1]["error"]["message"]
+
+    handler = _handler_for()
+    handler.headers = {"Transfer-Encoding": "chunked"}
+    handler._send = lambda code, payload=None: setattr(
+        handler, "sent", (code, payload)
+    )
+    handler.do_POST()
+    assert handler.sent[0] == 400
+    assert "Transfer-Encoding" in handler.sent[1]["error"]["message"]
 
 
 def test_streamless_get_and_sessionless_delete_are_method_not_allowed():

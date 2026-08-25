@@ -719,16 +719,17 @@ the publication relay; they import a sealed latest file and never a demo.
 
 Only when you have a proxy exit configured (Step 4 decision = proxy):
 
-1. In `.env`, set `CENSORWATCH_ENABLED=1`, `WITH_BROWSER=true`, and the
+1. In `.env`, set `CENSORWATCH_ENABLED=1` and the
    `CENSORWATCH_PROXY_URL` / `HTTPS_PROXY` vars.
-2. Rebuild with the browser and bring up the velocity worker:
+2. Build the isolated renderer and bring up the velocity profile:
 
 ```bash
-WITH_BROWSER=true ops/docker/prod-compose \
-  --profile velocity up -d --build
+ops/docker/prod-compose --profile velocity up -d --build
 ```
 
-This adds `worker-velocity` on the isolated `censorwatch` queue. If you leave the
+This adds `worker-velocity` on the isolated `censorwatch` queue plus the
+credential-free `censorwatch-render-gateway`. The gateway has no database
+network, application env file, durable mounts, or host port. If you leave the
 flag unset, those tasks stay inert by design.
 
 ---
@@ -1787,6 +1788,8 @@ declare -A COMPOSE_NODE_BEFORE COMPOSE_QUEUE_BY_SERVICE
 declare -A RECOVERY_FAILED_CONTAINER_ID RECOVERY_FAILED_IMAGE_ID
 declare -A RECOVERY_FAILED_REVISION
 declare -A RECOVERY_INFRA_CONTAINER_ID RECOVERY_INFRA_IMAGE_ID
+RENDER_GATEWAY_CONTAINER_ID_BEFORE=''
+RENDER_GATEWAY_IMAGE_ID_BEFORE=''
 COMPOSE_QUEUE_BY_SERVICE[worker]=celery
 COMPOSE_QUEUE_BY_SERVICE[worker-collectors]=collectors
 COMPOSE_QUEUE_BY_SERVICE[worker-warehouse]=warehouse
@@ -1795,7 +1798,7 @@ COMPOSE_QUEUE_BY_SERVICE[worker-velocity]=censorwatch
 # Prove that the isolated Docker/Compose environment can load the reviewed
 # production file before the fail-safe is armed. A local plugin/configuration
 # failure must abort without turning a read-only preflight into an outage.
-EXPECTED_COMPOSE_CONFIG_SERVICES=$'api\nbeat\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
+EXPECTED_COMPOSE_CONFIG_SERVICES=$'api\nbeat\ncensorwatch-render-gateway\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
 ACTUAL_COMPOSE_CONFIG_SERVICES="$(release_compose \
   "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
 test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"
@@ -2716,7 +2719,7 @@ required = {
     "worker-collectors",
     "worker-warehouse",
 }
-allowed = required | {"worker-velocity"}
+allowed = required | {"censorwatch-render-gateway", "worker-velocity"}
 expected_working_dir, expected_config_file = sys.argv[2:]
 rows = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
 if len(rows) > 128:
@@ -3469,6 +3472,22 @@ else
   for compose_service in worker worker-collectors worker-warehouse; do
     test "${COMPOSE_WAS_RUNNING[$compose_service]}" = 1
   done
+  RENDER_GATEWAY_CONTAINER_ID_BEFORE="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q --all censorwatch-render-gateway)"
+  if [[ "${COMPOSE_WAS_RUNNING[worker-velocity]}" == 1 ]]; then
+    [[ "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" =~ ^[0-9a-f]{64}$ ]]
+    test "$(docker inspect "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" \
+      --format '{{.State.Status}}')" = running
+    RENDER_GATEWAY_IMAGE_ID_BEFORE="$(docker inspect \
+      "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" --format '{{.Image}}')"
+    [[ "$RENDER_GATEWAY_IMAGE_ID_BEFORE" =~ ^sha256:[0-9a-f]{64}$ ]]
+    test "$(docker image inspect "$RENDER_GATEWAY_IMAGE_ID_BEFORE" --format \
+      '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+      = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+  elif [[ -n "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" ]]; then
+    test "$(docker inspect "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" \
+      --format '{{.State.Status}}')" != running
+  fi
   for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
     if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
       test "$(docker image inspect "${COMPOSE_IMAGE_ID_BEFORE[$compose_service]}" \
@@ -4370,6 +4389,16 @@ CANDIDATE_IMAGE_ID="$(docker image inspect palimpsest/app:local \
 test "$(docker image inspect palimpsest/app:local --format \
   '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
   = "$EXPECTED_DEPLOY_SHA"
+CANDIDATE_RENDER_IMAGE_ID=absent
+if [[ "${COMPOSE_WAS_RUNNING[worker-velocity]}" == 1 ]]; then
+  release_compose --profile velocity build censorwatch-render-gateway
+  CANDIDATE_RENDER_IMAGE_ID="$(docker image inspect \
+    palimpsest/censorwatch-render-gateway:local --format '{{.Id}}')"
+  [[ "$CANDIDATE_RENDER_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
+  test "$(docker image inspect "$CANDIDATE_RENDER_IMAGE_ID" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "$EXPECTED_DEPLOY_SHA"
+fi
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test "$(sudo sha256sum "$RECOVERY_PREPARED_RECEIPT_PATH" \
     | awk '{print $1}')" = "$RECOVERY_PREPARED_RECEIPT_SHA256"
@@ -5763,6 +5792,8 @@ if ! declare -p \
     CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH \
     CELERY_CANDIDATE_FENCED_RECEIPT_PATH \
     COLLECTOR_RECOVERY_RECEIPT_PATH CANDIDATE_IMAGE_ID \
+    CANDIDATE_RENDER_IMAGE_ID RENDER_GATEWAY_CONTAINER_ID_BEFORE \
+    RENDER_GATEWAY_IMAGE_ID_BEFORE \
     PRE_CHANGE_CORE_SNAPSHOT PRE_CHANGE_SNAPSHOT \
     WATCHDOG_BASELINE_B64 WITNESS_BASELINE_B64 \
     NODE_OFFSITE_CONFIGURED EXPECTED_DEPLOY_SHA \
@@ -5816,6 +5847,8 @@ if ! declare -p \
     || ! [[ "$OBSERVER_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$CONTROLLER_TREE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$CANDIDATE_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || ! [[ "$CANDIDATE_RENDER_IMAGE_ID" == absent \
+      || "$CANDIDATE_RENDER_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] \
     || ! [[ "$RELEASE_ENV_SNAPSHOT_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$WATCHDOG_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
     || ! [[ "$WITNESS_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
@@ -7079,6 +7112,7 @@ python3 - "$RELEASE_RECEIPT_TMP" "$PREVIOUS_CHECKOUT_SHA" \
   "$PREVIOUS_DEPLOY_SHA" "$EXPECTED_DEPLOY_SHA" \
   "$OBSERVER_CONTROLLER_SHA" \
   "$CONTROLLER_TREE_SHA256" "$CANDIDATE_IMAGE_ID" \
+  "$CANDIDATE_RENDER_IMAGE_ID" \
   "$RELEASE_RESUME_TOKEN" "$PRE_CHANGE_CORE_SNAPSHOT" \
   "$PRE_CHANGE_SNAPSHOT" "$V4_BACKUP_VERIFICATION_PATH" \
   "$LEGACY_WITNESS_STATUS_PATH" "$LEGACY_WITNESS_STATUS_SHA256" \
@@ -7104,7 +7138,7 @@ from datetime import datetime, timezone
 
 (
     output, previous_checkout, previous_receipt, deployed, controller,
-    controller_tree, image_id,
+    controller_tree, image_id, render_image_id,
     transaction, core_snapshot, snapshot, backup_verification_path,
     legacy_witness_path, legacy_witness_sha,
     bleed_sha, osint_sha, ledger_sha, policy_sha,
@@ -7169,6 +7203,9 @@ receipt = {
         "controller_sha": controller,
         "controller_tree_sha256": controller_tree,
         "candidate_image_id": image_id,
+        "candidate_render_gateway_image_id": (
+            None if render_image_id == "absent" else render_image_id
+        ),
     },
     "backup": {
         "core_snapshot": core_snapshot,
@@ -7298,6 +7335,32 @@ for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
     compose_restore_services+=("$compose_service")
   fi
 done
+RESTORED_RENDER_GATEWAY_ID=''
+if [[ "${COMPOSE_WAS_RUNNING[worker-velocity]}" == 1 ]]; then
+  [[ "$CANDIDATE_RENDER_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    censorwatch-render-gateway
+  RESTORED_RENDER_GATEWAY_ID="$(release_compose --profile velocity \
+    ps -q censorwatch-render-gateway)"
+  [[ "$RESTORED_RENDER_GATEWAY_ID" =~ ^[0-9a-f]{64}$ ]]
+  restored_renderer_ready=0
+  for (( renderer_attempt=1; renderer_attempt<=45; renderer_attempt++ )); do
+    if [[ "$(docker inspect "$RESTORED_RENDER_GATEWAY_ID" --format \
+        '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" == healthy ]]; then
+      restored_renderer_ready=1
+      break
+    fi
+    sleep 2
+  done
+  (( restored_renderer_ready == 1 ))
+  test "$(docker inspect "$RESTORED_RENDER_GATEWAY_ID" --format '{{.Image}}')" \
+    = "$CANDIDATE_RENDER_IMAGE_ID"
+  test "$(docker image inspect "$CANDIDATE_RENDER_IMAGE_ID" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "$EXPECTED_DEPLOY_SHA"
+else
+  test "$CANDIDATE_RENDER_IMAGE_ID" = absent
+fi
 release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
   "${compose_restore_services[@]}"
 restored_topology_arguments=()
@@ -7531,6 +7594,9 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   recovery_velocity="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
     ps -q --all worker-velocity)"
   test -z "$recovery_velocity"
+  recovery_renderer="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+    ps -q --all censorwatch-render-gateway)"
+  test -z "$recovery_renderer"
   for compose_service in postgres redis; do
     recovery_final_infra_id="$(release_compose \
       "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"

@@ -13,6 +13,7 @@ from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
+from core.safe_fetch import FetchError, safe_fetch_response
 from core.scheduler import app
 
 logger = logging.getLogger(__name__)
@@ -223,6 +224,11 @@ def _alert_webhook_is_public_https(url: str) -> bool:
         return True
     except (OSError, ValueError):
         return False
+
+
+def _alert_webhook_url_policy(url: str) -> None:
+    if not _alert_webhook_is_public_https(url):
+        raise FetchError("alert webhook is not public HTTPS")
 
 
 def _run_with_lease(
@@ -462,24 +468,26 @@ def refresh_node_status() -> dict:
     if webhook and _alert_webhook_is_public_https(webhook) and opened:
         # Send a deliberately small, secret-free summary.  The detailed source
         # matrix stays on the localhost-only control API.
-        import urllib.request
-
-        class _NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, *_args, **_kwargs):
-                return None
-
-        request = urllib.request.Request(
-            webhook,
-            data=_node_alert_payload(status, current_conditions, opened, resolved),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
         try:
-            opener = urllib.request.build_opener(_NoRedirect())
-            with opener.open(request, timeout=10) as response:
-                response.read(1024)
-            delivered = True
-        except Exception:
+            response = safe_fetch_response(
+                webhook,
+                method="POST",
+                body=_node_alert_payload(
+                    status, current_conditions, opened, resolved
+                ),
+                headers={
+                    "Accept": "application/json, text/plain;q=0.5",
+                    "Content-Type": "application/json",
+                },
+                max_bytes=1024,
+                timeout=10,
+                max_redirects=0,
+                url_policy=_alert_webhook_url_policy,
+            )
+            delivered = 200 <= response.status < 300
+            if not delivered:
+                logger.warning("node alert webhook returned a non-success status")
+        except (FetchError, ValueError):
             # Never log the exception: request errors can echo a credentialed
             # webhook URL. Operators still see task failure counters/status.
             logger.warning("node alert webhook delivery failed")

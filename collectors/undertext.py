@@ -47,6 +47,8 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 
+from core.safe_fetch import FetchError, safe_fetch_response
+
 logger = logging.getLogger(__name__)
 
 _UNIT = "\x1f"  # ASCII unit separator — same fingerprint scheme as the dedup layer
@@ -451,62 +453,68 @@ def _reject_disabled_surface(url: str) -> None:
 
 
 class _GuardedRedirectHandler(urllib.request.HTTPRedirectHandler):
-    """Apply the disabled-surface policy before urllib follows a redirect."""
+    """Compatibility hook that applies the same governance rule to redirects.
+
+    Production acquisition now uses ``core.safe_fetch``; this small adapter is
+    retained for downstream code which imported the historical handler directly.
+    """
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         _reject_disabled_surface(newurl)
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def _stdlib_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
-    """Minimal stdlib GET honoring an explicit operator-supplied proxy argument.
-
-    Kept as the fallback so a bare clone with no dependencies still works, which is
-    the promise the module docstring makes.
-    """
+def _hardened_fetch(url: str, proxy: str | None = None, timeout: float = 20.0) -> str:
+    """Read one approved hostile public surface through the shared egress guard."""
     _reject_disabled_surface(url)
-    handlers = [_GuardedRedirectHandler()]
-    if proxy:
-        handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
-    opener = urllib.request.build_opener(*handlers)
-    req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-    raw = opener.open(req, timeout=timeout).read(_MAX_BYTES)
-    return raw.decode("utf-8", "replace")
 
+    def policy(hop_url: str) -> None:
+        try:
+            _reject_disabled_surface(hop_url)
+        except urllib.error.URLError as exc:
+            raise FetchError(str(exc.reason)) from exc
 
-def _httpx_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
-    """Compatibility GET for approved surfaces. Baike is rejected before client creation."""
-    _reject_disabled_surface(url)
-    import httpx                                    # noqa: PLC0415 — optional dependency
-    kwargs = {"timeout": timeout, "follow_redirects": False,
-              "headers": {"User-Agent": _USER_AGENT}}
-    if proxy:
-        kwargs["proxy"] = proxy
-    with httpx.Client(**kwargs) as client:
-        current = url
-        for redirect_count in range(_MAX_REDIRECTS + 1):
-            resp = client.get(current)
-            if resp.status_code not in {301, 302, 303, 307, 308}:
-                break
-            location = resp.headers.get("location")
-            if not location:
-                break
-            if redirect_count >= _MAX_REDIRECTS:
-                raise urllib.error.URLError("redirect limit exceeded")
-            current = urllib.parse.urljoin(current, location)
-            _reject_disabled_surface(current)
-    body = resp.content[:_MAX_BYTES].decode("utf-8", "replace")
-    if resp.status_code >= 400:
-        # Preserve the stdlib exception contract used by generic surface adapters.
-        raise urllib.error.HTTPError(url, resp.status_code, body, resp.headers, None)
+    try:
+        response = safe_fetch_response(
+            url,
+            proxy=proxy,
+            timeout=timeout,
+            max_bytes=_MAX_BYTES,
+            max_redirects=_MAX_REDIRECTS,
+            headers={"User-Agent": _USER_AGENT},
+            url_policy=policy,
+        )
+    except FetchError as exc:
+        raise urllib.error.URLError(str(exc)) from exc
+    body = response.body.decode("utf-8", "replace")
+    if not 200 <= response.status < 300:
+        raise urllib.error.HTTPError(
+            url, response.status, body, dict(response.headers), None
+        )
     return body
 
 
-def _default_fetch(url: str, proxy: str = None, timeout: float = 20.0) -> str:
-    """Fetch an approved public surface, preferring httpx with a stdlib fallback.
+def _stdlib_fetch(url: str, proxy: str | None = None, timeout: float = 20.0) -> str:
+    """Compatibility name for the standard-library hardened transport.
 
-    The deny check runs before either client path and cannot be bypassed with
-    ``PALIMPSEST_FETCH`` or a proxy argument.
+    ``core.safe_fetch`` is itself stdlib-only, so a bare clone keeps the module's
+    original no-third-party-dependency promise while gaining DNS pinning, redirect
+    revalidation and decompression bounds.
+    """
+    return _hardened_fetch(url, proxy=proxy, timeout=timeout)
+
+
+def _httpx_fetch(url: str, proxy: str | None = None, timeout: float = 20.0) -> str:
+    """Historical client name, now routed through the one hardened transport."""
+    return _hardened_fetch(url, proxy=proxy, timeout=timeout)
+
+
+def _default_fetch(url: str, proxy: str | None = None, timeout: float = 20.0) -> str:
+    """Fetch an approved public surface through the hardened stdlib path.
+
+    The two historical backend names remain selectable for compatibility, but both
+    now converge on ``core.safe_fetch``. The deny check cannot be bypassed with
+    ``PALIMPSEST_FETCH``, a redirect, or a proxy argument.
     """
     _reject_disabled_surface(url)
     if os.environ.get("PALIMPSEST_FETCH") == "stdlib":

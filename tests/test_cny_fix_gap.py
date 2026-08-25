@@ -12,7 +12,12 @@ import json
 
 import pytest
 
-from collectors.cny_fix_gap import parse_boc_csv, parse_ecb, read_parity
+import collectors.cny_fix_gap as fix_gap
+from core.safe_fetch import FetchError
+
+parse_boc_csv = fix_gap.parse_boc_csv
+parse_ecb = fix_gap.parse_ecb
+read_parity = fix_gap.read_parity
 
 ECB_DAILY_SINGLE = """<gesmes:Envelope>
 <Cube><Cube time='2026-07-31'>
@@ -67,3 +72,52 @@ def test_parity_reads_only_dated_parity_rows(tmp_path):
 
 def test_parity_is_empty_when_the_history_is_absent(tmp_path):
     assert read_parity(str(tmp_path / "missing.jsonl")) == {}
+
+
+def test_fetch_is_exact_bounded_redirect_free_and_strict_utf8():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        return b"central-bank-body"
+
+    assert fix_gap._get(fix_gap.ECB_URL, retries=0, fetcher=fetcher) == "central-bank-body"
+    assert seen["max_bytes"] == fix_gap.MAX_BYTES
+    assert seen["max_redirects"] == 0
+    assert fix_gap._get(
+        "https://evil.example/rates", retries=0, fetcher=fetcher
+    ) is None
+    assert fix_gap._get(
+        fix_gap.ECB_URL,
+        retries=0,
+        fetcher=lambda *_args, **_kwargs: b"\xff",
+    ) is None
+
+
+def test_fetch_refuses_a_changed_final_url():
+    def changed(url, **kwargs):
+        with pytest.raises(FetchError):
+            kwargs["url_policy"]("http://127.0.0.1/admin")
+        raise FetchError("changed URL")
+
+    assert fix_gap._get(fix_gap.ECB_URL, retries=0, fetcher=changed) is None
+
+
+def test_parsers_reject_duplicate_or_nonfinite_evidence(tmp_path):
+    duplicate_ecb = ECB_DAILY_SINGLE.replace(
+        "<Cube currency='CNY' rate='7.7539'/>",
+        "<Cube currency='CNY' rate='7.7539'/><Cube currency='CNY' rate='7.8'/>",
+    )
+    assert parse_ecb(duplicate_ecb) is None
+
+    history = tmp_path / "china-econ-history.jsonl"
+    history.write_text(
+        '\n'.join([
+            '{"date":"2026-07-31","usdcny_parity":NaN}',
+            '["not", "an", "object"]',
+            '{"date":"not-a-date","usdcny_parity":6.8}',
+        ]),
+        encoding="utf-8",
+    )
+    assert read_parity(str(history)) == {}

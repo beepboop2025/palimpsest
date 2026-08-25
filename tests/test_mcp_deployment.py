@@ -115,7 +115,7 @@ def test_current_candidate_satisfies_release_contract() -> None:
         ROOT / "server.json",
     )
     assert contract == {
-        "version": "1.9.0",
+        "version": "1.9.1",
         "server_name": "palimpsest",
         "tools": [
             "get_newsroom",
@@ -136,7 +136,7 @@ def test_current_candidate_satisfies_release_contract() -> None:
 
 def test_verifier_rejects_manifest_version_drift(tmp_path: Path) -> None:
     manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
-    manifest["version"] = "1.9.1"
+    manifest["version"] = "1.9.2"
     path = tmp_path / "server.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(verifier.VerificationError, match="SERVER_VERSION"):
@@ -276,13 +276,18 @@ def test_live_smoke_covers_initialize_discovery_and_interconnection(
     try:
         url = f"http://127.0.0.1:{httpd.server_port}/"
         smoke.validate_url(url, allow_http_loopback=True)
-        result = smoke.probe(url, contract, timeout=2)
+        result = smoke.probe(
+            url,
+            contract,
+            timeout=2,
+            allow_http_loopback=True,
+        )
     finally:
         httpd.shutdown()
         thread.join(timeout=2)
         httpd.server_close()
 
-    assert result["version"] == "1.9.0"
+    assert result["version"] == contract["version"]
     assert result["tool_count"] == 6
     assert result["prompt_count"] == 4
     assert result["calls"] == ["list_signals", "get_newsroom:interconnection"]
@@ -300,6 +305,57 @@ def test_live_smoke_covers_initialize_discovery_and_interconnection(
 def test_live_smoke_rejects_unsafe_endpoint_urls(url: str) -> None:
     with pytest.raises(smoke.SmokeError):
         smoke.validate_url(url, allow_http_loopback=False)
+
+
+def test_live_smoke_requires_explicit_loopback_permission() -> None:
+    with pytest.raises(smoke.SmokeError, match="explicit loopback"):
+        smoke.post_json(
+            "http://127.0.0.1:8793/",
+            {"jsonrpc": "2.0"},
+            timeout=1,
+        )
+
+
+def test_live_smoke_rejects_private_https_dns(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        smoke.socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [
+            (
+                smoke.socket.AF_INET,
+                smoke.socket.SOCK_STREAM,
+                smoke.socket.IPPROTO_TCP,
+                "",
+                ("127.0.0.1", 443),
+            )
+        ],
+    )
+    with pytest.raises(smoke.SmokeError, match="non-public"):
+        smoke.post_json(
+            "https://api.seiche.info/palimpsest/mcp",
+            {"jsonrpc": "2.0"},
+            timeout=1,
+        )
+
+
+def test_live_smoke_rejects_nonfinite_or_oversized_requests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        smoke,
+        "_post_public_https",
+        lambda *_args, **_kwargs: pytest.fail("invalid request reached transport"),
+    )
+    with pytest.raises(smoke.SmokeError, match="strict JSON"):
+        smoke.post_json("https://api.seiche.info/", {"value": float("nan")}, 1)
+    with pytest.raises(smoke.SmokeError, match="request exceeds"):
+        smoke.post_json(
+            "https://api.seiche.info/",
+            {"value": "x" * smoke.MAX_REQUEST_BYTES},
+            1,
+        )
 
 
 def test_host_wrapper_is_syntax_valid_and_fail_closed() -> None:
@@ -507,6 +563,10 @@ def test_systemd_unit_runs_only_the_controlled_loopback_server() -> None:
     assert "ProtectSystem=strict" in text
     assert "CapabilityBoundingSet=" in text
     assert "EnvironmentFile=" not in text
+    assert "MemoryHigh=384M" in text
+    assert "MemoryMax=512M" in text
+    assert "TasksMax=64" in text
+    assert "LimitNOFILE=1024" in text
 
 
 def test_bootstrap_proves_legacy_runtime_restart_identity_and_hardening() -> None:
@@ -641,27 +701,28 @@ def test_release_runbook_pins_china_schedule_transition() -> None:
         if "\n  schedule:" in path.read_text(encoding="utf-8")
     )
 
-    assert len(scheduled_paths) == 33
+    assert len(scheduled_paths) == 34
     assert ".github/workflows/china-econ-refresh.yml" not in scheduled_paths
+    assert ".github/workflows/codeql.yml" in scheduled_paths
     assert 'premerge_schedule_paths="$release_gate_dir/' in text
     assert 'postmerge_schedule_paths="$release_gate_dir/' in text
     assert 'scheduled_paths_at "$frozen_main"' in text
     assert 'validate_schedule_transition "$frozen_main" "$target_sha"' in text
     assert 'build_schedule_manifest "$premerge_schedule_paths"' in text
-    assert "34:33" in text
-    assert "33:33" in text
+    assert "35:34" in text
+    assert "34:34" in text
     assert "LC_ALL=C comm -23" in text
     assert "LC_ALL=C comm -13" in text
     assert ".github/workflows/*.yml|.github/workflows/*.yaml" in text
     assert ".github/workflows/china-econ-refresh.yml" in text
     assert ".github/workflows/osint-china-refresh.yml" in text
     assert ".github/workflows/osint-china-v2-refresh.yml" in text
-    assert "original 34 intentions" in text
+    assert "original 35 intentions" in text
     assert "exposes its reviewed" in text
     assert "manual dispatch" in text
     assert "cannot recreate the" in text
     assert "removed schedule" in text
-    assert "33-to-33" in text
+    assert "34-to-34" in text
     assert 'workflow_replacements="$release_gate_dir/' in text
     assert "replacement_live_runs=$(gh api --paginate" in text
     assert 'test -z "$replacement_live_runs"' in text
@@ -682,7 +743,7 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
     workflows.mkdir(parents=True)
     subprocess.run(["git", "init", "-q"], cwd=repository, check=True)
 
-    for number in range(31):
+    for number in range(32):
         (workflows / f"writer-{number:02d}.yml").write_text(
             f"name: writer-{number:02d}\non:\n  schedule:\n    - cron: '0 0 * * *'\n",
             encoding="utf-8",
@@ -816,8 +877,8 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
         (tmp_path / "one-time-post.txt").read_text(encoding="utf-8").splitlines()
     )
     replacements = (tmp_path / "one-time-replacements.tsv").read_text(encoding="utf-8")
-    assert len(premerge_paths) == 34
-    assert len(postmerge_paths) == 33
+    assert len(premerge_paths) == 35
+    assert len(postmerge_paths) == 34
     assert ".github/workflows/writer-yaml.yaml" in premerge_paths
     assert all(":" not in path for path in premerge_paths + postmerge_paths)
     assert replacements == (
@@ -1011,9 +1072,10 @@ def test_registry_verifier_binds_exact_successful_deploy_receipt(
         deploy_run_id=run_id,
         repository="beepboop2025/palimpsest",
     )
+    expected_version = json.loads(manifest.read_text(encoding="utf-8"))["version"]
     assert result == {
         "target_sha": target_sha,
-        "server_version": "1.9.0",
+        "server_version": expected_version,
         "deploy_run_id": int(run_id),
         "deploy_run_attempt": 2,
     }
@@ -1074,7 +1136,7 @@ def test_registry_verifier_requires_exact_active_latest_server_card(
         registry_path=registry_path,
         manifest_path=manifest_path,
     )
-    assert result["version"] == "1.9.0"
+    assert result["version"] == manifest["version"]
     registry_payload["server"]["version"] = "1.8.1"
     registry_path.write_text(json.dumps(registry_payload), encoding="utf-8")
     with pytest.raises(registry_verifier.RegistryReleaseError, match="differs"):
@@ -1238,7 +1300,7 @@ def test_registry_receipt_script_binds_exact_verified_response(tmp_path: Path) -
         "workflow_run_attempt": 2,
         "target_sha": target_sha,
         "server_name": "io.github.beepboop2025/palimpsest",
-        "server_version": "1.9.0",
+        "server_version": manifest["version"],
         "deploy_run_id": 123456,
         "publication_mode": "recovered-existing",
         "registry_latest_url": (

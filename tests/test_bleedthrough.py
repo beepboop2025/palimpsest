@@ -343,13 +343,19 @@ def test_burst_capable_transport_without_rate_ceiling_stays_serial():
     assert fingerprint.n_probes == 3
 
 
-def test_direct_burst_transport_validates_bounds_and_empty_session_closes():
-    with pytest.raises(ValueError, match="wait must be positive"):
+def test_direct_burst_transport_validates_bounds_and_empty_session_closes(monkeypatch):
+    with pytest.raises(ValueError, match="wait must be"):
         direct_udp_transport(wait=0)
     with pytest.raises(ValueError, match="port must be"):
         direct_udp_transport(port=0)
+    with pytest.raises(ValueError, match="port must be"):
+        direct_udp_transport(port=True)
 
     transport = direct_udp_transport(wait=0.1, port=5300)
+    monkeypatch.setattr(
+        "collectors.bleedthrough._validated_probe_ipv4",
+        lambda ip: ip,
+    )
     session = transport.start_burst("x.org", "127.0.0.1")
     try:
         assert session.finish() == []
@@ -369,7 +375,7 @@ def _dns_a_response(query, *, txid=None, ip="8.7.198.45"):
     return header + query[12:] + answer
 
 
-def test_direct_burst_session_demultiplexes_real_loopback_sockets():
+def test_direct_burst_session_demultiplexes_real_loopback_sockets(monkeypatch):
     server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server.bind(("127.0.0.1", 0))
     server.settimeout(2.0)
@@ -390,6 +396,10 @@ def test_direct_burst_session_demultiplexes_real_loopback_sockets():
 
     responder = threading.Thread(target=respond, daemon=True)
     responder.start()
+    monkeypatch.setattr(
+        "collectors.bleedthrough._validated_probe_ipv4",
+        lambda ip: ip,
+    )
     session = direct_udp_transport(wait=0.5, port=server.getsockname()[1]).start_burst(
         "torproject.org", "127.0.0.1"
     )
@@ -533,16 +543,34 @@ def test_load_targets_splits_by_kind(tmp_path):
         "probe": {"domain": "torproject.org", "ddti": "CIRCUMVENTION"},
         "clean_answers": {"torproject.org": ["1.2.3.4"]},
         "targets": [
-            {"ip": "10.0.0.1", "province": "CN-SH", "kind": "dark"},
-            {"ip": "10.0.0.2", "province": "CN-GD", "kind": "resolver"},
-            {"ip": "10.0.0.3", "province": "CN-BJ"},  # default kind = dark
+            {"ip": "8.8.4.1", "province": "CN-SH", "kind": "dark"},
+            {"ip": "8.8.4.2", "province": "CN-GD", "kind": "resolver"},
+            {"ip": "8.8.4.3", "province": "CN-BJ", "kind": "dark"},
         ],
     }))
     conf = load_targets(str(p))
     assert conf["probe"].domain == "torproject.org"
-    assert [t.ip for t in conf["dark"]] == ["10.0.0.1", "10.0.0.3"]
-    assert [t.ip for t in conf["resolver"]] == ["10.0.0.2"]
+    assert [t.ip for t in conf["dark"]] == ["8.8.4.1", "8.8.4.3"]
+    assert [t.ip for t in conf["resolver"]] == ["8.8.4.2"]
     assert conf["clean_answers"] == {"torproject.org": ["1.2.3.4"]}
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        {"ip": "127.0.0.1", "province": "CN", "kind": "dark"},
+        {"ip": "10.0.0.8", "province": "CN", "kind": "resolver"},
+        {"ip": "8.8.8.8", "province": "CN", "kind": "unknown"},
+    ],
+)
+def test_load_targets_refuses_private_or_unknown_capabilities(tmp_path, target):
+    path = tmp_path / "targets.json"
+    path.write_text(json.dumps({
+        "probe": {"domain": "torproject.org", "qtype": 1, "ddti": "CIRCUMVENTION"},
+        "targets": [target],
+    }))
+    with pytest.raises(ValueError):
+        load_targets(str(path))
 
 
 # ── disk baseline store ────────────────────────────────────────────────────────────────
@@ -689,7 +717,7 @@ def test_build_target_file_round_trips_through_load_targets(tmp_path):
         "control_domain": "example.com",
         "clean_answers": {"torproject.org": []},
         "sample_per_prefix": 4,
-        "provinces": [{"province": "CN-SH", "asn": "AS4812", "prefixes": ["203.0.113.0/24"]}],
+        "provinces": [{"province": "CN-SH", "asn": "AS4812", "prefixes": ["8.8.4.0/24"]}],
     }
     # every sampled IP is silent -> all become dark targets
     out = build_target_file(conf, exchange=_resolver_exchange({}), rng=random.Random(3))
@@ -724,7 +752,7 @@ def test_build_prefix_config_is_real_and_curate_ready():
     # canned BGP fetcher: each ASN returns a mix of v4/v6; only routable v4 in-range survives
     def fetch(asn):
         return {"data": {"prefixes": [
-            {"prefix": f"203.0.113.0/24"}, {"prefix": "2408:8406::/44"},
+            {"prefix": "203.0.113.0/24"}, {"prefix": "2408:8406::/44"},
             {"prefix": "198.51.100.0/24"}]}}
     entries = [{"asn": "AS4808", "province": "CN-BJ", "provider": "Unicom BJ"}]
     conf = build_prefix_config(entries, fetch=fetch, rng=random.Random(2), prefixes_per_asn=6)

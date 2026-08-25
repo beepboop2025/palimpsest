@@ -15,7 +15,7 @@
 # which run here — so we deliberately do not install it. See the optional block
 # below if you ever extend this image to a collector that needs httpx et al.
 
-FROM python:3.12-slim
+FROM python:3.12-slim@sha256:7a8b475003c4fe15a2cd4e55e5cfc2f3560bdc9333d624f24cdd6d4340fd7a17
 
 # Fail loud, no .pyc litter, no stdout buffering (the reading logs progress).
 ENV PYTHONUNBUFFERED=1 \

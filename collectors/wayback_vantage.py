@@ -56,7 +56,7 @@ import json
 import logging
 import urllib.error
 import urllib.parse
-import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -69,6 +69,7 @@ from collectors.undertext import (
     Vantage,
     content_key,
 )
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -454,14 +455,33 @@ def cdx_query_url(
     return f"{CDX_API}?{urllib.parse.urlencode(params)}"
 
 
-def default_cdx_fetch(url: str, *, timeout: float = 30.0) -> str:
-    """Minimal stdlib GET of the CDX API. Raises on transport error (the caller catches and
-    abstains). Kept tiny and dependency-free so the analytical core stays stdlib-only."""
-    req = urllib.request.Request(
-        cdx_query_url(url), headers={"User-Agent": _USER_AGENT}
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        payload = resp.read(_MAX_BYTES + 1)
+def default_cdx_fetch(
+    url: str,
+    *,
+    timeout: float = 30.0,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> str:
+    """Read one exact CDX query through the shared hostile-egress boundary."""
+    query_url = cdx_query_url(url)
+
+    def exact_query(candidate: str) -> None:
+        if candidate != query_url:
+            raise FetchError("Wayback CDX request changed authority or query")
+
+    try:
+        payload = fetcher(
+            query_url,
+            timeout=timeout,
+            max_bytes=_MAX_BYTES,
+            max_redirects=0,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": _USER_AGENT,
+            },
+            url_policy=exact_query,
+        )
+    except FetchError as exc:
+        raise urllib.error.URLError("Wayback CDX fetch was refused") from exc
     if len(payload) > _MAX_BYTES:
         raise InvalidCDXResponse("CDX response exceeds its byte cap")
     try:
