@@ -198,25 +198,20 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Rebase candidate onto the latest public ledger
+      - name: Synchronize candidate with the exact public ledger
         if: steps.candidate.outputs.changed == 'true'
         id: prepublish_sync
         run: |
           previous_base=$(git rev-parse HEAD^)
           git fetch origin main
-          if git rebase origin/main; then
-            current_base=$(git rev-parse HEAD^)
-            if [ "$previous_base" = "$current_base" ]; then
-              echo "rebuild=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "rebuild=true" >> "$GITHUB_OUTPUT"
-            fi
-            echo "recreate=false" >> "$GITHUB_OUTPUT"
+          public_base=$(git rev-parse origin/main)
+          if [ "$previous_base" = "$public_base" ]; then
+            echo "rebuild=false" >> "$GITHUB_OUTPUT"
           else
-            git rebase --abort || true
             git switch --detach origin/main
+            test "$(git rev-parse HEAD)" = "$public_base"
+            test -z "$(git status --porcelain=v1 --untracked-files=all)"
             echo "rebuild=true" >> "$GITHUB_OUTPUT"
-            echo "recreate=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Rebuild and reseal after a pre-publication ledger change
@@ -361,10 +356,10 @@ jobs:
         if: steps.push_attempt.outcome == 'failure'
         run: |
           git fetch origin main
-          if ! git rebase origin/main; then
-            git rebase --abort || true
-            git switch --detach origin/main
-          fi
+          public_base=$(git rev-parse origin/main)
+          git switch --detach origin/main
+          test "$(git rev-parse HEAD)" = "$public_base"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
 
       - name: Rebuild and reseal after a push race
         if: steps.push_attempt.outcome == 'failure'

@@ -18,8 +18,9 @@
   "wire_generated_at": "2026-08-25T11:28:33Z",
   "automatic_growth_limit": 128,
   "automatic_growth_max_catchup_intervals": 48,
-  "automatic_growth_scope": "all-new-revisions-per-hour-with-non-current-max-128",
-  "automatic_growth_policy": "cadence-scaled-max-128-all-with-48-hour-catchup-cap",
+  "automatic_current_analysis_limit": 563,
+  "automatic_growth_scope": "current-event-dossiers-per-hour-plus-one-current-analysis-per-event-with-non-current-max-128",
+  "automatic_growth_policy": "cadence-scaled-max-128-current-event-dossiers-with-48-hour-catchup-cap;max-one-current-analysis-per-event;max-128-non-current",
   "automatic_growth_status": "validated",
   "validation_status": "full-history-validated",
   "referential_closure": "all-analysis-event-versions-present"
