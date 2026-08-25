@@ -1779,8 +1779,8 @@ def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
 
     measure = by_name["Measure the exact staged Pages artifact"]
     limit = int(measure["env"]["PAGES_ARTIFACT_LIMIT_BYTES"])
-    assert limit == 950 * 1024 * 1024
-    assert limit < 1024 * 1024 * 1024
+    assert limit == 1000 * 1024 * 1024
+    assert limit == (1024 - 24) * 1024 * 1024
     assert measure["env"]["PUBLICATION_SHA"] == (
         "${{ needs.contract.outputs.revision }}"
     )

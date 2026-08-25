@@ -1149,8 +1149,12 @@ jobs:
         id: pages_size
         env:
           PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
-          # 950 MiB leaves 74 MiB below GitHub Pages' supported 1 GiB ceiling.
-          PAGES_ARTIFACT_LIMIT_BYTES: "996147200"
+          # Release bridge: 1000 MiB admits the measured append-only history while
+          # retaining a hard 24 MiB reserve below the pinned deploy action's
+          # 1 GiB warning threshold.
+          # Keep the high-growth Newswire publisher disabled until history moves
+          # behind a path-preserving same-origin archive.
+          PAGES_ARTIFACT_LIMIT_BYTES: "1048576000"
         run: |
           set -euo pipefail
           # The pinned upload action creates and uploads this exact tar path.
