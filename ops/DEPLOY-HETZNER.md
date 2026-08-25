@@ -1261,8 +1261,7 @@ cleanup_release_private_state() {
               || [[ "$(stat -c '%u:%g:%a:%h' "$snapshot_file" 2>/dev/null)" \
                 != "${current_uid}:${current_gid}:400:1" ]] \
               || { [[ -n "${RELEASE_ENV_SNAPSHOT_SHA256:-}" ]] \
-                && [[ "$(sha256sum "$snapshot_file" 2>/dev/null \
-                  | awk '{print $1}')" \
+                && [[ "$(sha256sum "$snapshot_file" 2>/dev/null | awk '{print $1}')" \
                   != "$RELEASE_ENV_SNAPSHOT_SHA256" ]]; }; then
             printf 'release environment file failed cleanup authentication\n' >&2
             cleanup_rc=1
