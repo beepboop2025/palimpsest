@@ -2000,7 +2000,8 @@ quiesce_dynamic_release_instances() {
       active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
         || active_status=$?
       case "$load_state:$active_state" in
-        loaded:inactive|masked:inactive|not-found:unknown|not-found:inactive)
+        loaded:inactive|loaded:failed|masked:inactive|masked:failed|\
+        not-found:unknown|not-found:inactive)
           (( active_status != 0 )) || {
             printf 'inactive dynamic release instance returned success: %s\n' \
               "$unit" >&2
@@ -2439,7 +2440,8 @@ release_quiesce_all() {
         active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
           || active_status=$?
         case "$load_state:$active_state" in
-          loaded:inactive|masked:inactive|not-found:unknown|not-found:inactive)
+          loaded:inactive|loaded:failed|masked:inactive|masked:failed|\
+          not-found:unknown|not-found:inactive)
             (( active_status != 0 )) || {
               printf 'inactive release instance returned success: %s\n' \
                 "$unit" >&2
@@ -2536,7 +2538,9 @@ release_quiesce_all() {
     fi
     case "$load_state:$active_state:$enablement" in
       loaded:inactive:disabled|loaded:inactive:static|loaded:inactive:indirect|\
+      loaded:failed:disabled|loaded:failed:static|loaded:failed:indirect|\
       masked:inactive:masked|masked:inactive:masked-runtime|\
+      masked:failed:masked|masked:failed:masked-runtime|\
       not-found:unknown:not-found|not-found:inactive:not-found)
         (( active_status != 0 )) || {
           printf 'inactive release activator returned success: %s\n' \
@@ -2562,7 +2566,8 @@ release_quiesce_all() {
     active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
       || active_status=$?
     case "$load_state:$active_state" in
-      loaded:inactive|masked:inactive|not-found:unknown|not-found:inactive)
+      loaded:inactive|loaded:failed|masked:inactive|masked:failed|\
+      not-found:unknown|not-found:inactive)
         (( active_status != 0 )) || {
           printf 'inactive release service returned success: %s\n' \
             "$unit" >&2
@@ -3062,7 +3067,10 @@ PY
         || unit_active_status=$?
       test "$unit_state" = disabled
       test "$unit_load_state" = loaded
-      test "$unit_active" = inactive
+      case "$unit_active" in
+        inactive|failed) ;;
+        *) return 1 ;;
+      esac
       (( unit_active_status != 0 ))
     done
     for unit in "${RELEASE_SERVICES[@]}"; do
@@ -3074,7 +3082,10 @@ PY
       unit_active="$(systemctl is-active "$unit" 2>/dev/null)" \
         || unit_active_status=$?
       test "$unit_load_state" = loaded
-      test "$unit_active" = inactive
+      case "$unit_active" in
+        inactive|failed) ;;
+        *) return 1 ;;
+      esac
       (( unit_active_status != 0 ))
     done
     if ! dynamic_instances="$(systemctl list-units --no-legend --plain \
