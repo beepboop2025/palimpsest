@@ -1,9 +1,12 @@
 """Circumvention-demand collector — parse, merge, and shift tests (offline)."""
 import collectors.circumvention_demand as demand
-from collectors.circumvention_demand import (
-    collect, parse_bridge_users, parse_relay_users, parse_transports,
-    transport_shift)
 from core.safe_fetch import FetchError
+
+collect = demand.collect
+parse_bridge_users = demand.parse_bridge_users
+parse_relay_users = demand.parse_relay_users
+parse_transports = demand.parse_transports
+transport_shift = demand.transport_shift
 
 BRIDGE = """#
 # The Tor Project

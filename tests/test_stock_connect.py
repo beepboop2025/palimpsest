@@ -3,8 +3,9 @@ never fake the discontinued northbound direction."""
 import os
 
 import collectors.stock_connect as stock
-from collectors.stock_connect import parse_daily
 from core.safe_fetch import FetchError
+
+parse_daily = stock.parse_daily
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "hkex_daily_20260716.js")
 

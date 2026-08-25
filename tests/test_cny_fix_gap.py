@@ -13,8 +13,11 @@ import json
 import pytest
 
 import collectors.cny_fix_gap as fix_gap
-from collectors.cny_fix_gap import parse_boc_csv, parse_ecb, read_parity
 from core.safe_fetch import FetchError
+
+parse_boc_csv = fix_gap.parse_boc_csv
+parse_ecb = fix_gap.parse_ecb
+read_parity = fix_gap.read_parity
 
 ECB_DAILY_SINGLE = """<gesmes:Envelope>
 <Cube><Cube time='2026-07-31'>

@@ -506,6 +506,7 @@ def pinned_edge_fetch(host: str, path: str, ip: str, *, port: int = 443, timeout
     CN-HK), because IP syntax alone cannot prove physical location."""
     _validate_edge_endpoint(host, path, ip, port, timeout)
     ctx = ssl.create_default_context()
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     raw = None
     conn = None
     try:
@@ -565,11 +566,13 @@ def pinned_edge_fetch(host: str, path: str, ip: str, *, port: int = 443, timeout
                 try:
                     close()
                 except OSError:
+                    # Cleanup is best-effort after the exchange result is fixed.
                     pass
         try:
             if raw is not None:
                 raw.close()
         except OSError:
+            # Preserve the primary exchange error if raw-socket cleanup also fails.
             pass
 
 

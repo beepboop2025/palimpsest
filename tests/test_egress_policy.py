@@ -38,6 +38,13 @@ SCANNED_DIRS = [
     "ops",
 ]
 
+CUSTOM_TLS_CLIENTS = (
+    "core/safe_fetch.py",
+    "collectors/cdn_edge.py",
+    "mcp/palimpsest_mcp.py",
+    "scripts/smoke_palimpsest_mcp.py",
+)
+
 # Real egress call sites, not substrings of longer identifiers. `urllib.request.urlopen` is
 # matched WITHOUT requiring a following paren, because binding it as a default argument
 # (`opener=urllib.request.urlopen`) is just as much a call site as invoking it. httpx test
@@ -132,6 +139,19 @@ _ALLOWED = {
     "socket, the peer is a root-owned fixed-operation broker, and the analysis service's "
     "RestrictAddressFamilies policy permits AF_UNIX only.",
 }
+
+
+def test_every_custom_tls_context_requires_tls_1_2_or_newer():
+    paired_context = re.compile(
+        r"(?P<name>[A-Za-z_]\w*) = ssl\.create_default_context\(\)[^\n]*\n"
+        r"\s*(?P=name)\.minimum_version = ssl\.TLSVersion\.TLSv1_2"
+    )
+
+    for relative in CUSTOM_TLS_CLIENTS:
+        source = (ROOT / relative).read_text(encoding="utf-8")
+        assert len(paired_context.findall(source)) == source.count(
+            "ssl.create_default_context()"
+        ), relative
 
 
 def _py_files():

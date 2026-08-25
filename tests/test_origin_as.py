@@ -16,7 +16,10 @@ import pytest
 
 import collectors.origin_as as origin_module
 from collectors.inside_view import finalize_panel, observe_domain
-from collectors.origin_as import OriginASUnavailable, origin_as, owners_of
+
+OriginASUnavailable = origin_module.OriginASUnavailable
+origin_as = origin_module.origin_as
+owners_of = origin_module.owners_of
 
 # Verbatim from whois.cymru.com, 2026-08-01.
 CYMRU = """Bulk mode; whois.cymru.com [2026-08-01 04:00:11 +0000]

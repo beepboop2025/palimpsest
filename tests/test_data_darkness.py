@@ -18,15 +18,14 @@ import pytest
 
 import collectors.data_darkness as darkness
 from core.safe_fetch import FetchError
-from collectors.data_darkness import (
-    parse_calendar_row,
-    parse_mb_stats,
-    parse_nbs_listing,
-    parse_nra,
-    parse_omo,
-    parse_safe_settlement,
-    read_cfets_freshness,
-)
+
+parse_calendar_row = darkness.parse_calendar_row
+parse_mb_stats = darkness.parse_mb_stats
+parse_nbs_listing = darkness.parse_nbs_listing
+parse_nra = darkness.parse_nra
+parse_omo = darkness.parse_omo
+parse_safe_settlement = darkness.parse_safe_settlement
+read_cfets_freshness = darkness.read_cfets_freshness
 
 OMO_PAGE = """
 <a href="/zhengcehuobisi/125207/125213/125431/125475/2026073108575959224/index.html"

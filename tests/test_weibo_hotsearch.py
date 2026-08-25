@@ -3,10 +3,15 @@ gate (offline)."""
 import json
 
 import collectors.weibo_hotsearch as hotsearch
-from collectors.weibo_hotsearch import (
-    carries_sensitive_sense, collect_range, join_ddti, parse_day,
-    pinned_series, term_presence, withdrawal_candidates)
 from core.safe_fetch import FetchError
+
+carries_sensitive_sense = hotsearch.carries_sensitive_sense
+collect_range = hotsearch.collect_range
+join_ddti = hotsearch.join_ddti
+parse_day = hotsearch.parse_day
+pinned_series = hotsearch.pinned_series
+term_presence = hotsearch.term_presence
+withdrawal_candidates = hotsearch.withdrawal_candidates
 
 DAY = json.dumps([
     {"url": "/weibo?q=%23a%23&Refer=new_time", "title": "向上向善造福人类"},

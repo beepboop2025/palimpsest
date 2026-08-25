@@ -473,6 +473,7 @@ def _pinned_urlopen(request, timeout=15):
     if parts.query:
         path += "?" + parts.query
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     last_error = None
     for family, socktype, protocol, sockaddr in pinned:
         raw_socket = None
@@ -544,7 +545,9 @@ _cache: dict[str, tuple[float, dict]] = {}
 _cache_lock = threading.Lock()
 _signal_locks = {name: threading.Lock() for name in SIGNALS}
 _fetch_slots = threading.BoundedSemaphore(MAX_CONCURRENT_FETCHES)
-_econ_cache: tuple[float, tuple[dict, ...], dict, dict] | None = None
+_econ_cache: dict[
+    str, tuple[float, tuple[dict, ...], dict, dict] | None
+] = {"value": None}
 _econ_lock = threading.Lock()
 
 
@@ -1765,18 +1768,18 @@ def _verify_economic_manifest_receipt(raw: bytes, artifact: dict) -> None:
 
 def _fetch_economic_observations() -> tuple[tuple[dict, ...], dict, dict]:
     """Fetch the fixed manifest and serve only its exact checksum-matched ledger."""
-    global _econ_cache
     if not _econ_lock.acquire(timeout=FETCH_QUEUE_TIMEOUT_S):
         raise EconomicSourceUnavailableError(
             "the economic observation refresh is busy; retry later"
         )
     try:
         now = time.monotonic()
-        if _econ_cache and now - _econ_cache[0] < CACHE_TTL_S:
+        cached = _econ_cache["value"]
+        if cached and now - cached[0] < CACHE_TTL_S:
             return (
-                _econ_cache[1],
-                dict(_econ_cache[2]),
-                json.loads(json.dumps(_econ_cache[3])),
+                cached[1],
+                dict(cached[2]),
+                json.loads(json.dumps(cached[3])),
             )
 
         manifest_raw = _fetch_fixed_economic_bytes(
@@ -1804,7 +1807,7 @@ def _fetch_economic_observations() -> tuple[tuple[dict, ...], dict, dict]:
             "sha256": hashlib.sha256(ledger_raw).hexdigest(),
             "checksum_integrity": "verified_against_fixed_manifest",
         }
-        _econ_cache = (time.monotonic(), rows, source, manifest)
+        _econ_cache["value"] = (time.monotonic(), rows, source, manifest)
         return rows, dict(source), json.loads(json.dumps(manifest))
     finally:
         _econ_lock.release()

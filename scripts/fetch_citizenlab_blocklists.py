@@ -191,6 +191,7 @@ def _first_commit_date(
         if dates:
             return min(dates), "earliest-commit-touching-file"
     except (FetchError, KeyError, TypeError, UnicodeError, ValueError):
+        # Commit history is optional metadata; retain the prior observed clock below.
         pass
     prior_files = previous.get("files") if isinstance(previous, dict) else None
     prior = (prior_files.get(name) if isinstance(prior_files, dict) else None) or {}

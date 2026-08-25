@@ -11,11 +11,9 @@ import json
 import collectors.gdelt_cross_signal as gdelt
 from core.safe_fetch import FetchError
 
-from collectors.gdelt_cross_signal import (
-    cross_signal,
-    normalize_global,
-    rank_cross_signals,
-)
+cross_signal = gdelt.cross_signal
+normalize_global = gdelt.normalize_global
+rank_cross_signals = gdelt.rank_cross_signals
 
 
 def test_normalize_global_saturates():

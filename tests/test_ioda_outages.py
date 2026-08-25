@@ -2,8 +2,11 @@
 import json
 
 import collectors.ioda_outages as ioda
-from collectors.ioda_outages import collect, parse_events, parse_summary
 from core.safe_fetch import FetchError
+
+collect = ioda.collect
+parse_events = ioda.parse_events
+parse_summary = ioda.parse_summary
 
 EVENTS = {"error": None, "data": [
     {"location": "country/CN", "start": 1784128080, "duration": 38280,

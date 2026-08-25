@@ -14,8 +14,6 @@ from types import SimpleNamespace
 
 import pytest
 
-import collectors.ooni_bulk as ooni_bulk
-
 from collectors.ooni_bulk import (
     _build_direct_opener,
     BulkConfig,
@@ -236,7 +234,7 @@ def test_list_objects_v2_rejects_scope_confusion():
 
 
 def test_list_objects_v2_requires_hardened_xml_parser(monkeypatch):
-    monkeypatch.setattr(ooni_bulk, "ET", None)
+    monkeypatch.setattr("collectors.ooni_bulk.ET", None)
     with pytest.raises(ValidationError, match="hardened XML parser"):
         parse_list_objects_v2(
             b"<ListBucketResult/>",
@@ -261,7 +259,7 @@ def test_list_objects_v2_rejects_entities():
 
 
 def test_list_objects_v2_rejects_structural_amplification(monkeypatch):
-    monkeypatch.setattr(ooni_bulk, "_S3_XML_MAX_DEPTH", 3)
+    monkeypatch.setattr("collectors.ooni_bulk._S3_XML_MAX_DEPTH", 3)
     deep = b"<ListBucketResult><a><b><c/></b></a></ListBucketResult>"
     with pytest.raises(ValidationError, match="structural limits"):
         parse_list_objects_v2(
@@ -272,8 +270,8 @@ def test_list_objects_v2_rejects_structural_amplification(monkeypatch):
             test="webconnectivity",
         )
 
-    monkeypatch.setattr(ooni_bulk, "_S3_XML_MAX_DEPTH", 16)
-    monkeypatch.setattr(ooni_bulk, "_S3_XML_MAX_ELEMENTS", 3)
+    monkeypatch.setattr("collectors.ooni_bulk._S3_XML_MAX_DEPTH", 16)
+    monkeypatch.setattr("collectors.ooni_bulk._S3_XML_MAX_ELEMENTS", 3)
     wide = b"<ListBucketResult><a/><b/><c/></ListBucketResult>"
     with pytest.raises(ValidationError, match="structural limits"):
         parse_list_objects_v2(

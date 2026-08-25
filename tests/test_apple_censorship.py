@@ -11,7 +11,10 @@ from __future__ import annotations
 import json
 
 import collectors.apple_censorship as ac
-from collectors.apple_censorship import (control_state, parse_country, peer_rank)
+
+control_state = ac.control_state
+parse_country = ac.parse_country
+peer_rank = ac.peer_rank
 
 
 def _row(code, country, tested, unavailable, *, misspelled=True, tags=None,

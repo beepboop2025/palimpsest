@@ -381,6 +381,7 @@ def safe_fetch_response(
             return_redirect_response=return_redirect_response,
         )
     ctx = ssl.create_default_context()  # cert + hostname verification ON by default
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
     current = url
     hops = 0
     first_origin: tuple[str, str, int] | None = None

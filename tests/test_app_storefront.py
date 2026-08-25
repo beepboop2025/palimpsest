@@ -6,9 +6,12 @@ Apple and the suite stays fast.
 from __future__ import annotations
 
 import collectors.app_storefront as storefront
-from collectors.app_storefront import (control_state, delisting_rate,
-                                       observe_app, observe_panel)
 from core.safe_fetch import FetchError
+
+control_state = storefront.control_state
+delisting_rate = storefront.delisting_rate
+observe_app = storefront.observe_app
+observe_panel = storefront.observe_panel
 
 SIGNAL = {"name": "Signal", "id": 874139669, "category": "SECURE_MESSAGING"}
 WECHAT = {"name": "WeChat", "id": 414478124, "category": "CONTROL", "control": True}

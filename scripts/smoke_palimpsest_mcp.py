@@ -215,6 +215,7 @@ def _post_public_https(
     port = parsed.port or 443
     addresses = _resolve_public_addresses(host, port)
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     path = parsed.path or "/"
     last_error: BaseException | None = None
     for family, sockaddr in addresses:

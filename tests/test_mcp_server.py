@@ -905,7 +905,7 @@ def test_economic_source_caps_are_checked_before_parsing(monkeypatch):
         return OversizedResponse()
 
     monkeypatch.setattr(mcp, "_urlopen", urlopen)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     result = mcp.dispatch(_rpc("tools/call", {
         "name": "query_economic_observations", "arguments": {},
     }))["result"]
@@ -937,7 +937,7 @@ def test_economic_fetch_pins_ledger_to_fixed_manifest_before_rows(monkeypatch):
         return _BytesResponse(request.full_url, bodies[request.full_url])
 
     monkeypatch.setattr(mcp, "_urlopen", urlopen)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     rows, source, manifest = mcp._fetch_economic_observations()
 
     assert requested == [
@@ -991,7 +991,7 @@ def test_economic_manifest_receipt_mismatch_is_typed_and_precedes_row_parsing(
 
     monkeypatch.setattr(mcp, "_urlopen", urlopen)
     monkeypatch.setattr(mcp, "_parse_economic_jsonl", must_not_parse)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     result = mcp.dispatch(_rpc("tools/call", {
         "name": "query_economic_observations", "arguments": {},
     }))["result"]
@@ -1010,7 +1010,7 @@ def test_economic_fetch_failure_is_a_typed_tool_error_with_no_rows(monkeypatch):
         raise OSError("offline")
 
     monkeypatch.setattr(mcp, "_urlopen", unavailable)
-    monkeypatch.setattr(mcp, "_econ_cache", None)
+    monkeypatch.setattr(mcp, "_econ_cache", {"value": None})
     result = mcp.dispatch(_rpc("tools/call", {
         "name": "query_economic_observations", "arguments": {},
     }))["result"]

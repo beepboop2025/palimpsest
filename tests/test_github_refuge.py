@@ -12,22 +12,21 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import collectors.github_refuge as refuge
-from collectors.github_refuge import (
-    REFUGE_PRESERVATION,
-    REFUGE_PRESSURE,
-    REFUGE_TAKEDOWN,
-    GitHubRefugeCollector,
-    GithubBaselineStore,
-    burst,
-    classify_repo_status,
-    dmca_hits,
-    emit_observations,
-    refuge_event,
-    refuge_to_observation,
-    _inert_fetch,
-)
 from core.governance import KillSwitch
 from core.safe_fetch import FetchError, SafeFetchResponse
+
+REFUGE_PRESERVATION = refuge.REFUGE_PRESERVATION
+REFUGE_PRESSURE = refuge.REFUGE_PRESSURE
+REFUGE_TAKEDOWN = refuge.REFUGE_TAKEDOWN
+GitHubRefugeCollector = refuge.GitHubRefugeCollector
+GithubBaselineStore = refuge.GithubBaselineStore
+burst = refuge.burst
+classify_repo_status = refuge.classify_repo_status
+dmca_hits = refuge.dmca_hits
+emit_observations = refuge.emit_observations
+refuge_event = refuge.refuge_event
+refuge_to_observation = refuge.refuge_to_observation
+_inert_fetch = refuge._inert_fetch
 
 NOW = datetime(2026, 7, 1, tzinfo=timezone.utc)
 _FIXTURES = Path(__file__).resolve().parent / "fixtures" / "github"
@@ -295,13 +294,15 @@ def test_watchlist_fanout_and_repository_names_are_fail_closed():
         {"full_name": f"owner/repo-{index}"}
         for index in range(refuge.MAX_WATCHLIST_REPOS + 1)
     ]
-    assert GitHubRefugeCollector(
+    too_many_result = GitHubRefugeCollector(
         {"watchlist": too_many}, fetch=lambda url: calls.append(url) or (200, "{}")
-    ).scan()["readings"] == []
-    assert GitHubRefugeCollector(
+    ).scan()
+    invalid_name_result = GitHubRefugeCollector(
         {"watchlist": [{"full_name": "../../private"}]},
         fetch=lambda url: calls.append(url) or (200, "{}"),
-    ).scan()["readings"] == []
+    ).scan()
+    assert too_many_result["readings"] == []
+    assert invalid_name_result["readings"] == []
     assert calls == []
 
 
