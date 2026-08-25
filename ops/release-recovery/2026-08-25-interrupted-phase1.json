@@ -1,0 +1,318 @@
+{
+  "authority": {
+    "failed_target_commit": "138a9eb323857ba91944fc04d0ccfabb653e7f24",
+    "prior_checkout_commit": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+    "prior_deployed_commit": "95ea01d1a394fe219d64d3dce6b105296bce309a"
+  },
+  "failed_attempt": {
+    "candidate_image": {
+      "index_digest": "sha256:e5eb3cc44e2e129031c7fa781e3f8dabc46152a8593afb9d926a24a786e1eb3e",
+      "platform_manifest_digest": "sha256:82221a139de20a8600c8bbedc73ea3aa35549327cbab10fe9dc7b81e0f326ba6",
+      "revision": "138a9eb323857ba91944fc04d0ccfabb653e7f24"
+    },
+    "collectors_may_have_advanced": true,
+    "invalid_gate_artifacts": [
+      {
+        "name": "celery-prechange.json",
+        "sha256": "f202d9cdebc3e65463072a938d3e7d34357f2ea2af90cf18bbd63c48b8b1d46d",
+        "size_bytes": 149,
+        "valid_receipt": false
+      },
+      {
+        "name": "celery-v4-backup-fenced.json",
+        "sha256": "f202d9cdebc3e65463072a938d3e7d34357f2ea2af90cf18bbd63c48b8b1d46d",
+        "size_bytes": 149,
+        "valid_receipt": false
+      }
+    ],
+    "migration_applied": false,
+    "snapshot_ceiling": {
+      "latest_snapshot_id": "20260824T034303Z",
+      "new_snapshot_created": false
+    }
+  },
+  "incident_date": "2026-08-25",
+  "incident_id": "2026-08-25-interrupted-phase1",
+  "observed_safe_boundary": {
+    "absent_compose_services": [
+      "worker-velocity"
+    ],
+    "application_containers": [
+      {
+        "container_id": "a3755b8baf0943b143f9076c22ea5fe90496bbda82a3890b5455d92b877d4898",
+        "image_index_digest": "sha256:c798010776a5070efbb9f54163f191e71cecc26a08f1ec3d77b99995a419ea19",
+        "revision": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+        "service": "api",
+        "state": "running"
+      },
+      {
+        "container_id": "0229866f1aa03054427b733ac17f2cceb873411c7810b025b6a094a4e9ed7358",
+        "image_index_digest": "sha256:c798010776a5070efbb9f54163f191e71cecc26a08f1ec3d77b99995a419ea19",
+        "revision": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+        "service": "beat",
+        "state": "exited"
+      },
+      {
+        "container_id": "606fd19ef91b8c9be81ece00a56a3de987e1df34024171837a3cd5dd2e082a9e",
+        "image_index_digest": "sha256:c798010776a5070efbb9f54163f191e71cecc26a08f1ec3d77b99995a419ea19",
+        "revision": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+        "service": "migrate",
+        "state": "exited"
+      },
+      {
+        "container_id": "a982223bed353d8c54ec243b4af98608815d272749647a3ec6e44edcedf9b369",
+        "image_index_digest": "sha256:e5eb3cc44e2e129031c7fa781e3f8dabc46152a8593afb9d926a24a786e1eb3e",
+        "revision": "138a9eb323857ba91944fc04d0ccfabb653e7f24",
+        "service": "worker",
+        "state": "exited"
+      },
+      {
+        "container_id": "bd46217ac4378be0ce0815161a4d150b28affcaca114bfa0cf0b5617b7656d4b",
+        "image_index_digest": "sha256:e5eb3cc44e2e129031c7fa781e3f8dabc46152a8593afb9d926a24a786e1eb3e",
+        "revision": "138a9eb323857ba91944fc04d0ccfabb653e7f24",
+        "service": "worker-collectors",
+        "state": "exited"
+      },
+      {
+        "container_id": "4e5a453481fe40436b16c03a378df19934d6f1971a8db236fed7aa644bf536d8",
+        "image_index_digest": "sha256:e5eb3cc44e2e129031c7fa781e3f8dabc46152a8593afb9d926a24a786e1eb3e",
+        "revision": "138a9eb323857ba91944fc04d0ccfabb653e7f24",
+        "service": "worker-warehouse",
+        "state": "exited"
+      }
+    ],
+    "compose_environment_sha256": "2ce97c2f94ce93336b592e1ddee78cfdbec1e8b19d35b39faab6ac069d332c95",
+    "compose_scope": {
+      "config_files": "/home/palimpsest/palimpsest/ops/docker/docker-compose.prod.yml",
+      "project": "palimpsest",
+      "working_dir": "/home/palimpsest/palimpsest/ops/docker"
+    },
+    "controlled_activators": {
+      "all_disabled": true,
+      "all_inactive": true
+    },
+    "infrastructure_containers": [
+      {
+        "container_id": "b75c70b96bdb02cd6db7470520b08dd468f0e1c64a77ca32f26a49e922addee3",
+        "image_id": "sha256:e013e867e712fec275706a6c51c966f0bb0c93cfa8f51000f85a15f9865a28cb",
+        "service": "postgres",
+        "state": "running"
+      },
+      {
+        "container_id": "011a5e9d66dd481e42c574aee4475d3f4889eecce377679b988bedc492738716",
+        "image_id": "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99",
+        "service": "redis",
+        "state": "running"
+      }
+    ],
+    "installed_bundles": [
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-analysis/current",
+        "manifest_sha256": "8864db5c14dc8d834b9eac51be5adb3fb19381fa240c30c38159f1305bca542a",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-analysis/95ea01d1a394fe219d64d3dce6b105296bce309a",
+        "revision": "95ea01d1a394fe219d64d3dce6b105296bce309a"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-network-lane/current",
+        "manifest_sha256": "0783cf1c90b4b3ae399b580e5df0e6568fb588b042605d110ee585d7b6169d66",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-network-lane/95ea01d1a394fe219d64d3dce6b105296bce309a",
+        "revision": "95ea01d1a394fe219d64d3dce6b105296bce309a"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-common-crawl/current",
+        "manifest_sha256": "9556ba2245bda43a70aec4a3149e72748da60f9d3d19293b1b1a8c3eadb18138",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-common-crawl/95ea01d1a394fe219d64d3dce6b105296bce309a",
+        "revision": "95ea01d1a394fe219d64d3dce6b105296bce309a"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-public-osint-sync/current",
+        "manifest_sha256": "1868dc67d5f0d2ced080476d95fd21da69a75191ef0977dcd712f43888748a92",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-public-osint-sync/95ea01d1a394fe219d64d3dce6b105296bce309a",
+        "revision": "95ea01d1a394fe219d64d3dce6b105296bce309a"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-node-offsite/current",
+        "manifest_sha256": "8877cfc0cef4928a43fdf22129fa706746e9717307d22266523c00b69bb2c87d",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-node-offsite/95ea01d1a394fe219d64d3dce6b105296bce309a",
+        "revision": "95ea01d1a394fe219d64d3dce6b105296bce309a"
+      }
+    ],
+    "installed_controller_boundary": {
+      "absent_paths": [
+        "/opt/palimpsest/ops/release/observer_release_gate.py",
+        "/opt/palimpsest/ops/release/celery_release_gate.py",
+        "/opt/palimpsest/ops/release/recover_deployment_snapshots.py",
+        "/etc/palimpsest/observer-release-policy.json",
+        "/opt/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py"
+      ],
+      "present_files": [
+        {
+          "path": "/opt/palimpsest/ops/witness/palimpsest_witness.py",
+          "sha256": "ea60a918e2eb4e74dce214f2b65284a7a23e3af8932c2dd554d88834d27d2afa"
+        }
+      ]
+    },
+    "installed_units": [
+      {
+        "path": "/etc/systemd/system/palimpsest-backup.service",
+        "sha256": "709fe588edbebc6ce2214335e73ace7cee1556cf4d703a84c0f4e8b4e983b87d"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-backup.timer",
+        "sha256": "5db3cdf5b49f45156d738fe7eb26699fffc337cd2f010d265aab6684d9643758"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-backup.service.d/override.conf",
+        "sha256": "c4a014a2c29ccd4aef799d2348e629043e711da62951874b3ecb8d19be20a05d"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-evidence-wire.service",
+        "sha256": "26e9e5e70dfc9a8314f24acc6e1b9669c4475b01bcdb403a07701060a14f0859"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-evidence-wire.timer",
+        "sha256": "dbc55bb7581663d75aab5800db560bd3c0b49770a14931babc1b10d2973f3735"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-event-analysis-live.service",
+        "sha256": "189817a7bb44fccaf6f8e90a3e9095f534e108a296fbdacbccb4dccfba27b444"
+      }
+    ],
+    "local_application_tag": {
+      "index_digest": "sha256:919104857c30a9a939413e114f5b8d99edd9c2d10828646c2d7b0b2d49f8398a",
+      "name": "palimpsest/app:local",
+      "platform_manifest_digest": "sha256:8df7761092abf82f2e6da8448453c042556afd42549276fe62be02e6919f381b",
+      "revision": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+      "trusted_for_recovery": false
+    },
+    "repository": {
+      "checkout_commit": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+      "deployed_commit": "95ea01d1a394fe219d64d3dce6b105296bce309a"
+    },
+    "running_compose_services": [
+      "api",
+      "postgres",
+      "redis"
+    ],
+    "witness_inventory": [
+      {
+        "name": "erasure-ledger.witness.jsonl",
+        "sha256": "17352b040539cbb1c91eb2629cc11f9036ab22b63d276d7a2e5e4059abdfeccb",
+        "size_bytes": 245595
+      },
+      {
+        "name": "eval-registry.witness.jsonl",
+        "sha256": "8bf18d248028f17fd76fa5eb81b0dc79e362e423f690ce4405cb60caa1dba14e",
+        "size_bytes": 245378
+      },
+      {
+        "name": "public-freshness-state.json",
+        "sha256": "5e86e03c70ba368a12cd318474fd9347194745447f7f32d76c8bccedf4b63f21",
+        "size_bytes": 74
+      }
+    ]
+  },
+  "pre_failure_state": {
+    "activators": [
+      {
+        "active_state": "active",
+        "unit": "palimpsest-backup.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-common-crawl-backup.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "inactive",
+        "unit": "palimpsest-node-offsite-backup.timer",
+        "unit_file_state": "disabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-evidence-wire.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-investigative-analysis.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-investigative-broker.socket",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-common-crawl-import.path",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-common-crawl-context.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-bleedthrough.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-public-osint-sync.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-freshness-watchdog.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-witness.timer",
+        "unit_file_state": "enabled"
+      }
+    ],
+    "application_image": {
+      "config_digest": "sha256:956cc75357f601921ca96269982e2a235546d7a0c48b9c308340134403873779",
+      "index_digest": "sha256:c798010776a5070efbb9f54163f191e71cecc26a08f1ec3d77b99995a419ea19",
+      "platform_manifest_digest": "sha256:ad7f286c31833801ee9738aecc7fb1d53eed3131ce1a1c7135ef7c9500aeb173",
+      "revision": "7d05ecca47b20d8cf092a513a0db0390435f363f"
+    },
+    "compose_writers": [
+      {
+        "presence": "present",
+        "running": true,
+        "service": "beat"
+      },
+      {
+        "presence": "present",
+        "running": true,
+        "service": "worker"
+      },
+      {
+        "presence": "present",
+        "running": true,
+        "service": "worker-collectors"
+      },
+      {
+        "presence": "present",
+        "running": true,
+        "service": "worker-warehouse"
+      },
+      {
+        "presence": "absent",
+        "running": false,
+        "service": "worker-velocity"
+      }
+    ]
+  },
+  "recovery_target_constraints": {
+    "must_be_descendant_of": "138a9eb323857ba91944fc04d0ccfabb653e7f24",
+    "must_be_reviewed": true,
+    "must_contain_manifest_path": "ops/release-recovery/2026-08-25-interrupted-phase1.json"
+  },
+  "schema_version": "palimpsest-interrupted-phase1-recovery.v1"
+}
