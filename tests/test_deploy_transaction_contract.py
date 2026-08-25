@@ -430,6 +430,152 @@ release_quiesce_all
     assert "failed inactive/disabled postcondition" in failed_systemd.stderr
 
 
+def test_dynamic_release_instance_quiescer_accepts_only_nonrunning_states() -> None:
+    transaction = _transaction()
+    quiescer = _bash_function_source(transaction, "quiesce_dynamic_release_instances")
+    instance = "palimpsest-common-crawl-mirror@" + "test.service"
+
+    for active_state, active_status, should_succeed in (
+        ("inactive", 3, True),
+        ("failed", 3, True),
+        ("active", 0, False),
+        ("activating", 0, False),
+        ("deactivating", 0, False),
+        ("reloading", 0, False),
+        ("unknown", 4, False),
+        ("inactive", 0, False),
+        ("failed", 0, False),
+    ):
+        script = f"""\
+set -uo pipefail
+INSTANCE={instance}
+capture_release_instance_inventory() {{ printf '%s\\n' "$INSTANCE" >"$1"; }}
+sudo() {{ "$@"; }}
+systemctl() {{
+  case "$1" in
+    stop) return 0 ;;
+    show) printf 'loaded\\n'; return 0 ;;
+    is-active) printf '{active_state}\\n'; return {active_status} ;;
+    *) return 1 ;;
+  esac
+}}
+{quiescer}
+quiesce_dynamic_release_instances
+"""
+        result = subprocess.run(
+            ["/bin/bash"], input=script, text=True, capture_output=True, check=False
+        )
+        if should_succeed:
+            assert result.returncode == 0, (
+                f"{active_state}/{active_status}: {result.stderr}"
+            )
+        else:
+            assert result.returncode != 0, f"{active_state}/{active_status}"
+            assert instance in result.stderr
+
+
+def test_emergency_quiescer_accepts_failed_activators_and_services_only_when_safe() -> (
+    None
+):
+    transaction = _transaction()
+    quiescer = _bash_function_source(transaction, "release_quiesce_all")
+    instance = "palimpsest-investigative-broker@" + "test.service"
+
+    cases = (
+        ("loaded", "inactive", 3, "disabled", "loaded", "inactive", 3, True),
+        ("loaded", "failed", 3, "disabled", "loaded", "failed", 3, True),
+        ("loaded", "failed", 3, "static", "loaded", "failed", 3, True),
+        ("loaded", "failed", 3, "indirect", "loaded", "failed", 3, True),
+        ("masked", "failed", 3, "masked", "masked", "failed", 3, True),
+        (
+            "masked",
+            "failed",
+            3,
+            "masked-runtime",
+            "masked",
+            "failed",
+            3,
+            True,
+        ),
+        ("loaded", "active", 0, "disabled", "loaded", "failed", 3, False),
+        ("loaded", "activating", 0, "disabled", "loaded", "failed", 3, False),
+        ("loaded", "failed", 3, "disabled", "loaded", "active", 0, False),
+        ("loaded", "failed", 3, "disabled", "loaded", "deactivating", 0, False),
+        ("loaded", "failed", 0, "disabled", "loaded", "failed", 3, False),
+        ("loaded", "failed", 3, "disabled", "loaded", "failed", 0, False),
+        ("loaded", "failed", 3, "enabled", "loaded", "failed", 3, False),
+    )
+    for (
+        activator_load_state,
+        activator_active_state,
+        activator_active_status,
+        activator_enablement,
+        service_load_state,
+        service_active_state,
+        service_active_status,
+        should_succeed,
+    ) in cases:
+        script = f"""\
+set -uo pipefail
+PALIMPSEST_REPO_ROOT=/home/palimpsest/palimpsest
+COMPOSE_WRITER_SERVICES=(worker)
+RELEASE_ACTIVATORS=(palimpsest-test.timer)
+RELEASE_SERVICES=(palimpsest-test.service)
+ACTIVE_PROOF_PIN=''
+capture_controlled_writer_inventory() {{ : >"$1"; }}
+capture_release_instance_inventory() {{
+  printf '{instance}\n' >"$1"
+}}
+quiesce_controlled_writer_inventory() {{ return 0; }}
+verify_controlled_writer_inventory_quiescent() {{ return 0; }}
+release_proof_pin() {{ return 0; }}
+read_enablement() {{ printf '{activator_enablement}\\n'; }}
+sudo() {{ "$@"; }}
+systemctl() {{
+  case "$1" in
+    show)
+      case "${{@: -1}}" in
+        *.timer) printf '{activator_load_state}\\n' ;;
+        *.service) printf '{service_load_state}\\n' ;;
+        *) return 1 ;;
+      esac
+      ;;
+    stop|disable|daemon-reload) return 0 ;;
+    is-active)
+      case "${{@: -1}}" in
+        *.timer)
+          printf '{activator_active_state}\\n'
+          return {activator_active_status}
+          ;;
+        *.service)
+          printf '{service_active_state}\\n'
+          return {service_active_status}
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+}}
+{quiescer}
+release_quiesce_all
+"""
+        result = subprocess.run(
+            ["/bin/bash"], input=script, text=True, capture_output=True, check=False
+        )
+        case_name = (
+            f"activator={activator_load_state}/{activator_active_state}/"
+            f"{activator_active_status}/{activator_enablement}, "
+            f"service={service_load_state}/{service_active_state}/"
+            f"{service_active_status}"
+        )
+        if should_succeed:
+            assert result.returncode == 0, f"{case_name}: {result.stderr}"
+        else:
+            assert result.returncode != 0, case_name
+            assert "emergency release quiescence is incomplete" in result.stderr
+
+
 def test_emergency_quiescer_stops_writers_and_instances_discovered_late(
     tmp_path: Path,
 ) -> None:
@@ -3659,6 +3805,9 @@ def test_interrupted_manifest_scope_environment_and_infrastructure_are_exact() -
     ):
         assert marker in transaction[:prepared]
     assert "read_enablement" in boundary
+    assert boundary.count("inactive|failed") == 2
+    assert 'test "$unit_active" = inactive' not in boundary
+    assert boundary.count("(( unit_active_status != 0 ))") == 2
     assert (
         transaction.count(
             "57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b"
