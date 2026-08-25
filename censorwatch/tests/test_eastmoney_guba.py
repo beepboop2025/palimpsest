@@ -54,6 +54,21 @@ def test_parses_real_list_page():
         assert r["posted_at"].tzinfo == timezone.utc
 
 
+def test_parser_applies_record_quota_before_materializing_all_rows():
+    rows = EastmoneyGubaCollector._parse_list_html(
+        FIX.read_text(encoding="utf-8"),
+        limit=3,
+    )
+    assert len(rows) == 3
+
+
+def test_source_fanout_configuration_is_bounded():
+    with pytest.raises(ValueError):
+        EastmoneyGubaCollector({"stock_codes": ["600519"] * 33})
+    with pytest.raises(ValueError):
+        EastmoneyGubaCollector({"stock_codes": ["../../internal"]})
+
+
 def test_time_parsing():
     P = EastmoneyGubaCollector._parse_time
     # MM-DD HH:MM (Beijing) → UTC (−8h)

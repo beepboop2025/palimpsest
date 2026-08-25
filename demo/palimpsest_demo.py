@@ -37,11 +37,9 @@ the smallest honest slice of it that anyone can run anywhere.
 import argparse
 import html
 import json
-import math
 import os
 import random
-import urllib.error
-import urllib.request
+import sys
 import webbrowser
 import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
@@ -50,9 +48,15 @@ from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+REPO = os.path.dirname(HERE)
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+
+from core.safe_fetch import FetchError, safe_fetch_bytes  # noqa: E402
+
 DATA_DIR = os.path.join(HERE, "data")
 HISTORY_PATH = os.path.join(DATA_DIR, "cdt_history.json")
-USER_AGENT = "Mozilla/5.0 (Palimpsest/0.2; open-source censorship research)"
+USER_AGENT = "Palimpsest-demo/0.3 (+https://palimpsest.info; use=reference)"
 
 # CDT feeds. The English root is reliably reachable; others are tried and skipped
 # gracefully if blocked (mirrors the real-world Cloudflare reality outside China).
@@ -127,30 +131,26 @@ def safe_parse(raw):
     return ET.fromstring(raw)
 
 
-def build_opener(proxy=None):
-    """Build a URL opener. With `proxy` set, all egress routes through it — the
-    single integration seam for an in-country egress path. Point PALIMPSEST_PROXY
-    at such a gateway and the otherwise Cloudflare-blocked Chinese CDT/Weibo/
-    FreeWeibo feeds become reachable, with no other code change. Kept as a clean,
-    optional boundary: the open-source collector never *requires* it, and the
-    project never asks anyone inside China to act."""
-    handlers = [urllib.request.HTTPRedirectHandler()]
-    if proxy:
-        handlers.append(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
-    return urllib.request.build_opener(*handlers)
+def _feed_url_policy(url):
+    if url not in CDT_FEEDS:
+        raise FetchError("demo URL is outside the reviewed CDT feeds")
 
 
 def fetch_feed(url, timeout=20, proxy=None):
-    """Fetch one RSS feed, following redirects; return list of <item> elements or []."""
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    opener = build_opener(proxy)
+    """Fetch one reviewed RSS feed defensively; return item elements or []."""
     try:
-        raw = opener.open(req, timeout=timeout).read(MAX_FEED_BYTES + 1)
-        if len(raw) > MAX_FEED_BYTES:
-            raise OSError("feed exceeds size cap")
+        raw = safe_fetch_bytes(
+            url,
+            headers={"User-Agent": USER_AGENT},
+            max_bytes=MAX_FEED_BYTES,
+            timeout=timeout,
+            max_redirects=2,
+            proxy=proxy or None,
+            url_policy=_feed_url_policy,
+        )
         channel = safe_parse(raw).find("channel")
         return channel.findall("item") if channel is not None else []
-    except (urllib.error.URLError, urllib.error.HTTPError, ET.ParseError, OSError) as e:
+    except (FetchError, ET.ParseError, OSError, ValueError) as e:
         print(f"  ! feed unreachable, skipped: {url} ({type(e).__name__})")
         return []
 

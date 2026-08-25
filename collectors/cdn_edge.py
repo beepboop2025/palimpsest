@@ -43,8 +43,10 @@ collector does nothing (returns []), never a batch of fabricated zeros.
 from __future__ import annotations
 
 import http.client
+import ipaddress
 import json
 import logging
+import math
 import socket
 import ssl
 from dataclasses import dataclass, field
@@ -74,6 +76,10 @@ CDN_PURGE_WAVEFRONT = "cdn_purge_wavefront"
 _MIN_PRESENT_LEN = 200  # below this, the body is empty/blocked/interstitial -> present=False
 _USER_AGENT = "Mozilla/5.0 (Palimpsest/0.2; open-source censorship research)"
 _MAX_BYTES = 8 * 1024 * 1024
+_MAX_HOST_CHARS = 253
+_MAX_PATH_CHARS = 8192
+_MAX_RESPONSE_HEADERS = 128
+_MAX_RESPONSE_HEADER_BYTES = 64 * 1024
 
 # Reasons emitted by CdnEdgeVantagePoint._abstain() when NO content read happened: a network
 # error, a missing edge IP (misconfiguration), or the inert no-fetch posture. An abstention is
@@ -432,32 +438,137 @@ class Pop:
 EdgeFetch = Callable[[str, str, str], Response]
 
 
+class EdgeFetchError(OSError):
+    """The chosen-edge transport refused an unsafe or malformed exchange."""
+
+
+def _validate_edge_endpoint(
+    host: str,
+    path: str,
+    ip: str,
+    port: int,
+    timeout: float,
+) -> None:
+    if (
+        type(host) is not str
+        or not host
+        or len(host) > _MAX_HOST_CHARS
+        or not host.isascii()
+        or host.startswith(".")
+        or host.endswith(".")
+    ):
+        raise EdgeFetchError("edge host is not bounded canonical ASCII")
+    for label in host.split("."):
+        if (
+            not 1 <= len(label) <= 63
+            or not label[0].isalnum()
+            or not label[-1].isalnum()
+            or any(not (char.isalnum() or char == "-") for char in label)
+        ):
+            raise EdgeFetchError("edge host contains an invalid DNS label")
+    if (
+        type(path) is not str
+        or not path
+        or len(path) > _MAX_PATH_CHARS
+        or not path.isascii()
+        or not path.startswith("/")
+        or path.startswith("//")
+        or "#" in path
+        or any(ord(char) < 0x20 or ord(char) == 0x7f for char in path)
+    ):
+        raise EdgeFetchError("edge path is not a bounded origin-form target")
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError as exc:
+        raise EdgeFetchError("edge target is not a numeric IP literal") from exc
+    if str(address) != ip or not address.is_global:
+        raise EdgeFetchError("edge target is not a canonical globally routable IP")
+    if type(port) is not int or not 1 <= port <= 65535:
+        raise EdgeFetchError("edge port is outside 1..65535")
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not math.isfinite(timeout)
+        or not 0.1 <= timeout <= 120
+    ):
+        raise EdgeFetchError("edge timeout is outside 0.1..120 seconds")
+
+
 def pinned_edge_fetch(host: str, path: str, ip: str, *, port: int = 443, timeout: float = 20.0) -> Response:
     """Default live fetch: the `curl --resolve` technique in stdlib. Dial the chosen edge `ip`
     at the socket layer, but keep `server_hostname=host` (SNI) and `Host: host`, so TLS + cert
     validation stay intact while YOU choose the POP. NEVER `https://<ip>/` with only a Host header
     (that breaks SNI/cert). Only invoked when explicitly injected; the core is inert otherwise.
 
-    SAFETY (deployment contract, NOT a runtime guard): the caller MUST pass an OUTSIDE-mainland
-    edge IP (HK allowed, labelled CN-HK). This function dials whatever `ip` it is handed — it does
-    not and cannot validate geography here, so the responsibility for never pointing it at a
-    mainland edge lives with the injected `pop_map` / deployment that supplies the IPs."""
+    The runtime requires a canonical globally routable numeric IP, so a hostile pop map cannot
+    turn this chosen-edge capability into a private-network dial. Geography is still a deployment
+    admission property: the caller must pass an OUTSIDE-mainland edge (HK allowed, labelled
+    CN-HK), because IP syntax alone cannot prove physical location."""
+    _validate_edge_endpoint(host, path, ip, port, timeout)
     ctx = ssl.create_default_context()
-    raw = socket.create_connection((ip, port), timeout=timeout)
+    raw = None
+    conn = None
     try:
+        raw = socket.create_connection((ip, port), timeout=timeout)
         tls = ctx.wrap_socket(raw, server_hostname=host)
         conn = http.client.HTTPSConnection(host, port, timeout=timeout)
         conn.sock = tls
         conn.request("GET", path, headers={"Host": host, "User-Agent": _USER_AGENT})
         resp = conn.getresponse()
-        body = resp.read(_MAX_BYTES).decode("utf-8", "replace")
-        headers = {k.lower(): v for k, v in resp.getheaders()}
-        status = resp.status
-        conn.close()
-        return Response(status=status, headers=headers, body=body)
-    finally:
+        status = int(resp.status)
+        if not 100 <= status <= 599:
+            raise EdgeFetchError("edge returned an invalid HTTP status")
+        header_items = [(str(key), str(value)) for key, value in resp.getheaders()]
+        if len(header_items) > _MAX_RESPONSE_HEADERS:
+            raise EdgeFetchError("edge response exceeded its header-count quota")
+        if sum(len(key) + len(value) + 4 for key, value in header_items) > (
+            _MAX_RESPONSE_HEADER_BYTES
+        ):
+            raise EdgeFetchError("edge response exceeded its header-byte quota")
+        lengths = {
+            value.strip()
+            for key, value in header_items
+            if key.lower() == "content-length"
+        }
+        if len(lengths) > 1:
+            raise EdgeFetchError("edge returned conflicting Content-Length headers")
+        if lengths:
+            declared = lengths.pop()
+            if not declared.isascii() or not declared.isdecimal():
+                raise EdgeFetchError("edge returned an invalid Content-Length")
+            if int(declared) > _MAX_BYTES:
+                raise EdgeFetchError("edge response exceeded its body quota")
+        encodings = {
+            value.lower().strip()
+            for key, value in header_items
+            if key.lower() == "content-encoding"
+        }
+        if encodings - {"", "identity"}:
+            raise EdgeFetchError("edge returned unsupported content encoding")
+        body_bytes = resp.read(_MAX_BYTES + 1)
+        if len(body_bytes) > _MAX_BYTES:
+            raise EdgeFetchError("edge response exceeded its body quota")
         try:
-            raw.close()
+            body = body_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise EdgeFetchError("edge response was not UTF-8") from exc
+        headers = {key.lower(): value for key, value in header_items}
+        return Response(status=status, headers=headers, body=body)
+    except (ValueError, http.client.HTTPException) as exc:
+        if isinstance(exc, EdgeFetchError):
+            raise
+        raise EdgeFetchError("edge exchange was malformed") from exc
+    finally:
+        if conn is not None:
+            close = getattr(conn, "close", None)
+            if callable(close):
+                try:
+                    close()
+                except OSError:
+                    pass
+        try:
+            if raw is not None:
+                raw.close()
         except OSError:
             pass
 

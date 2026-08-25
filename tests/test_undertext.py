@@ -7,10 +7,10 @@ injected fetcher), and the DDTI adapter are all exercised without touching the n
 """
 
 from collectors.undertext import (
+    COHORT_FORK,
     DELETION,
     GEO_FORK,
     MUTATION,
-    COHORT_FORK,
     DivergenceDetector,
     JsonBaselineStore,
     Observation,
@@ -144,6 +144,7 @@ def test_divergence_flows_into_ddti_index():
     """An UNDERTEXT deletion should score as censor attention in the same index that
     consumes CDT-sourced deletions — proving the active front-end feeds the passive loop."""
     from datetime import datetime, timezone
+
     from processors.ddti_index import compute_selectivity_novelty
 
     det = DivergenceDetector()
@@ -189,7 +190,11 @@ def test_item_selector_vantage_fingerprints_items_not_chrome():
 # ── Douyin/TikTok: feature-based platform fork ───────────────────────────────────────
 
 def test_narrative_divergence_platform_fork():
-    from collectors.undertext import (narrative_divergence, PLATFORM_FORK, derive_features)
+    from collectors.undertext import (
+        PLATFORM_FORK,
+        derive_features,
+        narrative_divergence,
+    )
     pr = Probe(query="china-us", domain="FOREIGN")
     douyin = Observation(pr, Vantage("CN", "anon", "douyin"), present=True, content_fp="x",
                          features=derive_features("霸权 great power rivalry 中国威胁"))
@@ -208,29 +213,25 @@ if __name__ == "__main__":
 
 # ── fetch backend: the exception contract is load-bearing ─────────────────────
 
-def test_httpx_backend_raises_the_stdlib_error_type_on_404():
-    """Generic adapters consume one exception contract regardless of HTTP client."""
+def test_historical_httpx_backend_uses_the_stdlib_error_type_on_404(monkeypatch):
+    """Generic adapters keep one exception contract after transport convergence."""
     import urllib.error
+
     import pytest
-    httpx = pytest.importorskip("httpx")
+
     from collectors import undertext
+    from core.safe_fetch import SafeFetchResponse
 
-    def handler(request):
-        return httpx.Response(404, text="<html>errorBox</html>")
-
-    class _Client:
-        def __init__(self, **kw): pass
-        def __enter__(self): return self
-        def __exit__(self, *a): return False
-        def get(self, url): return handler(None)
-
-    orig, httpx.Client = httpx.Client, _Client
-    try:
-        with pytest.raises(urllib.error.HTTPError) as ei:
-            undertext._httpx_fetch("https://example.invalid/x")
-        assert ei.value.code == 404
-    finally:
-        httpx.Client = orig
+    monkeypatch.setattr(
+        undertext,
+        "safe_fetch_response",
+        lambda url, **_kwargs: SafeFetchResponse(
+            404, {"Content-Type": "text/html"}, b"<html>errorBox</html>", url
+        ),
+    )
+    with pytest.raises(urllib.error.HTTPError) as excinfo:
+        undertext._httpx_fetch("https://example.invalid/x")
+    assert excinfo.value.code == 404
 
 
 def test_default_fetch_falls_back_to_stdlib_when_httpx_is_absent():
@@ -268,7 +269,9 @@ def test_baike_is_denied_before_either_generic_http_client_can_run(monkeypatch):
     import sys
     import types
     import urllib.error
+
     import pytest
+
     from collectors import undertext
     called = {"httpx": 0, "stdlib": 0}
 
@@ -301,38 +304,12 @@ def test_baike_is_denied_before_either_generic_http_client_can_run(monkeypatch):
 
 
 def test_redirects_cannot_bypass_the_baike_deny(monkeypatch):
-    import sys
-    import types
     import urllib.error
     import urllib.request
+
     import pytest
+
     from collectors import undertext
-
-    class _Response:
-        status_code = 302
-        content = b""
-
-        def __init__(self, destination):
-            self.headers = {"location": destination}
-
-    class _Client:
-        calls = []
-        destination = "https://baike.baidu.com/item/blocked"
-
-        def __init__(self, **kwargs):
-            assert kwargs["follow_redirects"] is False
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-        def get(self, url):
-            self.calls.append(url)
-            return _Response(self.destination)
-
-    monkeypatch.setitem(sys.modules, "httpx", types.SimpleNamespace(Client=_Client))
     handler = undertext._GuardedRedirectHandler()
     request = urllib.request.Request("https://example.invalid/start")
     for destination in (
@@ -340,11 +317,17 @@ def test_redirects_cannot_bypass_the_baike_deny(monkeypatch):
             "https://baike。baidu。com/item/blocked",
             "https://%62aike.baidu.com/item/blocked",
             "https://sub%2ebaike.baidu.com/item/blocked"):
-        _Client.destination = destination
-        _Client.calls = []
+        calls = []
+
+        def fake_fetch(url, _destination=destination, _calls=calls, **kwargs):
+            _calls.append(url)
+            kwargs["url_policy"](_destination)
+            raise AssertionError("the redirect policy should have refused")
+
+        monkeypatch.setattr(undertext, "safe_fetch_response", fake_fetch)
         with pytest.raises(urllib.error.URLError, match="disabled"):
             undertext._httpx_fetch("https://example.invalid/start")
-        assert _Client.calls == ["https://example.invalid/start"]
+        assert calls == ["https://example.invalid/start"]
         with pytest.raises(urllib.error.URLError, match="disabled"):
             handler.redirect_request(
                 request, None, 302, "found", {}, destination)

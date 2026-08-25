@@ -9,9 +9,14 @@ from xml.etree import ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_PATH = ROOT / ".well-known" / "ai-catalog.json"
-SERVER_VERSION = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))[
+CANDIDATE_SERVER_VERSION = json.loads(
+    (ROOT / "server.json").read_text(encoding="utf-8")
+)[
     "version"
 ]
+# Public discovery stays bound to the last independently deployed and registered
+# release until a new exact-SHA receipt exists.
+SERVER_VERSION = "1.9.0"
 MCP_RELEASE_SHA = "135d8f332d7eaeb48f793ecaa47ee1e13708c1ac"
 MCP_DEPLOY_RUN_URL = (
     "https://github.com/beepboop2025/palimpsest/actions/runs/32734455304"
@@ -140,6 +145,14 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     assert SERVER_VERSION in mcp["description"]
 
 
+def test_unreleased_candidate_does_not_rewrite_live_release_evidence():
+    deployed = tuple(int(part) for part in SERVER_VERSION.split("."))
+    candidate = tuple(int(part) for part in CANDIDATE_SERVER_VERSION.split("."))
+
+    assert candidate == (*deployed[:2], deployed[2] + 1)
+    assert CANDIDATE_SERVER_VERSION == "1.9.1"
+
+
 def test_mcp_release_receipts_are_durable_exact_bytes():
     deployment = json.loads(MCP_DEPLOY_RECEIPT_PATH.read_text(encoding="utf-8"))
     registry = json.loads(MCP_REGISTRY_RECEIPT_PATH.read_text(encoding="utf-8"))
@@ -180,8 +193,14 @@ def test_mcp_release_receipts_are_durable_exact_bytes():
     assert registry["registry_response_sha256"] == (
         MCP_REGISTRY_SNAPSHOT_SHA256.removeprefix("sha256:")
     )
-    assert registry_snapshot["server"] == json.loads(
+    candidate_manifest = json.loads(
         (ROOT / "server.json").read_text(encoding="utf-8")
+    )
+    deployed_manifest = registry_snapshot["server"]
+    assert deployed_manifest["version"] == SERVER_VERSION
+    assert candidate_manifest["version"] == CANDIDATE_SERVER_VERSION
+    assert deployed_manifest | {"version": CANDIDATE_SERVER_VERSION} == (
+        candidate_manifest
     )
     official = registry_snapshot["_meta"]["io.modelcontextprotocol.registry/official"]
     assert official["status"] == "active"

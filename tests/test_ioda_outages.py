@@ -1,5 +1,9 @@
 """IODA outage collector — parse and corroboration tests (offline)."""
+import json
+
+import collectors.ioda_outages as ioda
 from collectors.ioda_outages import collect, parse_events, parse_summary
+from core.safe_fetch import FetchError
 
 EVENTS = {"error": None, "data": [
     {"location": "country/CN", "start": 1784128080, "duration": 38280,
@@ -37,3 +41,38 @@ def test_collect_corroboration_count_and_fail_soft():
     assert got["instruments_firing"] == 2        # two distinct instruments
     assert got["summary"]["event_cnt"] == 2
     assert collect(0, 1, fetch=lambda p, timeout=30.0: None) is None
+
+
+def test_fetch_is_exact_bounded_and_redirect_free():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        try:
+            kwargs["url_policy"]("https://evil.example/outages")
+        except FetchError:
+            pass
+        else:
+            raise AssertionError("changed IODA URL must be refused")
+        return json.dumps(EVENTS).encode("utf-8")
+
+    path = "/outages/events?entityType=country&entityCode=CN&from=0&until=1"
+    assert ioda._get_json(path, fetcher=fetcher) == EVENTS
+    assert seen["max_bytes"] == ioda.MAX_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_invalid_paths_windows_and_nonfinite_scores_are_refused():
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("invalid path must fail before fetch")
+
+    assert ioda._get_json("http://127.0.0.1/admin", fetcher=no_fetch) is None
+    assert collect(2, 1, fetch=no_fetch) is None
+    assert parse_events({"data": [{"start": 1, "score": float("nan")} ]}) == []
+    assert parse_summary({"data": [{"event_cnt": True, "scores": {}}]}) is None
+
+
+def test_event_cardinality_is_bounded(monkeypatch):
+    monkeypatch.setattr(ioda, "MAX_EVENTS", 1)
+    assert parse_events(EVENTS) is None

@@ -8,6 +8,8 @@ posture, kill-switch gating, velocity suppression, and the DDTI adapter shape ar
 with an INJECTED fake fetch. No real Chinese infrastructure is ever touched.
 """
 
+import pytest
+
 from collectors.cdn_edge import (
     CDN_PURGE_WAVEFRONT,
     CdnEdgeVantagePoint,
@@ -455,10 +457,10 @@ def test_pinned_edge_fetch_assembles_sni_and_host(monkeypatch):
     monkeypatch.setattr("ssl.create_default_context", lambda: FakeCtx())
     monkeypatch.setattr("http.client.HTTPSConnection", FakeConn)
 
-    resp = pinned_edge_fetch("cdn.example.com", "/a/123.json", "203.0.113.10")
+    resp = pinned_edge_fetch("cdn.example.com", "/a/123.json", "1.1.1.1")
 
     # dialed the EDGE IP at the socket layer...
-    assert captured["addr"] == ("203.0.113.10", 443)
+    assert captured["addr"] == ("1.1.1.1", 443)
     # ...but SNI and Host carry the HOSTNAME (cert validation intact), NOT the IP.
     assert captured["sni"] == "cdn.example.com"
     assert captured["conn_host"] == "cdn.example.com"
@@ -469,6 +471,7 @@ def test_pinned_edge_fetch_assembles_sni_and_host(monkeypatch):
     # response is decoded, headers lower-cased, status preserved
     assert resp.status == 200 and resp.body == "完整正文-body"
     assert resp.headers["x-cache"] == "HIT" and resp.headers["age"] == "3"
+    assert captured["read_cap"] == 8 * 1024 * 1024 + 1
     assert captured["raw_closed"] is True        # raw socket closed in finally
 
 
@@ -495,11 +498,73 @@ def test_pinned_edge_fetch_closes_raw_on_request_error(monkeypatch):
     monkeypatch.setattr("http.client.HTTPSConnection", FakeConn)
 
     try:
-        pinned_edge_fetch("cdn.example.com", "/a/123.json", "203.0.113.10")
+        pinned_edge_fetch("cdn.example.com", "/a/123.json", "1.1.1.1")
         assert False, "the underlying error must propagate (caller abstains on it)"
     except OSError:
         pass
     assert captured["raw_closed"] is True        # finally still released the raw socket
+
+
+@pytest.mark.parametrize(
+    "host,path,ip",
+    [
+        ("cdn.example.com", "/object", "127.0.0.1"),
+        ("cdn.example.com", "/object", "10.0.0.8"),
+        ("cdn.example.com\r\nX-Evil: yes", "/object", "1.1.1.1"),
+        ("cdn.example.com", "https://internal.example/object", "1.1.1.1"),
+    ],
+)
+def test_pinned_edge_fetch_refuses_internal_or_noncanonical_targets(
+    monkeypatch,
+    host,
+    path,
+    ip,
+):
+    monkeypatch.setattr(
+        "socket.create_connection",
+        lambda *_args, **_kwargs: pytest.fail("unsafe edge target reached the socket"),
+    )
+    with pytest.raises(OSError):
+        pinned_edge_fetch(host, path, ip)
+
+
+def test_pinned_edge_fetch_refuses_truncation_at_the_body_cap(monkeypatch):
+    class FakeRaw:
+        def close(self):
+            return None
+
+    class FakeCtx:
+        def wrap_socket(self, _sock, server_hostname=None):
+            return object()
+
+    class OversizedResponse:
+        status = 200
+
+        def getheaders(self):
+            return []
+
+        def read(self, size):
+            return b"x" * size
+
+    class FakeConn:
+        def __init__(self, *_args, **_kwargs):
+            self.sock = None
+
+        def request(self, *_args, **_kwargs):
+            return None
+
+        def getresponse(self):
+            return OversizedResponse()
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr("socket.create_connection", lambda *_args, **_kwargs: FakeRaw())
+    monkeypatch.setattr("ssl.create_default_context", lambda: FakeCtx())
+    monkeypatch.setattr("http.client.HTTPSConnection", FakeConn)
+    monkeypatch.setattr("collectors.cdn_edge._MAX_BYTES", 8)
+    with pytest.raises(OSError, match="body quota"):
+        pinned_edge_fetch("cdn.example.com", "/object", "1.1.1.1")
 
 
 if __name__ == "__main__":

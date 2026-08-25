@@ -17,7 +17,7 @@ attention. Two readings fall out:
                  by silence rather than by visible deletion: the cleanest censorship
                  leaves no deletion to count, only a hole where coverage should be.
 
-This module is deliberately standard-library only (urllib + json), so it runs and is
+This module is deliberately standard-library only (shared safe transport + json), so it runs and is
 testable with no third-party dependency. The scoring core is pure and offline; only
 `fetch_global_volume()` touches the network, and it fails soft (returns None) so a
 blocked or rate-limited GDELT never corrupts the index — it just abstains.
@@ -28,9 +28,12 @@ or reasons about any private individual; it measures coverage volume of a *topic
 
 import json
 import logging
-import urllib.error
+import math
+import re
+from collections.abc import Callable
 import urllib.parse
-import urllib.request
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,11 @@ USER_AGENT = "Palimpsest/0.2 (open-source censorship research; GDELT cross-signa
 # of all monitored coverage). We treat ~5% as a saturating "very loud globally" anchor;
 # above it, a topic is already a major world story. Tunable; documented as a knob.
 GLOBAL_VOLUME_SATURATION = 5.0
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+MAX_TERM_CHARS = 256
+MAX_TERMS_PER_RUN = 64
+MAX_TIMELINE_POINTS = 2_048
+_TIMESPAN = re.compile(r"(?:[1-9]|[1-9][0-9]|[12][0-9]{2}|3[0-5][0-9]|360)(?:min|h|d|w|m)\Z")
 
 
 # ── scoring core (pure, offline, testable) ───────────────────────────────────
@@ -53,9 +61,21 @@ def normalize_global(volume_intensity: float,
     monitored global coverage. Saturating (rather than raw) keeps one mega-story from
     dwarfing every other live signal in the index.
     """
-    if volume_intensity is None or volume_intensity <= 0:
+    if (
+        isinstance(volume_intensity, bool)
+        or not isinstance(volume_intensity, (int, float))
+        or not math.isfinite(float(volume_intensity))
+        or volume_intensity <= 0
+    ):
         return 0.0
-    return min(1.0, volume_intensity / saturation) if saturation > 0 else 0.0
+    if (
+        isinstance(saturation, bool)
+        or not isinstance(saturation, (int, float))
+        or not math.isfinite(float(saturation))
+        or saturation <= 0
+    ):
+        return 0.0
+    return min(1.0, float(volume_intensity) / float(saturation))
 
 
 def cross_signal(domestic_attention: float,
@@ -138,7 +158,39 @@ def rank_cross_signals(terms: list[dict],
 
 # ── network (fails soft; the only impure function here) ──────────────────────
 
-def fetch_global_volume(term: str, timespan: str = "1w", timeout: float = 20.0):
+def _reject_constant(_value: str):
+    raise ValueError("non-finite JSON number")
+
+
+def _reject_duplicates(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate JSON key")
+        out[key] = value
+    return out
+
+
+def _bounded_term(term: object) -> str | None:
+    if type(term) is not str:
+        return None
+    candidate = term.strip()
+    if (
+        not candidate
+        or len(candidate) > MAX_TERM_CHARS
+        or any(ord(char) < 0x20 or ord(char) == 0x7F for char in candidate)
+    ):
+        return None
+    return candidate
+
+
+def fetch_global_volume(
+    term: str,
+    timespan: str = "1w",
+    timeout: float = 20.0,
+    *,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+):
     """Return GDELT mean volume-intensity for `term` over `timespan`, or None on any
     failure. Key-less GDELT DOC 2.0 `timelinevol` endpoint.
 
@@ -146,25 +198,61 @@ def fetch_global_volume(term: str, timespan: str = "1w", timeout: float = 20.0):
     series — so a flaky GDELT degrades the cross-signal to "unknown/abstain" rather
     than poisoning the index with a false zero.
     """
+    query_term = _bounded_term(term)
+    if query_term is None or type(timespan) is not str or not _TIMESPAN.fullmatch(timespan):
+        return None
     params = {
-        "query": f'"{term}"',
+        "query": f'"{query_term}"',
         "mode": "timelinevol",
         "format": "json",
         "timespan": timespan,
     }
     url = f"{GDELT_DOC_API}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+
+    def exact_url(candidate: str) -> None:
+        if candidate != url:
+            raise FetchError("GDELT request URL changed")
+
     try:
-        raw = urllib.request.urlopen(req, timeout=timeout).read(4 * 1024 * 1024)
-        data = json.loads(raw.decode("utf-8", "replace"))
-    except (urllib.error.URLError, urllib.error.HTTPError, ValueError, OSError) as e:
-        logger.debug(f"[GDELT] lookup failed for {term!r}: {type(e).__name__}")
+        raw = fetcher(
+            url,
+            timeout=timeout,
+            max_bytes=MAX_RESPONSE_BYTES,
+            max_redirects=0,
+            headers={"Accept": "application/json", "User-Agent": USER_AGENT},
+            url_policy=exact_url,
+        )
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise FetchError("GDELT response exceeded its byte budget")
+        data = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+    except Exception as exc:  # noqa: BLE001 — hostile upstream means abstention
+        logger.debug("[GDELT] lookup failed (%s)", type(exc).__name__)
+        return None
+    if not isinstance(data, dict):
         return None
     series = data.get("timeline") or []
-    if not series:
+    if not isinstance(series, list) or len(series) != 1 or not isinstance(series[0], dict):
         return None
     points = series[0].get("data") or []
-    vals = [p.get("value", 0.0) for p in points if isinstance(p.get("value"), (int, float))]
+    if not isinstance(points, list) or not 1 <= len(points) <= MAX_TIMELINE_POINTS:
+        return None
+    vals = []
+    for point in points:
+        if not isinstance(point, dict):
+            return None
+        value = point.get("value")
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or not 0 <= float(value) <= 100
+        ):
+            return None
+        vals.append(float(value))
     if not vals:
         return None
     return sum(vals) / len(vals)
@@ -176,11 +264,18 @@ def enrich_terms(domestic_terms: list[dict], timespan: str = "1w") -> list[dict]
 
     domestic_terms: [{"term", "attention", "is_new"/..., "recent_count": int}, ...]
     """
+    if not isinstance(domestic_terms, list) or len(domestic_terms) > MAX_TERMS_PER_RUN:
+        return []
     enriched = []
     for t in domestic_terms:
-        gv = fetch_global_volume(t["term"], timespan=timespan)
+        if not isinstance(t, dict):
+            continue
+        term = _bounded_term(t.get("term"))
+        if term is None:
+            continue
+        gv = fetch_global_volume(term, timespan=timespan)
         enriched.append({
-            "term": t["term"],
+            "term": term,
             "domestic_attention": float(t.get("attention", 0.0)),
             "domestic_present": (t.get("recent_count", 1) or 0) > 0,
             "global_volume_intensity": gv,

@@ -2,8 +2,8 @@
 
 `core/safe_fetch.py` is the hardened egress path (SSRF + DNS-rebinding pinning, redirect
 re-validation on every hop, byte and decompression-bomb caps, TLS verification, scheme
-allowlist). It is NOT yet what production actually calls — as of this writing nothing outside
-`tests/` imports it. That gap is the point of this file.
+allowlist). Production migration is incremental: migrated modules disappear from the
+exception inventory, while every remaining direct client stays visible here.
 
 Rather than claim a hardening that is not there, this test makes the gap *visible and
 countable*: it scans the first-party directories for direct-egress call sites and fails unless
@@ -69,109 +69,50 @@ _ALLOWED = {
     # ── build_opener / raw-socket egress. These four reach the network through an opener or a
     #    bare socket rather than urlopen(), so the first version of this guard did not see them
     #    at all. They are the highest-value migration targets, not the lowest. ───────────────
-    "collectors/undertext.py": "build_opener GET of arbitrary, possibly adversarial public web surfaces through the "
-    "operator-supplied proxy argument, 8 MiB read cap, redirects followed with NO "
-    "re-validation, and an explicit pre-egress Baike deny. This is the closest match in "
-    "the repo to safe_fetch's stated threat model and should be the FIRST file migrated.",
-    "collectors/github_refuge.py": "build_opener GET of api.github.com with an 8 MiB cap; fixed well-known host and an "
-    "optional read-only token, so SSRF risk is low, but redirects are still followed "
-    "unvalidated. Plain migration candidate once safe_fetch carries a header/auth path.",
     "collectors/bleedthrough.py": "raw UDP socket (AF_INET/SOCK_DGRAM) sending DNS queries to caller-supplied resolver "
     "IPs — this is the DNS-injection prober itself, so it operates below the HTTP layer "
-    "safe_fetch guards and can never be routed through it.",
-    "demo/palimpsest_demo.py": "build_opener GET of the public China Digital Times RSS feed with an explicit size cap; "
-    "the zero-dependency demo is deliberately standalone so a reader can run it from a bare "
-    "clone without importing the core package.",
-    "scripts/fetch_citizenlab_blocklists.py": "GET api.github.com and raw.githubusercontent.com for Citizen Lab's published "
-    "blocklist corpus; fixed well-known hosts, explicit 4 MiB cap, no redirect "
-    "re-validation. Plain migration candidate once safe_fetch carries an Accept header.",
+    "safe_fetch guards and can never be routed through it. Its strict target-file admission "
+    "allows bounded canonical public IPv4 targets and DNS names only; unknown target kinds, "
+    "private destinations, excessive bursts/waits and malformed wire inputs are refused before "
+    "a socket is opened, with kill-switch and rate gates applied per datagram.",
     # ── collectors: the live public-signal fetchers ────────────────────────────────────────
-    "collectors/censored_planet.py": "POST GraphQL to data.censoredplanet.org; 16 MiB read cap and fail-soft, but no "
-    "redirect re-validation or bomb guard — safe_fetch is GET-only today, so migration "
-    "needs a request-body path first.",
-    "collectors/china_econ.py": "GET the keyless CFETS chinamoney portal; plain migration candidate — no SSRF/redirect "
-    "guard and no size cap on the body today.",
-    "collectors/data_darkness.py": "GET six fixed official listing surfaces (www.pbc.gov.cn OMO announcements and "
-    "Money & Banking Statistics directory, www.safe.gov.cn settlement page, "
-    "www.stats.gov.cn zxfb firehose and release calendar, www.nra.gov.cn rail listing) "
-    "with a 2 MiB read cap; fixed government hosts, redirects followed without "
-    "re-validation — plain migration candidate.",
-    "collectors/cny_fix_gap.py": "GET the ECB eurofxref daily XML and two Bank of Canada Valet CSVs with a 2 MiB "
-    "read cap; fixed central-bank hosts, redirects followed without re-validation — "
-    "plain migration candidate.",
-    "collectors/lkq_telemetry.py": "two-step GET (listing then article) of NBS English press releases, the PBC "
-    "monthly financial statistics report and NRA rail news with a 4 MiB read cap; "
-    "fixed government hosts, redirects followed without re-validation — plain "
-    "migration candidate.",
-    "collectors/circumvention_demand.py": "GET Tor Metrics CSV; plain migration candidate — body read is uncapped today.",
-    "collectors/gdelt_cross_signal.py": "GET the keyless GDELT DOC API; 4 MiB read cap, no redirect re-validation — plain "
-    "migration candidate.",
-    "collectors/generative_firewall.py": "POST to a LOCAL Ollama backend (default http://localhost:11434) — safe_fetch's SSRF "
-    "guard would correctly refuse loopback, so this call site must stay outside it.",
-    "collectors/ioda_outages.py": "GET the keyless IODA v2 API; plain migration candidate — uncapped body read.",
-    "collectors/net4people_events.py": "GET the GitHub Issues API (optional bearer); 6 MiB read cap — plain migration "
-    "candidate once safe_fetch's header pass-through is exercised on an authed call.",
-    "collectors/ooni_gfw.py": "GET the OONI aggregation API; caller-set read cap plus a 429 backoff loop that any "
-    "migration must preserve — the retry is politeness, not decoration.",
+    "collectors/generative_firewall.py": "POST to a LOCAL Ollama backend through a credential-free literal-loopback HTTP authority "
+    "only. The adapter ignores ambient proxies, refuses redirects, caps strict-JSON requests, "
+    "success bodies and error bodies, and abstains on malformed/oversized/5xx responses; "
+    "safe_fetch correctly refuses loopback, so this boundary stays separate.",
     "collectors/ooni_bulk.py": "Unsigned GET-only access to the fixed public ooni-data-eu-fra S3 hostname. It lists "
     "only exact allowlisted hourly country/test prefixes and streams only .jsonl.gz "
     "objects through response/object/run, decompression, quota, and free-space caps; "
     "redirects are disabled. The buffered safe_fetch API cannot provide the required "
     "atomic streaming-to-disk contract for multi-gigabyte objects.",
-    "collectors/stock_connect.py": "GET the HKEX daily-statistics file; plain migration candidate — uncapped body read.",
-    "collectors/wayback_vantage.py": "GET the Wayback CDX API through the injectable `default_cdx_fetch` seam, so migration "
-    "is a one-line swap of that default rather than a rewrite.",
-    "collectors/weibo_hotsearch.py": "GET one day's archived hot-search JSON from raw.githubusercontent.com; plain "
-    "migration candidate.",
     "collectors/cdn_edge.py": "Raw pinned-IP TLS dial BY DESIGN — the `curl --resolve` technique that lets the probe "
     "choose which CDN POP answers. safe_fetch pins the IP *it* resolved and cannot be "
-    "handed one, so this path is structurally outside it; TLS/SNI verification is kept.",
-    "collectors/inside_view.py": "GET/POST the keyless Globalping API (api.globalping.io) to command DNS measurements on "
-    "in-China probes; fixed well-known host, uncapped body read, no redirect "
-    "re-validation. Migration needs safe_fetch's request-body path (same blocker as "
-    "censored_planet.py), so it is a candidate once that lands, not before.",
+    "handed one, so this path is structurally outside it; the adapter requires a canonical "
+    "globally routable numeric target, validates host/path/port/timeout, verifies TLS/SNI and "
+    "caps headers plus an exact UTF-8 identity-encoded body without accepting truncation.",
     "collectors/origin_as.py": "Raw TCP to whois.cymru.com:43, the keyless public IP-to-AS service, to learn who "
     "announces an address before deciding whether an answer was injected. Not HTTP at "
     "all, so safe_fetch does not apply: whois/43 is plaintext by protocol, carries no "
-    "TLS to verify and no redirects to re-validate. Sends only addresses already present "
-    "in a published reading, and a failure raises rather than degrading the verdict.",
-    "collectors/app_storefront.py": "GET Apple's keyless iTunes lookup API; fixed well-known host, uncapped body read — "
-    "plain migration candidate.",
-    "collectors/in_path_interference.py": "GET the OONI aggregation API through an injectable opener, with a 429 backoff loop "
-    "that any migration must preserve; same shape and same blocker as ooni_gfw.py.",
-    "collectors/apple_censorship.py": "GET GreatFire's keyless AppleCensorship dashboard API through an injectable opener; "
-    "fixed well-known host, uncapped body read — plain migration candidate.",
+    "TLS to verify and no redirects to re-validate. The adapter accepts only bounded "
+    "canonical IP literals, enforces request/response and total-deadline quotas, rejects "
+    "malformed or conflicting records, and a failure raises rather than degrading the verdict.",
     # ── core / censorwatch: the async fetch machinery ──────────────────────────────────────
     "core/safe_fetch.py": "This IS the hardened path — the pinned-IP dial is the SSRF/rebinding guard itself, "
     "not a bypass of it.",
-    "core/base_collector.py": "httpx.AsyncClient backing the async collector base (retries, circuit breaker); "
-    "safe_fetch is synchronous stdlib, so an async hardened client must exist first.",
-    "core/tasks.py": "Optional transition-only POST to the operator-configured alert webhook. It is "
-    "disabled when the environment value is blank, carries only bounded health counts, "
-    "requires public-DNS HTTPS without URL credentials, refuses redirects, uses a "
-    "ten-second timeout, and suppresses URL-bearing errors; safe_fetch is GET-only today, "
-    "so closing the remaining DNS-pin gap needs a request-body path first.",
-    "censorwatch/fetcher.py": "httpx.AsyncClient with proxy, per-host pacing, UA rotation and conditional-GET "
-    "revalidation, plus an injectable transport for tests; same blocker — no async "
-    "hardened equivalent yet.",
+    "censorwatch/render_client.py": "POST to the single fixed internal censorwatch-render-gateway:8080 service over an "
+    "internal Compose handoff network. The client refuses all alternate authorities, "
+    "credentials and redirects, ignores ambient proxies, streams through a hard response "
+    "cap, and re-validates the returned final source URL before privileged code sees it.",
     # ── scripts: refresh jobs and build-time tools ─────────────────────────────────────────
-    "scripts/anchor_roots.py": "`opener=urllib.request.urlopen` default arg for the Wayback save-page call; the opener "
-    "is already injectable, so migration is a default swap once safe_fetch offers an "
-    "opener-shaped entry point.",
-    "scripts/bleedthrough_fetch_prefixes.py": "Build-time RIPEstat prefix build, run by hand/CI rather than by a live signal; 16 MiB "
-    "read cap, fail-soft per ASN — lowest-risk migration candidate.",
-    "scripts/ddti_live_pull.py": "httpx.AsyncClient for the DDTI feed pull; async, same blocker as core/base_collector.",
-    "scripts/generative_firewall_reading.py": "POST to OpenRouter carrying a bearer key and a JSON body; safe_fetch is GET-only and "
-    "carries no request body today.",
-    "scripts/refusal_drift_pull.py": "POST to OpenRouter, same shape and same GET-only blocker as the reading script.",
-    "scripts/smoke_palimpsest_mcp.py": "Release-only POST of bounded JSON-RPC probes to the operator-supplied MCP endpoint; it "
-    "requires HTTPS except for explicitly enabled loopback, forbids credentials, query, "
-    "fragment and redirects, checks HTTP status and content type, caps the response at 4 "
-    "MiB, and applies a caller timeout. safe_fetch is GET-only and does not expose the "
-    "HTTP response semantics this deployment smoke is specifically meant to verify.",
+    "scripts/smoke_palimpsest_mcp.py": "Standalone release smoke with two narrow transports: public HTTPS resolves and refuses "
+    "every non-global answer, dials a pinned validated IP with verified TLS/SNI, ignores "
+    "ambient proxies and never follows redirects; raw urllib is retained only for explicitly "
+    "enabled loopback recovery. Both branches enforce strict JSON, request/response caps, "
+    "HTTP/content-type checks, URL grammar and caller timeouts.",
     # ── mcp / ops ──────────────────────────────────────────────────────────────────────────
-    "mcp/palimpsest_mcp.py": "GET our OWN published readings from palimpsest.info — a first-party surface, but still "
-    "worth migrating for the size cap and redirect guard.",
+    "mcp/palimpsest_mcp.py": "Single-file isolated MCP runtime with a fixed palimpsest.info URL allowlist, public-only "
+    "DNS validation, pinned-IP HTTPS, verified TLS/SNI, no redirect machinery, bounded "
+    "headers/bodies/JSON and concurrency; its raw socket is the rebinding guard itself.",
     "ops/witness/palimpsest_witness.py": "PERMANENTLY EXEMPT: the independent witness is a deliberate from-scratch "
     "implementation that must be able to check the observatory without sharing the "
     "observatory's code, so it must never import core/.",

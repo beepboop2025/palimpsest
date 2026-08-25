@@ -6,6 +6,11 @@ Only fetch_global_volume() touches the network; it is not exercised here. The sc
 core (normalize_global, cross_signal, rank_cross_signals) is pure and deterministic.
 """
 
+import json
+
+import collectors.gdelt_cross_signal as gdelt
+from core.safe_fetch import FetchError
+
 from collectors.gdelt_cross_signal import (
     cross_signal,
     normalize_global,
@@ -63,6 +68,48 @@ def test_rank_orders_by_cross_score_and_abstains_on_none():
     assert ranked[-1]["label"] == "unknown"
     assert ranked[-1]["abstained"] is True
     assert "loud+censored" in terms and "blackout" in terms
+
+
+def test_fetch_uses_exact_bounded_redirect_free_transport():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        return json.dumps({"timeline": [{"data": [{"value": 2.0}, {"value": 4.0}]}]}).encode()
+
+    assert gdelt.fetch_global_volume("Tiananmen", fetcher=fetcher) == 3.0
+    assert seen["max_bytes"] == gdelt.MAX_RESPONSE_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_fetch_refuses_changed_url_bad_inputs_and_ambiguous_data():
+    def changed(url, **kwargs):
+        kwargs["url_policy"]("http://127.0.0.1/admin")
+        return b"{}"
+
+    assert gdelt.fetch_global_volume("topic", fetcher=changed) is None
+    assert gdelt.fetch_global_volume("x\nheader", fetcher=lambda *_a, **_k: b"{}") is None
+    assert gdelt.fetch_global_volume("topic", timespan="forever", fetcher=lambda *_a, **_k: b"{}") is None
+    assert gdelt.fetch_global_volume(
+        "topic",
+        fetcher=lambda *_a, **_k: b'{"timeline":[],"timeline":[]}',
+    ) is None
+    assert gdelt.fetch_global_volume(
+        "topic",
+        fetcher=lambda *_a, **_k: b'{"timeline":[{"data":[{"value":NaN}]}]}',
+    ) is None
+
+
+def test_fetch_policy_rejects_cross_origin_even_before_transport():
+    def fetcher(url, **kwargs):
+        try:
+            kwargs["url_policy"]("https://evil.example/api")
+        except FetchError:
+            raise
+        raise AssertionError("changed URL should be refused")
+
+    assert gdelt.fetch_global_volume("topic", fetcher=fetcher) is None
 
 
 if __name__ == "__main__":

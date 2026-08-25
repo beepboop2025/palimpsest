@@ -377,12 +377,12 @@ verification.
 Create the state manifest from the exact pre-merge `origin/main` tree, not from
 the candidate checkout. The China WDI release deliberately changes
 `china-econ-refresh.yml` from scheduled to manual-only: the live pre-merge union
-has 34 scheduled workflow paths, including China econ, while the reviewed
-post-merge tree has 33. Both exact counts and the one-path difference are drift
+has 35 scheduled workflow paths, including China econ and scheduled CodeQL,
+while the reviewed post-merge tree has 34. Both exact counts and the one-path difference are drift
 alarms. A release that also crosses the reviewed OSINT workflow rename records
 the one allowed old-path-to-new-path translation explicitly; it does not infer
 workflow identity from a similar name. Later steady-state releases require an
-exact 33-to-33 path-set match. Do not use a shell variable named `path` in zsh;
+exact 34-to-34 path-set match. Do not use a shell variable named `path` in zsh;
 it aliases the executable search path.
 
 If this release continues an already-open publication gate, reuse that gate's
@@ -479,13 +479,13 @@ validate_schedule_transition() {
   premerge_count=$(wc -l <"$normalized_premerge_paths" | tr -d '[:space:]')
   postmerge_count=$(wc -l <"$postmerge_paths_file" | tr -d '[:space:]')
   case "$premerge_count:$postmerge_count" in
-    34:33)
+    35:34)
       test "$(LC_ALL=C comm -23 "$normalized_premerge_paths" \
         "$postmerge_paths_file")" = "$china_workflow"
       test -z "$(LC_ALL=C comm -13 "$normalized_premerge_paths" \
         "$postmerge_paths_file")"
       ;;
-    33:33)
+    34:34)
       cmp -s "$normalized_premerge_paths" "$postmerge_paths_file"
       ;;
     *)
@@ -545,8 +545,8 @@ scheduled_paths_at "$frozen_main" >"$premerge_schedule_paths"
 premerge_schedule_count=$(wc -l <"$premerge_schedule_paths" | \
   tr -d '[:space:]')
 case "$premerge_schedule_count" in
-  33) ;;
-  34)
+  34) ;;
+  35)
     grep -Fx '.github/workflows/china-econ-refresh.yml' \
       "$premerge_schedule_paths"
     ;;
@@ -822,7 +822,7 @@ Only after the live smoke, host receipt, deployment artifact, Registry receipt,
 official latest record, exact complete Tests run, Pages deployment, and served
 bytes all agree may the states captured in the manifest be restored. An
 intentionally disabled workflow stays disabled. The one-time release restores
-the original 34 intentions even though the target has only 33 scheduled paths:
+the original 35 intentions even though the target has only 34 scheduled paths:
 re-enabling the China econ workflow exposes its reviewed manual dispatch but
 cannot recreate the removed schedule. If the original manifest names the
 deleted OSINT workflow, resolve only the explicitly recorded replacement path,

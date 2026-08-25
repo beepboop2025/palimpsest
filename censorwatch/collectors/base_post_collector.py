@@ -28,7 +28,8 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from core.base_collector import BaseCollector
-from censorwatch.interfaces import Observation, Post, PostSource, content_hash
+from censorwatch.interfaces import LivenessState, Observation, Post, PostSource, content_hash
+from censorwatch.source_policy import source_url_is_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +42,27 @@ class BasePostCollector(BaseCollector, PostSource):
     """BaseCollector specialized for post capture + re-check."""
 
     source_type = "censorwatch"        # marker; _upsert is overridden anyway
+    hostile_input_boundary = True
     deletion_markers: tuple[str, ...] = ()
+    network_policy_name: str | None = None
+
+    @property
+    def _network_source(self) -> str:
+        return self.network_policy_name or self.name
+
+    def _url_is_allowed(self, url: str | None) -> bool:
+        return isinstance(url, str) and source_url_is_allowed(
+            self._network_source, url, purpose="page"
+        )
 
     def __init__(self, config: dict):
         super().__init__(config)
         self._fetcher = None  # lazy: only built when we actually fetch
+        try:
+            configured_record_cap = int(config.get("max_records_per_cycle", 500))
+        except (TypeError, ValueError):
+            configured_record_cap = 500
+        self.max_records_per_cycle = min(1000, max(1, configured_record_cap))
         try:
             configured_retry_batch = int(config.get("archive_retry_batch", 20))
         except (TypeError, ValueError):
@@ -57,7 +74,7 @@ class BasePostCollector(BaseCollector, PostSource):
     def _get_fetcher(self):
         from censorwatch.fetcher import Fetcher
         if self._fetcher is None:
-            self._fetcher = Fetcher()
+            self._fetcher = Fetcher(source=self._network_source)
         return self._fetcher
 
     async def close(self):
@@ -76,9 +93,23 @@ class BasePostCollector(BaseCollector, PostSource):
         now = datetime.now(timezone.utc)
         rows = []
         for _, r in df.iterrows():
+            if len(rows) >= self.max_records_per_cycle:
+                logger.warning(
+                    "[censorwatch:%s] record quota reached; remaining rows dropped",
+                    self.name,
+                )
+                break
             post_id = str(r.get("post_id") or "").strip()
             if not post_id:
                 continue  # a row with no stable id can't be tracked; skip
+            url = r.get("url") or None
+            if not self._url_is_allowed(url):
+                logger.warning(
+                    "[censorwatch:%s] dropped post %s with unreviewed URL",
+                    self.name,
+                    post_id,
+                )
+                continue
             full_text = r.get("full_text") or ""
             rows.append({
                 "source": self.name,
@@ -86,7 +117,7 @@ class BasePostCollector(BaseCollector, PostSource):
                 "author": (r.get("author") or None),
                 "posted_at": r.get("posted_at") or None,
                 "full_text": full_text,
-                "url": r.get("url") or None,
+                "url": url,
                 "content_hash": r.get("content_hash") or content_hash(full_text),
                 "first_seen_at": now,
                 "last_state": "live",
@@ -120,9 +151,13 @@ class BasePostCollector(BaseCollector, PostSource):
             )
             new_ids = {row[0] for row in db.execute(stmt)}
             db.commit()
-        except Exception as e:
+        except Exception as exc:
             db.rollback()
-            logger.error("[censorwatch:%s] upsert failed: %s", self.name, e)
+            logger.error(
+                "[censorwatch:%s] upsert failed (%s)",
+                self.name,
+                type(exc).__name__,
+            )
             return 0
         finally:
             db.close()
@@ -195,8 +230,11 @@ class BasePostCollector(BaseCollector, PostSource):
             return rows
         except Exception as exc:
             db.rollback()
-            logger.warning("[censorwatch:%s] archive retry claim failed: %s",
-                           self.name, exc)
+            logger.warning(
+                "[censorwatch:%s] archive retry claim failed (%s)",
+                self.name,
+                type(exc).__name__,
+            )
             return []
         finally:
             db.close()
@@ -207,6 +245,13 @@ class BasePostCollector(BaseCollector, PostSource):
         failure must not fail the capture run."""
         if not row.get("url"):
             return None
+        if not self._url_is_allowed(row["url"]):
+            logger.warning(
+                "[censorwatch:%s] archive refused unreviewed URL for %s",
+                self.name,
+                row.get("post_id"),
+            )
+            return None
         try:
             from censorwatch.archiver import archive_post
             path = await archive_post(
@@ -216,9 +261,13 @@ class BasePostCollector(BaseCollector, PostSource):
             if path:
                 self._set_archive_path(row["post_id"], path)
             return path
-        except Exception as e:
-            logger.warning("[censorwatch:%s] archive failed for %s: %s",
-                           self.name, row.get("post_id"), e)
+        except Exception as exc:
+            logger.warning(
+                "[censorwatch:%s] archive failed for %s (%s)",
+                self.name,
+                row.get("post_id"),
+                type(exc).__name__,
+            )
             return None
 
     def _set_archive_path(self, post_id: str, path: str) -> None:
@@ -236,6 +285,12 @@ class BasePostCollector(BaseCollector, PostSource):
     # ── RE-CHECK: PostSource contract ────────────────────────────
     async def observe(self, post: Post) -> Observation:
         """Re-fetch one known post and classify its liveness (defensive)."""
+        if not self._url_is_allowed(post.url):
+            return Observation(
+                state=LivenessState.UNKNOWN,
+                checked_at=datetime.now(timezone.utc),
+                reason="url_policy_rejected",
+            )
         from censorwatch.classifier import classify
         result = await self._get_fetcher().fetch(post.url, polite=True)
         return classify(result, extra_markers=self.deletion_markers)

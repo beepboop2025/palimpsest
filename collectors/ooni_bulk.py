@@ -25,11 +25,17 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
+
+try:
+    from defusedxml import ElementTree as ET
+    from defusedxml.common import DefusedXmlException
+except ImportError:  # pragma: no cover - production dependencies require it
+    ET = None
+    DefusedXmlException = ValueError
 
 from core.governance import KillSwitch
 
@@ -42,6 +48,11 @@ DEFAULT_READINGS = ROOT / "readings"
 LATEST_NAME = "ooni-bulk-latest.json"
 HISTORY_NAME = "ooni-bulk-history.jsonl"
 MANIFEST_MAX_BYTES = 16 * 1024 * 1024
+_S3_XML_MAX_BYTES = 16 * 1024 * 1024
+_S3_XML_MAX_ELEMENTS = 8_192
+_S3_XML_MAX_DEPTH = 16
+_S3_XML_MAX_TEXT_CHARS = 8_192
+_S3_XML_MAX_OBJECTS = 1_000
 METHOD_VERSION = 2
 USER_AGENT = (
     "palimpsest.info OONI bulk warehouse "
@@ -382,9 +393,22 @@ def _scope_prefix(config: BulkConfig, hour: datetime, country: str, test: str) -
     return f"{_hour_prefix(config, hour)}{country}/{test}/"
 
 
-def _xml_child_text(parent: ET.Element, name: str) -> str | None:
+def _xml_child_text(parent, name: str) -> str | None:
     child = parent.find(f"{{*}}{name}")
     return child.text if child is not None else None
+
+
+def _validate_listing_tree(root) -> None:
+    seen = 0
+    stack = [(root, 1)]
+    while stack:
+        element, depth = stack.pop()
+        seen += 1
+        if seen > _S3_XML_MAX_ELEMENTS or depth > _S3_XML_MAX_DEPTH:
+            raise ValidationError("S3 listing XML exceeded structural limits")
+        if len(element.text or "") > _S3_XML_MAX_TEXT_CHARS:
+            raise ValidationError("S3 listing XML field exceeded its size limit")
+        stack.extend((child, depth + 1) for child in element)
 
 
 def parse_list_objects_v2(
@@ -397,10 +421,15 @@ def parse_list_objects_v2(
 ) -> tuple[list[S3Object], str | None]:
     """Parse one bounded ListObjectsV2 page and reject scope confusion."""
 
+    if ET is None:
+        raise ValidationError("hardened XML parser is unavailable")
+    if not isinstance(payload, bytes) or len(payload) > _S3_XML_MAX_BYTES:
+        raise ValidationError("S3 listing XML exceeded its size limit")
     try:
         root = ET.fromstring(payload)
-    except ET.ParseError as exc:
+    except (ET.ParseError, DefusedXmlException, ValueError, TypeError) as exc:
         raise ValidationError("invalid S3 ListObjectsV2 XML") from exc
+    _validate_listing_tree(root)
     if root.tag.rsplit("}", 1)[-1] != "ListBucketResult":
         raise ValidationError("unexpected S3 listing root element")
     if _xml_child_text(root, "Name") != expected_bucket:
@@ -411,6 +440,8 @@ def parse_list_objects_v2(
     objects: list[S3Object] = []
     seen: set[str] = set()
     for content in root.findall("{*}Contents"):
+        if len(objects) >= _S3_XML_MAX_OBJECTS:
+            raise ValidationError("S3 listing returned more than 1000 objects")
         key = _xml_child_text(content, "Key") or ""
         if not key.startswith(expected_prefix):
             raise ValidationError("S3 listing returned an object outside the requested scope")

@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 from datetime import timezone
 
+import pytest
+
 from censorwatch.collectors.xueqiu import XueqiuCollector
 
 # Synthetic payload matching Xueqiu's documented stock_timeline.json shape.
@@ -51,6 +53,18 @@ def test_parse_statuses():
     assert all(len(r["content_hash"]) == 64 for r in rows)
 
 
+def test_parser_applies_record_quota_and_refuses_wrong_container_shapes():
+    assert len(XueqiuCollector._parse_statuses(_PAYLOAD, limit=1)) == 1
+    assert XueqiuCollector._parse_statuses({"list": {"not": "a list"}}) == []
+
+
+def test_symbol_fanout_and_api_count_are_bounded():
+    with pytest.raises(ValueError):
+        XueqiuCollector({"symbols": ["SH600519"] * 33, "count": 20})
+    with pytest.raises(ValueError):
+        XueqiuCollector({"symbols": ["SH600519"], "count": 10_000})
+
+
 def test_extract_json():
     E = XueqiuCollector._extract_json
     assert E(json.dumps(_PAYLOAD))["list"][0]["id"] == 320011112      # raw JSON
@@ -67,10 +81,32 @@ def test_parse_ms():
     assert P(None) is None and P("nope") is None
 
 
+def test_target_resolution_refuses_hostile_authorities():
+    resolve = XueqiuCollector._resolve_target
+    assert resolve("/123/456") == "https://xueqiu.com/123/456"
+    assert resolve("https://xueqiu.com/123/456") == "https://xueqiu.com/123/456"
+    for unsafe in (
+        "http://xueqiu.com/123/456",
+        "https://xueqiu.com.evil.invalid/123/456",
+        "https://:@xueqiu.com/123/456",
+        "https://xueqiu.com:444/123/456",
+        "//169.254.169.254/latest/meta-data/",
+    ):
+        assert resolve(unsafe) is None
+
+
+def test_hostile_target_falls_back_to_quoted_platform_id():
+    rows = XueqiuCollector._parse_statuses(
+        {"list": [{"id": "id/with space", "text": "post", "target": "http://127.0.0.1/"}]}
+    )
+    assert rows[0]["url"] == "https://xueqiu.com/id%2Fwith%20space"
+
+
 def _run_all():
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
-            fn(); print(f"  PASS {name}")
+            fn()
+            print(f"  PASS {name}")
     print("\nxueqiu checks passed")
 
 

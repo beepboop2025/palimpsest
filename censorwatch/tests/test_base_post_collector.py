@@ -20,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pandas as pd
+import pytest
 
 from censorwatch.collectors.base_post_collector import BasePostCollector
 from censorwatch.interfaces import FetchResult, LivenessState, Post
@@ -41,12 +42,13 @@ class _FakeFetcher:
 class _Source(BasePostCollector):
     """Minimal concrete source for testing the base class."""
     name = "test_source"
+    network_policy_name = "eastmoney_guba"
     deletion_markers = ("该帖子可能已被删除",)
 
     async def collect(self): return []
     async def parse(self, raw): return pd.DataFrame()
     def validate(self, df): return True
-    def control_posts(self): return ["https://example.com/control"]
+    def control_posts(self): return ["https://guba.eastmoney.com/control"]
 
 
 def _make() -> _Source:
@@ -56,10 +58,13 @@ def _make() -> _Source:
 def test_rows_from_df_fills_and_keys():
     s = _make()
     df = pd.DataFrame([
-        {"post_id": "p1", "author": "老张", "full_text": "  茅台  走势 ", "url": "u1"},
-        {"post_id": "p2", "author": None, "full_text": "second", "url": "u2",
+        {"post_id": "p1", "author": "老张", "full_text": "  茅台  走势 ",
+         "url": "https://guba.eastmoney.com/p1"},
+        {"post_id": "p2", "author": None, "full_text": "second",
+         "url": "https://guba.eastmoney.com/p2",
          "content_hash": "precomputed"},
-        {"post_id": "", "full_text": "no id — must be dropped", "url": "u3"},
+        {"post_id": "", "full_text": "no id — must be dropped",
+         "url": "https://guba.eastmoney.com/p3"},
     ])
     rows = s._rows_from_df(df, raw_path=None)
     assert len(rows) == 2, "row with empty post_id must be dropped"
@@ -74,7 +79,8 @@ def test_rows_from_df_fills_and_keys():
 def _observe(result: FetchResult) -> LivenessState:
     s = _make()
     s._fetcher = _FakeFetcher(result)
-    post = Post(source="test_source", post_id="p1", url="u1", full_text="x")
+    post = Post(source="test_source", post_id="p1",
+                url="https://guba.eastmoney.com/p1", full_text="x")
     obs = asyncio.run(s.observe(post))
     return obs.state
 
@@ -91,6 +97,40 @@ def test_observe_maps_states():
     live = _observe(FetchResult(url="u1", status=200,
                     text="茅台基本面没变,长期看好,仅供参考不构成建议。" * 3))
     assert live == LivenessState.LIVE
+
+
+def test_poisoned_urls_are_never_stored_archived_or_fetched(monkeypatch):
+    source = _make()
+    rows = source._rows_from_df(
+        pd.DataFrame(
+            [
+                {"post_id": "good", "full_text": "ok",
+                 "url": "https://guba.eastmoney.com/good"},
+                {"post_id": "metadata", "full_text": "bad",
+                 "url": "http://169.254.169.254/latest/meta-data/"},
+                {"post_id": "userinfo", "full_text": "bad",
+                 "url": "https://guba.eastmoney.com@127.0.0.1/"},
+            ]
+        ),
+        raw_path=None,
+    )
+    assert [row["post_id"] for row in rows] == ["good"]
+
+    called = []
+    source._fetcher = _FakeFetcher(
+        FetchResult(url="unused", status=200, text="should not run")
+    )
+    source._fetcher.fetch = lambda *args, **kwargs: called.append(args)  # type: ignore[method-assign]
+    post = Post(
+        source="test_source",
+        post_id="old-poisoned-row",
+        url="http://127.0.0.1/admin",
+        full_text="legacy",
+    )
+    obs = asyncio.run(source.observe(post))
+    assert obs.state == LivenessState.UNKNOWN
+    assert obs.reason == "url_policy_rejected"
+    assert called == []
 
 
 def test_archive_retry_claim_is_bounded_and_rotates_failures(monkeypatch):
@@ -150,6 +190,55 @@ def test_archive_retry_batch_has_hard_bounds():
     assert _Source({"archive_retry_batch": 0}).archive_retry_batch == 1
     assert _Source({"archive_retry_batch": 10_000}).archive_retry_batch == 100
     assert _Source({"archive_retry_batch": "bad"}).archive_retry_batch == 20
+
+
+def test_hostile_rows_are_bounded_before_database_work():
+    source = _Source({"max_records_per_cycle": 2})
+    rows = source._rows_from_df(
+        pd.DataFrame(
+            [
+                {
+                    "post_id": str(index),
+                    "full_text": "bounded",
+                    "url": f"https://guba.eastmoney.com/{index}",
+                }
+                for index in range(10)
+            ]
+        ),
+        raw_path=None,
+    )
+
+    assert [row["post_id"] for row in rows] == ["0", "1"]
+    assert _Source({"max_records_per_cycle": 10_000}).max_records_per_cycle == 1000
+    assert _Source({"max_records_per_cycle": 0}).max_records_per_cycle == 1
+
+
+def test_hostile_exception_text_never_reaches_results_health_or_logs(caplog):
+    source = _Source({"retry_count": 1})
+    reports = []
+    durable_logs = []
+
+    async def explode():
+        raise ValueError("hostile-body secret=proxy-password")
+
+    source.collect = explode
+    source._report_health = lambda status, message="": reports.append((status, message))
+    source._log_collection = lambda *args: durable_logs.append(args)
+
+    with caplog.at_level("ERROR"):
+        result = asyncio.run(source.run())
+
+    combined = repr((result, reports, durable_logs, caplog.text))
+    assert result["error"] == "ValueError"
+    assert "hostile-body" not in combined
+    assert "proxy-password" not in combined
+
+
+@pytest.mark.parametrize("value", (None, "", "bad\nsource", "a" * 65))
+def test_task_identifier_shape_is_bounded(value):
+    from censorwatch.tasks import _identifier
+
+    assert _identifier(value) is None
 
 
 def _run_all():

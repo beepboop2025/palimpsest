@@ -24,15 +24,17 @@ Numbers are the Tor Project's estimates from sampled directory requests, and
 carry their published uncertainty (`low`/`high` bounds on transport rows,
 confidence interval columns on relay rows) — bounds are preserved, never
 collapsed silently. No probe traffic is generated; nothing here touches the
-Tor network itself. Standard-library only (urllib + csv).
+Tor network itself. Standard-library only (shared safe transport + csv).
 """
 from __future__ import annotations
 
 import csv
 import io
 import logging
-import urllib.error
-import urllib.request
+from collections.abc import Callable
+from datetime import date
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 log = logging.getLogger(__name__)
 
@@ -41,34 +43,98 @@ USER_AGENT = ("palimpsest.info observatory (public-statistics ingest; "
               "contact desk@palimpsest.info)")
 COUNTRY = "cn"
 TRANSPORTS_KEPT = ("snowflake", "webtunnel", "obfs4", "meek")
+TABLES = frozenset({
+    "userstats-bridge-combined",
+    "userstats-bridge-country",
+    "userstats-relay-country",
+})
+MAX_BYTES = 8 * 1024 * 1024
+MAX_ROWS = 20_000
+MAX_WINDOW_DAYS = 400
 
 
-def _get_csv(table: str, start: str, end: str, cc: str = COUNTRY,
-             timeout: float = 30.0) -> str | None:
-    """Fetch one metrics CSV. Fail-soft: None on any transport error."""
-    url = BASE.format(table=table, start=start, end=end, cc=cc)
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+def _parse_date(value: object) -> date | None:
+    if type(value) is not str:
+        return None
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read().decode("utf-8", "replace")
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        return None
+    return parsed if parsed.isoformat() == value else None
+
+
+def _valid_window(start: object, end: object) -> bool:
+    first, last = _parse_date(start), _parse_date(end)
+    return bool(
+        first is not None
+        and last is not None
+        and first <= last
+        and (last - first).days <= MAX_WINDOW_DAYS
+    )
+
+
+def _get_csv(
+    table: str,
+    start: str,
+    end: str,
+    cc: str = COUNTRY,
+    timeout: float = 30.0,
+    *,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> str | None:
+    """Fetch one metrics CSV. Fail-soft: None on any transport error."""
+    if table not in TABLES or cc != COUNTRY or not _valid_window(start, end):
+        log.warning("tor metrics refused invalid request parameters")
+        return None
+    url = BASE.format(table=table, start=start, end=end, cc=cc)
+
+    def exact_url(candidate: str) -> None:
+        if candidate != url:
+            raise FetchError("Tor Metrics URL changed")
+
+    try:
+        payload = fetcher(
+            url,
+            timeout=timeout,
+            max_bytes=MAX_BYTES,
+            max_redirects=0,
+            headers={"Accept": "text/csv", "User-Agent": USER_AGENT},
+            url_policy=exact_url,
+        )
+        if len(payload) > MAX_BYTES:
+            raise FetchError("Tor Metrics response exceeded its byte budget")
+        return payload.decode("utf-8")
     except Exception as exc:  # noqa: BLE001 — abstain, never fake
-        log.warning("tor metrics %s fetch failed: %s", table, exc)
+        log.warning("tor metrics fetch failed (%s)", type(exc).__name__)
         return None
 
 
 def _rows(raw: str) -> list[dict]:
     """CSV body -> dict rows, skipping the # comment header block."""
+    if not isinstance(raw, str) or len(raw.encode("utf-8")) > MAX_BYTES:
+        return []
     lines = [ln for ln in raw.splitlines() if ln and not ln.startswith("#")]
     if not lines:
         return []
-    return list(csv.DictReader(io.StringIO("\n".join(lines))))
+    reader = csv.DictReader(io.StringIO("\n".join(lines)))
+    if not reader.fieldnames or len(reader.fieldnames) > 32:
+        return []
+    rows = []
+    for row in reader:
+        if len(rows) >= MAX_ROWS:
+            return []
+        if None in row or any(len(str(value or "")) > 1024 for value in row.values()):
+            return []
+        rows.append(row)
+    return rows
 
 
 def _int(v) -> int | None:
     try:
-        return int(v)
+        value = int(v)
     except (TypeError, ValueError):
         return None
+    return value if 0 <= value <= 10**10 else None
 
 
 def parse_bridge_users(raw: str) -> dict[str, int]:
@@ -76,8 +142,9 @@ def parse_bridge_users(raw: str) -> dict[str, int]:
     out = {}
     for r in _rows(raw):
         u = _int(r.get("users"))
-        if r.get("date") and u is not None:
-            out[r["date"]] = u
+        day = r.get("date")
+        if _parse_date(day) is not None and u is not None:
+            out[day] = u
     return out
 
 
@@ -86,9 +153,10 @@ def parse_relay_users(raw: str) -> dict[str, dict]:
     out = {}
     for r in _rows(raw):
         u = _int(r.get("users"))
-        if r.get("date") and u is not None:
-            out[r["date"]] = {"users": u, "lower": _int(r.get("lower")),
-                              "upper": _int(r.get("upper"))}
+        day = r.get("date")
+        if _parse_date(day) is not None and u is not None:
+            out[day] = {"users": u, "lower": _int(r.get("lower")),
+                        "upper": _int(r.get("upper"))}
     return out
 
 
@@ -101,7 +169,7 @@ def parse_transports(raw: str) -> dict[str, dict[str, dict]]:
     out: dict[str, dict[str, dict]] = {}
     for r in _rows(raw):
         t, d = (r.get("transport") or "").strip(), r.get("date")
-        if not d or t not in TRANSPORTS_KEPT:
+        if _parse_date(d) is None or t not in TRANSPORTS_KEPT:
             continue
         low, high = _int(r.get("low")), _int(r.get("high"))
         if low is None and high is None:
@@ -113,6 +181,9 @@ def parse_transports(raw: str) -> dict[str, dict[str, dict]]:
 def collect(start: str, end: str, fetch=_get_csv) -> dict[str, dict]:
     """All three tables merged into {date: record}. A table that fails to
     fetch simply contributes nothing — its absence is visible per-field."""
+    if not _valid_window(start, end):
+        log.warning("tor metrics refused an invalid collection window")
+        return {}
     merged: dict[str, dict] = {}
     raw = fetch("userstats-bridge-country", start, end)
     if raw:

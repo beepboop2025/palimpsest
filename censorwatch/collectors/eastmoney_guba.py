@@ -20,15 +20,16 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urljoin
 
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from core.exceptions import SchemaChangedError, SourceDownError
 from censorwatch.classifier import is_eastmoney_validation_shell
 from censorwatch.collectors.base_post_collector import BasePostCollector
 from censorwatch.interfaces import content_hash
+from censorwatch.source_policy import source_url_is_allowed
+from core.exceptions import SchemaChangedError, SourceDownError
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,6 @@ _BASE = "https://guba.eastmoney.com"
 _LIST_TMPL = _BASE + "/list,{code}.html"
 _NEWS_HREF = re.compile(r"/news,[^,]+,(\d+)\.html")
 _BEIJING = timezone(timedelta(hours=8))
-_ALLOWED_POST_HOSTS = frozenset({"guba.eastmoney.com", "caifuhao.eastmoney.com"})
 _REQUIRED_COLUMNS = ["post_id", "url", "full_text"]
 
 # Guba deletion-notice markers (maintainer-authored, never auto-generated). A removed guba
@@ -58,7 +58,17 @@ class EastmoneyGubaCollector(BasePostCollector):
     def __init__(self, config: dict):
         super().__init__(config)
         # Which stock bars to monitor, e.g. ["600519", "300750"]. From sources.yaml.
-        self.stock_codes = [str(c) for c in config.get("stock_codes", ["600519"])]
+        configured = config.get("stock_codes", ["600519"])
+        if (
+            not isinstance(configured, list)
+            or not 1 <= len(configured) <= 32
+            or any(
+                type(code) is not str or re.fullmatch(r"\d{6}", code) is None
+                for code in configured
+            )
+        ):
+            raise ValueError("eastmoney stock_codes must be 1-32 six-digit strings")
+        self.stock_codes = list(dict.fromkeys(configured))
 
     # ── CAPTURE ──────────────────────────────────────────────────
     async def collect(self) -> list[dict]:
@@ -82,6 +92,9 @@ class EastmoneyGubaCollector(BasePostCollector):
         """Extract post rows from each saved list page → Post-shaped DataFrame."""
         rows = []
         for page in raw_data:
+            remaining = self.max_records_per_cycle - len(rows)
+            if remaining <= 0:
+                break
             html = page.get("html") or ""
             list_url = page.get("list_url") or _LIST_TMPL.format(
                 code=page.get("stock", "unknown")
@@ -91,7 +104,7 @@ class EastmoneyGubaCollector(BasePostCollector):
             # immutable raw response, preserving the incident for diagnosis.
             if is_eastmoney_validation_shell(html):
                 raise SourceDownError(self.name, url=list_url, status_code=200)
-            page_rows = self._parse_list_html(html)
+            page_rows = self._parse_list_html(html, limit=remaining)
             if not page_rows:
                 raise SourceDownError(self.name, url=list_url, status_code=200)
             rows.extend(page_rows)
@@ -110,20 +123,19 @@ class EastmoneyGubaCollector(BasePostCollector):
         if not isinstance(href, str) or not href.strip():
             return None
         absolute = urljoin(_BASE + "/", href.strip())
-        try:
-            parsed = urlsplit(absolute)
-        except ValueError:
-            return None
-        if parsed.scheme.lower() != "https" or parsed.netloc.lower() not in _ALLOWED_POST_HOSTS:
+        if not source_url_is_allowed("eastmoney_guba", absolute):
             return None
         return absolute
 
     @classmethod
-    def _parse_list_html(cls, html: str) -> list[dict]:
+    def _parse_list_html(cls, html: str, *, limit: int = 1000) -> list[dict]:
         """Pure HTML → list of post dicts (unit-testable against the fixture)."""
+        if type(limit) is not int or limit <= 0:
+            return []
+        limit = min(limit, 1000)
         soup = BeautifulSoup(html, "html.parser")
         out = []
-        for it in soup.select("tr.listitem"):
+        for it in soup.select("tr.listitem", limit=limit):
             # The title anchor's immutable data-postid covers both ordinary Guba
             # and Caifuhao rows.  Selecting only /news,... hrefs silently lost the
             # Caifuhao destination and led the old parser to fabricate 404 URLs.

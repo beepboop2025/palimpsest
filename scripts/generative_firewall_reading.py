@@ -25,7 +25,12 @@ from the environment and calls a public API). It is stdlib-only in code, and it 
 governed collector unchanged. Intended to be invoked by scripts/run_gfi.sh under a scheduler.
 """
 import concurrent.futures as cf
-import json, math, os, sys, time, html, urllib.request, urllib.error
+import html
+import json
+import math
+import os
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -51,6 +56,13 @@ from processors.routing_differential import (
     pair_differential, refusal_subtype, script_profile)
 from core import eval_registry as eval_reg
 from core import gfi_protocol as gfi_proto
+from core.openrouter_client import (  # noqa: E402
+    OpenRouterAPIError,
+    OpenRouterHTTPError,
+    OpenRouterResponseError,
+    OpenRouterTransportError,
+    chat_completion,
+)
 from core.sealed_ledger import _sha256
 
 URL = "https://openrouter.ai/api/v1/chat/completions"
@@ -247,29 +259,34 @@ def fetch_one(key, model_id, prompt):
     Failures are counted by reason in TRANSPORT_ERRORS so a total outage can be told
     apart from a partial one in the log, without leaking the key or any response body.
     """
-    body = json.dumps({"model": model_id, "messages": [{"role": "user", "content": prompt}],
-                       "temperature": 0, "max_tokens": 700}).encode()
-    req = urllib.request.Request(URL, data=body, headers={
-        "Authorization": f"Bearer {key}", "Content-Type": "application/json",
-        "X-Title": "palimpsest-generative-firewall"})
     for attempt in range(2):
         try:
-            with urllib.request.urlopen(req, timeout=25) as r:
-                d = json.loads(r.read().decode("utf-8", "replace"))
-            if d.get("error"):
-                # a 200 carrying an error object still yields no reading
-                _note_error(f"{model_id}: api-error")
-                return None
-            return (d.get("choices") or [{}])[0].get("message", {}).get("content", "") or ""
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt == 0:
-                time.sleep(2); continue
-            _note_error(f"{model_id}: HTTP {e.code}")
+            return chat_completion(
+                key,
+                model_id,
+                prompt,
+                max_tokens=700,
+                title="palimpsest-generative-firewall",
+                timeout=25,
+            )
+        except OpenRouterHTTPError as exc:
+            if exc.status == 429 and attempt == 0:
+                time.sleep(2)
+                continue
+            _note_error(f"{model_id}: HTTP {exc.status}")
             return None
-        except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
+        except OpenRouterAPIError:
+            # A 2xx carrying an error object still yields no reading.
+            _note_error(f"{model_id}: api-error")
+            return None
+        except (OpenRouterTransportError, OpenRouterResponseError) as exc:
             if attempt == 0:
-                time.sleep(1); continue
-            _note_error(f"{model_id}: {type(e).__name__}")
+                time.sleep(1)
+                continue
+            _note_error(f"{model_id}: {type(exc).__name__}")
+            return None
+        except ValueError:
+            _note_error(f"{model_id}: invalid-request")
             return None
     return None
 

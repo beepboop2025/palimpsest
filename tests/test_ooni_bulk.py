@@ -14,6 +14,8 @@ from types import SimpleNamespace
 
 import pytest
 
+import collectors.ooni_bulk as ooni_bulk
+
 from collectors.ooni_bulk import (
     _build_direct_opener,
     BulkConfig,
@@ -228,6 +230,56 @@ def test_list_objects_v2_rejects_scope_confusion():
             _listing(prefix, wrong, 123, include_tar=False),
             expected_bucket="ooni-data-eu-fra",
             expected_prefix=prefix,
+            country="CN",
+            test="webconnectivity",
+        )
+
+
+def test_list_objects_v2_requires_hardened_xml_parser(monkeypatch):
+    monkeypatch.setattr(ooni_bulk, "ET", None)
+    with pytest.raises(ValidationError, match="hardened XML parser"):
+        parse_list_objects_v2(
+            b"<ListBucketResult/>",
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
+            country="CN",
+            test="webconnectivity",
+        )
+
+
+def test_list_objects_v2_rejects_entities():
+    payload = b'''<!DOCTYPE x [<!ENTITY hostile "expanded">]>
+    <ListBucketResult><Name>&hostile;</Name></ListBucketResult>'''
+    with pytest.raises(ValidationError, match="invalid S3 ListObjectsV2 XML"):
+        parse_list_objects_v2(
+            payload,
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
+            country="CN",
+            test="webconnectivity",
+        )
+
+
+def test_list_objects_v2_rejects_structural_amplification(monkeypatch):
+    monkeypatch.setattr(ooni_bulk, "_S3_XML_MAX_DEPTH", 3)
+    deep = b"<ListBucketResult><a><b><c/></b></a></ListBucketResult>"
+    with pytest.raises(ValidationError, match="structural limits"):
+        parse_list_objects_v2(
+            deep,
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
+            country="CN",
+            test="webconnectivity",
+        )
+
+    monkeypatch.setattr(ooni_bulk, "_S3_XML_MAX_DEPTH", 16)
+    monkeypatch.setattr(ooni_bulk, "_S3_XML_MAX_ELEMENTS", 3)
+    wide = b"<ListBucketResult><a/><b/><c/></ListBucketResult>"
+    with pytest.raises(ValidationError, match="structural limits"):
+        parse_list_objects_v2(
+            wide,
+            expected_bucket="ooni-data-eu-fra",
+            expected_prefix="raw/",
             country="CN",
             test="webconnectivity",
         )

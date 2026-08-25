@@ -8,6 +8,9 @@ All offline: rows are literals, nothing reaches api2.applecensorship.com.
 """
 from __future__ import annotations
 
+import json
+
+import collectors.apple_censorship as ac
 from collectors.apple_censorship import (control_state, parse_country, peer_rank)
 
 
@@ -149,19 +152,42 @@ def test_returns_none_when_both_years_fail():
 
 
 def test_rejects_an_oversized_overview_before_parsing(monkeypatch):
-    from collectors import apple_censorship as ac
-
-    class Response:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_args):
-            return False
-
-        def read(self, _limit):
-            return b"x" * (ac.MAX_RESPONSE_BYTES + 1)
-
     rows = ac._fetch_year(
-        2026, 250, 30.0, lambda _request, timeout: Response()
+        2026,
+        250,
+        30.0,
+        lambda *_args, **_kwargs: b"x" * (ac.MAX_RESPONSE_BYTES + 1),
     )
     assert rows is None
+
+
+def test_fetch_year_is_exact_bounded_and_redirect_free():
+    seen = {}
+    payload = json.dumps({"apps": _corpus()}).encode()
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        return payload
+
+    assert ac._fetch_year(2026, 250, 30.0, fetcher) == _corpus()
+    assert seen["max_bytes"] == ac.MAX_RESPONSE_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_fetch_and_parser_refuse_hostile_shapes():
+    def changed(url, **kwargs):
+        kwargs["url_policy"]("http://127.0.0.1/private")
+        return b"{}"
+
+    assert ac._fetch_year(2026, 250, 30.0, changed) is None
+    assert ac._fetch_year(
+        2026,
+        250,
+        30.0,
+        lambda *_a, **_k: b'{"apps":[],"apps":[]}',
+    ) is None
+    assert parse_country(["not-a-row"]) is None
+    bad = _corpus()
+    bad[0]["tags"] = {f"tag-{index}": index for index in range(ac.MAX_TAGS + 1)}
+    assert parse_country(bad) is None

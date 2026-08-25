@@ -3,6 +3,7 @@
 import fcntl
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,124 @@ from scripts import newswire_pull as pull
 ROOT = Path(__file__).resolve().parent.parent
 SERVICE = ROOT / "ops/systemd/palimpsest-evidence-wire.service"
 TIMER = ROOT / "ops/systemd/palimpsest-evidence-wire.timer"
+
+
+def _snapshot_registry():
+    base = pull.load_source_registry()
+    return pull.SourceRegistry(
+        schema_version=base.schema_version,
+        window_hours=base.window_hours,
+        max_items_per_source=base.max_items_per_source,
+        max_events=base.max_events,
+        sources=base.sources[:1],
+        sha256="a" * 64,
+    )
+
+
+def _snapshot_feed(registry) -> bytes:
+    source = registry.sources[0]
+    return (
+        '<?xml version="1.0"?><rss><channel><item>'
+        '<title>Network policy measurement published</title>'
+        f'<link>https://{source.article_hosts[0]}/news/example</link>'
+        '<description>Bounded public metadata.</description>'
+        '<pubDate>Thu, 13 Aug 2026 10:00:00 +0000</pubDate>'
+        '</item></channel></rss>'
+    ).encode()
+
+
+def test_acquisition_snapshot_replays_exact_bytes_failures_and_clock(tmp_path):
+    registry = _snapshot_registry()
+    source = registry.sources[0]
+    observed_at = datetime(2026, 8, 13, 12, tzinfo=timezone.utc)
+    raw = _snapshot_feed(registry)
+    snapshot = tmp_path / "snapshot"
+    writer = pull.AcquisitionSnapshotWriter(
+        snapshot,
+        registry,
+        observed_at,
+        lambda url, **kwargs: raw,
+    )
+
+    assert writer(source.feed_url, max_bytes=pull.MAX_FEED_BYTES) == raw
+    writer.finalize()
+
+    assert snapshot.stat().st_mode & 0o777 == 0o700
+    assert (snapshot / "blobs").stat().st_mode & 0o777 == 0o700
+    assert (snapshot / "manifest.json").stat().st_mode & 0o777 == 0o600
+    reader = pull.AcquisitionSnapshotReader(snapshot, registry)
+    assert reader.observed_at == observed_at
+    assert reader(source.feed_url) == raw
+    reader.finalize()
+
+
+def test_acquisition_snapshot_tampering_and_registry_drift_fail_closed(tmp_path):
+    registry = _snapshot_registry()
+    source = registry.sources[0]
+    snapshot = tmp_path / "snapshot"
+    writer = pull.AcquisitionSnapshotWriter(
+        snapshot,
+        registry,
+        datetime(2026, 8, 13, 12, tzinfo=timezone.utc),
+        lambda url, **kwargs: _snapshot_feed(registry),
+    )
+    writer(source.feed_url)
+    writer.finalize()
+
+    drifted = pull.SourceRegistry(
+        schema_version=registry.schema_version,
+        window_hours=registry.window_hours,
+        max_items_per_source=registry.max_items_per_source,
+        max_events=registry.max_events,
+        sources=registry.sources,
+        sha256="b" * 64,
+    )
+    with pytest.raises(ValueError, match="does not match the source registry"):
+        pull.AcquisitionSnapshotReader(snapshot, drifted)
+
+    blob = snapshot / "blobs" / f"{source.id}.feed"
+    blob.write_bytes(b"tampered")
+    reader = pull.AcquisitionSnapshotReader(snapshot, registry)
+    with pytest.raises(pull.AcquisitionFetchError, match="validation failed"):
+        reader(source.feed_url)
+    with pytest.raises(ValueError, match="replay failed"):
+        reader.finalize()
+
+
+def test_newswire_snapshot_replay_has_no_network_path(tmp_path, monkeypatch):
+    registry = _snapshot_registry()
+    source = registry.sources[0]
+    observed_at = datetime(2026, 8, 13, 12, tzinfo=timezone.utc)
+    snapshot = tmp_path / "snapshot"
+    writer = pull.AcquisitionSnapshotWriter(
+        snapshot,
+        registry,
+        observed_at,
+        lambda url, **kwargs: _snapshot_feed(registry),
+    )
+    writer(source.feed_url)
+    writer.finalize()
+
+    monkeypatch.setattr(pull, "load_source_registry", lambda _path: registry)
+    monkeypatch.setattr(
+        pull,
+        "safe_fetch_bytes",
+        lambda *_args, **_kwargs: pytest.fail("snapshot replay reached the network"),
+    )
+    output = tmp_path / "newswire-latest.json"
+    ledger = tmp_path / "newswire-versions.jsonl"
+
+    assert pull.main([
+        "--config",
+        str(tmp_path / "registry.json"),
+        "--output",
+        str(output),
+        "--ledger",
+        str(ledger),
+        "--snapshot-in",
+        str(snapshot),
+    ]) == 0
+    assert json.loads(output.read_text())["generated_at"] == "2026-08-13T12:00:00Z"
 
 
 def test_node_newswire_is_bounded_unprivileged_and_state_separated() -> None:

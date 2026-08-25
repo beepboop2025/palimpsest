@@ -524,18 +524,10 @@ def main() -> None:
         )
         return
     try:
-        raw = json.load(open(TARGETS, encoding="utf-8"))
+        conf = load_targets(TARGETS)
     except (OSError, ValueError) as e:
-        _refuse(f"target file unreadable ({e}).")
+        _refuse(f"target file refused ({e}).")
         return
-    if raw.get("_meta", {}).get("placeholder"):
-        _refuse(
-            "the target file is the shipped placeholder (RFC 5737 documentation IPs). "
-            "Replace it with a curated list before probing."
-        )
-        return
-
-    conf = load_targets(TARGETS)
     probe, dark, resolver = conf["probe"], conf["dark"], conf["resolver"]
     public_probe_domain = _public_probe_domain(probe.domain)
     if public_probe_domain is None:

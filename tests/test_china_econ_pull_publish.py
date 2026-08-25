@@ -123,30 +123,48 @@ def _observations(tmp_path):
 
 def test_collector_hashes_exact_response_bytes_and_keeps_request_url(monkeypatch):
     raw = b'{"records": [], "responseTime": "2026-08-04T00:00:00Z"}'
+    seen = {}
 
-    class Response:
-        def __enter__(self):
-            return self
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        return raw
 
-        def __exit__(self, *args):
-            return False
-
-        def read(self, amount=None):
-            return raw
-
-    monkeypatch.setattr(
-        china_collector.urllib.request,
-        "urlopen",
-        lambda request, timeout: Response(),
-    )
     response = china_collector._get(
-        "/ags/test?period=2026-08", "https://example.test", retries=0
+        "/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en&startDate=2026-08-01&endDate=2026-08-04",
+        "https://www.chinamoney.com.cn/english/bmkshibor/",
+        retries=0,
+        fetcher=fetcher,
     )
     assert response is not None
     assert response.raw_sha256 == hashlib.sha256(raw).hexdigest()
     assert response.evidence_url == (
-        "https://www.chinamoney.com.cn/ags/test?period=2026-08"
+        "https://www.chinamoney.com.cn/ags/ms/cm-u-bk-shibor/ShiborHis"
+        "?lang=en&startDate=2026-08-01&endDate=2026-08-04"
     )
+    assert seen["max_bytes"] == china_collector.MAX_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_collector_refuses_changed_urls_ambiguous_json_and_wide_windows():
+    def changed_url(url, **kwargs):
+        kwargs["url_policy"]("https://evil.example/private")
+        return b'{"records":[]}'
+
+    path = (
+        "/ags/ms/cm-u-bk-shibor/ShiborHis?lang=en"
+        "&startDate=2026-08-01&endDate=2026-08-04"
+    )
+    referer = "https://www.chinamoney.com.cn/english/bmkshibor/"
+    assert china_collector._get(path, referer, retries=0, fetcher=changed_url) is None
+    assert china_collector._get(
+        path,
+        referer,
+        retries=0,
+        fetcher=lambda *_args, **_kwargs: b'{"records":[],"records":[]}',
+    ) is None
+    with pytest.raises(ValueError):
+        china_collector.fetch_shibor("2026-01-01", "2026-08-04")
 
 
 def test_an_unchanged_round_still_refreshes_the_observation_time(publish):

@@ -1,15 +1,15 @@
 {
   "author": "Palimpsest Eval Lab",
   "claim": "The v4 judge removes a demonstrated quote-and-mention false positive while preserving a deterministic, inspectable rule; it does not replace the pending human-validation study.",
-  "content_sha256": "85004b263b9ab8c4744cebd30634755661fe1140e70e69fc59349bd23ef5f272",
+  "content_sha256": "daa0c904c6ccd3f729794090113cf155a796295397474ee7360fc2f53c8e642d",
   "dek": "A transparent lexical judge can still make a basic category error: finding refusal words inside a quotation and calling the whole response a refusal. Method v4 narrows the decision to the model's own speech act and forces a new baseline.",
   "evidence": [
     {
-      "bytes": 67838,
+      "bytes": 73185,
       "label": "Quote-aware deterministic judge",
       "path": "collectors/generative_firewall.py",
       "role": "Production speech-act extraction and refusal classification",
-      "sha256": "d51c6ed3bf864addd4114fad44b4d03966d013f4ac74ab07d7aa40ebcf7ff47b",
+      "sha256": "af04c679402fc7e1035fbb9a2a38aea7fc1ef93fbd27ec18a3e8a1206c390615",
       "url": "/collectors/generative_firewall.py"
     },
     {

@@ -9,23 +9,53 @@
 sources:
   eastmoney_guba:
     enabled: true
+    admission_status: approved
+    risk_tier: hostile_public
+    public_only: true
+    bypass_access_controls: false
+    rights_policy: bounded-public-research-observation
+    retention_policy: bounded-research-evidence
+    network_policy: eastmoney_guba
+    requires_render_gateway: false
+    capture_interval_min: 10
     collector_class: censorwatch.collectors.eastmoney_guba.EastmoneyGubaCollector
     config:
       # Stock bars (股吧) to monitor. Codes are exchange tickers.
       stock_codes: ["600519", "300750", "601318"]   # Moutai, CATL, Ping An
       rate_limit: 3.0        # seconds between requests (BaseCollector knob)
+      max_records_per_cycle: 250
 
   xueqiu:
     enabled: false           # Aliyun WAF — needs Playwright + residential proxy
+    admission_status: pending_access_review
+    risk_tier: hostile_public
+    public_only: true
+    bypass_access_controls: false
+    rights_policy: bounded-public-research-observation
+    retention_policy: bounded-research-evidence
+    network_policy: xueqiu
+    requires_render_gateway: true
+    capture_interval_min: 20
     collector_class: censorwatch.collectors.xueqiu.XueqiuCollector
     config:
       symbols: ["SH600519", "SZ300750", "SH601318"]   # Moutai, CATL, Ping An
       count: 20
+      max_records_per_cycle: 250
 
   weibo_search:
     enabled: false           # login-walled / 403 — needs Playwright + in-China residential proxy
+    admission_status: pending_access_review
+    risk_tier: hostile_public
+    public_only: true
+    bypass_access_controls: false
+    rights_policy: bounded-public-research-observation
+    retention_policy: bounded-research-evidence
+    network_policy: weibo_search
+    requires_render_gateway: true
+    capture_interval_min: 20
     collector_class: censorwatch.collectors.weibo_search.WeiboSearchCollector
     config:
       keywords: ["经济", "失业", "维权", "房地产"]   # tune to monitored topics
+      max_records_per_cycle: 250
       # control_posts REQUIRED for a meaningful liveness probe (known-live permalinks):
       control_posts: []

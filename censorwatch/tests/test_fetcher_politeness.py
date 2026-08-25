@@ -2,8 +2,8 @@
 
     python3 -m pytest censorwatch/tests/test_fetcher_politeness.py
 
-Runs the full path via httpx.MockTransport (no network) and an injected clock (no real
-sleeping). Verifies: validators are replayed as If-None-Match / If-Modified-Since; a 304
+Runs the full path via an injected hardened-response seam (no network) and an injected clock
+(no real sleeping). Verifies: validators are replayed as If-None-Match / If-Modified-Since; a 304
 maps back to the cached body with not_modified=True (a strong LIVE tell, never a false
 deletion); a changed 200 refreshes the cache; the per-host pacer spaces same-host requests
 and ignores cross-host ones; interval 0 (the default) changes nothing.
@@ -14,19 +14,19 @@ from __future__ import annotations
 import asyncio
 import random
 
-import httpx
-
 from censorwatch.config import CensorwatchSettings
 from censorwatch.fetcher import Fetcher
+from core.safe_fetch import SafeFetchResponse
 
 
 def _settings(**over) -> CensorwatchSettings:
-    base = dict(
-        enabled=True, proxy_url=None,
-        min_delay_s=0.0, max_delay_s=0.0, request_timeout_s=5.0,
-        confirmations=3, archive_dir="/tmp/cw",
-        velocity_window_min=60, velocity_baseline_windows=24, spike_z_threshold=3.0,
-    )
+    base = {
+        "enabled": True, "proxy_url": None,
+        "min_delay_s": 0.0, "max_delay_s": 0.0, "request_timeout_s": 5.0,
+        "confirmations": 3, "archive_dir": "/tmp/cw",
+        "velocity_window_min": 60, "velocity_baseline_windows": 24,
+        "spike_z_threshold": 3.0,
+    }
     base.update(over)
     return CensorwatchSettings(**base)
 
@@ -36,15 +36,19 @@ def _settings(**over) -> CensorwatchSettings:
 async def _revalidation_case():
     seen_conditionals = []
 
-    def handler(req):
-        inm = req.headers.get("If-None-Match")
+    def handler(url, **kwargs):
+        inm = kwargs["headers"].get("If-None-Match")
         seen_conditionals.append(inm)
         if inm == 'W/"v1"':
-            return httpx.Response(304)
-        return httpx.Response(200, text="帖子正文 body v1",
-                              headers={"ETag": 'W/"v1"', "Last-Modified": "Mon, 06 Jul 2026 10:00:00 GMT"})
+            return SafeFetchResponse(304, {}, b"", url)
+        return SafeFetchResponse(
+            200,
+            {"ETag": 'W/"v1"', "Last-Modified": "Mon, 06 Jul 2026 10:00:00 GMT"},
+            "帖子正文 body v1".encode(),
+            url,
+        )
 
-    f = Fetcher(_settings(), transport=httpx.MockTransport(handler))
+    f = Fetcher(_settings(), source="eastmoney_guba", response_fetcher=handler)
     try:
         first = await f.fetch("https://guba.eastmoney.com/news,600519,1.html")
         assert first.status == 200 and not first.not_modified
@@ -63,18 +67,20 @@ async def _revalidation_case():
 async def _changed_body_refreshes_cache_case():
     version = {"n": 1}
 
-    def handler(req):
+    def handler(url, **_kwargs):
         # Always serve fresh content with a new validator (post was edited).
         n = version["n"]
         version["n"] += 1
-        return httpx.Response(200, text=f"body v{n}", headers={"ETag": f'W/"v{n}"'})
+        return SafeFetchResponse(
+            200, {"ETag": f'W/"v{n}"'}, f"body v{n}".encode(), url
+        )
 
-    f = Fetcher(_settings(), transport=httpx.MockTransport(handler))
+    f = Fetcher(_settings(), source="eastmoney_guba", response_fetcher=handler)
     try:
-        await f.fetch("https://x.test/p/1")
-        r2 = await f.fetch("https://x.test/p/1")
+        await f.fetch("https://guba.eastmoney.com/p/1")
+        r2 = await f.fetch("https://guba.eastmoney.com/p/1")
         assert r2.status == 200 and r2.text == "body v2" and not r2.not_modified
-        r3 = await f.fetch("https://x.test/p/1")
+        r3 = await f.fetch("https://guba.eastmoney.com/p/1")
         assert r3.text == "body v3"                  # cache tracked the newest validator
     finally:
         await f.aclose()
@@ -83,15 +89,15 @@ async def _changed_body_refreshes_cache_case():
 async def _no_validator_no_conditional_case():
     conditionals = []
 
-    def handler(req):
-        conditionals.append((req.headers.get("If-None-Match"),
-                             req.headers.get("If-Modified-Since")))
-        return httpx.Response(200, text="no validators here")   # origin sends no ETag/L-M
+    def handler(url, **kwargs):
+        conditionals.append((kwargs["headers"].get("If-None-Match"),
+                             kwargs["headers"].get("If-Modified-Since")))
+        return SafeFetchResponse(200, {}, b"no validators here", url)
 
-    f = Fetcher(_settings(), transport=httpx.MockTransport(handler))
+    f = Fetcher(_settings(), source="eastmoney_guba", response_fetcher=handler)
     try:
-        await f.fetch("https://y.test/p/1")
-        await f.fetch("https://y.test/p/1")
+        await f.fetch("https://guba.eastmoney.com/p/1")
+        await f.fetch("https://guba.eastmoney.com/p/1")
         assert conditionals == [(None, None), (None, None)]     # nothing cached, nothing sent
     finally:
         await f.aclose()
@@ -111,13 +117,18 @@ async def _host_pacing_case():
 
     asyncio.sleep = fake_sleep  # type: ignore
     try:
-        f = Fetcher(_settings(host_min_interval_s=10.0),
-                    transport=httpx.MockTransport(lambda req: httpx.Response(200, text="ok")),
-                    rng=random.Random(7), clock=lambda: 100.0)   # frozen clock
+        f = Fetcher(
+            _settings(host_min_interval_s=10.0),
+            source="eastmoney_guba",
+            response_fetcher=lambda url, **_kwargs: SafeFetchResponse(
+                200, {}, b"ok", url
+            ),
+            rng=random.Random(7), clock=lambda: 100.0,
+        )   # frozen clock
         try:
             await f.fetch("https://guba.eastmoney.com/list,600519.html")   # first contact: no wait
             await f.fetch("https://guba.eastmoney.com/list,300750.html")   # same host: waits interval
-            await f.fetch("https://xueqiu.com/S/SH600519")                  # other host: no wait
+            await f.fetch("https://caifuhao.eastmoney.com/news/1")         # other host: no wait
         finally:
             await f.aclose()
     finally:
@@ -137,8 +148,13 @@ async def _pacing_off_by_default_case():
 
     asyncio.sleep = fake_sleep  # type: ignore
     try:
-        f = Fetcher(_settings(),
-                    transport=httpx.MockTransport(lambda req: httpx.Response(200, text="ok")))
+        f = Fetcher(
+            _settings(),
+            source="eastmoney_guba",
+            response_fetcher=lambda url, **_kwargs: SafeFetchResponse(
+                200, {}, b"ok", url
+            ),
+        )
         try:
             await f.fetch("https://guba.eastmoney.com/a")
             await f.fetch("https://guba.eastmoney.com/b")
@@ -149,12 +165,28 @@ async def _pacing_off_by_default_case():
     assert [d for d in delays if d > 0] == []
 
 
+async def _cache_byte_budget_case():
+    def handler(url, **_kwargs):
+        return SafeFetchResponse(200, {"ETag": url[-1]}, b"x" * 6, url)
+
+    fetcher = Fetcher(
+        _settings(max_cache_bytes=10),
+        source="eastmoney_guba",
+        response_fetcher=handler,
+    )
+    await fetcher.fetch("https://guba.eastmoney.com/a")
+    await fetcher.fetch("https://guba.eastmoney.com/b")
+    assert fetcher._cache_bytes <= 10
+    assert list(fetcher._cache) == ["https://guba.eastmoney.com/b"]
+
+
 # pytest entry points
 def test_revalidation_304_returns_cached_body(): asyncio.run(_revalidation_case())
 def test_changed_body_refreshes_cache(): asyncio.run(_changed_body_refreshes_cache_case())
 def test_no_validator_sends_no_conditionals(): asyncio.run(_no_validator_no_conditional_case())
 def test_host_pacing_spaces_same_host_only(): asyncio.run(_host_pacing_case())
 def test_pacing_off_by_default(): asyncio.run(_pacing_off_by_default_case())
+def test_cache_is_bounded_by_bytes(): asyncio.run(_cache_byte_budget_case())
 
 
 if __name__ == "__main__":

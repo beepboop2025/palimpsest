@@ -17,16 +17,13 @@ Standard-library only (urllib + json), so it has no dependencies in CI.
 """
 from __future__ import annotations
 
-import json
 import logging
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
+
+from collectors.ooni_aggregation import fetch_aggregation_json
 
 log = logging.getLogger(__name__)
 
-OONI_AGG = "https://api.ooni.io/api/v1/aggregation"
 USER_AGENT = "palimpsest.info observatory (OONI open-data ingest; contact desk@palimpsest.info)"
 
 # Network tests that expose the GFW from different angles: broad URL blocking,
@@ -43,29 +40,28 @@ TESTS = [
 
 
 def _get(params: dict, timeout: float = 30.0, retries: int = 2,
-         max_bytes: int = 8 * 1024 * 1024) -> dict | None:
+         max_bytes: int = 8 * 1024 * 1024, *, fetcher=None,
+         sleep=time.sleep) -> dict | None:
     """One aggregation call. Fail-soft: returns None on any error (the caller
     abstains for that slice rather than publishing a false zero). Honors OONI's
     'modest request rate' with a backoff on 429. `max_bytes` caps the read —
     the per-domain breakdown is large, so callers raise it for that call; a
     truncated body fails to parse and is treated as an abstention, never a
     partial/misleading result."""
-    url = f"{OONI_AGG}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    for attempt in range(retries + 1):
-        try:
-            raw = urllib.request.urlopen(req, timeout=timeout).read(max_bytes)
-            return json.loads(raw)
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < retries:
-                time.sleep(5 * (attempt + 1))
-                continue
-            log.warning("OONI HTTP %s for %s", e.code, params)
-            return None
-        except (urllib.error.URLError, ValueError, OSError) as e:
-            log.warning("OONI fetch failed for %s: %s", params, e)
-            return None
-    return None
+    kwargs = {}
+    if fetcher is not None:
+        kwargs["fetcher"] = fetcher
+    return fetch_aggregation_json(
+        params,
+        user_agent=USER_AGENT,
+        timeout=timeout,
+        retries=retries,
+        max_bytes=max_bytes,
+        retry_delay=lambda attempt: 5 * (attempt + 1),
+        logger=log,
+        sleep=sleep,
+        **kwargs,
+    )
 
 
 def _rate(anomaly: int, measurement: int, failure: int) -> float | None:

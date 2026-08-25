@@ -15,11 +15,17 @@ early enable can't crash the beat.
 from __future__ import annotations
 
 import logging
+import re
 
 from core.scheduler import app
 from censorwatch.config import get_settings
 
 logger = logging.getLogger(__name__)
+_IDENTIFIER = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}\Z")
+
+
+def _identifier(value: object) -> str | None:
+    return value if type(value) is str and _IDENTIFIER.fullmatch(value) else None
 
 
 def _disabled_result(task: str) -> dict:
@@ -36,6 +42,9 @@ def cw_collect(self, source_name: str):
     settings = get_settings()
     if not settings.enabled:
         return _disabled_result("cw_collect")
+    source_name = _identifier(source_name)
+    if source_name is None:
+        return {"task": "cw_collect", "status": "skipped", "note": "invalid source"}
     try:
         import asyncio
         from censorwatch.db import create_tables
@@ -52,10 +61,11 @@ def cw_collect(self, source_name: str):
         logger.info("[censorwatch] cw_collect(%s): %s (%s records)", source_name,
                     result.get("status"), result.get("records_collected", 0))
         return {"task": "cw_collect", "source": source_name, **result}
-    except Exception as e:  # never let a censorwatch failure escalate to the beat
-        logger.error("[censorwatch] cw_collect(%s) failed: %s", source_name, e)
+    except Exception as exc:  # never let a censorwatch failure escalate to the beat
+        error_code = type(exc).__name__
+        logger.error("[censorwatch] cw_collect(%s) failed (%s)", source_name, error_code)
         return {"task": "cw_collect", "source": source_name, "status": "error",
-                "error": str(e)}
+                "error": error_code}
 
 
 @app.task(bind=True, name="censorwatch.tasks.cw_recheck", max_retries=2,
@@ -70,6 +80,9 @@ def cw_recheck(self, cohort: str = "fresh", min_age_hours: float = 0,
     settings = get_settings()
     if not settings.enabled:
         return _disabled_result("cw_recheck")
+    cohort = _identifier(cohort)
+    if cohort not in {"fresh", "aging", "mature"}:
+        return {"task": "cw_recheck", "status": "skipped", "note": "invalid cohort"}
     try:
         import asyncio
         from censorwatch.db import create_tables
@@ -93,9 +106,15 @@ def cw_recheck(self, cohort: str = "fresh", min_age_hours: float = 0,
                     cohort, len(results), confirmed)
         return {"task": "cw_recheck", "cohort": cohort, "status": "ok",
                 "confirmed": confirmed, "sources": results}
-    except Exception as e:
-        logger.error("[censorwatch] cw_recheck(%s) failed: %s", cohort, e)
-        return {"task": "cw_recheck", "cohort": cohort, "status": "error", "error": str(e)}
+    except Exception as exc:
+        error_code = type(exc).__name__
+        logger.error("[censorwatch] cw_recheck(%s) failed (%s)", cohort, error_code)
+        return {
+            "task": "cw_recheck",
+            "cohort": cohort,
+            "status": "error",
+            "error": error_code,
+        }
 
 
 @app.task(bind=True, name="censorwatch.tasks.cw_signal")
@@ -119,6 +138,7 @@ def cw_signal(self):
                 "observed_posts": signal.get("observed_posts"),
                 "n_deletions": signal["n_deletions"], "n_spikes": signal["n_spikes"],
                 "top_term": signal["top_term"]}
-    except Exception as e:
-        logger.error("[censorwatch] cw_signal failed: %s", e)
-        return {"task": "cw_signal", "status": "error", "error": str(e)}
+    except Exception as exc:
+        error_code = type(exc).__name__
+        logger.error("[censorwatch] cw_signal failed (%s)", error_code)
+        return {"task": "cw_signal", "status": "error", "error": error_code}

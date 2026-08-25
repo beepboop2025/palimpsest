@@ -31,9 +31,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import urllib.error
-import urllib.request
+import re
+from collections.abc import Callable
 from datetime import datetime, timezone
+from urllib.parse import parse_qsl, urlsplit
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(ROOT, "data", "citizenlab", "line")
@@ -49,46 +52,148 @@ ATTRIBUTION = ("The Citizen Lab, University of Toronto — chat-censorship corpu
 
 USER_AGENT = "Mozilla/5.0 (Palimpsest/0.2; open-source censorship research)"
 MAX_BYTES = 4 * 1024 * 1024   # these lists are single-digit KB; a 4 MiB cap is generous
+MAX_VERSIONS = 128
+MAX_COMMITS = 100
+_VERSION_FILE = re.compile(r"line-v([0-9]{1,6})\.txt\Z")
 
 
-def _get(url: str, accept: str = "*/*") -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": accept})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        raw = r.read(MAX_BYTES + 1)
+def _reviewed_url(url: str) -> None:
+    if url == API:
+        return
+    parts = urlsplit(url)
+    raw_prefix = f"/{REPO}/master/{DIR}/"
+    if (
+        parts.scheme == "https"
+        and parts.netloc == "raw.githubusercontent.com"
+        and parts.path.startswith(raw_prefix)
+        and _VERSION_FILE.fullmatch(parts.path[len(raw_prefix):])
+        and not parts.query
+        and not parts.fragment
+    ):
+        return
+    commit_prefix = f"/repos/{REPO}/commits"
+    if (
+        parts.scheme == "https"
+        and parts.netloc == "api.github.com"
+        and parts.path == commit_prefix
+        and not parts.fragment
+    ):
+        pairs = parse_qsl(parts.query, keep_blank_values=True, strict_parsing=True)
+        if len(pairs) == 2 and dict(pairs).get("per_page") == "100":
+            path = dict(pairs).get("path", "")
+            name = path.removeprefix(f"{DIR}/")
+            if path == f"{DIR}/{name}" and _VERSION_FILE.fullmatch(name):
+                return
+    raise FetchError("Citizen Lab URL is outside the reviewed corpus")
+
+
+def _get(
+    url: str,
+    accept: str = "*/*",
+    *,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> bytes:
+    _reviewed_url(url)
+
+    def exact_url(candidate: str) -> None:
+        _reviewed_url(candidate)
+        if candidate != url:
+            raise FetchError("Citizen Lab request URL changed")
+
+    raw = fetcher(
+        url,
+        timeout=30,
+        max_bytes=MAX_BYTES,
+        max_redirects=0,
+        headers={"User-Agent": USER_AGENT, "Accept": accept},
+        url_policy=exact_url,
+    )
     if len(raw) > MAX_BYTES:
-        raise RuntimeError(f"{url} exceeds the {MAX_BYTES} byte cap — refusing")
+        raise FetchError("Citizen Lab response exceeded its byte budget")
     return raw
 
 
-def _list_versions() -> list:
+def _reject_constant(_value: str):
+    raise ValueError("non-finite JSON number")
+
+
+def _reject_duplicates(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate JSON key")
+        out[key] = value
+    return out
+
+
+def _strict_json(raw: bytes):
+    return json.loads(
+        raw.decode("utf-8"),
+        object_pairs_hook=_reject_duplicates,
+        parse_constant=_reject_constant,
+    )
+
+
+def _list_versions(*, fetcher: Callable[..., bytes] = safe_fetch_bytes) -> list:
     """Discover line-v*.txt from the public contents API, so a new release is picked up."""
-    payload = json.loads(_get(API, "application/vnd.github+json").decode("utf-8"))
+    payload = _strict_json(
+        _get(API, "application/vnd.github+json", fetcher=fetcher)
+    )
+    if not isinstance(payload, list) or len(payload) > MAX_VERSIONS:
+        raise ValueError("Citizen Lab version listing is invalid or oversized")
     out = []
     for entry in payload:
-        name = entry.get("name", "")
-        if entry.get("type") == "file" and name.startswith("line-v") and name.endswith(".txt"):
-            stem = name[len("line-v"):-len(".txt")]
-            if stem.isdigit():
-                out.append({"name": name, "version": f"v{stem}", "order": int(stem)})
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        match = _VERSION_FILE.fullmatch(name) if type(name) is str else None
+        if entry.get("type") == "file" and match:
+            stem = match.group(1)
+            out.append({"name": name, "version": f"v{stem}", "order": int(stem)})
     out.sort(key=lambda a: a["order"])
     return out
 
 
-def _first_commit_date(name: str, previous: dict) -> tuple:
+def _first_commit_date(
+    name: str,
+    previous: dict,
+    *,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> tuple:
     """Earliest commit touching this file — a BOUND on when the version was observed, not the
     client's true release date. Falls back to whatever a previous run recorded rather than
     inventing a date; returns (iso_or_None, how_it_was_derived)."""
     url = (f"https://api.github.com/repos/{REPO}/commits"
            f"?path={DIR}/{name}&per_page=100")
     try:
-        commits = json.loads(_get(url, "application/vnd.github+json").decode("utf-8"))
-        dates = [c["commit"]["committer"]["date"] for c in commits
-                 if c.get("commit", {}).get("committer", {}).get("date")]
+        if _VERSION_FILE.fullmatch(name) is None:
+            raise ValueError("invalid Citizen Lab version filename")
+        commits = _strict_json(
+            _get(url, "application/vnd.github+json", fetcher=fetcher)
+        )
+        if not isinstance(commits, list) or len(commits) > MAX_COMMITS:
+            raise ValueError("Citizen Lab commit listing is invalid or oversized")
+        dates = []
+        for commit in commits:
+            if not isinstance(commit, dict):
+                continue
+            details = commit.get("commit")
+            committer = details.get("committer") if isinstance(details, dict) else None
+            observed = committer.get("date") if isinstance(committer, dict) else None
+            if type(observed) is not str or len(observed) > 64:
+                continue
+            try:
+                parsed = datetime.fromisoformat(observed.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if parsed.tzinfo is not None:
+                dates.append(observed)
         if dates:
             return min(dates), "earliest-commit-touching-file"
-    except (urllib.error.URLError, urllib.error.HTTPError, KeyError, ValueError, TimeoutError):
+    except (FetchError, KeyError, TypeError, UnicodeError, ValueError):
         pass
-    prior = (previous.get("files") or {}).get(name) or {}
+    prior_files = previous.get("files") if isinstance(previous, dict) else None
+    prior = (prior_files.get(name) if isinstance(prior_files, dict) else None) or {}
     if prior.get("observed_at"):
         return prior["observed_at"], prior.get("date_basis", "carried-from-previous-run")
     return None, "unavailable"

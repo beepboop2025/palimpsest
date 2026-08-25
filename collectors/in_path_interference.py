@@ -46,16 +46,13 @@ touches the box's egress. Keyless, standard-library only.
 """
 from __future__ import annotations
 
-import json
 import logging
 import time
-import urllib.error
-import urllib.parse
-import urllib.request
+
+from collectors.ooni_aggregation import fetch_aggregation_json
 
 log = logging.getLogger(__name__)
 
-OONI_AGG = "https://api.ooni.io/api/v1/aggregation"
 USER_AGENT = ("palimpsest.info observatory (OONI open-data ingest; "
               "contact desk@palimpsest.info)")
 
@@ -79,26 +76,24 @@ TESTS = [
 
 
 def _get(params: dict, *, timeout: float = 30.0, retries: int = 2,
-         opener=None) -> dict | None:
+         max_bytes: int = 8 * 1024 * 1024, fetcher=None,
+         sleep=time.sleep) -> dict | None:
     """One aggregation query. Returns None rather than raising so a single dead
     test does not take the whole round down; the caller counts the Nones."""
-    url = f"{OONI_AGG}?{urllib.parse.urlencode(params)}"
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    _open = opener or urllib.request.urlopen
-    for attempt in range(retries + 1):
-        try:
-            with _open(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < retries:
-                time.sleep(2 ** attempt)          # politeness, not decoration
-                continue
-            log.warning("OONI %s failed: %s", params.get("test_name"), e.code)
-            return None
-        except Exception as e:                    # noqa: BLE001
-            log.warning("OONI %s failed: %s", params.get("test_name"), e)
-            return None
-    return None
+    kwargs = {}
+    if fetcher is not None:
+        kwargs["fetcher"] = fetcher
+    return fetch_aggregation_json(
+        params,
+        user_agent=USER_AGENT,
+        timeout=timeout,
+        retries=retries,
+        max_bytes=max_bytes,
+        retry_delay=lambda attempt: 2 ** attempt,
+        logger=log,
+        sleep=sleep,
+        **kwargs,
+    )
 
 
 def observe_test(test_name: str, family: str, label: str, since: str, until: str,

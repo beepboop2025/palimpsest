@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import gzip
 import hashlib
+import io
 import json
 import os
 import re
@@ -63,6 +64,11 @@ if ROOT not in sys.path:
 
 from core import eval_registry as reg  # noqa: E402
 from core import sealed_ledger as led  # noqa: E402
+from core.safe_fetch import (  # noqa: E402
+    FetchError,
+    SafeFetchResponse,
+    safe_fetch_response,
+)
 
 READINGS = os.path.join(ROOT, "readings")
 REGISTRY = os.path.join(READINGS, "eval-registry.jsonl")
@@ -86,7 +92,95 @@ WAYBACK_CAPTURE_VERSION = "3"
 WAYBACK_SAVE_URL = "https://web.archive.org/save/"
 WAYBACK_STATUS_URL = "https://web.archive.org/save/status/"
 WAYBACK_RESPONSE_LIMIT = 1024 * 1024
+WAYBACK_REPLAY_LIMIT = 64 * 1024 * 1024
 UA = "palimpsest-anchor/1.0 (+https://palimpsest.info)"
+
+
+class _BufferedResponse(io.BytesIO):
+    """urllib-shaped view over one already bounded safe-fetch response."""
+
+    def __init__(self, response: SafeFetchResponse):
+        super().__init__(response.body)
+        self.status = response.status
+        self._url = response.url
+        # safe_fetch has already decoded gzip/deflate through its output cap.
+        self.headers = {
+            name: value
+            for name, value in response.headers.items()
+            if name.casefold() not in {"content-encoding", "content-length"}
+        }
+
+    def geturl(self):
+        return self._url
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        self.close()
+        return False
+
+
+def _wayback_url_policy(url: str) -> None:
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        port = parsed.port
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise FetchError("Wayback URL is invalid") from exc
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != "web.archive.org"
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in (None, 443)
+        or parsed.fragment
+    ):
+        raise FetchError("Wayback URL is outside the reviewed HTTPS authority")
+    allowed_path = (
+        parsed.path == "/cdx/search/cdx"
+        or parsed.path == "/save/"
+        or parsed.path == "/save/status/"
+        or parsed.path.startswith("/web/")
+    )
+    if not allowed_path:
+        raise FetchError("Wayback URL is outside the reviewed API paths")
+
+
+def _open_wayback(
+    request,
+    *,
+    opener,
+    timeout: int,
+    max_bytes: int,
+):
+    """Use an injected offline opener or the hardened production transport."""
+    if opener is not None:
+        return opener(request, timeout=timeout)
+    method = request.get_method()
+    try:
+        response = safe_fetch_response(
+            request.full_url,
+            method=method,
+            body=request.data,
+            headers=dict(request.header_items()),
+            max_bytes=max_bytes,
+            timeout=timeout,
+            max_redirects=3,
+            url_policy=_wayback_url_policy,
+            return_redirect_response=method == "POST",
+        )
+    except FetchError as exc:
+        raise OSError("Wayback transport failed") from exc
+    buffered = _BufferedResponse(response)
+    if not 200 <= response.status < 400:
+        raise urllib.error.HTTPError(
+            response.url,
+            response.status,
+            "bounded Wayback HTTP response",
+            buffered.headers,
+            buffered,
+        )
+    return buffered
 
 
 def current_roots() -> dict:
@@ -228,7 +322,12 @@ def _wayback_cdx_snapshots(capture_target: str, *, opener,
         f"https://web.archive.org/cdx/search/cdx?{query}",
         headers={"User-Agent": UA, "Accept-Encoding": "identity"},
     )
-    with opener(request, timeout=timeout) as response:
+    with _open_wayback(
+        request,
+        opener=opener,
+        timeout=timeout,
+        max_bytes=64 * 1024,
+    ) as response:
         raw = response.read(64 * 1024 + 1)
     if len(raw) > 64 * 1024:
         raise ValueError("Wayback CDX response is too large")
@@ -264,6 +363,12 @@ def _wayback_replay_evidence(snapshot: str, *, expected_bytes: int, opener,
                              timeout: int, replay_attempts: int, sleeper) -> dict:
     if replay_attempts < 1:
         raise ValueError("Wayback replay attempts must be positive")
+    if (
+        type(expected_bytes) is not int
+        or expected_bytes < 0
+        or expected_bytes > WAYBACK_REPLAY_LIMIT
+    ):
+        raise ValueError("Wayback expected replay size is outside its ceiling")
     raw_snapshot = _raw_wayback_url(snapshot)
     replay_req = urllib.request.Request(
         raw_snapshot,
@@ -271,7 +376,12 @@ def _wayback_replay_evidence(snapshot: str, *, expected_bytes: int, opener,
     )
     for attempt in range(replay_attempts):
         try:
-            with opener(replay_req, timeout=timeout) as replay:
+            with _open_wayback(
+                replay_req,
+                opener=opener,
+                timeout=timeout,
+                max_bytes=max(1, expected_bytes + 64 * 1024),
+            ) as replay:
                 replay_http = getattr(replay, "status", None)
                 actual_sha256, actual_bytes, replay_encoding = _hash_replay(
                     replay, expected_bytes
@@ -366,8 +476,17 @@ def _wayback_auth_headers(access_key: str | None,
         )
     if not access_key:
         return {}
-    if "\r" in access_key or "\n" in access_key or "\r" in secret_key or "\n" in secret_key:
-        raise ValueError("Wayback credentials may not contain newlines")
+    if (
+        type(access_key) is not str
+        or type(secret_key) is not str
+        or len(access_key) > 2_048
+        or len(secret_key) > 2_048
+        or any(
+            ord(char) < 0x20 or ord(char) == 0x7f
+            for char in access_key + secret_key
+        )
+    ):
+        raise ValueError("Wayback credentials are invalid or too large")
     return {"Authorization": f"LOW {access_key}:{secret_key}"}
 
 
@@ -381,9 +500,25 @@ def _bounded_body(response, limit: int = WAYBACK_RESPONSE_LIMIT) -> bytes:
 def _json_object(raw: bytes) -> dict | None:
     if not raw.strip():
         return None
+
+    def reject_constant(value: str) -> None:
+        raise ValueError(f"non-finite JSON number {value!r}")
+
+    def unique_object(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError("duplicate JSON key")
+            value[key] = item
+        return value
+
     try:
-        payload = json.loads(raw)
-    except (UnicodeDecodeError, json.JSONDecodeError):
+        payload = json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except (UnicodeDecodeError, ValueError):
         return None
     return payload if isinstance(payload, dict) else None
 
@@ -433,7 +568,12 @@ def _poll_wayback_job(job_id: str, capture_target: str, *, auth_headers: dict,
         request = urllib.request.Request(
             WAYBACK_STATUS_URL, data=body, headers=headers, method="POST"
         )
-        with opener(request, timeout=timeout) as response:
+        with _open_wayback(
+            request,
+            opener=opener,
+            timeout=timeout,
+            max_bytes=WAYBACK_RESPONSE_LIMIT,
+        ) as response:
             payload = _json_object(_bounded_body(response))
         if payload is None:
             raise ValueError("Wayback status returned a non-JSON response")
@@ -469,7 +609,7 @@ def _http_error_detail(exc: urllib.error.HTTPError) -> str:
 
 
 def wayback_save(url: str, *, expected_sha256: str, expected_bytes: int,
-                 opener=urllib.request.urlopen, timeout: int = 90,
+                 opener=None, timeout: int = 90,
                  replay_attempts: int = 3, cdx_attempts: int = 4,
                  status_attempts: int = 20, sleeper=time.sleep,
                  access_key: str | None = None,
@@ -539,10 +679,19 @@ def wayback_save(url: str, *, expected_sha256: str, expected_bytes: int,
         candidates: list[tuple[str, str]] = []
         job_id = None
         try:
-            with opener(request, timeout=timeout) as response:
+            with _open_wayback(
+                request,
+                opener=opener,
+                timeout=timeout,
+                max_bytes=WAYBACK_RESPONSE_LIMIT,
+            ) as response:
                 http_status = getattr(response, "status", None)
                 headers = getattr(response, "headers", None)
-                location = headers.get("Content-Location") if headers else None
+                location = (
+                    headers.get("Content-Location") or headers.get("Location")
+                    if headers
+                    else None
+                )
                 response_url = response.geturl()
                 raw = _bounded_body(response)
             payload = _json_object(raw)
@@ -838,7 +987,7 @@ def anchor_state_at(log_path, as_of: datetime) -> dict | None:
     }
 
 
-def anchor(*, dry_run: bool = False, opener=urllib.request.urlopen,
+def anchor(*, dry_run: bool = False, opener=None,
            run=subprocess.run, log_path: str = ANCHOR_LOG,
            latest_path: str = ANCHOR_LATEST) -> dict | None:
     roots = current_roots()

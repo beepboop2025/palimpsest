@@ -41,24 +41,40 @@ VANTAGE: this collector is vantage-insensitive on OUR side. The probing happens
 on Globalping's probes, not on our host, so it runs correctly from a GitHub
 runner and never touches the box's egress.
 
-Standard-library only (urllib + json), no key, no dependencies in CI.
+Standard-library only plus Palimpsest's hardened transport, no key.
 """
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
+import re
 import time
-import urllib.error
-import urllib.request
 
 from collectors.origin_as import (OriginASUnavailable, asns_of, injection_pool,
                                   origin_as, owners_of)
+from core.safe_fetch import FetchError, SafeFetchResponse, safe_fetch_response
 
 log = logging.getLogger(__name__)
 
 API = "https://api.globalping.io/v1/measurements"
 USER_AGENT = ("palimpsest.info observatory (censorship research; "
               "contact desk@palimpsest.info)")
+MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+MAX_REQUEST_BYTES = 16 * 1024
+MAX_PROBE_RESULTS = 64
+MAX_ANSWERS_PER_PROBE = 64
+MAX_PANEL_ENTRIES = 15
+MAX_POLL_TRIES = 60
+MAX_POLL_SECONDS = 300.0
+_MEASUREMENT_ID = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
+_DOMAIN = re.compile(
+    r"(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+"
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z"
+)
+_GLOBALPING_URL = re.compile(
+    r"https://api\.globalping\.io/v1/measurements(?:/[A-Za-z0-9_-]{1,128})?\Z"
+)
 
 # Unauthenticated Globalping allows 250 probe-credits/hour. One probe = one
 # credit, so a round costs len(PANEL) * (CN_PROBES + CONTROL_PROBES).
@@ -167,16 +183,6 @@ PANEL = [
 ]
 
 
-def _request(url: str, body: dict | None = None, timeout: float = 30.0) -> dict:
-    data = json.dumps(body).encode() if body is not None else None
-    headers = {"User-Agent": USER_AGENT}
-    if data is not None:
-        headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(url, data=data, headers=headers)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
-
-
 class RateLimited(Exception):
     """Globalping returned 429. Raised rather than swallowed: a rate-limited
     round yields no probe results, which is indistinguishable from every probe
@@ -184,10 +190,178 @@ class RateLimited(Exception):
     to tell 'we did not ask' from 'we asked and heard nothing'."""
 
 
+class GlobalpingError(Exception):
+    """A bounded transport, status, or response-shape failure."""
+
+
+class GlobalpingHTTPError(GlobalpingError):
+    def __init__(self, status: int):
+        self.status = status
+        super().__init__(f"Globalping HTTP status {status}")
+
+
+def _globalping_url_policy(url: str) -> None:
+    if not _GLOBALPING_URL.fullmatch(url):
+        raise FetchError("Globalping URL is outside the reviewed measurement API")
+
+
+def _reject_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON number {value!r}")
+
+
+def _reject_duplicates(pairs):
+    out = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate JSON key")
+        out[key] = value
+    return out
+
+
+def _strict_json_object(raw: bytes) -> dict:
+    try:
+        value = json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise GlobalpingError("Globalping returned invalid JSON") from exc
+    if type(value) is not dict:
+        raise GlobalpingError("Globalping response must be a JSON object")
+    return value
+
+
+def _content_type(response: SafeFetchResponse) -> str | None:
+    for name, value in response.headers.items():
+        if name.casefold() == "content-type":
+            return value.split(";", 1)[0].strip().casefold()
+    return None
+
+
+def _request(
+    url: str,
+    body: dict | None = None,
+    timeout: float = 30.0,
+    *,
+    fetch_response=None,
+) -> dict:
+    if (
+        isinstance(timeout, bool)
+        or not isinstance(timeout, (int, float))
+        or not 0 < timeout <= 60
+    ):
+        raise ValueError("Globalping timeout must be in (0, 60]")
+    _globalping_url_policy(url)
+    if body is not None and type(body) is not dict:
+        raise ValueError("Globalping request body must be an object")
+    data = None
+    headers = {"Accept": "application/json", "User-Agent": USER_AGENT}
+    if body is not None:
+        data = json.dumps(
+            body,
+            ensure_ascii=True,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        if len(data) > MAX_REQUEST_BYTES:
+            raise ValueError("Globalping request exceeds its byte ceiling")
+        headers["Content-Type"] = "application/json"
+
+    fetch = fetch_response or safe_fetch_response
+    response = fetch(
+        url,
+        method="POST" if data is not None else "GET",
+        body=data,
+        headers=headers,
+        max_bytes=MAX_RESPONSE_BYTES,
+        timeout=float(timeout),
+        max_redirects=0,
+        url_policy=_globalping_url_policy,
+    )
+    if response.status == 429:
+        raise RateLimited("Globalping rate limit")
+    if not 200 <= response.status < 300:
+        raise GlobalpingHTTPError(response.status)
+    media_type = _content_type(response)
+    if media_type is not None and media_type != "application/json":
+        raise GlobalpingError("Globalping response is not JSON")
+    return _strict_json_object(response.body)
+
+
+def _validated_domain(domain: str) -> str:
+    if type(domain) is not str or not _DOMAIN.fullmatch(domain):
+        raise ValueError("Inside View target must be a canonical ASCII domain")
+    return domain
+
+
+def _validated_measurement_id(value) -> str:
+    if type(value) is not str or not _MEASUREMENT_ID.fullmatch(value):
+        raise GlobalpingError("Globalping returned an invalid measurement id")
+    return value
+
+
+def _validated_locations(locations: list, limit: int) -> list[dict[str, str]]:
+    control = [{"country": country} for country in CONTROL_COUNTRIES]
+    cloud = [{"magic": f"CN+{asn}"} for asn in CLOUD_ASNS]
+    if locations == control and limit == CONTROL_PROBES:
+        return control
+    if locations == cloud and limit == CN_PROBES:
+        return cloud
+    raise ValueError("Inside View locations and limit are outside the reviewed panel")
+
+
+def _bounded_text(value, *, maximum: int):
+    return value if type(value) is str and len(value) <= maximum else None
+
+
+def _normalize_results(rows) -> list[dict]:
+    if type(rows) is not list or len(rows) > MAX_PROBE_RESULTS:
+        raise GlobalpingError("Globalping results exceed their cardinality ceiling")
+    normalized = []
+    for row in rows:
+        if type(row) is not dict:
+            raise GlobalpingError("Globalping result must be an object")
+        probe = row.get("probe")
+        result = row.get("result")
+        if type(probe) is not dict or type(result) is not dict:
+            raise GlobalpingError("Globalping result is missing probe data")
+        raw_answers = result.get("answers") or []
+        if type(raw_answers) is not list or len(raw_answers) > MAX_ANSWERS_PER_PROBE:
+            raise GlobalpingError("Globalping answers exceed their cardinality ceiling")
+        answers = []
+        for answer in raw_answers:
+            if type(answer) is not dict:
+                raise GlobalpingError("Globalping answer must be an object")
+            if answer.get("type") != "A":
+                continue
+            value = answer.get("value")
+            try:
+                canonical = str(ipaddress.IPv4Address(value))
+            except (ipaddress.AddressValueError, TypeError):
+                raise GlobalpingError("Globalping returned an invalid A answer") from None
+            answers.append({"type": "A", "value": canonical})
+        asn = probe.get("asn")
+        if type(asn) is not int or not 1 <= asn <= 4_294_967_295:
+            asn = None
+        normalized.append({
+            "probe": {
+                "city": _bounded_text(probe.get("city"), maximum=128),
+                "country": _bounded_text(probe.get("country"), maximum=2),
+                "asn": asn,
+                "network": _bounded_text(probe.get("network"), maximum=256),
+            },
+            "result": {"answers": answers},
+        })
+    return normalized
+
+
 def _create(domain: str, locations: list, limit: int) -> str | None:
     """Start one DNS measurement. Returns the measurement id, or None if
     Globalping refused for a reason that is not rate limiting (no matching
     probes, malformed panel). Raises RateLimited on 429."""
+    domain = _validated_domain(domain)
+    locations = _validated_locations(locations, limit)
     body = {
         "type": "dns",
         "target": domain,
@@ -196,13 +370,13 @@ def _create(domain: str, locations: list, limit: int) -> str | None:
         "measurementOptions": {"query": {"type": "A"}, "protocol": "UDP", "port": 53},
     }
     try:
-        return _request(API, body).get("id")
-    except urllib.error.HTTPError as e:
-        if e.code == 429:
-            raise RateLimited(f"429 on {domain}") from e
-        log.warning("globalping refused %s (%s): %s", domain, e.code, e.reason)
-    except Exception as e:                                    # noqa: BLE001
-        log.warning("globalping create failed for %s: %s", domain, e)
+        return _validated_measurement_id(_request(API, body).get("id"))
+    except RateLimited:
+        raise
+    except GlobalpingHTTPError as exc:
+        log.warning("Globalping create was refused with status %s", exc.status)
+    except (FetchError, GlobalpingError, ValueError) as exc:
+        log.warning("Globalping create failed: %s", type(exc).__name__)
     return None
 
 
@@ -210,26 +384,56 @@ def _collect(mid: str, *, poll: float = 3.0, tries: int = 20) -> list:
     """Poll one measurement to completion and return its per-probe results.
     An unfinished measurement returns [] so the caller treats it as no data
     rather than as a clean answer."""
+    mid = _validated_measurement_id(mid)
+    if type(tries) is not int or not 1 <= tries <= MAX_POLL_TRIES:
+        raise ValueError(f"Globalping poll tries must be in 1..{MAX_POLL_TRIES}")
+    if (
+        isinstance(poll, bool)
+        or not isinstance(poll, (int, float))
+        or poll < 0
+        or poll * tries > MAX_POLL_SECONDS
+    ):
+        raise ValueError("Globalping polling exceeds its time budget")
     for _ in range(tries):
         try:
             doc = _request(f"{API}/{mid}")
-        except Exception as e:                                # noqa: BLE001
-            log.warning("globalping poll failed for %s: %s", mid, e)
+        except RateLimited:
+            raise
+        except GlobalpingHTTPError as exc:
+            log.warning("Globalping poll was refused with status %s", exc.status)
+            return []
+        except (FetchError, GlobalpingError, ValueError) as exc:
+            log.warning("Globalping poll failed: %s", type(exc).__name__)
             return []
         if doc.get("status") != "in-progress":
-            return doc.get("results") or []
+            try:
+                return _normalize_results(doc.get("results") or [])
+            except GlobalpingError:
+                log.warning("Globalping poll returned invalid results")
+                return []
         time.sleep(poll)
-    log.warning("measurement %s did not finish", mid)
+    log.warning("Globalping measurement did not finish within the poll budget")
     return []
 
 
 def _answers(result: dict) -> set:
     """Extract the A-record addresses one probe received."""
-    body = (result or {}).get("result") or {}
+    if type(result) is not dict:
+        return set()
+    body = result.get("result")
+    if type(body) is not dict:
+        return set()
+    answers = body.get("answers")
+    if type(answers) is not list or len(answers) > MAX_ANSWERS_PER_PROBE:
+        return set()
     out = set()
-    for ans in body.get("answers") or []:
-        if ans.get("type") == "A" and ans.get("value"):
-            out.add(ans["value"])
+    for ans in answers:
+        if type(ans) is not dict or ans.get("type") != "A":
+            continue
+        try:
+            out.add(str(ipaddress.IPv4Address(ans.get("value"))))
+        except (ipaddress.AddressValueError, TypeError):
+            return set()
     return out
 
 
@@ -440,8 +644,13 @@ def finalize_panel(observations: list, *, resolve=origin_as) -> list:
 
 def observe_panel(panel: list = None, *, create=_create, collect=_collect,
                   resolve=origin_as) -> list:
+    selected = panel if panel is not None else PANEL
+    if type(selected) is not list or not 1 <= len(selected) <= MAX_PANEL_ENTRIES:
+        raise ValueError(
+            f"Inside View panel must contain 1..{MAX_PANEL_ENTRIES} reviewed entries"
+        )
     obs = [observe_domain(e, create=create, collect=collect, resolve=resolve)
-           for e in (panel if panel is not None else PANEL)]
+           for e in selected]
     return finalize_panel(obs, resolve=resolve)
 
 

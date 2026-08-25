@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import tempfile
 from pathlib import Path
@@ -28,6 +29,8 @@ class _FakeFetcher:
         self.html = html
         self.page_fetches = 0
         self.byte_fetches = 0
+        self.byte_urls = []
+        self.byte_kwargs = []
 
     async def fetch(self, url, **kw):
         self.page_fetches += 1
@@ -36,15 +39,29 @@ class _FakeFetcher:
 
     async def fetch_bytes(self, url, **kw):
         self.byte_fetches += 1
+        self.byte_urls.append(url)
+        self.byte_kwargs.append(kw)
         return 200, b"\x89PNG\r\n\x1a\n fake image bytes", None
 
 
 def test_extract_image_urls():
-    html = ('<img src="/pic/a.png"><img data-src="https://cdn.x/b.jpg">'
-            '<img src="data:image/png;base64,zzz"><img src="/pic/a.png">')
-    urls = extract_image_urls(html, "https://guba.eastmoney.com/news,600519,1.html")
-    assert urls == ["https://guba.eastmoney.com/pic/a.png", "https://cdn.x/b.jpg"], urls
-    # relative resolved, data: skipped, duplicate deduped
+    html = (
+        '<img src="/pic/a.png">'
+        '<img data-src="https://np-newspic.dfcfw.com/b.jpg">'
+        '<img src="http://169.254.169.254/meta">'
+        '<img src="https://guba.eastmoney.com.evil.invalid/x">'
+        '<img src="data:image/png;base64,zzz"><img src="/pic/a.png">'
+    )
+    urls = extract_image_urls(
+        html,
+        "https://guba.eastmoney.com/news,600519,1.html",
+        "eastmoney_guba",
+    )
+    assert urls == [
+        "https://guba.eastmoney.com/pic/a.png",
+        "https://np-newspic.dfcfw.com/b.jpg",
+    ], urls
+    # Relative and reviewed CDN URLs survive; private/look-alike/data URLs do not.
 
 
 def test_archive_writes_snapshot_and_is_idempotent():
@@ -173,6 +190,73 @@ def test_redirected_or_transport_tainted_page_stays_retryable():
         ))
         assert path is None
         assert not (Path(tmp) / "eastmoney_guba" / "13").exists()
+
+
+def test_hostile_image_authorities_never_reach_the_fetcher():
+    html = (
+        "<html><body>" + ("真实正文内容" * 20)
+        + '<img src="http://127.0.0.1/admin">'
+        + '<img src="https://169.254.169.254/latest/meta-data/">'
+        + '<img src="https://guba.eastmoney.com.evil.invalid/pixel">'
+        + '<img src="/safe.png"></body></html>'
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        fetcher = _FakeFetcher(html=html)
+        path = asyncio.run(archive_post(
+            "https://guba.eastmoney.com/news,600519,14.html",
+            "eastmoney_guba", "14", fetcher=fetcher, settings=_settings(tmp),
+        ))
+        assert path is not None
+        assert fetcher.byte_urls == ["https://guba.eastmoney.com/safe.png"]
+
+
+def test_raw_html_and_post_image_totals_have_independent_caps():
+    html = (
+        "<html><body>" + ("真实正文内容" * 20)
+        + '<img src="/a.png"><img src="/b.png"></body></html>'
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        base = _settings(tmp)
+        oversized = dataclasses.replace(base, max_page_bytes=16)
+        fetcher = _FakeFetcher(html=html)
+        path = asyncio.run(archive_post(
+            "https://guba.eastmoney.com/news,600519,15.html",
+            "eastmoney_guba", "15", fetcher=fetcher, settings=oversized,
+            raw_html=html,
+        ))
+        assert path is None and fetcher.byte_fetches == 0
+
+        bounded = dataclasses.replace(
+            base,
+            max_image_bytes=64,
+            max_post_image_bytes=30,
+        )
+        path = asyncio.run(archive_post(
+            "https://guba.eastmoney.com/news,600519,16.html",
+            "eastmoney_guba", "16", fetcher=fetcher, settings=bounded,
+            raw_html=html,
+        ))
+        meta = json.loads((Path(path) / "meta.json").read_text(encoding="utf-8"))
+        assert meta["n_images"] == 1
+        assert meta["skipped_images"] == 1
+        assert meta["image_bytes"] <= 30
+
+
+def test_non_raster_payload_is_not_archived_as_an_image():
+    class _HtmlAsset(_FakeFetcher):
+        async def fetch_bytes(self, url, **kw):
+            self.byte_fetches += 1
+            return 200, b"<html><script>alert(1)</script></html>", None
+
+    html = "<html><body>" + ("真实正文内容" * 20) + '<img src="/x.jpg"></body></html>'
+    with tempfile.TemporaryDirectory() as tmp:
+        path = asyncio.run(archive_post(
+            "https://guba.eastmoney.com/news,600519,17.html",
+            "eastmoney_guba", "17", fetcher=_HtmlAsset(html), settings=_settings(tmp),
+        ))
+        meta = json.loads((Path(path) / "meta.json").read_text(encoding="utf-8"))
+        assert meta["n_images"] == 0 and meta["skipped_images"] == 1
+        assert not (Path(path) / "images").exists()
 
 
 def _run_all():

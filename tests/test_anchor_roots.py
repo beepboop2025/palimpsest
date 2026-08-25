@@ -15,8 +15,11 @@ import tempfile
 import urllib.error
 import urllib.parse
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from core import sealed_ledger as led  # noqa: E402
+from core.safe_fetch import FetchError, SafeFetchResponse  # noqa: E402
 from scripts import anchor_roots  # noqa: E402
 
 
@@ -83,6 +86,123 @@ def _down_opener(req, timeout=0):
 def _tmp_paths():
     d = tempfile.mkdtemp()
     return os.path.join(d, "anchors.jsonl"), os.path.join(d, "anchors-latest.json")
+
+
+def test_default_wayback_opener_uses_the_fixed_bounded_transport(monkeypatch):
+    seen = {}
+
+    def fetch(url, **kwargs):
+        seen["url"] = url
+        seen.update(kwargs)
+        return SafeFetchResponse(
+            status=200,
+            headers={"Content-Encoding": "gzip", "Content-Length": "2"},
+            body=b"[]",
+            url=url,
+        )
+
+    monkeypatch.setattr(anchor_roots, "safe_fetch_response", fetch)
+    request = urllib.request.Request(
+        "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fpalimpsest.info",
+        headers={"User-Agent": anchor_roots.UA, "Accept-Encoding": "identity"},
+    )
+    with anchor_roots._open_wayback(
+        request,
+        opener=None,
+        timeout=12,
+        max_bytes=64 * 1024,
+    ) as response:
+        assert response.read() == b"[]"
+        assert "Content-Encoding" not in response.headers
+        assert "Content-Length" not in response.headers
+
+    assert seen["url"] == request.full_url
+    assert seen["method"] == "GET"
+    assert seen["body"] is None
+    assert seen["max_bytes"] == 64 * 1024
+    assert seen["timeout"] == 12
+    assert seen["max_redirects"] == 3
+    assert seen["return_redirect_response"] is False
+    seen["url_policy"](request.full_url)
+
+
+def test_default_wayback_opener_returns_post_redirect_without_following(monkeypatch):
+    seen = {}
+    snapshot = (
+        "https://web.archive.org/web/20260816000000/"
+        "https://palimpsest.info/readings/eval-registry.jsonl"
+    )
+
+    def fetch(url, **kwargs):
+        seen["url"] = url
+        seen.update(kwargs)
+        return SafeFetchResponse(
+            status=302,
+            headers={"Location": snapshot},
+            body=b"queued",
+            url=url,
+        )
+
+    monkeypatch.setattr(anchor_roots, "safe_fetch_response", fetch)
+    request = urllib.request.Request(
+        anchor_roots.WAYBACK_SAVE_URL,
+        data=b"url=bounded",
+        method="POST",
+    )
+    with anchor_roots._open_wayback(
+        request,
+        opener=None,
+        timeout=12,
+        max_bytes=anchor_roots.WAYBACK_RESPONSE_LIMIT,
+    ) as response:
+        assert response.status == 302
+        assert response.headers["Location"] == snapshot
+
+    assert seen["method"] == "POST"
+    assert seen["body"] == b"url=bounded"
+    assert seen["return_redirect_response"] is True
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://web.archive.org/save/",
+        "https://127.0.0.1/save/",
+        "https://web.archive.org/private",
+        "https://web.archive.org:444/save/",
+        "https://:@web.archive.org/save/",
+    ],
+)
+def test_wayback_policy_rejects_unreviewed_authority_and_paths(url):
+    with pytest.raises(FetchError):
+        anchor_roots._wayback_url_policy(url)
+
+
+def test_default_wayback_transport_error_is_sanitized(monkeypatch):
+    def fail(*_args, **_kwargs):
+        raise FetchError("credential at http://127.0.0.1/private")
+
+    monkeypatch.setattr(anchor_roots, "safe_fetch_response", fail)
+    request = urllib.request.Request("https://web.archive.org/save/")
+    with pytest.raises(OSError) as error:
+        anchor_roots._open_wayback(
+            request,
+            opener=None,
+            timeout=12,
+            max_bytes=1024,
+        )
+    assert "credential" not in str(error.value)
+    assert "127.0.0.1" not in str(error.value)
+
+
+def test_wayback_control_json_and_credentials_are_strictly_bounded():
+    assert anchor_roots._json_object(b'{"status":"a","status":"b"}') is None
+    assert anchor_roots._json_object(b'{"value":NaN}') is None
+    assert anchor_roots._json_object(b"\xff") is None
+    with pytest.raises(ValueError, match="invalid or too large"):
+        anchor_roots._wayback_auth_headers("access\x00", "secret")
+    with pytest.raises(ValueError, match="invalid or too large"):
+        anchor_roots._wayback_auth_headers("a" * 2_049, "secret")
 
 
 def _install_successful_ots(monkeypatch, tmp_path):

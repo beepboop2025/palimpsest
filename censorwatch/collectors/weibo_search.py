@@ -19,14 +19,15 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timezone
-from urllib.parse import quote
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 import pandas as pd
 from bs4 import BeautifulSoup
 
-from core.exceptions import SchemaChangedError
 from censorwatch.collectors.base_post_collector import BasePostCollector
 from censorwatch.interfaces import content_hash
+from censorwatch.source_policy import source_url_is_allowed
+from core.exceptions import SchemaChangedError
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,23 @@ class WeiboSearchCollector(BasePostCollector):
 
     def __init__(self, config: dict):
         super().__init__(config)
-        self.keywords = [str(k) for k in config.get("keywords", [])]
+        configured = config.get("keywords", [])
+        if (
+            not isinstance(configured, list)
+            or not 1 <= len(configured) <= 32
+            or any(
+                type(keyword) is not str
+                or not keyword.strip()
+                or len(keyword) > 128
+                or any(
+                    ord(char) < 0x20 or ord(char) == 0x7F
+                    for char in keyword
+                )
+                for keyword in configured
+            )
+        ):
+            raise ValueError("weibo keywords must be 1-32 bounded text values")
+        self.keywords = list(dict.fromkeys(keyword.strip() for keyword in configured))
 
     async def collect(self) -> list[dict]:
         """Render each keyword's search page via Playwright (proxy required)."""
@@ -65,16 +82,22 @@ class WeiboSearchCollector(BasePostCollector):
     async def parse(self, raw_data: list[dict]) -> pd.DataFrame:
         rows = []
         for page in raw_data:
-            rows.extend(self._parse_search_html(page["html"]))
+            remaining = self.max_records_per_cycle - len(rows)
+            if remaining <= 0:
+                break
+            rows.extend(self._parse_search_html(page["html"], limit=remaining))
         logger.info("[weibo] parsed %d posts from %d keyword(s)", len(rows), len(raw_data))
         return pd.DataFrame(rows)
 
     @classmethod
-    def _parse_search_html(cls, html: str) -> list[dict]:
+    def _parse_search_html(cls, html: str, *, limit: int = 1000) -> list[dict]:
         """s.weibo.com search results → list of Post dicts (pure, unit-tested)."""
+        if type(limit) is not int or limit <= 0:
+            return []
+        limit = min(limit, 1000)
         soup = BeautifulSoup(html or "", "html.parser")
         out = []
-        for card in soup.select("div.card-wrap[mid]"):
+        for card in soup.select("div.card-wrap[mid]", limit=limit):
             mid = card.get("mid")
             if not mid:
                 continue
@@ -88,7 +111,9 @@ class WeiboSearchCollector(BasePostCollector):
             full_text = txt.get_text(" ", strip=True) if txt else ""
             from_a = content.select_one("p.from a")
             href = from_a.get("href") if from_a else None
-            url = cls._abs_url(href) or f"https://weibo.com/detail/{mid}"
+            url = cls._abs_url(href) or (
+                f"https://weibo.com/detail/{quote(str(mid), safe='')}"
+            )
             posted = cls._parse_time(from_a.get_text(strip=True) if from_a else "")
             out.append({
                 "post_id": str(mid),
@@ -102,15 +127,15 @@ class WeiboSearchCollector(BasePostCollector):
 
     @staticmethod
     def _abs_url(href: str | None) -> str | None:
-        if not href:
+        if not isinstance(href, str) or not href.strip():
             return None
-        if href.startswith("//"):
-            return "https:" + href.split("?")[0]
-        if href.startswith("http"):
-            return href.split("?")[0]
-        if href.startswith("/"):
-            return "https://weibo.com" + href.split("?")[0]
-        return None
+        candidate = urljoin("https://weibo.com/", href.strip())
+        try:
+            parts = urlsplit(candidate)
+            candidate = urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+        except (TypeError, ValueError, UnicodeError):
+            return None
+        return candidate if source_url_is_allowed("weibo_search", candidate) else None
 
     @staticmethod
     def _parse_time(s: str) -> datetime | None:

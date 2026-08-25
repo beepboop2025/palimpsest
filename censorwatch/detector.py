@@ -114,9 +114,12 @@ async def _probe_source(collector) -> bool:
                                                url=url, full_text=""))
             if obs.state == LivenessState.LIVE:
                 return True
-        except Exception as e:
-            logger.warning("[detector:%s] control probe error %s: %s",
-                           collector.name, url, e)
+        except Exception as exc:
+            logger.warning(
+                "[detector:%s] control probe failed (%s)",
+                collector.name,
+                type(exc).__name__,
+            )
     return False
 
 
@@ -204,11 +207,12 @@ async def recheck_source(
                     ))
                     confirmed += 1
             db.commit()
-        except Exception as e:
+        except Exception as exc:
             db.rollback()
-            logger.error("[detector:%s] cycle failed: %s", source_name, e)
+            error_code = type(exc).__name__
+            logger.error("[detector:%s] cycle failed (%s)", source_name, error_code)
             return {"source": source_name, "cohort": cohort, "status": "error",
-                    "error": str(e)}
+                    "error": error_code}
         finally:
             db.close()
 

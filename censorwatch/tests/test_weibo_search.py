@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from datetime import timezone
 
+import pytest
+
 from censorwatch.collectors.weibo_search import WeiboSearchCollector
 
 # Synthetic s.weibo.com search results matching the real card DOM.
@@ -48,6 +50,17 @@ def test_parse_search_html():
     assert len(r0["content_hash"]) == 64
 
 
+def test_parser_applies_record_quota():
+    assert len(WeiboSearchCollector._parse_search_html(_HTML, limit=1)) == 1
+
+
+def test_keyword_fanout_configuration_is_bounded():
+    with pytest.raises(ValueError):
+        WeiboSearchCollector({"keywords": ["经济"] * 33})
+    with pytest.raises(ValueError):
+        WeiboSearchCollector({"keywords": ["unsafe\nheader"]})
+
+
 def test_time_parsing_forms():
     P = WeiboSearchCollector._parse_time
     assert P("2026-06-20 10:05").hour == 2                  # absolute
@@ -61,12 +74,22 @@ def test_abs_url():
     assert A("//weibo.com/1/Ab?x=1") == "https://weibo.com/1/Ab"
     assert A("/1/Ab") == "https://weibo.com/1/Ab"
     assert A(None) is None
+    for unsafe in (
+        "http://weibo.com/1/Ab",
+        "https://weibo.com.evil.invalid/1/Ab",
+        "https://:@weibo.com/1/Ab",
+        "https://weibo.com:444/1/Ab",
+        "//127.0.0.1/internal",
+        "javascript:alert(1)",
+    ):
+        assert A(unsafe) is None
 
 
 def _run_all():
     for name, fn in sorted(globals().items()):
         if name.startswith("test_") and callable(fn):
-            fn(); print(f"  PASS {name}")
+            fn()
+            print(f"  PASS {name}")
     print("\nweibo_search checks passed")
 
 

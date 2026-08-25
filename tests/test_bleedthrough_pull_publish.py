@@ -32,7 +32,7 @@ import scripts.import_bleedthrough_snapshot as relay
 # two because looks_sampled() calls one distinct pool across two targets a sample
 # (1 >= 0.5 * 2) and would strip the regional layer; at three the round reads as an
 # enumeration, which keeps these tests about publication timing and nothing else.
-TARGET_IPS = ("203.0.113.10", "203.0.113.11", "203.0.113.12")
+TARGET_IPS = ("8.8.4.10", "8.8.4.11", "8.8.4.12")
 
 POOL_A = ("1.2.3.4", "5.6.7.8")
 POOL_B = (
@@ -214,7 +214,7 @@ def test_target_denominator_change_moves_history_even_when_signal_values_hold(pu
     first = run(POOL_A)
     targets = tmp_path / "targets.json"
     payload = json.loads(targets.read_text(encoding="utf-8"))
-    extra = "203.0.113.13"
+    extra = "8.8.4.13"
     payload["targets"].append(
         {
             "ip": extra,

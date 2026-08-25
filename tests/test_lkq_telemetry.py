@@ -15,6 +15,7 @@ from __future__ import annotations
 import pytest
 
 import collectors.lkq_telemetry as lkq
+from core.safe_fetch import FetchError
 from collectors.lkq_telemetry import (
     find_article,
     find_rail_article,
@@ -216,8 +217,9 @@ def test_pbc_report_discovery_follows_one_bounded_listing_page(monkeypatch):
     article = "六月末，人民币贷款余额268.56万亿元，同比增长7.1%。"
     fetched = []
 
-    def fake_get(url):
+    def fake_get(url, *, expected_host=None):
         fetched.append(url)
+        assert expected_host == "www.pbc.gov.cn"
         if url.endswith("11040-2.html"):
             return page_2
         if url.endswith("/report/index.html"):
@@ -230,3 +232,73 @@ def test_pbc_report_discovery_follows_one_bounded_listing_page(monkeypatch):
 
     assert got == (article, "2026年上半年金融统计数据报告")
     assert len(fetched) == 2
+
+
+def test_get_uses_bounded_same_host_hardened_transport():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"]("https://www.stats.gov.cn/english/next.html")
+        return b"<html>ok</html>"
+
+    got = lkq._get(
+        "https://www.stats.gov.cn/english/PressRelease/",
+        retries=0,
+        fetcher=fetcher,
+    )
+
+    assert got == "<html>ok</html>"
+    assert seen["max_bytes"] == lkq.MAX_BYTES
+    assert seen["max_redirects"] == 3
+    assert seen["timeout"] == 30.0
+    assert seen["headers"]["User-Agent"] == lkq.USER_AGENT
+
+
+def test_get_redirect_policy_refuses_cross_host_and_private_targets():
+    refused = []
+
+    def fetcher(_url, **kwargs):
+        policy = kwargs["url_policy"]
+        for candidate in (
+            "https://www.pbc.gov.cn/report",
+            "http://127.0.0.1/admin",
+        ):
+            with pytest.raises(FetchError):
+                policy(candidate)
+            refused.append(candidate)
+        raise FetchError("stop after policy assertions")
+
+    assert lkq._get(
+        "https://www.stats.gov.cn/english/PressRelease/",
+        retries=0,
+        fetcher=fetcher,
+    ) is None
+    assert len(refused) == 2
+
+
+def test_source_policy_normalizes_malformed_input_to_fetch_error():
+    with pytest.raises(FetchError):
+        lkq._source_host(b"https://www.stats.gov.cn/")
+
+
+def test_article_discovery_refuses_hostile_absolute_url_before_fetch(monkeypatch):
+    listing = (
+        '<a title="Energy Production in June 2026" '
+        'href="http://169.254.169.254/latest/meta-data/">release</a>'
+    )
+
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("cross-authority discovery must fail before egress")
+
+    monkeypatch.setattr(lkq, "_get", no_fetch)
+    assert lkq._fetch_article(
+        lkq.NBS_EN_URL,
+        listing,
+        "Energy Production in",
+    ) is None
+
+
+def test_next_listing_page_refuses_cross_authority_target():
+    listing = '<a href="https://evil.example/next">\u4e0b\u4e00\u9875</a>'
+    assert lkq.next_listing_page(lkq.PBC_LIST_URL, listing) is None

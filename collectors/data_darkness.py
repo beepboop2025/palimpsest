@@ -62,7 +62,7 @@ latest-release date is evidence about publication; a surface that cannot be
 FETCHED is evidence about this vantage (or an outage) and is reported as
 unreachable, never scored as darkness.
 
-Standard-library only (urllib + re + json), no dependencies in CI.
+Standard-library only (shared safe transport + re + json), no extra dependencies in CI.
 """
 from __future__ import annotations
 
@@ -70,8 +70,11 @@ import json
 import logging
 import re
 import time
-import urllib.error
-import urllib.request
+import urllib.parse
+
+from collections.abc import Callable
+
+from core.safe_fetch import FetchError, safe_fetch_bytes
 
 log = logging.getLogger(__name__)
 
@@ -87,6 +90,12 @@ SAFE_URL = "https://www.safe.gov.cn/safe/2023/0215/22329.html"
 ZXFB_URL = "https://www.stats.gov.cn/sj/zxfb/"
 CALENDAR_URL = "https://www.stats.gov.cn/sj/fbrc/bnxxfb/"
 NRA_URL = "https://www.nra.gov.cn/xwzx/zlzx/hytj/"
+_REVIEWED_SOURCE_HOSTS = frozenset({
+    "www.nra.gov.cn",
+    "www.pbc.gov.cn",
+    "www.safe.gov.cn",
+    "www.stats.gov.cn",
+})
 
 # NBS zxfb title stem -> (series name, calendar row label)
 NBS_STEMS = {
@@ -121,19 +130,73 @@ def _iso(yyyymmdd: str) -> str:
     return f"{yyyymmdd[:4]}-{yyyymmdd[4:6]}-{yyyymmdd[6:8]}"
 
 
-def _get(url: str, timeout: float = 30.0, retries: int = 1) -> str | None:
-    """One page fetch. Fail-soft: None on any error. An empty body is an error,
-    not a statement about publication."""
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+def _source_host(url: str) -> str:
+    """Return one reviewed HTTPS authority, or refuse it before egress."""
+    if type(url) is not str:
+        raise FetchError("data-darkness source URL must be text")
+    try:
+        parts = urllib.parse.urlsplit(url)
+        port = parts.port
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise FetchError("data-darkness source URL could not be parsed") from exc
+    authority = parts.netloc
+    host = parts.hostname.lower() if parts.hostname else ""
+    if (
+        parts.scheme != "https"
+        or not authority
+        or "%" in authority
+        or "\\" in authority
+        or any(ord(char) < 0x21 or ord(char) > 0x7e for char in authority)
+        or parts.username is not None
+        or parts.password is not None
+        or port not in (None, 443)
+        or host not in _REVIEWED_SOURCE_HOSTS
+    ):
+        raise FetchError("data-darkness URL is outside reviewed source authorities")
+    return host
+
+
+def _get(
+    url: str,
+    timeout: float = 30.0,
+    retries: int = 1,
+    *,
+    fetcher: Callable[..., bytes] = safe_fetch_bytes,
+) -> str | None:
+    """Fetch one bounded official listing, abstaining on any unsafe response."""
+    try:
+        source_host = _source_host(url)
+    except FetchError:
+        log.warning("data_darkness refused a URL outside its source policy")
+        return None
+
+    def same_host_policy(candidate: str) -> None:
+        if _source_host(candidate) != source_host:
+            raise FetchError("data-darkness redirect changed source authority")
+
     for attempt in range(retries + 1):
         try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                body = r.read(MAX_BYTES).decode("utf-8", "replace").strip()
+            body = fetcher(
+                url,
+                timeout=timeout,
+                max_bytes=MAX_BYTES,
+                max_redirects=3,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml;q=0.9,text/plain;q=0.5",
+                    "User-Agent": USER_AGENT,
+                },
+                url_policy=same_host_policy,
+            ).decode("utf-8", "replace").strip()
             if not body:
                 raise ValueError("empty body")
             return body
         except Exception as exc:  # noqa: BLE001 — abstain, never fake
-            log.warning("data_darkness %s attempt %d failed: %s", url, attempt, exc)
+            log.warning(
+                "data_darkness host=%s attempt=%d failed=%s",
+                source_host,
+                attempt,
+                type(exc).__name__,
+            )
             if attempt < retries:
                 time.sleep(20.0 * (attempt + 1))
     return None
@@ -204,6 +267,9 @@ def fetch_omo() -> dict | None:
 def fetch_mb_stats(year: int) -> dict | None:
     """Try the given year's directory; in the new-year window before it exists,
     fall back to the previous year's (December data lands there in January)."""
+    if type(year) is not int or not 2000 <= year <= 2100:
+        log.warning("data_darkness refused an invalid statistics year")
+        return None
     for y in (year, year - 1):
         page = _get(MB_STATS_URL.format(year=y))
         if page:

@@ -1,7 +1,9 @@
 """Circumvention-demand collector — parse, merge, and shift tests (offline)."""
+import collectors.circumvention_demand as demand
 from collectors.circumvention_demand import (
     collect, parse_bridge_users, parse_relay_users, parse_transports,
     transport_shift)
+from core.safe_fetch import FetchError
 
 BRIDGE = """#
 # The Tor Project
@@ -70,3 +72,44 @@ def test_transport_shift_warming_up_returns_empty():
 def test_transport_shift_stable_is_quiet():
     days = _days({f"2026-07-{i:02d}": 1400 + i for i in range(1, 15)})
     assert transport_shift(days, window=7) == []
+
+
+def test_fetch_is_exact_bounded_and_redirect_free():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        try:
+            kwargs["url_policy"]("https://evil.example/metrics.csv")
+        except FetchError:
+            pass
+        else:
+            raise AssertionError("changed metrics URL must be refused")
+        return BRIDGE.encode("utf-8")
+
+    got = demand._get_csv(
+        "userstats-bridge-country",
+        "2026-07-01",
+        "2026-07-02",
+        fetcher=fetcher,
+    )
+    assert got == BRIDGE
+    assert seen["max_bytes"] == demand.MAX_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_invalid_or_oversized_windows_fail_before_fetch():
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("invalid window must fail before fetch")
+
+    assert demand._get_csv(
+        "../../internal", "2026-07-01", "2026-07-02", fetcher=no_fetch
+    ) is None
+    assert collect("2026-07-02", "2026-07-01", fetch=no_fetch) == {}
+    assert collect("2020-01-01", "2026-01-01", fetch=no_fetch) == {}
+
+
+def test_csv_parser_rejects_excessive_rows(monkeypatch):
+    monkeypatch.setattr(demand, "MAX_ROWS", 1)
+    assert parse_bridge_users(BRIDGE) == {}

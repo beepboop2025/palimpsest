@@ -2,9 +2,8 @@ name: Refresh evidence wire
 
 # Pull a closed RSS/Atom registry, then rebuild every deterministic publication that
 # depends on it. The dedicated hourly lane has capacity for a complete build plus
-# one base-advance rebuild. Cross-publisher push races are handled by the exact-base
-# rebuild paths below rather than allowing unrelated level-triggered jobs to cancel
-# this reader-facing refresh.
+# one base-advance rebuild. Cross-publisher push races replay the exact private
+# acquisition snapshot after proving the acquisition code and registry did not change.
 
 on:
   schedule:
@@ -52,7 +51,9 @@ jobs:
       - name: Pull the evidence wire source receipts
         id: acquisition
         run: |
-          python -m scripts.newswire_pull
+          python -m scripts.newswire_pull \
+            --snapshot-out "$RUNNER_TEMP/newswire-acquisition"
+          test -f "$RUNNER_TEMP/newswire-acquisition/manifest.json"
           echo "base-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       # A run artifact in a public repository is not a private vault. Screen
@@ -211,13 +212,25 @@ jobs:
             git switch --detach origin/main
             test "$(git rev-parse HEAD)" = "$public_base"
             test -z "$(git status --porcelain=v1 --untracked-files=all)"
+            if ! git diff --quiet \
+              "${{ steps.acquisition.outputs.base-sha }}" "$public_base" -- \
+              .github/osint-china-ci-requirements.txt \
+              config/news_sources.json \
+              core/newswire.py \
+              core/safe_fetch.py \
+              protocol/newswire-v1.schema.json \
+              scripts/newswire_pull.py; then
+              echo "::error::acquisition contract changed; refusing snapshot replay"
+              exit 1
+            fi
             echo "rebuild=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Rebuild and reseal after a pre-publication ledger change
         if: steps.prepublish_sync.outputs.rebuild == 'true'
         run: |
-          python -m scripts.newswire_pull
+          python -m scripts.newswire_pull \
+            --snapshot-in "$RUNNER_TEMP/newswire-acquisition"
           python -m scripts.build_economic_pulse
           python -m scripts.build_china_econ_manifest
           python -m scripts.build_china_site
@@ -360,11 +373,23 @@ jobs:
           git switch --detach origin/main
           test "$(git rev-parse HEAD)" = "$public_base"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          if ! git diff --quiet \
+            "${{ steps.acquisition.outputs.base-sha }}" "$public_base" -- \
+            .github/osint-china-ci-requirements.txt \
+            config/news_sources.json \
+            core/newswire.py \
+            core/safe_fetch.py \
+            protocol/newswire-v1.schema.json \
+            scripts/newswire_pull.py; then
+            echo "::error::acquisition contract changed; refusing snapshot replay"
+            exit 1
+          fi
 
       - name: Rebuild and reseal after a push race
         if: steps.push_attempt.outcome == 'failure'
         run: |
-          python -m scripts.newswire_pull
+          python -m scripts.newswire_pull \
+            --snapshot-in "$RUNNER_TEMP/newswire-acquisition"
           python -m scripts.build_economic_pulse
           python -m scripts.build_china_econ_manifest
           python -m scripts.build_china_site

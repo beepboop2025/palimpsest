@@ -41,7 +41,8 @@ def test_every_gfi_publication_path_runs_the_universal_semantic_contract():
     candidate = candidate[:candidate.index("Attempt the base-locked publication")]
     retry = text[text.index("Reseal the measured bytes after a publication race"):]
 
-    assert "python -m pip install --quiet pytest" in text
+    assert "python -m pip install --quiet --require-hashes" in text
+    assert "-r .github/osint-china-ci-requirements.txt" in text
     for contract in (
         "tests/test_osint_china.py",
         "tests/test_evidence_mesh.py",

@@ -2,7 +2,9 @@
 never fake the discontinued northbound direction."""
 import os
 
+import collectors.stock_connect as stock
 from collectors.stock_connect import parse_daily
+from core.safe_fetch import FetchError
 
 FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "hkex_daily_20260716.js")
 
@@ -47,3 +49,36 @@ def test_dash_cells_are_skipped_not_zero():
     )
     # All cells suspended -> no leg parseable -> the date is absent.
     assert parse_daily(payload) is None
+
+
+def test_fetch_is_exact_bounded_and_redirect_free():
+    seen = {}
+
+    def fetcher(url, **kwargs):
+        seen.update(url=url, **kwargs)
+        kwargs["url_policy"](url)
+        try:
+            kwargs["url_policy"]("https://evil.example/daily.js")
+        except FetchError:
+            pass
+        else:
+            raise AssertionError("changed daily URL must be refused")
+        return b"tabData = [];"
+
+    assert stock._get_raw("20260716", fetcher=fetcher) == "tabData = [];"
+    assert seen["max_bytes"] == stock.MAX_BYTES
+    assert seen["max_redirects"] == 0
+
+
+def test_fetch_and_collection_window_reject_malformed_dates_before_egress():
+    def no_fetch(*_args, **_kwargs):
+        raise AssertionError("malformed date must fail before egress")
+
+    assert stock._get_raw("../../secret", fetcher=no_fetch) is None
+    assert stock.collect_range(["20260230"], spacing_s=0) == {}
+    assert stock.collect_range(["20260101"] * 401, spacing_s=0) == {}
+
+
+def test_parser_refuses_nonfinite_and_oversized_top_level_shapes():
+    assert parse_daily("tabData = " + repr([{}] * 17).replace("'", '"') + ";") is None
+    assert stock._num("NaN") is None

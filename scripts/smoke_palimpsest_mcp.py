@@ -4,9 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import importlib.util
+import ipaddress
 import json
 import socket
+import ssl
 import sys
 import urllib.error
 import urllib.parse
@@ -16,7 +19,14 @@ from types import ModuleType
 from typing import Any
 
 
+MAX_REQUEST_BYTES = 256 * 1024
 MAX_RESPONSE_BYTES = 4 * 1024 * 1024
+MAX_URL_CHARS = 16 * 1024
+_REQUEST_HEADERS = {
+    "Accept": "application/json, text/event-stream",
+    "Content-Type": "application/json",
+    "User-Agent": "palimpsest-mcp-release-smoke/1",
+}
 
 
 class SmokeError(RuntimeError):
@@ -94,61 +104,198 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         raise SmokeError(f"endpoint redirected HTTP {code}; redirects are forbidden")
 
 
-def validate_url(url: str, allow_http_loopback: bool) -> None:
-    parsed = urllib.parse.urlsplit(url)
+def _validated_endpoint(
+    url: str,
+    allow_http_loopback: bool,
+) -> urllib.parse.SplitResult:
+    if type(url) is not str or not url or len(url) > MAX_URL_CHARS:
+        raise SmokeError("endpoint URL must be non-empty bounded text")
+    if type(allow_http_loopback) is not bool:
+        raise SmokeError("loopback permission must be boolean")
+    if any(ord(char) < 0x20 or ord(char) == 0x7F for char in url):
+        raise SmokeError("endpoint URL contains control characters")
+    try:
+        parsed = urllib.parse.urlsplit(url)
+        port = parsed.port
+    except (TypeError, ValueError, UnicodeError) as exc:
+        raise SmokeError("endpoint URL could not be parsed") from exc
+    if (
+        not parsed.netloc
+        or "%" in parsed.netloc
+        or "\\" in parsed.netloc
+        or any(ord(char) < 0x21 or ord(char) > 0x7E for char in parsed.netloc)
+    ):
+        raise SmokeError("endpoint URL authority is not canonical ASCII")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise SmokeError("endpoint URL may not contain credentials, query, or fragment")
+    if port is not None and not 1 <= port <= 65535:
+        raise SmokeError("endpoint URL has an invalid port")
     if parsed.scheme == "https":
         if not parsed.hostname:
             raise SmokeError("HTTPS endpoint has no host")
-        return
+        return parsed
     if (
         parsed.scheme == "http"
         and allow_http_loopback
         and parsed.hostname in {"127.0.0.1", "::1", "localhost"}
     ):
-        return
+        return parsed
     raise SmokeError("endpoint must be HTTPS (or explicit loopback HTTP)")
 
 
-def post_json(url: str, payload: dict[str, Any], timeout: float) -> dict[str, Any]:
-    body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    request = urllib.request.Request(
-        url,
-        data=body,
-        method="POST",
-        headers={
-            "Accept": "application/json, text/event-stream",
-            "Content-Type": "application/json",
-            "User-Agent": "palimpsest-mcp-release-smoke/1",
-        },
-    )
-    opener = urllib.request.build_opener(_NoRedirect())
+def validate_url(url: str, allow_http_loopback: bool) -> None:
+    _validated_endpoint(url, allow_http_loopback)
+
+
+def _resolve_public_addresses(host: str, port: int) -> list[tuple[int, tuple[Any, ...]]]:
     try:
-        with opener.open(request, timeout=timeout) as response:
-            if response.status != 200:
-                raise SmokeError(f"endpoint returned HTTP {response.status}")
-            content_type = response.headers.get_content_type()
-            if content_type != "application/json":
-                raise SmokeError(f"endpoint returned {content_type}, not application/json")
-            length = response.headers.get("Content-Length")
-            if length is not None:
-                try:
-                    if int(length) > MAX_RESPONSE_BYTES:
-                        raise SmokeError("endpoint response exceeds the byte cap")
-                except ValueError as exc:
-                    raise SmokeError("endpoint returned an invalid Content-Length") from exc
-            data = response.read(MAX_RESPONSE_BYTES + 1)
-    except SmokeError:
-        raise
-    except (urllib.error.URLError, TimeoutError, socket.timeout, OSError) as exc:
-        raise SmokeError(f"endpoint request failed: {exc}") from exc
+        answers = socket.getaddrinfo(
+            host,
+            port,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
+    except socket.gaierror as exc:
+        raise SmokeError("endpoint DNS resolution failed") from exc
+    pinned: list[tuple[int, tuple[Any, ...]]] = []
+    for family, _socktype, _proto, _canonname, sockaddr in answers:
+        if family not in {socket.AF_INET, socket.AF_INET6}:
+            raise SmokeError("endpoint DNS returned an unsupported address family")
+        try:
+            address = ipaddress.ip_address(sockaddr[0])
+        except ValueError as exc:
+            raise SmokeError("endpoint DNS returned an invalid address") from exc
+        if not address.is_global:
+            raise SmokeError("endpoint DNS resolved to a non-public address")
+        candidate = (family, sockaddr)
+        if candidate not in pinned:
+            pinned.append(candidate)
+    if not pinned:
+        raise SmokeError("endpoint DNS returned no addresses")
+    return pinned
+
+
+def _read_json_response(response: Any) -> dict[str, Any]:
+    if response.status != 200:
+        raise SmokeError(f"endpoint returned HTTP {response.status}")
+    content_type = response.headers.get_content_type()
+    if content_type != "application/json":
+        raise SmokeError(f"endpoint returned {content_type}, not application/json")
+    get_all = getattr(response.headers, "get_all", None)
+    lengths = get_all("Content-Length") if callable(get_all) else None
+    if not lengths:
+        length = response.headers.get("Content-Length")
+        lengths = [length] if length is not None else []
+    normalized_lengths = {str(length).strip() for length in lengths}
+    if len(normalized_lengths) > 1:
+        raise SmokeError("endpoint returned conflicting Content-Length headers")
+    if normalized_lengths:
+        length = normalized_lengths.pop()
+        if not length.isascii() or not length.isdecimal():
+            raise SmokeError("endpoint returned an invalid Content-Length")
+        if int(length) > MAX_RESPONSE_BYTES:
+            raise SmokeError("endpoint response exceeds the byte cap")
+    data = response.read(MAX_RESPONSE_BYTES + 1)
     if len(data) > MAX_RESPONSE_BYTES:
         raise SmokeError("endpoint response exceeds the byte cap")
     decoded = _decode_json(data, "endpoint response")
     if not isinstance(decoded, dict):
         raise SmokeError("endpoint response is not a JSON object")
     return decoded
+
+
+def _post_public_https(
+    parsed: urllib.parse.SplitResult,
+    body: bytes,
+    timeout: float,
+) -> dict[str, Any]:
+    host = parsed.hostname
+    if host is None:  # Defensive: _validated_endpoint already requires it.
+        raise SmokeError("HTTPS endpoint has no host")
+    port = parsed.port or 443
+    addresses = _resolve_public_addresses(host, port)
+    context = ssl.create_default_context()
+    path = parsed.path or "/"
+    last_error: BaseException | None = None
+    for family, sockaddr in addresses:
+        raw_socket: socket.socket | None = None
+        connection: http.client.HTTPSConnection | None = None
+        try:
+            raw_socket = socket.socket(family, socket.SOCK_STREAM)
+            raw_socket.settimeout(timeout)
+            raw_socket.connect(sockaddr)
+            tls_socket = context.wrap_socket(raw_socket, server_hostname=host)
+            raw_socket = None  # The TLS socket now owns the file descriptor.
+            connection = http.client.HTTPSConnection(host, port, timeout=timeout)
+            connection.sock = tls_socket
+            connection.request("POST", path, body=body, headers=_REQUEST_HEADERS)
+            response = connection.getresponse()
+        except (OSError, http.client.HTTPException) as exc:
+            last_error = exc
+            if connection is not None:
+                connection.close()
+            if raw_socket is not None:
+                raw_socket.close()
+            continue
+        try:
+            return _read_json_response(response)
+        finally:
+            response.close()
+            connection.close()
+    raise SmokeError("endpoint request failed") from last_error
+
+
+def _post_loopback_http(
+    url: str,
+    body: bytes,
+    timeout: float,
+) -> dict[str, Any]:
+    request = urllib.request.Request(
+        url,
+        data=body,
+        method="POST",
+        headers=_REQUEST_HEADERS,
+    )
+    opener = urllib.request.build_opener(
+        _NoRedirect(),
+        urllib.request.ProxyHandler({}),
+    )
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            return _read_json_response(response)
+    except SmokeError:
+        raise
+    except (urllib.error.URLError, TimeoutError, socket.timeout, OSError) as exc:
+        raise SmokeError("endpoint request failed") from exc
+
+
+def post_json(
+    url: str,
+    payload: dict[str, Any],
+    timeout: float,
+    *,
+    allow_http_loopback: bool = False,
+) -> dict[str, Any]:
+    parsed = _validated_endpoint(url, allow_http_loopback)
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+        raise SmokeError("timeout must be numeric")
+    if not 0.1 <= timeout <= 60:
+        raise SmokeError("timeout must be between 0.1 and 60 seconds")
+    if type(payload) is not dict:
+        raise SmokeError("request payload must be a JSON object")
+    try:
+        body = json.dumps(
+            payload,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise SmokeError("request payload is not strict JSON") from exc
+    if len(body) > MAX_REQUEST_BYTES:
+        raise SmokeError("endpoint request exceeds the byte cap")
+    if parsed.scheme == "https":
+        return _post_public_https(parsed, body, timeout)
+    return _post_loopback_http(url, body, timeout)
 
 
 def _rpc_result(response: dict[str, Any], expected_id: int, label: str) -> dict[str, Any]:
@@ -167,10 +314,19 @@ def probe(
     contract: dict[str, Any],
     timeout: float,
     basic: bool = False,
+    *,
+    allow_http_loopback: bool = False,
 ) -> dict[str, Any]:
-    initialize = _rpc_result(
-        post_json(
+    def rpc(payload: dict[str, Any]) -> dict[str, Any]:
+        return post_json(
             url,
+            payload,
+            timeout,
+            allow_http_loopback=allow_http_loopback,
+        )
+
+    initialize = _rpc_result(
+        rpc(
             {
                 "jsonrpc": "2.0",
                 "id": 1,
@@ -181,7 +337,6 @@ def probe(
                     "clientInfo": {"name": "release-smoke", "version": "1"},
                 },
             },
-            timeout,
         ),
         1,
         "initialize",
@@ -203,10 +358,8 @@ def probe(
         raise SmokeError("live server does not advertise tool and prompt capabilities")
 
     tool_result = _rpc_result(
-        post_json(
-            url,
+        rpc(
             {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
-            timeout,
         ),
         2,
         "tools/list",
@@ -223,10 +376,8 @@ def probe(
         raise SmokeError("live tool inventory differs from the candidate")
 
     prompt_result = _rpc_result(
-        post_json(
-            url,
+        rpc(
             {"jsonrpc": "2.0", "id": 3, "method": "prompts/list", "params": {}},
-            timeout,
         ),
         3,
         "prompts/list",
@@ -245,15 +396,13 @@ def probe(
     calls: list[str] = []
     if not basic:
         signals = _rpc_result(
-            post_json(
-                url,
+            rpc(
                 {
                     "jsonrpc": "2.0",
                     "id": 4,
                     "method": "tools/call",
                     "params": {"name": "list_signals", "arguments": {}},
                 },
-                timeout,
             ),
             4,
             "tools/call list_signals",
@@ -266,8 +415,7 @@ def probe(
         calls.append("list_signals")
 
         newsroom = _rpc_result(
-            post_json(
-                url,
+            rpc(
                 {
                     "jsonrpc": "2.0",
                     "id": 5,
@@ -277,7 +425,6 @@ def probe(
                         "arguments": {"view": "interconnection", "limit": 1},
                     },
                 },
-                timeout,
             ),
             5,
             "tools/call get_newsroom(interconnection)",
@@ -324,7 +471,13 @@ def main(argv: list[str] | None = None) -> int:
             raise SmokeError("timeout must be between 0.1 and 60 seconds")
         validate_url(args.url, args.allow_http_loopback)
         contract = load_contract(args.module, args.manifest)
-        summary = probe(args.url, contract, args.timeout, args.basic)
+        summary = probe(
+            args.url,
+            contract,
+            args.timeout,
+            args.basic,
+            allow_http_loopback=args.allow_http_loopback,
+        )
     except SmokeError as exc:
         print(f"MCP smoke failed: {exc}", file=sys.stderr)
         return 1

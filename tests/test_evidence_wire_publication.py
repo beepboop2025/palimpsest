@@ -513,6 +513,8 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     assert "timeout-minutes: 90" in workflow
     assert 'cron: "43 */3 * * *"' in ddti_workflow
     assert workflow.count("python -m scripts.newswire_pull") == 3
+    assert workflow.count("--snapshot-out") == 1
+    assert workflow.count("--snapshot-in") == 2
 
     build_graph = re.findall(
         r"python -m scripts\.build_economic_pulse\n"
@@ -592,15 +594,26 @@ def test_newswire_race_rebuilds_start_from_the_exact_public_ledger():
         assert 'test "$(git rev-parse HEAD)" = "$public_base"' in sync
         assert "git status --porcelain=v1 --untracked-files=all" in sync
         assert "git rebase origin/main" not in sync
+        assert "git diff --quiet" in sync
+        assert "steps.acquisition.outputs.base-sha" in sync
+        for acquisition_path in (
+            ".github/osint-china-ci-requirements.txt",
+            "config/news_sources.json",
+            "core/newswire.py",
+            "core/safe_fetch.py",
+            "protocol/newswire-v1.schema.json",
+            "scripts/newswire_pull.py",
+        ):
+            assert acquisition_path in sync
+        assert "refusing snapshot replay" in sync
 
     assert "previous_base=$(git rev-parse HEAD^)" in prepublish_sync
     assert '[ "$previous_base" = "$public_base" ]' in prepublish_sync
-    assert prepublish_rebuild < workflow.index(
-        "python -m scripts.newswire_pull", prepublish_rebuild
-    )
-    assert push_race_rebuild < workflow.index(
-        "python -m scripts.newswire_pull", push_race_rebuild
-    )
+    for rebuild in (prepublish_rebuild, push_race_rebuild):
+        replay = workflow.index("python -m scripts.newswire_pull", rebuild)
+        snapshot = workflow.index("--snapshot-in", replay)
+        assert rebuild < replay < snapshot
+        assert "$RUNNER_TEMP/newswire-acquisition" in workflow[replay:snapshot + 80]
 
 
 def test_newswire_workflow_preserves_acquisition_before_materialization():
@@ -620,6 +633,8 @@ def test_newswire_workflow_preserves_acquisition_before_materialization():
     screening = workflow[screen:preserve]
     artifact = workflow[preserve:build]
     assert initial_path.count("python -m scripts.newswire_pull") == 1
+    assert '--snapshot-out "$RUNNER_TEMP/newswire-acquisition"' in initial_path
+    assert 'test -f "$RUNNER_TEMP/newswire-acquisition/manifest.json"' in initial_path
     assert "continue-on-error: true" in screening
     assert (
         "PALIMPSEST_SCRUB_STRINGS: ${{ secrets.PALIMPSEST_SCRUB_STRINGS }}" in screening
