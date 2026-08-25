@@ -569,6 +569,40 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         assert _staged_occurrences(workflow, artifact) == 3, artifact
 
 
+def test_newswire_race_rebuilds_start_from_the_exact_public_ledger():
+    workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
+    prepublish_start = workflow.index(
+        "- name: Synchronize candidate with the exact public ledger"
+    )
+    prepublish_rebuild = workflow.index(
+        "- name: Rebuild and reseal after a pre-publication ledger change",
+        prepublish_start,
+    )
+    push_race_start = workflow.index("- name: Synchronize after a push race")
+    push_race_rebuild = workflow.index(
+        "- name: Rebuild and reseal after a push race", push_race_start
+    )
+
+    prepublish_sync = workflow[prepublish_start:prepublish_rebuild]
+    push_race_sync = workflow[push_race_start:push_race_rebuild]
+    for sync in (prepublish_sync, push_race_sync):
+        assert "git fetch origin main" in sync
+        assert "public_base=$(git rev-parse origin/main)" in sync
+        assert "git switch --detach origin/main" in sync
+        assert 'test "$(git rev-parse HEAD)" = "$public_base"' in sync
+        assert "git status --porcelain=v1 --untracked-files=all" in sync
+        assert "git rebase origin/main" not in sync
+
+    assert "previous_base=$(git rev-parse HEAD^)" in prepublish_sync
+    assert '[ "$previous_base" = "$public_base" ]' in prepublish_sync
+    assert prepublish_rebuild < workflow.index(
+        "python -m scripts.newswire_pull", prepublish_rebuild
+    )
+    assert push_race_rebuild < workflow.index(
+        "python -m scripts.newswire_pull", push_race_rebuild
+    )
+
+
 def test_newswire_workflow_preserves_acquisition_before_materialization():
     workflow = NEWSWIRE_WORKFLOW.read_text(encoding="utf-8")
     pull = workflow.index("- name: Pull the evidence wire source receipts")

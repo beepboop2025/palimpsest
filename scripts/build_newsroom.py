@@ -5425,6 +5425,18 @@ def _wire_history_integrity_receipt(
         current_events=current_events,
     )
     noncurrent_new_paths = [path for path in new_paths if path not in current_paths]
+    current_new_event_paths = [
+        path
+        for path in new_paths
+        if path in current_paths and _EVENT_REVISION_FILENAME.fullmatch(path.name)
+    ]
+    current_new_analysis_paths = [
+        path
+        for path in new_paths
+        if path in current_paths
+        and _EVENT_ANALYSIS_REVISION_FILENAME.fullmatch(path.name)
+    ]
+    current_event_count = len(current_events) if current_events is not None else 0
     established_namespace = (root / "news" / "wire").exists()
     if established_namespace:
         if len(noncurrent_new_paths) > MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION:
@@ -5436,11 +5448,18 @@ def _wire_history_integrity_receipt(
         catchup_intervals = _wire_history_catchup_intervals(
             current_wire_generated_at, _prior_wire_generated_at(root)
         )
-        growth_limit = MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION * catchup_intervals
-        if len(new_paths) > growth_limit:
+        event_growth_limit = MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION * catchup_intervals
+        if len(current_new_event_paths) > event_growth_limit:
             raise newsroom.NewsroomError(
-                "wire-history total growth exceeds the cadence-scaled publication "
-                f"bound: {len(new_paths)} > {growth_limit}"
+                "wire-history current event-dossier growth exceeds the "
+                "cadence-scaled publication bound: "
+                f"{len(current_new_event_paths)} > {event_growth_limit}"
+            )
+        if len(current_new_analysis_paths) > current_event_count:
+            raise newsroom.NewsroomError(
+                "wire-history current analysis growth exceeds the one-per-event "
+                f"publication bound: {len(current_new_analysis_paths)} > "
+                f"{current_event_count}"
             )
 
     event_versions: set[tuple[str, str]] = set()
@@ -5554,11 +5573,14 @@ def _wire_history_integrity_receipt(
         "wire_generated_at": current_wire_generated_at,
         "automatic_growth_limit": MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION,
         "automatic_growth_max_catchup_intervals": (MAX_WIRE_HISTORY_CATCHUP_INTERVALS),
+        "automatic_current_analysis_limit": current_event_count,
         "automatic_growth_scope": (
-            "all-new-revisions-per-hour-with-non-current-max-128"
+            "current-event-dossiers-per-hour-plus-one-current-analysis-per-event-"
+            "with-non-current-max-128"
         ),
         "automatic_growth_policy": (
-            "cadence-scaled-max-128-all-with-48-hour-catchup-cap"
+            "cadence-scaled-max-128-current-event-dossiers-with-48-hour-catchup-"
+            "cap;max-one-current-analysis-per-event;max-128-non-current"
         ),
         "automatic_growth_status": "validated",
         "validation_status": "full-history-validated",
