@@ -45,7 +45,6 @@ MAX_MANIFEST_BYTES = 64 * 1024
 MAX_RECEIPT_BYTES = 64 * 1024
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
-_COMMIT = re.compile(r"^[0-9a-f]{40}$")
 _CONTAINER = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -701,6 +700,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
+    receipt_digest: str | None = None
     try:
         digest, document = validate_manifest(args.manifest)
         if args.verify_host_continuation:
@@ -711,6 +711,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"invalid API readiness retry manifest: {error}", file=sys.stderr)
         return 1
     if args.verify_host_continuation:
+        assert receipt_digest is not None
         print(
             "validated API readiness retry host continuation: "
             f"manifest={digest} prepared={receipt_digest}"
