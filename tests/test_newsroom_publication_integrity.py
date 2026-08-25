@@ -491,6 +491,43 @@ def test_wire_history_catchup_counts_only_completed_hourly_slots() -> None:
     )
 
 
+def test_wire_history_catchup_counts_fixed_schedule_across_runner_jitter() -> None:
+    previous = "2026-08-24T21:26:08Z"
+
+    assert (
+        build_newsroom._wire_history_catchup_intervals(
+            "2026-08-25T00:16:59Z", previous
+        )
+        == 2
+    )
+    assert (
+        build_newsroom._wire_history_catchup_intervals(
+            "2026-08-25T00:17:00Z", previous
+        )
+        == 3
+    )
+    assert (
+        build_newsroom._wire_history_catchup_intervals(
+            "2026-08-25T00:21:34Z", previous
+        )
+        == 3
+    )
+
+
+def test_wire_history_catchup_schedule_matches_publisher_workflow() -> None:
+    workflow = (
+        Path(__file__).resolve().parent.parent
+        / ".github"
+        / "workflows"
+        / "newswire-refresh.yml"
+    ).read_text(encoding="utf-8")
+
+    assert (
+        f'cron: "{build_newsroom.WIRE_HISTORY_SCHEDULE_MINUTE} * * * *"'
+        in workflow
+    )
+
+
 def test_prior_wire_clock_requires_a_valid_situation_contract(tmp_path: Path) -> None:
     situation_path = tmp_path / "readings" / "china-situation-latest.json"
     situation_path.parent.mkdir(parents=True)
