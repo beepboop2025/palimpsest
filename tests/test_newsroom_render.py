@@ -26,7 +26,10 @@ def test_renderer_emits_one_html_and_json_document_per_story():
         1
         for story in feed["stories"]
         if story["signal_id"] in build_newsroom.instrument_analysis_model.READING_HTML
-        and (ROOT / build_newsroom.instrument_analysis_model.READING_HTML[story["signal_id"]]).is_file()
+        and (
+            ROOT
+            / build_newsroom.instrument_analysis_model.READING_HTML[story["signal_id"]]
+        ).is_file()
     )
     assert len(outputs) == 9 + (4 * feed["n_stories"]) + reading_html
     assert Path("readings/newsroom-latest.json") in outputs
@@ -58,15 +61,12 @@ def test_index_is_server_rendered_semantic_and_evidence_first():
 
 
 def test_legacy_instrument_lead_selection_does_not_require_event_fields():
-    feed = _feed()
-    expected = next(
-        story
-        for story in feed["stories"]
-        if story["priority"] == "lead" and story["status"] == "live"
-    )
+    fallback = {"signal_id": "fallback", "priority": "standard", "status": "live"}
+    expected = {"signal_id": "expected", "priority": "lead", "status": "live"}
+    stories = [fallback, expected]
 
-    assert all("lead" not in story and "event_id" not in story for story in feed["stories"])
-    assert build_newsroom._select_lead(feed["stories"]) is expected
+    assert all("lead" not in story and "event_id" not in story for story in stories)
+    assert build_newsroom._select_lead(stories) is expected
 
 
 def test_story_pages_publish_newsarticle_metadata_and_exact_evidence():
@@ -115,8 +115,7 @@ def test_json_feed_rss_and_sitemap_are_parseable_and_complete():
     assert len(json_feed["items"]) == feed["n_stories"]
     assert len({item["id"] for item in json_feed["items"]}) == feed["n_stories"]
     item_without_size = next(
-        item for item in json_feed["items"]
-        if item["url"] == story_without_size["url"]
+        item for item in json_feed["items"] if item["url"] == story_without_size["url"]
     )
     assert "size_in_bytes" not in item_without_size["attachments"][0]
 
@@ -129,8 +128,7 @@ def test_json_feed_rss_and_sitemap_are_parseable_and_complete():
     urls = sitemap.findall("s:url", namespace)
     assert len(urls) == feed["n_stories"] + 2
     assert any(
-        node.find("s:loc", namespace).text
-        == "https://palimpsest.info/news/standards/"
+        node.find("s:loc", namespace).text == "https://palimpsest.info/news/standards/"
         for node in urls
     )
 
