@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 8 are live. Health qualifiers: 2 degraded, 29 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 7 are live. Health qualifiers: 2 degraded, 30 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-25T11:30:34Z",
+  "generated_at": "2026-08-25T13:39:28Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "15812e48f14f2a0b12cc59dc1687bc5b91217982",
+  "source_commit": "bbfc64162e91aac4c65026e4f52f6c315f23ca43",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 8,
+    "live": 7,
     "status": "degraded",
     "counts": {
-      "live": 8,
+      "live": 7,
       "degraded": 2,
-      "stale": 29,
+      "stale": 30,
       "missing": 0,
       "corrupt": 0
     }
@@ -1871,29 +1871,29 @@
       "slug": "official-data-darkness",
       "url": "https://palimpsest.info/news/official-data-darkness/",
       "signal_id": "data-darkness",
-      "headline": "The official-data darkness index is 0.212 across 7 watched series",
-      "dek": "Each official surface is judged against its own declared or observed publication rhythm, with unreachable sources kept separate.",
+      "headline": "Official-data darkness: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "economy",
       "order": 4,
       "type": "analysis",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-23T10:32:44Z",
       "modified_at": "2026-08-23T10:32:44Z",
-      "claim_fingerprint": "sha256:08804ae5eef2691d64645f6ce8612b255b2c572fde39a9f71f3c7d2d222910be",
+      "claim_fingerprint": "sha256:0b041b3529018c1ffc1dc78c1516d4244abbe9831be11cc783f6a7111f3bc7a6",
       "metric": {
-        "label": "darkness index",
-        "value": 0.212,
-        "unit": "index",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "series watched",
-          "value": 7
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current publication-cadence darkness index is 0.212 across 7 watched official series."
+          "type": "availability",
+          "statement": "No current finding is published for Official-data darkness because the source status is stale."
         }
       ],
       "evidence": {
@@ -1910,6 +1910,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Publication delay, calendar changes and collection failure can resemble withholding; per-series state is required for interpretation."
       ],
       "related_signal_ids": [
