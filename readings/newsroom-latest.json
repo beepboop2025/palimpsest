@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 7 are live. Health qualifiers: 2 degraded, 30 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 6 are live. Health qualifiers: 2 degraded, 31 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-25T13:39:28Z",
+  "generated_at": "2026-08-25T16:30:37Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "bbfc64162e91aac4c65026e4f52f6c315f23ca43",
+  "source_commit": "5990d9efe74304904eab87c43bbcd94a93f5216e",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 7,
+    "live": 6,
     "status": "degraded",
     "counts": {
-      "live": 7,
+      "live": 6,
       "degraded": 2,
-      "stale": 30,
+      "stale": 31,
       "missing": 0,
       "corrupt": 0
     }
@@ -1820,20 +1820,20 @@
       "slug": "stock-connect",
       "url": "https://palimpsest.info/news/stock-connect/",
       "signal_id": "stock-connect",
-      "headline": "Southbound Stock Connect net flow is -7.63 billion Hong Kong dollars",
-      "dek": "The newsroom reports HKEX's official daily print and leaves discontinued northbound net-flow fields unestimated.",
+      "headline": "Stock Connect: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "economy",
       "order": 3,
       "type": "measurement",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-21T14:03:19Z",
       "modified_at": "2026-08-21T14:03:19Z",
-      "claim_fingerprint": "sha256:18a65b57a6f27b6d6211fbd34d769d7f0fcc6ad6e7c64bbb73f4815f4bd812bd",
+      "claim_fingerprint": "sha256:57f0a7152f3893cc9f1af7e026e6f05c0441403bf3875299c50f79240482e88e",
       "metric": {
-        "label": "southbound net flow",
-        "value": -7.63,
-        "unit": "HKD billions",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1841,8 +1841,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "HKEX reports current southbound Stock Connect net flow of -7.63 billion Hong Kong dollars."
+          "type": "availability",
+          "statement": "No current finding is published for Stock Connect because the source status is stale."
         }
       ],
       "evidence": {
@@ -1859,6 +1859,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "HKEX no longer publishes the northbound buy-sell split, so no northbound net flow is inferred."
       ],
       "related_signal_ids": [
