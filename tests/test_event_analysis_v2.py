@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -732,45 +733,87 @@ def test_same_window_peers_are_counts_and_names_only() -> None:
     assert "deleted because" not in blob
 
 
-def test_rolling_peer_count_is_edition_only_but_peer_identity_is_semantic(
+def test_rolling_peer_observation_is_edition_only_and_reuses_prior_revision(
     tmp_path: Path,
 ) -> None:
     event = _event()
 
-    def peer(identifier: str, *, source_id: str = "china-digital-times") -> dict:
+    def peer(
+        identifier: str,
+        *,
+        source_id: str,
+        group_id: str,
+        topics: list[str],
+    ) -> dict:
         candidate = copy.deepcopy(event)
         candidate["event_id"] = f"event-{identifier * 24}"
         candidate["version_id"] = f"eventv-{identifier * 24}"
-        candidate["url"] = (
-            f"https://palimpsest.info/news/wire/{candidate['event_id']}/"
-        )
+        candidate["url"] = f"https://palimpsest.info/news/wire/{candidate['event_id']}/"
         candidate["headline"] = f"Peer economy note {identifier}"
-        candidate["topics"] = ["economy"]
+        candidate["topics"] = topics
         candidate["evidence_refs"][0]["source_id"] = source_id
+        candidate["evidence_refs"][0]["independence_group"] = group_id
         candidate["evidence_groups"][0]["source_ids"] = [source_id]
-        candidate["evidence_groups"][0]["group_id"] = source_id
+        candidate["evidence_groups"][0]["group_id"] = group_id
         return candidate
 
     first_wire = _wire(event)
-    first_wire["events"].append(peer("b"))
-    second_wire = copy.deepcopy(first_wire)
-    second_wire["events"].append(peer("c"))
-    previous = event_analysis.build_event_analysis(
-        event, wire=first_wire, feed=_feed()
+    first_wire["events"].append(
+        peer(
+            "b",
+            source_id="china-digital-times",
+            group_id="cdt",
+            topics=["economy"],
+        )
     )
+    second_wire = _wire(event)
+    second_wire["events"].extend(
+        [
+            peer(
+                "c",
+                source_id="reuters",
+                group_id="wire",
+                topics=["policy"],
+            ),
+            peer(
+                "d",
+                source_id="xinhua",
+                group_id="state-media",
+                topics=["economy", "policy"],
+            ),
+        ]
+    )
+    previous = event_analysis.build_event_analysis(event, wire=first_wire, feed=_feed())
     candidate = event_analysis.build_event_analysis(
         event, wire=second_wire, feed=_feed()
     )
 
     assert previous["window_peers"]["same_window_peer_count"] == 1
     assert candidate["window_peers"]["same_window_peer_count"] == 2
+    assert previous["window_peers"]["shared_topics"] == ["economy"]
+    assert candidate["window_peers"]["shared_topics"] == ["economy", "policy"]
+    assert previous["window_peers"]["peer_source_ids"] == ["china-digital-times"]
+    assert candidate["window_peers"]["peer_source_ids"] == ["reuters", "xinhua"]
+    assert previous["window_peers"]["peer_independence_groups"] == ["cdt"]
+    assert candidate["window_peers"]["peer_independence_groups"] == [
+        "state-media",
+        "wire",
+    ]
     assert previous["analysis_id"] != candidate["analysis_id"]
+    expected_peer_seed = {
+        "relation": "topic-surface-only",
+        "observation": "edition-only",
+    }
+    assert event_analysis.semantic_assessment_seed(previous)["window_peers"] == (
+        expected_peer_seed
+    )
+    assert event_analysis.semantic_assessment_seed(candidate)["window_peers"] == (
+        expected_peer_seed
+    )
     assert event_analysis.semantically_equivalent(previous, candidate)
 
     base = tmp_path / "news" / "wire" / event["event_id"]
-    revision = (
-        base / "analysis" / "revisions" / f"{previous['analysis_id']}.json"
-    )
+    revision = base / "analysis" / "revisions" / f"{previous['analysis_id']}.json"
     revision.parent.mkdir(parents=True)
     raw = build_newsroom._pretty_json(previous)
     revision.write_bytes(raw)
@@ -780,12 +823,80 @@ def test_rolling_peer_count_is_edition_only_but_peer_identity_is_semantic(
     )
     assert retained == previous
 
-    identity_wire = copy.deepcopy(first_wire)
-    identity_wire["events"].append(peer("d", source_id="reuters"))
-    identity_change = event_analysis.build_event_analysis(
-        event, wire=identity_wire, feed=_feed()
+
+def test_target_event_evidence_source_and_version_remain_revision_forming() -> None:
+    def bind_version(event: dict) -> None:
+        version_payload = {
+            key: value
+            for key, value in event.items()
+            if key not in {"event_id", "url", "version_id", "mutation"}
+        }
+        event["version_id"] = (
+            "eventv-"
+            + hashlib.sha256(
+                event_analysis.canonical_json_bytes(version_payload)
+            ).hexdigest()[:24]
+        )
+
+    event = _event()
+    bind_version(event)
+    previous = event_analysis.build_event_analysis(
+        event,
+        wire=_wire(event),
+        feed=_feed(),
     )
-    assert not event_analysis.semantically_equivalent(previous, identity_change)
+
+    source_event = copy.deepcopy(event)
+    source_event["headline"] = "Reuters publishes revised July figures"
+    source_event["reported_facts"][0].update(
+        statement="Reuters published “Reuters publishes revised July figures”.",
+        attribution="Reuters",
+    )
+    source_event["evidence_refs"][0].update(
+        source_id="reuters",
+        source_name="Reuters",
+        independence_group="wire",
+        title="Reuters publishes revised July figures",
+    )
+    source_event["evidence_groups"][0].update(
+        group_id="wire",
+        source_ids=["reuters"],
+    )
+    bind_version(source_event)
+    source_wire = _wire(source_event)
+    source_wire["items"][0].update(
+        source_id="reuters",
+        title="Reuters publishes revised July figures",
+    )
+    source_change = event_analysis.build_event_analysis(
+        source_event,
+        wire=source_wire,
+        feed=_feed(),
+    )
+
+    assert previous["event_version_id"] != source_change["event_version_id"]
+    assert previous["evidence"][0]["claim"] != source_change["evidence"][0]["claim"]
+    previous_source_seed = event_analysis.semantic_assessment_seed(previous)
+    source_seed = event_analysis.semantic_assessment_seed(source_change)
+    assert previous_source_seed.pop("event_version_id") != source_seed.pop(
+        "event_version_id"
+    )
+    assert previous_source_seed != source_seed
+    assert not event_analysis.semantically_equivalent(previous, source_change)
+
+    version_event = copy.deepcopy(event)
+    version_event["updated_at"] = "2026-08-20T01:00:01Z"
+    bind_version(version_event)
+    version_change = event_analysis.build_event_analysis(
+        version_event,
+        wire=_wire(version_event),
+        feed=_feed(),
+    )
+    previous_seed = event_analysis.semantic_assessment_seed(previous)
+    version_seed = event_analysis.semantic_assessment_seed(version_change)
+    assert previous_seed.pop("event_version_id") != version_seed.pop("event_version_id")
+    assert previous_seed == version_seed
+    assert not event_analysis.semantically_equivalent(previous, version_change)
 
 
 def test_same_topic_outside_interconnection_window_is_not_a_window_peer() -> None:

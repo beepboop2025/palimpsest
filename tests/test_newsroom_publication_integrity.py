@@ -325,6 +325,47 @@ def test_wire_history_growth_counts_validated_current_heads(
         )
 
 
+def test_three_slot_growth_accepts_76_current_event_analysis_pairs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "news" / "wire").mkdir(parents=True)
+    outputs = _wire_history_fixture_outputs(count=76)
+    event_revisions = {
+        path: raw
+        for path, raw in outputs.items()
+        if path.parts[-2] == "revisions" and path.name.startswith("eventv-")
+    }
+    current_events = {
+        event["event_id"]: event
+        for event in (json.loads(raw) for raw in event_revisions.values())
+    }
+    monkeypatch.setattr(
+        build_newsroom,
+        "_prior_wire_generated_at",
+        lambda _root: "2026-08-24T21:26:08Z",
+    )
+
+    receipt = build_newsroom._wire_history_integrity_receipt(
+        outputs,
+        root=tmp_path,
+        current_events=current_events,
+        current_wire_generated_at="2026-08-25T00:21:34Z",
+    )
+
+    assert build_newsroom.MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION == 128
+    assert (
+        build_newsroom._wire_history_catchup_intervals(
+            "2026-08-25T00:21:34Z",
+            "2026-08-24T21:26:08Z",
+        )
+        == 3
+    )
+    assert receipt["n_event_revisions"] == 76
+    assert receipt["n_analysis_revisions"] == 76
+    assert receipt["n_revisions"] == 152
+    assert receipt["n_revisions"] <= 3 * receipt["automatic_growth_limit"] == 384
+
+
 def test_wire_history_growth_does_not_trust_an_unbound_analysis_alias(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -495,21 +536,15 @@ def test_wire_history_catchup_counts_fixed_schedule_across_runner_jitter() -> No
     previous = "2026-08-24T21:26:08Z"
 
     assert (
-        build_newsroom._wire_history_catchup_intervals(
-            "2026-08-25T00:16:59Z", previous
-        )
+        build_newsroom._wire_history_catchup_intervals("2026-08-25T00:16:59Z", previous)
         == 2
     )
     assert (
-        build_newsroom._wire_history_catchup_intervals(
-            "2026-08-25T00:17:00Z", previous
-        )
+        build_newsroom._wire_history_catchup_intervals("2026-08-25T00:17:00Z", previous)
         == 3
     )
     assert (
-        build_newsroom._wire_history_catchup_intervals(
-            "2026-08-25T00:21:34Z", previous
-        )
+        build_newsroom._wire_history_catchup_intervals("2026-08-25T00:21:34Z", previous)
         == 3
     )
 
@@ -522,10 +557,7 @@ def test_wire_history_catchup_schedule_matches_publisher_workflow() -> None:
         / "newswire-refresh.yml"
     ).read_text(encoding="utf-8")
 
-    assert (
-        f'cron: "{build_newsroom.WIRE_HISTORY_SCHEDULE_MINUTE} * * * *"'
-        in workflow
-    )
+    assert f'cron: "{build_newsroom.WIRE_HISTORY_SCHEDULE_MINUTE} * * * *"' in workflow
 
 
 def test_prior_wire_clock_requires_a_valid_situation_contract(tmp_path: Path) -> None:
