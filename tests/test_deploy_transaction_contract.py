@@ -18,8 +18,13 @@ BACKUP_GUIDE = ROOT / "ops" / "backup" / "README.md"
 NODE_OFFSITE_GUIDE = ROOT / "ops" / "node-offsite" / "README.md"
 RELEASE_QUIESCE = ROOT / "ops" / "systemd" / "palimpsest-backup.release-quiesce.conf"
 INTERRUPTED_PHASE1_MANIFEST = (
-    ROOT / "ops" / "release-recovery" / "2026-08-25-interrupted-phase1.json"
+    ROOT / "ops" / "release-recovery" / "2026-08-25-api-readiness-retry.json"
 )
+INTERRUPTED_PHASE1_MANIFEST_SHA256 = (
+    "6a3a393a7f9ebdfb6fb38cf984db4f4558b3af9fa7cc973683116c274d9d3218"
+)
+RECOVERY_BACKUP_REASON = "api-readiness-retry-fresh-target-backup"
+COMPATIBILITY_SEED = ROOT / "ops" / "osint-sync" / "deploy-compatibility-seed.sh"
 
 
 def _transaction() -> str:
@@ -28,6 +33,13 @@ def _transaction() -> str:
     start = guide.index("```bash\n", section) + len("```bash\n")
     end = guide.index("\nRecord `PREVIOUS_DEPLOY_SHA`", start)
     return guide[start:end]
+
+
+def _interrupted_phase1_incident() -> str:
+    manifest = json.loads(INTERRUPTED_PHASE1_MANIFEST.read_text(encoding="utf-8"))
+    incident = manifest["incident_id"]
+    assert isinstance(incident, str) and incident
+    return incident
 
 
 def _fenced_bash_block_after(marker: str) -> str:
@@ -1081,11 +1093,12 @@ def test_release_waits_for_api_readiness_before_first_consumer() -> None:
     start = transaction.index('release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d')
     readiness = transaction.index("api_ready=0", start)
     retry = transaction.index(
-        "for (( api_attempt=1; api_attempt<=30; api_attempt++ ))", readiness
+        "for (( api_attempt=1; api_attempt<=17; api_attempt++ ))", readiness
     )
-    probe = transaction.index("http://127.0.0.1:8010/api/v1/node/status", retry)
-    timeout = transaction.rindex("--connect-timeout 1 --max-time 2", retry, probe)
+    probe = transaction.index("http://127.0.0.1:8010/readyz", retry)
+    timeout = transaction.rindex("--connect-timeout 1 --max-time 5", retry, probe)
     delay = transaction.index("sleep 2", probe)
+    loop_end = transaction.index("\ndone", delay) + len("\ndone")
     gate = transaction.index("if (( api_ready != 1 )); then", delay)
     message = transaction.index(
         "C1 API did not become ready after Compose restart", gate
@@ -1095,6 +1108,7 @@ def test_release_waits_for_api_readiness_before_first_consumer() -> None:
         "start_and_verify_oneshot palimpsest-common-crawl-import.service", failure
     )
 
+    assert "/api/v1/node/status" not in transaction[readiness:loop_end]
     assert (
         start
         < readiness
@@ -1105,6 +1119,47 @@ def test_release_waits_for_api_readiness_before_first_consumer() -> None:
         < gate
         < message
         < failure
+        < first_consumer
+    )
+
+
+def test_compatibility_seed_matches_release_api_readiness_contract() -> None:
+    transaction = _transaction()
+    seed = COMPATIBILITY_SEED.read_text(encoding="utf-8")
+
+    release_start = transaction.index(
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d'
+    )
+    release_readiness = transaction.index("api_ready=0", release_start)
+    release_loop_end = transaction.index("\ndone", release_readiness) + len("\ndone")
+    release_loop = transaction[release_readiness:release_loop_end]
+
+    start = seed.index("ops/docker/prod-compose up -d")
+    readiness = seed.index("api_ready=0", start)
+    retry = seed.index(
+        "for (( api_attempt=1; api_attempt<=17; api_attempt++ ))", readiness
+    )
+    timeout = seed.index("--connect-timeout 1 --max-time 5", retry)
+    probe = seed.index("http://127.0.0.1:8010/readyz", timeout)
+    delay = seed.index("sleep 2", probe)
+    loop_end = seed.index("\ndone", delay) + len("\ndone")
+    gate = seed.index('(( api_ready == 1 )) || die "C0 API did not become ready"')
+    first_consumer = seed.index(
+        "start_and_verify_oneshot palimpsest-common-crawl-import.service", gate
+    )
+    seed_loop = seed[readiness:loop_end]
+
+    assert seed_loop == release_loop
+    assert "/api/v1/node/status" not in seed_loop
+    assert (
+        start
+        < readiness
+        < retry
+        < timeout
+        < probe
+        < delay
+        < loop_end
+        < gate
         < first_consumer
     )
 
@@ -2027,9 +2082,7 @@ def test_velocity_renderer_is_exact_sha_and_restored_before_its_worker() -> None
         "--profile velocity build censorwatch-render-gateway", checkout
     )
     candidate = transaction.index("CANDIDATE_RENDER_IMAGE_ID=", build)
-    revision = transaction.index(
-        'org.opencontainers.image.revision', candidate
-    )
+    revision = transaction.index("org.opencontainers.image.revision", candidate)
     proof_field = transaction.index("candidate_render_gateway_image_id", revision)
     restore = transaction.index("RESTORED_RENDER_GATEWAY_ID=", proof_field)
     force_recreate = transaction.index("--force-recreate", restore)
@@ -3388,8 +3441,7 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
         'INTERRUPTED_PHASE1_RECOVERY="${INTERRUPTED_PHASE1_RECOVERY:-0}"'
     )
     pinned_manifest = transaction.index(
-        "INTERRUPTED_PHASE1_MANIFEST_SHA256="
-        "'f21ffb99a29902bc849c4c7e0ea0317720f24fa9adcef2068cd0ff40341cf535'",
+        f"INTERRUPTED_PHASE1_MANIFEST_SHA256='{INTERRUPTED_PHASE1_MANIFEST_SHA256}'",
         mode,
     )
     recovery = transaction.index("if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then")
@@ -3434,7 +3486,7 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
         "start_and_verify_oneshot palimpsest-backup.service", new_container
     )
     recovery_reason = transaction.index(
-        "RECOVERY_BACKUP_REASON='interrupted-phase1-no-valid-prechange-snapshot'",
+        f"RECOVERY_BACKUP_REASON='{RECOVERY_BACKUP_REASON}'",
         v4_backup,
     )
     installers = transaction.index(
@@ -3449,10 +3501,15 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
     for ancestor in (
         '"$EXPECTED_PREVIOUS_CHECKOUT_SHA"',
         '"$EXPECTED_PREVIOUS_DEPLOY_SHA"',
-        "138a9eb323857ba91944fc04d0ccfabb653e7f24",
         '"$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR"',
     ):
         assert ancestor in transaction[recovery:target_manifest]
+    for equality in (
+        'test "$RECOVERY_FAILED_TARGET_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"',
+        'test "$RECOVERY_FAILED_TARGET_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"',
+        'test "$RECOVERY_FAILED_TARGET_SHA" = "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR"',
+    ):
+        assert equality in transaction[recovery:prepared_install]
     assert "sudo ctr -n moby content get" in transaction[boundary:prepared_install]
     assert "installed-bundles.tsv" in transaction[:prepared_install]
     assert (
@@ -3549,6 +3606,18 @@ def test_interrupted_resume_seeds_restoration_only_from_manifest(
         )
         == 5
     )
+    for filename, expected_count in (
+        ("installed-units.tsv", 25),
+        ("installed-bundles.tsv", 5),
+        ("absent-controllers.txt", 0),
+        ("present-controllers.tsv", 6),
+        ("witness-names.txt", 3),
+        ("witness.tsv", 3),
+    ):
+        assert (
+            len((projection_dir / filename).read_text(encoding="utf-8").splitlines())
+            == expected_count
+        )
     tampered_manifest = tmp_path / "tampered-manifest.json"
     tampered = json.loads(INTERRUPTED_PHASE1_MANIFEST.read_text(encoding="utf-8"))
     tampered["pre_failure_state"]["activators"] = []
@@ -3574,6 +3643,7 @@ def test_interrupted_prepared_receipt_generator_binds_transaction_and_authority(
 ) -> None:
     source = _python_heredoc_after('python3 - "$RECOVERY_PREPARED_TMP"')
     output = tmp_path / "prepared.json"
+    incident = _interrupted_phase1_incident()
     manifest_sha = "a" * 64
     hybrid_sha = "b" * 64
     restore_sha = "c" * 64
@@ -3604,6 +3674,7 @@ def test_interrupted_prepared_receipt_generator_binds_transaction_and_authority(
 
     assert value["schema_version"] == "palimpsest-interrupted-phase1-prepared.v2"
     assert value["status"] == "prepared"
+    assert value["incident_id"] == incident
     assert value["transaction_id"] == transaction
     assert value["target_commit"] == target
     assert value["recovery_controller_commit"] == target
@@ -3613,11 +3684,15 @@ def test_interrupted_prepared_receipt_generator_binds_transaction_and_authority(
     assert value["restore_profile_sha256"] == restore_sha
     assert value["compose_environment_sha256"] == environment_sha
     assert value["broker_queue_sha256"] == queue_sha
-    assert value["failed_target_commit"] == "138a9eb323857ba91944fc04d0ccfabb653e7f24"
+    manifest = json.loads(INTERRUPTED_PHASE1_MANIFEST.read_text(encoding="utf-8"))
+    assert (
+        value["failed_target_commit"] == manifest["authority"]["failed_target_commit"]
+    )
 
     validator_marker = 'sudo python3 - "$RECOVERY_PREPARED_RECEIPT_PATH" \\\n'
     validator_arguments = (
         output,
+        incident,
         transaction,
         value["prior_checkout_commit"],
         value["prior_deployed_commit"],
@@ -3769,10 +3844,7 @@ def test_interrupted_manifest_scope_environment_and_infrastructure_are_exact() -
     manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
     scope = manifest["observed_safe_boundary"]["compose_scope"]
 
-    assert (
-        manifest_sha
-        == "f21ffb99a29902bc849c4c7e0ea0317720f24fa9adcef2068cd0ff40341cf535"
-    )
+    assert manifest_sha == INTERRUPTED_PHASE1_MANIFEST_SHA256
     assert scope == {
         "project": "palimpsest",
         "working_dir": "/home/palimpsest/palimpsest/ops/docker",
@@ -3939,6 +4011,7 @@ def test_recovery_binding_generator_binds_every_reviewed_authority(
     migration = tmp_path / "migration.json"
     backup = tmp_path / "backup.json"
     manifest = json.loads(INTERRUPTED_PHASE1_MANIFEST.read_text(encoding="utf-8"))
+    incident = _interrupted_phase1_incident()
     target = "1" * 40
     ancestor = "2" * 40
     failed_target = manifest["authority"]["failed_target_commit"]
@@ -3965,13 +4038,13 @@ def test_recovery_binding_generator_binds_every_reviewed_authority(
     migration_id = "b" * 64
     backup_at = "2026-08-25T07:40:00Z"
     migration_at = "2026-08-25T07:41:00Z"
-    backup_reason = "interrupted-phase1-no-valid-prechange-snapshot"
+    backup_reason = RECOVERY_BACKUP_REASON
     prepared_value = {
         "schema_version": "palimpsest-interrupted-phase1-prepared.v2",
         "status": "prepared",
         "prepared_at": "2026-08-25T07:30:00Z",
         "transaction_id": transaction,
-        "incident_id": "2026-08-25-interrupted-phase1",
+        "incident_id": incident,
         "manifest_sha256": manifest_sha,
         "hybrid_fingerprint_sha256": hybrid_sha,
         "restore_profile_sha256": restore_sha,
@@ -4064,12 +4137,14 @@ def test_recovery_binding_generator_binds_every_reviewed_authority(
         snapshot,
         backup,
         ancestor,
+        incident,
         target,
         transaction,
     )
     assert result.returncode == 0, result.stderr
     value = json.loads(output.read_text(encoding="utf-8"))
     assert value["schema_version"] == "palimpsest-interrupted-phase1-binding.v2"
+    assert value["incident_id"] == incident
     assert value["transaction_id"] == transaction
     assert value["target_commit"] == target
     assert value["recovery_controller_commit"] == target
@@ -4101,6 +4176,7 @@ def test_recovery_binding_generator_binds_every_reviewed_authority(
         snapshot,
         snapshot,
         ancestor,
+        incident,
         target,
         transaction,
         image,
@@ -4138,6 +4214,9 @@ def test_recovery_binding_generator_binds_every_reviewed_authority(
     wrong_manifest = clone()
     wrong_manifest["manifest"]["incident_id"] = "wrong"
     tampered_values["manifest"] = wrong_manifest
+    wrong_incident = clone()
+    wrong_incident["incident_id"] = "wrong"
+    tampered_values["incident"] = wrong_incident
     for name, tampered in tampered_values.items():
         _write_canonical_json(output, tampered)
         rejected = _run_embedded_python(validator, *validator_arguments)
@@ -4331,6 +4410,7 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
     target = "4" * 40
     proof_path = "/var/lib/palimpsest-release/receipts/proof.json"
     proof_sha = "5" * 64
+    incident = _interrupted_phase1_incident()
     celery_path = tmp_path / "celery.json"
     activators_path = tmp_path / "activators.tsv"
     compose_path = tmp_path / "compose.tsv"
@@ -4359,10 +4439,7 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
     }
     _write_canonical_json(binding_path, binding)
     binding_sha = hashlib.sha256(binding_path.read_bytes()).hexdigest()
-    completion_path = (
-        "/var/lib/palimpsest-release/recovery/"
-        "2026-08-25-interrupted-phase1.complete.json"
-    )
+    completion_path = f"/var/lib/palimpsest-release/recovery/{incident}.complete.json"
 
     recovery_output = tmp_path / "recovery-finalized.json"
     generated = _run_embedded_python(
@@ -4481,6 +4558,7 @@ def test_completion_generator_and_strict_readback_bind_final_runtime_and_tamper(
     )
     output = tmp_path / "completion.json"
     runtime_path = tmp_path / "runtime.json"
+    incident = _interrupted_phase1_incident()
     transaction = "1" * 32
     target = "2" * 40
     failed_target = "3" * 40
@@ -4502,10 +4580,7 @@ def test_completion_generator_and_strict_readback_bind_final_runtime_and_tamper(
     postgres_image = f"sha256:{'4' * 64}"
     redis_id = "5" * 64
     redis_image = f"sha256:{'6' * 64}"
-    prepared_path = (
-        "/var/lib/palimpsest-release/recovery/"
-        "2026-08-25-interrupted-phase1.prepared.json"
-    )
+    prepared_path = f"/var/lib/palimpsest-release/recovery/{incident}.prepared.json"
     finalized_path = "/var/lib/palimpsest-release/receipts/finalized.json"
 
     def application(container: str, state: str) -> dict[str, object]:
@@ -4544,12 +4619,13 @@ def test_completion_generator_and_strict_readback_bind_final_runtime_and_tamper(
     }
     _write_canonical_json(runtime_path, runtime)
     runtime_sha = hashlib.sha256(runtime_path.read_bytes()).hexdigest()
-    backup_reason = "interrupted-phase1-no-valid-prechange-snapshot"
+    backup_reason = RECOVERY_BACKUP_REASON
     snapshot = "20260825T075500Z"
 
     generated = _run_embedded_python(
         generator,
         output,
+        incident,
         transaction,
         target,
         failed_target,
@@ -4570,12 +4646,14 @@ def test_completion_generator_and_strict_readback_bind_final_runtime_and_tamper(
     assert generated.returncode == 0, generated.stderr
     value = json.loads(output.read_text(encoding="utf-8"))
     assert value["schema_version"] == "palimpsest-interrupted-phase1-completion.v2"
+    assert value["incident_id"] == incident
     assert value["final_runtime"] == runtime
     assert value["final_runtime_sha256"] == runtime_sha
     assert "final_runtime_path" not in value
 
     validator_arguments = (
         output,
+        incident,
         transaction,
         target,
         failed_target,
@@ -4625,6 +4703,9 @@ def test_completion_generator_and_strict_readback_bind_final_runtime_and_tamper(
     changed_runtime = clone()
     changed_runtime["final_runtime"]["api"]["state"] = "exited"
     tampered_values.append(changed_runtime)
+    changed_incident = clone()
+    changed_incident["incident_id"] = "wrong"
+    tampered_values.append(changed_incident)
 
     for tampered_value in tampered_values:
         _write_canonical_json(output, tampered_value)
@@ -4658,9 +4739,10 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
     tmp_path: Path,
 ) -> None:
     reader = _python_heredoc_after('sudo python3 - "$INTERRUPTED_PHASE1_RECOVERY"')
+    incident = _interrupted_phase1_incident()
     transaction = "1" * 32
     target = "2" * 40
-    backup_reason = "interrupted-phase1-no-valid-prechange-snapshot"
+    backup_reason = RECOVERY_BACKUP_REASON
     snapshot = "20260825T075500Z"
     application_image = f"sha256:{'3' * 64}"
 
@@ -4709,7 +4791,7 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
     )
     binding = {
         "schema_version": "palimpsest-interrupted-phase1-binding.v2",
-        "incident_id": "2026-08-25-interrupted-phase1",
+        "incident_id": incident,
         "transaction_id": transaction,
         "target_commit": target,
         "failed_target_commit": "e" * 40,
@@ -4804,6 +4886,7 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
         target,
         "",
         "",
+        incident,
     )
     assert ordinary.returncode == 0, ordinary.stderr
 
@@ -4821,7 +4904,7 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
         "schema_version": "palimpsest-interrupted-phase1-completion.v2",
         "status": "completed",
         "completed_at": "2026-08-25T08:01:00Z",
-        "incident_id": "2026-08-25-interrupted-phase1",
+        "incident_id": incident,
         "transaction_id": transaction,
         "target_commit": target,
         "failed_target_commit": "e" * 40,
@@ -4855,6 +4938,7 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
         target,
         backup_reason,
         snapshot,
+        incident,
     )
 
     missing_finalized = tmp_path / "missing-finalized.json"

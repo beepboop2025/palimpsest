@@ -1518,11 +1518,11 @@ EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRE
 COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA}"
 TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward}"
 INTERRUPTED_PHASE1_RECOVERY="${INTERRUPTED_PHASE1_RECOVERY:-0}"
-INTERRUPTED_PHASE1_INCIDENT='2026-08-25-interrupted-phase1'
+INTERRUPTED_PHASE1_INCIDENT='2026-08-25-api-readiness-retry'
 INTERRUPTED_PHASE1_MANIFEST_SOURCE="ops/release-recovery/${INTERRUPTED_PHASE1_INCIDENT}.json"
-INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_interrupted_phase1_manifest.py'
-INTERRUPTED_PHASE1_MANIFEST_SHA256='f21ffb99a29902bc849c4c7e0ea0317720f24fa9adcef2068cd0ff40341cf535'
-INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='8b48162a13f719a4500c2297a337655d91dbb28e'
+INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_api_readiness_retry_manifest.py'
+INTERRUPTED_PHASE1_MANIFEST_SHA256='6a3a393a7f9ebdfb6fb38cf984db4f4558b3af9fa7cc973683116c274d9d3218'
+INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='1ae25399c7b36dca60e316cc966ea7d9636ec62b'
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
 COMMON_CRAWL_DERIVED_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE/derived"
 COMMON_CRAWL_FEATURE_EXPORT="$COMMON_CRAWL_DERIVED_SOURCE/common-crawl-features.jsonl"
@@ -2811,13 +2811,12 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   for recovery_ancestor in \
       "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
       "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
-      138a9eb323857ba91944fc04d0ccfabb653e7f24 \
       "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR"; do
     release_git cat-file -e "${recovery_ancestor}^{commit}"
     release_git merge-base --is-ancestor \
       "$recovery_ancestor" "$EXPECTED_DEPLOY_SHA"
   done
-  test "$EXPECTED_DEPLOY_SHA" != 138a9eb323857ba91944fc04d0ccfabb653e7f24
+  test "$EXPECTED_DEPLOY_SHA" != "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR"
   release_git cat-file -e \
     "${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_MANIFEST_SOURCE}"
   release_git cat-file -e \
@@ -2845,7 +2844,11 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
     | sha256sum | awk '{print $1}')"
   test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH")" \
-    = "validated interrupted Phase 1 recovery manifest: $RECOVERY_MANIFEST_SHA256"
+    = "validated API readiness retry manifest: $RECOVERY_MANIFEST_SHA256"
+  test "$(sudo /usr/bin/python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
+    "$RECOVERY_MANIFEST_PATH" --verify-host-continuation \
+    --repository-root "$PALIMPSEST_REPO_ROOT")" \
+    = "validated API readiness retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256 prepared=e9f506a44e19f78ecb094bd13c5d7c29f62f894174a5213de67b402b42a74f66"
 
   if ! recovery_authority_projection="$(python3 - \
       "$RECOVERY_MANIFEST_PATH" <<'PY'
@@ -2883,7 +2886,9 @@ PY
   test "${recovery_authority[1]}" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
   test "${recovery_authority[2]}" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
   RECOVERY_FAILED_TARGET_SHA="${recovery_authority[3]}"
-  test "$RECOVERY_FAILED_TARGET_SHA" = 138a9eb323857ba91944fc04d0ccfabb653e7f24
+  test "$RECOVERY_FAILED_TARGET_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+  test "$RECOVERY_FAILED_TARGET_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
+  test "$RECOVERY_FAILED_TARGET_SHA" = "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR"
   test "${recovery_authority[4]}" = "$RECOVERY_FAILED_TARGET_SHA"
   test "${recovery_authority[5]}" = "$INTERRUPTED_PHASE1_MANIFEST_SOURCE"
   RECOVERY_HYBRID_FINGERPRINT_SHA256="${recovery_authority[6]}"
@@ -2942,6 +2947,7 @@ outputs = {
             fields(
                 item["service"], item["container_id"], item["state"],
                 item["image_index_digest"], item["revision"],
+                item["exit_code"], item["health"],
             )
             for item in boundary["application_containers"]
         ],
@@ -2967,7 +2973,7 @@ outputs = {
         ],
     ),
     "installed-units.tsv": (
-        6,
+        25,
         [fields(item["path"], item["sha256"])
          for item in boundary["installed_units"]],
     ),
@@ -2981,9 +2987,9 @@ outputs = {
             for item in boundary["installed_bundles"]
         ],
     ),
-    "absent-controllers.txt": (5, controller["absent_paths"]),
+    "absent-controllers.txt": (0, controller["absent_paths"]),
     "present-controllers.tsv": (
-        1,
+        6,
         [fields(item["path"], item["sha256"])
          for item in controller["present_files"]],
     ),
@@ -3001,6 +3007,18 @@ outputs = {
     "snapshot.txt": (
         1,
         [value["failed_attempt"]["snapshot_ceiling"]["latest_snapshot_id"]],
+    ),
+    "snapshot-verification.json": (
+        1,
+        [json.dumps(
+            value["failed_attempt"]["snapshot_ceiling"]["verification"],
+            sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+            allow_nan=False,
+        )],
+    ),
+    "migration-exit-code.txt": (
+        1,
+        [str(value["failed_attempt"]["migration_exit_code"])],
     ),
     "restore-activators.tsv": (
         12,
@@ -3028,7 +3046,7 @@ outputs = {
 for name, (expected_count, lines) in outputs.items():
     if len(lines) != expected_count or any(not line for line in lines):
         raise SystemExit(f"manifest projection count is invalid: {name}")
-    payload = ("\n".join(lines) + "\n").encode("utf-8")
+    payload = (("\n".join(lines) + "\n") if lines else "").encode("utf-8")
     descriptor = os.open(
         output_directory / name,
         os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW,
@@ -3106,7 +3124,7 @@ PY
       ps --services --status running | LC_ALL=C sort)"
     test "$actual" = "$expected"
     while IFS=$'\t' read -r service container_id expected_state \
-        expected_image expected_revision; do
+        expected_image expected_revision expected_exit_code expected_health; do
       test -n "$service"
       actual="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
         ps -q --all "$service")"
@@ -3118,6 +3136,15 @@ PY
       test "$(docker inspect "$container_id" --format \
         '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
         = "$expected_revision"
+      actual="$(docker inspect "$container_id" | python3 -c '
+import json
+import sys
+
+state = json.load(sys.stdin)[0]["State"]
+health = (state.get("Health") or {}).get("Status", "none")
+print("{}\t{}".format(state["ExitCode"], health))
+')"
+      test "$actual" = "$expected_exit_code"$'\t'"$expected_health"
     done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/applications.tsv"
     while IFS=$'\t' read -r service container_id expected_image expected_state; do
       actual="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
@@ -3216,6 +3243,22 @@ if len(matches) != 1 or matches[0].get("digest") != expected:
       -type d -name '20??????T??????Z' -printf '%f\n' \
       | LC_ALL=C sort | tail -n 1)"
     test "$actual" = "$expected"
+    sudo bash -c 'cd "$1" && sha256sum --check --strict SHA256SUMS' \
+      _ "$NODE_BACKUP_ROOT/$expected"
+    actual="$(sudo /usr/bin/python3 \
+      ops/backup/node_backup_snapshot.py verify \
+      "$NODE_BACKUP_ROOT/$expected" --snapshot-id "$expected")"
+    actual="$(printf '%s\n' "$actual" | python3 -c '
+import json
+import sys
+
+print(json.dumps(
+    json.load(sys.stdin), sort_keys=True, separators=(",", ":"),
+    ensure_ascii=False, allow_nan=False,
+))
+')"
+    test "$actual" \
+      = "$(<"$RECOVERY_BOUNDARY_PROJECTION_DIR/snapshot-verification.json")"
   }
   assert_interrupted_phase1_boundary
 
@@ -3230,7 +3273,8 @@ if len(matches) != 1 or matches[0].get("digest") != expected:
       =~ ^sha256:[0-9a-f]{64}$ ]]
   done
 
-  while IFS=$'\t' read -r compose_service container_id _state image_id revision; do
+  while IFS=$'\t' read -r compose_service container_id _state image_id revision \
+      _exit_code _health; do
     RECOVERY_FAILED_CONTAINER_ID["$compose_service"]="$container_id"
     RECOVERY_FAILED_IMAGE_ID["$compose_service"]="$image_id"
     RECOVERY_FAILED_REVISION["$compose_service"]="$revision"
@@ -3244,6 +3288,10 @@ if len(matches) != 1 or matches[0].get("digest") != expected:
     [[ "${RECOVERY_FAILED_REVISION[$compose_service]}" \
       =~ ^[0-9a-f]{40}$ ]]
   done
+  test "$(<"$RECOVERY_BOUNDARY_PROJECTION_DIR/migration-exit-code.txt")" = 0
+  test "$(docker inspect "${RECOVERY_FAILED_CONTAINER_ID[migrate]}" \
+    --format '{{.State.ExitCode}}')" \
+    = "$(<"$RECOVERY_BOUNDARY_PROJECTION_DIR/migration-exit-code.txt")"
 
   # Seed restoration authority only from the reviewed pre-failure map. The
   # disabled live state above is a safety boundary, never restoration intent.
@@ -3393,7 +3441,8 @@ PY
     "$RECOVERY_PREPARED_RECEIPT_PATH" | awk '{print $1}')"
   [[ "$RECOVERY_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   sudo python3 - "$RECOVERY_PREPARED_RECEIPT_PATH" \
-    "$RELEASE_RESUME_TOKEN" "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
+    "$INTERRUPTED_PHASE1_INCIDENT" "$RELEASE_RESUME_TOKEN" \
+    "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
     "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$RECOVERY_FAILED_TARGET_SHA" \
     "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" "$EXPECTED_DEPLOY_SHA" \
     "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_HYBRID_FINGERPRINT_SHA256" \
@@ -3404,7 +3453,7 @@ import json
 import pathlib
 import sys
 
-(path, transaction, prior_checkout, prior_deployed, failed_target,
+(path, incident, transaction, prior_checkout, prior_deployed, failed_target,
  minimum_recovery_ancestor, target, manifest_sha, hybrid_sha, restore_sha,
  compose_environment_sha, broker_queue_sha) = sys.argv[1:]
 
@@ -3446,7 +3495,7 @@ checks = (
     value.get("status") == "prepared",
     timestamp.utcoffset() == datetime.timezone.utc.utcoffset(timestamp),
     value.get("transaction_id") == transaction,
-    value.get("incident_id") == "2026-08-25-interrupted-phase1",
+    value.get("incident_id") == incident,
     value.get("prior_checkout_commit") == prior_checkout,
     value.get("prior_deployed_commit") == prior_deployed,
     value.get("failed_target_commit") == failed_target,
@@ -4069,7 +4118,7 @@ verify_release_service_success_triggers() {
 # but its loaded unit/drop-ins must be the exact prior deployment authority.
 installed_backup_authority="$COMPATIBLE_ROLLBACK_SHA"
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
-  installed_backup_authority="$EXPECTED_DEPLOY_SHA"
+  installed_backup_authority="$EXPECTED_PREVIOUS_CHECKOUT_SHA"
 fi
 verify_installed_unit_blob "$installed_backup_authority" \
   ops/systemd/palimpsest-backup.service \
@@ -4084,10 +4133,10 @@ test "$(systemctl show --property=Group --value \
 test "$(systemctl show --property=WorkingDirectory --value \
   palimpsest-backup.service)" = /home/palimpsest/palimpsest
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
-  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+  verify_installed_unit_blob "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
     ops/systemd/palimpsest-evidence-wire.service \
     /etc/systemd/system/palimpsest-evidence-wire.service
-  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+  verify_installed_unit_blob "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
     ops/systemd/palimpsest-evidence-wire.timer \
     /etc/systemd/system/palimpsest-evidence-wire.timer
 else
@@ -4695,7 +4744,7 @@ for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
 done
 PRE_CHANGE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
-  RECOVERY_BACKUP_REASON='interrupted-phase1-no-valid-prechange-snapshot'
+  RECOVERY_BACKUP_REASON='api-readiness-retry-fresh-target-backup'
   RECOVERY_BACKUP_VERIFIED_AT="$(date -u +'%Y-%m-%dT%H:%M:%S.%NZ')"
   PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
   test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
@@ -4977,9 +5026,9 @@ for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
 done
 test "$(release_compose port api 8000)" = "127.0.0.1:8010"
 api_ready=0
-for (( api_attempt=1; api_attempt<=30; api_attempt++ )); do
-  if curl --fail --silent --connect-timeout 1 --max-time 2 \
-      http://127.0.0.1:8010/api/v1/node/status \
+for (( api_attempt=1; api_attempt<=17; api_attempt++ )); do
+  if curl --fail --silent --connect-timeout 1 --max-time 5 \
+      http://127.0.0.1:8010/readyz \
       2>/dev/null | python3 -m json.tool >/dev/null 2>&1; then
     api_ready=1
     break
@@ -5937,9 +5986,9 @@ fi
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test "$RECOVERY_MANIFEST_SHA256" = "$INTERRUPTED_PHASE1_MANIFEST_SHA256"
   test "$RECOVERY_FAILED_TARGET_SHA" \
-    = 138a9eb323857ba91944fc04d0ccfabb653e7f24
+    = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
   test "$RECOVERY_BACKUP_REASON" \
-    = interrupted-phase1-no-valid-prechange-snapshot
+    = api-readiness-retry-fresh-target-backup
   test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
   [[ "$RECOVERY_HYBRID_FINGERPRINT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_RESTORE_PROFILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
@@ -5967,7 +6016,11 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
     | sha256sum | awk '{print $1}')"
   test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH")" \
-    = "validated interrupted Phase 1 recovery manifest: $RECOVERY_MANIFEST_SHA256"
+    = "validated API readiness retry manifest: $RECOVERY_MANIFEST_SHA256"
+  test "$(sudo /usr/bin/python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
+    "$RECOVERY_MANIFEST_PATH" --verify-host-continuation \
+    --repository-root "$PALIMPSEST_REPO_ROOT")" \
+    = "validated API readiness retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256 prepared=e9f506a44e19f78ecb094bd13c5d7c29f62f894174a5213de67b402b42a74f66"
   for recovery_ancestor in \
       "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
       "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
@@ -5996,7 +6049,8 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   sudo test ! -e "$RECOVERY_COMPLETION_RECEIPT_PATH"
   sudo test ! -L "$RECOVERY_COMPLETION_RECEIPT_PATH"
   sudo python3 - "$RECOVERY_PREPARED_RECEIPT_PATH" \
-    "$RELEASE_RESUME_TOKEN" "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
+    "$INTERRUPTED_PHASE1_INCIDENT" "$RELEASE_RESUME_TOKEN" \
+    "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
     "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$RECOVERY_FAILED_TARGET_SHA" \
     "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" "$EXPECTED_DEPLOY_SHA" \
     "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_HYBRID_FINGERPRINT_SHA256" \
@@ -6007,7 +6061,7 @@ import json
 import pathlib
 import sys
 
-(path, transaction, prior_checkout, prior_deployed, failed_target,
+(path, incident, transaction, prior_checkout, prior_deployed, failed_target,
  minimum_recovery_ancestor, target, manifest_sha, hybrid_sha, restore_sha,
  compose_environment_sha, broker_queue_sha) = sys.argv[1:]
 
@@ -6049,7 +6103,7 @@ checks = (
     value.get("status") == "prepared",
     timestamp.utcoffset() == datetime.timezone.utc.utcoffset(timestamp),
     value.get("transaction_id") == transaction,
-    value.get("incident_id") == "2026-08-25-interrupted-phase1",
+    value.get("incident_id") == incident,
     value.get("prior_checkout_commit") == prior_checkout,
     value.get("prior_deployed_commit") == prior_deployed,
     value.get("failed_target_commit") == failed_target,
@@ -6197,7 +6251,8 @@ PY
     "$RELEASE_ENV_SNAPSHOT_SHA256" "$RECOVERY_BROKER_QUEUE_SHA256" \
     "$PRE_CHANGE_CORE_SNAPSHOT" "$PRE_CHANGE_SNAPSHOT" \
     "$V4_BACKUP_VERIFICATION_PATH" "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" \
-    "$EXPECTED_DEPLOY_SHA" "$RELEASE_RESUME_TOKEN" <<'PY'
+    "$INTERRUPTED_PHASE1_INCIDENT" "$EXPECTED_DEPLOY_SHA" \
+    "$RELEASE_RESUME_TOKEN" <<'PY'
 import json
 import pathlib
 import sys
@@ -6206,11 +6261,12 @@ import sys
  prepared_sha, broker_path, broker_sha, migration_path, failed_target,
  hybrid_sha, restore_sha, backup_reason, compose_environment_sha,
  broker_queue_sha, core_snapshot, snapshot,
- backup_verification_path, recovery_ancestor, target, transaction) = sys.argv[1:]
+ backup_verification_path, recovery_ancestor, incident, target,
+ transaction) = sys.argv[1:]
 load = lambda path: json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
 value = {
     "schema_version": "palimpsest-interrupted-phase1-binding.v2",
-    "incident_id": "2026-08-25-interrupted-phase1",
+    "incident_id": incident,
     "transaction_id": transaction,
     "target_commit": target,
     "failed_target_commit": failed_target,
@@ -6250,7 +6306,8 @@ PY
     "$RECOVERY_RESTORE_PROFILE_SHA256" "$RECOVERY_BACKUP_REASON" \
     "$RELEASE_ENV_SNAPSHOT_SHA256" "$RECOVERY_BROKER_QUEUE_SHA256" \
     "$PRE_CHANGE_CORE_SNAPSHOT" "$PRE_CHANGE_SNAPSHOT" \
-    "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" "$EXPECTED_DEPLOY_SHA" \
+    "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" \
+    "$INTERRUPTED_PHASE1_INCIDENT" "$EXPECTED_DEPLOY_SHA" \
     "$RELEASE_RESUME_TOKEN" "$CANDIDATE_IMAGE_ID" \
     "$RECOVERY_MIGRATION_CONTAINER_ID" "$RECOVERY_BACKUP_VERIFIED_AT" \
     "$RECOVERY_MIGRATION_STARTED_AT" <<'PY'
@@ -6266,7 +6323,7 @@ import sys
     prepared_installed_path, prepared_sha, broker_path, broker_sha,
     migration_path, backup_verification_path, failed_target, hybrid_sha,
     restore_sha, backup_reason, compose_environment_sha, broker_queue_sha,
-    core_snapshot, current_snapshot, minimum_recovery_ancestor, target,
+    core_snapshot, current_snapshot, minimum_recovery_ancestor, incident, target,
     transaction, application_image, migration_container, backup_verified_at,
     migration_started_at,
 ) = sys.argv[1:]
@@ -6339,7 +6396,7 @@ top_fields = {
 checks = (
     set(binding) == top_fields,
     binding.get("schema_version") == "palimpsest-interrupted-phase1-binding.v2",
-    binding.get("incident_id") == "2026-08-25-interrupted-phase1",
+    binding.get("incident_id") == incident,
     binding.get("transaction_id") == transaction,
     binding.get("target_commit") == target,
     binding.get("failed_target_commit") == failed_target,
@@ -6458,7 +6515,7 @@ backup_checks = (
     isinstance(backup, dict)
         and set(backup) == {"reason", "core_snapshot", "current_snapshot", "verification"},
     isinstance(backup, dict) and backup.get("reason") == backup_reason,
-    backup_reason == "interrupted-phase1-no-valid-prechange-snapshot",
+    backup_reason == "api-readiness-retry-fresh-target-backup",
     isinstance(backup, dict) and backup.get("core_snapshot") == core_snapshot,
     isinstance(backup, dict) and backup.get("current_snapshot") == current_snapshot,
     core_snapshot == current_snapshot,
@@ -7970,7 +8027,8 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test "$(sha256sum "$RECOVERY_FINAL_RUNTIME_PATH" | awk '{print $1}')" \
     = "$RECOVERY_FINAL_RUNTIME_SHA256"
   RECOVERY_COMPLETION_TMP="$OBSERVER_PREFLIGHT_DIR/interrupted-phase1-complete.json"
-  python3 - "$RECOVERY_COMPLETION_TMP" "$RELEASE_RESUME_TOKEN" \
+  python3 - "$RECOVERY_COMPLETION_TMP" "$INTERRUPTED_PHASE1_INCIDENT" \
+    "$RELEASE_RESUME_TOKEN" \
     "$EXPECTED_DEPLOY_SHA" "$RECOVERY_FAILED_TARGET_SHA" \
     "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_PREPARED_RECEIPT_PATH" \
     "$RECOVERY_PREPARED_RECEIPT_SHA256" "$RECOVERY_PHASE3_BINDING_SHA256" \
@@ -7984,7 +8042,7 @@ import pathlib
 import sys
 from datetime import datetime, timezone
 
-(output, transaction, target, failed_target, manifest_sha, prepared_path,
+(output, incident, transaction, target, failed_target, manifest_sha, prepared_path,
  prepared_sha, binding_sha, finalized_path, finalized_sha, backup_reason,
  snapshot, minimum_recovery_ancestor, compose_environment_sha,
  broker_queue_sha, final_runtime_path, final_runtime_sha) = sys.argv[1:]
@@ -7992,7 +8050,7 @@ value = {
     "schema_version": "palimpsest-interrupted-phase1-completion.v2",
     "status": "completed",
     "completed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-    "incident_id": "2026-08-25-interrupted-phase1",
+    "incident_id": incident,
     "transaction_id": transaction,
     "target_commit": target,
     "failed_target_commit": failed_target,
@@ -8091,7 +8149,8 @@ PY
     "$RECOVERY_COMPLETION_TMP" | awk '{print $1}')"
   [[ "$RECOVERY_COMPLETION_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   python3 - "$RECOVERY_COMPLETION_TMP" \
-    "$RELEASE_RESUME_TOKEN" "$EXPECTED_DEPLOY_SHA" \
+    "$INTERRUPTED_PHASE1_INCIDENT" "$RELEASE_RESUME_TOKEN" \
+    "$EXPECTED_DEPLOY_SHA" \
     "$RECOVERY_FAILED_TARGET_SHA" "$RECOVERY_MANIFEST_SHA256" \
     "$RECOVERY_PREPARED_RECEIPT_SHA256" "$RECOVERY_PHASE3_BINDING_SHA256" \
     "$RECOVERY_PREPARED_RECEIPT_PATH" "$FINALIZED_RECEIPT_SHA256" \
@@ -8114,7 +8173,7 @@ import json
 import pathlib
 import sys
 
-(path, transaction, target, failed_target, manifest_sha, prepared_sha,
+(path, incident, transaction, target, failed_target, manifest_sha, prepared_sha,
  binding_sha, prepared_path, finalized_sha, finalized_path, backup_reason,
  snapshot, minimum_recovery_ancestor, compose_environment_sha,
  broker_queue_sha, final_runtime_sha, application_image,
@@ -8180,7 +8239,7 @@ checks = (
     value.get("schema_version") == "palimpsest-interrupted-phase1-completion.v2",
     value.get("status") == "completed",
     completed_at.utcoffset() == datetime.timezone.utc.utcoffset(completed_at),
-    value.get("incident_id") == "2026-08-25-interrupted-phase1",
+    value.get("incident_id") == incident,
     value.get("transaction_id") == transaction,
     value.get("target_commit") == target,
     value.get("failed_target_commit") == failed_target,
@@ -8255,7 +8314,7 @@ sudo python3 - "$INTERRUPTED_PHASE1_RECOVERY" \
   "$RELEASE_RESUME_TOKEN" "${RECOVERY_PHASE3_BINDING_SHA256:-}" \
   "${RECOVERY_COMPLETION_RECEIPT_SHA256:-}" "$FINALIZED_RECEIPT_SHA256" \
   "$EXPECTED_DEPLOY_SHA" "${RECOVERY_BACKUP_REASON:-}" \
-  "${PRE_CHANGE_SNAPSHOT:-}" <<'PY'
+  "${PRE_CHANGE_SNAPSHOT:-}" "$INTERRUPTED_PHASE1_INCIDENT" <<'PY'
 import datetime
 import hashlib
 import json
@@ -8268,7 +8327,7 @@ import sys
     recovery_mode_raw, finalized_source, completion_source,
     expected_finalized_path, expected_completion_path, transaction,
     expected_binding_sha, expected_completion_sha, expected_finalized_sha,
-    target, expected_backup_reason, expected_snapshot,
+    target, expected_backup_reason, expected_snapshot, expected_incident,
 ) = sys.argv[1:]
 if recovery_mode_raw not in {"0", "1"}:
     raise SystemExit("invalid final authority mode")
@@ -8440,6 +8499,7 @@ backup_counts = (
 if (
     binding.get("schema_version")
         != "palimpsest-interrupted-phase1-binding.v2"
+    or binding.get("incident_id") != expected_incident
     or binding.get("transaction_id") != transaction
     or binding.get("target_commit") != target
     or binding.get("recovery_controller_commit") != target
@@ -8568,7 +8628,7 @@ completion_checks = (
     completion.get("schema_version")
         == "palimpsest-interrupted-phase1-completion.v2",
     completion.get("status") == "completed",
-    completion.get("incident_id") == "2026-08-25-interrupted-phase1",
+    completion.get("incident_id") == expected_incident,
     completion.get("incident_id") == binding.get("incident_id"),
     completion.get("transaction_id") == transaction,
     completion.get("target_commit") == target,

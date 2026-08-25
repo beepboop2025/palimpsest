@@ -86,9 +86,7 @@ def _canonical_bytes(document: dict) -> bytes:
     ).encode()
 
 
-def _situation(
-    newswire: dict, *, generated_at: str = "2026-08-14T12:00:00Z"
-) -> dict:
+def _situation(newswire: dict, *, generated_at: str = "2026-08-14T12:00:00Z") -> dict:
     return {
         "schema_version": "palimpsest-china-situation.v1",
         "generated_at": generated_at,
@@ -235,7 +233,9 @@ def test_transition_keeps_existing_incident_while_opening_new_source() -> None:
 
 class _Response:
     def __init__(self, payload: dict | bytes, *, url: str = "", status: int = 200):
-        self.payload = payload if isinstance(payload, bytes) else json.dumps(payload).encode()
+        self.payload = (
+            payload if isinstance(payload, bytes) else json.dumps(payload).encode()
+        )
         self.url = url
         self.status = status
 
@@ -383,9 +383,7 @@ def test_fresh_situation_cannot_hide_its_stale_embedded_newswire() -> None:
         _healthy_status(), _osint(), newswire, situation, now=NOW
     )
 
-    assert {
-        item["condition"]: item["state"] for item in result["problems"]
-    } == {
+    assert {item["condition"]: item["state"] for item in result["problems"]} == {
         "publication/china-situation": "stale",
         "publication/newswire": "stale",
     }
@@ -397,9 +395,7 @@ def test_situation_lineage_must_match_the_exact_canonical_newswire(
 ) -> None:
     newswire, situation = _publications()
     situation["inputs"][lineage_field] = (
-        "2026-08-14T11:59:00Z"
-        if lineage_field == "newswire_generated_at"
-        else "0" * 64
+        "2026-08-14T11:59:00Z" if lineage_field == "newswire_generated_at" else "0" * 64
     )
 
     result = watchdog.evaluate(
@@ -445,7 +441,10 @@ def test_publication_conditions_use_the_existing_transition_latch(
             )
             == 2
         )
-        assert json.loads(output.read_text())["transition"]["opened_count"] == expected_opened
+        assert (
+            json.loads(output.read_text())["transition"]["opened_count"]
+            == expected_opened
+        )
 
     assert json.loads(state.read_text())["conditions"] == {
         "publication/china-situation": "stale",
@@ -598,10 +597,11 @@ def test_deployment_installs_and_verifies_both_watchdog_units_after_api_probe() 
         'sudo install -o root -g root -m 0644 "$WATCHDOG_CONTROLLER_SERVICE"'
     )
     verify = guide.index("sudo systemd-analyze verify", install_service)
-    probe = guide.index("http://127.0.0.1:8010/api/v1/node/status", verify)
+    timeout = guide.index("--connect-timeout 1 --max-time 5", verify)
+    probe = guide.index("http://127.0.0.1:8010/readyz", timeout)
     restore = guide.index("restore_activator_enablement() {", verify)
 
-    assert install_service < verify < probe < restore
+    assert install_service < verify < timeout < probe < restore
     verification = guide[install_service:restore]
     assert "/etc/systemd/system/palimpsest-freshness-watchdog.service" in verification
     assert "/etc/systemd/system/palimpsest-freshness-watchdog.timer" in verification

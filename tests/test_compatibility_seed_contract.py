@@ -38,7 +38,9 @@ def test_seed_pins_main_line_c0_and_rejects_authority_cutover() -> None:
         "fi"
     )
     release_function = seed[
-        seed.index("release_git() {") : seed.index("\n}\n", seed.index("release_git() {"))
+        seed.index("release_git() {") : seed.index(
+            "\n}\n", seed.index("release_git() {")
+        )
     ]
 
     assert root_guard in seed[:mutation]
@@ -48,7 +50,7 @@ def test_seed_pins_main_line_c0_and_rejects_authority_cutover() -> None:
         "PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED",
         "C0_DEPLOY_SHA",
         "EXPECTED_PREVIOUS_DEPLOY_SHA",
-        'safe.directory=$repo_root',
+        "safe.directory=$repo_root",
         "release_git -c fetch.fsckObjects=true",
         'release_git cat-file -e "${C0_DEPLOY_SHA}^{commit}"',
         '"$C0_DEPLOY_SHA" refs/remotes/origin/main',
@@ -89,9 +91,7 @@ def test_seed_records_state_and_verifies_backups_on_both_sides() -> None:
         'create_and_verify_snapshot "$post_seed_before" post_seed_snapshot'
     )
     restore = seed.index('for unit in "${release_activators[@]}"; do', post_backup)
-    complete = seed.index(
-        'write_seed_state complete "$post_seed_snapshot"', restore
-    )
+    complete = seed.index('write_seed_state complete "$post_seed_snapshot"', restore)
 
     assert seed.count("ops/backup/node_backup_snapshot.py verify") == 2
     assert "create_and_verify_snapshot() {" in seed
@@ -149,7 +149,7 @@ def test_seed_forward_resumes_only_from_exact_prepared_evidence() -> None:
         "prepared C0 recovery provenance is inconsistent",
         '[item.get("unit") for item in captured] != expected_units',
         '[[ "$(read_enablement "$unit")" == disabled',
-        '== inactive ]]',
+        "== inactive ]]",
         'authority_boundary "$original_previous_deploy_sha"',
         "resumed C0 changes the original OSINT authority boundary",
         "sudo python3 ops/backup/node_backup_snapshot.py verify",
@@ -175,9 +175,7 @@ def test_seed_pins_each_oneshot_until_its_exact_result_is_proved() -> None:
     seed = _seed()
     mutation = seed.index("mutation_started=1")
     helper = seed[
-        seed.index("pin_unit_for_proof() {") : seed.index(
-            "mutation_started=0"
-        )
+        seed.index("pin_unit_for_proof() {") : seed.index("mutation_started=0")
     ]
     failure_handler = seed[
         seed.index("seed_fail_safe() {") : seed.index("trap seed_fail_safe ERR")
@@ -197,18 +195,15 @@ def test_seed_pins_each_oneshot_until_its_exact_result_is_proved() -> None:
         "--property=InvocationID --value",
         "--property=ExecMainStartTimestampMonotonic --value",
         '"$invocation" != "$previous_invocation"',
-        'release_proof_pin',
+        "release_proof_pin",
     ):
         assert marker in helper
 
     assert "[[ -x /usr/bin/systemd-run && -x /usr/bin/true ]]" in seed[:mutation]
     assert seed.index("pin_unit_for_proof() {") < mutation
-    assert 'active_proof_pin=\'\'' in helper
+    assert "active_proof_pin=''" in helper
     assert 'sudo systemctl stop "$active_proof_pin"' in failure_handler
-    assert (
-        "start_and_verify_oneshot \\\n"
-        "    palimpsest-backup.service" in seed
-    )
+    assert "start_and_verify_oneshot \\\n    palimpsest-backup.service" in seed
     assert "start_and_verify_oneshot palimpsest-public-osint-sync.service" in seed
     assert "start_and_verify_oneshot palimpsest-common-crawl-import.service" in seed
     assert 'start_and_verify_oneshot "$service"' in seed
@@ -228,9 +223,7 @@ def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
         'sudo cmp -s "$authority/osint-china-latest.json" "$shared_artifact"'
     )
     identity_match = seed.index("C0 changed legacy reading ownership or mode")
-    analysis = seed.index(
-        "ops/investigative-analysis/install-host-bundle.sh", provider
-    )
+    analysis = seed.index("ops/investigative-analysis/install-host-bundle.sh", provider)
     common_crawl = seed.index("ops/common-crawl/install-host-bundle.sh", analysis)
     node_offsite = seed.index("ops/node-offsite/install-host-bundle.sh", common_crawl)
     observer = seed.index(
@@ -238,12 +231,12 @@ def test_seed_installs_provider_before_legacy_authority_consumers() -> None:
     )
     observer_verify = seed.index("sudo systemd-analyze verify", observer)
     start = seed.index("ops/docker/prod-compose up -d", observer_verify)
-    readiness = seed.index("for (( api_attempt=1; api_attempt<=30; api_attempt++ ))", start)
-    readiness_probe = seed.index(
-        "http://127.0.0.1:8010/api/v1/node/status", readiness
+    readiness = seed.index(
+        "for (( api_attempt=1; api_attempt<=17; api_attempt++ ))", start
     )
+    readiness_probe = seed.index("http://127.0.0.1:8010/readyz", readiness)
     readiness_timeout = seed.rindex(
-        "--connect-timeout 1 --max-time 2", readiness, readiness_probe
+        "--connect-timeout 1 --max-time 5", readiness, readiness_probe
     )
     readiness_gate = seed.index(
         '(( api_ready == 1 )) || die "C0 API did not become ready"', readiness
@@ -304,8 +297,9 @@ def test_seed_failure_stays_quiesced_until_exact_state_restoration() -> None:
 def test_runbook_executes_the_exact_reviewed_seed_blob() -> None:
     guide = GUIDE.read_text(encoding="utf-8")
     section = guide[
-        guide.index("### First protected rollout: compatibility seed (C0)") :
-        guide.index("### Phase 1: host transaction and local BLEED recovery")
+        guide.index(
+            "### First protected rollout: compatibility seed (C0)"
+        ) : guide.index("### Phase 1: host transaction and local BLEED recovery")
     ]
     invocation = (
         "/usr/bin/env -i HOME=/root LANG=C LC_ALL=C \\\n"
@@ -330,7 +324,7 @@ def test_runbook_executes_the_exact_reviewed_seed_blob() -> None:
 
     for marker in (
         'PALIMPSEST_REPO_ROOT="$(pwd -P)"',
-        'safe.directory=$PALIMPSEST_REPO_ROOT',
+        "safe.directory=$PALIMPSEST_REPO_ROOT",
         "PALIMPSEST_ALLOW_ROOT_COMPATIBILITY_SEED=1",
         "C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C0_40_HEX_SHA'",
         "EXPECTED_PREVIOUS_DEPLOY_SHA='REPLACE_WITH_CURRENT_40_HEX_SHA'",
