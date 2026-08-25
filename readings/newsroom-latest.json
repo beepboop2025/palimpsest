@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 6 are live. Health qualifiers: 2 degraded, 31 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 4 are live. Health qualifiers: 2 degraded, 33 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-25T16:30:37Z",
+  "generated_at": "2026-08-25T20:26:58Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "5990d9efe74304904eab87c43bbcd94a93f5216e",
+  "source_commit": "48d49954f5531d3ce95fd4d4fb1899fa8bbfc498",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 6,
+    "live": 4,
     "status": "degraded",
     "counts": {
-      "live": 6,
+      "live": 4,
       "degraded": 2,
-      "stale": 31,
+      "stale": 33,
       "missing": 0,
       "corrupt": 0
     }
@@ -1401,29 +1401,29 @@
       "slug": "wayback-reconstruction",
       "url": "https://palimpsest.info/news/wayback-reconstruction/",
       "signal_id": "wayback",
-      "headline": "Archive witnesses reconstruct 3 deletions across 21 watched URLs",
-      "dek": "A deletion or silent mutation is reported only when outside-the-wall captures provide a checkable witness.",
+      "headline": "Wayback reconstruction: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "erasure",
       "order": 2,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T15:58:43Z",
       "modified_at": "2026-08-24T15:58:43Z",
-      "claim_fingerprint": "sha256:29f447aeea3d24c239c3356d0e6b295490990e8a10a0dedb7b0e6659838e7f4e",
+      "claim_fingerprint": "sha256:b0b0efafe664875621c84cd697854aa98fdf004f100685c26e62303b561043d2",
       "metric": {
-        "label": "reconstructed deletions",
-        "value": 3,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "URLs watched",
-          "value": 21
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "Wayback evidence reconstructs 3 deletions among 21 watched URLs in the current reading."
+          "type": "availability",
+          "statement": "No current finding is published for Wayback reconstruction because the source status is stale."
         }
       ],
       "evidence": {
@@ -1440,6 +1440,7 @@
         "version": 2
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Archive coverage is incomplete; an unwitnessed URL cannot support a deletion or mutation claim."
       ],
       "related_signal_ids": [
@@ -1768,20 +1769,20 @@
       "slug": "cny-fix-gap",
       "url": "https://palimpsest.info/news/cny-fix-gap/",
       "signal_id": "cny-fix-gap",
-      "headline": "The official yuan fix gap is -0.9013% against the independent reference",
-      "dek": "The daily comparison sets the PBOC parity against same-day external reference rates and publishes cross-check disagreement.",
+      "headline": "CNY fix gap: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "economy",
       "order": 2,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-23T17:27:00Z",
       "modified_at": "2026-08-23T17:27:00Z",
-      "claim_fingerprint": "sha256:70bfee414ed98ef560e5da15029480291d1ba91a9530a3f18d491e71e9d3a5b4",
+      "claim_fingerprint": "sha256:f0054990170a4e2ad21ecb3bd7acf2d3290d0ce72dc1d9f3081fa19bd76c41b7",
       "metric": {
-        "label": "fix gap",
-        "value": -0.9013,
-        "unit": "percent",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1789,8 +1790,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current official-fix minus independent-reference gap is -0.9013%."
+          "type": "availability",
+          "statement": "No current finding is published for CNY fix gap because the source status is stale."
         }
       ],
       "evidence": {
@@ -1807,6 +1808,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The comparison is onshore and same-day but not simultaneous; it is economic context, not direct evidence of censorship."
       ],
       "related_signal_ids": [
