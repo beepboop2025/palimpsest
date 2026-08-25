@@ -146,6 +146,7 @@ _ANALYSIS_CASE_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 MAX_WIRE_HISTORY_FILES = 100_000
 MAX_NEW_WIRE_REVISIONS_PER_PUBLICATION = 128
 WIRE_HISTORY_GROWTH_INTERVAL = timedelta(hours=1)
+WIRE_HISTORY_SCHEDULE_MINUTE = 17
 MAX_WIRE_HISTORY_CATCHUP_INTERVALS = 48
 MAX_PRIOR_SITUATION_BYTES = 12 * 1024 * 1024
 _VERIFIED_WIRE_HISTORY_RECEIPTS: dict[tuple[str, str, str], str] = {}
@@ -5366,17 +5367,25 @@ def _prior_wire_generated_at(root: Path) -> str | None:
 def _wire_history_catchup_intervals(
     current_generated_at: str | None, previous_generated_at: str | None
 ) -> int:
-    """Return elapsed scheduled wire slots, with one slot as the fail-closed floor."""
+    """Return crossed scheduled wire slots, with one as the fail-closed floor."""
 
     if current_generated_at is None or previous_generated_at is None:
         return 1
-    elapsed = _parse_time(current_generated_at) - _parse_time(previous_generated_at)
-    if elapsed <= WIRE_HISTORY_GROWTH_INTERVAL:
+    current = _parse_time(current_generated_at)
+    previous = _parse_time(previous_generated_at)
+    first_slot = previous.replace(
+        minute=WIRE_HISTORY_SCHEDULE_MINUTE,
+        second=0,
+        microsecond=0,
+    )
+    if first_slot <= previous:
+        first_slot += WIRE_HISTORY_GROWTH_INTERVAL
+    if current < first_slot:
         return 1
-    seconds = elapsed.total_seconds()
+    seconds = (current - first_slot).total_seconds()
     interval = WIRE_HISTORY_GROWTH_INTERVAL.total_seconds()
-    elapsed_intervals = max(1, int(seconds // interval))
-    return min(elapsed_intervals, MAX_WIRE_HISTORY_CATCHUP_INTERVALS)
+    crossed_slots = 1 + int(seconds // interval)
+    return min(crossed_slots, MAX_WIRE_HISTORY_CATCHUP_INTERVALS)
 
 
 def _wire_history_integrity_receipt(
