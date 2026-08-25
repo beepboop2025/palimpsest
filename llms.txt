@@ -22,7 +22,7 @@ linked according to those catalogued rights.
 ## Agent and financial-evidence discovery
 
 The machine-readable [AI catalog](https://palimpsest.info/.well-known/ai-catalog.json)
-describes the public MCP `1.9.0` release boundary, the OpenAPI contract, the China
+describes the public MCP `1.9.1` release boundary, the OpenAPI contract, the China
 economic observation ledger and manifest, the China Observatory index, and the canonical
 Financial Evidence Agent Skill. The MCP release and OpenAPI document have independent
 version authorities; initialize the linked MCP remote before treating a release as deployed.
@@ -444,7 +444,7 @@ one score or imply that temporal co-movement is corroboration.
 Every signal below is callable directly over the Model Context Protocol, so an
 agent does not have to scrape the pages or guess at a schema:
 
-- MCP server v1.9.0 (stateless streamable HTTP, no auth, no key): https://api.seiche.info/palimpsest/mcp
+- MCP server v1.9.1 (stateless streamable HTTP, no auth, no key): https://api.seiche.info/palimpsest/mcp
 - Tools: `list_signals` (discover every published signal and its source URL),
   `get_signal` (one signal's full payload; `max_rows` caps long row arrays and
   any cap applied is reported with the true total), `get_newsroom` (read the

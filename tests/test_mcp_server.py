@@ -1345,7 +1345,7 @@ def test_the_served_version_and_the_published_manifest_agree():
     assert 1 <= len(manifest["description"]) <= 100
 
 
-def test_candidate_version_advances_without_rewriting_proven_live_surfaces():
+def test_release_metadata_matches_live_mcp_without_reversioning_rest():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     with open(os.path.join(root, "openapi.json"), encoding="utf-8") as fh:
         openapi = json.load(fh)
@@ -1357,14 +1357,13 @@ def test_candidate_version_advances_without_rewriting_proven_live_surfaces():
     docs = open(os.path.join(root, "docs", "MCP-SERVER.md"), encoding="utf-8").read()
     agents = open(os.path.join(root, "llms.txt"), encoding="utf-8").read()
 
-    deployed_version = card["access"]["mcp_version"]
-    deployed_semver = tuple(int(part) for part in deployed_version.split("."))
-    candidate_semver = tuple(int(part) for part in mcp.SERVER_VERSION.split("."))
+    live_version = card["access"]["mcp_version"]
 
-    assert mcp.SERVER_VERSION == "1.9.1"
-    assert deployed_version == "1.9.0"
-    assert candidate_semver == (*deployed_semver[:2], deployed_semver[2] + 1)
-    assert openapi["info"]["version"] == deployed_version
+    assert mcp.SERVER_VERSION == live_version == "1.9.1"
+    # The static REST contract has its own release authority and is not
+    # version-coupled to the independently deployed MCP server.
+    assert openapi["info"]["version"] == "1.9.0"
+    assert openapi["info"]["version"] != live_version
     assert "/readings/china-index-latest.json" in openapi["paths"]
     assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
     assert "/readings/china-econ-observations-latest.json" in openapi["paths"]
@@ -1387,7 +1386,7 @@ def test_candidate_version_advances_without_rewriting_proven_live_surfaces():
         )
     }
     assert "All six hosted MCP tools" in card["access"]["authentication"]
-    assert card["access"]["mcp_version"] == deployed_version
+    assert card["access"]["mcp_version"] == live_version
     assert card["evidence"]["china_observatory_index_schema"] == (
         "https://palimpsest.info/protocol/china-index-v1.schema.json"
     )
@@ -1397,8 +1396,8 @@ def test_candidate_version_advances_without_rewriting_proven_live_surfaces():
     for label, text in (
         ("developer page", developers), ("MCP docs", docs), ("llms", agents)
     ):
-        assert deployed_version in text, label
-        assert mcp.SERVER_VERSION not in text, label
+        assert live_version in text, label
+        assert "1.9.0" not in text, label
         assert "query_economic_observations" in text, label
         assert "china-econ-forecast-latest.json" in text, label
     assert "The six tools" in developers
