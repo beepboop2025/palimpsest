@@ -629,12 +629,49 @@ def test_controller_upgrade_precedes_forced_deployment() -> None:
     normalized = " ".join(upgrade.split())
     assert "separate root-admin transaction" in upgrade
     assert "/var/lib/palimpsest-mcp-deploy/deploy.lock" in upgrade
-    assert "preserve the installed wrapper and verifier" in upgrade
+    assert "smoke_palimpsest_mcp.py" in upgrade
+    assert "palimpsest-mcp.service" in upgrade
+    assert "preserve the installed wrapper, verifier, smoke client" in upgrade
     assert "record that it was absent" in normalized
-    assert upgrade.index("signing key `0444`") < upgrade.index("verifier `0755`")
-    assert upgrade.index("verifier `0755`") < upgrade.index("wrapper `0755` last")
-    assert "remove a newly introduced key" in normalized
-    assert "all while still holding the lock" in normalized
+    for marker in (
+        "git rev-parse",
+        "git hash-object",
+        "bash -n",
+        "systemd-analyze verify",
+        "pinned verifier, signing-key, smoke-client, and systemd-unit",
+        "root ownership, single-link regular-file type, exact modes, and digests",
+        "NeedDaemonReload=no",
+        "current runtime digest, and deployed marker",
+        "without changing `/opt/palimpsest-mcp/palimpsest_mcp.py`",
+        "exact `FragmentPath`",
+        "has no drop-ins",
+        "expected process user/group",
+        "runtime digest and deployed marker did not change",
+        "restore its prior active state",
+        "drop-in absence, process identity, hardening, runtime digest, and deployed marker",
+    ):
+        assert marker in normalized
+    signing_key = upgrade.index("signing key `0444`")
+    verifier = upgrade.index("verifier `0755`", signing_key)
+    smoke = upgrade.index("smoke client `0755`", verifier)
+    unit = upgrade.index("systemd unit `0644`", smoke)
+    reload = upgrade.index("systemctl daemon-reload", unit)
+    restart = upgrade.index("restart the currently deployed MCP runtime", reload)
+    basic_smoke = upgrade.index("with `--basic`", restart)
+    wrapper = upgrade.index("wrapper\n`0755` last", basic_smoke)
+    assert (
+        signing_key < verifier < smoke < unit < reload < restart < basic_smoke < wrapper
+    )
+    rollback = upgrade.index("restore every captured preimage", wrapper)
+    remove_key = upgrade.index("remove a newly introduced key", rollback)
+    rollback_reload = upgrade.index("systemctl daemon-reload", remove_key)
+    rollback_restart = upgrade.index("restart the prior runtime", rollback_reload)
+    rollback_smoke = upgrade.index("re-run the prior basic smoke", rollback_restart)
+    assert wrapper < rollback < remove_key < rollback_reload
+    assert rollback_reload < rollback_restart < rollback_smoke
+    assert "still holding the lock" in upgrade[rollback:rollback_reload]
+    assert "Preserve the backup and transaction evidence" in normalized
+    assert "report a rollback failure explicitly" in normalized
     assert "Only after this transaction succeeds" in normalized
 
 
