@@ -348,20 +348,43 @@ the forced deployment key. Finish any data/Pages publication first, freeze
 scheduled publishers, merge the reviewed controller change through GitHub, and
 record the exact verified `web-flow` merge SHA. On the host, acquire
 `/var/lib/palimpsest-mcp-deploy/deploy.lock`, fetch that exact `origin/main` into
-the root-owned mirror, and extract the wrapper, verifier, and signing key from
-that commit into a root-only temporary directory.
+the root-owned mirror, and extract the wrapper, verifier, signing key, smoke
+client (`scripts/smoke_palimpsest_mcp.py`), and systemd unit
+(`ops/systemd/palimpsest-mcp.service`) from that commit into a root-only
+temporary directory.
 
-Before mutation, preserve the installed wrapper and verifier plus their modes
-and SHA-256 digests in a root-only backup directory. Preserve the installed
-signing key too, or record that it was absent. Prove the extracted blobs match
-the exact Git objects, run Bash/Python syntax checks, and verify the wrapper's
-pinned verifier/signing-key hashes. Install the signing key `0444`, then the
-verifier `0755`, and the wrapper `0755` last; verify root ownership, single-link
-regular-file type, modes, and digests before releasing the lock. If any check
-fails, restore every preimage and remove a newly introduced key when the prior
-state recorded it as absent, all while still holding the lock. Only after this
-transaction succeeds may `deploy-mcp.yml` be dispatched for the same exact
-merge SHA.
+Before mutation, preserve the installed wrapper, verifier, smoke client, and
+systemd unit plus their owners, modes, link counts, and SHA-256 digests in a
+root-only backup directory. Preserve the installed signing key too, or record
+that it was absent. Record the effective unit properties, service active state,
+current runtime digest, and deployed marker without changing
+`/opt/palimpsest-mcp/palimpsest_mcp.py`. For all five staged files, prove `git rev-parse
+<target>:<path>` identifies the same blob as `git hash-object` on the extracted
+file. Run `bash -n` on the wrapper, compile the verifier and smoke client with
+Python, and run `systemd-analyze verify` on the unit. Verify that the wrapper's
+pinned verifier, signing-key, smoke-client, and systemd-unit SHA-256 constants
+match the four staged trust roots exactly.
+
+While still holding the lock, install the signing key `0444`, verifier `0755`,
+smoke client `0755`, and systemd unit `0644`; run `systemctl daemon-reload`,
+restart the currently deployed MCP runtime, and prove the service is active,
+uses the exact `FragmentPath`, has no drop-ins, retains the expected process
+user/group and every required hardening property, and has
+`NeedDaemonReload=no`. Re-prove that the runtime digest and deployed marker did
+not change. Run the new smoke client with `--basic` against the
+`server.json` extracted from the current deployed marker. Install the wrapper
+`0755` last, then recheck root ownership, single-link regular-file type, exact
+modes, and digests for all five installed files before releasing the lock.
+
+If any check fails, restore every captured preimage and its recorded mode while
+still holding the lock; remove a newly introduced key when the prior state
+recorded it as absent. Run `systemctl daemon-reload`, restart the prior runtime,
+restore its prior active state, re-prove the effective unit, drop-in absence,
+process identity, hardening, runtime digest, and deployed marker, and re-run the prior basic smoke
+against the prior deployed manifest. Preserve the backup and transaction
+evidence, and report a rollback failure explicitly if any restored invariant
+does not match. Only after this transaction succeeds may `deploy-mcp.yml` be
+dispatched for the same exact merge SHA.
 
 ## Release transaction
 
