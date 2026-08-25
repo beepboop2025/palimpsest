@@ -153,6 +153,21 @@ def _line_count(path: Path) -> int:
 
 
 def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]:
+    # A gated dataset may have private, legacy, or review-only files at its
+    # configured paths. Their presence is not public availability and their
+    # byte/count metadata must not be used to advertise a distribution.
+    if str(spec["status"]) == "gated":
+        return {
+            "evidence_state": "gated",
+            "observed_at": None,
+            "age_seconds": None,
+            "counts": {},
+            "latest_bytes": None,
+            "history_bytes": None,
+            "history_rows": None,
+            "latest_available": False,
+            "history_available": False,
+        }
     latest_path = _safe_repo_path(spec.get("latest"))
     history_path = _safe_repo_path(spec.get("history"))
     latest_exists = bool(latest_path and latest_path.is_file())
@@ -313,8 +328,10 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
         state = item["artifacts"]["evidence_state"]
         states[state] = states.get(state, 0) + 1
         layers[item["layer"]] = layers.get(item["layer"], 0) + 1
-        total_bytes += item["artifacts"]["latest_bytes"] + item["artifacts"]["history_bytes"]
-        total_rows += item["artifacts"]["history_rows"]
+        total_bytes += (item["artifacts"]["latest_bytes"] or 0) + (
+            item["artifacts"]["history_bytes"] or 0
+        )
+        total_rows += item["artifacts"]["history_rows"] or 0
 
     catalog = {
         "schema": "palimpsest-data-catalog/v1",
@@ -336,7 +353,7 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
         distributions = []
         for kind, media in (("latest", "application/json"), ("history", "application/x-ndjson")):
             path = item.get(kind)
-            if not path:
+            if not path or item["status"] == "gated":
                 continue
             local = _safe_repo_path(path)
             # Discovery metadata must describe distributions that actually

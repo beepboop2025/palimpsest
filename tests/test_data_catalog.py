@@ -34,6 +34,44 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     assert package["resources"]
 
 
+def test_gated_datasets_do_not_advertise_legacy_files_as_public_distributions():
+    built, jsonld, package = catalog.build_catalog(
+        now=datetime(2026, 8, 26, tzinfo=timezone.utc)
+    )
+    gated_ids = {
+        item["id"] for item in built["datasets"] if item["status"] == "gated"
+    }
+    assert {
+        "china-economic-observations",
+        "china-economic-pulse",
+        "cny-fix-gap",
+        "data-darkness",
+        "evidence-mesh",
+        "machine-investigations",
+    } <= gated_ids
+    for item in built["datasets"]:
+        if item["id"] not in gated_ids:
+            continue
+        assert item["artifacts"] == {
+            "evidence_state": "gated",
+            "observed_at": None,
+            "age_seconds": None,
+            "counts": {},
+            "latest_bytes": None,
+            "history_bytes": None,
+            "history_rows": None,
+            "latest_available": False,
+            "history_available": False,
+        }
+    by_id = {item["identifier"]: item for item in jsonld["dataset"]}
+    assert all(by_id[item_id]["distribution"] == [] for item_id in gated_ids)
+    resource_names = {resource["name"] for resource in package["resources"]}
+    assert all(
+        not any(name.startswith(f"{item_id}-") for name in resource_names)
+        for item_id in gated_ids
+    )
+
+
 def test_catalog_keeps_collection_mode_rights_and_caveats_explicit():
     built, _jsonld, _package = catalog.build_catalog(
         now=datetime(2026, 8, 11, 12, tzinfo=timezone.utc)
@@ -137,6 +175,7 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
         "deterministic-revision-safe",
     )
     assert pulse["latest"] == "readings/china-economic-pulse-latest.json"
+    assert pulse["status"] == "gated"
     assert pulse["landing_page"] == "news/economy/"
     assert "true GDP" in pulse["description"]
     assert "coverage gates" in pulse["description"]
@@ -181,7 +220,7 @@ def test_china_situation_catalog_exposes_layer_specific_coverage_and_public_surf
         "synthesis",
         "deterministic-evidence-bound-projection",
     )
-    assert entry["status"] == "live"
+    assert entry["status"] == "gated"
     assert entry["cadence"] == "PT1H"
     assert entry["latest"] == "readings/china-situation-latest.json"
     assert entry["landing_page"] == "news/china/situation/"
@@ -223,7 +262,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
 
     telemetry = by_id["china-econ"]
     assert telemetry["cadence"] == "PT6H"
-    assert telemetry["status"] == "historical"
+    assert telemetry["status"] == "gated"
 
     ledger = by_id["china-economic-observations"]
     assert (ledger["layer"], ledger["stage"], ledger["collection_mode"]) == (
@@ -235,6 +274,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     assert ledger["history"] == "readings/china-econ-observations.jsonl"
     assert ledger["landing_page"] == "china/"
     assert ledger["cadence"] == "P1D"
+    assert ledger["status"] == "gated"
     assert ledger["freshness_budget"] == "P10D"
     assert "collector" in ledger["freshness_semantics"]
     assert ledger["sources"] == ["CFETS/ChinaMoney"]
@@ -341,6 +381,7 @@ def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
         "PT1H",
     )
     assert mesh["latest"] == "readings/evidence-mesh-latest.json"
+    assert mesh["status"] == "gated"
     assert "partner artifacts" in mesh["description"]
     assert "automatically admitted" in mesh["description"]
 
@@ -351,6 +392,7 @@ def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
         "PT1H",
     )
     assert machine["latest"] == "readings/machine-investigations-latest.json"
+    assert machine["status"] == "gated"
     assert machine["landing_page"] == "news/analysis/"
     assert machine["count_fields"] == ["n_cases"]
     description = machine["description"].lower()
@@ -581,7 +623,9 @@ def test_jsonld_advertises_only_downloads_that_exist():
 def test_catalog_page_and_assets_exist():
     assert (ROOT / "data.html").is_file()
     assert (ROOT / "assets" / "data-catalog.css").is_file()
-    assert (ROOT / "assets" / "data-catalog.js").is_file()
+    script = (ROOT / "assets" / "data-catalog.js").read_text(encoding="utf-8")
+    assert 'item.artifacts.history_available' in script
+    assert ': "Unavailable"' in script
 
 
 def test_hourly_rollup_rebuilds_and_commits_catalog_views():
