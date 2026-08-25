@@ -2037,27 +2037,41 @@ exit 23
 
 def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
     transaction = _transaction()
-    expected = transaction.index("EXPECTED_COMPOSE_CONFIG_SERVICES=")
-    render = transaction.index("config --services", expected)
-    exact = transaction.index(
-        'test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"',
-        render,
+    legacy_expected = transaction.index("LEGACY_COMPOSE_CONFIG_SERVICES=")
+    target_expected = transaction.index(
+        "RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES=", legacy_expected
+    )
+    previous_blob = transaction.index("PREVIOUS_COMPOSE_CONFIG_BLOB=", target_expected)
+    previous_render = transaction.index("config --services", previous_blob)
+    previous_exact = transaction.index(
+        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"',
+        previous_render,
     )
     interpreter_preflight = transaction.index(
         "for compose_service in worker worker-collectors worker-warehouse; do",
-        exact,
+        previous_exact,
     )
     interpreter_exec = transaction.index(
         'docker exec "$interpreter_container_id" /usr/local/bin/python3 -c',
         interpreter_preflight,
     )
     fail_safe = transaction.index("PHASE1_FAIL_SAFE_ARMED=1", interpreter_exec)
+    checkout = transaction.index(
+        'release_git switch --detach "$EXPECTED_DEPLOY_SHA"', fail_safe
+    )
+    clean_target = transaction.index('test -z "$release_git_status"', checkout)
+    target_blob = transaction.index("TARGET_COMPOSE_CONFIG_BLOB=", clean_target)
+    target_render = transaction.index("config --services", target_blob)
+    target_exact = transaction.index(
+        'test "$ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES"', target_render
+    )
+    build = transaction.index("release_compose build", target_exact)
 
-    expected_block = transaction[expected:render]
-    for service in (
+    legacy_block = transaction[legacy_expected:target_expected]
+    target_block = transaction[target_expected:previous_blob]
+    legacy_services = (
         "api",
         "beat",
-        "censorwatch-render-gateway",
         "migrate",
         "postgres",
         "redis",
@@ -2065,14 +2079,44 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
         "worker-collectors",
         "worker-velocity",
         "worker-warehouse",
-    ):
-        assert service in expected_block
+    )
+    for service in legacy_services:
+        assert service in legacy_block
+        assert service in target_block
+    assert "censorwatch-render-gateway" not in legacy_block
+    assert "censorwatch-render-gateway" in target_block
+    assert (
+        "38000e2f73ded26e12caa4e21e0dbf4b7fa0ec33"
+        in transaction[
+            transaction.index("LEGACY_COMPOSE_CONFIG_BLOB=") : legacy_expected
+        ]
+    )
+    assert (
+        "4e7ecd9e57a4a386a5387ee07dad578e003332cc"
+        in transaction[
+            transaction.index("RENDER_ISOLATED_COMPOSE_CONFIG_BLOB=") : target_expected
+        ]
+    )
     assert (
         'os.path.realpath(sys.executable) != "/usr/local/bin/python3.12"'
         in (transaction[interpreter_exec:fail_safe])
     )
-    assert expected < render < exact < interpreter_preflight < interpreter_exec
-    assert interpreter_exec < fail_safe
+    assert (
+        legacy_expected
+        < target_expected
+        < previous_blob
+        < previous_render
+        < previous_exact
+        < interpreter_preflight
+        < interpreter_exec
+        < fail_safe
+        < checkout
+        < clean_target
+        < target_blob
+        < target_render
+        < target_exact
+        < build
+    )
 
 
 def test_velocity_renderer_is_exact_sha_and_restored_before_its_worker() -> None:
@@ -3445,6 +3489,10 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
         mode,
     )
     recovery = transaction.index("if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then")
+    previous_config = transaction.index(
+        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"',
+        pinned_manifest,
+    )
     target_manifest = transaction.index(
         '"${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_MANIFEST_SOURCE}"', recovery
     )
@@ -3469,7 +3517,12 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
     checkout = transaction.index(
         'release_git switch --detach "$EXPECTED_DEPLOY_SHA"', broker_empty
     )
-    build = transaction.index("release_compose build", checkout)
+    clean_target = transaction.index('test -z "$release_git_status"', checkout)
+    target_blob = transaction.index("TARGET_COMPOSE_CONFIG_BLOB=", clean_target)
+    target_config = transaction.index(
+        'test "$ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES"', target_blob
+    )
+    build = transaction.index("release_compose build", target_config)
     target_abi = transaction.index(
         "docker run --rm --network none --entrypoint /usr/local/bin/python3", build
     )
@@ -3521,6 +3574,7 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
     assert (
         mode
         < pinned_manifest
+        < previous_config
         < recovery
         < target_manifest
         < extracted_digest
@@ -3530,6 +3584,9 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
         < prepared_fsync
         < broker_empty
         < checkout
+        < clean_target
+        < target_blob
+        < target_config
         < build
         < target_abi
         < unit_install

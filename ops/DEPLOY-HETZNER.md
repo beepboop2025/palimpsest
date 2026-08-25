@@ -1796,12 +1796,40 @@ COMPOSE_QUEUE_BY_SERVICE[worker-warehouse]=warehouse
 COMPOSE_QUEUE_BY_SERVICE[worker-velocity]=censorwatch
 
 # Prove that the isolated Docker/Compose environment can load the reviewed
-# production file before the fail-safe is armed. A local plugin/configuration
-# failure must abort without turning a read-only preflight into an outage.
-EXPECTED_COMPOSE_CONFIG_SERVICES=$'api\nbeat\ncensorwatch-render-gateway\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
-ACTUAL_COMPOSE_CONFIG_SERVICES="$(release_compose \
+# production file before the fail-safe is armed. The interrupted transaction
+# starts on the pre-renderer 1ae topology, while ordinary releases may start on
+# either reviewed side of that topology change. Bind the service list to the
+# exact Compose Git blob so a same-shaped but unreviewed file cannot pass.
+LEGACY_COMPOSE_CONFIG_BLOB='38000e2f73ded26e12caa4e21e0dbf4b7fa0ec33'
+LEGACY_COMPOSE_CONFIG_SERVICES=$'api\nbeat\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
+RENDER_ISOLATED_COMPOSE_CONFIG_BLOB='4e7ecd9e57a4a386a5387ee07dad578e003332cc'
+RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES=$'api\nbeat\ncensorwatch-render-gateway\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
+PREVIOUS_COMPOSE_CONFIG_BLOB="$(release_git rev-parse \
+  "${EXPECTED_PREVIOUS_CHECKOUT_SHA}:ops/docker/docker-compose.prod.yml")"
+test "$(release_git hash-object ops/docker/docker-compose.prod.yml)" \
+  = "$PREVIOUS_COMPOSE_CONFIG_BLOB"
+ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES="$(release_compose \
   "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
-test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"
+case "$PREVIOUS_COMPOSE_CONFIG_BLOB" in
+  "$LEGACY_COMPOSE_CONFIG_BLOB")
+    test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
+      = "$LEGACY_COMPOSE_CONFIG_SERVICES"
+    ;;
+  "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB")
+    test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
+      = "$RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES"
+    ;;
+  *)
+    printf 'previous Compose configuration is not a reviewed topology: %s\n' \
+      "$PREVIOUS_COMPOSE_CONFIG_BLOB" >&2
+    exit 1
+    ;;
+esac
+if [[ "$INTERRUPTED_PHASE1_RECOVERY" == 1 ]]; then
+  test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"
+  test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
+    = "$LEGACY_COMPOSE_CONFIG_SERVICES"
+fi
 
 # The official Python application image installs its interpreter under
 # /usr/local. Prove that ABI before arming the fail-safe or stopping a producer:
@@ -4431,6 +4459,16 @@ if ! release_git_status="$(release_git status \
   exit 1
 fi
 test -z "$release_git_status"
+TARGET_COMPOSE_CONFIG_BLOB="$(release_git rev-parse \
+  "${EXPECTED_DEPLOY_SHA}:ops/docker/docker-compose.prod.yml")"
+test "$(release_git hash-object ops/docker/docker-compose.prod.yml)" \
+  = "$TARGET_COMPOSE_CONFIG_BLOB"
+test "$TARGET_COMPOSE_CONFIG_BLOB" \
+  = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"
+ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES="$(release_compose \
+  "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
+test "$ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES" \
+  = "$RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES"
 release_compose build
 CANDIDATE_IMAGE_ID="$(docker image inspect palimpsest/app:local \
   --format '{{.Id}}')"
