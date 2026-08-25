@@ -1472,6 +1472,31 @@ ACTUAL_COMPOSE_CONFIG_SERVICES="$(release_compose \
   "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
 test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"
 
+# The official Python application image installs its interpreter under
+# /usr/local. Prove that ABI before arming the fail-safe or stopping a producer:
+# a host-style /usr/bin path inside the container would otherwise turn a
+# read-only Celery fence into an outage.
+for compose_service in worker worker-collectors worker-warehouse; do
+  if ! interpreter_container_id="$(release_compose \
+      "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")" \
+      || ! [[ "$interpreter_container_id" =~ ^[0-9a-f]{64}$ ]]; then
+    printf 'mandatory worker container is unavailable for interpreter preflight: %s\n' \
+      "$compose_service" >&2
+    exit 1
+  fi
+  if ! docker exec "$interpreter_container_id" /usr/local/bin/python3 -c '
+import os
+import sys
+
+if os.path.realpath(sys.executable) != "/usr/local/bin/python3.12":
+    raise SystemExit(f"unexpected container interpreter: {sys.executable}")
+'; then
+    printf 'mandatory worker container interpreter preflight failed: %s\n' \
+      "$compose_service" >&2
+    exit 1
+  fi
+done
+
 stop_loaded_unit() {
   local unit="$1" load_state active_state
   load_state="$(systemctl show --property=LoadState --value \
@@ -1566,7 +1591,19 @@ phase1_fail_safe() {
     "$original_status" >&2
   release_quiesce_all
 }
-trap 'phase1_fail_safe "$?"' ERR
+phase1_abort() {
+  local original_status="${1:-1}"
+  # ERR is inherited by command substitutions under errtrace. Let the parent
+  # command observe that failure and perform the one host-wide quiesce.
+  if (( BASH_SUBSHELL > 0 )); then
+    exit "$original_status"
+  fi
+  phase1_fail_safe "$original_status"
+  # Errexit is intentionally ignored by interactive Bash shells. Abort the
+  # dedicated release shell explicitly so a failed gate cannot fall through.
+  exit "$original_status"
+}
+trap 'phase1_abort "$?"' ERR
 trap 'phase1_fail_safe "$?"' EXIT
 trap 'phase1_fail_safe 129; exit 129' HUP
 trap 'phase1_fail_safe 130; exit 130' INT
@@ -2293,7 +2330,7 @@ for _ in 1 2; do
 done
 CELERY_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-prechange.json"
 release_compose "${COMPOSE_ALL_PROFILES[@]}" exec -T worker \
-  /usr/bin/python3 - quiesce \
+  /usr/local/bin/python3 - quiesce \
   --topology-b64 "$CELERY_TOPOLOGY_BEFORE_B64" \
   --timeout-seconds 10800 --interval-seconds 5 \
   --inspect-timeout-seconds 15 \
@@ -2613,7 +2650,7 @@ V4_BACKUP_WORKER_ID="${V4_BACKUP_CONTAINER_ID[worker]}"
 V4_BACKUP_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
   encode-topology "${v4_backup_topology_arguments[@]}")"
 CELERY_V4_BACKUP_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-v4-backup-fenced.json"
-docker exec -i "$V4_BACKUP_WORKER_ID" /usr/bin/python3 - quiesce \
+docker exec -i "$V4_BACKUP_WORKER_ID" /usr/local/bin/python3 - quiesce \
   --topology-b64 "$V4_BACKUP_TOPOLOGY_B64" \
   --timeout-seconds 300 --interval-seconds 5 \
   --inspect-timeout-seconds 15 \
@@ -2920,7 +2957,7 @@ CELERY_CANDIDATE_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
   --pair "warehouse@${WAREHOUSE_WORKER_HOSTNAME}=warehouse")"
 [[ "$CELERY_CANDIDATE_TOPOLOGY_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
 CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-candidate-consuming.json"
-docker exec -i "$CANDIDATE_WORKER_ID" /usr/bin/python3 - check \
+docker exec -i "$CANDIDATE_WORKER_ID" /usr/local/bin/python3 - check \
   --consumer-state consuming \
   --topology-b64 "$CELERY_CANDIDATE_TOPOLOGY_B64" \
   --timeout-seconds 300 --interval-seconds 5 \
@@ -2935,7 +2972,7 @@ start_and_verify_oneshot palimpsest-common-crawl-import.service
 # image. It invokes no send_task/delay/apply_async seam, so there is no retry or
 # result-backend residue to survive the release boundary.
 COLLECTOR_RECOVERY_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/collector-recovery.json"
-docker exec -i -w /app "$COLLECTOR_CONTAINER_ID" /usr/bin/python3 -c '
+docker exec -i -w /app "$COLLECTOR_CONTAINER_ID" /usr/local/bin/python3 -c '
 import sys
 
 source = sys.stdin.read()
@@ -2980,7 +3017,7 @@ PY
 # them. No Compose writer is allowed to run during the external publication
 # pause or the final immutable-byte checks.
 CELERY_CANDIDATE_FENCED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-candidate-fenced.json"
-docker exec -i "$CANDIDATE_WORKER_ID" /usr/bin/python3 - quiesce \
+docker exec -i "$CANDIDATE_WORKER_ID" /usr/local/bin/python3 - quiesce \
   --topology-b64 "$CELERY_CANDIDATE_TOPOLOGY_B64" \
   --timeout-seconds 10800 --interval-seconds 5 \
   --inspect-timeout-seconds 15 \
@@ -3699,7 +3736,15 @@ phase3_fail_safe() {
     "$original_status" >&2
   release_quiesce_all
 }
-trap 'phase3_fail_safe "$?"' ERR
+phase3_abort() {
+  local original_status="${1:-1}"
+  if (( BASH_SUBSHELL > 0 )); then
+    exit "$original_status"
+  fi
+  phase3_fail_safe "$original_status"
+  exit "$original_status"
+}
+trap 'phase3_abort "$?"' ERR
 trap 'phase3_fail_safe "$?"' EXIT
 trap 'phase3_fail_safe 129; exit 129' HUP
 trap 'phase3_fail_safe 130; exit 130' INT
@@ -4381,7 +4426,7 @@ CELERY_RESTORED_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
   encode-topology "${restored_topology_arguments[@]}")"
 CELERY_RESTORED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-restored.json"
 restored_default_id="$(release_compose ps -q worker)"
-docker exec -i "$restored_default_id" /usr/bin/python3 - check \
+docker exec -i "$restored_default_id" /usr/local/bin/python3 - check \
   --consumer-state consuming --topology-b64 "$CELERY_RESTORED_TOPOLOGY_B64" \
   --timeout-seconds 300 --interval-seconds 5 \
   --inspect-timeout-seconds 15 \

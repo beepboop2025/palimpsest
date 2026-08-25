@@ -168,7 +168,8 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
     direction_gate = transaction.index('test "$TRANSACTION_DIRECTION" = forward')
     quiescer = transaction.index("release_quiesce_all() {")
     phase_one_fail_safe = transaction.index("phase1_fail_safe() {", quiescer)
-    phase_one_err = transaction.index("trap 'phase1_fail_safe", phase_one_fail_safe)
+    phase_one_abort = transaction.index("phase1_abort() {", phase_one_fail_safe)
+    phase_one_err = transaction.index("trap 'phase1_abort", phase_one_abort)
     phase_one_exit = transaction.index(
         "trap 'phase1_fail_safe \"$?\"' EXIT", phase_one_err
     )
@@ -177,7 +178,8 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
     same_shell_guard = transaction.index("if ! declare -p", phase_three)
     shell_pid = transaction.index('test "$PHASE1_SHELL_PID" = "$$"', same_shell_guard)
     phase_three_fail_safe = transaction.index("phase3_fail_safe() {", shell_pid)
-    phase_three_err = transaction.index("trap 'phase3_fail_safe", phase_three_fail_safe)
+    phase_three_abort = transaction.index("phase3_abort() {", phase_three_fail_safe)
+    phase_three_err = transaction.index("trap 'phase3_abort", phase_three_abort)
     phase_three_exit = transaction.index(
         "trap 'phase3_fail_safe \"$?\"' EXIT", phase_three_err
     )
@@ -215,10 +217,25 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
         assert marker in guard
     assert "release_compose" not in quiescer_block
     assert "label=com.docker.compose.project=palimpsest" not in quiescer_block
+    for abort_block in (
+        transaction[phase_one_abort:phase_one_err],
+        transaction[phase_three_abort:phase_three_err],
+    ):
+        assert "(( BASH_SUBSHELL > 0 ))" in abort_block
+        assert 'exit "$original_status"' in abort_block
+    assert (
+        'phase1_fail_safe "$original_status"'
+        in transaction[phase_one_abort:phase_one_err]
+    )
+    assert (
+        'phase3_fail_safe "$original_status"'
+        in transaction[phase_three_abort:phase_three_err]
+    )
     assert (
         direction_gate
         < quiescer
         < phase_one_fail_safe
+        < phase_one_abort
         < phase_one_err
         < phase_one_exit
         < first_fetch
@@ -226,10 +243,41 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
         < same_shell_guard
         < shell_pid
         < phase_three_fail_safe
+        < phase_three_abort
         < phase_three_err
         < phase_three_exit
         < takeover
     )
+
+
+def test_fail_safe_abort_exits_interactive_shell_without_fallthrough() -> None:
+    transaction = _transaction()
+
+    for phase in ("phase1", "phase3"):
+        abort_start = transaction.index(f"{phase}_abort() {{")
+        trap_line = f"trap '{phase}_abort \"$?\"' ERR"
+        trap_end = transaction.index(trap_line, abort_start) + len(trap_line)
+        abort_contract = transaction[abort_start:trap_end]
+        for failure in ("false", 'nested_result="$(false)"'):
+            script = f"""\
+set -Ee
+PHASE1_SHELL_PID="$$"
+{phase}_fail_safe() {{ printf 'QUIESCE\\n'; }}
+{abort_contract}
+{failure}
+printf 'FELL_THROUGH\\n'
+"""
+            result = subprocess.run(
+                ["/bin/bash", "--noprofile", "--norc", "-i"],
+                input=script,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+            assert result.returncode != 0
+            assert result.stdout == "QUIESCE\n"
+            assert "FELL_THROUGH" not in result.stdout
 
 
 def test_release_waits_for_api_readiness_before_first_consumer() -> None:
@@ -892,7 +940,15 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
         'test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"',
         render,
     )
-    fail_safe = transaction.index("PHASE1_FAIL_SAFE_ARMED=1", exact)
+    interpreter_preflight = transaction.index(
+        "for compose_service in worker worker-collectors worker-warehouse; do",
+        exact,
+    )
+    interpreter_exec = transaction.index(
+        'docker exec "$interpreter_container_id" /usr/local/bin/python3 -c',
+        interpreter_preflight,
+    )
+    fail_safe = transaction.index("PHASE1_FAIL_SAFE_ARMED=1", interpreter_exec)
 
     expected_block = transaction[expected:render]
     for service in (
@@ -907,7 +963,30 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
         "worker-warehouse",
     ):
         assert service in expected_block
-    assert expected < render < exact < fail_safe
+    assert (
+        'os.path.realpath(sys.executable) != "/usr/local/bin/python3.12"'
+        in (transaction[interpreter_exec:fail_safe])
+    )
+    assert expected < render < exact < interpreter_preflight < interpreter_exec
+    assert interpreter_exec < fail_safe
+
+
+def test_every_in_container_python_gate_uses_the_image_abi_path() -> None:
+    transaction = _transaction()
+
+    for marker in (
+        "exec -T worker \\\n  /usr/local/bin/python3 - quiesce",
+        'docker exec -i "$V4_BACKUP_WORKER_ID" /usr/local/bin/python3 - quiesce',
+        'docker exec -i "$CANDIDATE_WORKER_ID" /usr/local/bin/python3 - check',
+        'docker exec -i -w /app "$COLLECTOR_CONTAINER_ID" /usr/local/bin/python3 -c',
+        'docker exec -i "$CANDIDATE_WORKER_ID" /usr/local/bin/python3 - quiesce',
+        'docker exec -i "$restored_default_id" /usr/local/bin/python3 - check',
+    ):
+        assert marker in transaction
+    assert "exec -T worker \\\n  /usr/bin/python3" not in transaction
+    assert 'docker exec -i "$V4_BACKUP_WORKER_ID" /usr/bin/python3' not in transaction
+    assert 'docker exec -i "$CANDIDATE_WORKER_ID" /usr/bin/python3' not in transaction
+    assert 'docker exec -i "$restored_default_id" /usr/bin/python3' not in transaction
 
 
 def test_compatibility_seed_also_strips_unreviewed_compose_interpolation() -> None:
