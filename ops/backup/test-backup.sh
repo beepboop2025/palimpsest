@@ -29,7 +29,8 @@ failed_root="$fixture_root/failed-backups"
 fake_bin="$fixture_root/bin"
 fake_container="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 fake_image="sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
-mkdir -p "$repo/ops/docker" "$state_root/readings" "$state_root/data/raw" \
+mkdir -p "$repo/ops/backup" "$repo/ops/docker" \
+  "$state_root/readings" "$state_root/data/raw" \
   "$state_root/data/evidence-documents" \
   "$analysis_root/private" \
   "$analysis_root/delivery" \
@@ -46,6 +47,8 @@ witness_root="$(cd "$witness_root" && pwd -P)"
 printf 'services: {}\n' >"$repo/ops/docker/docker-compose.prod.yml"
 printf 'POSTGRES_USER=palimpsest\nPOSTGRES_DB=palimpsest\n' \
   >"$repo/ops/docker/.env"
+cp -- "$here/node_backup_snapshot.py" \
+  "$repo/ops/backup/node_backup_snapshot.py"
 printf '{"status":"ok"}\n' >"$state_root/readings/probe.json"
 printf 'immutable raw sample\n' >"$state_root/data/raw/sample.txt"
 printf 'private evidence sample\n' \
@@ -92,11 +95,17 @@ printf '%s\n' \
   'joined=" $* "' \
   'if [[ "$joined" == *" ps -q worker "* ]]; then' \
   '  printf "%s\n" "$FAKE_CONTAINER_ID"' \
+  'elif [[ "$joined" == *" ps --filter "* ]]; then' \
+  '  service_filter="${joined##* label=com.docker.compose.service=}"' \
+  '  service_filter="${service_filter%% *}"' \
+  '  if [[ "${FAKE_RUNNING_CENSORWATCH_SERVICE:-}" == "$service_filter" ]]; then' \
+  '    printf "%s\n" "$FAKE_CONTAINER_ID"' \
+  '  fi' \
   'elif [[ "$joined" == *" pg_dump "* ]]; then' \
-  '  printf "fake-custom-dump\n"' \
+  '  printf "PGDMPfake-custom-dump\n"' \
   'elif [[ "$joined" == *" pg_restore --list "* ]]; then' \
   '  payload="$(command cat)"' \
-  '  [[ "$payload" == "fake-custom-dump" ]] || exit 41' \
+  '  [[ "$payload" == "PGDMPfake-custom-dump" ]] || exit 41' \
   '  [[ "${FAKE_PG_RESTORE_FAIL:-0}" != 1 ]] || exit 42' \
   '  printf "; fake archive listing\n"' \
   'elif [[ "$joined" == *" psql "* ]]; then' \
@@ -121,12 +130,13 @@ printf '%s\n' \
   '  cp -a "$FAKE_ANALYSIS_ROOT" "$archive_fixture/analysis"' \
   '  cp -a "$FAKE_NEWSWIRE_ROOT" "$archive_fixture/newswire"' \
   '  cp -a "$FAKE_WITNESS_ROOT" "$archive_fixture/witness"' \
-  '  tar --create --gzip --file - --directory "$archive_fixture" analysis readings data newswire witness' \
+  '  tar --create --gzip --file - --owner=1001 --group=1001 --directory "$archive_fixture" analysis readings data newswire witness' \
   'else' \
   '  printf "unexpected fake docker invocation: %s\n" "$*" >&2' \
   '  exit 43' \
   'fi' \
   >"$fake_bin/docker"
+# shellcheck disable=SC2016
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -eu' \
@@ -145,6 +155,7 @@ chmod 0755 "$fake_bin/docker" "$fake_bin/docker-inspect" "$fake_bin/flock"
 # The backup calls both `docker compose` and `docker inspect`. Keep one fake
 # entry point while dispatching the latter to its focused fixture.
 mv "$fake_bin/docker" "$fake_bin/docker-compose-fake"
+# shellcheck disable=SC2016
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -eu' \
@@ -164,6 +175,7 @@ common_env=(
   "PALIMPSEST_WITNESS_ROOT=$witness_root"
   "PALIMPSEST_BACKUP_RETENTION_DAYS=14"
   "PALIMPSEST_BACKUP_MIN_FREE_MB=64"
+  "PALIMPSEST_CENSORWATCH_BACKUP_MODE=absent"
   "FAKE_CONTAINER_ID=$fake_container"
   "FAKE_IMAGE_ID=$fake_image"
   "FAKE_STATE_ROOT=$state_root"
@@ -171,6 +183,28 @@ common_env=(
   "FAKE_NEWSWIRE_ROOT=$newswire_root"
   "FAKE_WITNESS_ROOT=$witness_root"
 )
+
+missing_mode_root="$fixture_root/missing-mode-backups"
+mkdir -p "$missing_mode_root"
+if env -u PALIMPSEST_CENSORWATCH_BACKUP_MODE "${common_env[@]}" \
+  PALIMPSEST_CENSORWATCH_BACKUP_MODE= \
+  PALIMPSEST_BACKUP_DIR="$missing_mode_root" \
+  "$backup_script"; then
+  fail "backup without an explicit CensorWatch mode unexpectedly ran"
+fi
+[[ -z "$(find "$missing_mode_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "missing CensorWatch mode refusal left backup output"
+
+running_censorwatch_root="$fixture_root/running-censorwatch-backups"
+mkdir -p "$running_censorwatch_root"
+if env "${common_env[@]}" \
+  PALIMPSEST_BACKUP_DIR="$running_censorwatch_root" \
+  FAKE_RUNNING_CENSORWATCH_SERVICE=worker-velocity \
+  "$backup_script"; then
+  fail "absent mode silently omitted a running CensorWatch service"
+fi
+[[ -z "$(find "$running_censorwatch_root" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]] || \
+  fail "running CensorWatch refusal left backup output"
 
 env "${common_env[@]}" \
   PALIMPSEST_BACKUP_DIR="$backup_root" \
@@ -260,8 +294,25 @@ for witness_history in eval-registry erasure-ledger; do
   )" == "$history_payload" ]] || \
     fail "witness history bytes are not restore-exact: $witness_history"
 done
-grep -Fq 'format_version=4' "$snapshot/MANIFEST.txt" || \
+grep -Fq 'format_version=5' "$snapshot/MANIFEST.txt" || \
   fail "backup manifest format was not upgraded"
+grep -Fq 'censorwatch_mode=absent' "$snapshot/MANIFEST.txt" || \
+  fail "backup manifest did not explicitly record absent CensorWatch state"
+grep -Fq 'censorwatch_postgres_version=absent' "$snapshot/MANIFEST.txt" || \
+  fail "absent CensorWatch PostgreSQL state is not exact"
+grep -Fq 'censorwatch_redis_version=absent' "$snapshot/MANIFEST.txt" || \
+  fail "absent CensorWatch Redis state is not exact"
+grep -Fq 'censorwatch_writer_fence=not-applicable' "$snapshot/MANIFEST.txt" || \
+  fail "absent CensorWatch fence state is not exact"
+expected_inventory="$fixture_root/expected-inventory"
+actual_inventory="$fixture_root/actual-inventory"
+printf '%s\n' \
+  MANIFEST.txt SHA256SUMS artifacts.list artifacts.tar.gz \
+  postgres.dump postgres.list | LC_ALL=C sort >"$expected_inventory"
+find "$snapshot" -mindepth 1 -maxdepth 1 -type f -exec basename {} \; | \
+  LC_ALL=C sort >"$actual_inventory"
+cmp -s "$expected_inventory" "$actual_inventory" || \
+  fail "absent CensorWatch backup did not publish the exact six-file inventory"
 grep -Fq 'artifact_roots=readings,data,newswire,analysis,witness' "$snapshot/MANIFEST.txt" || \
   fail "backup manifest omits an artifact restore root"
 if grep -Fq "$private_state_payload" \

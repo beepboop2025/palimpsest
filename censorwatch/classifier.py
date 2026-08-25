@@ -150,8 +150,7 @@ def classify_state(
     # 3) Ambiguous HTTP error statuses → UNKNOWN. The shared table only special-
     #    cases 403/451/5xx; 401 (auth wall) and 429 (rate limit) would otherwise
     #    fall through to "alive" — a dangerous false LIVE when re-fetching from a
-    #    throttled egress. 404 is deliberately NOT here: it proceeds to the marker
-    #    table, where a bare 404 is correctly read as GONE.
+    #    throttled egress. A 404 is handled after visible deletion notices below.
     if status in (401, 403, 429, 451) or status >= 500:
         return LivenessState.UNKNOWN, f"http_{status}"
 
@@ -159,6 +158,13 @@ def classify_state(
     for m in extra_markers:
         if m and m in visible:
             return LivenessState.GONE, f"source_marker:{m}"
+
+    # A bare 404 is endpoint/vantage availability evidence, not evidence of
+    # deletion. Eastmoney currently mixes Guba and Caifuhao post hosts while
+    # probing Guba list pages, so no same-family control authorizes promoting
+    # an unqualified 404 to GONE. Explicit visible notices above remain strong.
+    if status == 404:
+        return LivenessState.UNKNOWN, "bare_404_without_same_family_control"
 
     # 5) Delegate to the shared CN marker table + HTTP rules.
     if _cn_classify is not None:
@@ -170,8 +176,6 @@ def classify_state(
         return state, f'cn:{verdict["status"]}(L={verdict.get("censorship_likelihood")})'
 
     # Fallback (probe unavailable): minimal HTTP-only rules, still defensive.
-    if status == 404:
-        return LivenessState.GONE, "http_404"
     if status in (403, 451, 429) or status >= 500:
         return LivenessState.UNKNOWN, f"http_{status}"
     return LivenessState.LIVE, "http_200_no_marker"

@@ -717,20 +717,96 @@ the publication relay; they import a sealed latest file and never a demo.
 
 ## 6. (Optional) Enable the CensorWatch velocity leg
 
-Only when you have a proxy exit configured (Step 4 decision = proxy):
+The admitted source is Eastmoney only. It uses the credential-free,
+destination-pinned `censorwatch-egress-proxy`; do not set arbitrary
+`HTTP_PROXY`, `HTTPS_PROXY`, or browser-renderer values. The
+`velocity-browser` profile remains off until a browser source has its own
+reviewed admission and release gate.
 
-1. In `.env`, set `CENSORWATCH_ENABLED=1` and the
-   `CENSORWATCH_PROXY_URL` / `HTTPS_PROXY` vars.
-2. Build the isolated renderer and bring up the velocity profile:
+Do not generate or stage live credentials in the repository. Prepare sixteen
+files carrying thirteen distinct role passwords in an owner-controlled secret
+store, then copy each one under `/etc/palimpsest/censorwatch-secrets`. The
+standalone admin-password file repeats the password embedded in the admin URL
+by design; every other role password remains distinct. The required bindings are:
 
-```bash
-ops/docker/prod-compose --profile velocity up -d --build
+```text
+CENSORWATCH_POSTGRES_ADMIN_PASSWORD_FILE
+CENSORWATCH_DATABASE_ADMIN_URL_FILE
+CENSORWATCH_DATABASE_WRITER_URL_FILE
+CENSORWATCH_DATABASE_READER_URL_FILE
+CENSORWATCH_REDIS_DATA_ACL_FILE
+CENSORWATCH_REDIS_CONTROL_ACL_FILE
+CENSORWATCH_REDIS_DATA_HEALTH_PASSWORD_FILE
+CENSORWATCH_REDIS_CONTROL_HEALTH_PASSWORD_FILE
+CENSORWATCH_CELERY_DATA_PRODUCER_URL_FILE
+CENSORWATCH_CELERY_CONTROL_PRODUCER_URL_FILE
+CENSORWATCH_CELERY_DATA_URL_FILE
+CENSORWATCH_CELERY_CONTROL_URL_FILE
+CENSORWATCH_REDIS_WRITER_URL_FILE
+CENSORWATCH_REDIS_CONTROL_URL_FILE
+CENSORWATCH_REDIS_DATA_READER_URL_FILE
+CENSORWATCH_REDIS_CONTROL_READER_URL_FILE
 ```
 
-This adds `worker-velocity` on the isolated `censorwatch` queue plus the
-credential-free `censorwatch-render-gateway`. The gateway has no database
-network, application env file, durable mounts, or host port. If you leave the
-flag unset, those tasks stay inert by design.
+The admin URL belongs only to `preflight-censorwatch` and
+`migrate-censorwatch`. Each Beat receives only its own producer broker URL. The data
+worker receives only the database writer, data-consumer broker, and data-cache
+writer URLs. The control worker receives only its control-consumer broker and
+control-cache URLs; that Redis user is restricted to the exact
+`censorwatch:beat:heartbeat` key. There is no Redis result-backend authority.
+Never reuse a password, URL, or Redis user between roles.
+
+For a one-time legacy-active migration, also stage the migration-only
+`CENSORWATCH_LEGACY_DATABASE_URL_FILE` at the fixed path
+`/etc/palimpsest/censorwatch-secrets/censorwatch_legacy_database_url` with the
+same `root:10001`, `0640`, single-link contract. Its URL must use the dedicated
+primary role `censorwatch_legacy_reader`. Pre-provision that role with forced
+read-only transactions, no role memberships, and only `CONNECT`, schema
+`USAGE`, and `SELECT` on `censored_posts`, `post_deletions`, and
+`deletion_velocity_snapshots`. It is mounted only into the network-separated
+export one-shot and is never a long-lived runtime secret.
+
+Stage already-created secret bytes without exposing them on a command line:
+
+```bash
+sudo install -d -o root -g 10001 -m 0750 \
+  /etc/palimpsest/censorwatch-secrets
+# Repeat for each owner-supplied source file and its distinct destination.
+sudo install -o root -g 10001 -m 0640 \
+  /owner-controlled/path/censorwatch_database_writer_url \
+  /etc/palimpsest/censorwatch-secrets/censorwatch_database_writer_url
+sudo test "$(sudo stat -c '%u:%g:%a:%h' \
+  /etc/palimpsest/censorwatch-secrets/censorwatch_database_writer_url)" \
+  = 0:10001:640:1
+sudo -u '#10001' test -r \
+  /etc/palimpsest/censorwatch-secrets/censorwatch_database_writer_url
+```
+
+Point the sixteen `_FILE` settings in `ops/docker/.env` at their absolute host
+paths. Keep the root-owned `/etc/palimpsest/backup.env` at mode `0600` with
+exactly one canonical `PALIMPSEST_CENSORWATCH_BACKUP_MODE=absent` line while
+the plane is absent; change that value to `included` before a reviewed
+migration/activation transaction. Leave `CENSORWATCH_ENABLED=0` until all of
+these are true:
+
+1. the legacy 241-row export/import rehearsal succeeds without divergence;
+2. backup format v5 verifies `censorwatch.mode=included`, both isolated
+   PostgreSQL and cold Redis artifacts, and an off-site networkless restore;
+3. the release transaction's networkless secret preflight and fresh migration
+   receipts succeed; and
+4. the internal egress proxy is healthy with the browser profile absent.
+
+The complete Phase 1/2/3 transaction below retains the reviewed future
+activation path, but this release deliberately locks
+`CENSORWATCH_ISOLATION_ACTIVATE=0` and requires a v5 `absent` snapshot. The
+physical data/control Redis split, archive-writer quota, and live restore proof
+must be reviewed in a later transaction before that lock may be changed. Prior
+legacy activity is recorded and protected by the pre-migration primary backup,
+but never silently becomes target activation. Do not use a broad `compose up`:
+when activation is admitted in a later release, the controller starts
+preflight, PostgreSQL/Redis, migration, proxy, control worker, data worker,
+systemd activators, and the velocity beat last. This release deploys the
+hardened target code with the entire CensorWatch plane absent.
 
 ---
 
@@ -1518,6 +1594,7 @@ EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRE
 COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA}"
 TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward}"
 INTERRUPTED_PHASE1_RECOVERY="${INTERRUPTED_PHASE1_RECOVERY:-0}"
+CENSORWATCH_ISOLATION_ACTIVATE="${CENSORWATCH_ISOLATION_ACTIVATE:-0}"
 INTERRUPTED_PHASE1_INCIDENT='2026-08-25-common-crawl-bind-alias-retry'
 INTERRUPTED_PHASE1_MANIFEST_SOURCE="ops/release-recovery/${INTERRUPTED_PHASE1_INCIDENT}.json"
 INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_common_crawl_bind_alias_retry_manifest.py'
@@ -1541,6 +1618,12 @@ BACKUP_RELEASE_QUIESCE_TARGET='/etc/systemd/system/palimpsest-backup.service.d/z
 [[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$COMPATIBLE_ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$INTERRUPTED_PHASE1_RECOVERY" == 0 || "$INTERRUPTED_PHASE1_RECOVERY" == 1 ]]
+[[ "$CENSORWATCH_ISOLATION_ACTIVATE" == 0 \
+  || "$CENSORWATCH_ISOLATION_ACTIVATE" == 1 ]]
+if (( CENSORWATCH_ISOLATION_ACTIVATE != 0 )); then
+  printf 'CensorWatch activation is closed for this release; use absent mode\n' >&2
+  exit 1
+fi
 test "$TRANSACTION_DIRECTION" = forward
 test "$EXPECTED_DEPLOY_SHA" != "$COMPATIBLE_ROLLBACK_SHA"
 test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
@@ -1917,20 +2000,86 @@ COMPOSE_ALL_PROFILES=(
   --profile collectors
   --profile warehouse
   --profile velocity
+  --profile velocity-api
   --profile api
 )
-COMPOSE_WRITER_SERVICES=(
+PRIMARY_CELERY_WORKER_SERVICES=(
+  worker
+  worker-collectors
+  worker-warehouse
+)
+CENSORWATCH_CELERY_WORKER_SERVICES=(
+  worker-velocity
+  worker-velocity-control
+)
+CENSORWATCH_RUNTIME_SERVICES=(
+  postgres-censorwatch
+  redis-censorwatch-data
+  redis-censorwatch-control
+  censorwatch-egress-proxy
+  worker-velocity
+  worker-velocity-control
+  beat-velocity-data
+  beat-velocity-control
+)
+CENSORWATCH_PRESENTATION_SERVICES=(
+  api-censorwatch
+)
+CENSORWATCH_ONESHOT_SERVICES=(
+  preflight-censorwatch
+  migrate-censorwatch
+)
+LEGACY_COMPOSE_WRITER_SERVICES=(
   beat
   worker
   worker-collectors
   worker-warehouse
   worker-velocity
 )
-CELERY_WORKER_SERVICES=(
+TARGET_COMPOSE_WRITER_SERVICES=(
+  beat
   worker
   worker-collectors
   worker-warehouse
+  beat-velocity-data
+  beat-velocity-control
   worker-velocity
+  worker-velocity-control
+)
+# Emergency discovery uses the union by Docker labels rather than asking the
+# checkout's Compose model about target-only services. The contextual arrays
+# below are selected only after the predecessor inventory is known, and are
+# switched to the target inventory only after the exact target checkout.
+CONTROLLED_COMPOSE_WRITER_SERVICES=(
+  "${TARGET_COMPOSE_WRITER_SERVICES[@]}"
+)
+COMPOSE_WRITER_SERVICES=()
+CELERY_WORKER_SERVICES=()
+PREDECESSOR_COMPOSE_WRITER_SERVICES=()
+PREDECESSOR_COMPOSE_TOPOLOGY=''
+CENSORWATCH_WAS_ACTIVE=0
+CENSORWATCH_LEGACY_WAS_ACTIVE=0
+CENSORWATCH_ISOLATED_WAS_ACTIVE=0
+CENSORWATCH_API_WAS_ACTIVE=0
+CENSORWATCH_API_RESTORED=0
+CENSORWATCH_ACTIVATION_INTENT=0
+CENSORWATCH_ACTIVATION_AUTHORIZED=0
+CENSORWATCH_BACKUP_MODE_REQUIRED=''
+CENSORWATCH_PREFLIGHT_RECEIPT_PATH=''
+CENSORWATCH_MIGRATION_RECEIPT_PATH=''
+CENSORWATCH_PRECHANGE_RECEIPT_PATH=''
+CENSORWATCH_RESTORED_RECEIPT_PATH=''
+readonly CENSORWATCH_RUNTIME_UID=10001
+readonly CENSORWATCH_RUNTIME_GID=10001
+declare -A CENSORWATCH_TARGET_CONTAINER_ID
+declare -A CENSORWATCH_TARGET_IMAGE_ID
+declare -A CENSORWATCH_TARGET_STATE
+declare -A CENSORWATCH_TARGET_EXIT_CODE
+PRIMARY_COMPOSE_WRITER_SERVICES=(
+  beat
+  worker
+  worker-collectors
+  worker-warehouse
 )
 declare -A COMPOSE_WAS_RUNNING COMPOSE_CONTAINER_ID_BEFORE
 declare -A COMPOSE_IMAGE_ID_BEFORE COMPOSE_HOSTNAME_BEFORE
@@ -1944,17 +2093,253 @@ COMPOSE_QUEUE_BY_SERVICE[worker]=celery
 COMPOSE_QUEUE_BY_SERVICE[worker-collectors]=collectors
 COMPOSE_QUEUE_BY_SERVICE[worker-warehouse]=warehouse
 COMPOSE_QUEUE_BY_SERVICE[worker-velocity]=censorwatch
+COMPOSE_QUEUE_BY_SERVICE[worker-velocity-control]=censorwatch-control
 
-# Prove that the isolated Docker/Compose environment can load the reviewed
-# production file before the fail-safe is armed. Ordinary releases may start on
-# either reviewed side of the renderer topology change, while the successor
-# incident is pinned to the render-isolated topology already installed by its
-# failed predecessor. Bind the service list to the exact Compose Git blob so a
-# same-shaped but unreviewed file cannot pass.
-LEGACY_COMPOSE_CONFIG_BLOB='38000e2f73ded26e12caa4e21e0dbf4b7fa0ec33'
-LEGACY_COMPOSE_CONFIG_SERVICES=$'api\nbeat\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
+verify_censorwatch_secret_files() {
+  local bindings_b64
+  bindings_b64="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+    config --format json | python3 -c '
+import base64
+import json
+import sys
+
+required = {
+    "censorwatch_postgres_admin_password",
+    "censorwatch_database_admin_url",
+    "censorwatch_database_writer_url",
+    "censorwatch_database_reader_url",
+    "censorwatch_redis_data_acl",
+    "censorwatch_redis_control_acl",
+    "censorwatch_redis_data_health_password",
+    "censorwatch_redis_control_health_password",
+    "censorwatch_celery_data_producer_url",
+    "censorwatch_celery_control_producer_url",
+    "censorwatch_celery_data_url",
+    "censorwatch_celery_control_url",
+    "censorwatch_redis_writer_url",
+    "censorwatch_redis_control_url",
+    "censorwatch_redis_data_reader_url",
+    "censorwatch_redis_control_reader_url",
+}
+document = json.load(sys.stdin)
+secrets = document.get("secrets", {})
+if {
+    name for name in secrets
+    if isinstance(name, str) and name.startswith("censorwatch_")
+} != required:
+    raise SystemExit("CensorWatch Compose secret inventory is not exact")
+bindings = {}
+for name in sorted(required):
+    value = secrets.get(name)
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"file", "name"}
+        or value.get("name") != f"palimpsest_{name}"
+    ):
+        raise SystemExit(f"CensorWatch secret binding is not file-only: {name}")
+    path = value.get("file")
+    if (
+        not isinstance(path, str)
+        or not path.startswith("/")
+        or "\x00" in path
+        or "\n" in path
+        or len(path.encode("utf-8")) > 4096
+    ):
+        raise SystemExit(f"CensorWatch secret path is unsafe: {name}")
+    bindings[name] = path
+payload = json.dumps(
+    bindings, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8")
+if len(payload) > 64 * 1024:
+    raise SystemExit("CensorWatch secret binding token is oversized")
+print(base64.b64encode(payload).decode("ascii"))
+')"
+  [[ "$bindings_b64" =~ ^[A-Za-z0-9+/=]+$ ]]
+  sudo python3 - "$bindings_b64" 10001 <<'PY'
+import base64
+import json
+import os
+import stat
+import sys
+
+encoded, runtime_id_text = sys.argv[1:]
+runtime_id = int(runtime_id_text)
+payload = base64.b64decode(encoded, validate=True)
+if len(payload) > 64 * 1024:
+    raise SystemExit("CensorWatch secret binding token exceeds its ceiling")
+bindings = json.loads(payload.decode("utf-8", "strict"))
+if not isinstance(bindings, dict) or len(bindings) != 16:
+    raise SystemExit("CensorWatch secret binding set is incomplete")
+for name, path in bindings.items():
+    metadata = os.lstat(path)
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_uid != 0
+        or metadata.st_gid != runtime_id
+        or stat.S_IMODE(metadata.st_mode) != 0o640
+        or metadata.st_nlink != 1
+        or metadata.st_size <= 0
+        or metadata.st_size > 1024 * 1024
+    ):
+        raise SystemExit(f"unsafe CensorWatch secret metadata: {name}")
+    child = os.fork()
+    if child == 0:
+        try:
+            os.setgroups([runtime_id])
+            os.setgid(runtime_id)
+            os.setuid(runtime_id)
+            descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+            try:
+                if not os.read(descriptor, 1):
+                    raise OSError("empty secret")
+            finally:
+                os.close(descriptor)
+        except BaseException:
+            os._exit(1)
+        os._exit(0)
+    _, status = os.waitpid(child, 0)
+    if not os.WIFEXITED(status) or os.WEXITSTATUS(status) != 0:
+        raise SystemExit(f"container uid cannot read CensorWatch secret: {name}")
+PY
+}
+
+censorwatch_secret_host_path() {
+  local secret_name="$1"
+  case "$secret_name" in
+    censorwatch_database_admin_url) ;;
+    *) printf 'unreviewed CensorWatch secret lookup: %s\n' \
+         "$secret_name" >&2; return 1 ;;
+  esac
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" config --format json \
+    | python3 -c '
+import json
+import sys
+
+name = sys.argv[1]
+value = json.load(sys.stdin).get("secrets", {}).get(name)
+if (
+    not isinstance(value, dict)
+    or set(value) != {"file", "name"}
+    or value.get("name") != f"palimpsest_{name}"
+    or not isinstance(value.get("file"), str)
+    or not value["file"].startswith("/")
+    or "\x00" in value["file"]
+    or "\n" in value["file"]
+    or len(value["file"].encode("utf-8")) > 4096
+):
+    raise SystemExit("CensorWatch secret lookup is unsafe")
+print(value["file"])
+' "$secret_name"
+}
+
+verify_censorwatch_legacy_secret_file() {
+  local path='/etc/palimpsest/censorwatch-secrets/censorwatch_legacy_database_url'
+  sudo python3 - "$path" 10001 <<'PY'
+import os
+import stat
+import sys
+
+path, runtime_id_text = sys.argv[1:]
+runtime_id = int(runtime_id_text)
+metadata = os.lstat(path)
+if (
+    not stat.S_ISREG(metadata.st_mode)
+    or metadata.st_uid != 0
+    or metadata.st_gid != runtime_id
+    or stat.S_IMODE(metadata.st_mode) != 0o640
+    or metadata.st_nlink != 1
+    or metadata.st_size <= 0
+    or metadata.st_size > 4096
+):
+    raise SystemExit("legacy CensorWatch transfer secret metadata is unsafe")
+child = os.fork()
+if child == 0:
+    try:
+        os.setgroups([runtime_id])
+        os.setgid(runtime_id)
+        os.setuid(runtime_id)
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+        try:
+            if not os.read(descriptor, 1):
+                raise OSError("empty secret")
+        finally:
+            os.close(descriptor)
+    except BaseException:
+        os._exit(1)
+    os._exit(0)
+_, status = os.waitpid(child, 0)
+if not os.WIFEXITED(status) or os.WEXITSTATUS(status) != 0:
+    raise SystemExit("container uid cannot read legacy transfer secret")
+PY
+  printf '%s\n' "$path"
+}
+
+verify_backup_censorwatch_mode() {
+  local expected_mode="$1" actual_mode
+  [[ "$expected_mode" == absent || "$expected_mode" == included ]]
+  actual_mode="$(sudo python3 - <<'PY'
+import os
+import stat
+
+path = "/etc/palimpsest/backup.env"
+metadata = os.lstat(path)
+if (
+    not stat.S_ISREG(metadata.st_mode)
+    or metadata.st_uid != 0
+    or metadata.st_gid != 0
+    or stat.S_IMODE(metadata.st_mode) != 0o600
+    or metadata.st_nlink != 1
+    or metadata.st_size <= 0
+    or metadata.st_size > 64 * 1024
+):
+    raise SystemExit("backup.env metadata is unsafe")
+descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+try:
+    opened = os.fstat(descriptor)
+    if (opened.st_dev, opened.st_ino) != (metadata.st_dev, metadata.st_ino):
+        raise SystemExit("backup.env identity changed while opening")
+    chunks = []
+    size = 0
+    while True:
+        chunk = os.read(descriptor, min(8192, 64 * 1024 + 1 - size))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        size += len(chunk)
+        if size > 64 * 1024:
+            raise SystemExit("backup.env exceeds its byte ceiling")
+finally:
+    os.close(descriptor)
+text = b"".join(chunks).decode("utf-8", "strict")
+key = "PALIMPSEST_CENSORWATCH_BACKUP_MODE"
+assignments = []
+for line in text.splitlines():
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        continue
+    if key in stripped:
+        if line not in {f"{key}=absent", f"{key}=included"}:
+            raise SystemExit("backup.env CensorWatch mode is not canonical")
+        assignments.append(line.split("=", 1)[1])
+if len(assignments) != 1:
+    raise SystemExit("backup.env must contain exactly one CensorWatch mode")
+print(assignments[0])
+PY
+)"
+  test "$actual_mode" = "$expected_mode"
+}
+
+# Prove that the predecessor checkout is exactly one admitted topology before
+# the fail-safe is armed. Bind both the service inventory and the exact Compose
+# Git blob so a same-shaped but unreviewed file cannot pass. Target-only names
+# are never sent to a legacy Compose checkout.
+PRE_RENDER_COMPOSE_CONFIG_BLOB='38000e2f73ded26e12caa4e21e0dbf4b7fa0ec33'
+PRE_RENDER_COMPOSE_CONFIG_SERVICES=$'api\nbeat\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
 RENDER_ISOLATED_COMPOSE_CONFIG_BLOB='4e7ecd9e57a4a386a5387ee07dad578e003332cc'
 RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES=$'api\nbeat\ncensorwatch-render-gateway\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
+ISOLATED_COMPOSE_CONFIG_BLOB='aa77b4e9100dc485ad5aa1cb2315c24d177d29c2'
+TARGET_COMPOSE_CONFIG_SERVICES=$'api\napi-censorwatch\nbeat\nbeat-velocity-control\nbeat-velocity-data\ncensorwatch-egress-proxy\nmigrate\nmigrate-censorwatch\npostgres\npostgres-censorwatch\npreflight-censorwatch\nredis\nredis-censorwatch-control\nredis-censorwatch-data\nworker\nworker-collectors\nworker-velocity\nworker-velocity-control\nworker-warehouse'
 PREVIOUS_COMPOSE_CONFIG_BLOB="$(release_git rev-parse \
   "${EXPECTED_PREVIOUS_CHECKOUT_SHA}:ops/docker/docker-compose.prod.yml")"
 test "$(release_git hash-object ops/docker/docker-compose.prod.yml)" \
@@ -1962,24 +2347,55 @@ test "$(release_git hash-object ops/docker/docker-compose.prod.yml)" \
 ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES="$(release_compose \
   "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
 case "$PREVIOUS_COMPOSE_CONFIG_BLOB" in
-  "$LEGACY_COMPOSE_CONFIG_BLOB")
+  "$PRE_RENDER_COMPOSE_CONFIG_BLOB")
     test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
-      = "$LEGACY_COMPOSE_CONFIG_SERVICES"
+      = "$PRE_RENDER_COMPOSE_CONFIG_SERVICES"
+    PREDECESSOR_COMPOSE_TOPOLOGY=pre-render
+    COMPOSE_WRITER_SERVICES=("${LEGACY_COMPOSE_WRITER_SERVICES[@]}")
+    CELERY_WORKER_SERVICES=(
+      "${PRIMARY_CELERY_WORKER_SERVICES[@]}"
+      worker-velocity
+    )
     ;;
   "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB")
     test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
       = "$RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES"
+    PREDECESSOR_COMPOSE_TOPOLOGY=render-legacy
+    COMPOSE_WRITER_SERVICES=("${LEGACY_COMPOSE_WRITER_SERVICES[@]}")
+    CELERY_WORKER_SERVICES=(
+      "${PRIMARY_CELERY_WORKER_SERVICES[@]}"
+      worker-velocity
+    )
+    ;;
+  "$ISOLATED_COMPOSE_CONFIG_BLOB")
+    test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
+      = "$TARGET_COMPOSE_CONFIG_SERVICES"
+    PREDECESSOR_COMPOSE_TOPOLOGY=isolated
+    COMPOSE_WRITER_SERVICES=("${TARGET_COMPOSE_WRITER_SERVICES[@]}")
+    CELERY_WORKER_SERVICES=(
+      "${PRIMARY_CELERY_WORKER_SERVICES[@]}"
+      "${CENSORWATCH_CELERY_WORKER_SERVICES[@]}"
+    )
     ;;
   *)
-    printf 'previous Compose configuration is not a reviewed topology: %s\n' \
+    printf 'predecessor Compose configuration is not reviewed: %s\n' \
       "$PREVIOUS_COMPOSE_CONFIG_BLOB" >&2
     exit 1
     ;;
 esac
-if [[ "$INTERRUPTED_PHASE1_RECOVERY" == 1 ]]; then
+PREDECESSOR_COMPOSE_WRITER_SERVICES=("${COMPOSE_WRITER_SERVICES[@]}")
+if [[ "$PREDECESSOR_COMPOSE_TOPOLOGY" == pre-render ]] \
+    && (( INTERRUPTED_PHASE1_RECOVERY == 0 )); then
+  printf 'pre-render predecessor is admitted only for interrupted recovery\n' >&2
+  exit 1
+fi
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  test "$PREDECESSOR_COMPOSE_TOPOLOGY" = render-legacy
   test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"
   test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
     = "$RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES"
+  test "$CENSORWATCH_ISOLATION_ACTIVATE" = 0
+  CENSORWATCH_BACKUP_MODE_REQUIRED=absent
 fi
 
 # The official Python application image installs its interpreter under
@@ -2063,7 +2479,7 @@ capture_controlled_writer_inventory() {
   local config_inventory="${output_path}.config"
   : >"$working_inventory" || return 1
   : >"$config_inventory" || return 1
-  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  for compose_service in "${CONTROLLED_COMPOSE_WRITER_SERVICES[@]}"; do
     if ! docker ps -a --no-trunc \
         --filter "label=com.docker.compose.project.working_dir=$compose_working_dir" \
         --filter "label=com.docker.compose.service=$compose_service" \
@@ -2224,7 +2640,8 @@ quiesce_controlled_writer_inventory() {
     fi
     IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
     case "$service" in
-      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      beat|worker|worker-collectors|worker-warehouse|beat-velocity-data|\
+      beat-velocity-control|worker-velocity|worker-velocity-control) ;;
       *)
         printf 'emergency writer has unexpected service label: %s/%s\n' \
           "$container_id" "$service" >&2
@@ -2303,7 +2720,8 @@ verify_controlled_writer_inventory_quiescent() {
     fi
     IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
     case "$service" in
-      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      beat|worker|worker-collectors|worker-warehouse|beat-velocity-data|\
+      beat-velocity-control|worker-velocity|worker-velocity-control) ;;
       *)
         printf 'verified writer has unexpected service label: %s/%s\n' \
           "$container_id" "$service" >&2
@@ -2469,7 +2887,8 @@ release_quiesce_all() {
     }
     IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
     case "$service" in
-      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      beat|worker|worker-collectors|worker-warehouse|beat-velocity-data|\
+      beat-velocity-control|worker-velocity|worker-velocity-control) ;;
       *)
         printf 'emergency writer has unexpected service label: %s/%s\n' \
           "$container_id" "$service" >&2
@@ -2542,7 +2961,8 @@ release_quiesce_all() {
     }
     IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
     case "$service" in
-      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      beat|worker|worker-collectors|worker-warehouse|beat-velocity-data|\
+      beat-velocity-control|worker-velocity|worker-velocity-control) ;;
       *)
         printf 're-enumerated writer has unexpected service label: %s/%s\n' \
           "$container_id" "$service" >&2
@@ -2898,7 +3318,20 @@ required = {
     "worker-collectors",
     "worker-warehouse",
 }
-allowed = required | {"censorwatch-render-gateway", "worker-velocity"}
+allowed = required | {
+    "api-censorwatch",
+    "beat-velocity-data",
+    "beat-velocity-control",
+    "censorwatch-egress-proxy",
+    "censorwatch-render-gateway",
+    "migrate-censorwatch",
+    "postgres-censorwatch",
+    "preflight-censorwatch",
+    "redis-censorwatch-data",
+    "redis-censorwatch-control",
+    "worker-velocity",
+    "worker-velocity-control",
+}
 expected_working_dir, expected_config_file = sys.argv[2:]
 rows = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").splitlines()
 if len(rows) > 128:
@@ -2978,6 +3411,9 @@ RECOVERY_FINAL_RUNTIME_PATH=''
 RECOVERY_FINAL_RUNTIME_SHA256=''
 RECOVERY_PHASE3_BINDING_PATH=''
 RECOVERY_PHASE3_BINDING_SHA256=''
+CENSORWATCH_DATA_BROKER_QUEUES_B64=''
+CENSORWATCH_CONTROL_BROKER_QUEUES_B64=''
+LEGACY_CENSORWATCH_BROKER_QUEUES_B64=''
 
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test -x /usr/bin/timeout
@@ -3748,25 +4184,116 @@ else
   for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
     compose_container_state "$compose_service"
   done
+  if [[ "$PREDECESSOR_COMPOSE_TOPOLOGY" == render-legacy ]]; then
+    compose_container_state censorwatch-render-gateway
+  else
+    for compose_service in \
+        postgres-censorwatch redis-censorwatch-data \
+        redis-censorwatch-control censorwatch-egress-proxy \
+        preflight-censorwatch migrate-censorwatch api-censorwatch; do
+      compose_container_state "$compose_service"
+    done
+  fi
   verify_compose_container_inventory
   for compose_service in worker worker-collectors worker-warehouse; do
     test "${COMPOSE_WAS_RUNNING[$compose_service]}" = 1
   done
-  RENDER_GATEWAY_CONTAINER_ID_BEFORE="$(release_compose \
-    "${COMPOSE_ALL_PROFILES[@]}" ps -q --all censorwatch-render-gateway)"
-  if [[ "${COMPOSE_WAS_RUNNING[worker-velocity]}" == 1 ]]; then
-    [[ "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" =~ ^[0-9a-f]{64}$ ]]
-    test "$(docker inspect "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" \
-      --format '{{.State.Status}}')" = running
-    RENDER_GATEWAY_IMAGE_ID_BEFORE="$(docker inspect \
-      "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" --format '{{.Image}}')"
-    [[ "$RENDER_GATEWAY_IMAGE_ID_BEFORE" =~ ^sha256:[0-9a-f]{64}$ ]]
-    test "$(docker image inspect "$RENDER_GATEWAY_IMAGE_ID_BEFORE" --format \
-      '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
-      = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
-  elif [[ -n "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" ]]; then
-    test "$(docker inspect "$RENDER_GATEWAY_CONTAINER_ID_BEFORE" \
-      --format '{{.State.Status}}')" != running
+  CENSORWATCH_CONFIG_ENABLED="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" config --format json | python3 -c '
+import json
+import sys
+
+services = json.load(sys.stdin).get("services", {})
+topology = sys.argv[1]
+names = (
+    ("worker-velocity",)
+    if topology == "render-legacy"
+    else (
+        "worker-velocity", "worker-velocity-control",
+        "beat-velocity-data", "beat-velocity-control",
+    )
+)
+values = {
+    str(services.get(name, {}).get("environment", {}).get("CENSORWATCH_ENABLED"))
+    for name in names
+}
+if values == {"0"}:
+    print(0)
+elif values == {"1"}:
+    print(1)
+else:
+    raise SystemExit("CensorWatch enablement is not exact across its app")
+')' "$PREDECESSOR_COMPOSE_TOPOLOGY")"
+  [[ "$CENSORWATCH_CONFIG_ENABLED" == 0 \
+    || "$CENSORWATCH_CONFIG_ENABLED" == 1 ]]
+  if [[ "$PREDECESSOR_COMPOSE_TOPOLOGY" == render-legacy ]]; then
+    legacy_censorwatch_running=$((${COMPOSE_WAS_RUNNING[worker-velocity]} \
+      + ${COMPOSE_WAS_RUNNING[censorwatch-render-gateway]}))
+    case "$CENSORWATCH_CONFIG_ENABLED:$legacy_censorwatch_running" in
+      0:0) ;;
+      1:2)
+        CENSORWATCH_LEGACY_WAS_ACTIVE=1
+        CENSORWATCH_WAS_ACTIVE=1
+        ;;
+      *)
+        printf 'refusing partial legacy CensorWatch runtime: enabled=%s running=%s/2\n' \
+          "$CENSORWATCH_CONFIG_ENABLED" "$legacy_censorwatch_running" >&2
+        exit 1
+        ;;
+    esac
+  else
+    censorwatch_running_count=0
+    for compose_service in "${CENSORWATCH_RUNTIME_SERVICES[@]}"; do
+      censorwatch_running_count=$((censorwatch_running_count \
+        + COMPOSE_WAS_RUNNING[$compose_service]))
+    done
+    case "$CENSORWATCH_CONFIG_ENABLED:$censorwatch_running_count" in
+      0:0) ;;
+      1:8)
+        CENSORWATCH_ISOLATED_WAS_ACTIVE=1
+        CENSORWATCH_WAS_ACTIVE=1
+        for compose_service in "${CENSORWATCH_ONESHOT_SERVICES[@]}"; do
+          censorwatch_oneshot_id="${COMPOSE_CONTAINER_ID_BEFORE[$compose_service]}"
+          [[ "$censorwatch_oneshot_id" =~ ^[0-9a-f]{64}$ ]]
+          test "$(docker inspect "$censorwatch_oneshot_id" \
+            --format '{{.State.Status}}:{{.State.ExitCode}}')" = exited:0
+        done
+        ;;
+      *)
+        printf 'refusing partial isolated CensorWatch runtime: enabled=%s running=%s/8\n' \
+          "$CENSORWATCH_CONFIG_ENABLED" "$censorwatch_running_count" >&2
+        exit 1
+        ;;
+    esac
+    CENSORWATCH_API_WAS_ACTIVE="${COMPOSE_WAS_RUNNING[api-censorwatch]}"
+    [[ "$CENSORWATCH_API_WAS_ACTIVE" == 0 \
+      || "$CENSORWATCH_API_WAS_ACTIVE" == 1 ]]
+    if (( CENSORWATCH_API_WAS_ACTIVE > CENSORWATCH_ISOLATED_WAS_ACTIVE )); then
+      printf 'CensorWatch API cannot outlive its complete measurement plane\n' >&2
+      exit 1
+    fi
+    browser_gateway_before="$(release_compose --profile velocity-browser \
+      ps -q --all censorwatch-render-gateway)"
+    test -z "$browser_gateway_before"
+  fi
+  if (( CENSORWATCH_ISOLATION_ACTIVATE == 1 )); then
+    test "$CENSORWATCH_WAS_ACTIVE" = 1
+    CENSORWATCH_ACTIVATION_INTENT=1
+  fi
+  # This release is an inert topology deployment. An already-active isolated
+  # predecessor owns data that cannot truthfully be represented by an `absent`
+  # v5 snapshot, so stop before quiesce rather than discard or mislabel it. A
+  # legacy-active predecessor is protected by the ordinary primary backup and
+  # remains intentionally unmigrated because activation intent is locked off.
+  if (( CENSORWATCH_ISOLATED_WAS_ACTIVE == 1 )); then
+    printf 'active isolated CensorWatch requires a later included-mode release\n' >&2
+    exit 1
+  fi
+  test "$CENSORWATCH_ACTIVATION_INTENT" = 0
+  CENSORWATCH_BACKUP_MODE_REQUIRED=absent
+  verify_backup_censorwatch_mode "$CENSORWATCH_BACKUP_MODE_REQUIRED"
+  if (( CENSORWATCH_ISOLATED_WAS_ACTIVE == 1 )); then
+    verify_censorwatch_secret_files
   fi
   for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
     if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
@@ -3775,13 +4302,12 @@ else
         = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
     fi
   done
-  for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+  for compose_service in "${PRIMARY_CELERY_WORKER_SERVICES[@]}"; do
     if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
       case "$compose_service" in
         worker) celery_prefix=default ;;
         worker-collectors) celery_prefix=collectors ;;
         worker-warehouse) celery_prefix=warehouse ;;
-        worker-velocity) celery_prefix=velocity ;;
         *) exit 1 ;;
       esac
       COMPOSE_NODE_BEFORE["$compose_service"]="${celery_prefix}@${COMPOSE_HOSTNAME_BEFORE[$compose_service]}"
@@ -3940,7 +4466,7 @@ CONTROLLER_TREE_SHA256="$(sha256sum "$CONTROLLER_MANIFEST_PATH" \
 
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   RECOVERY_BROKER_QUEUES_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
-    encode-broker-queues --queue celery --queue collectors \
+    encode-legacy-recovery-broker-queues --queue celery --queue collectors \
     --queue warehouse --queue censorwatch)"
   [[ "$RECOVERY_BROKER_QUEUES_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
   RECOVERY_BROKER_QUEUE_SHA256="$(printf '%s' "$RECOVERY_BROKER_QUEUES_B64" \
@@ -3950,7 +4476,7 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   CELERY_TOPOLOGY_BEFORE_B64="$RECOVERY_BROKER_QUEUES_B64"
 else
   celery_topology_arguments=()
-  for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+  for compose_service in "${PRIMARY_CELERY_WORKER_SERVICES[@]}"; do
     if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
       celery_topology_arguments+=(--pair \
         "${COMPOSE_NODE_BEFORE[$compose_service]}=${COMPOSE_QUEUE_BY_SERVICE[$compose_service]}")
@@ -3959,6 +4485,23 @@ else
   CELERY_TOPOLOGY_BEFORE_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
     encode-topology "${celery_topology_arguments[@]}")"
   [[ "$CELERY_TOPOLOGY_BEFORE_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+  CENSORWATCH_DATA_BROKER_QUEUES_B64="$(/usr/bin/python3 \
+    "$CELERY_GATE_PATH" encode-censorwatch-data-broker-queues \
+    --queue censorwatch)"
+  CENSORWATCH_CONTROL_BROKER_QUEUES_B64="$(/usr/bin/python3 \
+    "$CELERY_GATE_PATH" encode-censorwatch-control-broker-queues \
+    --queue censorwatch-control)"
+  [[ "$CENSORWATCH_DATA_BROKER_QUEUES_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+  [[ "$CENSORWATCH_CONTROL_BROKER_QUEUES_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+  if [[ "$PREDECESSOR_COMPOSE_TOPOLOGY" == render-legacy \
+      && "$CENSORWATCH_LEGACY_WAS_ACTIVE" == 1 ]]; then
+    LEGACY_CENSORWATCH_BROKER_QUEUES_B64="$(/usr/bin/python3 \
+      "$CELERY_GATE_PATH" encode-legacy-recovery-broker-queues \
+      --queue celery --queue collectors --queue warehouse \
+      --queue censorwatch)"
+    [[ "$LEGACY_CENSORWATCH_BROKER_QUEUES_B64" \
+      =~ ^[A-Za-z0-9+/=]+$ ]]
+  fi
 fi
 
 WATCHDOG_BASELINE_STATUS="$OBSERVER_PREFLIGHT_DIR/watchdog-status.json"
@@ -4419,19 +4962,30 @@ for unit in "${RELEASE_ACTIVATORS[@]}"; do
   temporarily_disable_activator "$unit"
 done
 
-# With every systemd producer held, stop Beat and let each already-running
-# worker drain its local reservations and all four broker queues. The reviewed
-# gate fences each exact node only after two consecutive zero-work samples; it
-# never purges, revokes, or terminates a task.
+# With every systemd producer held, stop each application's Beat before reading
+# either broker. The primary gate fences its exact three nodes. CensorWatch has
+# remote control disabled, so its broker-only gate proves both reviewed queues
+# and Kombu's unacknowledged indexes empty before the two isolated workers stop.
 if [[ "${COMPOSE_WAS_RUNNING[beat]}" == 1 ]]; then
   release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat
 fi
+if (( INTERRUPTED_PHASE1_RECOVERY == 0 \
+    && CENSORWATCH_ISOLATED_WAS_ACTIVE == 1 )); then
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat-velocity-data
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat-velocity-control
+fi
 for _ in 1 2; do
-  beat_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
-    ps -q --all beat)"
-  if [[ -n "$beat_id" ]]; then
-    test "$(docker inspect "$beat_id" --format '{{.State.Status}}')" = exited
-  fi
+  for compose_service in beat beat-velocity-data beat-velocity-control; do
+    if [[ "$compose_service" == beat-velocity-* \
+        && "$PREDECESSOR_COMPOSE_TOPOLOGY" != isolated ]]; then
+      continue
+    fi
+    beat_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all "$compose_service")"
+    if [[ -n "$beat_id" ]]; then
+      test "$(docker inspect "$beat_id" --format '{{.State.Status}}')" = exited
+    fi
+  done
   sleep 2
 done
 CELERY_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-prechange.json"
@@ -4464,7 +5018,8 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   RECOVERY_BROKER_EMPTY_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/interrupted-phase1-broker-empty.json"
   /usr/bin/timeout --signal=TERM --kill-after=30s 360s \
     docker exec -i "$recovery_broker_reader" /usr/local/bin/python3 - \
-    broker-empty --closed-queues-b64 "$RECOVERY_BROKER_QUEUES_B64" \
+    legacy-recovery-broker-empty \
+    --closed-queues-b64 "$RECOVERY_BROKER_QUEUES_B64" \
     --timeout-seconds 300 --interval-seconds 5 \
     <"$CELERY_GATE_PATH" >"$RECOVERY_BROKER_EMPTY_RECEIPT_PATH"
   CELERY_PRECHANGE_RECEIPT_PATH="$RECOVERY_BROKER_EMPTY_RECEIPT_PATH"
@@ -4552,6 +5107,147 @@ if (
 ):
     raise SystemExit("pre-change Celery quiescence receipt is invalid")
 PY
+  CENSORWATCH_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-prechange.json"
+  if (( CENSORWATCH_ISOLATED_WAS_ACTIVE == 1 )); then
+    CENSORWATCH_DATA_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-data-prechange.json"
+    CENSORWATCH_CONTROL_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-control-prechange.json"
+    censorwatch_data_broker_reader="$(release_compose \
+      "${COMPOSE_ALL_PROFILES[@]}" ps -q worker-velocity)"
+    censorwatch_control_broker_reader="$(release_compose \
+      "${COMPOSE_ALL_PROFILES[@]}" ps -q worker-velocity-control)"
+    [[ "$censorwatch_data_broker_reader" =~ ^[0-9a-f]{64}$ ]]
+    [[ "$censorwatch_control_broker_reader" =~ ^[0-9a-f]{64}$ ]]
+    test "$censorwatch_data_broker_reader" != "$censorwatch_control_broker_reader"
+    docker exec -i "$censorwatch_data_broker_reader" /usr/local/bin/python3 - \
+      censorwatch-data-broker-empty \
+      --closed-queues-b64 "$CENSORWATCH_DATA_BROKER_QUEUES_B64" \
+      --timeout-seconds 1800 --interval-seconds 5 \
+      <"$CELERY_GATE_PATH" >"$CENSORWATCH_DATA_PRECHANGE_RECEIPT_PATH"
+    docker exec -i "$censorwatch_control_broker_reader" \
+      /usr/local/bin/python3 - censorwatch-control-broker-empty \
+      --closed-queues-b64 "$CENSORWATCH_CONTROL_BROKER_QUEUES_B64" \
+      --timeout-seconds 1800 --interval-seconds 5 \
+      <"$CELERY_GATE_PATH" >"$CENSORWATCH_CONTROL_PRECHANGE_RECEIPT_PATH"
+    python3 - "$CENSORWATCH_PRECHANGE_RECEIPT_PATH" \
+      "$CENSORWATCH_DATA_PRECHANGE_RECEIPT_PATH" \
+      "$CENSORWATCH_CONTROL_PRECHANGE_RECEIPT_PATH" <<'PY'
+import json
+import pathlib
+import sys
+
+output, data_path, control_path = sys.argv[1:]
+specifications = {
+    "data": (pathlib.Path(data_path), ["censorwatch"],
+             "bfcdd26c1f4bded1b7c9a24878bd348c9b935c4fe8f1b69d10d1ab84cacc0613"),
+    "control": (pathlib.Path(control_path), ["censorwatch-control"],
+                "fe71579c33dd6c7f14957bdd699a58e5dca065be1e04e190d6fb71a8d9e1c9fa"),
+}
+brokers = {}
+for name, (path, queues, digest) in specifications.items():
+    payload = path.read_bytes()
+    value = json.loads(payload.decode("utf-8", "strict"))
+    canonical = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if (
+        payload != canonical
+        or value.get("schema_version")
+            != "palimpsest-celery-broker-release-gate.v1"
+        or value.get("status") != "empty"
+        or value.get("closed_queues") != queues
+        or value.get("closed_queues_sha256") != digest
+        or value.get("required_zero_samples") != 2
+        or value.get("final", {}).get("broker_depth")
+            != {queue: 0 for queue in queues}
+        or value.get("final", {}).get("unacknowledged")
+            != {"hash": 0, "index": 0}
+    ):
+        raise SystemExit(f"CensorWatch {name} broker receipt is invalid")
+    brokers[name] = value
+aggregate = {
+    "schema_version": "palimpsest-censorwatch-release-gate.v2",
+    "status": "empty",
+    "brokers": brokers,
+}
+pathlib.Path(output).write_text(
+    json.dumps(aggregate, sort_keys=True, separators=(",", ":")) + "\n",
+    encoding="utf-8",
+)
+PY
+    release_compose "${COMPOSE_ALL_PROFILES[@]}" stop \
+      worker-velocity worker-velocity-control
+    for compose_service in worker-velocity worker-velocity-control; do
+      censorwatch_worker_id="$(release_compose \
+        "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
+      [[ "$censorwatch_worker_id" =~ ^[0-9a-f]{64}$ ]]
+      test "$(docker inspect "$censorwatch_worker_id" \
+        --format '{{.State.Status}}')" = exited
+    done
+  elif (( CENSORWATCH_LEGACY_WAS_ACTIVE == 1 )); then
+    legacy_censorwatch_reader="$(release_compose \
+      "${COMPOSE_ALL_PROFILES[@]}" ps -q worker-velocity)"
+    [[ "$legacy_censorwatch_reader" =~ ^[0-9a-f]{64}$ ]]
+    [[ "$LEGACY_CENSORWATCH_BROKER_QUEUES_B64" \
+      =~ ^[A-Za-z0-9+/=]+$ ]]
+    docker exec -i "$legacy_censorwatch_reader" /usr/local/bin/python3 - \
+      legacy-recovery-broker-empty \
+      --closed-queues-b64 "$LEGACY_CENSORWATCH_BROKER_QUEUES_B64" \
+      --timeout-seconds 1800 --interval-seconds 5 \
+      <"$CELERY_GATE_PATH" >"$CENSORWATCH_PRECHANGE_RECEIPT_PATH"
+    python3 - "$CENSORWATCH_PRECHANGE_RECEIPT_PATH" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = pathlib.Path(sys.argv[1]).read_bytes()
+value = json.loads(payload.decode("utf-8", "strict"))
+canonical = json.dumps(
+    value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+if (
+    payload != canonical
+    or value.get("schema_version")
+        != "palimpsest-celery-broker-release-gate.v1"
+    or value.get("status") != "empty"
+    or value.get("closed_queues")
+        != ["celery", "collectors", "warehouse", "censorwatch"]
+    or value.get("closed_queues_sha256")
+        != "57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b"
+    or value.get("required_zero_samples") != 2
+    or value.get("final", {}).get("broker_depth")
+        != {"celery": 0, "collectors": 0, "warehouse": 0,
+            "censorwatch": 0}
+    or value.get("final", {}).get("unacknowledged")
+        != {"hash": 0, "index": 0}
+):
+    raise SystemExit("legacy CensorWatch broker receipt is invalid")
+PY
+    release_compose "${COMPOSE_ALL_PROFILES[@]}" stop \
+      worker-velocity censorwatch-render-gateway
+    for compose_service in worker-velocity censorwatch-render-gateway; do
+      legacy_censorwatch_id="$(release_compose \
+        "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
+      [[ "$legacy_censorwatch_id" =~ ^[0-9a-f]{64}$ ]]
+      test "$(docker inspect "$legacy_censorwatch_id" --format \
+        '{{.State.Status}}:{{.State.ExitCode}}:{{.State.OOMKilled}}:{{.State.Error}}')" \
+        = exited:0:false:
+    done
+    legacy_renderer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all censorwatch-render-gateway)"
+    docker rm "$legacy_renderer_id"
+  else
+    printf '%s\n' \
+      '{"brokers":{},"explicitly_active":false,"schema_version":"palimpsest-censorwatch-release-gate.v2","status":"inactive"}' \
+      >"$CENSORWATCH_PRECHANGE_RECEIPT_PATH"
+  fi
+fi
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  CENSORWATCH_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-prechange.json"
+  printf '%s\n' \
+    '{"brokers":{},"explicitly_active":false,"legacy_recovery":true,"schema_version":"palimpsest-censorwatch-release-gate.v2","status":"inactive"}' \
+    >"$CENSORWATCH_PRECHANGE_RECEIPT_PATH"
 fi
 
 # A runtime mask under /run cannot override a service installed under /etc.
@@ -4605,12 +5301,23 @@ else
   sudo bash -c 'cd "$1" && sha256sum --check SHA256SUMS' \
     _ "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
   BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\npostgres.dump\npostgres.list'
+  if (( CENSORWATCH_ISOLATED_WAS_ACTIVE == 1 )); then
+    BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\ncensorwatch-postgres.dump\ncensorwatch-postgres.list\ncensorwatch-redis.list\ncensorwatch-redis.tar.gz\npostgres.dump\npostgres.list'
+  fi
   BACKUP_ACTUAL_INVENTORY="$(sudo find \
     "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" -mindepth 1 -maxdepth 1 \
     -printf '%f\n' | LC_ALL=C sort)"
   test "$BACKUP_ACTUAL_INVENTORY" = "$BACKUP_EXPECTED_INVENTORY"
-  for backup_file in MANIFEST.txt artifacts.list artifacts.tar.gz \
-      postgres.dump postgres.list; do
+  backup_required_files=(
+    MANIFEST.txt artifacts.list artifacts.tar.gz postgres.dump postgres.list
+  )
+  if (( CENSORWATCH_ISOLATED_WAS_ACTIVE == 1 )); then
+    backup_required_files+=(
+      censorwatch-postgres.dump censorwatch-postgres.list
+      censorwatch-redis.list censorwatch-redis.tar.gz
+    )
+  fi
+  for backup_file in "${backup_required_files[@]}"; do
     sudo test -s "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/$backup_file"
   done
   BACKUP_VERIFICATION_JSON="$(sudo python3 \
@@ -4620,18 +5327,37 @@ else
   printf '%s\n' "$BACKUP_VERIFICATION_JSON" | python3 -c '
 import json, sys
 snapshot = sys.argv[1]
+expected_censorwatch = sys.argv[2]
 value = json.load(sys.stdin)
+counts = value.get("counts", {})
+format_version = value.get("format_version")
+censorwatch = value.get("censorwatch", {})
+if expected_censorwatch == "included":
+    mode_checks = (
+        format_version == 5,
+        censorwatch.get("mode") == "included",
+        counts.get("snapshot_files") == 10,
+        counts.get("checksum_entries") == 9,
+    )
+else:
+    mode_checks = (
+        format_version in {4, 5},
+        format_version == 4 or censorwatch.get("mode") == "absent",
+        counts.get("snapshot_files") == 6,
+        counts.get("checksum_entries") == 5,
+    )
 checks = (
     value.get("schema") == "palimpsest-node-backup-verification.v1",
     value.get("status") == "verified",
     value.get("snapshot") == snapshot,
-    value.get("counts", {}).get("snapshot_files") == 6,
-    value.get("counts", {}).get("checksum_entries") == 5,
-    value.get("counts", {}).get("artifact_members", 0) > 0,
+    counts.get("artifact_members", 0) > 0,
+    *mode_checks,
 )
 if not all(checks):
     raise SystemExit("pre-change backup verification receipt failed")
-' "$PRE_CHANGE_SNAPSHOT"
+' "$PRE_CHANGE_SNAPSHOT" \
+  "$([[ "$CENSORWATCH_ISOLATED_WAS_ACTIVE" == 1 ]] \
+    && printf included || printf absent)"
 fi
 
 # The backup has captured the drained database and artifact roots. Stop every
@@ -4666,12 +5392,56 @@ TARGET_COMPOSE_CONFIG_BLOB="$(release_git rev-parse \
   "${EXPECTED_DEPLOY_SHA}:ops/docker/docker-compose.prod.yml")"
 test "$(release_git hash-object ops/docker/docker-compose.prod.yml)" \
   = "$TARGET_COMPOSE_CONFIG_BLOB"
-test "$TARGET_COMPOSE_CONFIG_BLOB" \
-  = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"
-ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES="$(release_compose \
+test "$TARGET_COMPOSE_CONFIG_BLOB" = "$ISOLATED_COMPOSE_CONFIG_BLOB"
+TARGET_ACTUAL_COMPOSE_CONFIG_SERVICES="$(release_compose \
   "${COMPOSE_ALL_PROFILES[@]}" config --services | LC_ALL=C sort)"
-test "$ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES" \
-  = "$RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES"
+test "$TARGET_ACTUAL_COMPOSE_CONFIG_SERVICES" \
+  = "$TARGET_COMPOSE_CONFIG_SERVICES"
+target_browser_gateway="$(release_compose --profile velocity-browser \
+  ps -q --all censorwatch-render-gateway)"
+test -z "$target_browser_gateway"
+if (( INTERRUPTED_PHASE1_RECOVERY == 0 )); then
+  COMPOSE_WRITER_SERVICES=("${TARGET_COMPOSE_WRITER_SERVICES[@]}")
+  CELERY_WORKER_SERVICES=(
+    "${PRIMARY_CELERY_WORKER_SERVICES[@]}"
+    "${CENSORWATCH_CELERY_WORKER_SERVICES[@]}"
+  )
+  for compose_service in "${TARGET_COMPOSE_WRITER_SERVICES[@]}"; do
+    if [[ -z "${COMPOSE_WAS_RUNNING[$compose_service]+present}" ]]; then
+      COMPOSE_WAS_RUNNING["$compose_service"]=0
+      COMPOSE_CONTAINER_ID_BEFORE["$compose_service"]=''
+      COMPOSE_IMAGE_ID_BEFORE["$compose_service"]=''
+      COMPOSE_HOSTNAME_BEFORE["$compose_service"]=''
+    fi
+  done
+  TARGET_CENSORWATCH_CONFIG_ENABLED="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" config --format json | python3 -c '
+import json
+import sys
+
+services = json.load(sys.stdin).get("services", {})
+names = (
+    "worker-velocity", "worker-velocity-control",
+    "beat-velocity-data", "beat-velocity-control",
+)
+values = {
+    str(services.get(name, {}).get("environment", {}).get("CENSORWATCH_ENABLED"))
+    for name in names
+}
+if values == {"0"}:
+    print(0)
+elif values == {"1"}:
+    print(1)
+else:
+    raise SystemExit("target CensorWatch enablement is not exact across its app")
+')"
+  test "$TARGET_CENSORWATCH_CONFIG_ENABLED" \
+    = "$CENSORWATCH_ACTIVATION_INTENT"
+  verify_backup_censorwatch_mode "$CENSORWATCH_BACKUP_MODE_REQUIRED"
+  if (( CENSORWATCH_ACTIVATION_INTENT == 1 )); then
+    verify_censorwatch_secret_files
+  fi
+fi
 release_compose build
 CANDIDATE_IMAGE_ID="$(docker image inspect palimpsest/app:local \
   --format '{{.Id}}')"
@@ -4680,15 +5450,10 @@ test "$(docker image inspect palimpsest/app:local --format \
   '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
   = "$EXPECTED_DEPLOY_SHA"
 CANDIDATE_RENDER_IMAGE_ID=absent
-if [[ "${COMPOSE_WAS_RUNNING[worker-velocity]}" == 1 ]]; then
-  release_compose --profile velocity build censorwatch-render-gateway
-  CANDIDATE_RENDER_IMAGE_ID="$(docker image inspect \
-    palimpsest/censorwatch-render-gateway:local --format '{{.Id}}')"
-  [[ "$CANDIDATE_RENDER_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
-  test "$(docker image inspect "$CANDIDATE_RENDER_IMAGE_ID" --format \
-    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
-    = "$EXPECTED_DEPLOY_SHA"
-fi
+# The admitted Eastmoney lane is HTTP-only. The browser profile remains a
+# separately reviewed future capability and cannot be built or restored by
+# this transaction.
+test "$CANDIDATE_RENDER_IMAGE_ID" = absent
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test "$(sudo sha256sum "$RECOVERY_PREPARED_RECEIPT_PATH" \
     | awk '{print $1}')" = "$RECOVERY_PREPARED_RECEIPT_SHA256"
@@ -4788,11 +5553,361 @@ fi
 verify_release_service_success_triggers \
   "$candidate_backup_on_success" palimpsest-event-analysis-live.service
 
+# A legacy-active predecessor can request isolation only through the explicit
+# transaction flag. Prepare the target stores before the candidate v5 backup,
+# then transfer through two mutually exclusive one-shot capabilities: the
+# exporter sees only the primary read-only authority, while the importer sees
+# only the isolated admin authority and the inert snapshot. No container ever
+# receives both database credentials or both database networks.
+CENSORWATCH_PREBACKUP_PREFLIGHT_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-prebackup-preflight.json"
+CENSORWATCH_PREBACKUP_MIGRATION_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-prebackup-migration.json"
+CENSORWATCH_LEGACY_TRANSFER_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-legacy-transfer.json"
+if (( CENSORWATCH_LEGACY_WAS_ACTIVE == 1 \
+    && CENSORWATCH_ACTIVATION_INTENT == 1 )); then
+  verify_censorwatch_secret_files
+  CENSORWATCH_LEGACY_DATABASE_URL_HOST_PATH="$(
+    verify_censorwatch_legacy_secret_file
+  )"
+  CENSORWATCH_DATABASE_ADMIN_URL_HOST_PATH="$(
+    censorwatch_secret_host_path censorwatch_database_admin_url
+  )"
+  test "$CENSORWATCH_LEGACY_DATABASE_URL_HOST_PATH" \
+    != "$CENSORWATCH_DATABASE_ADMIN_URL_HOST_PATH"
+
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    preflight-censorwatch
+  CENSORWATCH_PREBACKUP_PREFLIGHT_CONTAINER_ID="$(release_compose \
+    --profile velocity ps -q --all preflight-censorwatch)"
+  [[ "$CENSORWATCH_PREBACKUP_PREFLIGHT_CONTAINER_ID" \
+    =~ ^[0-9a-f]{64}$ ]]
+  censorwatch_prebackup_preflight_exited=0
+  for (( censorwatch_attempt=1; censorwatch_attempt<=60; \
+      censorwatch_attempt++ )); do
+    if [[ "$(docker inspect "$CENSORWATCH_PREBACKUP_PREFLIGHT_CONTAINER_ID" \
+        --format '{{.State.Status}}')" == exited ]]; then
+      censorwatch_prebackup_preflight_exited=1
+      break
+    fi
+    sleep 1
+  done
+  (( censorwatch_prebackup_preflight_exited == 1 ))
+  test "$(docker inspect "$CENSORWATCH_PREBACKUP_PREFLIGHT_CONTAINER_ID" \
+    --format '{{.State.ExitCode}}:{{.State.OOMKilled}}:{{.State.Error}}')" \
+    = 0:false:
+  test "$(docker inspect "$CENSORWATCH_PREBACKUP_PREFLIGHT_CONTAINER_ID" \
+    --format '{{.HostConfig.NetworkMode}}')" = none
+  test "$(docker inspect "$CENSORWATCH_PREBACKUP_PREFLIGHT_CONTAINER_ID" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  python3 - "$CENSORWATCH_PREBACKUP_PREFLIGHT_RECEIPT_PATH" \
+    "$CENSORWATCH_PREBACKUP_PREFLIGHT_CONTAINER_ID" "$CANDIDATE_IMAGE_ID" \
+    "$EXPECTED_DEPLOY_SHA" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+output, container, image, revision = sys.argv[1:]
+value = {
+    "schema_version": "palimpsest-censorwatch-preflight.v1",
+    "status": "succeeded",
+    "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "container_id": container,
+    "image_id": image,
+    "revision": revision,
+    "network_mode": "none",
+    "exit_code": 0,
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    + "\n",
+    encoding="utf-8",
+)
+PY
+
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    postgres-censorwatch redis-censorwatch-data redis-censorwatch-control
+  for compose_service in \
+      postgres-censorwatch redis-censorwatch-data \
+      redis-censorwatch-control; do
+    censorwatch_prebackup_service_id="$(release_compose --profile velocity \
+      ps -q "$compose_service")"
+    [[ "$censorwatch_prebackup_service_id" =~ ^[0-9a-f]{64}$ ]]
+    censorwatch_prebackup_service_ready=0
+    for (( censorwatch_attempt=1; censorwatch_attempt<=60; \
+        censorwatch_attempt++ )); do
+      if [[ "$(docker inspect "$censorwatch_prebackup_service_id" --format \
+          '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" \
+          == healthy ]]; then
+        censorwatch_prebackup_service_ready=1
+        break
+      fi
+      sleep 2
+    done
+    (( censorwatch_prebackup_service_ready == 1 ))
+  done
+
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    migrate-censorwatch
+  CENSORWATCH_PREBACKUP_MIGRATION_CONTAINER_ID="$(release_compose \
+    --profile velocity ps -q --all migrate-censorwatch)"
+  [[ "$CENSORWATCH_PREBACKUP_MIGRATION_CONTAINER_ID" \
+    =~ ^[0-9a-f]{64}$ ]]
+  censorwatch_prebackup_migration_exited=0
+  for (( censorwatch_attempt=1; censorwatch_attempt<=120; \
+      censorwatch_attempt++ )); do
+    if [[ "$(docker inspect "$CENSORWATCH_PREBACKUP_MIGRATION_CONTAINER_ID" \
+        --format '{{.State.Status}}')" == exited ]]; then
+      censorwatch_prebackup_migration_exited=1
+      break
+    fi
+    sleep 2
+  done
+  (( censorwatch_prebackup_migration_exited == 1 ))
+  test "$(docker inspect "$CENSORWATCH_PREBACKUP_MIGRATION_CONTAINER_ID" \
+    --format '{{.State.ExitCode}}:{{.State.OOMKilled}}:{{.State.Error}}')" \
+    = 0:false:
+  test "$(docker inspect "$CENSORWATCH_PREBACKUP_MIGRATION_CONTAINER_ID" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  python3 - "$CENSORWATCH_PREBACKUP_MIGRATION_RECEIPT_PATH" \
+    "$CENSORWATCH_PREBACKUP_MIGRATION_CONTAINER_ID" "$CANDIDATE_IMAGE_ID" \
+    "$EXPECTED_DEPLOY_SHA" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+output, container, image, revision = sys.argv[1:]
+value = {
+    "schema_version": "palimpsest-censorwatch-migration.v1",
+    "status": "succeeded",
+    "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "container_id": container,
+    "image_id": image,
+    "revision": revision,
+    "exit_code": 0,
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    + "\n",
+    encoding="utf-8",
+)
+PY
+
+  CENSORWATCH_LEGACY_TRANSFER_ROOT="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" config --format json | python3 -c '
+import json
+import os
+import sys
+
+volumes = json.load(sys.stdin).get("services", {}).get(
+    "worker-velocity", {}
+).get("volumes", [])
+matches = [
+    volume for volume in volumes
+    if isinstance(volume, dict)
+    and volume.get("target") == "/app/data/censorwatch"
+]
+if (
+    len(matches) != 1
+    or set(matches[0]) != {"type", "source", "target", "bind"}
+    or matches[0].get("type") != "bind"
+    or not isinstance(matches[0].get("source"), str)
+    or not os.path.isabs(matches[0]["source"])
+    or "\x00" in matches[0]["source"]
+    or "\n" in matches[0]["source"]
+):
+    raise SystemExit("CensorWatch transfer root is not an exact bind mount")
+print(matches[0]["source"])
+')"
+  sudo test -d "$CENSORWATCH_LEGACY_TRANSFER_ROOT"
+  sudo test ! -L "$CENSORWATCH_LEGACY_TRANSFER_ROOT"
+  CENSORWATCH_LEGACY_TRANSFER_PARENT="$CENSORWATCH_LEGACY_TRANSFER_ROOT/migration"
+  if sudo test -e "$CENSORWATCH_LEGACY_TRANSFER_PARENT"; then
+    sudo test -d "$CENSORWATCH_LEGACY_TRANSFER_PARENT"
+    sudo test ! -L "$CENSORWATCH_LEGACY_TRANSFER_PARENT"
+    test "$(sudo stat -c '%u:%g:%a:%h' \
+      "$CENSORWATCH_LEGACY_TRANSFER_PARENT")" \
+      = "${CENSORWATCH_RUNTIME_UID}:${CENSORWATCH_RUNTIME_GID}:700:1"
+  else
+    sudo install -d -o "$CENSORWATCH_RUNTIME_UID" \
+      -g "$CENSORWATCH_RUNTIME_GID" -m 0700 \
+      "$CENSORWATCH_LEGACY_TRANSFER_PARENT"
+  fi
+  CENSORWATCH_LEGACY_TRANSFER_DIR="$CENSORWATCH_LEGACY_TRANSFER_PARENT/$RELEASE_RESUME_TOKEN"
+  sudo test ! -e "$CENSORWATCH_LEGACY_TRANSFER_DIR"
+  sudo install -d -o "$CENSORWATCH_RUNTIME_UID" \
+    -g "$CENSORWATCH_RUNTIME_GID" -m 0700 \
+    "$CENSORWATCH_LEGACY_TRANSFER_DIR"
+  CENSORWATCH_LEGACY_SNAPSHOT="$CENSORWATCH_LEGACY_TRANSFER_DIR/legacy-snapshot.json"
+
+  CENSORWATCH_LEGACY_EXPORT_NETWORK="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" config --format json | python3 -c '
+import json, sys
+value = json.load(sys.stdin).get("networks", {}).get("default", {})
+if set(value) != {"name", "ipam"} or value.get("name") != "palimpsest_default":
+    raise SystemExit("primary transfer network is not exact")
+print(value["name"])
+')"
+  CENSORWATCH_LEGACY_IMPORT_NETWORK="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" config --format json | python3 -c '
+import json, sys
+value = json.load(sys.stdin).get("networks", {}).get(
+    "censorwatch-db-admin", {}
+)
+if (
+    set(value) != {"name", "ipam", "internal"}
+    or value.get("name") != "palimpsest_censorwatch-db-admin"
+    or value.get("internal") is not True
+):
+    raise SystemExit("isolated import network is not exact")
+print(value["name"])
+')"
+  test "$CENSORWATCH_LEGACY_EXPORT_NETWORK" \
+    != "$CENSORWATCH_LEGACY_IMPORT_NETWORK"
+  test "$(docker network inspect "$CENSORWATCH_LEGACY_EXPORT_NETWORK" \
+    --format '{{.Internal}}')" = false
+  test "$(docker network inspect "$CENSORWATCH_LEGACY_IMPORT_NETWORK" \
+    --format '{{.Internal}}')" = true
+
+  CENSORWATCH_LEGACY_EXPORT_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-legacy-export.json"
+  docker run --rm --pull never \
+    --network "$CENSORWATCH_LEGACY_EXPORT_NETWORK" --read-only \
+    --log-driver none --security-opt no-new-privileges:true --cap-drop ALL \
+    --user 10001:10001 --pids-limit 64 --memory 256m --memory-swap 256m \
+    --cpus 0.5 \
+    --mount "type=bind,src=$CENSORWATCH_LEGACY_DATABASE_URL_HOST_PATH,dst=/run/secrets/censorwatch_legacy_database_url,readonly" \
+    --mount "type=bind,src=$CENSORWATCH_LEGACY_TRANSFER_DIR,dst=/transfer" \
+    --env CENSORWATCH_LEGACY_DATABASE_URL_FILE=/run/secrets/censorwatch_legacy_database_url \
+    --env "PALIMPSEST_IMAGE_REVISION=$EXPECTED_DEPLOY_SHA" \
+    --entrypoint /usr/local/bin/python3 "$CANDIDATE_IMAGE_ID" \
+    -m censorwatch.legacy_transfer export \
+    --snapshot /transfer/legacy-snapshot.json \
+    >"$CENSORWATCH_LEGACY_EXPORT_RECEIPT_PATH"
+  sudo test -f "$CENSORWATCH_LEGACY_SNAPSHOT"
+  sudo test ! -L "$CENSORWATCH_LEGACY_SNAPSHOT"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$CENSORWATCH_LEGACY_SNAPSHOT")" \
+    = 10001:10001:600:1
+  CENSORWATCH_LEGACY_SNAPSHOT_BYTES="$(sudo stat -c '%s' \
+    "$CENSORWATCH_LEGACY_SNAPSHOT")"
+  [[ "$CENSORWATCH_LEGACY_SNAPSHOT_BYTES" =~ ^[1-9][0-9]*$ ]]
+  (( CENSORWATCH_LEGACY_SNAPSHOT_BYTES <= 67108864 ))
+  CENSORWATCH_LEGACY_SNAPSHOT_SHA256="$(sudo sha256sum \
+    "$CENSORWATCH_LEGACY_SNAPSHOT" | awk '{print $1}')"
+  [[ "$CENSORWATCH_LEGACY_SNAPSHOT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  fsync_installed_paths "$CENSORWATCH_LEGACY_SNAPSHOT"
+
+  CENSORWATCH_LEGACY_IMPORT_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-legacy-import.json"
+  docker run --rm --pull never \
+    --network "$CENSORWATCH_LEGACY_IMPORT_NETWORK" --read-only \
+    --log-driver none --security-opt no-new-privileges:true --cap-drop ALL \
+    --user 10001:10001 --pids-limit 64 --memory 256m --memory-swap 256m \
+    --cpus 0.5 \
+    --mount "type=bind,src=$CENSORWATCH_DATABASE_ADMIN_URL_HOST_PATH,dst=/run/secrets/censorwatch_database_admin_url,readonly" \
+    --mount "type=bind,src=$CENSORWATCH_LEGACY_TRANSFER_DIR,dst=/transfer,readonly" \
+    --env CENSORWATCH_DATABASE_ADMIN_URL_FILE=/run/secrets/censorwatch_database_admin_url \
+    --env "PALIMPSEST_IMAGE_REVISION=$EXPECTED_DEPLOY_SHA" \
+    --entrypoint /usr/local/bin/python3 "$CANDIDATE_IMAGE_ID" \
+    -m censorwatch.legacy_transfer import \
+    --snapshot /transfer/legacy-snapshot.json \
+    >"$CENSORWATCH_LEGACY_IMPORT_RECEIPT_PATH"
+  python3 - "$CENSORWATCH_LEGACY_TRANSFER_RECEIPT_PATH" \
+    "$CENSORWATCH_LEGACY_EXPORT_RECEIPT_PATH" \
+    "$CENSORWATCH_LEGACY_IMPORT_RECEIPT_PATH" \
+    "$CENSORWATCH_LEGACY_SNAPSHOT_SHA256" \
+    "$CENSORWATCH_LEGACY_SNAPSHOT_BYTES" "$EXPECTED_DEPLOY_SHA" \
+    "$CENSORWATCH_LEGACY_EXPORT_NETWORK" \
+    "$CENSORWATCH_LEGACY_IMPORT_NETWORK" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+(
+    output, export_path, import_path, snapshot_sha, snapshot_bytes_text,
+    revision, export_network, import_network,
+) = sys.argv[1:]
+
+def load_canonical(path):
+    payload = pathlib.Path(path).read_bytes()
+    value = json.loads(payload.decode("utf-8", "strict"))
+    canonical = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if payload != canonical or len(payload) > 64 * 1024:
+        raise SystemExit("legacy transfer receipt is not canonical")
+    return value
+
+exported = load_canonical(export_path)
+imported = load_canonical(import_path)
+fields = {"status", "counts", "payload_sha256"}
+table_names = {
+    "censored_posts", "post_deletions", "deletion_velocity_snapshots"
+}
+counts = exported.get("counts")
+if (
+    set(exported) != fields
+    or set(imported) != fields
+    or exported.get("status") != "exported"
+    or imported.get("status") not in {"imported", "already-imported"}
+    or not isinstance(counts, dict)
+    or set(counts) != table_names
+    or any(type(value) is not int or value < 0 for value in counts.values())
+    or sum(counts.values()) <= 0
+    or imported.get("counts") != counts
+    or imported.get("payload_sha256") != exported.get("payload_sha256")
+    or not isinstance(exported.get("payload_sha256"), str)
+    or len(exported["payload_sha256"]) != 64
+    or any(character not in "0123456789abcdef"
+           for character in exported["payload_sha256"])
+    or export_network != "palimpsest_default"
+    or import_network != "palimpsest_censorwatch-db-admin"
+    or export_network == import_network
+):
+    raise SystemExit("legacy transfer export/import proof disagrees")
+snapshot_bytes = int(snapshot_bytes_text)
+if snapshot_bytes <= 0 or snapshot_bytes > 64 * 1024 * 1024:
+    raise SystemExit("legacy transfer snapshot size is unsafe")
+value = {
+    "schema_version": "palimpsest-censorwatch-legacy-transfer.v1",
+    "status": "verified",
+    "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "revision": revision,
+    "snapshot_sha256": snapshot_sha,
+    "snapshot_bytes": snapshot_bytes,
+    "payload_sha256": exported["payload_sha256"],
+    "counts": counts,
+    "export_status": exported["status"],
+    "import_status": imported["status"],
+    "export_network": export_network,
+    "import_network": import_network,
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    + "\n",
+    encoding="utf-8",
+)
+PY
+else
+  printf '%s\n' \
+    '{"explicitly_required":false,"schema_version":"palimpsest-censorwatch-preflight.v1","status":"not-required"}' \
+    >"$CENSORWATCH_PREBACKUP_PREFLIGHT_RECEIPT_PATH"
+  printf '%s\n' \
+    '{"explicitly_required":false,"schema_version":"palimpsest-censorwatch-migration.v1","status":"not-required"}' \
+    >"$CENSORWATCH_PREBACKUP_MIGRATION_RECEIPT_PATH"
+  printf '%s\n' \
+    '{"explicitly_required":false,"schema_version":"palimpsest-censorwatch-legacy-transfer.v1","status":"not-required"}' \
+    >"$CENSORWATCH_LEGACY_TRANSFER_RECEIPT_PATH"
+fi
+
 # The old v3 snapshot above is still the exact core/database restore point, but
 # its old image could not archive witness history. Before migration or bundle
 # installation, start the three mandatory workers against the already empty
 # broker, prove them quiet, fence them, and use the content-addressed image to
-# create the required v4 snapshot with the append-only witness prefix.
+# create the required v5 snapshot with the append-only witness prefix and the
+# isolated CensorWatch volumes when that lane was active. Historical variable
+# and receipt-path names retain `v4` because the interrupted-Phase-1 authority
+# binds those bytes; the verifier, manifest, and contents are version 5.
 WITNESS_HISTORY_DIR='/home/palimpsest/.palimpsest-witness'
 sudo test -d "$WITNESS_HISTORY_DIR"
 sudo test ! -L "$WITNESS_HISTORY_DIR"
@@ -4809,7 +5924,7 @@ WITNESS_REQUIRED_FILES=(
 )
 if ! WITNESS_ACTUAL_INVENTORY="$(sudo find "$WITNESS_HISTORY_DIR" \
     -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"; then
-  printf 'failed to enumerate witness history before v4 backup\n' >&2
+  printf 'failed to enumerate witness history before v5 backup\n' >&2
   exit 1
 fi
 WITNESS_EXPECTED_INVENTORY="$(printf '%s\n' \
@@ -4961,19 +6076,35 @@ import json
 import sys
 
 snapshot = sys.argv[1]
+expected_mode = sys.argv[2]
 value = json.load(sys.stdin)
+expected_counts = (10, 9) if expected_mode == "included" else (6, 5)
+censorwatch = value.get("censorwatch", {})
 checks = (
     value.get("schema") == "palimpsest-node-backup-verification.v1",
     value.get("status") == "verified",
+    value.get("format_version") == 5,
     value.get("snapshot") == snapshot,
-    value.get("counts", {}).get("snapshot_files") == 6,
-    value.get("counts", {}).get("checksum_entries") == 5,
+    value.get("counts", {}).get("snapshot_files") == expected_counts[0],
+    value.get("counts", {}).get("checksum_entries") == expected_counts[1],
     value.get("counts", {}).get("artifact_members", 0) > 0,
     value.get("counts", {}).get("witness_history_records", 0) > 0,
+    censorwatch.get("mode") == expected_mode,
+    (expected_mode == "absent" and censorwatch.get("postgres_dump_bytes") == 0)
+        or (expected_mode == "included"
+            and censorwatch.get("postgres_dump_bytes", 0) > 0),
+    (expected_mode == "absent"
+        and censorwatch.get("redis_archive_bytes") == 0
+        and censorwatch.get("redis_uncompressed_bytes") == 0)
+        or (expected_mode == "included"
+            and censorwatch.get("redis_archive_bytes", 0) > 0
+            and censorwatch.get("redis_members", 0) > 0
+            and censorwatch.get("redis_uncompressed_bytes", 0) > 0),
 )
 if not all(checks):
-    raise SystemExit("pre-change v4 witness backup proof failed")
-' "$PRE_CHANGE_V4_SNAPSHOT"
+    raise SystemExit("pre-change v5 witness and CensorWatch backup proof failed")
+' "$PRE_CHANGE_V4_SNAPSHOT" \
+  "$CENSORWATCH_BACKUP_MODE_REQUIRED"
 V4_BACKUP_VERIFICATION_PATH="$OBSERVER_PREFLIGHT_DIR/v4-backup-verification.json"
 printf '%s\n' "$V4_BACKUP_VERIFICATION_JSON" \
   >"$V4_BACKUP_VERIFICATION_PATH"
@@ -5293,6 +6424,249 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test "$(docker inspect "$RECOVERY_TARGET_API_CONTAINER_ID" --format \
     '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
     = "$EXPECTED_DEPLOY_SHA"
+fi
+
+# Prepare the isolated CensorWatch plane only when the captured pre-release
+# runtime was fully active. A config flag alone cannot activate it. The v5
+# backup must prove both isolated volumes, then a networkless secret preflight,
+# fresh PostgreSQL provisioning/migration, and the credential-free egress proxy
+# must all succeed before Phase 3 is allowed to restore either CensorWatch
+# worker. Interrupted-Phase-1 recovery deliberately retains its historical
+# absent-velocity boundary.
+CENSORWATCH_PREFLIGHT_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-preflight.json"
+CENSORWATCH_MIGRATION_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-migration.json"
+if (( INTERRUPTED_PHASE1_RECOVERY == 0 \
+    && CENSORWATCH_ACTIVATION_INTENT == 1 )); then
+  verify_censorwatch_secret_files
+  python3 - "$V4_BACKUP_VERIFICATION_PATH" <<'PY'
+import json
+import pathlib
+import sys
+
+value = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+censorwatch = value.get("censorwatch", {})
+counts = value.get("counts", {})
+if (
+    value.get("schema") != "palimpsest-node-backup-verification.v1"
+    or value.get("format_version") != 5
+    or censorwatch.get("mode") != "included"
+    or type(censorwatch.get("postgres_dump_bytes")) is not int
+    or censorwatch["postgres_dump_bytes"] <= 0
+    or type(censorwatch.get("redis_archive_bytes")) is not int
+    or censorwatch["redis_archive_bytes"] <= 0
+    or type(censorwatch.get("redis_members")) is not int
+    or censorwatch["redis_members"] <= 0
+    or type(censorwatch.get("redis_uncompressed_bytes")) is not int
+    or censorwatch["redis_uncompressed_bytes"] <= 0
+    or counts.get("snapshot_files") != 10
+    or counts.get("checksum_entries") != 9
+):
+    raise SystemExit("CensorWatch activation requires an included v5 backup")
+PY
+  python3 - "$CENSORWATCH_LEGACY_TRANSFER_RECEIPT_PATH" \
+    "$CENSORWATCH_LEGACY_WAS_ACTIVE" "$EXPECTED_DEPLOY_SHA" <<'PY'
+import json
+import pathlib
+import sys
+
+path, legacy_active, revision = sys.argv[1:]
+value = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+if legacy_active == "1":
+    counts = value.get("counts")
+    checks = (
+        value.get("schema_version")
+            == "palimpsest-censorwatch-legacy-transfer.v1",
+        value.get("status") == "verified",
+        value.get("revision") == revision,
+        value.get("export_status") == "exported",
+        value.get("import_status") in {"imported", "already-imported"},
+        value.get("export_network") == "palimpsest_default",
+        value.get("import_network") == "palimpsest_censorwatch-db-admin",
+        isinstance(counts, dict),
+        set(counts or {}) == {
+            "censored_posts", "post_deletions",
+            "deletion_velocity_snapshots",
+        },
+        all(type(item) is int and item >= 0 for item in (counts or {}).values()),
+        sum((counts or {}).values()) > 0,
+    )
+    if not all(checks):
+        raise SystemExit("legacy CensorWatch transfer authority is invalid")
+elif (
+    legacy_active != "0"
+    or value != {
+        "explicitly_required": False,
+        "schema_version": "palimpsest-censorwatch-legacy-transfer.v1",
+        "status": "not-required",
+    }
+):
+    raise SystemExit("unexpected legacy CensorWatch transfer authority")
+PY
+
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    preflight-censorwatch
+  CENSORWATCH_PREFLIGHT_CONTAINER_ID="$(release_compose --profile velocity \
+    ps -q --all preflight-censorwatch)"
+  [[ "$CENSORWATCH_PREFLIGHT_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+  censorwatch_preflight_exited=0
+  for (( censorwatch_attempt=1; censorwatch_attempt<=60; \
+      censorwatch_attempt++ )); do
+    if [[ "$(docker inspect "$CENSORWATCH_PREFLIGHT_CONTAINER_ID" \
+        --format '{{.State.Status}}')" == exited ]]; then
+      censorwatch_preflight_exited=1
+      break
+    fi
+    sleep 1
+  done
+  (( censorwatch_preflight_exited == 1 ))
+  test "$(docker inspect "$CENSORWATCH_PREFLIGHT_CONTAINER_ID" \
+    --format '{{.State.ExitCode}}')" = 0
+  test "$(docker inspect "$CENSORWATCH_PREFLIGHT_CONTAINER_ID" \
+    --format '{{.HostConfig.NetworkMode}}')" = none
+  test "$(docker inspect "$CENSORWATCH_PREFLIGHT_CONTAINER_ID" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  python3 - "$CENSORWATCH_PREFLIGHT_RECEIPT_PATH" \
+    "$CENSORWATCH_PREFLIGHT_CONTAINER_ID" "$CANDIDATE_IMAGE_ID" \
+    "$EXPECTED_DEPLOY_SHA" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+output, container, image, revision = sys.argv[1:]
+value = {
+    "schema_version": "palimpsest-censorwatch-preflight.v1",
+    "status": "succeeded",
+    "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "container_id": container,
+    "image_id": image,
+    "revision": revision,
+    "network_mode": "none",
+    "exit_code": 0,
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    + "\n",
+    encoding="utf-8",
+)
+PY
+
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    postgres-censorwatch redis-censorwatch-data redis-censorwatch-control
+  for compose_service in \
+      postgres-censorwatch redis-censorwatch-data \
+      redis-censorwatch-control; do
+    CENSORWATCH_TARGET_CONTAINER_ID["$compose_service"]="$(release_compose \
+      --profile velocity ps -q "$compose_service")"
+    censorwatch_service_id="${CENSORWATCH_TARGET_CONTAINER_ID[$compose_service]}"
+    [[ "$censorwatch_service_id" =~ ^[0-9a-f]{64}$ ]]
+    censorwatch_service_ready=0
+    for (( censorwatch_attempt=1; censorwatch_attempt<=60; \
+        censorwatch_attempt++ )); do
+      if [[ "$(docker inspect "$censorwatch_service_id" --format \
+          '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" \
+          == healthy ]]; then
+        censorwatch_service_ready=1
+        break
+      fi
+      sleep 2
+    done
+    (( censorwatch_service_ready == 1 ))
+    CENSORWATCH_TARGET_IMAGE_ID["$compose_service"]="$(docker inspect \
+      "$censorwatch_service_id" --format '{{.Image}}')"
+  done
+
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    migrate-censorwatch
+  CENSORWATCH_MIGRATION_CONTAINER_ID="$(release_compose --profile velocity \
+    ps -q --all migrate-censorwatch)"
+  [[ "$CENSORWATCH_MIGRATION_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+  censorwatch_migration_exited=0
+  for (( censorwatch_attempt=1; censorwatch_attempt<=120; \
+      censorwatch_attempt++ )); do
+    if [[ "$(docker inspect "$CENSORWATCH_MIGRATION_CONTAINER_ID" \
+        --format '{{.State.Status}}')" == exited ]]; then
+      censorwatch_migration_exited=1
+      break
+    fi
+    sleep 2
+  done
+  (( censorwatch_migration_exited == 1 ))
+  test "$(docker inspect "$CENSORWATCH_MIGRATION_CONTAINER_ID" \
+    --format '{{.State.ExitCode}}')" = 0
+  test "$(docker inspect "$CENSORWATCH_MIGRATION_CONTAINER_ID" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  python3 - "$CENSORWATCH_MIGRATION_RECEIPT_PATH" \
+    "$CENSORWATCH_MIGRATION_CONTAINER_ID" "$CANDIDATE_IMAGE_ID" \
+    "$EXPECTED_DEPLOY_SHA" "$V4_BACKUP_VERIFICATION_PATH" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+output, container, image, revision, backup_path = sys.argv[1:]
+backup_payload = pathlib.Path(backup_path).read_bytes()
+value = {
+    "schema_version": "palimpsest-censorwatch-migration.v1",
+    "status": "succeeded",
+    "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "container_id": container,
+    "image_id": image,
+    "revision": revision,
+    "backup_verification_sha256": hashlib.sha256(backup_payload).hexdigest(),
+    "exit_code": 0,
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    + "\n",
+    encoding="utf-8",
+)
+PY
+
+  release_compose --profile velocity up -d --no-deps --force-recreate \
+    censorwatch-egress-proxy
+  CENSORWATCH_TARGET_CONTAINER_ID[censorwatch-egress-proxy]="$(release_compose \
+    --profile velocity ps -q censorwatch-egress-proxy)"
+  censorwatch_proxy_id="${CENSORWATCH_TARGET_CONTAINER_ID[censorwatch-egress-proxy]}"
+  [[ "$censorwatch_proxy_id" =~ ^[0-9a-f]{64}$ ]]
+  censorwatch_proxy_ready=0
+  for (( censorwatch_attempt=1; censorwatch_attempt<=45; \
+      censorwatch_attempt++ )); do
+    if [[ "$(docker inspect "$censorwatch_proxy_id" --format \
+        '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" == healthy ]]; then
+      censorwatch_proxy_ready=1
+      break
+    fi
+    sleep 2
+  done
+  (( censorwatch_proxy_ready == 1 ))
+  test "$(docker inspect "$censorwatch_proxy_id" --format '{{.Image}}')" \
+    = "$CANDIDATE_IMAGE_ID"
+  CENSORWATCH_TARGET_IMAGE_ID[censorwatch-egress-proxy]="$CANDIDATE_IMAGE_ID"
+  CENSORWATCH_ACTIVATION_AUTHORIZED=1
+else
+  printf '%s\n' \
+    '{"explicitly_active":false,"schema_version":"palimpsest-censorwatch-preflight.v1","status":"inactive"}' \
+    >"$CENSORWATCH_PREFLIGHT_RECEIPT_PATH"
+  printf '%s\n' \
+    '{"explicitly_active":false,"schema_version":"palimpsest-censorwatch-migration.v1","status":"inactive"}' \
+    >"$CENSORWATCH_MIGRATION_RECEIPT_PATH"
+  if (( INTERRUPTED_PHASE1_RECOVERY == 0 )); then
+    release_compose "${COMPOSE_ALL_PROFILES[@]}" stop \
+      "${CENSORWATCH_RUNTIME_SERVICES[@]}" \
+      "${CENSORWATCH_PRESENTATION_SERVICES[@]}" >/dev/null
+    for compose_service in \
+        "${CENSORWATCH_RUNTIME_SERVICES[@]}" \
+        "${CENSORWATCH_PRESENTATION_SERVICES[@]}"; do
+      censorwatch_inactive_id="$(release_compose \
+        "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
+      if [[ -n "$censorwatch_inactive_id" ]]; then
+        test "$(docker inspect "$censorwatch_inactive_id" \
+          --format '{{.State.Status}}')" != running
+      fi
+    done
+  fi
 fi
 
 # Start the three mandatory production roles. Beat and the optional velocity
@@ -5703,7 +7077,6 @@ gh workflow run "$OSINT_WORKFLOW" \
   --repo "$PALIMPSEST_REPOSITORY" --ref main \
   -f expected_deploy_sha="$EXPECTED_DEPLOY_SHA" \
   -f release_nonce="$RELEASE_RESUME_TOKEN"
-restore_osint_workflow_freeze
 OSINT_RUN_ID=''
 for _ in {1..30}; do
   gh run list --repo "$PALIMPSEST_REPOSITORY" \
@@ -5745,6 +7118,7 @@ OSINT_HEAD_SHA="$(gh run view "$OSINT_RUN_ID" \
   --repo "$PALIMPSEST_REPOSITORY" --json headSha --jq .headSha)"
 test "$OSINT_HEAD_SHA" = "$EXPECTED_DEPLOY_SHA"
 gh run watch "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" --exit-status
+restore_osint_workflow_freeze
 test "$(gh run view "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --json conclusion --jq .conclusion)" = "success"
 OSINT_RUN_ATTEMPT="$(gh api \
@@ -6121,6 +7495,17 @@ if ! declare -p \
     PALIMPSEST_REPO_ROOT PALIMPSEST_ENV_FILE COMPOSE_PROJECT_NAME \
     RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT RELEASE_ACTIVATORS RELEASE_SERVICES \
     COMPOSE_ALL_PROFILES COMPOSE_WRITER_SERVICES CELERY_WORKER_SERVICES \
+    LEGACY_COMPOSE_WRITER_SERVICES TARGET_COMPOSE_WRITER_SERVICES \
+    CONTROLLED_COMPOSE_WRITER_SERVICES \
+    PREDECESSOR_COMPOSE_WRITER_SERVICES PREDECESSOR_COMPOSE_TOPOLOGY \
+    PRIMARY_COMPOSE_WRITER_SERVICES PRIMARY_CELERY_WORKER_SERVICES \
+    CENSORWATCH_CELERY_WORKER_SERVICES CENSORWATCH_RUNTIME_SERVICES \
+    CENSORWATCH_PRESENTATION_SERVICES CENSORWATCH_ONESHOT_SERVICES \
+    CENSORWATCH_WAS_ACTIVE \
+    CENSORWATCH_LEGACY_WAS_ACTIVE CENSORWATCH_ISOLATED_WAS_ACTIVE \
+    CENSORWATCH_API_WAS_ACTIVE CENSORWATCH_API_RESTORED \
+    CENSORWATCH_ISOLATION_ACTIVATE CENSORWATCH_ACTIVATION_INTENT \
+    CENSORWATCH_ACTIVATION_AUTHORIZED CENSORWATCH_BACKUP_MODE_REQUIRED \
     COMPOSE_WAS_RUNNING COMPOSE_CONTAINER_ID_BEFORE COMPOSE_IMAGE_ID_BEFORE \
     COMPOSE_NODE_BEFORE COMPOSE_QUEUE_BY_SERVICE \
     RECOVERY_FAILED_CONTAINER_ID RECOVERY_FAILED_IMAGE_ID \
@@ -6138,6 +7523,17 @@ if ! declare -p \
     CELERY_GATE_PATH RECOVERY_CONTROLLER_PATH \
     CELERY_TOPOLOGY_BEFORE_B64 CELERY_CANDIDATE_TOPOLOGY_B64 \
     CELERY_PRECHANGE_RECEIPT_PATH \
+    CENSORWATCH_DATA_BROKER_QUEUES_B64 \
+    CENSORWATCH_CONTROL_BROKER_QUEUES_B64 \
+    CENSORWATCH_PRECHANGE_RECEIPT_PATH \
+    LEGACY_CENSORWATCH_BROKER_QUEUES_B64 \
+    CENSORWATCH_PREBACKUP_PREFLIGHT_RECEIPT_PATH \
+    CENSORWATCH_PREBACKUP_MIGRATION_RECEIPT_PATH \
+    CENSORWATCH_LEGACY_TRANSFER_RECEIPT_PATH \
+    CENSORWATCH_PREFLIGHT_RECEIPT_PATH CENSORWATCH_MIGRATION_RECEIPT_PATH \
+    CENSORWATCH_RESTORED_RECEIPT_PATH CENSORWATCH_TARGET_CONTAINER_ID \
+    CENSORWATCH_TARGET_IMAGE_ID CENSORWATCH_TARGET_STATE \
+    CENSORWATCH_TARGET_EXIT_CODE \
     CELERY_V4_BACKUP_RECEIPT_PATH V4_BACKUP_VERIFICATION_PATH \
     CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH \
     CELERY_CANDIDATE_FENCED_RECEIPT_PATH \
@@ -6201,6 +7597,16 @@ if ! declare -p \
     || ! [[ "$CANDIDATE_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] \
     || ! [[ "$CANDIDATE_RENDER_IMAGE_ID" == absent \
       || "$CANDIDATE_RENDER_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || ! [[ "$CENSORWATCH_WAS_ACTIVE" == 0 \
+      || "$CENSORWATCH_WAS_ACTIVE" == 1 ]] \
+    || ! [[ "$CENSORWATCH_LEGACY_WAS_ACTIVE" == 0 \
+      || "$CENSORWATCH_LEGACY_WAS_ACTIVE" == 1 ]] \
+    || ! [[ "$CENSORWATCH_ISOLATED_WAS_ACTIVE" == 0 \
+      || "$CENSORWATCH_ISOLATED_WAS_ACTIVE" == 1 ]] \
+    || ! [[ "$CENSORWATCH_ACTIVATION_INTENT" == 0 \
+      || "$CENSORWATCH_ACTIVATION_INTENT" == 1 ]] \
+    || ! [[ "$CENSORWATCH_ACTIVATION_AUTHORIZED" == 0 \
+      || "$CENSORWATCH_ACTIVATION_AUTHORIZED" == 1 ]] \
     || ! [[ "$RELEASE_ENV_SNAPSHOT_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$WATCHDOG_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
     || ! [[ "$WITNESS_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
@@ -6226,6 +7632,19 @@ fi
 test "$PHASE1_SHELL_PID" = "$$"
 test "$PHASE1_FAIL_SAFE_ARMED" = 1
 test "$TRANSACTION_DIRECTION" = forward
+test $((CENSORWATCH_LEGACY_WAS_ACTIVE \
+  + CENSORWATCH_ISOLATED_WAS_ACTIVE)) = "$CENSORWATCH_WAS_ACTIVE"
+if (( CENSORWATCH_ACTIVATION_INTENT == 1 )); then
+  test "$CENSORWATCH_WAS_ACTIVE" = 1
+fi
+test "$CENSORWATCH_ACTIVATION_AUTHORIZED" \
+  = "$CENSORWATCH_ACTIVATION_INTENT"
+if (( CENSORWATCH_ISOLATED_WAS_ACTIVE == 1 \
+    || CENSORWATCH_ACTIVATION_INTENT == 1 )); then
+  test "$CENSORWATCH_BACKUP_MODE_REQUIRED" = included
+else
+  test "$CENSORWATCH_BACKUP_MODE_REQUIRED" = absent
+fi
 test "$PREVIOUS_CHECKOUT_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
 test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
 test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
@@ -7453,7 +8872,7 @@ fi
 # pin still exists. This is the deployment commit prerequisite, not a log line.
 COMPOSE_CAPTURE_PATH="$OBSERVER_PREFLIGHT_DIR/compose-before.tsv"
 : >"$COMPOSE_CAPTURE_PATH"
-for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+for compose_service in "${PREDECESSOR_COMPOSE_WRITER_SERVICES[@]}"; do
   printf '%s\t%s\t%s\t%s\n' "$compose_service" \
     "${COMPOSE_WAS_RUNNING[$compose_service]}" \
     "${COMPOSE_CONTAINER_ID_BEFORE[$compose_service]}" \
@@ -7492,6 +8911,17 @@ python3 - "$RELEASE_RECEIPT_TMP" "$PREVIOUS_CHECKOUT_SHA" \
   "$CELERY_V4_BACKUP_RECEIPT_PATH" \
   "$CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH" \
   "$CELERY_CANDIDATE_FENCED_RECEIPT_PATH" \
+  "$PREDECESSOR_COMPOSE_TOPOLOGY" "$CENSORWATCH_WAS_ACTIVE" \
+  "$CENSORWATCH_LEGACY_WAS_ACTIVE" \
+  "$CENSORWATCH_ISOLATED_WAS_ACTIVE" \
+  "$CENSORWATCH_ACTIVATION_INTENT" \
+  "$CENSORWATCH_ACTIVATION_AUTHORIZED" \
+  "$CENSORWATCH_PRECHANGE_RECEIPT_PATH" \
+  "$CENSORWATCH_PREBACKUP_PREFLIGHT_RECEIPT_PATH" \
+  "$CENSORWATCH_PREBACKUP_MIGRATION_RECEIPT_PATH" \
+  "$CENSORWATCH_LEGACY_TRANSFER_RECEIPT_PATH" \
+  "$CENSORWATCH_PREFLIGHT_RECEIPT_PATH" \
+  "$CENSORWATCH_MIGRATION_RECEIPT_PATH" \
   "$COLLECTOR_RECOVERY_RECEIPT_PATH" "$CONTROLLER_MANIFEST_PATH" \
   "$RECOVERY_PHASE3_BINDING_PATH" <<'PY'
 import base64
@@ -7511,8 +8941,32 @@ from datetime import datetime, timezone
     handoff_path, sync_path, watchdog_path, witness_path, compose_path,
     prechange_celery_path, v4_backup_celery_path, consuming_celery_path,
     fenced_celery_path,
+    predecessor_compose_topology, censorwatch_was_active,
+    censorwatch_legacy_was_active, censorwatch_isolated_was_active,
+    censorwatch_activation_intent, censorwatch_activation_authorized,
+    censorwatch_prechange_path, censorwatch_prebackup_preflight_path,
+    censorwatch_prebackup_migration_path, censorwatch_transfer_path,
+    censorwatch_preflight_path, censorwatch_migration_path,
     recovery_path, controller_manifest_path, interrupted_recovery_path,
 ) = sys.argv[1:]
+
+state_flags = (
+    censorwatch_was_active, censorwatch_legacy_was_active,
+    censorwatch_isolated_was_active, censorwatch_activation_intent,
+    censorwatch_activation_authorized,
+)
+if any(value not in {"0", "1"} for value in state_flags):
+    raise SystemExit("CensorWatch captured state is invalid")
+if predecessor_compose_topology not in {"pre-render", "render-legacy", "isolated"}:
+    raise SystemExit("CensorWatch predecessor topology is invalid")
+if (
+    int(censorwatch_legacy_was_active)
+        + int(censorwatch_isolated_was_active)
+        != int(censorwatch_was_active)
+    or int(censorwatch_activation_intent) > int(censorwatch_was_active)
+    or censorwatch_activation_authorized != censorwatch_activation_intent
+):
+    raise SystemExit("CensorWatch activation state is inconsistent")
 
 if bool(legacy_witness_path) != bool(legacy_witness_sha):
     raise SystemExit("legacy witness preservation fields are incomplete")
@@ -7612,6 +9066,22 @@ receipt = {
         "candidate_consuming": load_json(consuming_celery_path),
         "candidate_fenced": load_json(fenced_celery_path),
     },
+    "censorwatch": {
+        "predecessor_topology": predecessor_compose_topology,
+        "previously_active": censorwatch_was_active == "1",
+        "legacy_predecessor_active": censorwatch_legacy_was_active == "1",
+        "isolated_predecessor_active": censorwatch_isolated_was_active == "1",
+        "activation_intent": censorwatch_activation_intent == "1",
+        "activation_authorized": censorwatch_activation_authorized == "1",
+        "pre_change_broker": load_json(censorwatch_prechange_path),
+        "prebackup_secret_preflight": load_json(
+            censorwatch_prebackup_preflight_path
+        ),
+        "prebackup_migration": load_json(censorwatch_prebackup_migration_path),
+        "legacy_transfer": load_json(censorwatch_transfer_path),
+        "secret_preflight": load_json(censorwatch_preflight_path),
+        "migration": load_json(censorwatch_migration_path),
+    },
     "recovery": load_json(recovery_path),
     "compose_before": compose,
     "controller_manifest_sha256": digest_bytes(
@@ -7691,41 +9161,16 @@ finally:
     os.close(directory)
 PY
 
-# Restore the captured worker set on the exact candidate image, but keep Beat
-# stopped. Prove the exact workers consume only their one reviewed queue and
-# that every broker queue remains empty before restoring systemd activators.
+# Restore the captured primary worker set on the exact candidate image, but
+# keep both Beats stopped. Primary topology proof must never include a node
+# from the separately credentialed CensorWatch Celery application.
 compose_restore_services=()
-for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+for compose_service in "${PRIMARY_CELERY_WORKER_SERVICES[@]}"; do
   if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
     compose_restore_services+=("$compose_service")
   fi
 done
-RESTORED_RENDER_GATEWAY_ID=''
-if [[ "${COMPOSE_WAS_RUNNING[worker-velocity]}" == 1 ]]; then
-  [[ "$CANDIDATE_RENDER_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
-  release_compose --profile velocity up -d --no-deps --force-recreate \
-    censorwatch-render-gateway
-  RESTORED_RENDER_GATEWAY_ID="$(release_compose --profile velocity \
-    ps -q censorwatch-render-gateway)"
-  [[ "$RESTORED_RENDER_GATEWAY_ID" =~ ^[0-9a-f]{64}$ ]]
-  restored_renderer_ready=0
-  for (( renderer_attempt=1; renderer_attempt<=45; renderer_attempt++ )); do
-    if [[ "$(docker inspect "$RESTORED_RENDER_GATEWAY_ID" --format \
-        '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" == healthy ]]; then
-      restored_renderer_ready=1
-      break
-    fi
-    sleep 2
-  done
-  (( restored_renderer_ready == 1 ))
-  test "$(docker inspect "$RESTORED_RENDER_GATEWAY_ID" --format '{{.Image}}')" \
-    = "$CANDIDATE_RENDER_IMAGE_ID"
-  test "$(docker image inspect "$CANDIDATE_RENDER_IMAGE_ID" --format \
-    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
-    = "$EXPECTED_DEPLOY_SHA"
-else
-  test "$CANDIDATE_RENDER_IMAGE_ID" = absent
-fi
+test "$CANDIDATE_RENDER_IMAGE_ID" = absent
 release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
   "${compose_restore_services[@]}"
 restored_topology_arguments=()
@@ -7752,7 +9197,6 @@ for compose_service in "${compose_restore_services[@]}"; do
     worker) restored_prefix=default ;;
     worker-collectors) restored_prefix=collectors ;;
     worker-warehouse) restored_prefix=warehouse ;;
-    worker-velocity) restored_prefix=velocity ;;
     *) exit 1 ;;
   esac
   restored_topology_arguments+=(--pair \
@@ -7767,6 +9211,210 @@ docker exec -i "$restored_default_id" /usr/local/bin/python3 - check \
   --timeout-seconds 300 --interval-seconds 5 \
   --inspect-timeout-seconds 15 \
   <"$CELERY_GATE_PATH" >"$CELERY_RESTORED_RECEIPT_PATH"
+
+# The hostile-content plane restores only after its included v5 backup,
+# networkless secret preflight, fresh migration, and proxy proof remain exact.
+# Start the control worker first, then the data worker; prove the separate
+# broker empty before either application's Beat or any systemd activator can
+# enqueue new work.
+CENSORWATCH_RESTORED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-restored.json"
+if (( CENSORWATCH_ACTIVATION_AUTHORIZED == 1 )); then
+  python3 - "$CENSORWATCH_PREFLIGHT_RECEIPT_PATH" \
+    "$CENSORWATCH_MIGRATION_RECEIPT_PATH" "$V4_BACKUP_VERIFICATION_PATH" \
+    "$EXPECTED_DEPLOY_SHA" "$CENSORWATCH_LEGACY_TRANSFER_RECEIPT_PATH" \
+    "$CENSORWATCH_LEGACY_WAS_ACTIVE" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+(
+    preflight_path, migration_path, backup_path, revision,
+    transfer_path, legacy_active,
+) = sys.argv[1:]
+preflight = json.loads(pathlib.Path(preflight_path).read_text(encoding="utf-8"))
+migration = json.loads(pathlib.Path(migration_path).read_text(encoding="utf-8"))
+backup_payload = pathlib.Path(backup_path).read_bytes()
+backup = json.loads(backup_payload.decode("utf-8", "strict"))
+transfer = json.loads(pathlib.Path(transfer_path).read_text(encoding="utf-8"))
+if legacy_active == "1":
+    transfer_valid = (
+        transfer.get("schema_version")
+            == "palimpsest-censorwatch-legacy-transfer.v1"
+        and transfer.get("status") == "verified"
+        and transfer.get("revision") == revision
+        and transfer.get("export_network") == "palimpsest_default"
+        and transfer.get("import_network")
+            == "palimpsest_censorwatch-db-admin"
+        and isinstance(transfer.get("counts"), dict)
+        and sum(transfer["counts"].values()) > 0
+    )
+else:
+    transfer_valid = transfer == {
+        "explicitly_required": False,
+        "schema_version": "palimpsest-censorwatch-legacy-transfer.v1",
+        "status": "not-required",
+    }
+if (
+    preflight.get("schema_version") != "palimpsest-censorwatch-preflight.v1"
+    or preflight.get("status") != "succeeded"
+    or preflight.get("revision") != revision
+    or preflight.get("network_mode") != "none"
+    or preflight.get("exit_code") != 0
+    or migration.get("schema_version") != "palimpsest-censorwatch-migration.v1"
+    or migration.get("status") != "succeeded"
+    or migration.get("revision") != revision
+    or migration.get("exit_code") != 0
+    or migration.get("backup_verification_sha256")
+        != hashlib.sha256(backup_payload).hexdigest()
+    or backup.get("format_version") != 5
+    or backup.get("censorwatch", {}).get("mode") != "included"
+    or not transfer_valid
+):
+    raise SystemExit("CensorWatch activation authorities changed")
+PY
+  for compose_service in \
+      postgres-censorwatch redis-censorwatch-data \
+      redis-censorwatch-control censorwatch-egress-proxy; do
+    censorwatch_support_id="$(release_compose --profile velocity \
+      ps -q "$compose_service")"
+    test "$censorwatch_support_id" \
+      = "${CENSORWATCH_TARGET_CONTAINER_ID[$compose_service]}"
+    test "$(docker inspect "$censorwatch_support_id" --format \
+      '{{.State.Status}}')" = running
+    test "$(docker inspect "$censorwatch_support_id" --format \
+      '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" = healthy
+  done
+  for compose_service in worker-velocity-control worker-velocity; do
+    censorwatch_running_worker="$(release_compose --profile velocity \
+      ps -q "$compose_service")"
+    test -z "$censorwatch_running_worker"
+    release_compose --profile velocity up -d --no-deps --force-recreate \
+      "$compose_service"
+    censorwatch_restored_id="$(release_compose --profile velocity \
+      ps -q "$compose_service")"
+    [[ "$censorwatch_restored_id" =~ ^[0-9a-f]{64}$ ]]
+    censorwatch_restored_ready=0
+    for (( censorwatch_attempt=1; censorwatch_attempt<=45; \
+        censorwatch_attempt++ )); do
+      if [[ "$(docker inspect "$censorwatch_restored_id" --format \
+          '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" == healthy ]]; then
+        censorwatch_restored_ready=1
+        break
+      fi
+      sleep 2
+    done
+    (( censorwatch_restored_ready == 1 ))
+    test "$(docker inspect "$censorwatch_restored_id" --format '{{.Image}}')" \
+      = "$CANDIDATE_IMAGE_ID"
+  done
+  CENSORWATCH_DATA_RESTORED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-data-restored.json"
+  CENSORWATCH_CONTROL_RESTORED_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/censorwatch-control-restored.json"
+  restored_censorwatch_data_reader="$(release_compose --profile velocity \
+    ps -q worker-velocity)"
+  restored_censorwatch_control_reader="$(release_compose --profile velocity \
+    ps -q worker-velocity-control)"
+  [[ "$restored_censorwatch_data_reader" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$restored_censorwatch_control_reader" =~ ^[0-9a-f]{64}$ ]]
+  test "$restored_censorwatch_data_reader" \
+    != "$restored_censorwatch_control_reader"
+  docker exec -i "$restored_censorwatch_data_reader" \
+    /usr/local/bin/python3 - censorwatch-data-broker-empty \
+    --closed-queues-b64 "$CENSORWATCH_DATA_BROKER_QUEUES_B64" \
+    --timeout-seconds 300 --interval-seconds 5 \
+    <"$CELERY_GATE_PATH" >"$CENSORWATCH_DATA_RESTORED_RECEIPT_PATH"
+  docker exec -i "$restored_censorwatch_control_reader" \
+    /usr/local/bin/python3 - censorwatch-control-broker-empty \
+    --closed-queues-b64 "$CENSORWATCH_CONTROL_BROKER_QUEUES_B64" \
+    --timeout-seconds 300 --interval-seconds 5 \
+    <"$CELERY_GATE_PATH" >"$CENSORWATCH_CONTROL_RESTORED_RECEIPT_PATH"
+  python3 - "$CENSORWATCH_RESTORED_RECEIPT_PATH" \
+    "$CENSORWATCH_DATA_RESTORED_RECEIPT_PATH" \
+    "$CENSORWATCH_CONTROL_RESTORED_RECEIPT_PATH" <<'PY'
+import json
+import pathlib
+import sys
+
+output, data_path, control_path = sys.argv[1:]
+specifications = {
+    "data": (pathlib.Path(data_path), ["censorwatch"],
+             "bfcdd26c1f4bded1b7c9a24878bd348c9b935c4fe8f1b69d10d1ab84cacc0613"),
+    "control": (pathlib.Path(control_path), ["censorwatch-control"],
+                "fe71579c33dd6c7f14957bdd699a58e5dca065be1e04e190d6fb71a8d9e1c9fa"),
+}
+brokers = {}
+for name, (path, queues, digest) in specifications.items():
+    payload = path.read_bytes()
+    value = json.loads(payload.decode("utf-8", "strict"))
+    canonical = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if (
+        payload != canonical
+        or value.get("schema_version")
+            != "palimpsest-celery-broker-release-gate.v1"
+        or value.get("status") != "empty"
+        or value.get("closed_queues") != queues
+        or value.get("closed_queues_sha256") != digest
+        or value.get("final", {}).get("broker_depth")
+            != {queue: 0 for queue in queues}
+        or value.get("final", {}).get("unacknowledged")
+            != {"hash": 0, "index": 0}
+    ):
+        raise SystemExit(f"restored CensorWatch {name} broker receipt is invalid")
+    brokers[name] = value
+aggregate = {
+    "schema_version": "palimpsest-censorwatch-release-gate.v2",
+    "status": "empty",
+    "brokers": brokers,
+}
+pathlib.Path(output).write_text(
+    json.dumps(aggregate, sort_keys=True, separators=(",", ":")) + "\n",
+    encoding="utf-8",
+)
+PY
+else
+  printf '%s\n' \
+    '{"brokers":{},"explicitly_active":false,"schema_version":"palimpsest-censorwatch-release-gate.v2","status":"inactive"}' \
+    >"$CENSORWATCH_RESTORED_RECEIPT_PATH"
+fi
+
+# Presentation is not part of the eight-process measurement-plane completeness
+# count. Restore it only when it was independently captured active and the
+# entire plane was re-authorized; this inert release therefore proves it off.
+CENSORWATCH_API_RESTORED=0
+if (( CENSORWATCH_ACTIVATION_AUTHORIZED == 1 \
+    && CENSORWATCH_API_WAS_ACTIVE == 1 )); then
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+    --force-recreate api-censorwatch
+  restored_censorwatch_api_id="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q api-censorwatch)"
+  [[ "$restored_censorwatch_api_id" =~ ^[0-9a-f]{64}$ ]]
+  restored_censorwatch_api_ready=0
+  for (( censorwatch_attempt=1; censorwatch_attempt<=45; \
+      censorwatch_attempt++ )); do
+    if [[ "$(docker inspect "$restored_censorwatch_api_id" --format \
+        '{{if .State.Health}}{{.State.Health.Status}}{{end}}')" == healthy ]]; then
+      restored_censorwatch_api_ready=1
+      break
+    fi
+    sleep 2
+  done
+  (( restored_censorwatch_api_ready == 1 ))
+  test "$(docker inspect "$restored_censorwatch_api_id" --format '{{.Image}}')" \
+    = "$CANDIDATE_IMAGE_ID"
+  CENSORWATCH_API_RESTORED=1
+else
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" stop api-censorwatch \
+    >/dev/null 2>&1 || true
+  inactive_censorwatch_api_id="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q --all api-censorwatch)"
+  if [[ -n "$inactive_censorwatch_api_id" ]]; then
+    test "$(docker inspect "$inactive_censorwatch_api_id" \
+      --format '{{.State.Status}}')" != running
+  fi
+fi
 
 # Publication and the proof-complete receipt are now durable, and workers are
 # restored but Beat is still stopped. Remove only the exact release quiesce,
@@ -7893,10 +9541,38 @@ else
   release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat \
     >/dev/null 2>&1 || true
 fi
+if (( CENSORWATCH_ACTIVATION_AUTHORIZED == 1 )); then
+  for compose_service in beat-velocity-control beat-velocity-data; do
+    release_compose --profile velocity up -d --no-deps --force-recreate \
+      "$compose_service"
+    restored_censorwatch_beat_id="$(release_compose --profile velocity \
+      ps -q "$compose_service")"
+    [[ "$restored_censorwatch_beat_id" =~ ^[0-9a-f]{64}$ ]]
+    test "$(docker inspect "$restored_censorwatch_beat_id" \
+      --format '{{.State.Status}}')" = running
+    test "$(docker inspect "$restored_censorwatch_beat_id" \
+      --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  done
+elif (( INTERRUPTED_PHASE1_RECOVERY == 0 )); then
+  for compose_service in beat-velocity-control beat-velocity-data; do
+    censorwatch_inactive_beat_id="$(release_compose --profile velocity \
+      ps -q --all "$compose_service")"
+    if [[ -n "$censorwatch_inactive_beat_id" ]]; then
+      test "$(docker inspect "$censorwatch_inactive_beat_id" \
+        --format '{{.State.Status}}')" = exited
+    fi
+  done
+fi
 
 COMPOSE_RESTORED_PATH="$OBSERVER_PREFLIGHT_DIR/compose-restored.tsv"
 : >"$COMPOSE_RESTORED_PATH"
 for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  compose_should_restore="${COMPOSE_WAS_RUNNING[$compose_service]}"
+  case "$compose_service" in
+    beat-velocity-data|beat-velocity-control|worker-velocity|worker-velocity-control)
+      compose_should_restore="$CENSORWATCH_ACTIVATION_AUTHORIZED"
+      ;;
+  esac
   restored_container_id="$(release_compose \
     "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
   restored_state=absent
@@ -7914,7 +9590,7 @@ for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
     [[ "$restored_hostname" \
       =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]
   fi
-  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+  if [[ "$compose_should_restore" == 1 ]]; then
     test "$restored_state" = running
     test "$restored_image_id" = "$CANDIDATE_IMAGE_ID"
     test "$(docker image inspect "$restored_image_id" --format \
@@ -7924,7 +9600,7 @@ for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
     case "$restored_state" in absent|exited) ;; *) exit 1 ;; esac
   fi
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$compose_service" \
-    "${COMPOSE_WAS_RUNNING[$compose_service]}" "$restored_container_id" \
+    "$compose_should_restore" "$restored_container_id" \
     "$restored_image_id" "$restored_state" "$restored_hostname" \
     >>"$COMPOSE_RESTORED_PATH"
 done
@@ -8063,6 +9739,8 @@ python3 - "$FINALIZED_RECEIPT_TMP" "$RELEASE_RESUME_TOKEN" \
   "$PREVIOUS_CHECKOUT_SHA" "$PREVIOUS_DEPLOY_SHA" \
   "$EXPECTED_DEPLOY_SHA" "$PROOF_COMPLETE_RECEIPT_PATH" \
   "$PROOF_COMPLETE_RECEIPT_SHA256" "$CELERY_RESTORED_RECEIPT_PATH" \
+  "$CENSORWATCH_RESTORED_RECEIPT_PATH" \
+  "$CENSORWATCH_ACTIVATION_AUTHORIZED" \
   "$ACTIVATOR_RESTORED_PATH" "$COMPOSE_RESTORED_PATH" \
   "$BACKUP_ON_SUCCESS" "$RECOVERY_PHASE3_BINDING_PATH" \
   "$RECOVERY_COMPLETION_RECEIPT_PATH" <<'PY'
@@ -8073,10 +9751,16 @@ from datetime import datetime, timezone
 
 (
     output, transaction, previous_checkout, previous_receipt, deployed,
-    proof_path, proof_sha, celery_path, activator_path, compose_path,
+    proof_path, proof_sha, celery_path, censorwatch_path,
+    censorwatch_was_active, activator_path, compose_path,
     backup_on_success, interrupted_recovery_path, completion_receipt_path,
 ) = sys.argv[1:]
 celery = json.loads(pathlib.Path(celery_path).read_text(encoding="utf-8"))
+censorwatch = json.loads(
+    pathlib.Path(censorwatch_path).read_text(encoding="utf-8")
+)
+if censorwatch_was_active not in {"0", "1"}:
+    raise SystemExit("invalid restored CensorWatch state")
 
 activators = {}
 for line in pathlib.Path(activator_path).read_text(encoding="utf-8").splitlines():
@@ -8102,9 +9786,15 @@ for line in pathlib.Path(compose_path).read_text(encoding="utf-8").splitlines():
         "state": state,
         "hostname": hostname or None,
     }
-expected_compose = {
-    "beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"
-}
+expected_compose = (
+    {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"}
+    if interrupted_recovery_path
+    else {
+        "beat", "worker", "worker-collectors", "worker-warehouse",
+        "beat-velocity-data", "beat-velocity-control",
+        "worker-velocity", "worker-velocity-control",
+    }
+)
 if set(compose) != expected_compose or len(activators) != 12:
     raise SystemExit("restored release inventory is incomplete")
 value = {
@@ -8120,6 +9810,10 @@ value = {
     "release_proof_present": False,
     "writers_restored": True,
     "restored_celery": celery,
+    "restored_censorwatch": {
+        "explicitly_active": censorwatch_was_active == "1",
+        "broker": censorwatch,
+    },
     "restored_activators": activators,
     "restored_compose_writers": compose,
     "restored_beat": compose["beat"],
@@ -8187,7 +9881,8 @@ expected_fields = {
     "previous_checkout_sha", "previous_deployment_receipt_sha",
     "deployed_sha", "proof_complete_receipt",
     "proof_complete_receipt_sha256", "release_proof_present",
-    "writers_restored", "restored_celery", "restored_activators",
+    "writers_restored", "restored_celery", "restored_censorwatch",
+    "restored_activators",
     "restored_compose_writers", "restored_beat", "backup_on_success",
     "backup_release_quiesce_present",
 }
@@ -8237,7 +9932,18 @@ checks = (
         and len(value["restored_activators"]) == 12,
     isinstance(value.get("restored_compose_writers"), dict)
         and set(value["restored_compose_writers"])
-        == {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"},
+        == (
+            {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"}
+            if interrupted_recovery == "1"
+            else {
+                "beat", "worker", "worker-collectors", "worker-warehouse",
+                "beat-velocity-data", "beat-velocity-control",
+                "worker-velocity", "worker-velocity-control",
+            }
+        ),
+    isinstance(value.get("restored_censorwatch"), dict)
+        and set(value["restored_censorwatch"])
+        == {"explicitly_active", "broker"},
     value.get("restored_beat")
         == value.get("restored_compose_writers", {}).get("beat"),
 )
@@ -8721,7 +10427,8 @@ base_finalized_fields = {
     "previous_checkout_sha", "previous_deployment_receipt_sha",
     "deployed_sha", "proof_complete_receipt",
     "proof_complete_receipt_sha256", "release_proof_present",
-    "writers_restored", "restored_celery", "restored_activators",
+    "writers_restored", "restored_celery", "restored_censorwatch",
+    "restored_activators",
     "restored_compose_writers", "restored_beat", "backup_on_success",
     "backup_release_quiesce_present",
 }
@@ -8739,8 +10446,18 @@ finalized_checks = (
         and len(finalized["restored_activators"]) == 12,
     isinstance(finalized.get("restored_compose_writers"), dict)
         and set(finalized["restored_compose_writers"])
-        == {"beat", "worker", "worker-collectors", "worker-warehouse",
-            "worker-velocity"},
+        == (
+            {"beat", "worker", "worker-collectors", "worker-warehouse",
+             "worker-velocity"}
+            if recovery_mode
+            else {"beat", "worker", "worker-collectors", "worker-warehouse",
+                  "beat-velocity-data", "beat-velocity-control",
+                  "worker-velocity",
+                  "worker-velocity-control"}
+        ),
+    isinstance(finalized.get("restored_censorwatch"), dict)
+        and set(finalized["restored_censorwatch"])
+        == {"explicitly_active", "broker"},
     finalized.get("restored_beat")
         == finalized.get("restored_compose_writers", {}).get("beat"),
     hashlib.sha256(finalized_payload).hexdigest() == expected_finalized_sha,

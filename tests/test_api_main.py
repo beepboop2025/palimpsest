@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from api.main import create_app
@@ -37,7 +39,6 @@ def _client(*, ready: bool = True, status_provider=lambda: STATUS):
             "status": "ready" if ready else "not-ready",
             "dependencies": dependencies,
         },
-        censorwatch_enabled=False,
     )
     return TestClient(app)
 
@@ -96,17 +97,14 @@ def test_provider_failures_are_sanitised():
     assert "private-host" not in response.text
 
 
-def test_censorwatch_router_is_mounted_only_when_enabled():
-    disabled = create_app(
+def test_primary_api_never_mounts_or_imports_censorwatch():
+    app = create_app(
         status_provider=lambda: STATUS,
         readiness_provider=lambda: {},
-        censorwatch_enabled=False,
     )
-    enabled = create_app(
-        status_provider=lambda: STATUS,
-        readiness_provider=lambda: {},
-        censorwatch_enabled=True,
-    )
+    assert TestClient(app).get("/api/v5/censorwatch/").status_code == 404
 
-    assert TestClient(disabled).get("/api/v5/censorwatch/").status_code == 404
-    assert TestClient(enabled).get("/api/v5/censorwatch/").status_code == 200
+    source = (Path(__file__).resolve().parents[1] / "api" / "main.py").read_text(
+        encoding="utf-8"
+    )
+    assert "censorwatch" not in source.lower()

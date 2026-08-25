@@ -13,11 +13,11 @@ already-published deletion list).
 > sensor and is not a Greyball collection path. Greyball methods live in
 > Palimpsest core — see `docs/GREYBALL-METHODS.md`.
 
-## Status: Step 0 complete (scaffold + flag + tables, all inert)
+## Status: isolated and inert by default
 
 This package is **feature-flagged**. With `CENSORWATCH_ENABLED` unset:
-- the Celery beat entries are not merged (`core/scheduler.py` guards the merge),
-- the FastAPI router is not mounted,
+- the dedicated Celery app uses no production broker and schedules no entries,
+- the dedicated `api-censorwatch` service/profile is not started,
 - the tasks return a `disabled` no-op if invoked manually.
 
 Production collectors are untouched.
@@ -26,12 +26,13 @@ Production collectors are untouched.
 
 | Boundary | Mechanism |
 |----------|-----------|
-| Storage | 3 dedicated tables; `db.create_tables()` uses `create_all(tables=[...])` so it can never create/alter/drop a production table |
-| Schedule | beat fragment merged only when flag set, inside try/except |
-| Workers | dedicated `censorwatch` queue — run a separate worker so it can't starve production: `celery -A core.scheduler worker -Q censorwatch -c 2` |
+| Storage | Dedicated Postgres, metadata, admin provisioner, writer role, and API read-only role; no `api.database` import or fallback |
+| Schedule | Physically separate data/control Redis brokers and beat services; main scheduler never imports CensorWatch |
+| Networks | Internal-only DB/data/control/render networks; hostile worker and read API have no primary `default` network |
+| Presentation | Dedicated ASGI process on loopback 8011 with only DB/data-cache/control-cache reader secrets; primary API never imports CensorWatch |
 | Hostile JS | separate render gateway with no DB/application env, durable mounts, backend network, or host port; exact-host routing + DNS pins |
 | Egress | shared public-IP-pinned safe fetch, per-hop redirect policy, decompression/body caps, and exact source authority |
-| Worker blast radius | explicit non-secret environment allowlist; only the dedicated CensorWatch host subtree is writable; no public-reading or fleet-data mount |
+| Worker blast radius | secret-file authority allowlist; only the dedicated CensorWatch host subtree is writable; no public-reading, fleet-data, primary DB, or primary broker access |
 | Source admission | closed adapter registry; reviewed network policy, public-only access, bounded retention, and approved admission are all required before scheduling |
 | Tasks | each guards on `settings.enabled` and swallows its own errors |
 
@@ -69,7 +70,7 @@ never sent to a third-party model.
 | Var | Default | Meaning |
 |-----|---------|---------|
 | `CENSORWATCH_ENABLED` | _(unset)_ | Master switch |
-| `CENSORWATCH_PROXY_URL` | `HTTP(S)_PROXY` | Optional proxy for public surfaces that 403 datacenter IPs. Not an in-country China sensor. |
+| `CENSORWATCH_PROXY_URL` | _(deployment supplied)_ | Worker-local URL of the credential-free allowlist proxy; production Compose fixes this to its private sidecar |
 | `CENSORWATCH_CONFIRMATIONS` | `3` | Consecutive GONE observations before marking deleted |
 | `CENSORWATCH_MIN_DELAY_S` / `_MAX_DELAY_S` | `2` / `6` | Randomized inter-request delay |
 | `CENSORWATCH_TIMEOUT_S` | `30` | Per-request timeout |
@@ -77,9 +78,18 @@ never sent to a third-party model.
 | `CENSORWATCH_MAX_PAGE_BYTES` / `_MAX_IMAGE_BYTES` | `8 MiB` / `8 MiB` | Per-response acquisition caps |
 | `CENSORWATCH_MAX_POST_IMAGE_BYTES` / `_MAX_CYCLE_IMAGE_BYTES` | `32 MiB` / `256 MiB` | Aggregate hostile-asset budgets |
 | `CENSORWATCH_MIN_ARCHIVE_FREE_BYTES` | `1 GiB` | Reserved free space below which archiving abstains |
+| `CENSORWATCH_MAX_RAW_SNAPSHOT_BYTES` / `_MAX_RAW_TOTAL_BYTES` | `16 MiB` / `2 GiB` | Per-capture and whole-tree raw transport limits |
+| `CENSORWATCH_RAW_RETENTION_DAYS` | `30` | Age limit for private raw transport snapshots; expiry is checked before each write |
+| `CENSORWATCH_MAX_ARCHIVE_TOTAL_BYTES` | `20 GiB` | Hard whole-tree cap; canonical archives are retained and new captures abstain at the cap |
 | `CENSORWATCH_VELOCITY_WINDOW_MIN` | `60` | Velocity bucket width |
 | `CENSORWATCH_BASELINE_WINDOWS` | `24` | Windows forming the spike baseline |
 | `CENSORWATCH_SPIKE_Z` | `3.0` | Z-score that flags a scrub-cluster |
+
+The admitted Eastmoney worker has no direct internet-capable network. HTTPS
+leaves only through the credential-free `censorwatch-egress-proxy`, whose
+CONNECT allowlist is derived from the reviewed Eastmoney page/asset policy and
+whose final DNS answers must all be public. The Chromium renderer belongs to a
+separate `velocity-browser` profile and is not part of the Eastmoney release.
 
 ## Build order
 
@@ -89,6 +99,6 @@ never sent to a third-party model.
 - [x] **Step 3** — `archiver.py` (bounded page + reviewed raster images → disk, idempotent first-capture snapshot; wired into `_archive_new`) plus aggregate/free-space budgets.
 - [x] **Step 4** — `detector.py`: LIVE/GONE/UNKNOWN/DEGRADED machine, liveness-probe gate, pure decision core (6 tests). Ships a default confirmation predicate — **owner may override `is_confirmed_deletion()`**. DB orchestration needs `docker compose up` to verify.
 - [x] **Step 5** — `signal.py`: deletion-velocity per term, rolling-baseline z-score spike flag, ranked output → snapshot + Redis. Reuses DDTI term extraction. 4 tests.
-- [x] **Step 6** — `routes.py` (`/api/v5/censorwatch/*`, graceful degrade, strict response security headers, bounded Redis timeouts, validated query limits) + XSS-hardened `dashboard.html`; guarded mount in `api/main.py`. TestClient-verified.
+- [x] **Step 6** — dedicated `censorwatch.api` ASGI boundary, freshness-qualified and byte/schema-bounded `/api/v5/censorwatch/*` routes, strict response security headers, and XSS-hardened dashboard. The primary API has no CensorWatch import or authority.
 - [ ] **Step 7** — enable flag in staging, dedicated worker _(needs `docker compose up` + proxy — your infra)_
 - [x] **Step 8** — `xueqiu.py` (JSON API; pure parser tested vs documented shape) + `weibo_search.py` (s.weibo.com cards; pure parser tested). Both `enabled: false` — **Aliyun WAF / login-wall block open egress; need Playwright + residential proxy** (confirmed by live probe). 6 tests.

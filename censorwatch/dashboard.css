@@ -1,0 +1,30 @@
+:root{--bg:#0b0d10;--panel:#14181d;--line:#232a31;--ink:#e7ecf0;--dim:#8b97a3;--red:#e2444b;--amber:#e0a13c;--mono:ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:13px;line-height:1.5}
+header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline}
+h1{font-size:16px;margin:0;letter-spacing:.04em}
+h1 .red{background:var(--red);color:#000;padding:0 6px}
+.sub{color:var(--dim);font-size:11px}
+.wrap{padding:18px 22px;max-width:1100px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+.card{background:var(--panel);border:1px solid var(--line);padding:14px}
+.card .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.card .v{font-size:24px;margin-top:6px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);border-bottom:1px solid var(--line);padding-bottom:6px;margin:26px 0 12px}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:400;font-size:11px;text-transform:uppercase}
+.term-column{width:34%}
+.term{font-size:14px}
+.bar{display:block;width:100%;height:6px;margin-top:4px;border:0;background:var(--line)}
+.bar::-webkit-meter-bar{background:var(--line)}
+.bar::-webkit-meter-optimum-value{background:var(--red)}
+.bar::-moz-meter-bar{background:var(--red)}
+.spike{background:var(--red);color:#000;padding:0 5px;font-size:11px}
+.quiet{color:var(--dim)}
+.chip{display:inline-block;background:#1d242b;border:1px solid var(--line);padding:0 6px;margin:1px 2px;font-size:11px}
+.dom{font-size:10px;color:var(--dim)}
+.lat{color:var(--amber)}
+footer{color:var(--dim);font-size:11px;padding:14px 22px;border-top:1px solid var(--line);margin-top:20px}
+.empty{color:var(--dim);padding:24px 0}
+@media(max-width:720px){.cards{grid-template-columns:repeat(2,1fr)}.wrap{overflow-x:auto}}

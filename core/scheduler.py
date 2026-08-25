@@ -1,11 +1,10 @@
 """Celery application and beat schedule for the Palimpsest censorship observatory.
 
-It defines one Celery ``app`` and assembles three deliberately separate legs:
-the DDTI processor, the opt-in passive public-source fleet, and CensorWatch.
+It defines the primary Celery ``app`` and assembles two deliberately separate
+legs: the DDTI processor and the opt-in passive public-source fleet.
 The passive fleet is merged only when ``PALIMPSEST_COLLECTORS_ENABLED`` is set;
-the CensorWatch velocity leg is merged only when
-``CENSORWATCH_ENABLED`` is set, so the deletion-detection machinery is inert by
-default (matching its isolated, feature-flagged design).
+The hostile-content CensorWatch data plane has its own application and broker in
+``censorwatch.celery_app`` and is intentionally absent here.
 
 Run the API/index worker:
     celery -A core.scheduler worker -c 2
@@ -13,8 +12,6 @@ Run the isolated passive collector worker (when enabled):
     celery -A core.scheduler worker -Q collectors -c 2
 Run the isolated OONI bulk warehouse worker (when enabled):
     celery -A core.scheduler worker -Q warehouse -c 2
-Run the isolated CensorWatch worker (when enabled):
-    celery -A core.scheduler worker -Q censorwatch -c 2
 Run beat:
     celery -A core.scheduler beat
 """
@@ -25,7 +22,6 @@ import os
 
 from celery import Celery
 from celery.schedules import crontab
-from censorwatch.config import is_enabled
 
 BROKER_URL = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
 RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", BROKER_URL)
@@ -52,8 +48,8 @@ app.conf.update(
     },
 )
 
-# Register task modules. CensorWatch tasks are inert unless CENSORWATCH_ENABLED.
-app.autodiscover_tasks(["core", "censorwatch"])
+# Register only primary task modules. CensorWatch must never share this broker.
+app.autodiscover_tasks(["core"])
 
 
 def _base_schedule() -> dict:
@@ -88,12 +84,6 @@ def build_beat_schedule() -> dict:
     if warehouse_enabled():
         from core.ooni_warehouse import build_warehouse_schedule
         schedule.update(build_warehouse_schedule())
-    if is_enabled():
-        try:
-            from censorwatch.beat import build_censorwatch_schedule
-            schedule.update(build_censorwatch_schedule())
-        except Exception:  # pragma: no cover - velocity leg optional
-            pass
     return schedule
 
 

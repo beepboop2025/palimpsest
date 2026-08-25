@@ -23,25 +23,77 @@ A concrete source provides:
 from __future__ import annotations
 
 import logging
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 
 from core.base_collector import BaseCollector
-from censorwatch.interfaces import LivenessState, Observation, Post, PostSource, content_hash
+from censorwatch.interfaces import (
+    LivenessState,
+    Observation,
+    Post,
+    PostSource,
+    content_hash,
+)
 from censorwatch.source_policy import source_url_is_allowed
 
 logger = logging.getLogger(__name__)
 
 # Columns the upsert understands; everything else on the row is ignored.
-_POST_COLUMNS = ("source", "post_id", "author", "posted_at", "full_text", "url",
-                 "content_hash")
+_POST_COLUMNS = (
+    "source",
+    "post_id",
+    "author",
+    "posted_at",
+    "full_text",
+    "url",
+    "content_hash",
+)
+_POST_ID_MAX_CHARS = 128
+_POST_ID_MAX_BYTES = 512
+_AUTHOR_MAX_CHARS = 256
+_AUTHOR_MAX_BYTES = 1024
+_FULL_TEXT_MAX_CHARS = 16_384
+_FULL_TEXT_MAX_BYTES = 65_536
+_URL_MAX_CHARS = 2_048
+_URL_MAX_BYTES = 8_192
+
+
+def _bounded_hostile_text(
+    value: object,
+    *,
+    max_chars: int,
+    max_bytes: int,
+    allow_empty: bool = False,
+) -> str | None:
+    """Normalize one HTML-derived string without truncating evidence.
+
+    Truncating identity or content would make the stored hash describe bytes we
+    did not actually observe. Oversized/non-string/NUL-bearing fields are
+    therefore rejected as rows before SQLAlchemy or PostgreSQL sees them.
+    """
+    if type(value) is not str:
+        return None
+    normalized = value.strip()
+    if (not normalized and not allow_empty) or "\x00" in normalized:
+        return None
+    if len(normalized) > max_chars:
+        return None
+    try:
+        encoded_size = len(normalized.encode("utf-8", errors="strict"))
+    except UnicodeError:
+        return None
+    if encoded_size > max_bytes:
+        return None
+    return normalized
 
 
 class BasePostCollector(BaseCollector, PostSource):
     """BaseCollector specialized for post capture + re-check."""
 
-    source_type = "censorwatch"        # marker; _upsert is overridden anyway
+    source_type = "censorwatch"  # marker; _upsert is overridden anyway
     hostile_input_boundary = True
     deletion_markers: tuple[str, ...] = ()
     network_policy_name: str | None = None
@@ -70,9 +122,109 @@ class BasePostCollector(BaseCollector, PostSource):
         # Hard cap protects the collector cycle even if configuration is wrong.
         self.archive_retry_batch = min(100, max(1, configured_retry_batch))
 
+        # BaseCollector's circuit breaker defaults to the shared REDIS_URL.  An
+        # enabled hostile-data worker must instead bind it to the dedicated,
+        # key-scoped writer authority.  Missing authority is a startup error;
+        # there is deliberately no shared-state fallback.
+        from censorwatch.config import is_enabled
+
+        if is_enabled():
+            from censorwatch.runtime_secrets import redis_url
+
+            self._circuit_breaker.redis_url = redis_url("writer-cache")
+            self._circuit_breaker.REDIS_KEY_PREFIX = "censorwatch:circuit_breaker:"
+
+    # ── isolated observability ───────────────────────────────────
+    def _report_health(self, status: str, message: str = "") -> None:
+        """Publish health only through CensorWatch's scoped Redis authority."""
+        cache = None
+        try:
+            from censorwatch.cache import open_writer_cache
+
+            cache = open_writer_cache()
+            cache.set(
+                f"health:{self.name}",
+                json.dumps(
+                    {
+                        "source": self.name,
+                        "status": status,
+                        "message": message,
+                        "consecutive_failures": self._consecutive_failures,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                    ensure_ascii=False,
+                ),
+                ex=7200,
+            )
+        except Exception as exc:
+            logger.warning(
+                "[censorwatch:%s] health report failed (%s)",
+                self.name,
+                type(exc).__name__,
+            )
+        finally:
+            if cache is not None:
+                cache.close()
+
+    def _log_collection(
+        self,
+        status: str,
+        records: int,
+        duration: float,
+        error: str = "",
+    ) -> None:
+        """Emit bounded diagnostics without importing the primary DB models."""
+        if not self.log_collection:
+            return
+        logger.info(
+            "[censorwatch:%s] cycle status=%s records=%d duration=%.2fs error_type=%s",
+            self.name,
+            status,
+            records,
+            duration,
+            error or "none",
+        )
+
+    def _maybe_alert(self) -> None:
+        """Persist a bounded alert with SET, which the scoped ACL permits."""
+        if self._consecutive_failures < 3:
+            return
+        logger.critical(
+            "[censorwatch:%s] ALERT: %d consecutive failures",
+            self.name,
+            self._consecutive_failures,
+        )
+        cache = None
+        try:
+            from censorwatch.cache import open_writer_cache
+
+            cache = open_writer_cache()
+            cache.set(
+                f"censorwatch:alert:{self.name}",
+                json.dumps(
+                    {
+                        "source": self.name,
+                        "failures": self._consecutive_failures,
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                    },
+                    ensure_ascii=False,
+                ),
+                ex=7200,
+            )
+        except Exception as exc:
+            logger.warning(
+                "[censorwatch:%s] alert persistence failed (%s)",
+                self.name,
+                type(exc).__name__,
+            )
+        finally:
+            if cache is not None:
+                cache.close()
+
     # ── fetcher lifecycle ────────────────────────────────────────
     def _get_fetcher(self):
         from censorwatch.fetcher import Fetcher
+
         if self._fetcher is None:
             self._fetcher = Fetcher(source=self._network_source)
         return self._fetcher
@@ -84,6 +236,22 @@ class BasePostCollector(BaseCollector, PostSource):
         await super().close()
 
     # ── CAPTURE: the one overridden hook ─────────────────────────
+    def _store_raw(self, data: list[dict]) -> str:
+        """Persist hostile raw input under CensorWatch's bounded private root."""
+        from censorwatch.config import get_settings
+        from censorwatch.storage_budget import store_raw_snapshot
+
+        settings = get_settings()
+        return store_raw_snapshot(
+            data,
+            source=self.name,
+            root=Path(settings.raw_dir),
+            max_snapshot_bytes=settings.max_raw_snapshot_bytes,
+            max_total_bytes=settings.max_raw_total_bytes,
+            min_free_bytes=settings.min_archive_free_bytes,
+            retention_days=settings.raw_retention_days,
+        )
+
     def _rows_from_df(self, df: pd.DataFrame, raw_path: str | None) -> list[dict]:
         """Pure transform: parsed DataFrame → list of insertable row dicts.
 
@@ -92,6 +260,7 @@ class BasePostCollector(BaseCollector, PostSource):
         """
         now = datetime.now(timezone.utc)
         rows = []
+        rejected = 0
         for _, r in df.iterrows():
             if len(rows) >= self.max_records_per_cycle:
                 logger.warning(
@@ -99,29 +268,66 @@ class BasePostCollector(BaseCollector, PostSource):
                     self.name,
                 )
                 break
-            post_id = str(r.get("post_id") or "").strip()
-            if not post_id:
-                continue  # a row with no stable id can't be tracked; skip
-            url = r.get("url") or None
+            post_id = _bounded_hostile_text(
+                r.get("post_id"),
+                max_chars=_POST_ID_MAX_CHARS,
+                max_bytes=_POST_ID_MAX_BYTES,
+            )
+            author_value = r.get("author")
+            author = None
+            if author_value is not None and not pd.isna(author_value):
+                author = _bounded_hostile_text(
+                    author_value,
+                    max_chars=_AUTHOR_MAX_CHARS,
+                    max_bytes=_AUTHOR_MAX_BYTES,
+                    allow_empty=True,
+                )
+                if author is None:
+                    rejected += 1
+                    continue
+                author = author or None
+            full_text = _bounded_hostile_text(
+                r.get("full_text") or "",
+                max_chars=_FULL_TEXT_MAX_CHARS,
+                max_bytes=_FULL_TEXT_MAX_BYTES,
+                allow_empty=True,
+            )
+            url = _bounded_hostile_text(
+                r.get("url"),
+                max_chars=_URL_MAX_CHARS,
+                max_bytes=_URL_MAX_BYTES,
+            )
+            if post_id is None or full_text is None or url is None:
+                rejected += 1
+                continue
             if not self._url_is_allowed(url):
                 logger.warning(
-                    "[censorwatch:%s] dropped post %s with unreviewed URL",
+                    "[censorwatch:%s] dropped a row with an unreviewed URL",
                     self.name,
-                    post_id,
                 )
+                rejected += 1
                 continue
-            full_text = r.get("full_text") or ""
-            rows.append({
-                "source": self.name,
-                "post_id": post_id,
-                "author": (r.get("author") or None),
-                "posted_at": r.get("posted_at") or None,
-                "full_text": full_text,
-                "url": url,
-                "content_hash": r.get("content_hash") or content_hash(full_text),
-                "first_seen_at": now,
-                "last_state": "live",
-            })
+            rows.append(
+                {
+                    "source": self.name,
+                    "post_id": post_id,
+                    "author": author,
+                    "posted_at": r.get("posted_at") or None,
+                    "full_text": full_text,
+                    "url": url,
+                    # Parser-supplied hashes cross the same hostile boundary as
+                    # text. Recompute over the exact accepted representation.
+                    "content_hash": content_hash(full_text),
+                    "first_seen_at": now,
+                    "last_state": "live",
+                }
+            )
+        if rejected:
+            logger.warning(
+                "[censorwatch:%s] rejected %d structurally unsafe row(s)",
+                self.name,
+                rejected,
+            )
         return rows
 
     async def _upsert(self, df: pd.DataFrame, raw_path: str) -> int:
@@ -138,10 +344,10 @@ class BasePostCollector(BaseCollector, PostSource):
             return 0
 
         from sqlalchemy.dialects.postgresql import insert as pg_insert
-        from api.database import SessionLocal
+        from censorwatch.db import fail_persistence, writer_session
         from censorwatch.models import CensoredPost
 
-        db = SessionLocal()
+        db = writer_session()
         try:
             stmt = (
                 pg_insert(CensoredPost)
@@ -152,13 +358,12 @@ class BasePostCollector(BaseCollector, PostSource):
             new_ids = {row[0] for row in db.execute(stmt)}
             db.commit()
         except Exception as exc:
-            db.rollback()
             logger.error(
                 "[censorwatch:%s] upsert failed (%s)",
                 self.name,
                 type(exc).__name__,
             )
-            return 0
+            fail_persistence(db, operation="post upsert", cause=exc)
         finally:
             db.close()
 
@@ -176,8 +381,13 @@ class BasePostCollector(BaseCollector, PostSource):
         for retry_row in retry_rows:
             await self._archive_new(retry_row)
 
-        logger.info("[censorwatch:%s] upsert: %d rows, %d new, %d archive retries",
-                    self.name, len(rows), len(new_rows), len(retry_rows))
+        logger.info(
+            "[censorwatch:%s] upsert: %d rows, %d new, %d archive retries",
+            self.name,
+            len(rows),
+            len(new_rows),
+            len(retry_rows),
+        )
         return len(rows)
 
     def _claim_archive_retry_rows(self, *, exclude_ids: set[str]) -> list[dict]:
@@ -188,10 +398,10 @@ class BasePostCollector(BaseCollector, PostSource):
         monopolising the first N slots forever.  ``id`` is the deterministic
         tie-breaker, and the SQL LIMIT prevents an unbounded table scan result.
         """
-        from api.database import SessionLocal
+        from censorwatch.db import fail_persistence, writer_session
         from censorwatch.models import CensoredPost
 
-        db = SessionLocal()
+        db = writer_session()
         try:
             retry_at = CensoredPost.extra_data["archive_retry_at"].astext
             query = (
@@ -204,8 +414,7 @@ class BasePostCollector(BaseCollector, PostSource):
             if exclude_ids:
                 query = query.filter(CensoredPost.post_id.notin_(sorted(exclude_ids)))
             candidates = (
-                query
-                .order_by(
+                query.order_by(
                     retry_at.asc().nullsfirst(),
                     CensoredPost.first_seen_at.asc(),
                     CensoredPost.id.asc(),
@@ -218,31 +427,32 @@ class BasePostCollector(BaseCollector, PostSource):
             for candidate in candidates:
                 metadata = dict(candidate.extra_data or {})
                 metadata["archive_retry_at"] = claimed_at
-                metadata["archive_retry_count"] = int(
-                    metadata.get("archive_retry_count", 0) or 0
-                ) + 1
+                metadata["archive_retry_count"] = (
+                    int(metadata.get("archive_retry_count", 0) or 0) + 1
+                )
                 candidate.extra_data = metadata
-                rows.append({
-                    "post_id": str(candidate.post_id),
-                    "url": candidate.url,
-                })
+                rows.append(
+                    {
+                        "post_id": str(candidate.post_id),
+                        "url": candidate.url,
+                    }
+                )
             db.commit()
             return rows
         except Exception as exc:
-            db.rollback()
             logger.warning(
                 "[censorwatch:%s] archive retry claim failed (%s)",
                 self.name,
                 type(exc).__name__,
             )
-            return []
+            fail_persistence(db, operation="archive retry claim", cause=exc)
         finally:
             db.close()
 
     async def _archive_new(self, row: dict) -> str | None:
         """Archive a first-seen post (snapshot its page + images before it vanishes)
-        and record the archive path back onto the row. Best-effort: an archive
-        failure must not fail the capture run."""
+        and record the archive path back onto the row. Acquisition is best effort;
+        a failed database transaction remains fatal to the capture run."""
         if not row.get("url"):
             return None
         if not self._url_is_allowed(row["url"]):
@@ -252,15 +462,25 @@ class BasePostCollector(BaseCollector, PostSource):
                 row.get("post_id"),
             )
             return None
+        from censorwatch.db import CensorwatchPersistenceError
+
         try:
             from censorwatch.archiver import archive_post
+
             path = await archive_post(
-                row["url"], self.name, row["post_id"], fetcher=self._get_fetcher(),
+                row["url"],
+                self.name,
+                row["post_id"],
+                fetcher=self._get_fetcher(),
                 deletion_markers=self.deletion_markers,
             )
             if path:
                 self._set_archive_path(row["post_id"], path)
             return path
+        except CensorwatchPersistenceError:
+            # The archive fetch itself is best effort, but a failed database
+            # transaction must fail the collector lifecycle and its health.
+            raise
         except Exception as exc:
             logger.warning(
                 "[censorwatch:%s] archive failed for %s (%s)",
@@ -272,13 +492,17 @@ class BasePostCollector(BaseCollector, PostSource):
 
     def _set_archive_path(self, post_id: str, path: str) -> None:
         """Persist archive_path on the just-inserted CensoredPost row."""
-        from api.database import SessionLocal
+        from censorwatch.db import fail_persistence, writer_session
         from censorwatch.models import CensoredPost
-        db = SessionLocal()
+
+        db = writer_session()
         try:
-            db.query(CensoredPost).filter_by(source=self.name, post_id=post_id) \
-                .update({"archive_path": path})
+            db.query(CensoredPost).filter_by(source=self.name, post_id=post_id).update(
+                {"archive_path": path}
+            )
             db.commit()
+        except Exception as exc:
+            fail_persistence(db, operation="archive path update", cause=exc)
         finally:
             db.close()
 
@@ -292,6 +516,7 @@ class BasePostCollector(BaseCollector, PostSource):
                 reason="url_policy_rejected",
             )
         from censorwatch.classifier import classify
+
         result = await self._get_fetcher().fetch(post.url, polite=True)
         return classify(result, extra_markers=self.deletion_markers)
 

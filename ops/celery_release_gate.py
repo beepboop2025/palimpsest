@@ -40,10 +40,27 @@ SUPPORTED_NODE_QUEUES = {
     "default": "celery",
     "collectors": "collectors",
     "warehouse": "warehouse",
-    "velocity": "censorwatch",
 }
 MANDATORY_PRODUCTION_ROLES = frozenset({"default", "collectors", "warehouse"})
 BROKER_QUEUES = tuple(SUPPORTED_NODE_QUEUES.values())
+# CensorWatch is a different Celery application. Data and control now use
+# physically separate Redis services; retain the complete ordered union for
+# topology review while each live broker proof binds exactly one singleton.
+CENSORWATCH_DATA_BROKER_QUEUES = ("censorwatch",)
+CENSORWATCH_CONTROL_BROKER_QUEUES = ("censorwatch-control",)
+CENSORWATCH_BROKER_QUEUES = (
+    *CENSORWATCH_DATA_BROKER_QUEUES,
+    *CENSORWATCH_CONTROL_BROKER_QUEUES,
+)
+# Existing interrupted-Phase-1 receipts bind this exact historical queue set.
+# Keep its schema, ordering, token bytes, digest, and receipt path stable while
+# all new primary release proofs use BROKER_QUEUES above.
+LEGACY_RECOVERY_BROKER_QUEUES = (
+    "celery",
+    "collectors",
+    "warehouse",
+    "censorwatch",
+)
 INSPECT_TASK_METHODS = ("active", "reserved", "scheduled")
 MAX_TOPOLOGY_BYTES = 4096
 MAX_BROKER_QUEUE_BYTES = 1024
@@ -60,7 +77,7 @@ MAX_BROKER_GLOBAL_KEYPREFIX_BYTES = 256
 MAX_SAMPLES = MAX_WAIT_SECONDS + 2
 REQUIRED_ZERO_SAMPLES = 2
 _NODE = re.compile(
-    r"(?:default|collectors|warehouse|velocity)@"
+    r"(?:default|collectors|warehouse)@"
     r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}"
 )
 
@@ -103,8 +120,8 @@ def _validated_topology(
         )
     except (TypeError, ValueError) as error:
         raise GateError("topology contains a malformed node/queue pair") from error
-    if not len(MANDATORY_PRODUCTION_ROLES) <= len(values) <= len(SUPPORTED_NODE_QUEUES):
-        raise GateError("topology must contain three or four workers")
+    if len(values) != len(MANDATORY_PRODUCTION_ROLES):
+        raise GateError("primary topology must contain exactly three workers")
     nodes = [value.node for value in values]
     queues = [value.queue for value in values]
     if len(set(nodes)) != len(nodes) or len(set(queues)) != len(queues):
@@ -117,11 +134,9 @@ def _validated_topology(
         roles.add(prefix)
         if SUPPORTED_NODE_QUEUES[prefix] != value.queue:
             raise GateError("worker node is bound to the wrong queue")
-    missing_roles = MANDATORY_PRODUCTION_ROLES - roles
-    if missing_roles:
+    if roles != MANDATORY_PRODUCTION_ROLES:
         raise GateError(
-            "topology is missing mandatory production roles: "
-            + ", ".join(sorted(missing_roles))
+            "topology must contain exactly the primary production roles"
         )
     return tuple(sorted(values))
 
@@ -186,18 +201,39 @@ def topology_sha256(topology: tuple[NodeQueue, ...]) -> str:
     return hashlib.sha256(_canonical_bytes(_topology_document(topology))).hexdigest()
 
 
-def _validated_closed_queues(queues: Iterable[str]) -> tuple[str, ...]:
+def _validated_closed_queues(
+    queues: Iterable[str],
+    expected: tuple[str, ...] = BROKER_QUEUES,
+) -> tuple[str, ...]:
     try:
         values = tuple(queues)
     except TypeError as error:
         raise GateError("closed queue list is malformed") from error
     if any(type(value) is not str for value in values):
         raise GateError("closed queue list contains a non-string queue")
-    if len(values) != len(BROKER_QUEUES) or set(values) != set(BROKER_QUEUES):
+    if len(values) != len(expected) or set(values) != set(expected):
         raise GateError("closed queue list must contain every reviewed broker queue")
     if len(set(values)) != len(values):
         raise GateError("closed queue list contains a duplicate queue")
-    return BROKER_QUEUES
+    return expected
+
+
+def _validated_reviewed_closed_queues(queues: Iterable[str]) -> tuple[str, ...]:
+    """Canonicalize one of the three explicitly reviewed broker scopes."""
+    try:
+        values = tuple(queues)
+    except TypeError as error:
+        raise GateError("closed queue list is malformed") from error
+    for expected in (
+        BROKER_QUEUES,
+        CENSORWATCH_DATA_BROKER_QUEUES,
+        CENSORWATCH_CONTROL_BROKER_QUEUES,
+        CENSORWATCH_BROKER_QUEUES,
+        LEGACY_RECOVERY_BROKER_QUEUES,
+    ):
+        if len(values) == len(expected) and set(values) == set(expected):
+            return _validated_closed_queues(values, expected)
+    raise GateError("closed queue list is not a reviewed broker scope")
 
 
 def _broker_queue_document(queues: tuple[str, ...]) -> dict[str, object]:
@@ -207,16 +243,40 @@ def _broker_queue_document(queues: tuple[str, ...]) -> dict[str, object]:
     }
 
 
-def encode_broker_queues(queues: Iterable[str]) -> str:
+def _encode_broker_queues(
+    queues: Iterable[str], expected: tuple[str, ...]
+) -> str:
     """Return a strict token binding the complete reviewed broker queue set."""
-    closed_queues = _validated_closed_queues(queues)
+    closed_queues = _validated_closed_queues(queues, expected)
     payload = _canonical_bytes(_broker_queue_document(closed_queues))
     if len(payload) > MAX_BROKER_QUEUE_BYTES:
         raise GateError("closed queue document exceeds its byte ceiling")
     return base64.b64encode(payload).decode("ascii")
 
 
-def decode_broker_queues(token: str) -> tuple[str, ...]:
+def encode_broker_queues(queues: Iterable[str]) -> str:
+    return _encode_broker_queues(queues, BROKER_QUEUES)
+
+
+def encode_censorwatch_broker_queues(queues: Iterable[str]) -> str:
+    return _encode_broker_queues(queues, CENSORWATCH_BROKER_QUEUES)
+
+
+def encode_censorwatch_data_broker_queues(queues: Iterable[str]) -> str:
+    return _encode_broker_queues(queues, CENSORWATCH_DATA_BROKER_QUEUES)
+
+
+def encode_censorwatch_control_broker_queues(queues: Iterable[str]) -> str:
+    return _encode_broker_queues(queues, CENSORWATCH_CONTROL_BROKER_QUEUES)
+
+
+def encode_legacy_recovery_broker_queues(queues: Iterable[str]) -> str:
+    return _encode_broker_queues(queues, LEGACY_RECOVERY_BROKER_QUEUES)
+
+
+def _decode_broker_queues(
+    token: str, expected: tuple[str, ...]
+) -> tuple[str, ...]:
     """Decode an exact, canonical closed-queue token."""
     if (
         not isinstance(token, str)
@@ -248,15 +308,38 @@ def decode_broker_queues(token: str) -> tuple[str, ...]:
     raw_queues = document.get("closed_queues")
     if not isinstance(raw_queues, list):
         raise GateError("closed queues are not a list")
-    queues = _validated_closed_queues(raw_queues)
+    queues = _validated_closed_queues(raw_queues, expected)
     canonical = _canonical_bytes(_broker_queue_document(queues))
     if payload != canonical or base64.b64encode(canonical) != encoded:
         raise GateError("closed queue token is not canonical")
     return queues
 
 
-def broker_queues_sha256(queues: tuple[str, ...]) -> str:
-    queues = _validated_closed_queues(queues)
+def decode_broker_queues(token: str) -> tuple[str, ...]:
+    return _decode_broker_queues(token, BROKER_QUEUES)
+
+
+def decode_censorwatch_broker_queues(token: str) -> tuple[str, ...]:
+    return _decode_broker_queues(token, CENSORWATCH_BROKER_QUEUES)
+
+
+def decode_censorwatch_data_broker_queues(token: str) -> tuple[str, ...]:
+    return _decode_broker_queues(token, CENSORWATCH_DATA_BROKER_QUEUES)
+
+
+def decode_censorwatch_control_broker_queues(token: str) -> tuple[str, ...]:
+    return _decode_broker_queues(token, CENSORWATCH_CONTROL_BROKER_QUEUES)
+
+
+def decode_legacy_recovery_broker_queues(token: str) -> tuple[str, ...]:
+    return _decode_broker_queues(token, LEGACY_RECOVERY_BROKER_QUEUES)
+
+
+def broker_queues_sha256(
+    queues: tuple[str, ...],
+    expected: tuple[str, ...] = BROKER_QUEUES,
+) -> str:
+    queues = _validated_closed_queues(queues, expected)
     return hashlib.sha256(_canonical_bytes(_broker_queue_document(queues))).hexdigest()
 
 
@@ -382,7 +465,7 @@ def _broker_counts_unchecked(
     app: object,
     queues: tuple[str, ...] = BROKER_QUEUES,
 ) -> tuple[dict[str, int], dict[str, int]]:
-    queues = _validated_closed_queues(queues)
+    queues = _validated_reviewed_closed_queues(queues)
     connection_factory = getattr(app, "connection_for_read", None)
     if not callable(connection_factory):
         raise GateError("Celery app cannot open a broker read connection")
@@ -533,7 +616,7 @@ def sample_broker_state(
     closed_queues: tuple[str, ...],
 ) -> dict[str, object]:
     """Read one bounded Redis broker sample without Celery worker control."""
-    closed_queues = _validated_closed_queues(closed_queues)
+    closed_queues = _validated_reviewed_closed_queues(closed_queues)
     broker_depth, unacknowledged = _broker_counts(app, closed_queues)
     return {
         "broker_depth": broker_depth,
@@ -541,7 +624,10 @@ def sample_broker_state(
     }
 
 
-def _broker_sample_is_zero(sample: Mapping[str, object]) -> bool:
+def _broker_sample_is_zero(
+    sample: Mapping[str, object], closed_queues: tuple[str, ...]
+) -> bool:
+    closed_queues = _validated_reviewed_closed_queues(closed_queues)
     if not isinstance(sample, Mapping) or set(sample) != {
         "broker_depth",
         "unacknowledged",
@@ -551,7 +637,7 @@ def _broker_sample_is_zero(sample: Mapping[str, object]) -> bool:
     unacknowledged = sample.get("unacknowledged")
     if not isinstance(broker_depth, Mapping) or not isinstance(unacknowledged, Mapping):
         raise GateError("broker sample has an unexpected shape")
-    if set(broker_depth) != set(BROKER_QUEUES) or set(unacknowledged) != {
+    if set(broker_depth) != set(closed_queues) or set(unacknowledged) != {
         "hash",
         "index",
     }:
@@ -559,7 +645,7 @@ def _broker_sample_is_zero(sample: Mapping[str, object]) -> bool:
     counts = (
         *(
             _bounded_count(broker_depth[queue], f"{queue} broker depth")
-            for queue in BROKER_QUEUES
+            for queue in closed_queues
         ),
         _bounded_count(unacknowledged["hash"], "unacknowledged hash"),
         _bounded_count(unacknowledged["index"], "unacknowledged index"),
@@ -620,7 +706,7 @@ def wait_for_broker_empty(
     now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
 ) -> dict[str, object]:
     """Prove two consecutive zero samples using broker reads only."""
-    closed_queues = _validated_closed_queues(closed_queues)
+    closed_queues = _validated_reviewed_closed_queues(closed_queues)
     if not 0 < timeout_seconds <= MAX_WAIT_SECONDS:
         raise GateError("wait timeout is outside the supported bound")
     if not 0 < interval_seconds <= MAX_INTERVAL_SECONDS:
@@ -633,14 +719,16 @@ def wait_for_broker_empty(
         samples += 1
         if samples > MAX_SAMPLES:
             raise GateError("broker release gate exceeded its sample ceiling")
-        if _broker_sample_is_zero(sample):
+        if _broker_sample_is_zero(sample, closed_queues):
             consecutive += 1
             if consecutive == REQUIRED_ZERO_SAMPLES:
                 receipt = {
                     "schema_version": BROKER_RECEIPT_SCHEMA,
                     "generated_at": _utc_timestamp(now),
                     "status": "empty",
-                    "closed_queues_sha256": broker_queues_sha256(closed_queues),
+                    "closed_queues_sha256": broker_queues_sha256(
+                        closed_queues, closed_queues
+                    ),
                     "closed_queues": list(closed_queues),
                     "required_zero_samples": REQUIRED_ZERO_SAMPLES,
                     "samples_observed": samples,
@@ -812,10 +900,64 @@ def _parser() -> argparse.ArgumentParser:
     encode.add_argument("--pair", action="append", type=_pair, required=True)
     encode_broker = commands.add_parser("encode-broker-queues")
     encode_broker.add_argument("--queue", action="append", required=True)
+    encode_censorwatch_broker = commands.add_parser(
+        "encode-censorwatch-broker-queues"
+    )
+    encode_censorwatch_broker.add_argument(
+        "--queue", action="append", required=True
+    )
+    encode_censorwatch_data_broker = commands.add_parser(
+        "encode-censorwatch-data-broker-queues"
+    )
+    encode_censorwatch_data_broker.add_argument(
+        "--queue", action="append", required=True
+    )
+    encode_censorwatch_control_broker = commands.add_parser(
+        "encode-censorwatch-control-broker-queues"
+    )
+    encode_censorwatch_control_broker.add_argument(
+        "--queue", action="append", required=True
+    )
+    encode_legacy_broker = commands.add_parser(
+        "encode-legacy-recovery-broker-queues"
+    )
+    encode_legacy_broker.add_argument("--queue", action="append", required=True)
     broker_empty = commands.add_parser("broker-empty")
     broker_empty.add_argument("--closed-queues-b64", required=True)
     broker_empty.add_argument("--timeout-seconds", type=float, default=MAX_WAIT_SECONDS)
     broker_empty.add_argument("--interval-seconds", type=float, default=5)
+    censorwatch_empty = commands.add_parser("censorwatch-broker-empty")
+    censorwatch_empty.add_argument("--closed-queues-b64", required=True)
+    censorwatch_empty.add_argument(
+        "--timeout-seconds", type=float, default=MAX_WAIT_SECONDS
+    )
+    censorwatch_empty.add_argument("--interval-seconds", type=float, default=5)
+    censorwatch_data_empty = commands.add_parser(
+        "censorwatch-data-broker-empty"
+    )
+    censorwatch_data_empty.add_argument("--closed-queues-b64", required=True)
+    censorwatch_data_empty.add_argument(
+        "--timeout-seconds", type=float, default=MAX_WAIT_SECONDS
+    )
+    censorwatch_data_empty.add_argument(
+        "--interval-seconds", type=float, default=5
+    )
+    censorwatch_control_empty = commands.add_parser(
+        "censorwatch-control-broker-empty"
+    )
+    censorwatch_control_empty.add_argument("--closed-queues-b64", required=True)
+    censorwatch_control_empty.add_argument(
+        "--timeout-seconds", type=float, default=MAX_WAIT_SECONDS
+    )
+    censorwatch_control_empty.add_argument(
+        "--interval-seconds", type=float, default=5
+    )
+    legacy_empty = commands.add_parser("legacy-recovery-broker-empty")
+    legacy_empty.add_argument("--closed-queues-b64", required=True)
+    legacy_empty.add_argument(
+        "--timeout-seconds", type=float, default=MAX_WAIT_SECONDS
+    )
+    legacy_empty.add_argument("--interval-seconds", type=float, default=5)
     for command in ("check", "quiesce"):
         subparser = commands.add_parser(command)
         subparser.add_argument("--topology-b64", required=True)
@@ -842,12 +984,52 @@ def main(argv: list[str] | None = None, *, app: object | None = None) -> int:
         if args.command == "encode-broker-queues":
             print(encode_broker_queues(args.queue))
             return 0
-        if args.command == "broker-empty":
-            closed_queues = decode_broker_queues(args.closed_queues_b64)
+        if args.command == "encode-censorwatch-broker-queues":
+            print(encode_censorwatch_broker_queues(args.queue))
+            return 0
+        if args.command == "encode-censorwatch-data-broker-queues":
+            print(encode_censorwatch_data_broker_queues(args.queue))
+            return 0
+        if args.command == "encode-censorwatch-control-broker-queues":
+            print(encode_censorwatch_control_broker_queues(args.queue))
+            return 0
+        if args.command == "encode-legacy-recovery-broker-queues":
+            print(encode_legacy_recovery_broker_queues(args.queue))
+            return 0
+        if args.command in {
+            "broker-empty",
+            "censorwatch-broker-empty",
+            "censorwatch-data-broker-empty",
+            "censorwatch-control-broker-empty",
+            "legacy-recovery-broker-empty",
+        }:
+            if args.command == "broker-empty":
+                closed_queues = decode_broker_queues(args.closed_queues_b64)
+            elif args.command == "censorwatch-broker-empty":
+                closed_queues = decode_censorwatch_broker_queues(
+                    args.closed_queues_b64
+                )
+            elif args.command == "censorwatch-data-broker-empty":
+                closed_queues = decode_censorwatch_data_broker_queues(
+                    args.closed_queues_b64
+                )
+            elif args.command == "censorwatch-control-broker-empty":
+                closed_queues = decode_censorwatch_control_broker_queues(
+                    args.closed_queues_b64
+                )
+            else:
+                closed_queues = decode_legacy_recovery_broker_queues(
+                    args.closed_queues_b64
+                )
             if app is None:
-                from core.scheduler import app as production_app
+                if args.command.startswith("censorwatch-"):
+                    from censorwatch.celery_app import app as censorwatch_app
 
-                app = production_app
+                    app = censorwatch_app
+                else:
+                    from core.scheduler import app as production_app
+
+                    app = production_app
             receipt = wait_for_broker_empty(
                 app,
                 closed_queues,

@@ -119,6 +119,21 @@ def test_missing_href_is_not_fabricated_and_validation_fails_closed():
     assert "url" not in caught.value.got
 
 
+def test_html_controlled_post_identity_must_be_bounded_numeric():
+    html = """
+    <table>
+      <tr class="listitem"><td>1</td><td>0</td><td>
+        <a data-postid="not-numeric" href="/news,600519,1.html">bad</a>
+      </td><td>x</td><td>2026-08-11 12:00</td></tr>
+      <tr class="listitem"><td>1</td><td>0</td><td>
+        <a data-postid="123" href="/news,600519,123.html">good</a>
+      </td><td>x</td><td>2026-08-11 12:00</td></tr>
+    </table>
+    """
+    rows = EastmoneyGubaCollector._parse_list_html(html)
+    assert [row["post_id"] for row in rows] == ["123"]
+
+
 def _validation_shell() -> str:
     return (
         '<html><head><link rel="stylesheet" href="/validate.css">'

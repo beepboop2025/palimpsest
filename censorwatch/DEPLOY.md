@@ -1,20 +1,18 @@
 # Running censorwatch 24/7
 
-Censorwatch is the feature-flagged DDTI velocity leg. It runs as the
-`worker-velocity` service in the Palimpsest production Docker stack but is **off
-by default** — nothing starts collecting until the `velocity` profile is enabled
-and `CENSORWATCH_ENABLED=1` is set.
+Censorwatch is the feature-flagged DDTI velocity leg. It runs on a dedicated
+Postgres, ACL-protected Redis, Celery application, beat scheduler, and worker.
+It is **off by default**: nothing collects until the isolated preflight and
+migration succeed, the `velocity` profile is selected, and
+`CENSORWATCH_ENABLED=1` is explicitly supplied.
 
 **CensorWatch is not an in-country China sensor.** This repository does not
 enable it in production and does not add an in-country egress path. Greyball
 collection methods live in Palimpsest core
 ([docs/GREYBALL-METHODS.md](../docs/GREYBALL-METHODS.md)), not in this package.
 
-There are two tiers:
-- **Tier 1 — Eastmoney guba only.** Works from any host, no proxy. Live in ~10 min.
-- **Tier 2 — + Weibo & Xueqiu.** The rich censorship signal, but both are blocked
-  from outside China (Aliyun WAF / login-wall / 403). Needs a residential or
-  in-China proxy + the isolated Playwright gateway.
+Only **Eastmoney guba** is admitted. Xueqiu and Weibo remain disabled pending a
+separate access/rights review; deployment configuration must not enable them.
 
 ---
 
@@ -27,89 +25,109 @@ There are two tiers:
 
 ---
 
-## Tier 1 — guba only (no proxy)
+## Secret bundle (required; no shared credentials)
 
-1. Configure `ops/docker/.env`:
+Create root/operator-owned, non-symlink secret files outside the repository.
+Use a different random password for every database and Redis role; the offline
+preflight rejects reuse across the complete bundle. This repository neither
+creates nor commits credentials. The fixed URL contracts are:
 
-   ```dotenv
-   POSTGRES_PASSWORD=choose-a-strong-password   # required by compose
-   CENSORWATCH_ENABLED=1
-   PALIMPSEST_CENSORWATCH_DATA_HOST_PATH=/var/lib/palimpsest/censorwatch
-   # optional tuning:
-   # CENSORWATCH_CONFIRMATIONS=3                 # consecutive GONEs before "deleted"
-   ```
+- admin DB: `postgresql://censorwatch_admin:<encoded>@postgres-censorwatch:5432/censorwatch`
+- writer DB: `postgresql://censorwatch_writer:<encoded>@postgres-censorwatch:5432/censorwatch`
+- reader DB: `postgresql://censorwatch_reader:<encoded>@postgres-censorwatch:5432/censorwatch`
+- data producer/consumer and cache writer/reader target
+  `redis-censorwatch-data`; control producer/consumer and heartbeat
+  writer/reader target `redis-censorwatch-control`. Every role has a distinct
+  user/password, and the two API reader URLs cannot be interchanged. Tasks
+  ignore results, so no network result backend is configured.
 
-   The velocity worker receives only the CensorWatch settings plus its database
-   and broker endpoints. It does not inherit the full env file and can write
-   only this dedicated host subtree.
+Each Redis ACL is independent and default-off. Each Celery consumer has one
+exact queue and its own visibility ledger; each producer can publish only to
+its plane. Cache roles are scoped to the keys each process uses, while readers
+receive only `SELECT`/`GET`/`PING` and cannot cross the data/control boundary.
+Canonical rule order and command names are enforced; aliases or extra grants
+fail closed. See `censorwatch.preflight` for the executable contract.
 
-2. Bring up the stack:
+Point `ops/docker/.env` at those files (paths only; no CensorWatch passwords):
+
+```dotenv
+CENSORWATCH_POSTGRES_ADMIN_PASSWORD_FILE=/etc/palimpsest/censorwatch/postgres-admin-password
+CENSORWATCH_DATABASE_ADMIN_URL_FILE=/etc/palimpsest/censorwatch/database-admin-url
+CENSORWATCH_DATABASE_WRITER_URL_FILE=/etc/palimpsest/censorwatch/database-writer-url
+CENSORWATCH_DATABASE_READER_URL_FILE=/etc/palimpsest/censorwatch/database-reader-url
+CENSORWATCH_REDIS_DATA_ACL_FILE=/etc/palimpsest/censorwatch/redis-data.acl
+CENSORWATCH_REDIS_CONTROL_ACL_FILE=/etc/palimpsest/censorwatch/redis-control.acl
+CENSORWATCH_REDIS_DATA_HEALTH_PASSWORD_FILE=/etc/palimpsest/censorwatch/redis-data-health-password
+CENSORWATCH_REDIS_CONTROL_HEALTH_PASSWORD_FILE=/etc/palimpsest/censorwatch/redis-control-health-password
+CENSORWATCH_CELERY_DATA_PRODUCER_URL_FILE=/etc/palimpsest/censorwatch/celery-data-producer-url
+CENSORWATCH_CELERY_CONTROL_PRODUCER_URL_FILE=/etc/palimpsest/censorwatch/celery-control-producer-url
+CENSORWATCH_CELERY_DATA_URL_FILE=/etc/palimpsest/censorwatch/celery-data-url
+CENSORWATCH_CELERY_CONTROL_URL_FILE=/etc/palimpsest/censorwatch/celery-control-url
+CENSORWATCH_REDIS_WRITER_URL_FILE=/etc/palimpsest/censorwatch/redis-writer-url
+CENSORWATCH_REDIS_CONTROL_URL_FILE=/etc/palimpsest/censorwatch/redis-control-url
+CENSORWATCH_REDIS_DATA_READER_URL_FILE=/etc/palimpsest/censorwatch/redis-data-reader-url
+CENSORWATCH_REDIS_CONTROL_READER_URL_FILE=/etc/palimpsest/censorwatch/redis-control-reader-url
+PALIMPSEST_CENSORWATCH_DATA_HOST_PATH=/var/lib/palimpsest/data/censorwatch
+```
+
+The CensorWatch path must resolve to the `censorwatch/` child of the production
+`PALIMPSEST_DATA_HOST_PATH`. The worker mounts only that child, while the node's
+validated artifact backup already archives the complete parent `data/` root.
+
+## Eastmoney-only activation
+
+1. Confirm `censorwatch/sources.yaml` has exactly Eastmoney enabled. Keep
+   `CENSORWATCH_ENABLED=0` for the first image build and secret preflight.
+
+2. Build and run the one-shot gates:
 
    ```bash
-   ops/docker/prod-compose --profile velocity --profile api up -d --build
+   ops/docker/prod-compose --profile velocity build
+   ops/docker/prod-compose --profile velocity run --rm preflight-censorwatch
+   ops/docker/prod-compose --profile velocity up migrate-censorwatch
    ```
 
-   This starts `postgres`, `redis`, `api`, `beat`, and `worker-velocity`
-   (plus the rest of the platform). Tables auto-create on the first task run.
+   `preflight-censorwatch` has `network_mode: none`. `migrate-censorwatch` alone
+   receives the admin URL; it creates the isolated tables and grants the runtime
+   writer/API reader roles.
 
-3. Open the dashboard:
+3. Set `CENSORWATCH_ENABLED=1`, then start the isolated data plane and API:
+
+   ```bash
+   ops/docker/prod-compose --profile velocity --profile velocity-api up -d --build
+   ```
+
+4. Open the dashboard through the configured localhost/reverse-proxy API port.
 
    ```
-   http://<host>:8000/api/v5/censorwatch/
+   http://127.0.0.1:8011/api/v5/censorwatch/
    ```
 
    It starts empty and fills in as posts are captured (every 10 min) and
    deletions are confirmed (over the following hours).
 
+   For reviewed public exposure, install
+   `ops/caddy/palimpsest-censorwatch.caddy` as a top-level Caddy import, place
+   `import palimpsest_censorwatch` in the intended site block, run
+   `caddy validate`, and reload. The snippet forwards only the CensorWatch path
+   family to loopback 8011; never route it through the primary API on 8010.
+
 ### What's running
 
 | Service | Role |
 |---------|------|
-| `beat` | Schedules `cw_collect` (every 10m), tiered `cw_recheck` (15m/2h/12h), `cw_signal` (20m) |
-| `worker-velocity` | Runs those tasks off the isolated `censorwatch` queue (so it can't starve production collectors) |
-| `censorwatch-render-gateway` | Executes hostile JS without DB credentials, durable mounts, backend network access, or a host port |
-| `api` | Serves the dashboard + JSON API at `/api/v5/censorwatch/*` |
-
----
-
-## Tier 2 — add Weibo + Xueqiu (needs a proxy)
-
-These sources are behind anti-bot defenses that block datacenter/foreign egress.
-You need a **residential or in-China proxy** and the Playwright render path.
-Chromium exists only in `Dockerfile.render-gateway`; the database-bearing worker
-contains neither Chromium nor a local-browser fallback.
-
-1. Add the proxy to `ops/docker/.env`:
-
-   ```dotenv
-   CENSORWATCH_PROXY_URL=http://user:pass@your-residential-proxy:port
-   # or socks5://user:pass@host:port
-   ```
-
-2. Enable the sources in `censorwatch/sources.yaml`:
-
-   ```yaml
-   xueqiu:
-     enabled: true        # was false
-   weibo_search:
-     enabled: true        # was false
-     config:
-       keywords: ["经济", "失业", ...]
-       control_posts:     # REQUIRED — known-live permalinks for the liveness probe
-         - "https://weibo.com/<uid>/<bid>"
-   ```
-
-   > Weibo's liveness probe needs real known-live permalinks in `control_posts`.
-   > Without them the cycle is treated as DEGRADED and no deletions are recorded
-   > (this is the safety gate, not a bug).
-
-3. Add the per-source beat entries (in `censorwatch/beat.py`) if you want them on a
-   schedule, then rebuild:
-
-   ```bash
-   ops/docker/prod-compose --profile velocity --profile api up -d --build \
-     censorwatch-render-gateway worker-velocity beat api
-   ```
+| `preflight-censorwatch` | Offline fail-closed role, URL, password, and Redis ACL validation |
+| `postgres-censorwatch` | Dedicated CensorWatch database; absent from the primary network |
+| `redis-censorwatch-data` | Durable ACL-protected data broker/cache with bounded AOF storage |
+| `redis-censorwatch-control` | Nonpersistent ACL-protected control broker/heartbeat cache |
+| `migrate-censorwatch` | One-shot schema owner and least-privilege grant provisioner |
+| `beat-velocity-data` | Producer for only the data queue |
+| `beat-velocity-control` | Producer for only the control queue |
+| `worker-velocity` | Dedicated data-consumer broker role, queue, cache writer, and writer DB role; it has no direct internet interface |
+| `worker-velocity-control` | Exact control-queue consumer with only heartbeat-key write authority |
+| `censorwatch-egress-proxy` | Credential-free Eastmoney-only CONNECT egress with public-IP pinning and hard resource ceilings |
+| `censorwatch-render-gateway` | Separately gated `velocity-browser` service for future reviewed JS sources; it is not started for Eastmoney |
+| `api-censorwatch` | Isolated read-only ASGI service on loopback 8011; the primary `api` has no CensorWatch imports, secrets, networks, or mounts |
 
 ---
 
@@ -124,12 +142,12 @@ ops/docker/prod-compose --profile velocity exec worker-velocity \
   python -c "from censorwatch.tasks import cw_collect; print(cw_collect('eastmoney_guba'))"
 
 # Rows landing?
-ops/docker/prod-compose exec postgres \
-  psql -U scraper -d econscraper -c "select source,count(*) from censored_posts group by 1;"
+ops/docker/prod-compose --profile velocity exec postgres-censorwatch \
+  psql -U censorwatch_admin -d censorwatch -c "select source,count(*) from censored_posts group by 1;"
 
 # Confirmed deletions (populates over time):
-ops/docker/prod-compose exec postgres \
-  psql -U scraper -d econscraper -c "select count(*) from post_deletions;"
+ops/docker/prod-compose --profile velocity exec postgres-censorwatch \
+  psql -U censorwatch_admin -d censorwatch -c "select count(*) from post_deletions;"
 ```
 
 Then watch the dashboard at `/api/v5/censorwatch/`. Flower (task monitor) is at
@@ -155,14 +173,12 @@ Set `CENSORWATCH_ENABLED=` (empty) in `ops/docker/.env`, then apply the change t
 every long-lived service that caches the flag:
 
 ```bash
-ops/docker/prod-compose --profile velocity stop worker-velocity censorwatch-render-gateway
-ops/docker/prod-compose up -d --force-recreate beat
-# Run this too when the API profile is deployed:
-ops/docker/prod-compose --profile api up -d --force-recreate api
+ops/docker/prod-compose --profile velocity stop \
+  worker-velocity worker-velocity-control beat-velocity-data beat-velocity-control
+ops/docker/prod-compose --profile velocity-api stop api-censorwatch
 ```
 
-Stopping `worker-velocity` prevents an existing container with the old enabled
-environment from continuing to consume `censorwatch` tasks. The recreated beat
-stops scheduling `cw_*` tasks, and the recreated API unmounts the dashboard
-router. The production stack is unaffected — censorwatch never touches its
-tables.
+Stopping the four dedicated Celery services prevents an existing enabled
+container from scheduling or consuming `cw_*` tasks. Stopping the separate API
+removes the dashboard without touching the primary API. Primary Postgres,
+Redis, scheduler, and worker are unaffected.

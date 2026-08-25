@@ -31,11 +31,17 @@ def test_offsite_lane_is_receipt_last_and_restore_verified() -> None:
         '"$snapshot_tool" verify "$restore_root/$snapshot_id"'
     )
     postgres_validation = source.index(
-        'pg_restore --list "$restore_root/$snapshot_id/postgres.dump"'
+        '--entrypoint pg_restore "$postgres_image" --list'
     )
     isolated_restore = source.index("docker run --detach --pull never --network none")
     core_relations = source.index(
         "articles collection_logs observation_artifacts ddti_index_snapshots"
+    )
+    censorwatch_relations = source.index(
+        "censored_posts post_deletions deletion_velocity_snapshots"
+    )
+    redis_restore = source.index(
+        'redis_restore_container="palimpsest-redis-restore-'
     )
     receipt_upload = source.index('rclone copyto "$receipt"')
     status_success = source.index("write_status success")
@@ -48,6 +54,8 @@ def test_offsite_lane_is_receipt_last_and_restore_verified() -> None:
         < postgres_validation
         < isolated_restore
         < core_relations
+        < censorwatch_relations
+        < redis_restore
         < receipt_upload
         < status_success
     )
@@ -66,6 +74,12 @@ def test_offsite_lane_fails_closed_on_storage_and_source_boundaries() -> None:
     assert "--read-only" in source
     assert "--exit-on-error" in source
     assert "--tmpfs /var/run/postgresql:rw,noexec,nosuid,size=16m" in source
+    assert "pinned Redis verifier is not major version 7" in source
+    assert "pinned PostgreSQL verifier is not major version 16" in source
+    assert "--mount \"type=bind,src=$restore_root/$snapshot_id/censorwatch-redis.tar.gz" in source
+    assert "--network none" in source
+    assert "redis-cli -h 127.0.0.1" in source
+    assert "aof_enabled:1" in source
     for capability in ("CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"):
         assert f"--cap-add {capability}" in source
     assert "flock -s 9" in source
@@ -96,6 +110,7 @@ def test_status_is_atomic_and_contains_no_exception_text() -> None:
     assert "trap 'exit 143' TERM" in source
     assert "set +e" in source
     assert 'docker rm -f "$restore_container"' in source
+    assert 'docker rm -f "$redis_restore_container"' in source
     assert '"error"' not in source
     assert '"message"' not in source
 
@@ -108,3 +123,18 @@ def test_restore_archive_is_inspected_before_extraction() -> None:
     )
     assert "--no-same-permissions" in source
     assert "--scratch-restore" in source
+
+
+def test_censorwatch_restore_is_conditional_but_all_or_none() -> None:
+    source = SCRIPT.read_text(encoding="utf-8")
+
+    assert '[[ "$censorwatch_mode" == included ]]' in source
+    assert "censorwatch-postgres.dump" in source
+    assert "censorwatch-postgres.list" in source
+    assert "censorwatch-redis.tar.gz" in source
+    assert "censorwatch_mode" in source
+    assert "redis_verifier_image" in source
+    assert (
+        "remote-download-sha256-decrypt-safe-extract-node-v5-and-"
+        "networkless-postgresql16-redis7-restore"
+    ) in source

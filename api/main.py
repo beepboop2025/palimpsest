@@ -63,7 +63,6 @@ def create_app(
     *,
     status_provider: StatusProvider | None = None,
     readiness_provider: ReadinessProvider | None = None,
-    censorwatch_enabled: bool | None = None,
 ) -> FastAPI:
     """Build the API with replaceable probes for deterministic offline tests."""
 
@@ -113,15 +112,6 @@ def create_app(
             render_prometheus_metrics(status, readiness),
             media_type="text/plain; version=0.0.4",
         )
-
-    if censorwatch_enabled is None:
-        from censorwatch.config import is_enabled
-
-        censorwatch_enabled = is_enabled()
-    if censorwatch_enabled:
-        from censorwatch.routes import router as censorwatch_router
-
-        app.include_router(censorwatch_router, prefix="/api/v5")
 
     return app
 

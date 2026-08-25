@@ -1,41 +1,90 @@
-"""Table creation + session helpers for censorwatch.
+"""Dedicated SQLAlchemy authorities for the isolated CensorWatch database.
 
-``create_tables()`` creates ONLY the three censorwatch tables — it passes an
-explicit ``tables=`` list to ``create_all`` so it physically cannot create,
-alter, or drop any production table. This is the censorwatch analogue of
-``api.database.init_db()`` (which the DDTI table-bootstrap used the same way).
+Runtime code gets only ``writer_session`` or ``reader_session``. Schema
+ownership is deliberately absent from both and is available solely to the
+one-shot provisioning service through ``admin_engine``.
 """
 
 from __future__ import annotations
 
-import logging
+from functools import lru_cache
+from typing import NoReturn
 
-from api.database import Base, SessionLocal, engine
-from censorwatch import models
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-logger = logging.getLogger(__name__)
-
-# The exhaustive set of tables censorwatch owns. Anything not in this list is
-# off-limits — create_all(tables=...) is scoped strictly to these.
-_OWNED_TABLES = (
-    models.CensoredPost.__table__,
-    models.PostDeletion.__table__,
-    models.DeletionVelocitySnapshot.__table__,
-)
+from censorwatch.runtime_secrets import database_authority
 
 
-def create_tables() -> list[str]:
-    """Create the censorwatch tables if missing. Returns the table names touched.
+class CensorwatchBase(DeclarativeBase):
+    pass
 
-    Safe and idempotent: ``create_all`` only creates tables that don't already
-    exist, and the ``tables=`` scope guarantees no production table is involved.
+
+class CensorwatchPersistenceError(RuntimeError):
+    """A required CensorWatch database write did not durably complete."""
+
+
+def fail_persistence(session, *, operation: str, cause: BaseException) -> NoReturn:
+    """Rollback best-effort, then raise a bounded error that cannot look successful.
+
+    Hostile source content and database driver details must not be copied into task
+    results or health records.  The original exception remains chained for local
+    traceback diagnosis, while the public error text contains only our fixed
+    operation label.
     """
-    Base.metadata.create_all(bind=engine, tables=list(_OWNED_TABLES))
-    names = [t.name for t in _OWNED_TABLES]
-    logger.info("[censorwatch] ensured tables: %s", ", ".join(names))
-    return names
+    try:
+        session.rollback()
+    except Exception as rollback_error:
+        raise CensorwatchPersistenceError(
+            f"CensorWatch {operation} failed and rollback did not complete"
+        ) from rollback_error
+    raise CensorwatchPersistenceError(f"CensorWatch {operation} failed") from cause
 
 
-def get_session():
-    """Return a new SQLAlchemy session (caller owns close())."""
-    return SessionLocal()
+def _engine(role: str, *, pool_size: int):
+    authority = database_authority(role)
+    transaction_mode = "on" if role == "reader" else "off"
+    return create_engine(
+        authority.url,
+        pool_size=pool_size,
+        max_overflow=2,
+        pool_pre_ping=True,
+        connect_args={
+            "options": f"-c default_transaction_read_only={transaction_mode}"
+        },
+    )
+
+
+@lru_cache(maxsize=1)
+def admin_engine():
+    return _engine("admin", pool_size=1)
+
+
+@lru_cache(maxsize=1)
+def writer_engine():
+    return _engine("writer", pool_size=4)
+
+
+@lru_cache(maxsize=1)
+def reader_engine():
+    return _engine("reader", pool_size=2)
+
+
+@lru_cache(maxsize=1)
+def _writer_factory():
+    return sessionmaker(bind=writer_engine(), autocommit=False, autoflush=False)
+
+
+@lru_cache(maxsize=1)
+def _reader_factory():
+    return sessionmaker(bind=reader_engine(), autocommit=False, autoflush=False)
+
+
+def writer_session():
+    """Return a CensorWatch writer session; never falls back to the main DB."""
+    return _writer_factory()()
+
+
+def reader_session():
+    """Return an API read-only session with transaction-level read-only forced."""
+    return _reader_factory()()

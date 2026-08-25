@@ -41,6 +41,7 @@ copy_hook="${PALIMPSEST_BACKUP_HOOK:-}"
 offsite_encrypted="${PALIMPSEST_BACKUP_OFFSITE_ENCRYPTED:-}"
 compose_project="${PALIMPSEST_COMPOSE_PROJECT:-palimpsest}"
 artifact_service="${PALIMPSEST_BACKUP_ARTIFACT_SERVICE:-worker}"
+censorwatch_mode="${PALIMPSEST_CENSORWATCH_BACKUP_MODE:-}"
 
 require_absolute_nonroot_path PALIMPSEST_ROOT "$repo_root"
 require_absolute_nonroot_path PALIMPSEST_ANALYSIS_ROOT "$analysis_root"
@@ -62,9 +63,11 @@ require_absolute_nonroot_path PALIMPSEST_BACKUP_DIR "$backup_root"
   die "unsafe Compose project name: $compose_project"
 [[ "$artifact_service" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] || \
   die "unsafe artifact service name: $artifact_service"
+[[ "$censorwatch_mode" == absent || "$censorwatch_mode" == included ]] || \
+  die "PALIMPSEST_CENSORWATCH_BACKUP_MODE must be explicitly absent or included"
 
 for command_name in docker flock sha256sum tar find awk date hostname df python3 \
-  mkdir dirname basename mv rm; do
+  mkdir dirname basename mv rm rmdir sleep stat seq; do
   require_command "$command_name"
 done
 
@@ -198,22 +201,31 @@ available_kb="$(df -Pk "$backup_root" | awk 'NR == 2 {print $4}')"
 
 snapshot_id="$(date -u +%Y%m%dT%H%M%SZ)"
 final_dir="$backup_root/$snapshot_id"
-staging_dir="$backup_root/.incomplete-${snapshot_id}.$$"
+staging_root="$backup_root/.incomplete-${snapshot_id}.$$"
+staging_dir="$staging_root/$snapshot_id"
+censorwatch_data_redis_stopped=0
+censorwatch_restart_needed=0
+censorwatch_running_writers=()
+censorwatch_running_writer_containers=()
 
 cleanup() {
   local status=$?
   trap - EXIT INT TERM
-  if [[ -n "$staging_dir" && -d "$staging_dir" && \
-        "$(dirname -- "$staging_dir")" == "$backup_root" && \
-        "$(basename -- "$staging_dir")" == .incomplete-* ]]; then
-    rm -rf -- "$staging_dir"
+  if (( censorwatch_restart_needed == 1 )); then
+    restart_censorwatch_after_snapshot >/dev/null 2>&1 || \
+      log "ERROR: CensorWatch services could not be restored during cleanup"
+  fi
+  if [[ -n "$staging_root" && -d "$staging_root" && \
+        "$(dirname -- "$staging_root")" == "$backup_root" && \
+        "$(basename -- "$staging_root")" == .incomplete-* ]]; then
+    rm -rf -- "$staging_root"
   fi
   exit "$status"
 }
 trap cleanup EXIT INT TERM
 
 [[ ! -e "$final_dir" ]] || die "backup already exists: $final_dir"
-mkdir -m 0700 -- "$staging_dir"
+mkdir -m 0700 -- "$staging_root" "$staging_dir"
 
 compose=(
   docker compose
@@ -221,6 +233,171 @@ compose=(
   --env-file "$compose_env"
   -f "$compose_file"
 )
+censorwatch_compose=("${compose[@]}" --profile velocity)
+censorwatch_services=(
+  preflight-censorwatch postgres-censorwatch
+  redis-censorwatch-data redis-censorwatch-control migrate-censorwatch
+  worker-velocity worker-velocity-control
+  beat-velocity-data beat-velocity-control
+  censorwatch-egress-proxy censorwatch-render-gateway api-censorwatch
+)
+censorwatch_writers=(
+  beat-velocity-data beat-velocity-control
+  worker-velocity worker-velocity-control
+)
+
+running_compose_container() {
+  local service_name="$1"
+  local container_output=""
+  local -a container_ids=()
+  container_output="$(
+    docker ps \
+      --filter "label=com.docker.compose.project=$compose_project" \
+      --filter "label=com.docker.compose.service=$service_name" \
+      --format '{{.ID}}'
+  )" || die "Docker could not inspect $service_name"
+  if [[ -n "$container_output" ]]; then
+    mapfile -t container_ids <<<"$container_output"
+  fi
+  (( ${#container_ids[@]} <= 1 )) || \
+    die "multiple running containers found for $service_name"
+  if (( ${#container_ids[@]} == 1 )); then
+    [[ "${container_ids[0]}" =~ ^[a-f0-9]{12,64}$ ]] || \
+      die "unsafe container identity for $service_name"
+    printf '%s\n' "${container_ids[0]}"
+  fi
+}
+
+wait_for_healthy_container() {
+  local container_id="$1"
+  local health=""
+  for _ in $(seq 1 60); do
+    health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "$container_id")"
+    [[ "$health" == healthy ]] && return 0
+    if [[ "$health" == missing ]]; then
+      [[ "$(docker inspect --format '{{.State.Running}}' "$container_id")" == true ]] \
+        && return 0
+      return 1
+    fi
+    [[ "$health" == unhealthy ]] && return 1
+    sleep 1
+  done
+  return 1
+}
+
+require_cleanly_stopped_container() {
+  local service_name="$1"
+  local container_id="$2"
+  local stopped_state=""
+  stopped_state="$(
+    docker inspect --format \
+      '{{printf "%s|%d|%t|%s" .State.Status .State.ExitCode .State.OOMKilled .State.Error}}' \
+      "$container_id"
+  )" || die "Docker could not inspect stopped $service_name"
+  [[ "$stopped_state" == 'exited|0|false|' ]] || \
+    die "$service_name did not stop cleanly: $stopped_state"
+}
+
+restart_censorwatch_after_snapshot() {
+  local writer service_container
+  if (( censorwatch_data_redis_stopped == 1 )); then
+    "${censorwatch_compose[@]}" start redis-censorwatch-data >/dev/null
+    service_container="$(running_compose_container redis-censorwatch-data)" || return 1
+    [[ -n "$service_container" ]] || return 1
+    wait_for_healthy_container "$service_container" || return 1
+    censorwatch_data_redis_stopped=0
+  fi
+  for writer in \
+    worker-velocity-control worker-velocity \
+    beat-velocity-data beat-velocity-control; do
+    if [[ " ${censorwatch_running_writers[*]} " == *" $writer "* ]]; then
+      "${censorwatch_compose[@]}" start "$writer" >/dev/null || return 1
+      service_container="$(running_compose_container "$writer")" || return 1
+      [[ -n "$service_container" ]] || return 1
+      wait_for_healthy_container "$service_container" || return 1
+    fi
+  done
+  censorwatch_restart_needed=0
+}
+
+if [[ "$censorwatch_mode" == absent ]]; then
+  for service_name in "${censorwatch_services[@]}"; do
+    service_container="$(running_compose_container "$service_name")" || \
+      die "cannot inspect running CensorWatch service: $service_name"
+    [[ -z "$service_container" ]] || \
+      die "CensorWatch mode is absent but $service_name is running"
+  done
+  censorwatch_postgres_version=absent
+  censorwatch_redis_version=absent
+  censorwatch_writer_fence=not-applicable
+else
+  censorwatch_postgres_container="$(
+    running_compose_container postgres-censorwatch
+  )" || die "cannot inspect postgres-censorwatch"
+  censorwatch_data_redis_container="$(
+    running_compose_container redis-censorwatch-data
+  )" || die "cannot inspect redis-censorwatch-data"
+  censorwatch_control_redis_container="$(
+    running_compose_container redis-censorwatch-control
+  )" || die "cannot inspect redis-censorwatch-control"
+  [[ -n "$censorwatch_postgres_container" ]] || \
+    die "included CensorWatch backup requires postgres-censorwatch running"
+  [[ -n "$censorwatch_data_redis_container" ]] || \
+    die "included CensorWatch backup requires redis-censorwatch-data running"
+  [[ -n "$censorwatch_control_redis_container" ]] || \
+    die "included CensorWatch backup requires redis-censorwatch-control running"
+  migrate_container="$(running_compose_container migrate-censorwatch)" || \
+    die "cannot inspect migrate-censorwatch"
+  [[ -z "$migrate_container" ]] || \
+    die "CensorWatch migration is still running"
+
+  censorwatch_postgres_image="$(
+    docker inspect --format '{{.Image}}' "$censorwatch_postgres_container"
+  )"
+  censorwatch_data_redis_image="$(
+    docker inspect --format '{{.Image}}' "$censorwatch_data_redis_container"
+  )"
+  censorwatch_control_redis_image="$(
+    docker inspect --format '{{.Image}}' "$censorwatch_control_redis_container"
+  )"
+  [[ "$censorwatch_postgres_image" =~ ^sha256:[a-f0-9]{64}$ ]] || \
+    die "CensorWatch PostgreSQL image identity is unsafe"
+  [[ "$censorwatch_data_redis_image" =~ ^sha256:[a-f0-9]{64}$ ]] || \
+    die "CensorWatch data Redis image identity is unsafe"
+  [[ "$censorwatch_control_redis_image" =~ ^sha256:[a-f0-9]{64}$ ]] || \
+    die "CensorWatch control Redis image identity is unsafe"
+  [[ "$censorwatch_data_redis_image" == "$censorwatch_control_redis_image" ]] || \
+    die "CensorWatch Redis planes must use the same pinned image"
+  censorwatch_postgres_version="$(
+    # shellcheck disable=SC2016
+    "${censorwatch_compose[@]}" exec -T postgres-censorwatch sh -eu -c \
+      'exec psql --no-psqlrc --tuples-only --no-align --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --command="show server_version;"'
+  )"
+  censorwatch_redis_version="$(
+    docker exec "$censorwatch_data_redis_container" redis-server --version \
+      | awk '{for (i=1; i<=NF; i++) if ($i ~ /^v=/) {sub(/^v=/, "", $i); print $i; exit}}'
+  )"
+  [[ "$censorwatch_postgres_version" =~ ^[0-9][A-Za-z0-9.+_-]{0,63}$ ]] || \
+    die "CensorWatch PostgreSQL version is malformed"
+  [[ "$censorwatch_redis_version" =~ ^[0-9][A-Za-z0-9.+_-]{0,63}$ ]] || \
+    die "CensorWatch Redis version is malformed"
+  [[ "$censorwatch_postgres_version" == 16.* ]] || \
+    die "CensorWatch PostgreSQL must remain major version 16"
+  [[ "$censorwatch_redis_version" == 7.* ]] || \
+    die "CensorWatch Redis must remain major version 7"
+
+  censorwatch_data_redis_volume="$(
+    docker inspect --format \
+      '{{range .Mounts}}{{if eq .Destination "/data"}}{{printf "%s\t%s\n" .Type .Name}}{{end}}{{end}}' \
+      "$censorwatch_data_redis_container"
+  )"
+  [[ "$censorwatch_data_redis_volume" == $'volume\t'* ]] || \
+    die "CensorWatch data Redis /data is not a named volume"
+  censorwatch_data_redis_volume="${censorwatch_data_redis_volume#*$'\t'}"
+  [[ "$censorwatch_data_redis_volume" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,254}$ ]] || \
+    die "CensorWatch data Redis volume identity is unsafe"
+  censorwatch_writer_fence=beat-velocity-data,beat-velocity-control,worker-velocity,worker-velocity-control
+fi
 
 artifact_container="$("${compose[@]}" ps -q "$artifact_service")"
 [[ "$artifact_container" =~ ^[a-f0-9]{12,64}$ ]] || \
@@ -301,6 +478,84 @@ tar --list --gzip --file "$staging_dir/artifacts.tar.gz" \
   >"$staging_dir/artifacts.list"
 [[ -s "$staging_dir/artifacts.list" ]] || die "artifact archive listing is empty"
 
+if [[ "$censorwatch_mode" == included ]]; then
+  log "fencing every CensorWatch Redis/PostgreSQL writer"
+  for writer in "${censorwatch_writers[@]}"; do
+    writer_container="$(running_compose_container "$writer")" || \
+      die "cannot inspect CensorWatch writer: $writer"
+    if [[ -n "$writer_container" ]]; then
+      censorwatch_running_writers+=("$writer")
+      censorwatch_running_writer_containers+=("$writer=$writer_container")
+    fi
+  done
+  censorwatch_restart_needed=1
+  for writer in "${censorwatch_writers[@]}"; do
+    if [[ " ${censorwatch_running_writers[*]} " == *" $writer "* ]]; then
+      "${censorwatch_compose[@]}" stop --timeout 180 "$writer"
+    fi
+  done
+  for writer in "${censorwatch_writers[@]}"; do
+    writer_container="$(running_compose_container "$writer")" || \
+      die "cannot verify the CensorWatch writer fence: $writer"
+    [[ -z "$writer_container" ]] || \
+      die "CensorWatch writer remained active after the fence: $writer"
+  done
+  for writer_specification in "${censorwatch_running_writer_containers[@]}"; do
+    IFS='=' read -r writer writer_container <<<"$writer_specification"
+    require_cleanly_stopped_container "$writer" "$writer_container"
+  done
+  migrate_container="$(running_compose_container migrate-censorwatch)" || \
+    die "cannot verify the CensorWatch migration fence"
+  [[ -z "$migrate_container" ]] || \
+    die "CensorWatch migration started during the backup fence"
+
+  log "dumping isolated CensorWatch PostgreSQL behind the writer fence"
+  # shellcheck disable=SC2016
+  "${censorwatch_compose[@]}" exec -T postgres-censorwatch sh -eu -c \
+    'exec pg_dump --format=custom --no-owner --no-privileges --username="$POSTGRES_USER" --dbname="$POSTGRES_DB"' \
+    >"$staging_dir/censorwatch-postgres.dump"
+  [[ -s "$staging_dir/censorwatch-postgres.dump" ]] || \
+    die "CensorWatch pg_dump produced an empty archive"
+  "${censorwatch_compose[@]}" exec -T postgres-censorwatch pg_restore --list \
+    <"$staging_dir/censorwatch-postgres.dump" \
+    >"$staging_dir/censorwatch-postgres.list"
+  [[ -s "$staging_dir/censorwatch-postgres.list" ]] || \
+    die "CensorWatch pg_restore produced an empty listing"
+
+  log "stopping isolated data Redis before copying its persistence volume"
+  censorwatch_data_redis_stopped=1
+  "${censorwatch_compose[@]}" stop --timeout 60 redis-censorwatch-data
+  redis_running_after_stop="$(running_compose_container redis-censorwatch-data)" || \
+    die "cannot verify the CensorWatch data Redis cold stop"
+  [[ -z "$redis_running_after_stop" ]] || \
+    die "CensorWatch data Redis remained active after its cold-stop request"
+  require_cleanly_stopped_container \
+    redis-censorwatch-data "$censorwatch_data_redis_container"
+
+  # Capture the complete stopped durable data-plane /data volume. The control
+  # plane is deliberately ephemeral and excluded so a restore cannot replay an
+  # old heartbeat. ACL and health-password secrets live under /run/secrets and
+  # cannot enter this archive. The exact already-present Redis image is used
+  # only as a bounded tar runtime; it receives no environment or network.
+  docker run --rm --pull never --network none --read-only --log-driver none \
+    --security-opt no-new-privileges:true --cap-drop ALL \
+    --cap-add DAC_READ_SEARCH --user 0:0 --pids-limit 32 \
+    --memory 256m --memory-swap 256m --cpus 0.5 \
+    --mount "type=volume,src=$censorwatch_data_redis_volume,dst=/source/redis,readonly" \
+    --entrypoint /bin/sh "$censorwatch_data_redis_image" -eu -c \
+    'cd /source && exec tar -czf - redis' \
+    >"$staging_dir/censorwatch-redis.tar.gz"
+  [[ -s "$staging_dir/censorwatch-redis.tar.gz" ]] || \
+    die "CensorWatch cold Redis archive is empty"
+  tar --list --gzip --file "$staging_dir/censorwatch-redis.tar.gz" \
+    >"$staging_dir/censorwatch-redis.list"
+  [[ -s "$staging_dir/censorwatch-redis.list" ]] || \
+    die "CensorWatch cold Redis archive listing is empty"
+
+  restart_censorwatch_after_snapshot || \
+    die "CensorWatch runtime could not be restored after the cold snapshot"
+fi
+
 postgres_version="$(
   # shellcheck disable=SC2016
   "${compose[@]}" exec -T postgres sh -eu -c \
@@ -308,39 +563,84 @@ postgres_version="$(
     2>/dev/null || printf 'unknown'
 )"
 {
-  printf 'format_version=4\n'
+  printf 'format_version=5\n'
   printf 'snapshot_id=%s\n' "$snapshot_id"
   printf 'created_at_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   printf 'host=%s\n' "$(hostname)"
   printf 'compose_project=%s\n' "$compose_project"
   printf 'postgres_version=%s\n' "$postgres_version"
   printf 'artifact_roots=readings,data,newswire,analysis,witness\n'
-  printf 'contents=postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list\n'
+  printf 'censorwatch_mode=%s\n' "$censorwatch_mode"
+  printf 'censorwatch_postgres_version=%s\n' "$censorwatch_postgres_version"
+  printf 'censorwatch_redis_version=%s\n' "$censorwatch_redis_version"
+  printf 'censorwatch_writer_fence=%s\n' "$censorwatch_writer_fence"
+  if [[ "$censorwatch_mode" == included ]]; then
+    printf '%s\n' \
+      'contents=postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list,censorwatch-postgres.dump,censorwatch-postgres.list,censorwatch-redis.tar.gz,censorwatch-redis.list'
+  else
+    printf 'contents=postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list\n'
+  fi
 } >"$staging_dir/MANIFEST.txt"
 
+checksum_files=(
+  postgres.dump postgres.list artifacts.tar.gz artifacts.list
+)
+if [[ "$censorwatch_mode" == included ]]; then
+  checksum_files+=(
+    censorwatch-postgres.dump censorwatch-postgres.list
+    censorwatch-redis.tar.gz censorwatch-redis.list
+  )
+fi
+checksum_files+=(MANIFEST.txt)
 (
   cd "$staging_dir"
-  sha256sum postgres.dump postgres.list artifacts.tar.gz artifacts.list MANIFEST.txt \
-    >SHA256SUMS
+  sha256sum "${checksum_files[@]}" >SHA256SUMS
   sha256sum --check SHA256SUMS >/dev/null
 )
 
+staging_identity="$(
+  python3 - "$staging_dir" <<'PY'
+import os
+import sys
+
+metadata = os.stat(sys.argv[1], follow_symlinks=False)
+print(f"{metadata.st_uid}:{metadata.st_gid}")
+PY
+)"
+[[ "$staging_identity" =~ ^[0-9]+:[0-9]+$ ]] || \
+  die "staging ownership identity is malformed"
+python3 "$repo_root/ops/backup/node_backup_snapshot.py" verify "$staging_dir" \
+  --snapshot-id "$snapshot_id" \
+  --expected-uid "${staging_identity%%:*}" \
+  --expected-gid "${staging_identity#*:}" \
+  >/dev/null
+
 # A successful checksum is not yet a durable rollback point. Flush every exact
 # snapshot file and then the containing directory before publishing its name.
-python3 - "$staging_dir" <<'PY'
+python3 - "$staging_dir" "$censorwatch_mode" <<'PY'
 import os
 import stat
 import sys
 
 root = sys.argv[1]
-names = (
+mode = sys.argv[2]
+names = [
     "MANIFEST.txt",
     "SHA256SUMS",
     "artifacts.list",
     "artifacts.tar.gz",
     "postgres.dump",
     "postgres.list",
-)
+]
+if mode == "included":
+    names.extend(
+        (
+            "censorwatch-postgres.dump",
+            "censorwatch-postgres.list",
+            "censorwatch-redis.list",
+            "censorwatch-redis.tar.gz",
+        )
+    )
 directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
 file_flags = os.O_RDONLY | os.O_NOFOLLOW
 directory = os.open(root, directory_flags)
@@ -362,6 +662,8 @@ PY
 # Only a completely validated directory gets the stable timestamp name.
 mv -- "$staging_dir" "$final_dir"
 staging_dir=""
+rmdir -- "$staging_root"
+staging_root=""
 # Persist the rename itself before reporting the rollback point as published.
 python3 - "$backup_root" <<'PY'
 import os

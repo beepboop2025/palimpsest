@@ -1,8 +1,9 @@
 # Encrypted off-node Palimpsest recovery
 
 This lane copies each validated local node recovery point to a private Hetzner
-Object Storage bucket. The database dump and the `readings`, `data`, `newswire`,
-and private `analysis` artifacts are encrypted on the Palimpsest host before any
+Object Storage bucket. The primary database dump, optional all-or-none
+CensorWatch PostgreSQL/durable-data-Redis pair, and the `readings`, `data`, `newswire`, and
+private `analysis` artifacts are encrypted on the Palimpsest host before any
 bytes leave it. Every upload is downloaded into an isolated work directory,
 decrypted, unpacked, and verified again before `RECEIPT.json` is written as the
 remote completion marker.
@@ -58,10 +59,11 @@ Do not commit any of these three production files:
 3. `/etc/palimpsest/node-offsite.passphrase`, a new random value of at least 32
    bytes, mode `0400`, root-owned, with a separately tested off-node escrow copy.
 
-The installer records the running production PostgreSQL image's exact
-`sha256:` identity inside the immutable root-owned bundle. The drill uses that
-exact local image with `--pull never`, so a tag cannot silently change the
-restore environment.
+The installer records the running production PostgreSQL and Redis images'
+exact `sha256:` identities inside the immutable root-owned bundle and requires
+their binaries to report PostgreSQL major 16 and Redis major 7. The drill uses
+those exact local images with `--pull never`, so a tag cannot silently change
+the restore environment.
 
 The rclone file has this shape. Substitute only the dedicated recovery key and
 secret; do not use the Anchor/Common Crawl values.
@@ -184,8 +186,12 @@ This manual start is the initial restore drill because the job does not accept
 an upload as success: it immediately downloads the ciphertext into a new private
 cache directory, decrypts and safely extracts it there, repeats all snapshot
 checks, compares a fresh `pg_restore --list` with the captured database
-listing, and restores into an ephemeral networkless PostgreSQL instance. It
-also requires the four reviewed core relations before issuing a receipt.
+listing, and restores into ephemeral networkless PostgreSQL 16 and Redis 7
+instances. It requires the four reviewed core relations; when the snapshot
+declares `censorwatch_mode=included`, it additionally restores the isolated
+database, requires all three CensorWatch relations, loads the cold Redis
+multi-part AOF, and proves databases 0, 1, and 2 readable before issuing a
+receipt.
 Success means all of the following are true:
 
 - The service exits successfully and status reports `"status": "success"` plus
@@ -196,6 +202,9 @@ Success means all of the following are true:
 - Every uploaded object reports 90-day COMPLIANCE retention.
 - The service downloaded the remote archive, matched its SHA-256, decrypted it
   into its isolated cache, and repeated the snapshot/database/artifact checks.
+- `RECEIPT.json` records `censorwatch_mode`, the exact PostgreSQL verifier image,
+  and the exact Redis verifier image. An included snapshot cannot succeed with
+  only one isolated store restored.
 - An operator also proves the separately escrowed passphrase can be retrieved
   under the recovery procedure. Never perform a drill over production paths.
 
@@ -230,10 +239,14 @@ and must never be selected for recovery.
 
 ## Recovery semantics
 
-The v3 node snapshot is a **component-restorable** recovery point. PostgreSQL
-and each artifact root are captured and independently checked, but they are not
-one transactionally atomic snapshot across stores. The drill proves ciphertext,
-archive, database-dump, inventory, and checksum integrity; it does not prove
-application behavior and it never promotes the restored data into live paths.
+The v5 node snapshot is a **component-restorable** recovery point. PostgreSQL
+and each artifact root are captured and independently checked. For CensorWatch,
+all four writers are fenced while its PostgreSQL dump and stopped durable
+data-Redis volume are captured; the ephemeral control Redis is intentionally
+excluded. The whole node is not one transactionally atomic snapshot across
+stores. The drill proves ciphertext, archive, both database dumps, cold data Redis,
+inventory, and checksum integrity; it does not prove
+application behavior and
+it never promotes the restored data into live paths.
 A live recovery still requires downtime, an explicit destination, application
 validation, and a separately reviewed promotion decision.

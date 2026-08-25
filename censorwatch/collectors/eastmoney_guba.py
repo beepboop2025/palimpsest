@@ -155,6 +155,10 @@ class EastmoneyGubaCollector(BasePostCollector):
                 postid = el.get("data-postid") if el else None
             if not postid:
                 continue  # no stable id → can't track
+            if re.fullmatch(r"\d{1,32}", postid) is None:
+                # Eastmoney's immutable post identity is numeric. Reject, never
+                # truncate, an HTML-controlled value outside that contract.
+                continue
 
             tds = it.find_all("td")
             title = (tds[2].get_text(strip=True) if len(tds) > 2 else "") or (

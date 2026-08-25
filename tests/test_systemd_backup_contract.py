@@ -37,7 +37,11 @@ def test_backup_archive_and_restore_preserve_numeric_producer_ownership():
     assert 'member.gname = ""' in helper
     assert "subprocess" not in helper
     assert "--log-driver none" in script
-    assert "format_version=4" in script
+    assert "format_version=5" in script
+    assert "PALIMPSEST_CENSORWATCH_BACKUP_MODE must be explicitly absent or included" in script
+    assert "censorwatch_mode=%s" in script
+    assert "censorwatch-postgres.dump" in script
+    assert "censorwatch-redis.tar.gz" in script
     assert "artifact_roots=readings,data,newswire,analysis,witness" in script
     assert "dst=/source/analysis,readonly" in script
     assert "dst=/source/newswire,readonly" in script

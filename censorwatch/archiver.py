@@ -28,6 +28,7 @@ from bs4 import BeautifulSoup
 from censorwatch.config import get_settings
 from censorwatch.interfaces import LivenessState, content_hash
 from censorwatch.source_policy import source_url_is_allowed
+from censorwatch.storage_budget import tree_usage_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,20 @@ async def archive_post(
         logger.warning("[archiver] %s/%s: page exceeds archive byte budget", source, post_id)
         return None
 
+    try:
+        archive_bytes = tree_usage_bytes(Path(settings.archive_dir))
+    except Exception as exc:
+        logger.warning(
+            "[archiver] %s/%s: archive budget inspection failed (%s)",
+            source,
+            post_id,
+            type(exc).__name__,
+        )
+        return None
+    if archive_bytes + len(html_bytes) > settings.max_archive_total_bytes:
+        logger.warning("[archiver] %s/%s: total archive quota reached", source, post_id)
+        return None
+
     # Classification happens before the archive directory or any image is
     # created.  This is the fail-closed boundary that prevents an HTTP-200 WAF
     # shell from becoming canonical evidence.
@@ -210,6 +225,8 @@ async def archive_post(
                     and extension
                     and len(content) <= settings.max_image_bytes
                     and len(content) <= remaining
+                    and archive_bytes + len(html_bytes) + image_bytes + len(content)
+                    <= settings.max_archive_total_bytes
                     and _has_archive_space(
                         staging,
                         needed=len(content),

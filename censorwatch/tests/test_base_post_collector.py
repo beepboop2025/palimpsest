@@ -16,6 +16,8 @@ exercised in the docker-compose integration run, not here.
 from __future__ import annotations
 
 import asyncio
+import json
+import os
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -71,7 +73,8 @@ def test_rows_from_df_fills_and_keys():
     r1, r2 = rows
     assert r1["source"] == "test_source" and r1["post_id"] == "p1"
     assert r1["content_hash"] and r1["content_hash"] != "precomputed"  # computed
-    assert r2["content_hash"] == "precomputed"  # parser-supplied hash respected
+    assert r2["content_hash"] != "precomputed"  # hostile parser hash is ignored
+    assert len(r2["content_hash"]) == 64
     assert all(r["first_seen_at"] is not None and r["last_state"] == "live"
                for r in rows)
 
@@ -174,7 +177,7 @@ def test_archive_retry_claim_is_bounded_and_rotates_failures(monkeypatch):
         def close(self): self.closed = True
 
     db = FakeDB()
-    monkeypatch.setattr("api.database.SessionLocal", lambda: db)
+    monkeypatch.setattr("censorwatch.db.writer_session", lambda: db)
     source = _Source({"archive_retry_batch": 2})
     claimed = source._claim_archive_retry_rows(exclude_ids={"new-post"})
 
@@ -213,6 +216,48 @@ def test_hostile_rows_are_bounded_before_database_work():
     assert _Source({"max_records_per_cycle": 0}).max_records_per_cycle == 1
 
 
+def test_oversized_and_malformed_fields_are_rejected_without_truncation():
+    source = _make()
+    rows = source._rows_from_df(
+        pd.DataFrame(
+            [
+                {
+                    "post_id": "ok",
+                    "author": "analyst",
+                    "full_text": "bounded",
+                    "url": "https://guba.eastmoney.com/ok",
+                    "content_hash": "0" * 64,
+                },
+                {
+                    "post_id": "i" * 129,
+                    "full_text": "bad id",
+                    "url": "https://guba.eastmoney.com/id",
+                },
+                {
+                    "post_id": "author",
+                    "author": "作" * 257,
+                    "full_text": "bad author",
+                    "url": "https://guba.eastmoney.com/author",
+                },
+                {
+                    "post_id": "text",
+                    "full_text": "文" * 21_846,
+                    "url": "https://guba.eastmoney.com/text",
+                },
+                {
+                    "post_id": "nul",
+                    "full_text": "bad\x00text",
+                    "url": "https://guba.eastmoney.com/nul",
+                },
+            ]
+        ),
+        raw_path=None,
+    )
+
+    assert [row["post_id"] for row in rows] == ["ok"]
+    assert rows[0]["content_hash"] != "0" * 64
+
+
 def test_hostile_exception_text_never_reaches_results_health_or_logs(caplog):
     source = _Source({"retry_count": 1})
     reports = []
@@ -232,6 +277,58 @@ def test_hostile_exception_text_never_reaches_results_health_or_logs(caplog):
     assert result["error"] == "ValueError"
     assert "hostile-body" not in combined
     assert "proxy-password" not in combined
+
+
+def test_observability_uses_only_scoped_censorwatch_cache(monkeypatch, tmp_path):
+    import censorwatch.runtime_secrets as runtime_secrets
+
+    writer_url = tmp_path / "writer-cache-url"
+    writer_url.write_text(
+        "redis://censorwatch_cache_writer:secret@redis-censorwatch-data:6379/2\n",
+        encoding="utf-8",
+    )
+    writer_url.chmod(0o640)
+    monkeypatch.setattr(runtime_secrets, "_SECRET_OWNER_UID", os.getuid())
+    monkeypatch.setattr(runtime_secrets, "_SECRET_READER_GID", os.getgid())
+    monkeypatch.setenv("CENSORWATCH_ENABLED", "1")
+    monkeypatch.setenv("CENSORWATCH_REDIS_WRITER_URL_FILE", str(writer_url))
+    monkeypatch.setenv("REDIS_URL", "redis://shared-primary:6379/0")
+
+    source = _make()
+    assert source._circuit_breaker.redis_url.startswith(
+        "redis://censorwatch_cache_writer:"
+    )
+    assert source._circuit_breaker.REDIS_KEY_PREFIX == "censorwatch:circuit_breaker:"
+
+    class FakeCache:
+        def __init__(self):
+            self.sets = []
+            self.closed = False
+
+        def set(self, key, value, **kwargs):
+            self.sets.append((key, json.loads(value), kwargs))
+
+        def close(self):
+            self.closed = True
+
+    caches = []
+
+    def open_cache():
+        cache = FakeCache()
+        caches.append(cache)
+        return cache
+
+    monkeypatch.setattr("censorwatch.cache.open_writer_cache", open_cache)
+    source._report_health("success", "bounded")
+    source._consecutive_failures = 3
+    source._maybe_alert()
+
+    assert [cache.sets[0][0] for cache in caches] == [
+        "health:test_source",
+        "censorwatch:alert:test_source",
+    ]
+    assert all(cache.sets[0][2] == {"ex": 7200} for cache in caches)
+    assert all(cache.closed for cache in caches)
 
 
 @pytest.mark.parametrize("value", (None, "", "bad\nsource", "a" * 65))
