@@ -73,6 +73,14 @@
       "title": "Silence index: stale"
     },
     {
+      "id": "health-net4people",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "net4people",
+      "summary": "freshness deadline has passed",
+      "title": "Community blocking log: stale"
+    },
+    {
       "id": "health-public-deletion-ledgers",
       "kind": "health",
       "severity": "notice",
@@ -81,12 +89,36 @@
       "title": "Public deletion ledgers: stale"
     },
     {
+      "id": "health-greatfire-context",
+      "kind": "health",
+      "severity": "notice",
+      "source_id": "greatfire-context",
+      "summary": "freshness deadline has passed",
+      "title": "GreatFire attributed verdicts: stale"
+    },
+    {
       "id": "health-peer-context",
       "kind": "health",
       "severity": "notice",
       "source_id": "peer-context",
       "summary": "freshness deadline has passed",
       "title": "Attributed peer-context warehouse: stale"
+    },
+    {
+      "id": "health-undertext",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "undertext",
+      "summary": "freshness deadline has passed",
+      "title": "UNDERTEXT differential fusion: stale"
+    },
+    {
+      "id": "health-research-corpus",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "research-corpus",
+      "summary": "freshness deadline has passed",
+      "title": "Research-corpus metadata: stale"
     },
     {
       "id": "health-ooni-gfw",
@@ -161,6 +193,14 @@
       "title": "Baike public snapshot: stale"
     },
     {
+      "id": "health-github-refuge",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "github-refuge",
+      "summary": "freshness deadline has passed",
+      "title": "GitHub refuge watch: stale"
+    },
+    {
       "id": "health-app-storefront",
       "kind": "health",
       "severity": "warning",
@@ -185,6 +225,22 @@
       "title": "Believability read: degraded"
     },
     {
+      "id": "health-generative-firewall",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "generative-firewall",
+      "summary": "freshness deadline has passed",
+      "title": "Generative Firewall Index: stale"
+    },
+    {
+      "id": "health-anchors",
+      "kind": "health",
+      "severity": "warning",
+      "source_id": "anchors",
+      "summary": "freshness deadline has passed",
+      "title": "Integrity anchors: stale"
+    },
+    {
       "id": "health-nemesis",
       "kind": "health",
       "severity": "notice",
@@ -193,24 +249,24 @@
       "title": "Private runtime bridge: stale"
     }
   ],
-  "generated_at": "2026-08-25T01:49:01Z",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 15 are live. Health qualifiers: 2 degraded, 22 stale.",
+  "generated_at": "2026-08-25T11:30:34Z",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 8 are live. Health qualifiers: 2 degraded, 29 stale.",
   "health": {
     "counts": {
       "corrupt": 0,
       "degraded": 2,
-      "live": 15,
+      "live": 8,
       "missing": 0,
-      "stale": 22
+      "stale": 29
     },
     "live_definition": "valid source timestamp within its deadline, not future-dated, and no explicit upstream degraded status or signal-specific semantic health failure; a complete believability collection may be live while its drift analysis warms up",
     "reporting_definition": "valid JSON object with a valid source timestamp; may be live, degraded or stale",
-    "required_live": 14,
+    "required_live": 8,
     "required_reporting": 31,
     "required_total": 31,
     "status": "degraded"
   },
-  "input_commit": "2efdde0e3526485460ad619bdebb7b2d4496c9f5",
+  "input_commit": "15812e48f14f2a0b12cc59dc1687bc5b91217982",
   "layers": [
     {
       "id": "command",
@@ -230,8 +286,8 @@
     },
     {
       "id": "attention",
-      "n_degraded": 6,
-      "n_live": 4,
+      "n_degraded": 9,
+      "n_live": 1,
       "n_reporting": 10,
       "n_total": 10,
       "signal_ids": [
@@ -251,8 +307,8 @@
     },
     {
       "id": "network",
-      "n_degraded": 6,
-      "n_live": 3,
+      "n_degraded": 7,
+      "n_live": 2,
       "n_reporting": 9,
       "n_total": 9,
       "signal_ids": [
@@ -271,8 +327,8 @@
     },
     {
       "id": "erasure",
-      "n_degraded": 4,
-      "n_live": 3,
+      "n_degraded": 5,
+      "n_live": 2,
       "n_reporting": 7,
       "n_total": 7,
       "signal_ids": [
@@ -305,26 +361,26 @@
     },
     {
       "id": "models",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "generative-firewall"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Generative firewall"
     },
     {
       "id": "integrity",
-      "n_degraded": 0,
-      "n_live": 1,
+      "n_degraded": 1,
+      "n_live": 0,
       "n_reporting": 1,
       "n_total": 1,
       "signal_ids": [
         "anchors"
       ],
-      "status": "healthy",
+      "status": "degraded",
       "title": "Integrity and witnessing"
     },
     {
@@ -342,7 +398,7 @@
   ],
   "method": "Deterministic offline roll-up of declared source files. Source payloads that fit the public embed bound are retained in full; larger source files keep health, metrics and a compact prefix, with complete bytes at raw_url matching input.sha256. Freshness is evaluated only from source timestamps and declared deadlines; no missing value is estimated.",
   "method_version": 1,
-  "n_signals_live": 15,
+  "n_signals_live": 8,
   "n_signals_reporting": 39,
   "n_signals_total": 39,
   "schema_version": "osint-china.v1",
@@ -352,7 +408,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 8.44,
+        "age_hours": 18.133,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -671,7 +727,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:21:11Z",
       "health": {
-        "age_hours": 23.464,
+        "age_hours": 33.156,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -894,7 +950,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 8.44,
+        "age_hours": 18.133,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -1033,7 +1089,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 8.44,
+        "age_hours": 18.133,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -1613,7 +1669,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T20:22:36Z",
       "health": {
-        "age_hours": 8.44,
+        "age_hours": 18.133,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -2015,7 +2071,7 @@
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-24T11:07:05Z",
       "health": {
-        "age_hours": 21.699,
+        "age_hours": 31.391,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -2506,7 +2562,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:17:50Z",
       "health": {
-        "age_hours": 23.52,
+        "age_hours": 33.212,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -2808,7 +2864,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T08:55:38Z",
       "health": {
-        "age_hours": 19.89,
+        "age_hours": 29.582,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4266,7 +4322,7 @@
       "cadence_hours": 1,
       "freshness_deadline": "2026-08-24T18:19:03Z",
       "health": {
-        "age_hours": 10.499,
+        "age_hours": 20.192,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -4566,7 +4622,7 @@
       "cadence_hours": 168,
       "freshness_deadline": "2026-09-01T05:07:24Z",
       "health": {
-        "age_hours": 20.694,
+        "age_hours": 30.386,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -4878,12 +4934,12 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:22Z",
       "health": {
-        "age_hours": 23.644,
+        "age_hours": 33.336,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "net4people",
@@ -4893,7 +4949,7 @@
         "sha256": "bb83afe9ca40e1a8b833248d852f2d473231aa048103f790b465ef3eab14486d"
       },
       "layer": "attention",
-      "live": true,
+      "live": false,
       "method": "ingests a public overseas GitHub repo's issues; probes nothing (vantage-insensitive)",
       "method_version": 1,
       "metric": {
@@ -5157,15 +5213,15 @@
       "scope": "community log of China network-blocking events and circumvention developments — the qualitative companion to the OONI anomaly signal",
       "source": "net4people/bbs GitHub issues (github.com/net4people/bbs)",
       "source_timestamp": "2026-08-24T02:10:22Z",
-      "status": "live",
-      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. Latest payload reports recent events at 11 count.",
+      "status": "stale",
+      "summary": "Tracks qualitative China blocking and circumvention reports from the net4people community log. The retained payload is stale: source timestamp 2026-08-24T02:10:22Z passed its freshness deadline 2026-08-25T04:10:22Z, so it is not labelled live. Latest payload reports recent events at 11 count.",
       "title": "Community blocking log"
     },
     {
       "cadence_hours": 3,
       "freshness_deadline": "2026-08-24T06:08:00Z",
       "health": {
-        "age_hours": 26.684,
+        "age_hours": 36.376,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -5514,12 +5570,12 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T02:33:11Z",
       "health": {
-        "age_hours": 19.264,
+        "age_hours": 28.956,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "greatfire-context",
@@ -5529,7 +5585,7 @@
         "sha256": "4d5715dd5101d63103cee737aead33677ea8f1d09b1d4ba13ae3da7b02b6836d"
       },
       "layer": "network",
-      "live": true,
+      "live": false,
       "method": "Keyless /api/url/ and /api/verdict lookups for already-held Palimpsest URLs. Per-test history discarded. Not a 700k catalog crawl.",
       "method_version": 1,
       "metric": {
@@ -6679,15 +6735,15 @@
       "scope": "90-day host verdicts Palimpsest already holds.",
       "source": "GreatFire Analyzer open API (https://en.greatfire.org/data), CC BY 4.0",
       "source_timestamp": "2026-08-24T06:33:11Z",
-      "status": "live",
-      "summary": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements. Latest payload reports GreatFire verdicts at 22 count across 55 URLs queried.",
+      "status": "stale",
+      "summary": "Caches GreatFire Analyzer 90-day verdicts for URLs Palimpsest already holds. Palimpsest is not the origin of those measurements. The retained payload is stale: source timestamp 2026-08-24T06:33:11Z passed its freshness deadline 2026-08-25T02:33:11Z, so it is not labelled live. Latest payload reports GreatFire verdicts at 22 count across 55 URLs queried.",
       "title": "GreatFire attributed verdicts"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:48:00Z",
       "health": {
-        "age_hours": 19.017,
+        "age_hours": 28.709,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -7172,12 +7228,12 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-25T05:58:43Z",
       "health": {
-        "age_hours": 9.838,
+        "age_hours": 19.531,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "undertext",
@@ -7187,7 +7243,7 @@
         "sha256": "b1bdd039a2018048a730d003cc483ebf094c081598397fe8f5c745819e6b5750"
       },
       "layer": "attention",
-      "live": true,
+      "live": false,
       "method": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
       "method_version": 1,
       "metric": {
@@ -7595,20 +7651,20 @@
       "scope": "Fat public-evidence objects reconstructed from already-public Palimpsest readings, plus an optional Wikipedia-only live surface. Live Weibo/Baidu/Baike fetches stay disabled on this runner. Article bodies that were never captured stay unnamed as missing. The Common Crawl warehouse is never created or scraped from here.",
       "source": "UNDERTEXT Palimpsest reconstruction: Wayback + Weibo board + DDTI + public deletion ledgers + official first-seen + news-wire-live + Wikipedia gazetteer RC when those readings exist, clustered by public URL, with GDELT/OONI/Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present",
       "source_timestamp": "2026-08-24T15:58:43Z",
-      "status": "live",
-      "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. Latest payload reports observations at 57 count.",
+      "status": "stale",
+      "summary": "Fuses Wayback, Weibo-board and DDTI public readings into shared observation records; optional Wikipedia-only live surfaces stay gated. The retained payload is stale: source timestamp 2026-08-24T15:58:43Z passed its freshness deadline 2026-08-25T05:58:43Z, so it is not labelled live. Latest payload reports observations at 57 count.",
       "title": "UNDERTEXT differential fusion"
     },
     {
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:11:10Z",
       "health": {
-        "age_hours": 23.631,
+        "age_hours": 33.323,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": "success"
       },
       "id": "research-corpus",
@@ -7618,7 +7674,7 @@
         "sha256": "6ce2fea34433fbd756039a201a7dbf6dfd2c4ea8bf84f1e432294f08d09858c7"
       },
       "layer": "attention",
-      "live": true,
+      "live": false,
       "method": "one bounded keyless Git smart-HTTP ref advertisement per source; exact default-branch cursor plus aggregate ref-count deltas",
       "method_version": 1,
       "metric": {
@@ -7835,15 +7891,15 @@
       "scope": "github/gov-takedowns, github/dmca, citizenlab/test-lists, citizenlab/chat-censorship, and gfwlist/gfwlist",
       "source": "five statically allowlisted public Git repositories on github.com",
       "source_timestamp": "2026-08-24T02:11:10Z",
-      "status": "live",
-      "summary": "Metadata-only Git ref advertisements for five allowlisted public research corpora; blobs and keywords stay unpublished. Latest payload reports sources at 5 count.",
+      "status": "stale",
+      "summary": "Metadata-only Git ref advertisements for five allowlisted public research corpora; blobs and keywords stay unpublished. The retained payload is stale: source timestamp 2026-08-24T02:11:10Z passed its freshness deadline 2026-08-25T04:11:10Z, so it is not labelled live. Latest payload reports sources at 5 count.",
       "title": "Research-corpus metadata"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:00:59Z",
       "health": {
-        "age_hours": 23.801,
+        "age_hours": 33.493,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8174,7 +8230,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:07:57Z",
       "health": {
-        "age_hours": 23.684,
+        "age_hours": 33.377,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -8346,7 +8402,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T08:07:17Z",
       "health": {
-        "age_hours": 19.695,
+        "age_hours": 29.388,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -8523,7 +8579,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:10:02Z",
       "health": {
-        "age_hours": 23.65,
+        "age_hours": 33.342,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -10970,7 +11026,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:04:27Z",
       "health": {
-        "age_hours": 23.743,
+        "age_hours": 33.435,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11021,7 +11077,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T07:52:26Z",
       "health": {
-        "age_hours": 19.943,
+        "age_hours": 29.636,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -11095,7 +11151,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:27:09Z",
       "health": {
-        "age_hours": 23.364,
+        "age_hours": 33.057,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11174,7 +11230,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T14:57:39Z",
       "health": {
-        "age_hours": 48.856,
+        "age_hours": 58.548,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11296,7 +11352,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T20:31:11Z",
       "health": {
-        "age_hours": 19.297,
+        "age_hours": 28.99,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -11428,7 +11484,7 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T17:58:43Z",
       "health": {
-        "age_hours": 9.838,
+        "age_hours": 19.531,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -12165,7 +12221,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-07-31T10:31:16Z",
       "health": {
-        "age_hours": 605.296,
+        "age_hours": 614.988,
         "collector_reason": "Baike collection is disabled pending authorized access; no new observation was made",
         "collector_status": "disabled_no_authorized_access",
         "ok": false,
@@ -12320,7 +12376,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T18:52:24Z",
       "health": {
-        "age_hours": 20.944,
+        "age_hours": 30.636,
         "collector_reason": null,
         "collector_status": "source_refused",
         "ok": false,
@@ -12459,12 +12515,12 @@
       "cadence_hours": 12,
       "freshness_deadline": "2026-08-25T04:10:18Z",
       "health": {
-        "age_hours": 23.645,
+        "age_hours": 33.338,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "github-refuge",
@@ -12474,7 +12530,7 @@
         "sha256": "5c3b67d1e0c5bc8b131bbda772797975668b53f76aa64c6fcc6d2adb24946e77"
       },
       "layer": "erasure",
-      "live": true,
+      "live": false,
       "method": "See the complete embedded upstream payload and its raw feed",
       "method_version": 1,
       "metric": {
@@ -13114,15 +13170,15 @@
       "scope": "pressure on censored-material refuge repos: takedowns, legal blocks, visibility drops, preservation bursts",
       "source": "GitHub REST API (public pressure metadata only)",
       "source_timestamp": "2026-08-24T02:10:18Z",
-      "status": "live",
-      "summary": "Watches public pressure metadata for repositories preserving censored material. Latest payload reports pressure events at 1 count across 7 repositories watched.",
+      "status": "stale",
+      "summary": "Watches public pressure metadata for repositories preserving censored material. The retained payload is stale: source timestamp 2026-08-24T02:10:18Z passed its freshness deadline 2026-08-25T04:10:18Z, so it is not labelled live. Latest payload reports pressure events at 1 count across 7 repositories watched.",
       "title": "GitHub refuge watch"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-24T16:13:36Z",
       "health": {
-        "age_hours": 23.59,
+        "age_hours": 33.283,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -13299,7 +13355,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-26T08:06:32Z",
       "health": {
-        "age_hours": 19.708,
+        "age_hours": 29.4,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13404,7 +13460,7 @@
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-23T15:47:39Z",
       "health": {
-        "age_hours": 48.023,
+        "age_hours": 57.715,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,
@@ -13472,7 +13528,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T19:27:00Z",
       "health": {
-        "age_hours": 32.367,
+        "age_hours": 42.059,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13525,7 +13581,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T16:03:19Z",
       "health": {
-        "age_hours": 83.762,
+        "age_hours": 93.454,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13584,7 +13640,7 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T12:32:44Z",
       "health": {
-        "age_hours": 39.271,
+        "age_hours": 48.964,
         "collector_reason": null,
         "collector_status": null,
         "ok": true,
@@ -13741,7 +13797,7 @@
       "cadence_hours": 720,
       "freshness_deadline": "2026-10-03T03:23:09Z",
       "health": {
-        "age_hours": 162.431,
+        "age_hours": 172.124,
         "collector_reason": null,
         "collector_status": "partial_observation",
         "ok": false,
@@ -13809,12 +13865,12 @@
       "cadence_hours": 24,
       "freshness_deadline": "2026-08-25T10:02:43Z",
       "health": {
-        "age_hours": 41.772,
+        "age_hours": 51.464,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "generative-firewall",
@@ -13824,7 +13880,7 @@
         "sha256": "3daacc7b91b056e31570b5c1250b7472b2d729fcc929b87b9fa50d4b25633618"
       },
       "layer": "models",
-      "live": true,
+      "live": false,
       "method": "k5-wilson95",
       "method_version": 4,
       "metric": {
@@ -16083,20 +16139,20 @@
       "scope": "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank.",
       "source": "Palimpsest Generative Firewall controlled model evaluation",
       "source_timestamp": "2026-08-23T08:02:43Z",
-      "status": "live",
-      "summary": "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank. Latest payload reports GFI at 25 index across 20 evaluated cells.",
+      "status": "stale",
+      "summary": "Measures answer, refusal and party-line behaviour on a controlled China-sensitive prompt bank. The retained payload is stale: source timestamp 2026-08-23T08:02:43Z passed its freshness deadline 2026-08-25T10:02:43Z, so it is not labelled live. Latest payload reports GFI at 25 index across 20 evaluated cells.",
       "title": "Generative Firewall Index"
     },
     {
       "cadence_hours": 6,
       "freshness_deadline": "2026-08-25T06:50:02Z",
       "health": {
-        "age_hours": 8.983,
+        "age_hours": 18.675,
         "collector_reason": null,
         "collector_status": null,
-        "ok": true,
+        "ok": false,
         "pipeline_checked_at": null,
-        "reason": "source timestamp is within its declared freshness deadline",
+        "reason": "freshness deadline has passed",
         "upstream_status": null
       },
       "id": "anchors",
@@ -16106,7 +16162,7 @@
         "sha256": "2a2488618ae17607fa93ac80057ca02bc205f86a48c6b272765be18c0c09143b"
       },
       "layer": "integrity",
-      "live": true,
+      "live": false,
       "method": "Merkle roots over committed ledgers with external timestamp witnesses",
       "method_version": null,
       "metric": null,
@@ -16134,15 +16190,15 @@
       "scope": "Publishes ledger roots and external witness status for independent integrity checks.",
       "source": "Palimpsest sealed ledgers, OpenTimestamps and Internet Archive witnesses",
       "source_timestamp": "2026-08-24T16:50:02Z",
-      "status": "live",
-      "summary": "Publishes ledger roots and external witness status for independent integrity checks.",
+      "status": "stale",
+      "summary": "Publishes ledger roots and external witness status for independent integrity checks. The retained payload is stale: source timestamp 2026-08-24T16:50:02Z passed its freshness deadline 2026-08-25T06:50:02Z, so it is not labelled live.",
       "title": "Integrity anchors"
     },
     {
       "cadence_hours": 0.25,
       "freshness_deadline": "2026-08-23T02:14:16Z",
       "health": {
-        "age_hours": 48.579,
+        "age_hours": 58.272,
         "collector_reason": null,
         "collector_status": null,
         "ok": false,

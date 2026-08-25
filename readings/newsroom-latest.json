@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 15 are live. Health qualifiers: 2 degraded, 22 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 8 are live. Health qualifiers: 2 degraded, 29 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-25T01:49:01Z",
+  "generated_at": "2026-08-25T11:30:34Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "2efdde0e3526485460ad619bdebb7b2d4496c9f5",
+  "source_commit": "15812e48f14f2a0b12cc59dc1687bc5b91217982",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 15,
+    "live": 8,
     "status": "degraded",
     "counts": {
-      "live": 15,
+      "live": 8,
       "degraded": 2,
-      "stale": 22,
+      "stale": 29,
       "missing": 0,
       "corrupt": 0
     }
@@ -606,20 +606,20 @@
       "slug": "community-blocking-log",
       "url": "https://palimpsest.info/news/community-blocking-log/",
       "signal_id": "net4people",
-      "headline": "The community log records 11 recent blocking or circumvention events",
-      "dek": "Public issue reports add qualitative context to instrumented network measurements without being counted as probes.",
+      "headline": "Community blocking log: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 6,
       "type": "measurement",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:10:22Z",
       "modified_at": "2026-08-24T02:10:22Z",
-      "claim_fingerprint": "sha256:e8e3ad3576c9ab05ff777018f8b1f2ea2c62b7a0caef5c54a824db08149766b7",
+      "claim_fingerprint": "sha256:abccaa300a424567a425dc68e858f3846ba02470d1d1bdb97759a4f93fa9e700",
       "metric": {
-        "label": "recent events",
-        "value": 11,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -627,8 +627,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The configured recent window contains 11 qualifying events in the public community log."
+          "type": "availability",
+          "statement": "No current finding is published for Community blocking log because the source status is stale."
         }
       ],
       "evidence": {
@@ -645,6 +645,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Community reports are self-selected qualitative observations and do not estimate population prevalence."
       ],
       "related_signal_ids": [
@@ -711,20 +712,20 @@
       "slug": "undertext-differential-fusion",
       "url": "https://palimpsest.info/news/undertext-differential-fusion/",
       "signal_id": "undertext",
-      "headline": "UNDERTEXT fuses 57 public observations across archive and board readings",
-      "dek": "The fusion remaps already-published Wayback, Weibo-board and DDTI records onto one observation schema without inventing a live deletion round.",
+      "headline": "UNDERTEXT differential fusion: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 8,
       "type": "analysis",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T15:58:43Z",
       "modified_at": "2026-08-24T15:58:43Z",
-      "claim_fingerprint": "sha256:a146a1121154d06f4826163935b43d6633f7ad15cd6d56735b7bec49a212aabf",
+      "claim_fingerprint": "sha256:4bd4edc49218e2e302a6d81d19577f713b49ca2341a10bd6bc8150a3064abd38",
       "metric": {
-        "label": "observations",
-        "value": 57,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -732,8 +733,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current fusion contains 57 observations reconstructed from committed public readings."
+          "type": "availability",
+          "statement": "No current finding is published for UNDERTEXT differential fusion because the source status is stale."
         }
       ],
       "evidence": {
@@ -750,6 +751,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Fusion inherits the limits of its inputs; archive-status rows are not relabelled as deletions, and optional Wikipedia live surfaces stay gated."
       ],
       "related_signal_ids": [
@@ -763,20 +765,20 @@
       "slug": "research-corpus-metadata",
       "url": "https://palimpsest.info/news/research-corpus-metadata/",
       "signal_id": "research-corpus",
-      "headline": "The research-corpus ledger tracks 5 allowlisted public repositories",
-      "dek": "Only Git ref advertisements and default-branch cursors are published; notice bodies, keyword lists and routing rules stay unpublished.",
+      "headline": "Research-corpus metadata: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "attention",
       "order": 9,
       "type": "measurement",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:11:10Z",
       "modified_at": "2026-08-24T02:11:10Z",
-      "claim_fingerprint": "sha256:345b93d79499a4021b7eebdb2d6eaf0b76660096844feb54e0083bf224c4f2e7",
+      "claim_fingerprint": "sha256:2cc56faef84aa4fce7145c798d57f60772dc13c2d5d529d7b82e9e27d9368c08",
       "metric": {
-        "label": "sources",
-        "value": 5,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -784,8 +786,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current metadata-only ledger covers 5 allowlisted research repositories."
+          "type": "availability",
+          "statement": "No current finding is published for Research-corpus metadata because the source status is stale."
         }
       ],
       "evidence": {
@@ -802,6 +804,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "A commit cursor change is not a claim about why the repository moved, and unpublished notice bodies cannot be inferred from the metadata."
       ],
       "related_signal_ids": [
@@ -1290,29 +1293,29 @@
       "slug": "greatfire-attributed-verdicts",
       "url": "https://palimpsest.info/news/greatfire-attributed-verdicts/",
       "signal_id": "greatfire-context",
-      "headline": "GreatFire's cache holds 22 90-day verdicts for already-held Palimpsest URLs",
-      "dek": "The GreatFire Analyzer open API is credited by name and date. Palimpsest is not the origin of these measurements and does not crawl the catalog.",
+      "headline": "GreatFire attributed verdicts: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 9,
       "type": "measurement",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T06:33:11Z",
       "modified_at": "2026-08-24T06:33:11Z",
-      "claim_fingerprint": "sha256:9f4d966f0ea9513d567dd2554e6c82b60cd55d4659c039132bff9b582fdf349e",
+      "claim_fingerprint": "sha256:b3454f495a8be309e4212ca1f602e4a34b54992e80667f291c519ce5a3576a88",
       "metric": {
-        "label": "GreatFire verdicts",
-        "value": 22,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "URLs queried",
-          "value": 55
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current GreatFire context cache contains 22 compact 90-day verdicts."
+          "type": "availability",
+          "statement": "No current finding is published for GreatFire attributed verdicts because the source status is stale."
         }
       ],
       "evidence": {
@@ -1329,6 +1332,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "A GreatFire verdict is that project's dated measurement, not Palimpsest capture, and it does not prove Party motive."
       ],
       "related_signal_ids": [
@@ -1501,29 +1505,29 @@
       "slug": "github-refuge-watch",
       "url": "https://palimpsest.info/news/github-refuge-watch/",
       "signal_id": "github-refuge",
-      "headline": "Public metadata records 1 pressure event across 7 watched repositories",
-      "dek": "The watch preserves public repository-level pressure signals without collecting contributor identities.",
+      "headline": "GitHub refuge watch: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "erasure",
       "order": 4,
       "type": "measurement",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T02:10:18Z",
       "modified_at": "2026-08-24T02:10:18Z",
-      "claim_fingerprint": "sha256:37d96190b31fb48e06be8d5cf1f000aada165a2a2529f16d8c84de1939181b24",
+      "claim_fingerprint": "sha256:6fa24b3b529ea744c5b3e3b66eb40c8601996a9977070aaf321eaae149c2da7a",
       "metric": {
-        "label": "pressure events",
-        "value": 1,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "repositories watched",
-          "value": 7
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current public-metadata watch records 1 pressure event among 7 configured repositories."
+          "type": "availability",
+          "statement": "No current finding is published for GitHub refuge watch because the source status is stale."
         }
       ],
       "evidence": {
@@ -1540,6 +1544,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Repository metadata can show public pressure or disappearance but cannot establish the actor or motive behind a change."
       ],
       "related_signal_ids": [
@@ -1970,29 +1975,29 @@
       "slug": "generative-firewall-index",
       "url": "https://palimpsest.info/news/generative-firewall-index/",
       "signal_id": "generative-firewall",
-      "headline": "The Generative Firewall Index reads 25 across 20 evaluated cells",
-      "dek": "A controlled prompt bank measures answer, refusal and party-line behaviour by model and concept.",
+      "headline": "Generative Firewall Index: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "models",
       "order": 1,
       "type": "measurement",
       "priority": "lead",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-23T08:02:43Z",
       "modified_at": "2026-08-23T08:02:43Z",
-      "claim_fingerprint": "sha256:b518336c820a3bee2b117ae569bbfee3d011e076b7d1eedcc1b95a299e9ae5af",
+      "claim_fingerprint": "sha256:0bfa3b14c7c791752ef73fc9b37fd6e3bd1d1630a585f16a73ef961d77358116",
       "metric": {
-        "label": "GFI",
-        "value": 25.0,
-        "unit": "index",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "evaluated cells",
-          "value": 20
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current controlled evaluation reports a Generative Firewall Index of 25 across 20 cells."
+          "type": "availability",
+          "statement": "No current finding is published for Generative Firewall Index because the source status is stale."
         }
       ],
       "evidence": {
@@ -2009,6 +2014,7 @@
         "version": 4
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The index describes a fixed prompt-and-model evaluation grid; it does not generalize to every prompt, language or deployment route."
       ],
       "related_signal_ids": [
@@ -2021,16 +2027,16 @@
       "slug": "integrity-anchors",
       "url": "https://palimpsest.info/news/integrity-anchors/",
       "signal_id": "anchors",
-      "headline": "Palimpsest's public ledgers have a current integrity-anchor reading",
-      "dek": "Merkle roots, timestamp proofs and archive witnesses let readers check whether the published record changed.",
+      "headline": "Integrity anchors: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "integrity",
       "order": 1,
       "type": "integrity",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T16:50:02Z",
       "modified_at": "2026-08-24T16:50:02Z",
-      "claim_fingerprint": "sha256:5c34db2d6b74381e5948a876373eaad10fcc378364f3fbe172052d57567ff2ac",
+      "claim_fingerprint": "sha256:07714d3d014babd2730fe80391db82a00a1df81bc4cd55c0f0533c73dcb6fdef",
       "metric": {
         "label": null,
         "value": null,
@@ -2042,8 +2048,8 @@
       },
       "claims": [
         {
-          "type": "integrity",
-          "statement": "A current aggregate integrity-anchor record is published for the Palimpsest ledgers."
+          "type": "availability",
+          "statement": "No current finding is published for Integrity anchors because the source status is stale."
         }
       ],
       "evidence": {
@@ -2060,6 +2066,7 @@
         "version": null
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "An integrity witness can detect later alteration of the sealed record; it does not independently validate every underlying claim."
       ],
       "related_signal_ids": [
