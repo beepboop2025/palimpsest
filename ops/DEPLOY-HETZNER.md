@@ -251,7 +251,12 @@ git fetch --force --prune --no-tags \
 git merge-base --is-ancestor \
   "$EXPECTED_DEPLOY_SHA" refs/remotes/origin/main
 git switch --detach "$EXPECTED_DEPLOY_SHA"
-test -z "$(git status --porcelain=v1 --untracked-files=all)"
+if ! first_boot_git_status="$(git status \
+    --porcelain=v1 --untracked-files=all)"; then
+  printf 'failed to read first-boot checkout status\n' >&2
+  exit 1
+fi
+test -z "$first_boot_git_status"
 ops/docker/prod-compose build
 sudo bash ops/investigative-analysis/install-host-bundle.sh --certify-image
 sudo bash ops/osint-sync/install-host-bundle.sh
@@ -1004,6 +1009,67 @@ the reviewed C0 Git object and prove its blob identity before executing it:
 
 ```bash
 set -Eeuo pipefail
+C0_TRANSACTION_COMPLETE=0
+SEED_TMP=''
+RELEASE_DOCKER_CONFIG=''
+c0_cleanup_private_state() {
+  local cleanup_rc=0 current_uid current_gid seed_tmp docker_config
+  current_uid="$(id -u)" || return 1
+  current_gid="$(id -g)" || return 1
+  seed_tmp="${SEED_TMP:-}"
+  docker_config="${RELEASE_DOCKER_CONFIG:-}"
+  if [[ -n "$seed_tmp" && ( -e "$seed_tmp" || -L "$seed_tmp" ) ]]; then
+    if ! [[ "$seed_tmp" \
+        =~ ^/tmp/palimpsest-c0-seed\.[A-Za-z0-9]{6}$ ]] \
+        || [[ -L "$seed_tmp" || ! -f "$seed_tmp" ]] \
+        || [[ "$(stat -c '%u:%g:%a:%h' "$seed_tmp" 2>/dev/null)" \
+          != "${current_uid}:${current_gid}:700:1" ]]; then
+      printf 'C0 seed temporary file failed cleanup authentication\n' >&2
+      cleanup_rc=1
+    elif ! rm -f -- "$seed_tmp"; then
+      cleanup_rc=1
+    fi
+  fi
+  if [[ -n "$docker_config" \
+      && ( -e "$docker_config" || -L "$docker_config" ) ]]; then
+    if ! [[ "$docker_config" \
+        =~ ^/tmp/palimpsest-c0-docker\.[A-Za-z0-9]{6}$ ]] \
+        || [[ -L "$docker_config" || ! -d "$docker_config" ]] \
+        || [[ "$(stat -c '%u:%g:%a' "$docker_config" 2>/dev/null)" \
+          != "${current_uid}:${current_gid}:700" ]]; then
+      printf 'C0 Docker directory failed cleanup authentication\n' >&2
+      cleanup_rc=1
+    elif ! rm -rf -- "$docker_config"; then
+      cleanup_rc=1
+    fi
+  fi
+  return "$cleanup_rc"
+}
+c0_abort() {
+  local original_status="${1:-1}" cleanup_status=0
+  trap - ERR EXIT
+  trap '' HUP INT TERM
+  if (( BASH_SUBSHELL > 0 )); then
+    printf '__PALIMPSEST_COMMAND_SUBSTITUTION_FAILED__\n'
+    exit "$original_status"
+  fi
+  set +e
+  c0_cleanup_private_state || cleanup_status=$?
+  if (( C0_TRANSACTION_COMPLETE == 0 )); then
+    printf 'C0 compatibility seed shell aborted before postproof (%s)\n' \
+      "$original_status" >&2
+    (( original_status != 0 )) || original_status=1
+  elif (( original_status == 0 && cleanup_status != 0 )); then
+    original_status="$cleanup_status"
+  fi
+  (( original_status != 0 || cleanup_status == 0 )) || original_status=1
+  exit "$original_status"
+}
+trap 'c0_abort "$?"' ERR
+trap 'c0_abort "$?"' EXIT
+trap 'c0_abort 129' HUP
+trap 'c0_abort 130' INT
+trap 'c0_abort 143' TERM
 cd /home/palimpsest/palimpsest
 PALIMPSEST_REPO_ROOT="$(pwd -P)"
 C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C0_40_HEX_SHA'
@@ -1048,12 +1114,11 @@ test "$(release_git show \
   "$C0_DEPLOY_SHA:ops/osint-sync/release-mode")" = legacy-mirror
 
 SEED_PATH='ops/osint-sync/deploy-compatibility-seed.sh'
-SEED_TMP="$(mktemp)"
-trap 'rm -f -- "$SEED_TMP"' EXIT
+SEED_TMP="$(mktemp /tmp/palimpsest-c0-seed.XXXXXX)"
+chmod 0700 "$SEED_TMP"
 release_git show "$C0_DEPLOY_SHA:$SEED_PATH" >"$SEED_TMP"
 test "$(release_git hash-object "$SEED_TMP")" \
   = "$(release_git rev-parse "$C0_DEPLOY_SHA:$SEED_PATH")"
-chmod 0700 "$SEED_TMP"
 /usr/bin/env -i HOME=/root LANG=C LC_ALL=C \
   PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
   GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null \
@@ -1068,8 +1133,6 @@ chmod 0700 "$SEED_TMP"
   EXPECTED_PREVIOUS_DEPLOY_SHA="$EXPECTED_PREVIOUS_DEPLOY_SHA" \
   COMMON_CRAWL_WAREHOUSE_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE" \
   /bin/bash "$SEED_TMP"
-rm -f -- "$SEED_TMP"
-trap - EXIT
 
 test "$(sudo cat /etc/palimpsest/deployed-commit)" = "$C0_DEPLOY_SHA"
 test "$(sudo cat \
@@ -1083,6 +1146,9 @@ test "$(sudo python3 -c \
   'import json,sys; print(json.load(open(sys.argv[1]))["status"])' \
   "/var/lib/palimpsest-release/compatibility-seed-$C0_DEPLOY_SHA.json")" \
   = complete
+C0_TRANSACTION_COMPLETE=1
+c0_cleanup_private_state
+trap - ERR EXIT HUP INT TERM
 ```
 
 The root acknowledgement is consumed only when the SSH shell is actually
@@ -1169,6 +1235,92 @@ known state. Do not reconstruct state from guesses.
 
 ```bash
 set -Eeuo pipefail
+cleanup_release_private_state() {
+  local cleanup_rc=0 current_uid current_gid snapshot_dir snapshot_file
+  local docker_config
+  current_uid="$(id -u)" || return 1
+  current_gid="$(id -g)" || return 1
+  snapshot_dir="${RELEASE_ENV_SNAPSHOT_DIR:-}"
+  snapshot_file="${RELEASE_ENV_SNAPSHOT_FILE:-}"
+  docker_config="${RELEASE_DOCKER_CONFIG:-}"
+  unset PALIMPSEST_ENV_FILE
+  if [[ -n "$snapshot_dir" ]]; then
+    if ! [[ "$snapshot_dir" =~ ^/tmp/palimpsest-release-env\.[A-Za-z0-9]{6}$ ]] \
+        || [[ "$snapshot_file" != "$snapshot_dir/production.env" ]]; then
+      printf 'refusing unsafe release environment cleanup target\n' >&2
+      cleanup_rc=1
+    elif [[ -e "$snapshot_dir" || -L "$snapshot_dir" ]]; then
+      if [[ -L "$snapshot_dir" || ! -d "$snapshot_dir" ]] \
+          || [[ "$(stat -c '%u:%g:%a' "$snapshot_dir" 2>/dev/null)" \
+            != "${current_uid}:${current_gid}:700" ]]; then
+        printf 'release environment directory failed cleanup authentication\n' >&2
+        cleanup_rc=1
+      else
+        if [[ -e "$snapshot_file" || -L "$snapshot_file" ]]; then
+          if [[ -L "$snapshot_file" || ! -f "$snapshot_file" ]] \
+              || [[ "$(stat -c '%u:%g:%a:%h' "$snapshot_file" 2>/dev/null)" \
+                != "${current_uid}:${current_gid}:400:1" ]] \
+              || { [[ -n "${RELEASE_ENV_SNAPSHOT_SHA256:-}" ]] \
+                && [[ "$(sha256sum "$snapshot_file" 2>/dev/null \
+                  | awk '{print $1}')" \
+                  != "$RELEASE_ENV_SNAPSHOT_SHA256" ]]; }; then
+            printf 'release environment file failed cleanup authentication\n' >&2
+            cleanup_rc=1
+          elif ! rm -f -- "$snapshot_file"; then
+            printf 'failed to remove release environment snapshot\n' >&2
+            cleanup_rc=1
+          fi
+        fi
+        if [[ ! -e "$snapshot_file" && ! -L "$snapshot_file" ]] \
+            && ! rmdir -- "$snapshot_dir"; then
+          printf 'failed to remove release environment directory\n' >&2
+          cleanup_rc=1
+        fi
+      fi
+    fi
+  fi
+  if [[ -n "$docker_config" ]]; then
+    if ! [[ "$docker_config" \
+        =~ ^/tmp/palimpsest-release-docker\.[A-Za-z0-9]{6}$ ]]; then
+      printf 'refusing unsafe release Docker cleanup target\n' >&2
+      cleanup_rc=1
+    elif [[ -e "$docker_config" || -L "$docker_config" ]]; then
+      if [[ -L "$docker_config" || ! -d "$docker_config" ]] \
+          || [[ "$(stat -c '%u:%g:%a' "$docker_config" 2>/dev/null)" \
+            != "${current_uid}:${current_gid}:700" ]]; then
+        printf 'release Docker directory failed cleanup authentication\n' >&2
+        cleanup_rc=1
+      elif ! rm -rf -- "$docker_config"; then
+        printf 'failed to remove private release Docker directory\n' >&2
+        cleanup_rc=1
+      fi
+    fi
+  fi
+  unset DOCKER_CONFIG
+  return "$cleanup_rc"
+}
+phase1_preflight_abort() {
+  local original_status="${1:-1}" cleanup_status=0
+  trap - ERR EXIT HUP INT TERM
+  if (( BASH_SUBSHELL > 0 )); then
+    printf '__PALIMPSEST_COMMAND_SUBSTITUTION_FAILED__\n'
+    exit "$original_status"
+  fi
+  set +e
+  cleanup_release_private_state || cleanup_status=$?
+  printf 'Phase 1 preflight aborted before release mutation (%s)\n' \
+    "$original_status" >&2
+  if (( original_status == 0 )); then
+    original_status="$cleanup_status"
+  fi
+  (( original_status != 0 )) || original_status=1
+  exit "$original_status"
+}
+trap 'phase1_preflight_abort "$?"' ERR
+trap 'phase1_preflight_abort "$?"' EXIT
+trap 'phase1_preflight_abort 129' HUP
+trap 'phase1_preflight_abort 130' INT
+trap 'phase1_preflight_abort 143' TERM
 cd /home/palimpsest/palimpsest
 test -e .git
 PALIMPSEST_REPO_ROOT="$(pwd -P)"
@@ -1182,10 +1334,102 @@ unset COMPOSE_PROJECT_NAME COMPOSE_FILE COMPOSE_PROFILES COMPOSE_ENV_FILES \
   COMPOSE_PATH_SEPARATOR COMPOSE_IGNORE_ORPHANS COMPOSE_REMOVE_ORPHANS \
   PALIMPSEST_ENV_FILE
 export COMPOSE_PROJECT_NAME=palimpsest
-export PALIMPSEST_ENV_FILE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
-test -f "$PALIMPSEST_ENV_FILE"
-test ! -L "$PALIMPSEST_ENV_FILE"
-test -r "$PALIMPSEST_ENV_FILE"
+PALIMPSEST_ENV_SOURCE="$PALIMPSEST_REPO_ROOT/ops/docker/.env"
+test -f "$PALIMPSEST_ENV_SOURCE"
+test ! -L "$PALIMPSEST_ENV_SOURCE"
+test -r "$PALIMPSEST_ENV_SOURCE"
+PALIMPSEST_ENV_SOURCE_UID="$(id -u palimpsest)"
+PALIMPSEST_ENV_SOURCE_GID="$(id -g palimpsest)"
+test "$(stat -c '%u:%g:%a:%h' "$PALIMPSEST_ENV_SOURCE")" \
+  = "${PALIMPSEST_ENV_SOURCE_UID}:${PALIMPSEST_ENV_SOURCE_GID}:600:1"
+RELEASE_ENV_SNAPSHOT_DIR="$(mktemp -d /tmp/palimpsest-release-env.XXXXXX)"
+chmod 0700 "$RELEASE_ENV_SNAPSHOT_DIR"
+RELEASE_ENV_SNAPSHOT_UID="$(id -u)"
+RELEASE_ENV_SNAPSHOT_GID="$(id -g)"
+[[ "$RELEASE_ENV_SNAPSHOT_UID" =~ ^[0-9]+$ ]]
+[[ "$RELEASE_ENV_SNAPSHOT_GID" =~ ^[0-9]+$ ]]
+RELEASE_ENV_SNAPSHOT_FILE="$RELEASE_ENV_SNAPSHOT_DIR/production.env"
+python3 - "$PALIMPSEST_ENV_SOURCE" "$RELEASE_ENV_SNAPSHOT_FILE" \
+  "$PALIMPSEST_ENV_SOURCE_UID" "$PALIMPSEST_ENV_SOURCE_GID" \
+  "$RELEASE_ENV_SNAPSHOT_UID" "$RELEASE_ENV_SNAPSHOT_GID" <<'PY'
+import os
+import stat
+import sys
+
+(
+    source, destination, source_uid_text, source_gid_text,
+    expected_uid_text, expected_gid_text,
+) = sys.argv[1:]
+source_uid = int(source_uid_text)
+source_gid = int(source_gid_text)
+expected_uid = int(expected_uid_text)
+expected_gid = int(expected_gid_text)
+maximum_bytes = 1024 * 1024
+source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+try:
+    metadata = os.fstat(source_fd)
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_uid != source_uid
+        or metadata.st_gid != source_gid
+        or stat.S_IMODE(metadata.st_mode) != 0o600
+        or metadata.st_nlink != 1
+        or not 0 < metadata.st_size <= maximum_bytes
+    ):
+        raise SystemExit("production Compose environment source is unsafe")
+    payload = bytearray()
+    while True:
+        chunk = os.read(source_fd, min(65536, maximum_bytes + 1 - len(payload)))
+        if not chunk:
+            break
+        payload.extend(chunk)
+        if len(payload) > maximum_bytes:
+            raise SystemExit("production Compose environment exceeds byte ceiling")
+    metadata_after = os.fstat(source_fd)
+    stable_fields = (
+        "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink",
+    )
+    if any(
+        getattr(metadata, field) != getattr(metadata_after, field)
+        for field in stable_fields
+    ) or len(payload) != metadata.st_size:
+        raise SystemExit("production Compose environment changed while reading")
+finally:
+    os.close(source_fd)
+
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+destination_fd = os.open(destination, flags, 0o400)
+try:
+    os.fchmod(destination_fd, 0o400)
+    written = 0
+    while written < len(payload):
+        written += os.write(destination_fd, payload[written:])
+    os.fsync(destination_fd)
+    metadata = os.fstat(destination_fd)
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_uid != expected_uid
+        or metadata.st_gid != expected_gid
+        or stat.S_IMODE(metadata.st_mode) != 0o400
+        or metadata.st_nlink != 1
+        or metadata.st_size != len(payload)
+    ):
+        raise SystemExit("production Compose environment snapshot is unsafe")
+finally:
+    os.close(destination_fd)
+directory_fd = os.open(
+    os.path.dirname(destination),
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+)
+try:
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
+PY
+RELEASE_ENV_SNAPSHOT_SHA256="$(sha256sum "$RELEASE_ENV_SNAPSHOT_FILE" \
+  | awk '{print $1}')"
+[[ "$RELEASE_ENV_SNAPSHOT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+export PALIMPSEST_ENV_FILE="$RELEASE_ENV_SNAPSHOT_FILE"
 RELEASE_DOCKER_CONFIG="$(mktemp -d /tmp/palimpsest-release-docker.XXXXXX)"
 chmod 0700 "$RELEASE_DOCKER_CONFIG"
 export DOCKER_CONFIG="$RELEASE_DOCKER_CONFIG"
@@ -1200,6 +1444,38 @@ release_git() {
     -c protocol.https.allow=always "$@"
 }
 release_compose() {
+  local directory_metadata file_metadata snapshot_sha
+  if [[ "$PALIMPSEST_ENV_FILE" != "$RELEASE_ENV_SNAPSHOT_FILE" ]] \
+      || [[ ! -d "$RELEASE_ENV_SNAPSHOT_DIR" ]] \
+      || [[ -L "$RELEASE_ENV_SNAPSHOT_DIR" ]]; then
+    printf 'release Compose environment directory identity changed\n' >&2
+    return 1
+  fi
+  if ! directory_metadata="$(stat -c '%u:%g:%a' \
+      "$RELEASE_ENV_SNAPSHOT_DIR")" \
+      || [[ "$directory_metadata" \
+        != "${RELEASE_ENV_SNAPSHOT_UID}:${RELEASE_ENV_SNAPSHOT_GID}:700" ]]; then
+    printf 'release Compose environment directory metadata changed\n' >&2
+    return 1
+  fi
+  if [[ ! -f "$RELEASE_ENV_SNAPSHOT_FILE" ]] \
+      || [[ -L "$RELEASE_ENV_SNAPSHOT_FILE" ]]; then
+    printf 'release Compose environment file identity changed\n' >&2
+    return 1
+  fi
+  if ! file_metadata="$(stat -c '%u:%g:%a:%h' \
+      "$RELEASE_ENV_SNAPSHOT_FILE")" \
+      || [[ "$file_metadata" \
+        != "${RELEASE_ENV_SNAPSHOT_UID}:${RELEASE_ENV_SNAPSHOT_GID}:400:1" ]]; then
+    printf 'release Compose environment file metadata changed\n' >&2
+    return 1
+  fi
+  if ! snapshot_sha="$(sha256sum "$RELEASE_ENV_SNAPSHOT_FILE" \
+      | awk '{print $1}')" \
+      || [[ "$snapshot_sha" != "$RELEASE_ENV_SNAPSHOT_SHA256" ]]; then
+    printf 'release Compose environment digest changed\n' >&2
+    return 1
+  fi
   /usr/bin/env -i HOME=/root LANG=C LC_ALL=C \
     PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null \
@@ -1220,7 +1496,12 @@ test ! -L .git/objects/info/alternates
 if [[ -e .git/refs/replace || -L .git/refs/replace ]]; then
   test -d .git/refs/replace
   test ! -L .git/refs/replace
-  test -z "$(find .git/refs/replace -mindepth 1 -print -quit)"
+  if ! replacement_ref="$(find .git/refs/replace \
+      -mindepth 1 -print -quit)"; then
+    printf 'failed to enumerate Git replacement refs\n' >&2
+    exit 1
+  fi
+  test -z "$replacement_ref"
 fi
 if [[ -e .git/packed-refs || -L .git/packed-refs ]]; then
   test -f .git/packed-refs
@@ -1236,6 +1517,12 @@ EXPECTED_PREVIOUS_CHECKOUT_SHA="${EXPECTED_PREVIOUS_CHECKOUT_SHA:-REPLACE_WITH_C
 EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRENT_40_HEX_SHA}"
 COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA}"
 TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward}"
+INTERRUPTED_PHASE1_RECOVERY="${INTERRUPTED_PHASE1_RECOVERY:-0}"
+INTERRUPTED_PHASE1_INCIDENT='2026-08-25-interrupted-phase1'
+INTERRUPTED_PHASE1_MANIFEST_SOURCE="ops/release-recovery/${INTERRUPTED_PHASE1_INCIDENT}.json"
+INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_interrupted_phase1_manifest.py'
+INTERRUPTED_PHASE1_MANIFEST_SHA256='f21ffb99a29902bc849c4c7e0ea0317720f24fa9adcef2068cd0ff40341cf535'
+INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='8b48162a13f719a4500c2297a337655d91dbb28e'
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
 COMMON_CRAWL_DERIVED_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE/derived"
 COMMON_CRAWL_FEATURE_EXPORT="$COMMON_CRAWL_DERIVED_SOURCE/common-crawl-features.jsonl"
@@ -1251,10 +1538,16 @@ BACKUP_RELEASE_QUIESCE_TARGET='/etc/systemd/system/palimpsest-backup.service.d/z
 [[ "$EXPECTED_PREVIOUS_CHECKOUT_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$EXPECTED_PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$COMPATIBLE_ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$INTERRUPTED_PHASE1_RECOVERY" == 0 || "$INTERRUPTED_PHASE1_RECOVERY" == 1 ]]
 test "$TRANSACTION_DIRECTION" = forward
 test "$EXPECTED_DEPLOY_SHA" != "$COMPATIBLE_ROLLBACK_SHA"
 test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
-test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
+if ! release_git_status="$(release_git status \
+    --porcelain=v1 --untracked-files=all)"; then
+  printf 'failed to read release checkout status\n' >&2
+  exit 1
+fi
+test -z "$release_git_status"
 PREVIOUS_DEPLOY_SHA="$(sudo cat /etc/palimpsest/deployed-commit)"
 [[ "$PREVIOUS_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
@@ -1265,12 +1558,32 @@ RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"
 [[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]]
 
 read_enablement() {
-  local state
-  state="$(systemctl is-enabled "$1" 2>/dev/null || true)"
-  [[ -n "$state" ]] || state="not-found"
+  local state enablement_status=0
+  state="$(systemctl is-enabled "$1" 2>/dev/null)" || enablement_status=$?
+  if [[ -z "$state" ]]; then
+    printf 'systemd returned no enablement state for %s (status %s)\n' \
+      "$1" "$enablement_status" >&2
+    return 1
+  fi
   case "$state" in
     enabled|enabled-runtime|disabled|static|indirect|masked|masked-runtime|not-found) ;;
     *) printf 'unexpected enablement for %s: %s\n' "$1" "$state" >&2; return 1 ;;
+  esac
+  printf '%s\n' "$state"
+}
+
+read_active_state() {
+  local state active_status=0
+  state="$(systemctl is-active "$1" 2>/dev/null)" || active_status=$?
+  if [[ -z "$state" ]]; then
+    printf 'systemd returned no active state for %s (status %s)\n' \
+      "$1" "$active_status" >&2
+    return 1
+  fi
+  case "$state" in
+    active|inactive|failed|activating|deactivating|reloading|unknown) ;;
+    *) printf 'unexpected active state for %s: %s\n' \
+         "$1" "$state" >&2; return 1 ;;
   esac
   printf '%s\n' "$state"
 }
@@ -1330,7 +1643,7 @@ test -x /usr/bin/true
 PROOF_PIN_SEQUENCE=0
 ACTIVE_PROOF_PIN=''
 pin_unit_for_proof() {
-  local unit="$1"
+  local unit="$1" pin_state unit_load_state
   if [[ -n "$ACTIVE_PROOF_PIN" ]]; then
     printf 'another systemd proof pin is still active: %s\n' \
       "$ACTIVE_PROOF_PIN" >&2
@@ -1344,10 +1657,11 @@ pin_unit_for_proof() {
     ACTIVE_PROOF_PIN=''
     return 1
   fi
-  if [[ "$(systemctl is-active "$ACTIVE_PROOF_PIN" 2>/dev/null || true)" \
-        == active \
-      && "$(systemctl show --property=LoadState --value \
-        "$unit" 2>/dev/null || true)" == loaded ]]; then
+  if ! pin_state="$(read_active_state "$ACTIVE_PROOF_PIN")" \
+      || ! unit_load_state="$(systemctl show --property=LoadState --value \
+        "$unit" 2>/dev/null)"; then
+    printf 'could not read systemd proof pin state: %s\n' "$unit" >&2
+  elif [[ "$pin_state" == active && "$unit_load_state" == loaded ]]; then
     return 0
   fi
   printf 'could not pin systemd proof state: %s\n' "$unit" >&2
@@ -1360,13 +1674,16 @@ release_proof_pin() {
   local pin="$ACTIVE_PROOF_PIN" state stop_rc=0
   [[ -n "$pin" ]] || return 0
   sudo systemctl stop "$pin" || stop_rc=$?
-  state="$(systemctl is-active "$pin" 2>/dev/null || true)"
+  if ! state="$(read_active_state "$pin")"; then
+    printf 'could not read stopped systemd proof pin: %s\n' "$pin" >&2
+    return 1
+  fi
   if (( stop_rc != 0 )); then
     printf 'could not stop systemd proof pin: %s\n' "$pin" >&2
     return 1
   fi
   case "$state" in
-    inactive|failed|unknown|"") ACTIVE_PROOF_PIN=''; return 0 ;;
+    inactive|failed|unknown) ACTIVE_PROOF_PIN=''; return 0 ;;
     *) printf 'systemd proof pin did not stop: %s (%s)\n' \
          "$pin" "$state" >&2; return 1 ;;
   esac
@@ -1377,23 +1694,32 @@ start_and_verify_oneshot() {
   local previous_invocation invocation condition result status started
   local start_rc=0 release_rc=0
   pin_unit_for_proof "$unit" || return 1
-  previous_invocation="$(systemctl show --property=InvocationID --value \
-    "$unit" 2>/dev/null || true)"
+  if ! previous_invocation="$(systemctl show --property=InvocationID --value \
+      "$unit" 2>/dev/null)"; then
+    printf 'cannot read prior oneshot invocation: %s\n' "$unit" >&2
+    release_proof_pin >/dev/null 2>&1 || true
+    return 1
+  fi
   if systemctl is-failed --quiet "$unit"; then
     sudo systemctl reset-failed "$unit"
   fi
   sudo systemctl start "$unit" || start_rc=$?
-  invocation="$(systemctl show --property=InvocationID --value \
-    "$unit" 2>/dev/null || true)"
-  condition="$(systemctl show --property=ConditionResult --value \
-    "$unit" 2>/dev/null || true)"
-  result="$(systemctl show --property=Result --value \
-    "$unit" 2>/dev/null || true)"
-  status="$(systemctl show --property=ExecMainStatus --value \
-    "$unit" 2>/dev/null || true)"
-  started="$(systemctl show \
-    --property=ExecMainStartTimestampMonotonic --value \
-    "$unit" 2>/dev/null || true)"
+  if ! invocation="$(systemctl show --property=InvocationID --value \
+      "$unit" 2>/dev/null)" \
+      || ! condition="$(systemctl show --property=ConditionResult --value \
+        "$unit" 2>/dev/null)" \
+      || ! result="$(systemctl show --property=Result --value \
+        "$unit" 2>/dev/null)" \
+      || ! status="$(systemctl show --property=ExecMainStatus --value \
+        "$unit" 2>/dev/null)" \
+      || ! started="$(systemctl show \
+        --property=ExecMainStartTimestampMonotonic --value \
+        "$unit" 2>/dev/null)"; then
+    printf 'cannot read completed oneshot proof properties: %s\n' \
+      "$unit" >&2
+    release_proof_pin >/dev/null 2>&1 || true
+    return 1
+  fi
   release_proof_pin || release_rc=$?
   if (( start_rc == 0 && release_rc == 0 )) \
       && [[ "$condition" == yes && "$result" == success && "$status" == 0 \
@@ -1459,6 +1785,9 @@ CELERY_WORKER_SERVICES=(
 declare -A COMPOSE_WAS_RUNNING COMPOSE_CONTAINER_ID_BEFORE
 declare -A COMPOSE_IMAGE_ID_BEFORE COMPOSE_HOSTNAME_BEFORE
 declare -A COMPOSE_NODE_BEFORE COMPOSE_QUEUE_BY_SERVICE
+declare -A RECOVERY_FAILED_CONTAINER_ID RECOVERY_FAILED_IMAGE_ID
+declare -A RECOVERY_FAILED_REVISION
+declare -A RECOVERY_INFRA_CONTAINER_ID RECOVERY_INFRA_IMAGE_ID
 COMPOSE_QUEUE_BY_SERVICE[worker]=celery
 COMPOSE_QUEUE_BY_SERVICE[worker-collectors]=collectors
 COMPOSE_QUEUE_BY_SERVICE[worker-warehouse]=warehouse
@@ -1475,45 +1804,58 @@ test "$ACTUAL_COMPOSE_CONFIG_SERVICES" = "$EXPECTED_COMPOSE_CONFIG_SERVICES"
 # The official Python application image installs its interpreter under
 # /usr/local. Prove that ABI before arming the fail-safe or stopping a producer:
 # a host-style /usr/bin path inside the container would otherwise turn a
-# read-only Celery fence into an outage.
-for compose_service in worker worker-collectors worker-warehouse; do
-  if ! interpreter_container_id="$(release_compose \
-      "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")" \
-      || ! [[ "$interpreter_container_id" =~ ^[0-9a-f]{64}$ ]]; then
-    printf 'mandatory worker container is unavailable for interpreter preflight: %s\n' \
-      "$compose_service" >&2
-    exit 1
-  fi
-  if ! docker exec "$interpreter_container_id" /usr/local/bin/python3 -c '
+# read-only Celery fence into an outage. The one-time interrupted transaction
+# has no running workers; it proves the same ABI on the newly built target
+# before recreating only the three mandatory workers below.
+if (( INTERRUPTED_PHASE1_RECOVERY == 0 )); then
+  for compose_service in worker worker-collectors worker-warehouse; do
+    if ! interpreter_container_id="$(release_compose \
+        "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")" \
+        || ! [[ "$interpreter_container_id" =~ ^[0-9a-f]{64}$ ]]; then
+      printf 'mandatory worker container is unavailable for interpreter preflight: %s\n' \
+        "$compose_service" >&2
+      exit 1
+    fi
+    if ! docker exec "$interpreter_container_id" /usr/local/bin/python3 -c '
 import os
 import sys
 
 if os.path.realpath(sys.executable) != "/usr/local/bin/python3.12":
     raise SystemExit(f"unexpected container interpreter: {sys.executable}")
 '; then
-    printf 'mandatory worker container interpreter preflight failed: %s\n' \
-      "$compose_service" >&2
-    exit 1
-  fi
-done
+      printf 'mandatory worker container interpreter preflight failed: %s\n' \
+        "$compose_service" >&2
+      exit 1
+    fi
+  done
+fi
 
 stop_loaded_unit() {
-  local unit="$1" load_state active_state
-  load_state="$(systemctl show --property=LoadState --value \
-    "$unit" 2>/dev/null || true)"
+  local unit="$1" load_state active_state active_status=0
+  if ! load_state="$(systemctl show --property=LoadState --value \
+      "$unit" 2>/dev/null)"; then
+    printf 'cannot read load state before stopping unit: %s\n' "$unit" >&2
+    return 1
+  fi
   case "$load_state" in
-    ""|not-found) return 0 ;;
+    not-found) return 0 ;;
     loaded|masked) ;;
     *) printf 'unexpected load state for %s: %s\n' \
          "$unit" "$load_state" >&2; return 1 ;;
   esac
   sudo systemctl stop "$unit"
-  active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
+    || active_status=$?
   case "$active_state" in
-    inactive|failed|unknown|"") ;;
+    inactive|failed) ;;
     *) printf 'unit did not stop: %s (%s)\n' \
          "$unit" "$active_state" >&2; return 1 ;;
   esac
+  (( active_status != 0 )) || {
+    printf 'stopped unit still reports a successful active state: %s/%s\n' \
+      "$unit" "$active_state" >&2
+    return 1
+  }
 }
 
 temporarily_disable_activator() {
@@ -1529,52 +1871,736 @@ temporarily_disable_activator() {
   esac
 }
 
-# This idempotent quiescer is inherited by Phase 3. It deliberately uses the
-# complete declared inventory rather than only units observed active, because
-# a reboot or concurrent dependency start must not escape the transaction.
+# This idempotent quiescer is inherited by Phase 3. Every discovery command is
+# checked before an empty result is accepted: a Docker or systemd control-plane
+# failure must never be confused with an empty writer inventory.
+capture_controlled_writer_inventory() {
+  local output_path="$1" compose_service container_id
+  local compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  local compose_config_file="$compose_working_dir/docker-compose.prod.yml"
+  local working_inventory="${output_path}.working"
+  local config_inventory="${output_path}.config"
+  : >"$working_inventory" || return 1
+  : >"$config_inventory" || return 1
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    if ! docker ps -a --no-trunc \
+        --filter "label=com.docker.compose.project.working_dir=$compose_working_dir" \
+        --filter "label=com.docker.compose.service=$compose_service" \
+        --format '{{.ID}}' >>"$working_inventory"; then
+      printf 'failed to enumerate writers by Compose working directory: %s\n' \
+        "$compose_service" >&2
+      rm -f -- "$working_inventory" "$config_inventory" "$output_path"
+      return 1
+    fi
+    if ! docker ps -a --no-trunc \
+        --filter "label=com.docker.compose.project.config_files=$compose_config_file" \
+        --filter "label=com.docker.compose.service=$compose_service" \
+        --format '{{.ID}}' >>"$config_inventory"; then
+      printf 'failed to enumerate writers by Compose config file: %s\n' \
+        "$compose_service" >&2
+      rm -f -- "$working_inventory" "$config_inventory" "$output_path"
+      return 1
+    fi
+  done
+  if ! LC_ALL=C sort -u "$working_inventory" "$config_inventory" \
+      >"$output_path"; then
+    printf 'failed to deduplicate emergency writer inventory\n' >&2
+    rm -f -- "$working_inventory" "$config_inventory" "$output_path"
+    return 1
+  fi
+  rm -f -- "$working_inventory" "$config_inventory" || return 1
+  while IFS= read -r container_id; do
+    [[ -z "$container_id" || "$container_id" =~ ^[0-9a-f]{64}$ ]] || {
+      printf 'emergency writer inventory returned malformed ID: %s\n' \
+        "$container_id" >&2
+      return 1
+    }
+  done <"$output_path"
+}
+
+capture_release_instance_inventory() {
+  local output_path="$1" unit
+  local raw_path="${output_path}.raw"
+  if ! systemctl list-units --all --type=service --no-legend --plain \
+      'palimpsest-common-crawl-mirror@*.service' \
+      'palimpsest-common-crawl-filter@*.service' \
+      'palimpsest-investigative-broker@*.service' >"$raw_path"; then
+    printf 'failed to enumerate release-controlled service instances\n' >&2
+    rm -f -- "$raw_path" "$output_path"
+    return 1
+  fi
+  if ! awk 'NF {print $1}' "$raw_path" | LC_ALL=C sort -u >"$output_path"; then
+    printf 'failed to normalize release-controlled service instances\n' >&2
+    rm -f -- "$raw_path" "$output_path"
+    return 1
+  fi
+  rm -f -- "$raw_path" || return 1
+  while IFS= read -r unit; do
+    [[ -z "$unit" \
+      || "$unit" =~ ^palimpsest-common-crawl-(mirror|filter)@[^[:space:]/]+\.service$ \
+      || "$unit" =~ ^palimpsest-investigative-broker@[^[:space:]/]+\.service$ ]] \
+      || {
+        printf 'unexpected release-controlled service instance: %s\n' \
+          "$unit" >&2
+        return 1
+      }
+  done <"$output_path"
+}
+
+quiesce_dynamic_release_instances() {
+  local instance_dir first_inventory second_inventory final_inventory
+  local unit load_state active_state active_status=0 instance_rc=0
+  if ! instance_dir="$(mktemp -d \
+      /tmp/palimpsest-release-instances.XXXXXX)"; then
+    printf 'cannot create dynamic release instance inventory\n' >&2
+    return 1
+  fi
+  if [[ ! "$instance_dir" \
+      =~ ^/tmp/palimpsest-release-instances\.[A-Za-z0-9]{6}$ ]] \
+      || ! chmod 0700 "$instance_dir"; then
+    printf 'dynamic release instance inventory is unsafe\n' >&2
+    return 1
+  fi
+  first_inventory="$instance_dir/first"
+  second_inventory="$instance_dir/second"
+  final_inventory="$instance_dir/final"
+  if capture_release_instance_inventory "$first_inventory"; then
+    while IFS= read -r unit; do
+      [[ -n "$unit" ]] || continue
+      if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+        printf 'failed to stop dynamic release instance: %s\n' "$unit" >&2
+        instance_rc=1
+      fi
+    done <"$first_inventory"
+  else
+    instance_rc=1
+  fi
+  if capture_release_instance_inventory "$second_inventory"; then
+    while IFS= read -r unit; do
+      [[ -n "$unit" ]] || continue
+      if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+        printf 'failed to stop newly discovered release instance: %s\n' \
+          "$unit" >&2
+        instance_rc=1
+      fi
+    done <"$second_inventory"
+  else
+    instance_rc=1
+  fi
+  if capture_release_instance_inventory "$final_inventory"; then
+    while IFS= read -r unit; do
+      [[ -n "$unit" ]] || continue
+      if ! load_state="$(systemctl show --property=LoadState --value \
+          "$unit" 2>/dev/null)"; then
+        printf 'failed to read final dynamic instance load state: %s\n' \
+          "$unit" >&2
+        instance_rc=1
+        continue
+      fi
+      active_status=0
+      active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
+        || active_status=$?
+      case "$load_state:$active_state" in
+        loaded:inactive|masked:inactive|not-found:unknown|not-found:inactive)
+          (( active_status != 0 )) || {
+            printf 'inactive dynamic release instance returned success: %s\n' \
+              "$unit" >&2
+            instance_rc=1
+          }
+          ;;
+        *)
+          printf 'dynamic release instance remains active: %s/%s/%s\n' \
+            "$unit" "$load_state" "$active_state" >&2
+          instance_rc=1
+          ;;
+      esac
+    done <"$final_inventory"
+  else
+    instance_rc=1
+  fi
+  rm -f -- "$first_inventory" "$second_inventory" "$final_inventory" \
+    "${first_inventory}.raw" "${second_inventory}.raw" \
+    "${final_inventory}.raw" || instance_rc=1
+  rmdir -- "$instance_dir" || instance_rc=1
+  return "$instance_rc"
+}
+
+quiesce_controlled_writer_inventory() {
+  local inventory_path="$1" container_id metadata state service
+  local working_dir config_files quiesce_inventory_rc=0
+  local compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  local compose_config_file="$compose_working_dir/docker-compose.prod.yml"
+  while IFS= read -r container_id; do
+    [[ -n "$container_id" ]] || continue
+    if ! metadata="$(docker inspect "$container_id" --format \
+        '{{printf "%s\t%s\t%s\t%s" .State.Status (index .Config.Labels "com.docker.compose.service") (index .Config.Labels "com.docker.compose.project.working_dir") (index .Config.Labels "com.docker.compose.project.config_files")}}' \
+        2>/dev/null)"; then
+      printf 'cannot inspect emergency writer candidate: %s\n' \
+        "$container_id" >&2
+      quiesce_inventory_rc=1
+      continue
+    fi
+    IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
+    case "$service" in
+      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      *)
+        printf 'emergency writer has unexpected service label: %s/%s\n' \
+          "$container_id" "$service" >&2
+        quiesce_inventory_rc=1
+        continue
+        ;;
+    esac
+    if [[ "$working_dir" != "$compose_working_dir" \
+        && "$config_files" != "$compose_config_file" ]]; then
+      printf 'emergency writer lost both Palimpsest provenance labels: %s\n' \
+        "$container_id" >&2
+      quiesce_inventory_rc=1
+      continue
+    fi
+    case "$state" in
+      paused)
+        if ! docker unpause "$container_id" >/dev/null 2>&1 \
+            || ! docker stop --time 180 "$container_id" >/dev/null 2>&1; then
+          printf 'failed to stop paused emergency writer: %s\n' \
+            "$container_id" >&2
+          quiesce_inventory_rc=1
+        fi
+        ;;
+      running|restarting)
+        if ! docker stop --time 180 "$container_id" >/dev/null 2>&1; then
+          printf 'failed to stop emergency writer: %s\n' "$container_id" >&2
+          quiesce_inventory_rc=1
+        fi
+        ;;
+      created)
+        if ! docker stop --time 180 "$container_id" >/dev/null 2>&1; then
+          if ! state="$(docker inspect "$container_id" --format \
+              '{{.State.Status}}' 2>/dev/null)"; then
+            printf 'cannot re-inspect created emergency writer: %s\n' \
+              "$container_id" >&2
+            quiesce_inventory_rc=1
+          elif [[ "$state" == created ]]; then
+            if ! docker rm --force "$container_id" >/dev/null 2>&1; then
+              printf 'failed to remove created emergency writer: %s\n' \
+                "$container_id" >&2
+              quiesce_inventory_rc=1
+            fi
+          elif [[ "$state" != exited && "$state" != dead \
+              && "$state" != removing ]]; then
+            printf 'created emergency writer entered unsafe state: %s/%s\n' \
+              "$container_id" "$state" >&2
+            quiesce_inventory_rc=1
+          fi
+        fi
+        ;;
+      exited|dead|removing) ;;
+      *)
+        printf 'emergency writer has unexpected state: %s/%s\n' \
+          "$container_id" "$state" >&2
+        quiesce_inventory_rc=1
+        ;;
+    esac
+  done <"$inventory_path"
+  return "$quiesce_inventory_rc"
+}
+
+verify_controlled_writer_inventory_quiescent() {
+  local inventory_path="$1" container_id metadata state service
+  local working_dir config_files verify_inventory_rc=0
+  local compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  local compose_config_file="$compose_working_dir/docker-compose.prod.yml"
+  while IFS= read -r container_id; do
+    [[ -n "$container_id" ]] || continue
+    if ! metadata="$(docker inspect "$container_id" --format \
+        '{{printf "%s\t%s\t%s\t%s" .State.Status (index .Config.Labels "com.docker.compose.service") (index .Config.Labels "com.docker.compose.project.working_dir") (index .Config.Labels "com.docker.compose.project.config_files")}}' \
+        2>/dev/null)"; then
+      printf 'cannot verify emergency writer candidate: %s\n' \
+        "$container_id" >&2
+      verify_inventory_rc=1
+      continue
+    fi
+    IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
+    case "$service" in
+      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      *)
+        printf 'verified writer has unexpected service label: %s/%s\n' \
+          "$container_id" "$service" >&2
+        verify_inventory_rc=1
+        continue
+        ;;
+    esac
+    if [[ "$working_dir" != "$compose_working_dir" \
+        && "$config_files" != "$compose_config_file" ]]; then
+      printf 'verified writer lost Palimpsest provenance: %s\n' \
+        "$container_id" >&2
+      verify_inventory_rc=1
+      continue
+    fi
+    case "$state" in
+      exited|dead|removing) ;;
+      created|running|restarting|paused)
+        printf 'emergency writer remains process-capable: %s/%s/%s\n' \
+          "$container_id" "$service" "$state" >&2
+        verify_inventory_rc=1
+        ;;
+      *)
+        printf 'emergency writer recheck has unexpected state: %s/%s\n' \
+          "$container_id" "$state" >&2
+        verify_inventory_rc=1
+        ;;
+    esac
+  done <"$inventory_path"
+  return "$verify_inventory_rc"
+}
+
 release_quiesce_all() {
-  local unit compose_service container_id compose_working_dir compose_config_file
+  local unit container_id metadata state service working_dir config_files
+  local load_state active_state active_status enablement
+  local initial_writer_ok=0 post_writer_ok=0 final_writer_ok=0
+  local initial_instance_ok=0 post_instance_ok=0 final_instance_ok=0
+  local restore_errexit=0
+  local compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
+  local compose_config_file="$PALIMPSEST_REPO_ROOT/ops/docker/docker-compose.prod.yml"
+  local quiesce_rc=0 quiesce_tmp_dir initial_writers post_writers final_writers
+  local initial_instances post_instances final_instances all_instances
+  [[ $- == *e* ]] && restore_errexit=1
   set +e
+  quiesce_tmp_dir="$(mktemp -d /tmp/palimpsest-release-quiesce.XXXXXX)"
+  if [[ ! "$quiesce_tmp_dir" \
+      =~ ^/tmp/palimpsest-release-quiesce\.[A-Za-z0-9]{6}$ ]] \
+      || ! chmod 0700 "$quiesce_tmp_dir"; then
+    printf 'cannot create private emergency quiescence inventory\n' >&2
+    (( restore_errexit == 0 )) || set -e
+    return 1
+  fi
+  initial_writers="$quiesce_tmp_dir/writers-before"
+  post_writers="$quiesce_tmp_dir/writers-after"
+  final_writers="$quiesce_tmp_dir/writers-final"
+  initial_instances="$quiesce_tmp_dir/instances-before"
+  post_instances="$quiesce_tmp_dir/instances-after"
+  final_instances="$quiesce_tmp_dir/instances-final"
+  all_instances="$quiesce_tmp_dir/instances-all"
+  if capture_controlled_writer_inventory "$initial_writers"; then
+    initial_writer_ok=1
+  else
+    quiesce_rc=1
+  fi
+  if capture_release_instance_inventory "$initial_instances"; then
+    initial_instance_ok=1
+  else
+    quiesce_rc=1
+  fi
+
   for unit in "${RELEASE_ACTIVATORS[@]}"; do
-    sudo systemctl stop "$unit" >/dev/null 2>&1 || true
-    sudo systemctl disable "$unit" >/dev/null 2>&1 || true
+    load_state="$(systemctl show --property=LoadState --value \
+      "$unit" 2>/dev/null)"
+    if (( $? != 0 )); then
+      printf 'cannot read activator load state during quiescence: %s\n' \
+        "$unit" >&2
+      quiesce_rc=1
+      continue
+    fi
+    case "$load_state" in
+      loaded|masked)
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to stop release activator: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
+        enablement="$(read_enablement "$unit")"
+        if (( $? != 0 )); then
+          quiesce_rc=1
+          continue
+        fi
+        case "$enablement" in
+          enabled|enabled-runtime)
+            if ! sudo systemctl disable "$unit" >/dev/null 2>&1; then
+              printf 'failed to disable release activator: %s\n' "$unit" >&2
+              quiesce_rc=1
+            fi
+            ;;
+          disabled|static|indirect|masked|masked-runtime) ;;
+          *)
+            printf 'unsafe activator enablement during quiescence: %s/%s\n' \
+              "$unit" "$enablement" >&2
+            quiesce_rc=1
+            ;;
+        esac
+        ;;
+      not-found) ;;
+      *)
+        printf 'unexpected activator load state during quiescence: %s/%s\n' \
+          "$unit" "$load_state" >&2
+        quiesce_rc=1
+        ;;
+    esac
   done
   for unit in "${RELEASE_SERVICES[@]}"; do
-    sudo systemctl stop "$unit" >/dev/null 2>&1 || true
+    load_state="$(systemctl show --property=LoadState --value \
+      "$unit" 2>/dev/null)"
+    if (( $? != 0 )); then
+      printf 'cannot read release service load state: %s\n' "$unit" >&2
+      quiesce_rc=1
+      continue
+    fi
+    case "$load_state" in
+      loaded|masked)
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to stop release service: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
+        ;;
+      not-found) ;;
+      *)
+        printf 'unexpected release service load state: %s/%s\n' \
+          "$unit" "$load_state" >&2
+        quiesce_rc=1
+        ;;
+    esac
   done
-  sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' \
-    >/dev/null 2>&1 || true
-  sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' \
-    >/dev/null 2>&1 || true
-  sudo systemctl stop 'palimpsest-investigative-broker@*.service' \
-    >/dev/null 2>&1 || true
+  if (( initial_instance_ok == 1 )); then
+    while IFS= read -r unit; do
+      [[ -n "$unit" ]] || continue
+      if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+        printf 'failed to stop release-controlled instance: %s\n' "$unit" >&2
+        quiesce_rc=1
+      fi
+    done <"$initial_instances"
+  fi
   # The emergency path cannot depend on the Git-cleanliness checks in the
   # Compose wrapper: the triggering failure may be the wrapper itself. Stop
-  # every running Compose container launched from the pinned Palimpsest
+  # every process-capable Compose container launched from the pinned Palimpsest
   # production definition and carrying one of the controlled writer labels,
   # including an alternate-project writer that appeared later. Service names
   # alone are not host-global: unrelated shared-host projects also use generic
-  # names such as worker and beat.
-  compose_working_dir="$PALIMPSEST_REPO_ROOT/ops/docker"
-  compose_config_file="$compose_working_dir/docker-compose.prod.yml"
-  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+  # names such as worker and beat. The two provenance queries are a union:
+  # requiring both labels in one query would miss a partially drifted writer.
+  if (( initial_writer_ok == 1 )); then
     while IFS= read -r container_id; do
-      if [[ "$container_id" =~ ^[0-9a-f]{64}$ ]]; then
-        docker stop --time 180 "$container_id" >/dev/null 2>&1 || true
+      [[ -n "$container_id" ]] || continue
+    metadata="$(docker inspect "$container_id" --format \
+      '{{printf "%s\t%s\t%s\t%s" .State.Status (index .Config.Labels "com.docker.compose.service") (index .Config.Labels "com.docker.compose.project.working_dir") (index .Config.Labels "com.docker.compose.project.config_files")}}' \
+      2>/dev/null)" || {
+      printf 'cannot inspect emergency writer candidate: %s\n' \
+        "$container_id" >&2
+      quiesce_rc=1
+      continue
+    }
+    IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
+    case "$service" in
+      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      *)
+        printf 'emergency writer has unexpected service label: %s/%s\n' \
+          "$container_id" "$service" >&2
+        quiesce_rc=1
+        continue
+        ;;
+    esac
+    if [[ "$working_dir" != "$compose_working_dir" \
+        && "$config_files" != "$compose_config_file" ]]; then
+      printf 'emergency writer lost both Palimpsest provenance labels: %s\n' \
+        "$container_id" >&2
+      quiesce_rc=1
+      continue
+    fi
+    case "$state" in
+      paused)
+        docker unpause "$container_id" >/dev/null 2>&1 || quiesce_rc=1
+        docker stop --time 180 "$container_id" >/dev/null 2>&1 \
+          || quiesce_rc=1
+        ;;
+      running|restarting)
+        docker stop --time 180 "$container_id" >/dev/null 2>&1 \
+          || quiesce_rc=1
+        ;;
+      created)
+        if ! docker stop --time 180 "$container_id" >/dev/null 2>&1; then
+          state="$(docker inspect "$container_id" --format \
+            '{{.State.Status}}' 2>/dev/null)"
+          if (( $? != 0 )); then
+            printf 'cannot re-inspect created emergency writer: %s\n' \
+              "$container_id" >&2
+            quiesce_rc=1
+          elif [[ "$state" == created ]]; then
+            docker rm --force "$container_id" >/dev/null 2>&1 \
+              || quiesce_rc=1
+          elif [[ "$state" != exited && "$state" != dead \
+              && "$state" != removing ]]; then
+            printf 'created emergency writer entered unsafe state: %s/%s\n' \
+              "$container_id" "$state" >&2
+            quiesce_rc=1
+          fi
+        fi
+        ;;
+      exited|dead|removing) ;;
+      *)
+        printf 'emergency writer has unexpected state: %s/%s\n' \
+          "$container_id" "$state" >&2
+        quiesce_rc=1
+        ;;
+    esac
+    done <"$initial_writers"
+  fi
+
+  if capture_controlled_writer_inventory "$post_writers"; then
+    post_writer_ok=1
+  else
+    quiesce_rc=1
+  fi
+  if (( post_writer_ok == 1 )); then
+    quiesce_controlled_writer_inventory "$post_writers" || quiesce_rc=1
+    while IFS= read -r container_id; do
+      [[ -n "$container_id" ]] || continue
+    metadata="$(docker inspect "$container_id" --format \
+      '{{printf "%s\t%s\t%s\t%s" .State.Status (index .Config.Labels "com.docker.compose.service") (index .Config.Labels "com.docker.compose.project.working_dir") (index .Config.Labels "com.docker.compose.project.config_files")}}' \
+      2>/dev/null)" || {
+      printf 'cannot re-inspect emergency writer candidate: %s\n' \
+        "$container_id" >&2
+      quiesce_rc=1
+      continue
+    }
+    IFS=$'\t' read -r state service working_dir config_files <<<"$metadata"
+    case "$service" in
+      beat|worker|worker-collectors|worker-warehouse|worker-velocity) ;;
+      *)
+        printf 're-enumerated writer has unexpected service label: %s/%s\n' \
+          "$container_id" "$service" >&2
+        quiesce_rc=1
+        continue
+        ;;
+    esac
+    if [[ "$working_dir" != "$compose_working_dir" \
+        && "$config_files" != "$compose_config_file" ]]; then
+      printf 're-enumerated writer lost Palimpsest provenance: %s\n' \
+        "$container_id" >&2
+      quiesce_rc=1
+      continue
+    fi
+    case "$state" in
+      created|running|restarting|paused)
+        printf 'emergency writer remains process-capable: %s/%s/%s\n' \
+          "$container_id" "$service" "$state" >&2
+        quiesce_rc=1
+        ;;
+      exited|dead|removing) ;;
+      *)
+        printf 'emergency writer recheck has unexpected state: %s/%s\n' \
+          "$container_id" "$state" >&2
+        quiesce_rc=1
+        ;;
+    esac
+    done <"$post_writers"
+  fi
+
+  if capture_controlled_writer_inventory "$final_writers"; then
+    final_writer_ok=1
+  else
+    quiesce_rc=1
+  fi
+  if (( final_writer_ok == 1 )); then
+    verify_controlled_writer_inventory_quiescent "$final_writers" \
+      || quiesce_rc=1
+  fi
+
+  if capture_release_instance_inventory "$post_instances"; then
+    post_instance_ok=1
+  else
+    quiesce_rc=1
+  fi
+  if (( post_instance_ok == 1 )); then
+    while IFS= read -r unit; do
+      [[ -n "$unit" ]] || continue
+      if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+        printf 'failed to stop post-discovered release instance: %s\n' \
+          "$unit" >&2
+        quiesce_rc=1
       fi
-    done < <(docker ps --no-trunc --filter status=running \
-      --filter "label=com.docker.compose.project.working_dir=$compose_working_dir" \
-      --filter "label=com.docker.compose.project.config_files=$compose_config_file" \
-      --filter "label=com.docker.compose.service=$compose_service" \
-      --format '{{.ID}}' 2>/dev/null)
+    done <"$post_instances"
+  fi
+  if capture_release_instance_inventory "$final_instances"; then
+    final_instance_ok=1
+  else
+    quiesce_rc=1
+  fi
+  if (( final_instance_ok == 1 )); then
+    if ! LC_ALL=C sort -u "$final_instances" \
+        >"$all_instances"; then
+      printf 'failed to normalize final release instance inventory\n' >&2
+      quiesce_rc=1
+    else
+      while IFS= read -r unit; do
+        [[ -n "$unit" ]] || continue
+        if ! load_state="$(systemctl show --property=LoadState --value \
+            "$unit" 2>/dev/null)"; then
+          printf 'cannot recheck release-controlled instance: %s\n' \
+            "$unit" >&2
+          quiesce_rc=1
+          continue
+        fi
+        active_status=0
+        active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
+          || active_status=$?
+        case "$load_state:$active_state" in
+          loaded:inactive|masked:inactive|not-found:unknown|not-found:inactive)
+            (( active_status != 0 )) || {
+              printf 'inactive release instance returned success: %s\n' \
+                "$unit" >&2
+              quiesce_rc=1
+            }
+            ;;
+          *)
+            printf 'release-controlled instance remains active: %s/%s/%s\n' \
+              "$unit" "$load_state" "$active_state" >&2
+            quiesce_rc=1
+            ;;
+        esac
+      done <"$all_instances"
+    fi
+  fi
+  for unit in "${RELEASE_ACTIVATORS[@]}"; do
+    if ! load_state="$(systemctl show --property=LoadState --value \
+        "$unit" 2>/dev/null)"; then
+      printf 'cannot reread release activator before final quiescence: %s\n' \
+        "$unit" >&2
+      quiesce_rc=1
+      continue
+    fi
+    case "$load_state" in
+      loaded|masked)
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to restop release activator: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
+        if ! enablement="$(read_enablement "$unit")"; then
+          quiesce_rc=1
+          continue
+        fi
+        case "$enablement" in
+          enabled|enabled-runtime)
+            if ! sudo systemctl disable "$unit" >/dev/null 2>&1; then
+              printf 'failed to redisable release activator: %s\n' \
+                "$unit" >&2
+              quiesce_rc=1
+            fi
+            ;;
+          disabled|static|indirect|masked|masked-runtime) ;;
+          *)
+            printf 'unsafe activator enablement before final check: %s/%s\n' \
+              "$unit" "$enablement" >&2
+            quiesce_rc=1
+            ;;
+        esac
+        ;;
+      not-found) ;;
+      *)
+        printf 'unexpected activator load state before final check: %s/%s\n' \
+          "$unit" "$load_state" >&2
+        quiesce_rc=1
+        ;;
+    esac
+  done
+  for unit in "${RELEASE_SERVICES[@]}"; do
+    if ! load_state="$(systemctl show --property=LoadState --value \
+        "$unit" 2>/dev/null)"; then
+      printf 'cannot reread release service before final quiescence: %s\n' \
+        "$unit" >&2
+      quiesce_rc=1
+      continue
+    fi
+    case "$load_state" in
+      loaded|masked)
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to restop release service: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
+        ;;
+      not-found) ;;
+      *)
+        printf 'unexpected release service load state before final check: %s/%s\n' \
+          "$unit" "$load_state" >&2
+        quiesce_rc=1
+        ;;
+    esac
+  done
+  for unit in "${RELEASE_ACTIVATORS[@]}"; do
+    if ! load_state="$(systemctl show --property=LoadState --value \
+        "$unit" 2>/dev/null)"; then
+      printf 'cannot recheck release activator: %s\n' "$unit" >&2
+      quiesce_rc=1
+      continue
+    fi
+    active_status=0
+    active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
+      || active_status=$?
+    if ! enablement="$(read_enablement "$unit")"; then
+      quiesce_rc=1
+      continue
+    fi
+    case "$load_state:$active_state:$enablement" in
+      loaded:inactive:disabled|loaded:inactive:static|loaded:inactive:indirect|\
+      masked:inactive:masked|masked:inactive:masked-runtime|\
+      not-found:unknown:not-found|not-found:inactive:not-found)
+        (( active_status != 0 )) || {
+          printf 'inactive release activator returned success: %s\n' \
+            "$unit" >&2
+          quiesce_rc=1
+        }
+        ;;
+      *)
+        printf 'release activator failed inactive/disabled postcondition: %s/%s/%s/%s\n' \
+          "$unit" "$load_state" "$active_state" "$enablement" >&2
+        quiesce_rc=1
+        ;;
+    esac
+  done
+  for unit in "${RELEASE_SERVICES[@]}"; do
+    if ! load_state="$(systemctl show --property=LoadState --value \
+        "$unit" 2>/dev/null)"; then
+      printf 'cannot recheck release service: %s\n' "$unit" >&2
+      quiesce_rc=1
+      continue
+    fi
+    active_status=0
+    active_state="$(systemctl is-active "$unit" 2>/dev/null)" \
+      || active_status=$?
+    case "$load_state:$active_state" in
+      loaded:inactive|masked:inactive|not-found:unknown|not-found:inactive)
+        (( active_status != 0 )) || {
+          printf 'inactive release service returned success: %s\n' \
+            "$unit" >&2
+          quiesce_rc=1
+        }
+        ;;
+      *)
+        printf 'release service failed inactive postcondition: %s/%s/%s\n' \
+          "$unit" "$load_state" "$active_state" >&2
+        quiesce_rc=1
+        ;;
+    esac
   done
   if [[ -n "${ACTIVE_PROOF_PIN:-}" ]]; then
     release_proof_pin >/dev/null 2>&1 || {
-      sudo systemctl stop "$ACTIVE_PROOF_PIN" >/dev/null 2>&1 || true
+      sudo systemctl stop "$ACTIVE_PROOF_PIN" >/dev/null 2>&1 \
+        || quiesce_rc=1
       ACTIVE_PROOF_PIN=''
     }
   fi
-  sudo systemctl daemon-reload >/dev/null 2>&1 || true
+  sudo systemctl daemon-reload >/dev/null 2>&1 || quiesce_rc=1
+  rm -f -- "$initial_writers" "$post_writers" "$final_writers" \
+    "$initial_instances" "$post_instances" "$final_instances" \
+    "$all_instances" \
+    "${initial_writers}.working" "${initial_writers}.config" \
+    "${post_writers}.working" "${post_writers}.config" \
+    "${final_writers}.working" "${final_writers}.config" \
+    "${initial_instances}.raw" "${post_instances}.raw" \
+    "${final_instances}.raw" || quiesce_rc=1
+  rmdir -- "$quiesce_tmp_dir" || quiesce_rc=1
+  if (( quiesce_rc != 0 )); then
+    printf 'emergency release quiescence is incomplete\n' >&2
+    (( restore_errexit == 0 )) || set -e
+    return 1
+  fi
+  (( restore_errexit == 0 )) || set -e
+  return 0
 }
 
 PHASE1_SHELL_PID="$$"
@@ -1583,19 +2609,42 @@ PHASE1_FAIL_SAFE_ARMED=1
 RELEASE_FAIL_SAFE_RUNNING=0
 phase1_fail_safe() {
   local original_status="${1:-1}"
+  local quiesce_status=0 cleanup_status=0
   (( PHASE1_FAIL_SAFE_ARMED == 1 )) || return 0
   (( RELEASE_FAIL_SAFE_RUNNING == 0 )) || return 0
   RELEASE_FAIL_SAFE_RUNNING=1
-  trap - ERR EXIT HUP INT TERM
+  trap - ERR EXIT
+  trap '' HUP INT TERM
   printf 'Phase 1 interrupted (%s); quiescing every release writer and activator\n' \
     "$original_status" >&2
-  release_quiesce_all
+  release_quiesce_all || quiesce_status=$?
+  cleanup_release_private_state || cleanup_status=$?
+  if (( quiesce_status != 0 || cleanup_status != 0 )); then
+    printf 'Phase 1 fail-safe could not complete every safety action\n' >&2
+    return 1
+  fi
+  return 0
+}
+phase1_exit() {
+  local original_status="${1:-0}" fail_safe_status=0
+  trap - ERR EXIT
+  trap '' HUP INT TERM
+  set +e
+  phase1_fail_safe "$original_status" || fail_safe_status=$?
+  if (( original_status == 0 && PHASE1_FAIL_SAFE_ARMED == 1 )); then
+    original_status=1
+  fi
+  if (( original_status == 0 && fail_safe_status != 0 )); then
+    original_status="$fail_safe_status"
+  fi
+  exit "$original_status"
 }
 phase1_abort() {
   local original_status="${1:-1}"
   # ERR is inherited by command substitutions under errtrace. Let the parent
   # command observe that failure and perform the one host-wide quiesce.
   if (( BASH_SUBSHELL > 0 )); then
+    printf '__PALIMPSEST_COMMAND_SUBSTITUTION_FAILED__\n'
     exit "$original_status"
   fi
   phase1_fail_safe "$original_status"
@@ -1604,7 +2653,7 @@ phase1_abort() {
   exit "$original_status"
 }
 trap 'phase1_abort "$?"' ERR
-trap 'phase1_fail_safe "$?"' EXIT
+trap 'phase1_exit "$?"' EXIT
 trap 'phase1_fail_safe 129; exit 129' HUP
 trap 'phase1_fail_safe 130; exit 130' INT
 trap 'phase1_fail_safe 143; exit 143' TERM
@@ -1645,7 +2694,7 @@ verify_compose_container_inventory() {
   compose_config_file="$compose_working_dir/docker-compose.prod.yml"
   docker ps -a --no-trunc \
     --filter label=com.docker.compose.project \
-    --format '{{.Label "com.docker.compose.project"}}\t{{.Label "com.docker.compose.service"}}\t{{.Label "com.docker.compose.project.working_dir"}}\t{{.Label "com.docker.compose.project.config_files"}}\t{{.ID}}' \
+    --format '{{printf "%s\t%s\t%s\t%s\t%s" (.Label "com.docker.compose.project") (.Label "com.docker.compose.service") (.Label "com.docker.compose.project.working_dir") (.Label "com.docker.compose.project.config_files") .ID}}' \
     >"$inventory_file"
   if ! python3 - "$inventory_file" \
       "$compose_working_dir" "$compose_config_file" <<'PY'
@@ -1711,73 +2760,766 @@ PY
   rm -f -- "$inventory_file"
 }
 
-for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
-  compose_container_state "$compose_service"
-done
-verify_compose_container_inventory
-for compose_service in worker worker-collectors worker-warehouse; do
-  test "${COMPOSE_WAS_RUNNING[$compose_service]}" = 1
-done
-for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
-  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
-    test "$(docker image inspect "${COMPOSE_IMAGE_ID_BEFORE[$compose_service]}" \
-      --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
-      = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+RECOVERY_PREFLIGHT_DIR=''
+RECOVERY_MANIFEST_PATH=''
+RECOVERY_MANIFEST_VERIFIER_PATH=''
+RECOVERY_MANIFEST_SHA256=''
+RECOVERY_HYBRID_FINGERPRINT_SHA256=''
+RECOVERY_RESTORE_PROFILE_SHA256=''
+RECOVERY_FAILED_TARGET_SHA=''
+RECOVERY_EXPECTED_ENV_SHA256=''
+RECOVERY_COMPOSE_SCOPE_PROJECT=''
+RECOVERY_COMPOSE_SCOPE_WORKING_DIR=''
+RECOVERY_COMPOSE_SCOPE_CONFIG_FILES=''
+RECOVERY_PREPARED_RECEIPT_PATH=''
+RECOVERY_PREPARED_RECEIPT_SHA256=''
+RECOVERY_PREPARED_TMP=''
+RECOVERY_COMPLETION_RECEIPT_PATH=''
+RECOVERY_BROKER_QUEUES_B64=''
+RECOVERY_BROKER_QUEUE_SHA256=''
+RECOVERY_BROKER_EMPTY_RECEIPT_PATH=''
+RECOVERY_BROKER_EMPTY_RECEIPT_SHA256=''
+RECOVERY_BACKUP_REASON=''
+RECOVERY_BACKUP_VERIFIED_AT=''
+RECOVERY_MIGRATION_RECEIPT_PATH=''
+RECOVERY_MIGRATION_CONTAINER_ID=''
+RECOVERY_MIGRATION_STARTED_AT=''
+RECOVERY_TARGET_API_CONTAINER_ID=''
+RECOVERY_TARGET_BEAT_CONTAINER_ID=''
+RECOVERY_FINAL_RUNTIME_PATH=''
+RECOVERY_FINAL_RUNTIME_SHA256=''
+RECOVERY_PHASE3_BINDING_PATH=''
+RECOVERY_PHASE3_BINDING_SHA256=''
+
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  test -x /usr/bin/timeout
+  # This fetch is intentionally earlier only in incident mode. It obtains the
+  # reviewed manifest/verifier without moving HEAD or starting a container.
+  release_git -c fetch.fsckObjects=true -c transfer.fsckObjects=true fetch \
+    --force --prune --no-tags https://github.com/beepboop2025/palimpsest.git \
+    '+refs/heads/main:refs/remotes/origin/main'
+  release_git cat-file -e "${EXPECTED_DEPLOY_SHA}^{commit}"
+  release_git merge-base --is-ancestor \
+    "$EXPECTED_DEPLOY_SHA" refs/remotes/origin/main
+  for recovery_ancestor in \
+      "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
+      "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
+      138a9eb323857ba91944fc04d0ccfabb653e7f24 \
+      "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR"; do
+    release_git cat-file -e "${recovery_ancestor}^{commit}"
+    release_git merge-base --is-ancestor \
+      "$recovery_ancestor" "$EXPECTED_DEPLOY_SHA"
+  done
+  test "$EXPECTED_DEPLOY_SHA" != 138a9eb323857ba91944fc04d0ccfabb653e7f24
+  release_git cat-file -e \
+    "${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_MANIFEST_SOURCE}"
+  release_git cat-file -e \
+    "${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_VERIFIER_SOURCE}"
+  release_git cat-file -e "${EXPECTED_DEPLOY_SHA}:${CELERY_GATE_SOURCE}"
+
+  RECOVERY_PREFLIGHT_DIR="$(mktemp -d /tmp/palimpsest-interrupted-phase1.XXXXXX)"
+  chmod 0700 "$RECOVERY_PREFLIGHT_DIR"
+  RECOVERY_MANIFEST_PATH="$RECOVERY_PREFLIGHT_DIR/manifest.json"
+  RECOVERY_MANIFEST_VERIFIER_PATH="$RECOVERY_PREFLIGHT_DIR/verify-manifest.py"
+  release_git show \
+    "${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_MANIFEST_SOURCE}" \
+    >"$RECOVERY_MANIFEST_PATH"
+  release_git show \
+    "${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_VERIFIER_SOURCE}" \
+    >"$RECOVERY_MANIFEST_VERIFIER_PATH"
+  chmod 0400 "$RECOVERY_MANIFEST_PATH"
+  chmod 0500 "$RECOVERY_MANIFEST_VERIFIER_PATH"
+  RECOVERY_MANIFEST_SHA256="$(sha256sum "$RECOVERY_MANIFEST_PATH" \
+    | awk '{print $1}')"
+  [[ "$RECOVERY_MANIFEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  test "$RECOVERY_MANIFEST_SHA256" = "$INTERRUPTED_PHASE1_MANIFEST_SHA256"
+  test "$RECOVERY_MANIFEST_SHA256" = "$(release_git show \
+    "${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_MANIFEST_SOURCE}" \
+    | sha256sum | awk '{print $1}')"
+  test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
+    "$RECOVERY_MANIFEST_PATH")" \
+    = "validated interrupted Phase 1 recovery manifest: $RECOVERY_MANIFEST_SHA256"
+
+  if ! recovery_authority_projection="$(python3 - \
+      "$RECOVERY_MANIFEST_PATH" <<'PY'
+import datetime
+import hashlib
+import json
+import pathlib
+import sys
+
+manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+canonical = lambda value: json.dumps(
+    value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8")
+print(manifest["incident_id"])
+print(manifest["authority"]["prior_checkout_commit"])
+print(manifest["authority"]["prior_deployed_commit"])
+print(manifest["authority"]["failed_target_commit"])
+print(manifest["recovery_target_constraints"]["must_be_descendant_of"])
+print(manifest["recovery_target_constraints"]["must_contain_manifest_path"])
+print(hashlib.sha256(canonical(manifest["observed_safe_boundary"])).hexdigest())
+print(hashlib.sha256(canonical(manifest["pre_failure_state"])).hexdigest())
+print(manifest["observed_safe_boundary"]["compose_environment_sha256"])
+print(manifest["observed_safe_boundary"]["compose_scope"]["project"])
+print(manifest["observed_safe_boundary"]["compose_scope"]["working_dir"])
+print(manifest["observed_safe_boundary"]["compose_scope"]["config_files"])
+PY
+  )"; then
+    printf 'failed to project interrupted Phase 1 manifest authority\n' >&2
+    exit 1
   fi
-done
-for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
-  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
-    case "$compose_service" in
-      worker) celery_prefix=default ;;
-      worker-collectors) celery_prefix=collectors ;;
-      worker-warehouse) celery_prefix=warehouse ;;
-      worker-velocity) celery_prefix=velocity ;;
+  mapfile -t recovery_authority <<<"$recovery_authority_projection"
+  test "${#recovery_authority[@]}" = 12
+  test "${recovery_authority[0]}" = "$INTERRUPTED_PHASE1_INCIDENT"
+  test "${recovery_authority[1]}" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+  test "${recovery_authority[2]}" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
+  RECOVERY_FAILED_TARGET_SHA="${recovery_authority[3]}"
+  test "$RECOVERY_FAILED_TARGET_SHA" = 138a9eb323857ba91944fc04d0ccfabb653e7f24
+  test "${recovery_authority[4]}" = "$RECOVERY_FAILED_TARGET_SHA"
+  test "${recovery_authority[5]}" = "$INTERRUPTED_PHASE1_MANIFEST_SOURCE"
+  RECOVERY_HYBRID_FINGERPRINT_SHA256="${recovery_authority[6]}"
+  RECOVERY_RESTORE_PROFILE_SHA256="${recovery_authority[7]}"
+  RECOVERY_EXPECTED_ENV_SHA256="${recovery_authority[8]}"
+  RECOVERY_COMPOSE_SCOPE_PROJECT="${recovery_authority[9]}"
+  RECOVERY_COMPOSE_SCOPE_WORKING_DIR="${recovery_authority[10]}"
+  RECOVERY_COMPOSE_SCOPE_CONFIG_FILES="${recovery_authority[11]}"
+  [[ "$RECOVERY_HYBRID_FINGERPRINT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_RESTORE_PROFILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  test "$RECOVERY_EXPECTED_ENV_SHA256" \
+    = 2ce97c2f94ce93336b592e1ddee78cfdbec1e8b19d35b39faab6ac069d332c95
+  test "$RELEASE_ENV_SNAPSHOT_SHA256" = "$RECOVERY_EXPECTED_ENV_SHA256"
+  test "$RECOVERY_COMPOSE_SCOPE_PROJECT" = palimpsest
+  test "$RECOVERY_COMPOSE_SCOPE_PROJECT" = "$COMPOSE_PROJECT_NAME"
+  test "$RECOVERY_COMPOSE_SCOPE_WORKING_DIR" \
+    = "$PALIMPSEST_REPO_ROOT/ops/docker"
+  test "$RECOVERY_COMPOSE_SCOPE_CONFIG_FILES" \
+    = "$PALIMPSEST_REPO_ROOT/ops/docker/docker-compose.prod.yml"
+  RECOVERY_BROKER_QUEUE_SHA256='57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b'
+  RECOVERY_BOUNDARY_PROJECTION_DIR="$RECOVERY_PREFLIGHT_DIR/boundary-projections"
+  mkdir -m 0700 "$RECOVERY_BOUNDARY_PROJECTION_DIR"
+  test -d "$RECOVERY_BOUNDARY_PROJECTION_DIR"
+  test ! -L "$RECOVERY_BOUNDARY_PROJECTION_DIR"
+
+  materialize_interrupted_phase1_boundary() {
+    if ! python3 - "$RECOVERY_MANIFEST_PATH" \
+        "$RECOVERY_BOUNDARY_PROJECTION_DIR" <<'PY'
+import json
+import os
+import pathlib
+import sys
+
+manifest_path = pathlib.Path(sys.argv[1])
+output_directory = pathlib.Path(sys.argv[2])
+value = json.loads(manifest_path.read_text(encoding="utf-8"))
+boundary = value["observed_safe_boundary"]
+controller = boundary["installed_controller_boundary"]
+
+
+def fields(*items: object) -> str:
+    normalized = [str(item) for item in items]
+    if any("\n" in item or "\r" in item or "\t" in item for item in normalized):
+        raise SystemExit("manifest projection field contains a delimiter")
+    return "\t".join(normalized)
+
+
+outputs = {
+    "running-services.txt": (
+        3,
+        sorted(boundary["running_compose_services"]),
+    ),
+    "applications.tsv": (
+        6,
+        [
+            fields(
+                item["service"], item["container_id"], item["state"],
+                item["image_index_digest"], item["revision"],
+            )
+            for item in boundary["application_containers"]
+        ],
+    ),
+    "infrastructure.tsv": (
+        2,
+        [
+            fields(
+                item["service"], item["container_id"],
+                item["image_id"], item["state"],
+            )
+            for item in boundary["infrastructure_containers"]
+        ],
+    ),
+    "absent-services.txt": (1, boundary["absent_compose_services"]),
+    "local-image.txt": (
+        4,
+        [
+            boundary["local_application_tag"][key]
+            for key in (
+                "name", "index_digest", "platform_manifest_digest", "revision"
+            )
+        ],
+    ),
+    "installed-units.tsv": (
+        6,
+        [fields(item["path"], item["sha256"])
+         for item in boundary["installed_units"]],
+    ),
+    "installed-bundles.tsv": (
+        5,
+        [
+            fields(
+                item["current_symlink_path"], item["resolved_target_path"],
+                item["manifest_sha256"], item["revision"],
+            )
+            for item in boundary["installed_bundles"]
+        ],
+    ),
+    "absent-controllers.txt": (5, controller["absent_paths"]),
+    "present-controllers.tsv": (
+        1,
+        [fields(item["path"], item["sha256"])
+         for item in controller["present_files"]],
+    ),
+    "witness-names.txt": (
+        3,
+        sorted(item["name"] for item in boundary["witness_inventory"]),
+    ),
+    "witness.tsv": (
+        3,
+        [
+            fields(item["name"], item["size_bytes"], item["sha256"])
+            for item in boundary["witness_inventory"]
+        ],
+    ),
+    "snapshot.txt": (
+        1,
+        [value["failed_attempt"]["snapshot_ceiling"]["latest_snapshot_id"]],
+    ),
+    "restore-activators.tsv": (
+        12,
+        [
+            fields(item["unit"], item["unit_file_state"], item["active_state"])
+            for item in value["pre_failure_state"]["activators"]
+        ],
+    ),
+    "restore-writers.tsv": (
+        5,
+        [
+            fields(
+                item["service"], item["presence"],
+                "true" if item["running"] else "false",
+                1 if item["running"] else 0,
+            )
+            for item in value["pre_failure_state"]["compose_writers"]
+        ],
+    ),
+    "previous-image.txt": (
+        1,
+        [value["pre_failure_state"]["application_image"]["index_digest"]],
+    ),
+}
+for name, (expected_count, lines) in outputs.items():
+    if len(lines) != expected_count or any(not line for line in lines):
+        raise SystemExit(f"manifest projection count is invalid: {name}")
+    payload = ("\n".join(lines) + "\n").encode("utf-8")
+    descriptor = os.open(
+        output_directory / name,
+        os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW,
+        0o600,
+    )
+    try:
+        os.fchmod(descriptor, 0o600)
+        written = 0
+        while written < len(payload):
+            written += os.write(descriptor, payload[written:])
+    finally:
+        os.close(descriptor)
+PY
+    then
+      printf 'failed to materialize interrupted Phase 1 boundary\n' >&2
+      return 1
+    fi
+  }
+
+  assert_interrupted_phase1_boundary() {
+    local actual expected service container_id unit unit_state unit_active
+    local unit_load_state
+    local unit_active_status=0 dynamic_instances
+    materialize_interrupted_phase1_boundary
+    test "$(release_git rev-parse HEAD)" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+    test "$(sudo cat /etc/palimpsest/deployed-commit)" \
+      = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
+    verify_compose_container_inventory
+    for unit in "${RELEASE_ACTIVATORS[@]}"; do
+      if ! unit_state="$(read_enablement "$unit")"; then
+        return 1
+      fi
+      if ! unit_load_state="$(systemctl show --property=LoadState --value \
+          "$unit" 2>/dev/null)"; then
+        return 1
+      fi
+      unit_active_status=0
+      unit_active="$(systemctl is-active "$unit" 2>/dev/null)" \
+        || unit_active_status=$?
+      test "$unit_state" = disabled
+      test "$unit_load_state" = loaded
+      test "$unit_active" = inactive
+      (( unit_active_status != 0 ))
+    done
+    for unit in "${RELEASE_SERVICES[@]}"; do
+      if ! unit_load_state="$(systemctl show --property=LoadState --value \
+          "$unit" 2>/dev/null)"; then
+        return 1
+      fi
+      unit_active_status=0
+      unit_active="$(systemctl is-active "$unit" 2>/dev/null)" \
+        || unit_active_status=$?
+      test "$unit_load_state" = loaded
+      test "$unit_active" = inactive
+      (( unit_active_status != 0 ))
+    done
+    if ! dynamic_instances="$(systemctl list-units --no-legend --plain \
+        --state=active,activating,deactivating \
+        'palimpsest-common-crawl-mirror@*.service' \
+        'palimpsest-common-crawl-filter@*.service' \
+        'palimpsest-investigative-broker@*.service')"; then
+      return 1
+    fi
+    test -z "$dynamic_instances"
+    if ! expected="$(<"$RECOVERY_BOUNDARY_PROJECTION_DIR/running-services.txt")"; then
+      return 1
+    fi
+    actual="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps --services --status running | LC_ALL=C sort)"
+    test "$actual" = "$expected"
+    while IFS=$'\t' read -r service container_id expected_state \
+        expected_image expected_revision; do
+      test -n "$service"
+      actual="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+        ps -q --all "$service")"
+      test "$actual" = "$container_id"
+      test "$(docker inspect "$container_id" --format '{{.State.Status}}')" \
+        = "$expected_state"
+      test "$(docker inspect "$container_id" --format '{{.Image}}')" \
+        = "$expected_image"
+      test "$(docker inspect "$container_id" --format \
+        '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+        = "$expected_revision"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/applications.tsv"
+    while IFS=$'\t' read -r service container_id expected_image expected_state; do
+      actual="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+        ps -q --all "$service")"
+      test "$actual" = "$container_id"
+      test "$(docker inspect "$container_id" --format '{{.Image}}')" \
+        = "$expected_image"
+      test "$(docker inspect "$container_id" --format '{{.State.Status}}')" \
+        = "$expected_state"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/infrastructure.tsv"
+    while IFS= read -r service; do
+      test -n "$service"
+      if ! actual="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+          ps -q --all "$service")"; then
+        return 1
+      fi
+      test -z "$actual"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/absent-services.txt"
+    if ! mapfile -t recovery_local_image \
+        <"$RECOVERY_BOUNDARY_PROJECTION_DIR/local-image.txt"; then
+      return 1
+    fi
+    test "${#recovery_local_image[@]}" = 4
+    test "$(docker image inspect "${recovery_local_image[0]}" \
+      --format '{{.Id}}')" = "${recovery_local_image[1]}"
+    actual="$(docker image inspect "${recovery_local_image[0]}" \
+      | python3 -c 'import json,sys; value=json.load(sys.stdin)[0]; print((value.get("Descriptor") or value.get("ImageManifestDescriptor") or {})["digest"])')"
+    test "$actual" = "${recovery_local_image[1]}"
+    sudo ctr -n moby content get "${recovery_local_image[1]}" \
+      | python3 -c '
+import json
+import sys
+
+expected = sys.argv[1]
+value = json.load(sys.stdin)
+matches = [
+    item for item in value.get("manifests", [])
+    if item.get("platform", {}).get("os") == "linux"
+    and item.get("platform", {}).get("architecture") == "amd64"
+    and item.get("platform", {}).get("variant") in {None, ""}
+]
+if len(matches) != 1 or matches[0].get("digest") != expected:
+    raise SystemExit("local image linux/amd64 platform manifest is not exact")
+' "${recovery_local_image[2]}"
+    test "$(docker image inspect "${recovery_local_image[0]}" --format \
+      '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+      = "${recovery_local_image[3]}"
+    while IFS=$'\t' read -r unit expected; do
+      sudo test -f "$unit"
+      sudo test ! -L "$unit"
+      test "$(sudo sha256sum "$unit" | awk '{print $1}')" = "$expected"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/installed-units.tsv"
+    while IFS=$'\t' read -r bundle_current resolved_target \
+        expected_manifest_sha expected_revision; do
+      sudo test -L "$bundle_current"
+      sudo test -d "$bundle_current"
+      test "$(sudo realpath -e -- "$bundle_current")" = "$resolved_target"
+      sudo test -d "$resolved_target"
+      sudo test ! -L "$resolved_target"
+      sudo test -f "$resolved_target/MANIFEST.sha256"
+      sudo test ! -L "$resolved_target/MANIFEST.sha256"
+      test "$(sudo sha256sum "$resolved_target/MANIFEST.sha256" \
+        | awk '{print $1}')" = "$expected_manifest_sha"
+      sudo bash -c 'cd "$1" && sha256sum --check --strict MANIFEST.sha256' \
+        _ "$resolved_target"
+      test "$(sudo cat "$bundle_current/REVISION")" = "$expected_revision"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/installed-bundles.tsv"
+    while IFS= read -r absent_controller; do
+      sudo test ! -e "$absent_controller"
+      sudo test ! -L "$absent_controller"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/absent-controllers.txt"
+    while IFS=$'\t' read -r controller_file expected_sha; do
+      sudo test -f "$controller_file"
+      sudo test ! -L "$controller_file"
+      test "$(sudo sha256sum "$controller_file" | awk '{print $1}')" \
+        = "$expected_sha"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/present-controllers.tsv"
+    if ! expected="$(<"$RECOVERY_BOUNDARY_PROJECTION_DIR/witness-names.txt")"; then
+      return 1
+    fi
+    actual="$(sudo find /home/palimpsest/.palimpsest-witness \
+      -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"
+    test "$actual" = "$expected"
+    while IFS=$'\t' read -r witness_name expected_size expected_sha; do
+      witness_path="/home/palimpsest/.palimpsest-witness/$witness_name"
+      sudo test -f "$witness_path"
+      sudo test ! -L "$witness_path"
+      test "$(sudo stat -c '%s' "$witness_path")" = "$expected_size"
+      test "$(sudo sha256sum "$witness_path" | awk '{print $1}')" \
+        = "$expected_sha"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/witness.tsv"
+    if ! expected="$(<"$RECOVERY_BOUNDARY_PROJECTION_DIR/snapshot.txt")"; then
+      return 1
+    fi
+    actual="$(sudo find "$NODE_BACKUP_ROOT" -mindepth 1 -maxdepth 1 \
+      -type d -name '20??????T??????Z' -printf '%f\n' \
+      | LC_ALL=C sort | tail -n 1)"
+    test "$actual" = "$expected"
+  }
+  assert_interrupted_phase1_boundary
+
+  while IFS=$'\t' read -r compose_service container_id image_id state; do
+    test "$state" = running
+    RECOVERY_INFRA_CONTAINER_ID["$compose_service"]="$container_id"
+    RECOVERY_INFRA_IMAGE_ID["$compose_service"]="$image_id"
+  done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/infrastructure.tsv"
+  for compose_service in postgres redis; do
+    [[ "${RECOVERY_INFRA_CONTAINER_ID[$compose_service]}" =~ ^[0-9a-f]{64}$ ]]
+    [[ "${RECOVERY_INFRA_IMAGE_ID[$compose_service]}" \
+      =~ ^sha256:[0-9a-f]{64}$ ]]
+  done
+
+  while IFS=$'\t' read -r compose_service container_id _state image_id revision; do
+    RECOVERY_FAILED_CONTAINER_ID["$compose_service"]="$container_id"
+    RECOVERY_FAILED_IMAGE_ID["$compose_service"]="$image_id"
+    RECOVERY_FAILED_REVISION["$compose_service"]="$revision"
+  done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/applications.tsv"
+  for compose_service in \
+      api beat migrate worker worker-collectors worker-warehouse; do
+    [[ "${RECOVERY_FAILED_CONTAINER_ID[$compose_service]}" \
+      =~ ^[0-9a-f]{64}$ ]]
+    [[ "${RECOVERY_FAILED_IMAGE_ID[$compose_service]}" \
+      =~ ^sha256:[0-9a-f]{64}$ ]]
+    [[ "${RECOVERY_FAILED_REVISION[$compose_service]}" \
+      =~ ^[0-9a-f]{40}$ ]]
+  done
+
+  # Seed restoration authority only from the reviewed pre-failure map. The
+  # disabled live state above is a safety boundary, never restoration intent.
+  while IFS=$'\t' read -r unit unit_file_state active_state; do
+    RELEASE_ENABLEMENT["$unit"]="$unit_file_state"
+    case "$active_state" in
+      active) RELEASE_WAS_ACTIVE["$unit"]=1 ;;
+      inactive) RELEASE_WAS_ACTIVE["$unit"]=0 ;;
       *) exit 1 ;;
     esac
-    COMPOSE_NODE_BEFORE["$compose_service"]="${celery_prefix}@${COMPOSE_HOSTNAME_BEFORE[$compose_service]}"
+  done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/restore-activators.tsv"
+  if ! RECOVERY_PREVIOUS_APPLICATION_IMAGE="$(
+      <"$RECOVERY_BOUNDARY_PROJECTION_DIR/previous-image.txt"
+    )"; then
+    exit 1
   fi
-done
-for required_service in postgres redis api; do
-  required_container_id="$(release_compose \
-    "${COMPOSE_ALL_PROFILES[@]}" ps -q "$required_service")"
-  [[ "$required_container_id" =~ ^[0-9a-f]{64}$ ]]
-  test "$(docker inspect "$required_container_id" \
-    --format '{{.State.Status}}')" = running
-done
-PREVIOUS_API_CONTAINER_ID="$(release_compose \
-  "${COMPOSE_ALL_PROFILES[@]}" ps -q api)"
-PREVIOUS_API_IMAGE_ID="$(docker inspect "$PREVIOUS_API_CONTAINER_ID" \
-  --format '{{.Image}}')"
-[[ "$PREVIOUS_API_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
-test "$(docker image inspect "$PREVIOUS_API_IMAGE_ID" --format \
-  '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
-  = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+  while IFS=$'\t' read -r compose_service presence was_running _expected; do
+    case "$presence:$was_running" in
+      present:true) COMPOSE_WAS_RUNNING["$compose_service"]=1 ;;
+      present:false|absent:false) COMPOSE_WAS_RUNNING["$compose_service"]=0 ;;
+      *) exit 1 ;;
+    esac
+    COMPOSE_CONTAINER_ID_BEFORE["$compose_service"]=''
+    COMPOSE_HOSTNAME_BEFORE["$compose_service"]=''
+    COMPOSE_NODE_BEFORE["$compose_service"]=''
+    if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+      COMPOSE_IMAGE_ID_BEFORE["$compose_service"]="$RECOVERY_PREVIOUS_APPLICATION_IMAGE"
+    else
+      COMPOSE_IMAGE_ID_BEFORE["$compose_service"]=''
+    fi
+  done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/restore-writers.tsv"
 
-# Installers replace /etc unit files and cannot preserve a masked load state.
-# Reject every release-controlled unit before fetch, checkout, stop, or write.
-for unit in "${RELEASE_ACTIVATORS[@]}" "${RELEASE_SERVICES[@]}" \
-    palimpsest-common-crawl-mirror@.service \
-    palimpsest-common-crawl-filter@.service \
-    palimpsest-investigative-broker@.service; do
-  unit_enablement="$(systemctl is-enabled "$unit" 2>/dev/null || true)"
-  case "$unit_enablement" in
-    masked|masked-runtime)
-      printf 'masked release unit must be reviewed and unmasked first: %s\n' \
-        "$unit" >&2
-      exit 1
-      ;;
-  esac
-done
-for unit in "${RELEASE_ACTIVATORS[@]}"; do
-  RELEASE_ENABLEMENT["$unit"]="$(read_enablement "$unit")"
-  active_state="$(systemctl is-active "$unit" 2>/dev/null || true)"
-  case "$active_state" in
-    active) RELEASE_WAS_ACTIVE["$unit"]=1 ;;
-    inactive|failed|unknown|"") RELEASE_WAS_ACTIVE["$unit"]=0 ;;
-    *) printf 'unit is changing state: %s (%s)\n' \
-         "$unit" "$active_state" >&2; exit 1 ;;
-  esac
-done
+  RECOVERY_PREPARED_RECEIPT_PATH="/var/lib/palimpsest-release/recovery/${INTERRUPTED_PHASE1_INCIDENT}.prepared.json"
+  RECOVERY_COMPLETION_RECEIPT_PATH="/var/lib/palimpsest-release/recovery/${INTERRUPTED_PHASE1_INCIDENT}.complete.json"
+  sudo test ! -e "$RECOVERY_COMPLETION_RECEIPT_PATH"
+  sudo test ! -L "$RECOVERY_COMPLETION_RECEIPT_PATH"
+  RECOVERY_PREPARED_TMP="$RECOVERY_PREFLIGHT_DIR/prepared.json"
+  python3 - "$RECOVERY_PREPARED_TMP" "$RECOVERY_MANIFEST_PATH" \
+    "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_HYBRID_FINGERPRINT_SHA256" \
+    "$RECOVERY_RESTORE_PROFILE_SHA256" "$EXPECTED_DEPLOY_SHA" \
+    "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" "$RELEASE_RESUME_TOKEN" \
+    "$RELEASE_ENV_SNAPSHOT_SHA256" "$RECOVERY_BROKER_QUEUE_SHA256" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+(output, manifest_path, manifest_sha, hybrid_sha, restore_sha, target,
+ minimum_recovery_ancestor, transaction, compose_environment_sha,
+ broker_queue_sha) = sys.argv[1:]
+manifest = json.loads(pathlib.Path(manifest_path).read_text(encoding="utf-8"))
+value = {
+    "schema_version": "palimpsest-interrupted-phase1-prepared.v2",
+    "status": "prepared",
+    "prepared_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "transaction_id": transaction,
+    "incident_id": manifest["incident_id"],
+    "manifest_sha256": manifest_sha,
+    "hybrid_fingerprint_sha256": hybrid_sha,
+    "restore_profile_sha256": restore_sha,
+    "compose_environment_sha256": compose_environment_sha,
+    "broker_queue_sha256": broker_queue_sha,
+    "prior_checkout_commit": manifest["authority"]["prior_checkout_commit"],
+    "prior_deployed_commit": manifest["authority"]["prior_deployed_commit"],
+    "failed_target_commit": manifest["authority"]["failed_target_commit"],
+    "recovery_controller_commit": target,
+    "minimum_recovery_ancestor": minimum_recovery_ancestor,
+    "target_commit": target,
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+    encoding="utf-8",
+)
+PY
+  for recovery_receipt_dir in \
+      /var/lib/palimpsest-release \
+      /var/lib/palimpsest-release/recovery; do
+    if sudo test -e "$recovery_receipt_dir" \
+        || sudo test -L "$recovery_receipt_dir"; then
+      sudo test -d "$recovery_receipt_dir"
+      sudo test ! -L "$recovery_receipt_dir"
+    fi
+  done
+  sudo install -d -o root -g root -m 0700 \
+    /var/lib/palimpsest-release /var/lib/palimpsest-release/recovery
+  sudo test ! -L /var/lib/palimpsest-release
+  sudo test ! -L /var/lib/palimpsest-release/recovery
+  sudo python3 - "$RECOVERY_PREPARED_TMP" \
+    "$RECOVERY_PREPARED_RECEIPT_PATH" <<'PY'
+import os
+import stat
+import sys
+
+source, destination = sys.argv[1:]
+maximum_bytes = 64 * 1024
+source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+try:
+    before = os.fstat(source_fd)
+    if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 \
+            or not 0 < before.st_size <= maximum_bytes:
+        raise SystemExit("prepared receipt source is unsafe")
+    payload = bytearray()
+    while True:
+        chunk = os.read(source_fd, min(65536, maximum_bytes + 1 - len(payload)))
+        if not chunk:
+            break
+        payload.extend(chunk)
+        if len(payload) > maximum_bytes:
+            raise SystemExit("prepared receipt exceeds byte ceiling")
+    after = os.fstat(source_fd)
+    stable_fields = (
+        "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink",
+    )
+    if any(getattr(before, key) != getattr(after, key) for key in stable_fields) \
+            or len(payload) != before.st_size:
+        raise SystemExit("prepared receipt source changed while reading")
+finally:
+    os.close(source_fd)
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+destination_fd = os.open(destination, flags, 0o400)
+try:
+    os.fchmod(destination_fd, 0o400)
+    written = 0
+    while written < len(payload):
+        written += os.write(destination_fd, payload[written:])
+    os.fsync(destination_fd)
+    metadata = os.fstat(destination_fd)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 \
+            or metadata.st_gid != 0 or stat.S_IMODE(metadata.st_mode) != 0o400 \
+            or metadata.st_nlink != 1 or metadata.st_size != len(payload):
+        raise SystemExit("prepared receipt destination is unsafe")
+finally:
+    os.close(destination_fd)
+directory_fd = os.open(
+    os.path.dirname(destination),
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+)
+try:
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
+PY
+  sudo cmp -s "$RECOVERY_PREPARED_TMP" "$RECOVERY_PREPARED_RECEIPT_PATH"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$RECOVERY_PREPARED_RECEIPT_PATH")" \
+    = "0:0:400:1"
+  RECOVERY_PREPARED_RECEIPT_SHA256="$(sudo sha256sum \
+    "$RECOVERY_PREPARED_RECEIPT_PATH" | awk '{print $1}')"
+  [[ "$RECOVERY_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  sudo python3 - "$RECOVERY_PREPARED_RECEIPT_PATH" \
+    "$RELEASE_RESUME_TOKEN" "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
+    "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$RECOVERY_FAILED_TARGET_SHA" \
+    "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" "$EXPECTED_DEPLOY_SHA" \
+    "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_HYBRID_FINGERPRINT_SHA256" \
+    "$RECOVERY_RESTORE_PROFILE_SHA256" "$RELEASE_ENV_SNAPSHOT_SHA256" \
+    "$RECOVERY_BROKER_QUEUE_SHA256" <<'PY'
+import datetime
+import json
+import pathlib
+import sys
+
+(path, transaction, prior_checkout, prior_deployed, failed_target,
+ minimum_recovery_ancestor, target, manifest_sha, hybrid_sha, restore_sha,
+ compose_environment_sha, broker_queue_sha) = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate prepared receipt key: {key}")
+        value[key] = item
+    return value
+
+payload = pathlib.Path(path).read_bytes()
+value = json.loads(
+    payload.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicates,
+    parse_constant=lambda item: (_ for _ in ()).throw(
+        ValueError(f"non-finite prepared receipt value: {item}")
+    ),
+)
+expected_fields = {
+    "schema_version", "status", "prepared_at", "transaction_id",
+    "incident_id", "manifest_sha256", "hybrid_fingerprint_sha256",
+    "restore_profile_sha256", "compose_environment_sha256",
+    "broker_queue_sha256", "prior_checkout_commit", "prior_deployed_commit",
+    "failed_target_commit", "recovery_controller_commit",
+    "minimum_recovery_ancestor", "target_commit",
+}
+canonical = json.dumps(
+    value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+timestamp = datetime.datetime.fromisoformat(
+    value.get("prepared_at", "").replace("Z", "+00:00")
+)
+checks = (
+    isinstance(value, dict) and set(value) == expected_fields,
+    payload == canonical and len(payload) <= 64 * 1024,
+    value.get("schema_version") == "palimpsest-interrupted-phase1-prepared.v2",
+    value.get("status") == "prepared",
+    timestamp.utcoffset() == datetime.timezone.utc.utcoffset(timestamp),
+    value.get("transaction_id") == transaction,
+    value.get("incident_id") == "2026-08-25-interrupted-phase1",
+    value.get("prior_checkout_commit") == prior_checkout,
+    value.get("prior_deployed_commit") == prior_deployed,
+    value.get("failed_target_commit") == failed_target,
+    value.get("recovery_controller_commit") == target,
+    value.get("minimum_recovery_ancestor") == minimum_recovery_ancestor,
+    value.get("target_commit") == target,
+    value.get("manifest_sha256") == manifest_sha,
+    value.get("hybrid_fingerprint_sha256") == hybrid_sha,
+    value.get("restore_profile_sha256") == restore_sha,
+    value.get("compose_environment_sha256") == compose_environment_sha,
+    value.get("broker_queue_sha256") == broker_queue_sha,
+)
+if not all(checks):
+    raise SystemExit("interrupted Phase 1 prepared receipt is invalid")
+PY
+  fsync_installed_paths "$RECOVERY_PREPARED_RECEIPT_PATH"
+  assert_interrupted_phase1_boundary
+else
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    compose_container_state "$compose_service"
+  done
+  verify_compose_container_inventory
+  for compose_service in worker worker-collectors worker-warehouse; do
+    test "${COMPOSE_WAS_RUNNING[$compose_service]}" = 1
+  done
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+      test "$(docker image inspect "${COMPOSE_IMAGE_ID_BEFORE[$compose_service]}" \
+        --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+        = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+    fi
+  done
+  for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+    if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+      case "$compose_service" in
+        worker) celery_prefix=default ;;
+        worker-collectors) celery_prefix=collectors ;;
+        worker-warehouse) celery_prefix=warehouse ;;
+        worker-velocity) celery_prefix=velocity ;;
+        *) exit 1 ;;
+      esac
+      COMPOSE_NODE_BEFORE["$compose_service"]="${celery_prefix}@${COMPOSE_HOSTNAME_BEFORE[$compose_service]}"
+    fi
+  done
+  for required_service in postgres redis api; do
+    required_container_id="$(release_compose \
+      "${COMPOSE_ALL_PROFILES[@]}" ps -q "$required_service")"
+    [[ "$required_container_id" =~ ^[0-9a-f]{64}$ ]]
+    test "$(docker inspect "$required_container_id" \
+      --format '{{.State.Status}}')" = running
+  done
+  PREVIOUS_API_CONTAINER_ID="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q api)"
+  PREVIOUS_API_IMAGE_ID="$(docker inspect "$PREVIOUS_API_CONTAINER_ID" \
+    --format '{{.Image}}')"
+  [[ "$PREVIOUS_API_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]
+  test "$(docker image inspect "$PREVIOUS_API_IMAGE_ID" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
+
+  # Installers replace /etc unit files and cannot preserve a masked load state.
+  # Reject every release-controlled unit before fetch, checkout, stop, or write.
+  for unit in "${RELEASE_ACTIVATORS[@]}" "${RELEASE_SERVICES[@]}" \
+      palimpsest-common-crawl-mirror@.service \
+      palimpsest-common-crawl-filter@.service \
+      palimpsest-investigative-broker@.service; do
+    unit_enablement="$(read_enablement "$unit")"
+    case "$unit_enablement" in
+      masked|masked-runtime)
+        printf 'masked release unit must be reviewed and unmasked first: %s\n' \
+          "$unit" >&2
+        exit 1
+        ;;
+    esac
+  done
+  for unit in "${RELEASE_ACTIVATORS[@]}"; do
+    RELEASE_ENABLEMENT["$unit"]="$(read_enablement "$unit")"
+    active_state="$(read_active_state "$unit")"
+    case "$active_state" in
+      active) RELEASE_WAS_ACTIVE["$unit"]=1 ;;
+      inactive|failed|unknown) RELEASE_WAS_ACTIVE["$unit"]=0 ;;
+      *) printf 'unit is changing state: %s (%s)\n' \
+           "$unit" "$active_state" >&2; exit 1 ;;
+    esac
+  done
+fi
 
 # Fetch only updates refs. The checkout below moves to the operator-pinned SHA;
 # there is no pull of whichever commit happens to be newest at release time.
@@ -1887,16 +3629,28 @@ CONTROLLER_TREE_SHA256="$(sha256sum "$CONTROLLER_MANIFEST_PATH" \
   | awk '{print $1}')"
 [[ "$CONTROLLER_TREE_SHA256" =~ ^[0-9a-f]{64}$ ]]
 
-celery_topology_arguments=()
-for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
-  if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
-    celery_topology_arguments+=(--pair \
-      "${COMPOSE_NODE_BEFORE[$compose_service]}=${COMPOSE_QUEUE_BY_SERVICE[$compose_service]}")
-  fi
-done
-CELERY_TOPOLOGY_BEFORE_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
-  encode-topology "${celery_topology_arguments[@]}")"
-[[ "$CELERY_TOPOLOGY_BEFORE_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  RECOVERY_BROKER_QUEUES_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
+    encode-broker-queues --queue celery --queue collectors \
+    --queue warehouse --queue censorwatch)"
+  [[ "$RECOVERY_BROKER_QUEUES_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+  RECOVERY_BROKER_QUEUE_SHA256="$(printf '%s' "$RECOVERY_BROKER_QUEUES_B64" \
+    | base64 --decode | sha256sum | awk '{print $1}')"
+  test "$RECOVERY_BROKER_QUEUE_SHA256" \
+    = 57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b
+  CELERY_TOPOLOGY_BEFORE_B64="$RECOVERY_BROKER_QUEUES_B64"
+else
+  celery_topology_arguments=()
+  for compose_service in "${CELERY_WORKER_SERVICES[@]}"; do
+    if [[ "${COMPOSE_WAS_RUNNING[$compose_service]}" == 1 ]]; then
+      celery_topology_arguments+=(--pair \
+        "${COMPOSE_NODE_BEFORE[$compose_service]}=${COMPOSE_QUEUE_BY_SERVICE[$compose_service]}")
+    fi
+  done
+  CELERY_TOPOLOGY_BEFORE_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
+    encode-topology "${celery_topology_arguments[@]}")"
+  [[ "$CELERY_TOPOLOGY_BEFORE_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+fi
 
 WATCHDOG_BASELINE_STATUS="$OBSERVER_PREFLIGHT_DIR/watchdog-status.json"
 WATCHDOG_BASELINE_STATE="$OBSERVER_PREFLIGHT_DIR/watchdog-state.json"
@@ -2064,21 +3818,24 @@ PRE_CHANGE_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
 
 # Stored observer results are diagnostic evidence only. Neither an old success
 # nor the expected stale exit 2 can satisfy the post-publication final gate.
-SYNC_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
-  --property=InvocationID --value \
-  palimpsest-public-osint-sync.service 2>/dev/null || true)"
-WATCHDOG_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
-  --property=InvocationID --value \
-  palimpsest-freshness-watchdog.service 2>/dev/null || true)"
-WATCHDOG_PRE_RELEASE_EXEC_MAIN_STATUS="$(systemctl show \
-  --property=ExecMainStatus --value \
-  palimpsest-freshness-watchdog.service 2>/dev/null || true)"
-WITNESS_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
-  --property=InvocationID --value \
-  palimpsest-witness.service 2>/dev/null || true)"
-WITNESS_PRE_RELEASE_EXEC_MAIN_STATUS="$(systemctl show \
-  --property=ExecMainStatus --value \
-  palimpsest-witness.service 2>/dev/null || true)"
+if ! SYNC_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
+    --property=InvocationID --value \
+    palimpsest-public-osint-sync.service 2>/dev/null)" \
+    || ! WATCHDOG_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
+      --property=InvocationID --value \
+      palimpsest-freshness-watchdog.service 2>/dev/null)" \
+    || ! WATCHDOG_PRE_RELEASE_EXEC_MAIN_STATUS="$(systemctl show \
+      --property=ExecMainStatus --value \
+      palimpsest-freshness-watchdog.service 2>/dev/null)" \
+    || ! WITNESS_PRE_RELEASE_INVOCATION_ID="$(systemctl show \
+      --property=InvocationID --value \
+      palimpsest-witness.service 2>/dev/null)" \
+    || ! WITNESS_PRE_RELEASE_EXEC_MAIN_STATUS="$(systemctl show \
+      --property=ExecMainStatus --value \
+      palimpsest-witness.service 2>/dev/null)"; then
+  printf 'failed to capture pre-release observer systemd state\n' >&2
+  exit 1
+fi
 printf 'Pre-release watchdog invocation/status: %s/%s\n' \
   "$WATCHDOG_PRE_RELEASE_INVOCATION_ID" \
   "$WATCHDOG_PRE_RELEASE_EXEC_MAIN_STATUS"
@@ -2182,8 +3939,28 @@ verify_installed_unit_blob_one_of() {
 
 verify_backup_dropins() {
   local commit="$1" expected_quiesce="$2" dropin actual expected
+  local inventory_path raw_inventory_path loaded_dropins
   sudo test -d /etc/systemd/system/palimpsest-backup.service.d
   sudo test ! -L /etc/systemd/system/palimpsest-backup.service.d
+  if ! inventory_path="$(mktemp \
+      /tmp/palimpsest-backup-dropins.XXXXXX)"; then
+    printf 'failed to allocate backup drop-in inventory\n' >&2
+    return 1
+  fi
+  raw_inventory_path="${inventory_path}.raw"
+  if ! sudo find /etc/systemd/system/palimpsest-backup.service.d \
+      -mindepth 1 -maxdepth 1 \( -type f -o -type l \) -printf '%p\n' \
+      >"$raw_inventory_path"; then
+    printf 'failed to enumerate backup unit drop-ins\n' >&2
+    rm -f -- "$raw_inventory_path" "$inventory_path"
+    return 1
+  fi
+  if ! LC_ALL=C sort "$raw_inventory_path" >"$inventory_path"; then
+    printf 'failed to sort backup unit drop-ins\n' >&2
+    rm -f -- "$raw_inventory_path" "$inventory_path"
+    return 1
+  fi
+  rm -f -- "$raw_inventory_path" || return 1
   expected=''
   while IFS= read -r dropin; do
     [[ -n "$dropin" ]] || continue
@@ -2204,11 +3981,18 @@ verify_backup_dropins() {
       *) printf 'unexpected backup unit drop-in: %s\n' "$dropin" >&2; return 1 ;;
     esac
     expected+="${expected:+$'\n'}$dropin"
-  done < <(sudo find /etc/systemd/system/palimpsest-backup.service.d \
-    -mindepth 1 -maxdepth 1 \( -type f -o -type l \) -printf '%p\n' \
-    | LC_ALL=C sort)
-  actual="$(systemctl show --property=DropInPaths --value \
-    palimpsest-backup.service | tr ' ' '\n' | sed '/^$/d' | LC_ALL=C sort)"
+  done <"$inventory_path"
+  rm -f -- "$inventory_path" || return 1
+  if ! loaded_dropins="$(systemctl show --property=DropInPaths --value \
+      palimpsest-backup.service)"; then
+    printf 'failed to read loaded backup unit drop-ins\n' >&2
+    return 1
+  fi
+  if ! actual="$(printf '%s\n' "$loaded_dropins" \
+      | tr ' ' '\n' | sed '/^$/d' | LC_ALL=C sort)"; then
+    printf 'failed to normalize loaded backup unit drop-ins\n' >&2
+    return 1
+  fi
   test "$actual" = "$expected"
   if (( expected_quiesce == 1 )); then
     grep -Fxq "$BACKUP_RELEASE_QUIESCE_TARGET" <<<"$expected"
@@ -2224,10 +4008,17 @@ verify_release_service_success_triggers() {
   local expected_backup="$1" expected_evidence="$2"
   local unit load_state actual expected
   for unit in "${RELEASE_SERVICES[@]}"; do
-    load_state="$(systemctl show --property=LoadState --value "$unit")"
+    if ! load_state="$(systemctl show --property=LoadState --value "$unit")"; then
+      printf 'failed to read release service load state: %s\n' "$unit" >&2
+      return 1
+    fi
     case "$load_state" in
       loaded)
-        actual="$(systemctl show --property=OnSuccess --value "$unit")"
+        if ! actual="$(systemctl show --property=OnSuccess --value "$unit")"; then
+          printf 'failed to read release service success triggers: %s\n' \
+            "$unit" >&2
+          return 1
+        fi
         ;;
       not-found) actual='' ;;
       *) printf 'unexpected service load state: %s (%s)\n' \
@@ -2247,10 +4038,14 @@ verify_release_service_success_triggers() {
 
 # The pre-change backup executes script bytes from the clean current checkout,
 # but its loaded unit/drop-ins must be the exact prior deployment authority.
-verify_installed_unit_blob "$COMPATIBLE_ROLLBACK_SHA" \
+installed_backup_authority="$COMPATIBLE_ROLLBACK_SHA"
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  installed_backup_authority="$EXPECTED_DEPLOY_SHA"
+fi
+verify_installed_unit_blob "$installed_backup_authority" \
   ops/systemd/palimpsest-backup.service \
   /etc/systemd/system/palimpsest-backup.service
-verify_backup_dropins "$COMPATIBLE_ROLLBACK_SHA" 0
+verify_backup_dropins "$installed_backup_authority" 0
 test "$(systemctl show --property=FragmentPath --value \
   palimpsest-backup.service)" = /etc/systemd/system/palimpsest-backup.service
 test "$(systemctl show --property=User --value \
@@ -2259,14 +4054,23 @@ test "$(systemctl show --property=Group --value \
   palimpsest-backup.service)" = palimpsest
 test "$(systemctl show --property=WorkingDirectory --value \
   palimpsest-backup.service)" = /home/palimpsest/palimpsest
-PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY="$(verify_installed_unit_blob_one_of \
-  ops/systemd/palimpsest-evidence-wire.service \
-  /etc/systemd/system/palimpsest-evidence-wire.service)"
-PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY="$(verify_installed_unit_blob_one_of \
-  ops/systemd/palimpsest-evidence-wire.timer \
-  /etc/systemd/system/palimpsest-evidence-wire.timer)"
-[[ "$PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
-[[ "$PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+    ops/systemd/palimpsest-evidence-wire.service \
+    /etc/systemd/system/palimpsest-evidence-wire.service
+  verify_installed_unit_blob "$EXPECTED_DEPLOY_SHA" \
+    ops/systemd/palimpsest-evidence-wire.timer \
+    /etc/systemd/system/palimpsest-evidence-wire.timer
+else
+  PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY="$(verify_installed_unit_blob_one_of \
+    ops/systemd/palimpsest-evidence-wire.service \
+    /etc/systemd/system/palimpsest-evidence-wire.service)"
+  PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY="$(verify_installed_unit_blob_one_of \
+    ops/systemd/palimpsest-evidence-wire.timer \
+    /etc/systemd/system/palimpsest-evidence-wire.timer)"
+  [[ "$PREVIOUS_EVIDENCE_WIRE_SERVICE_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
+  [[ "$PREVIOUS_EVIDENCE_WIRE_TIMER_AUTHORITY" =~ ^[0-9a-f]{40}$ ]]
+fi
 EVIDENCE_WIRE_ON_SUCCESS="$(systemctl show --property=OnSuccess --value \
   palimpsest-evidence-wire.service)"
 case "$EVIDENCE_WIRE_ON_SUCCESS" in
@@ -2301,14 +4105,7 @@ done
 for unit in "${RELEASE_SERVICES[@]}"; do
   stop_loaded_unit "$unit"
 done
-sudo systemctl stop 'palimpsest-common-crawl-mirror@*.service' 2>/dev/null || true
-sudo systemctl stop 'palimpsest-common-crawl-filter@*.service' 2>/dev/null || true
-sudo systemctl stop 'palimpsest-investigative-broker@*.service' 2>/dev/null || true
-test -z "$(systemctl list-units --no-legend --plain \
-  --state=active,activating,deactivating \
-  'palimpsest-common-crawl-mirror@*.service' \
-  'palimpsest-common-crawl-filter@*.service' \
-  'palimpsest-investigative-broker@*.service')"
+quiesce_dynamic_release_instances
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   temporarily_disable_activator "$unit"
 done
@@ -2329,13 +4126,109 @@ for _ in 1 2; do
   sleep 2
 done
 CELERY_PRECHANGE_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-prechange.json"
-release_compose "${COMPOSE_ALL_PROFILES[@]}" exec -T worker \
-  /usr/local/bin/python3 - quiesce \
-  --topology-b64 "$CELERY_TOPOLOGY_BEFORE_B64" \
-  --timeout-seconds 10800 --interval-seconds 5 \
-  --inspect-timeout-seconds 15 \
-  <"$CELERY_GATE_PATH" >"$CELERY_PRECHANGE_RECEIPT_PATH"
-python3 - "$CELERY_PRECHANGE_RECEIPT_PATH" <<'PY'
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all "$compose_service")"
+    if [[ -n "$writer_id" ]]; then
+      test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
+    fi
+  done
+  recovery_broker_reader="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q api)"
+  [[ "$recovery_broker_reader" =~ ^[0-9a-f]{64}$ ]]
+  test "$recovery_broker_reader" = "${RECOVERY_FAILED_CONTAINER_ID[api]}"
+  test "$(docker inspect "$recovery_broker_reader" \
+    --format '{{.State.Status}}')" = running
+  test "$(docker inspect "$recovery_broker_reader" \
+    --format '{{.Image}}')" = "${RECOVERY_FAILED_IMAGE_ID[api]}"
+  test "$(docker inspect "$recovery_broker_reader" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "${RECOVERY_FAILED_REVISION[api]}"
+  recovery_broker_redis="$(release_compose \
+    "${COMPOSE_ALL_PROFILES[@]}" ps -q redis)"
+  test "$recovery_broker_redis" = "${RECOVERY_INFRA_CONTAINER_ID[redis]}"
+  test "$(docker inspect "$recovery_broker_redis" \
+    --format '{{.State.Status}}')" = running
+  test "$(docker inspect "$recovery_broker_redis" \
+    --format '{{.Image}}')" = "${RECOVERY_INFRA_IMAGE_ID[redis]}"
+  RECOVERY_BROKER_EMPTY_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/interrupted-phase1-broker-empty.json"
+  /usr/bin/timeout --signal=TERM --kill-after=30s 360s \
+    docker exec -i "$recovery_broker_reader" /usr/local/bin/python3 - \
+    broker-empty --closed-queues-b64 "$RECOVERY_BROKER_QUEUES_B64" \
+    --timeout-seconds 300 --interval-seconds 5 \
+    <"$CELERY_GATE_PATH" >"$RECOVERY_BROKER_EMPTY_RECEIPT_PATH"
+  CELERY_PRECHANGE_RECEIPT_PATH="$RECOVERY_BROKER_EMPTY_RECEIPT_PATH"
+  python3 - "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" \
+    "$RECOVERY_BROKER_QUEUE_SHA256" <<'PY'
+import datetime
+import json
+import pathlib
+import sys
+
+path, broker_queue_sha = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate broker receipt key: {key}")
+        value[key] = item
+    return value
+
+payload = pathlib.Path(path).read_bytes()
+value = json.loads(
+    payload.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicates,
+    parse_constant=lambda item: (_ for _ in ()).throw(
+        ValueError(f"non-finite broker receipt value: {item}")
+    ),
+)
+expected_fields = {
+    "schema_version", "generated_at", "status", "closed_queues_sha256",
+    "closed_queues", "required_zero_samples", "samples_observed", "final",
+}
+final = value.get("final", {})
+canonical = json.dumps(
+    value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+generated_at = datetime.datetime.fromisoformat(
+    value.get("generated_at", "").replace("Z", "+00:00")
+)
+checks = (
+    isinstance(value, dict) and set(value) == expected_fields,
+    isinstance(final, dict)
+        and set(final) == {"broker_depth", "unacknowledged"},
+    payload == canonical and len(payload) <= 64 * 1024,
+    value.get("schema_version") == "palimpsest-celery-broker-release-gate.v1",
+    value.get("status") == "empty",
+    generated_at.utcoffset()
+        == datetime.timezone.utc.utcoffset(generated_at),
+    value.get("closed_queues")
+        == ["celery", "collectors", "warehouse", "censorwatch"],
+    value.get("closed_queues_sha256") == broker_queue_sha,
+    value.get("required_zero_samples") == 2,
+    type(value.get("samples_observed")) is int
+        and value["samples_observed"] >= 2,
+    final.get("broker_depth")
+        == {"celery": 0, "collectors": 0, "warehouse": 0, "censorwatch": 0},
+    final.get("unacknowledged") == {"hash": 0, "index": 0},
+)
+if not all(checks):
+    raise SystemExit("interrupted Phase 1 broker-empty receipt is invalid")
+PY
+  RECOVERY_BROKER_EMPTY_RECEIPT_SHA256="$(sha256sum \
+    "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" | awk '{print $1}')"
+  [[ "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+else
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" exec -T worker \
+    /usr/local/bin/python3 - quiesce \
+    --topology-b64 "$CELERY_TOPOLOGY_BEFORE_B64" \
+    --timeout-seconds 10800 --interval-seconds 5 \
+    --inspect-timeout-seconds 15 \
+    <"$CELERY_GATE_PATH" >"$CELERY_PRECHANGE_RECEIPT_PATH"
+  python3 - "$CELERY_PRECHANGE_RECEIPT_PATH" <<'PY'
 import json
 import sys
 
@@ -2350,6 +4243,7 @@ if (
 ):
     raise SystemExit("pre-change Celery quiescence receipt is invalid")
 PY
+fi
 
 # A runtime mask under /run cannot override a service installed under /etc.
 # Reset the producer's OnSuccess list through a lexically-last /etc drop-in.
@@ -2375,8 +4269,12 @@ if (( NODE_OFFSITE_ON_SUCCESS == 1 )); then
   fsync_installed_paths "$BACKUP_RELEASE_QUIESCE_TARGET"
   sudo systemd-analyze verify /etc/systemd/system/palimpsest-backup.service
   sudo systemctl daemon-reload
-  test -z "$(systemctl show --property=OnSuccess --value \
-    palimpsest-backup.service)"
+  if ! quiesced_backup_on_success="$(systemctl show \
+      --property=OnSuccess --value palimpsest-backup.service)"; then
+    printf 'failed to read quiesced backup success triggers\n' >&2
+    exit 1
+  fi
+  test -z "$quiesced_backup_on_success"
   BACKUP_RELEASE_QUIESCE_SHA256="$(sudo sha256sum \
     "$BACKUP_RELEASE_QUIESCE_TARGET" | awk '{print $1}')"
   [[ "$BACKUP_RELEASE_QUIESCE_SHA256" =~ ^[0-9a-f]{64}$ ]]
@@ -2385,28 +4283,32 @@ fi
 
 # Create and independently verify the PRE-CHANGE restore point before checkout,
 # image build, Compose up, migration, receipt mutation, or candidate code runs.
-start_and_verify_oneshot palimpsest-backup.service
-PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"
-test -n "$PRE_CHANGE_SNAPSHOT"
-test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
-sudo test -d "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
-sudo test ! -L "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
-sudo bash -c 'cd "$1" && sha256sum --check SHA256SUMS' \
-  _ "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
-BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\npostgres.dump\npostgres.list'
-BACKUP_ACTUAL_INVENTORY="$(sudo find \
-  "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" -mindepth 1 -maxdepth 1 \
-  -printf '%f\n' | LC_ALL=C sort)"
-test "$BACKUP_ACTUAL_INVENTORY" = "$BACKUP_EXPECTED_INVENTORY"
-for backup_file in MANIFEST.txt artifacts.list artifacts.tar.gz \
-    postgres.dump postgres.list; do
-  sudo test -s "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/$backup_file"
-done
-BACKUP_VERIFICATION_JSON="$(sudo python3 \
-  ops/backup/node_backup_snapshot.py verify \
-  "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" \
-  --snapshot-id "$PRE_CHANGE_SNAPSHOT")"
-printf '%s\n' "$BACKUP_VERIFICATION_JSON" | python3 -c '
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  PRE_CHANGE_SNAPSHOT=''
+  BACKUP_VERIFICATION_JSON=''
+else
+  start_and_verify_oneshot palimpsest-backup.service
+  PRE_CHANGE_SNAPSHOT="$(latest_node_snapshot)"
+  test -n "$PRE_CHANGE_SNAPSHOT"
+  test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
+  sudo test -d "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
+  sudo test ! -L "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
+  sudo bash -c 'cd "$1" && sha256sum --check SHA256SUMS' \
+    _ "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
+  BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\npostgres.dump\npostgres.list'
+  BACKUP_ACTUAL_INVENTORY="$(sudo find \
+    "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" -mindepth 1 -maxdepth 1 \
+    -printf '%f\n' | LC_ALL=C sort)"
+  test "$BACKUP_ACTUAL_INVENTORY" = "$BACKUP_EXPECTED_INVENTORY"
+  for backup_file in MANIFEST.txt artifacts.list artifacts.tar.gz \
+      postgres.dump postgres.list; do
+    sudo test -s "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/$backup_file"
+  done
+  BACKUP_VERIFICATION_JSON="$(sudo python3 \
+    ops/backup/node_backup_snapshot.py verify \
+    "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" \
+    --snapshot-id "$PRE_CHANGE_SNAPSHOT")"
+  printf '%s\n' "$BACKUP_VERIFICATION_JSON" | python3 -c '
 import json, sys
 snapshot = sys.argv[1]
 value = json.load(sys.stdin)
@@ -2421,6 +4323,7 @@ checks = (
 if not all(checks):
     raise SystemExit("pre-change backup verification receipt failed")
 ' "$PRE_CHANGE_SNAPSHOT"
+fi
 
 # The backup has captured the drained database and artifact roots. Stop every
 # fenced worker before checkout or image replacement and prove that Beat plus
@@ -2444,7 +4347,12 @@ done
 
 release_git switch --detach "$EXPECTED_DEPLOY_SHA"
 test "$(release_git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"
-test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
+if ! release_git_status="$(release_git status \
+    --porcelain=v1 --untracked-files=all)"; then
+  printf 'failed to read target checkout status\n' >&2
+  exit 1
+fi
+test -z "$release_git_status"
 release_compose build
 CANDIDATE_IMAGE_ID="$(docker image inspect palimpsest/app:local \
   --format '{{.Id}}')"
@@ -2452,6 +4360,20 @@ CANDIDATE_IMAGE_ID="$(docker image inspect palimpsest/app:local \
 test "$(docker image inspect palimpsest/app:local --format \
   '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
   = "$EXPECTED_DEPLOY_SHA"
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  test "$(sudo sha256sum "$RECOVERY_PREPARED_RECEIPT_PATH" \
+    | awk '{print $1}')" = "$RECOVERY_PREPARED_RECEIPT_SHA256"
+  test "$(sha256sum "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" \
+    | awk '{print $1}')" = "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256"
+  docker run --rm --network none --entrypoint /usr/local/bin/python3 \
+    "$CANDIDATE_IMAGE_ID" -c '
+import os
+import sys
+
+if os.path.realpath(sys.executable) != "/usr/local/bin/python3.12":
+    raise SystemExit(f"unexpected target container interpreter: {sys.executable}")
+'
+fi
 
 # Install the exact target backup/newsroom units while every producer is held.
 # The target backup unit is required before the v4 snapshot because it adds the
@@ -2520,7 +4442,13 @@ for candidate_unit in \
     palimpsest-event-analysis-live.service; do
   test "$(systemctl show --property=FragmentPath --value "$candidate_unit")" \
     = "/etc/systemd/system/$candidate_unit"
-  test -z "$(systemctl show --property=DropInPaths --value "$candidate_unit")"
+  if ! candidate_dropins="$(systemctl show --property=DropInPaths \
+      --value "$candidate_unit")"; then
+    printf 'failed to read candidate unit drop-ins: %s\n' \
+      "$candidate_unit" >&2
+    exit 1
+  fi
+  test -z "$candidate_dropins"
   test "$(systemctl show --property=NeedDaemonReload --value "$candidate_unit")" \
     = no
 done
@@ -2550,8 +4478,11 @@ WITNESS_REQUIRED_FILES=(
   eval-registry.witness.jsonl
   public-freshness-state.json
 )
-WITNESS_ACTUAL_INVENTORY="$(sudo find "$WITNESS_HISTORY_DIR" \
-  -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"
+if ! WITNESS_ACTUAL_INVENTORY="$(sudo find "$WITNESS_HISTORY_DIR" \
+    -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"; then
+  printf 'failed to enumerate witness history before v4 backup\n' >&2
+  exit 1
+fi
 WITNESS_EXPECTED_INVENTORY="$(printf '%s\n' \
   "${WITNESS_REQUIRED_FILES[@]}" | LC_ALL=C sort)"
 WITNESS_EXPECTED_WITH_STATUS="$(printf '%s\n' \
@@ -2610,17 +4541,48 @@ for witness_file in "${WITNESS_REQUIRED_FILES[@]}"; do
   (( $(sudo stat -c '%s' "$WITNESS_HISTORY_DIR/$witness_file") \
     <= 67108864 ))
 done
-PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_SNAPSHOT"
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  PRE_CHANGE_CORE_SNAPSHOT=''
+else
+  PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_SNAPSHOT"
+fi
 PRE_CHANGE_V4_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
 V4_BACKUP_WORKER_SERVICES=(worker worker-collectors worker-warehouse)
-release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
-  "${V4_BACKUP_WORKER_SERVICES[@]}"
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  for unit in "${RELEASE_ACTIVATORS[@]}"; do
+    test "$(read_enablement "$unit")" = disabled
+    case "$(read_active_state "$unit")" in
+      inactive|failed|unknown) ;;
+      *) exit 1 ;;
+    esac
+  done
+  for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
+    writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all "$compose_service")"
+    if [[ -n "$writer_id" ]]; then
+      test "$(docker inspect "$writer_id" --format '{{.State.Status}}')" = exited
+    fi
+  done
+  test "$(sudo sha256sum "$RECOVERY_PREPARED_RECEIPT_PATH" \
+    | awk '{print $1}')" = "$RECOVERY_PREPARED_RECEIPT_SHA256"
+  test "$(sha256sum "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" \
+    | awk '{print $1}')" = "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256"
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+    --force-recreate "${V4_BACKUP_WORKER_SERVICES[@]}"
+else
+  release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+    "${V4_BACKUP_WORKER_SERVICES[@]}"
+fi
 declare -A V4_BACKUP_CONTAINER_ID V4_BACKUP_HOSTNAME
 v4_backup_topology_arguments=()
 for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
   V4_BACKUP_CONTAINER_ID["$compose_service"]="$(release_compose \
     "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")"
   [[ "${V4_BACKUP_CONTAINER_ID[$compose_service]}" =~ ^[0-9a-f]{64}$ ]]
+  if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+    test "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+      != "${RECOVERY_FAILED_CONTAINER_ID[$compose_service]}"
+  fi
   v4_worker_ready=0
   for (( v4_worker_attempt=1; v4_worker_attempt<=45; v4_worker_attempt++ )); do
     if [[ "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
@@ -2693,6 +4655,17 @@ for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
     --format '{{.State.Status}}')" = exited
 done
 PRE_CHANGE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  RECOVERY_BACKUP_REASON='interrupted-phase1-no-valid-prechange-snapshot'
+  RECOVERY_BACKUP_VERIFIED_AT="$(date -u +'%Y-%m-%dT%H:%M:%S.%NZ')"
+  PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
+  test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
+  test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
+  for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
+    test "$(docker inspect "${V4_BACKUP_CONTAINER_ID[$compose_service]}" \
+      --format '{{.State.Status}}')" = exited
+  done
+fi
 
 # Certify the exact built image and receipt without installing a consumer unit.
 # Then install and run the provider before either Requires= consumer exists.
@@ -2815,8 +4788,12 @@ for witness_file in "${WITNESS_REQUIRED_FILES[@]}"; do
 done
 test "$(sudo stat -c '%u:%g:%a' "$WITNESS_HISTORY_DIR")" \
   = "$(id -u palimpsest):$(id -g palimpsest):700"
-test "$(sudo find "$WITNESS_HISTORY_DIR" -mindepth 1 -maxdepth 1 \
-  -printf '%f\n' | LC_ALL=C sort)" = "$WITNESS_EXPECTED_INVENTORY"
+if ! WITNESS_ACTUAL_INVENTORY="$(sudo find "$WITNESS_HISTORY_DIR" \
+    -mindepth 1 -maxdepth 1 -printf '%f\n' | LC_ALL=C sort)"; then
+  printf 'failed to enumerate witness history after installation\n' >&2
+  exit 1
+fi
+test "$WITNESS_ACTUAL_INVENTORY" = "$WITNESS_EXPECTED_INVENTORY"
 for witness_file in "${WITNESS_REQUIRED_FILES[@]}"; do
   test "$(sudo stat -c '%u:%g:%a:%h' \
     "$WITNESS_HISTORY_DIR/$witness_file")" \
@@ -2834,14 +4811,18 @@ sudo systemctl daemon-reload
 # lines. Prove the exact canonical fragment, absence of drop-ins, and effective
 # sandbox identity instead.
 verify_observer_unit_provenance() {
-  local unit="$1" expected_state_directory="${2:-}"
+  local unit="$1" expected_state_directory="${2:-}" dropins
   local fragment="/etc/systemd/system/$unit"
   sudo test -f "$fragment"
   sudo test ! -L "$fragment"
   test "$(sudo stat -c '%u:%g:%a:%h' "$fragment")" = "0:0:644:1"
   test "$(systemctl show --property=FragmentPath --value "$unit")" \
     = "$fragment"
-  test -z "$(systemctl show --property=DropInPaths --value "$unit")"
+  if ! dropins="$(systemctl show --property=DropInPaths --value "$unit")"; then
+    printf 'failed to read observer unit drop-ins: %s\n' "$unit" >&2
+    return 1
+  fi
+  test -z "$dropins"
   test "$(systemctl show --property=NeedDaemonReload --value "$unit")" = no
   if [[ -n "$expected_state_directory" ]]; then
     test "$(systemctl show --property=User --value "$unit")" = palimpsest
@@ -2866,15 +4847,88 @@ verify_observer_units
 if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
   sudo test -f "$BACKUP_RELEASE_QUIESCE_TARGET"
   sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
-  test -z "$(systemctl show --property=OnSuccess --value \
-    palimpsest-backup.service)"
+  if ! quiesced_backup_on_success="$(systemctl show \
+      --property=OnSuccess --value palimpsest-backup.service)"; then
+    printf 'failed to recheck quiesced backup success triggers\n' >&2
+    exit 1
+  fi
+  test -z "$quiesced_backup_on_success"
 fi
 
 # The verified pre-change snapshot is already durable. Run only the candidate
 # migration and read-only API first; no scheduler or worker may be started by a
 # broad Compose command. The authority mount exists because the first provider
-# sync succeeded above.
-release_compose --profile api up -d postgres redis migrate api
+# sync succeeded above. Incident recovery additionally proves a new migration
+# container on the exact target image whose invocation began after the v4
+# snapshot verification boundary.
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  recovery_migrate_before="$(release_compose --profile api \
+    ps -q --all migrate)"
+  release_compose --profile api up -d --no-deps --force-recreate migrate
+  RECOVERY_MIGRATION_CONTAINER_ID="$(release_compose --profile api \
+    ps -q --all migrate)"
+  [[ "$RECOVERY_MIGRATION_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+  test "$RECOVERY_MIGRATION_CONTAINER_ID" != "$recovery_migrate_before"
+  recovery_migration_exited=0
+  for (( recovery_migration_attempt=1; \
+      recovery_migration_attempt<=120; recovery_migration_attempt++ )); do
+    if [[ "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" \
+        --format '{{.State.Status}}')" == exited ]]; then
+      recovery_migration_exited=1
+      break
+    fi
+    sleep 2
+  done
+  (( recovery_migration_exited == 1 ))
+  test "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  test "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "$EXPECTED_DEPLOY_SHA"
+  test "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" \
+    --format '{{.State.ExitCode}}')" = 0
+  RECOVERY_MIGRATION_STARTED_AT="$(docker inspect \
+    "$RECOVERY_MIGRATION_CONTAINER_ID" --format '{{.State.StartedAt}}')"
+  python3 - "$RECOVERY_BACKUP_VERIFIED_AT" \
+    "$RECOVERY_MIGRATION_STARTED_AT" <<'PY'
+import datetime
+import sys
+
+parse = lambda value: datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+if parse(sys.argv[2]) <= parse(sys.argv[1]):
+    raise SystemExit("recovery migration did not start after backup verification")
+PY
+  RECOVERY_MIGRATION_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/recovery-migration.json"
+  python3 - "$RECOVERY_MIGRATION_RECEIPT_PATH" \
+    "$RECOVERY_MIGRATION_CONTAINER_ID" "$CANDIDATE_IMAGE_ID" \
+    "$EXPECTED_DEPLOY_SHA" "$RECOVERY_BACKUP_VERIFIED_AT" \
+    "$RECOVERY_MIGRATION_STARTED_AT" <<'PY'
+import json
+import pathlib
+import sys
+
+output, container, image, revision, backup_verified_at, started_at = sys.argv[1:]
+value = {
+    "schema_version": "palimpsest-interrupted-phase1-migration.v1",
+    "status": "succeeded",
+    "container_id": container,
+    "image_id": image,
+    "revision": revision,
+    "backup_verified_at": backup_verified_at,
+    "started_at": started_at,
+    "exit_code": 0,
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n",
+    encoding="utf-8",
+)
+PY
+  recovery_api_before="$(release_compose --profile api ps -q --all api)"
+  test "$recovery_api_before" = "${RECOVERY_FAILED_CONTAINER_ID[api]}"
+  release_compose --profile api up -d --no-deps --force-recreate api
+else
+  release_compose --profile api up -d postgres redis migrate api
+fi
 for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
   writer_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
     ps -q --all "$compose_service")"
@@ -2896,6 +4950,20 @@ done
 if (( api_ready != 1 )); then
   printf 'C1 API did not become ready after Compose restart\n' >&2
   exit 1
+fi
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  RECOVERY_TARGET_API_CONTAINER_ID="$(release_compose --profile api ps -q api)"
+  [[ "$RECOVERY_TARGET_API_CONTAINER_ID" =~ ^[0-9a-f]{64}$ ]]
+  test "$RECOVERY_TARGET_API_CONTAINER_ID" \
+    != "${RECOVERY_FAILED_CONTAINER_ID[api]}"
+  test "$(docker inspect "$RECOVERY_TARGET_API_CONTAINER_ID" \
+    --format '{{.State.Status}}')" = running
+  test "$(docker inspect "$RECOVERY_TARGET_API_CONTAINER_ID" \
+    --format '{{.Image}}')" \
+    = "$CANDIDATE_IMAGE_ID"
+  test "$(docker inspect "$RECOVERY_TARGET_API_CONTAINER_ID" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "$EXPECTED_DEPLOY_SHA"
 fi
 
 # Start the three mandatory production roles. Beat and the optional velocity
@@ -3171,6 +5239,37 @@ a main-line descendant of it. Do not select an older successful run.
 
 ```bash
 set -Eeuo pipefail
+phase2_abort() {
+  local original_status="${1:-1}" current_uid current_gid
+  trap - ERR EXIT HUP INT TERM
+  if (( BASH_SUBSHELL > 0 )); then
+    printf '__PALIMPSEST_COMMAND_SUBSTITUTION_FAILED__\n'
+    exit "$original_status"
+  fi
+  set +e
+  if declare -F cleanup_publication_files >/dev/null 2>&1; then
+    cleanup_publication_files "$original_status"
+  elif declare -F cleanup_phase2 >/dev/null 2>&1; then
+    cleanup_phase2 "$original_status" 0
+  elif [[ -n "${PHASE2_TMP_DIR:-}" ]]; then
+    current_uid="$(id -u)"
+    current_gid="$(id -g)"
+    if [[ ! -L "$PHASE2_TMP_DIR" && -d "$PHASE2_TMP_DIR" ]] \
+        && [[ "$(stat -c '%u:%g:%a' "$PHASE2_TMP_DIR" 2>/dev/null)" \
+          == "${current_uid}:${current_gid}:700" ]]; then
+      rm -rf -- "$PHASE2_TMP_DIR"
+    else
+      printf 'refusing unauthenticated Phase 2 temporary cleanup\n' >&2
+    fi
+  fi
+  (( original_status != 0 )) || original_status=1
+  exit "$original_status"
+}
+trap 'phase2_abort "$?"' ERR
+trap 'phase2_abort "$?"' EXIT
+trap 'phase2_abort 129' HUP
+trap 'phase2_abort 130' INT
+trap 'phase2_abort 143' TERM
 PALIMPSEST_REPOSITORY='beepboop2025/palimpsest'
 EXPECTED_DEPLOY_SHA='REPLACE_WITH_SAME_REVIEWED_40_HEX_SHA'
 RELEASE_RESUME_TOKEN='REPLACE_WITH_PHASE_1_32_HEX_TOKEN'
@@ -3221,17 +5320,33 @@ restore_osint_workflow_freeze() {
   return 1
 }
 cleanup_phase2() {
-  local original_status=$? restore_status=0
-  trap - EXIT
+  local original_status="${1:-$?}" inherited_cleanup_status="${2:-0}"
+  local restore_status=0 cleanup_status=0 current_uid current_gid
+  trap - ERR EXIT HUP INT TERM
   set +e
   restore_osint_workflow_freeze || restore_status=$?
-  rm -rf -- "$PHASE2_TMP_DIR"
+  current_uid="$(id -u)"
+  current_gid="$(id -g)"
+  if [[ -L "$PHASE2_TMP_DIR" || ! -d "$PHASE2_TMP_DIR" ]] \
+      || [[ "$(stat -c '%u:%g:%a' "$PHASE2_TMP_DIR" 2>/dev/null)" \
+        != "${current_uid}:${current_gid}:700" ]]; then
+    printf 'refusing unauthenticated Phase 2 temporary cleanup\n' >&2
+    cleanup_status=1
+  elif ! rm -rf -- "$PHASE2_TMP_DIR"; then
+    cleanup_status=1
+  fi
   if (( original_status != 0 )); then
     exit "$original_status"
   fi
-  exit "$restore_status"
+  if (( restore_status != 0 )); then
+    exit "$restore_status"
+  fi
+  if (( inherited_cleanup_status != 0 || cleanup_status != 0 )); then
+    exit 1
+  fi
+  exit 0
 }
-trap cleanup_phase2 EXIT
+trap 'cleanup_phase2 "$?" 0' EXIT
 test "$(osint_workflow_state)" = disabled_manually
 OSINT_RUNS_BEFORE_TMP="$PHASE2_TMP_DIR/runs-before.json"
 OSINT_RUNS_AFTER_TMP="$PHASE2_TMP_DIR/runs-after.json"
@@ -3299,8 +5414,12 @@ mkdir -m 0700 "$OSINT_RELEASE_ARTIFACT_DIR"
 gh run download "$OSINT_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
   --name "palimpsest-osint-release-$OSINT_RUN_ID" \
   --dir "$OSINT_RELEASE_ARTIFACT_DIR"
-test "$(find "$OSINT_RELEASE_ARTIFACT_DIR" -mindepth 1 -maxdepth 1 \
-  | wc -l | tr -d ' ')" = 1
+if ! OSINT_RELEASE_ARTIFACT_COUNT="$(find "$OSINT_RELEASE_ARTIFACT_DIR" \
+    -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')"; then
+  printf 'failed to count downloaded OSINT release artifacts\n' >&2
+  exit 1
+fi
+test "$OSINT_RELEASE_ARTIFACT_COUNT" = 1
 OSINT_RELEASE_RUN_RECEIPT="$OSINT_RELEASE_ARTIFACT_DIR/osint-release-run.json"
 test -f "$OSINT_RELEASE_RUN_RECEIPT"
 test ! -L "$OSINT_RELEASE_RUN_RECEIPT"
@@ -3410,11 +5529,14 @@ REPOSITORY_LEDGER_TMP="$(mktemp)"
 PUBLIC_OSINT_TMP="$(mktemp)"
 PUBLIC_LEDGER_TMP="$(mktemp)"
 cleanup_publication_files() {
+  local original_status="${1:-$?}" file_cleanup_status=0
+  trap - ERR EXIT HUP INT TERM
+  set +e
   rm -f -- \
     "$LIVE_BLEED_TMP" "$REPOSITORY_BLEED_TMP" "$PUBLIC_BLEED_TMP" \
     "$REPOSITORY_OSINT_TMP" "$REPOSITORY_LEDGER_TMP" "$PUBLIC_OSINT_TMP" \
-    "$PUBLIC_LEDGER_TMP"
-  cleanup_phase2
+    "$PUBLIC_LEDGER_TMP" || file_cleanup_status=$?
+  cleanup_phase2 "$original_status" "$file_cleanup_status"
 }
 trap cleanup_publication_files EXIT
 
@@ -3607,10 +5729,14 @@ Their systemd units remain failed so the accepted degradation stays visible.
 ```bash
 set -Eeuo pipefail
 if ! declare -p \
+    PALIMPSEST_REPO_ROOT PALIMPSEST_ENV_FILE COMPOSE_PROJECT_NAME \
     RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT RELEASE_ACTIVATORS RELEASE_SERVICES \
     COMPOSE_ALL_PROFILES COMPOSE_WRITER_SERVICES CELERY_WORKER_SERVICES \
     COMPOSE_WAS_RUNNING COMPOSE_CONTAINER_ID_BEFORE COMPOSE_IMAGE_ID_BEFORE \
     COMPOSE_NODE_BEFORE COMPOSE_QUEUE_BY_SERVICE \
+    RECOVERY_FAILED_CONTAINER_ID RECOVERY_FAILED_IMAGE_ID \
+    RECOVERY_FAILED_REVISION RECOVERY_INFRA_CONTAINER_ID \
+    RECOVERY_INFRA_IMAGE_ID \
     CANDIDATE_UNIT_SOURCES CANDIDATE_UNIT_TARGETS \
     RELEASE_HANDOFF_B64 \
     PROOF_PIN_SEQUENCE ACTIVE_PROOF_PIN \
@@ -3633,7 +5759,29 @@ if ! declare -p \
     EXPECTED_PREVIOUS_CHECKOUT_SHA EXPECTED_PREVIOUS_DEPLOY_SHA \
     PREVIOUS_CHECKOUT_SHA PREVIOUS_DEPLOY_SHA COMPATIBLE_ROLLBACK_SHA \
     TRANSACTION_DIRECTION PHASE1_SHELL_PID PHASE1_FAIL_SAFE_ARMED \
-    RELEASE_DOCKER_CONFIG \
+    INTERRUPTED_PHASE1_RECOVERY INTERRUPTED_PHASE1_INCIDENT \
+    INTERRUPTED_PHASE1_MANIFEST_SOURCE INTERRUPTED_PHASE1_VERIFIER_SOURCE \
+    INTERRUPTED_PHASE1_MANIFEST_SHA256 INTERRUPTED_PHASE1_RECOVERY_ANCESTOR \
+    RECOVERY_MANIFEST_PATH RECOVERY_MANIFEST_VERIFIER_PATH \
+    RECOVERY_MANIFEST_SHA256 RECOVERY_HYBRID_FINGERPRINT_SHA256 \
+    RECOVERY_RESTORE_PROFILE_SHA256 RECOVERY_FAILED_TARGET_SHA \
+    RECOVERY_EXPECTED_ENV_SHA256 RECOVERY_COMPOSE_SCOPE_PROJECT \
+    RECOVERY_COMPOSE_SCOPE_WORKING_DIR RECOVERY_COMPOSE_SCOPE_CONFIG_FILES \
+    RECOVERY_BOUNDARY_PROJECTION_DIR \
+    RECOVERY_PREPARED_RECEIPT_PATH RECOVERY_PREPARED_RECEIPT_SHA256 \
+    RECOVERY_PREPARED_TMP \
+    RECOVERY_COMPLETION_RECEIPT_PATH RECOVERY_BROKER_QUEUES_B64 \
+    RECOVERY_BROKER_QUEUE_SHA256 \
+    RECOVERY_BROKER_EMPTY_RECEIPT_PATH \
+    RECOVERY_BROKER_EMPTY_RECEIPT_SHA256 RECOVERY_BACKUP_REASON \
+    RECOVERY_BACKUP_VERIFIED_AT RECOVERY_MIGRATION_RECEIPT_PATH \
+    RECOVERY_MIGRATION_CONTAINER_ID RECOVERY_MIGRATION_STARTED_AT \
+    RECOVERY_TARGET_API_CONTAINER_ID RECOVERY_TARGET_BEAT_CONTAINER_ID \
+    RECOVERY_FINAL_RUNTIME_PATH RECOVERY_FINAL_RUNTIME_SHA256 \
+    RECOVERY_PHASE3_BINDING_PATH RECOVERY_PHASE3_BINDING_SHA256 \
+    RELEASE_DOCKER_CONFIG RELEASE_ENV_SNAPSHOT_DIR \
+    RELEASE_ENV_SNAPSHOT_FILE RELEASE_ENV_SNAPSHOT_UID \
+    RELEASE_ENV_SNAPSHOT_GID RELEASE_ENV_SNAPSHOT_SHA256 \
     BACKUP_RELEASE_QUIESCE_ADDED BACKUP_RELEASE_QUIESCE_TARGET \
     BACKUP_RELEASE_QUIESCE_SHA256 BACKUP_ON_SUCCESS \
     LEGACY_WITNESS_STATUS_PATH \
@@ -3658,11 +5806,17 @@ if ! declare -p \
     || ! [[ "$OBSERVER_POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$CONTROLLER_TREE_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$CANDIDATE_IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]] \
+    || ! [[ "$RELEASE_ENV_SNAPSHOT_SHA256" =~ ^[0-9a-f]{64}$ ]] \
     || ! [[ "$WATCHDOG_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
     || ! [[ "$WITNESS_BASELINE_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
     || ! [[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]] \
-    || ! declare -F release_git release_compose read_enablement stop_loaded_unit \
-      temporarily_disable_activator release_quiesce_all phase1_fail_safe \
+    || ! declare -F release_git release_compose read_enablement \
+      read_active_state stop_loaded_unit \
+      temporarily_disable_activator capture_controlled_writer_inventory \
+      capture_release_instance_inventory quiesce_dynamic_release_instances \
+      quiesce_controlled_writer_inventory \
+      verify_controlled_writer_inventory_quiescent release_quiesce_all \
+      cleanup_release_private_state phase1_fail_safe \
       fsync_installed_paths git_blob_sha256 verify_installed_unit_blob \
       verify_backup_dropins \
       verify_release_service_success_triggers \
@@ -3682,6 +5836,17 @@ test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
 test "$COMPATIBLE_ROLLBACK_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
 test "$(release_git rev-parse HEAD)" = "$EXPECTED_DEPLOY_SHA"
 test "$(sudo cat /etc/palimpsest/deployed-commit)" = "$EXPECTED_DEPLOY_SHA"
+test "$PALIMPSEST_ENV_FILE" = "$RELEASE_ENV_SNAPSHOT_FILE"
+test -d "$RELEASE_ENV_SNAPSHOT_DIR"
+test ! -L "$RELEASE_ENV_SNAPSHOT_DIR"
+test "$(stat -c '%u:%g:%a' "$RELEASE_ENV_SNAPSHOT_DIR")" \
+  = "${RELEASE_ENV_SNAPSHOT_UID}:${RELEASE_ENV_SNAPSHOT_GID}:700"
+test -f "$RELEASE_ENV_SNAPSHOT_FILE"
+test ! -L "$RELEASE_ENV_SNAPSHOT_FILE"
+test "$(stat -c '%u:%g:%a:%h' "$RELEASE_ENV_SNAPSHOT_FILE")" \
+  = "${RELEASE_ENV_SNAPSHOT_UID}:${RELEASE_ENV_SNAPSHOT_GID}:400:1"
+test "$(sha256sum "$RELEASE_ENV_SNAPSHOT_FILE" | awk '{print $1}')" \
+  = "$RELEASE_ENV_SNAPSHOT_SHA256"
 case "$BACKUP_RELEASE_QUIESCE_ADDED" in
   0)
     test -z "$BACKUP_RELEASE_QUIESCE_SHA256"
@@ -3695,8 +5860,12 @@ case "$BACKUP_RELEASE_QUIESCE_ADDED" in
     sudo test ! -L "$BACKUP_RELEASE_QUIESCE_TARGET"
     test "$(sudo sha256sum "$BACKUP_RELEASE_QUIESCE_TARGET" \
       | awk '{print $1}')" = "$BACKUP_RELEASE_QUIESCE_SHA256"
-    test -z "$(systemctl show --property=OnSuccess --value \
-      palimpsest-backup.service)"
+    if ! quiesced_backup_on_success="$(systemctl show \
+        --property=OnSuccess --value palimpsest-backup.service)"; then
+      printf 'failed to read Phase 3 backup success triggers\n' >&2
+      exit 1
+    fi
+    test -z "$quiesced_backup_on_success"
     ;;
   *) exit 1 ;;
 esac
@@ -3722,40 +5891,759 @@ else
   test -z "$LEGACY_WITNESS_STATUS_SHA256"
 fi
 
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  test "$RECOVERY_MANIFEST_SHA256" = "$INTERRUPTED_PHASE1_MANIFEST_SHA256"
+  test "$RECOVERY_FAILED_TARGET_SHA" \
+    = 138a9eb323857ba91944fc04d0ccfabb653e7f24
+  test "$RECOVERY_BACKUP_REASON" \
+    = interrupted-phase1-no-valid-prechange-snapshot
+  test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
+  [[ "$RECOVERY_HYBRID_FINGERPRINT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_RESTORE_PROFILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_BROKER_QUEUES_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+  test "$RECOVERY_EXPECTED_ENV_SHA256" \
+    = 2ce97c2f94ce93336b592e1ddee78cfdbec1e8b19d35b39faab6ac069d332c95
+  test "$RELEASE_ENV_SNAPSHOT_SHA256" = "$RECOVERY_EXPECTED_ENV_SHA256"
+  test "$RECOVERY_COMPOSE_SCOPE_PROJECT" = palimpsest
+  test "$RECOVERY_COMPOSE_SCOPE_PROJECT" = "$COMPOSE_PROJECT_NAME"
+  test "$RECOVERY_COMPOSE_SCOPE_WORKING_DIR" \
+    = "$PALIMPSEST_REPO_ROOT/ops/docker"
+  test "$RECOVERY_COMPOSE_SCOPE_CONFIG_FILES" \
+    = "$PALIMPSEST_REPO_ROOT/ops/docker/docker-compose.prod.yml"
+  test "$RECOVERY_BROKER_QUEUE_SHA256" \
+    = 57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b
+  test "$(printf '%s' "$RECOVERY_BROKER_QUEUES_B64" \
+    | base64 --decode | sha256sum | awk '{print $1}')" \
+    = "$RECOVERY_BROKER_QUEUE_SHA256"
+  test "$(sha256sum "$RECOVERY_MANIFEST_PATH" | awk '{print $1}')" \
+    = "$RECOVERY_MANIFEST_SHA256"
+  test "$RECOVERY_MANIFEST_SHA256" = "$(release_git show \
+    "${EXPECTED_DEPLOY_SHA}:${INTERRUPTED_PHASE1_MANIFEST_SOURCE}" \
+    | sha256sum | awk '{print $1}')"
+  test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
+    "$RECOVERY_MANIFEST_PATH")" \
+    = "validated interrupted Phase 1 recovery manifest: $RECOVERY_MANIFEST_SHA256"
+  for recovery_ancestor in \
+      "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
+      "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
+      "$RECOVERY_FAILED_TARGET_SHA" \
+      "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR"; do
+    release_git merge-base --is-ancestor \
+      "$recovery_ancestor" "$EXPECTED_DEPLOY_SHA"
+  done
+  for compose_service in postgres redis; do
+    phase3_infra_id="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all "$compose_service")"
+    test "$phase3_infra_id" = "${RECOVERY_INFRA_CONTAINER_ID[$compose_service]}"
+    test "$(docker inspect "$phase3_infra_id" --format '{{.State.Status}}')" \
+      = running
+    test "$(docker inspect "$phase3_infra_id" --format '{{.Image}}')" \
+      = "${RECOVERY_INFRA_IMAGE_ID[$compose_service]}"
+  done
+  verify_compose_container_inventory
+  sudo test -f "$RECOVERY_PREPARED_RECEIPT_PATH"
+  sudo test ! -L "$RECOVERY_PREPARED_RECEIPT_PATH"
+  test "$(sudo stat -c '%u:%g:%a:%h' "$RECOVERY_PREPARED_RECEIPT_PATH")" \
+    = "0:0:400:1"
+  test "$(sudo sha256sum "$RECOVERY_PREPARED_RECEIPT_PATH" \
+    | awk '{print $1}')" = "$RECOVERY_PREPARED_RECEIPT_SHA256"
+  sudo cmp -s "$RECOVERY_PREPARED_TMP" "$RECOVERY_PREPARED_RECEIPT_PATH"
+  sudo test ! -e "$RECOVERY_COMPLETION_RECEIPT_PATH"
+  sudo test ! -L "$RECOVERY_COMPLETION_RECEIPT_PATH"
+  sudo python3 - "$RECOVERY_PREPARED_RECEIPT_PATH" \
+    "$RELEASE_RESUME_TOKEN" "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
+    "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$RECOVERY_FAILED_TARGET_SHA" \
+    "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" "$EXPECTED_DEPLOY_SHA" \
+    "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_HYBRID_FINGERPRINT_SHA256" \
+    "$RECOVERY_RESTORE_PROFILE_SHA256" "$RELEASE_ENV_SNAPSHOT_SHA256" \
+    "$RECOVERY_BROKER_QUEUE_SHA256" <<'PY'
+import datetime
+import json
+import pathlib
+import sys
+
+(path, transaction, prior_checkout, prior_deployed, failed_target,
+ minimum_recovery_ancestor, target, manifest_sha, hybrid_sha, restore_sha,
+ compose_environment_sha, broker_queue_sha) = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate prepared receipt key: {key}")
+        value[key] = item
+    return value
+
+payload = pathlib.Path(path).read_bytes()
+value = json.loads(
+    payload.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicates,
+    parse_constant=lambda item: (_ for _ in ()).throw(
+        ValueError(f"non-finite prepared receipt value: {item}")
+    ),
+)
+expected_fields = {
+    "schema_version", "status", "prepared_at", "transaction_id",
+    "incident_id", "manifest_sha256", "hybrid_fingerprint_sha256",
+    "restore_profile_sha256", "compose_environment_sha256",
+    "broker_queue_sha256", "prior_checkout_commit", "prior_deployed_commit",
+    "failed_target_commit", "recovery_controller_commit",
+    "minimum_recovery_ancestor", "target_commit",
+}
+canonical = json.dumps(
+    value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+timestamp = datetime.datetime.fromisoformat(
+    value.get("prepared_at", "").replace("Z", "+00:00")
+)
+checks = (
+    isinstance(value, dict) and set(value) == expected_fields,
+    payload == canonical and len(payload) <= 64 * 1024,
+    value.get("schema_version") == "palimpsest-interrupted-phase1-prepared.v2",
+    value.get("status") == "prepared",
+    timestamp.utcoffset() == datetime.timezone.utc.utcoffset(timestamp),
+    value.get("transaction_id") == transaction,
+    value.get("incident_id") == "2026-08-25-interrupted-phase1",
+    value.get("prior_checkout_commit") == prior_checkout,
+    value.get("prior_deployed_commit") == prior_deployed,
+    value.get("failed_target_commit") == failed_target,
+    value.get("recovery_controller_commit") == target,
+    value.get("minimum_recovery_ancestor") == minimum_recovery_ancestor,
+    value.get("target_commit") == target,
+    value.get("manifest_sha256") == manifest_sha,
+    value.get("hybrid_fingerprint_sha256") == hybrid_sha,
+    value.get("restore_profile_sha256") == restore_sha,
+    value.get("compose_environment_sha256") == compose_environment_sha,
+    value.get("broker_queue_sha256") == broker_queue_sha,
+)
+if not all(checks):
+    raise SystemExit("interrupted Phase 1 prepared receipt is invalid")
+PY
+  test "$(sha256sum "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" \
+    | awk '{print $1}')" = "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256"
+  python3 - "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" \
+    "$RECOVERY_MIGRATION_RECEIPT_PATH" "$CANDIDATE_IMAGE_ID" \
+    "$EXPECTED_DEPLOY_SHA" "$RECOVERY_MIGRATION_CONTAINER_ID" \
+    "$RECOVERY_BACKUP_VERIFIED_AT" "$RECOVERY_MIGRATION_STARTED_AT" \
+    "$RECOVERY_BROKER_QUEUE_SHA256" <<'PY'
+import datetime
+import json
+import pathlib
+import sys
+
+(
+    broker_path, migration_path, image, revision, migration_container,
+    backup_verified_at, migration_started_at, broker_queue_sha,
+) = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate recovery proof key: {key}")
+        value[key] = item
+    return value
+
+def load_canonical(path):
+    payload = pathlib.Path(path).read_bytes()
+    value = json.loads(
+        payload.decode("utf-8", "strict"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite recovery proof value: {item}")
+        ),
+    )
+    canonical = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if payload != canonical or len(payload) > 64 * 1024:
+        raise SystemExit("recovery proof framing is invalid")
+    return value
+
+broker = load_canonical(broker_path)
+migration = load_canonical(migration_path)
+broker_fields = {
+    "schema_version", "generated_at", "status", "closed_queues_sha256",
+    "closed_queues", "required_zero_samples", "samples_observed", "final",
+}
+broker_final = broker.get("final", {})
+if (
+    set(broker) != broker_fields
+    or not isinstance(broker_final, dict)
+    or set(broker_final) != {"broker_depth", "unacknowledged"}
+    or broker.get("schema_version") != "palimpsest-celery-broker-release-gate.v1"
+    or broker.get("status") != "empty"
+    or broker.get("closed_queues_sha256") != broker_queue_sha
+    or broker.get("closed_queues")
+        != ["celery", "collectors", "warehouse", "censorwatch"]
+    or broker.get("required_zero_samples") != 2
+    or broker.get("samples_observed", 0) < 2
+    or broker_final.get("broker_depth")
+        != {"celery": 0, "collectors": 0, "warehouse": 0, "censorwatch": 0}
+    or broker_final.get("unacknowledged") != {"hash": 0, "index": 0}
+):
+    raise SystemExit("interrupted Phase 1 broker proof changed")
+migration_fields = {
+    "schema_version", "status", "container_id", "image_id", "revision",
+    "backup_verified_at", "started_at", "exit_code",
+}
+if (
+    set(migration) != migration_fields
+    or migration.get("schema_version") != "palimpsest-interrupted-phase1-migration.v1"
+    or migration.get("status") != "succeeded"
+    or migration.get("container_id") != migration_container
+    or migration.get("image_id") != image
+    or migration.get("revision") != revision
+    or migration.get("backup_verified_at") != backup_verified_at
+    or migration.get("started_at") != migration_started_at
+    or migration.get("exit_code") != 0
+):
+    raise SystemExit("interrupted Phase 1 migration proof changed")
+parse = lambda value: datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+for timestamp in (
+    broker.get("generated_at", ""), backup_verified_at, migration_started_at,
+):
+    parsed = parse(timestamp)
+    if parsed.utcoffset() != datetime.timezone.utc.utcoffset(parsed):
+        raise SystemExit("recovery proof timestamp is not UTC")
+if parse(migration_started_at) <= parse(backup_verified_at):
+    raise SystemExit("interrupted Phase 1 migration predates recovery backup")
+PY
+  recovery_active_count=0
+  while IFS=$'\t' read -r unit expected_enablement expected_active; do
+    test "${RELEASE_ENABLEMENT[$unit]}" = "$expected_enablement"
+    case "$expected_active" in
+      active)
+        test "${RELEASE_WAS_ACTIVE[$unit]}" = 1
+        recovery_active_count=$((recovery_active_count + 1))
+        ;;
+      inactive) test "${RELEASE_WAS_ACTIVE[$unit]}" = 0 ;;
+      *) exit 1 ;;
+    esac
+  done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/restore-activators.tsv"
+  test "$recovery_active_count" = 11
+  test "${RELEASE_ENABLEMENT[palimpsest-node-offsite-backup.timer]}" = disabled
+  test "${RELEASE_WAS_ACTIVE[palimpsest-node-offsite-backup.timer]}" = 0
+  recovery_running_writer_count=0
+  while IFS=$'\t' read -r compose_service _presence _running expected_running; do
+    test "${COMPOSE_WAS_RUNNING[$compose_service]}" = "$expected_running"
+    if [[ "$expected_running" == 1 ]]; then
+      recovery_running_writer_count=$((recovery_running_writer_count + 1))
+    fi
+  done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/restore-writers.tsv"
+  test "$recovery_running_writer_count" = 4
+  test "${COMPOSE_WAS_RUNNING[beat]}" = 1
+  test "${COMPOSE_WAS_RUNNING[worker]}" = 1
+  test "${COMPOSE_WAS_RUNNING[worker-collectors]}" = 1
+  test "${COMPOSE_WAS_RUNNING[worker-warehouse]}" = 1
+  test "${COMPOSE_WAS_RUNNING[worker-velocity]}" = 0
+
+  RECOVERY_PHASE3_BINDING_PATH="$OBSERVER_PREFLIGHT_DIR/interrupted-phase1-binding.json"
+  python3 - "$RECOVERY_PHASE3_BINDING_PATH" "$RECOVERY_MANIFEST_PATH" \
+    "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_PREPARED_TMP" \
+    "$RECOVERY_PREPARED_RECEIPT_PATH" "$RECOVERY_PREPARED_RECEIPT_SHA256" \
+    "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" \
+    "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256" \
+    "$RECOVERY_MIGRATION_RECEIPT_PATH" "$RECOVERY_FAILED_TARGET_SHA" \
+    "$RECOVERY_HYBRID_FINGERPRINT_SHA256" \
+    "$RECOVERY_RESTORE_PROFILE_SHA256" "$RECOVERY_BACKUP_REASON" \
+    "$RELEASE_ENV_SNAPSHOT_SHA256" "$RECOVERY_BROKER_QUEUE_SHA256" \
+    "$PRE_CHANGE_CORE_SNAPSHOT" "$PRE_CHANGE_SNAPSHOT" \
+    "$V4_BACKUP_VERIFICATION_PATH" "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" \
+    "$EXPECTED_DEPLOY_SHA" "$RELEASE_RESUME_TOKEN" <<'PY'
+import json
+import pathlib
+import sys
+
+(output, manifest_path, manifest_sha, prepared_path, installed_prepared_path,
+ prepared_sha, broker_path, broker_sha, migration_path, failed_target,
+ hybrid_sha, restore_sha, backup_reason, compose_environment_sha,
+ broker_queue_sha, core_snapshot, snapshot,
+ backup_verification_path, recovery_ancestor, target, transaction) = sys.argv[1:]
+load = lambda path: json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+value = {
+    "schema_version": "palimpsest-interrupted-phase1-binding.v2",
+    "incident_id": "2026-08-25-interrupted-phase1",
+    "transaction_id": transaction,
+    "target_commit": target,
+    "failed_target_commit": failed_target,
+    "recovery_controller_commit": target,
+    "minimum_recovery_ancestor": recovery_ancestor,
+    "manifest_sha256": manifest_sha,
+    "manifest": load(manifest_path),
+    "hybrid_fingerprint_sha256": hybrid_sha,
+    "restore_profile_sha256": restore_sha,
+    "compose_environment_sha256": compose_environment_sha,
+    "broker_queue_sha256": broker_queue_sha,
+    "prepared_receipt_path": installed_prepared_path,
+    "prepared_receipt_sha256": prepared_sha,
+    "prepared_receipt": load(prepared_path),
+    "broker_empty_receipt_sha256": broker_sha,
+    "broker_empty_receipt": load(broker_path),
+    "migration_receipt": load(migration_path),
+    "backup": {
+        "reason": backup_reason,
+        "core_snapshot": core_snapshot,
+        "current_snapshot": snapshot,
+        "verification": load(backup_verification_path),
+    },
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+    encoding="utf-8",
+)
+PY
+  sudo python3 - "$RECOVERY_PHASE3_BINDING_PATH" "$RECOVERY_MANIFEST_PATH" \
+    "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_PREPARED_TMP" \
+    "$RECOVERY_PREPARED_RECEIPT_PATH" "$RECOVERY_PREPARED_RECEIPT_SHA256" \
+    "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH" \
+    "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256" \
+    "$RECOVERY_MIGRATION_RECEIPT_PATH" "$V4_BACKUP_VERIFICATION_PATH" \
+    "$RECOVERY_FAILED_TARGET_SHA" "$RECOVERY_HYBRID_FINGERPRINT_SHA256" \
+    "$RECOVERY_RESTORE_PROFILE_SHA256" "$RECOVERY_BACKUP_REASON" \
+    "$RELEASE_ENV_SNAPSHOT_SHA256" "$RECOVERY_BROKER_QUEUE_SHA256" \
+    "$PRE_CHANGE_CORE_SNAPSHOT" "$PRE_CHANGE_SNAPSHOT" \
+    "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" "$EXPECTED_DEPLOY_SHA" \
+    "$RELEASE_RESUME_TOKEN" "$CANDIDATE_IMAGE_ID" \
+    "$RECOVERY_MIGRATION_CONTAINER_ID" "$RECOVERY_BACKUP_VERIFIED_AT" \
+    "$RECOVERY_MIGRATION_STARTED_AT" <<'PY'
+import datetime
+import hashlib
+import json
+import pathlib
+import re
+import sys
+
+(
+    binding_path, manifest_path, manifest_sha, prepared_tmp_path,
+    prepared_installed_path, prepared_sha, broker_path, broker_sha,
+    migration_path, backup_verification_path, failed_target, hybrid_sha,
+    restore_sha, backup_reason, compose_environment_sha, broker_queue_sha,
+    core_snapshot, current_snapshot, minimum_recovery_ancestor, target,
+    transaction, application_image, migration_container, backup_verified_at,
+    migration_started_at,
+) = sys.argv[1:]
+
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate recovery binding key: {key}")
+        value[key] = item
+    return value
+
+
+def load_json(path, maximum_bytes, *, canonical):
+    payload = pathlib.Path(path).read_bytes()
+    if not payload.endswith(b"\n") or not 0 < len(payload) <= maximum_bytes:
+        raise SystemExit(f"recovery binding child framing is invalid: {path}")
+    value = json.loads(
+        payload.decode("utf-8", "strict"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite recovery binding value: {item}")
+        ),
+    )
+    if not isinstance(value, dict):
+        raise SystemExit(f"recovery binding child is not an object: {path}")
+    normalized = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if canonical and payload != normalized:
+        raise SystemExit(f"recovery binding child is not canonical: {path}")
+    return payload, value
+
+
+def parse_utc(value, label):
+    if not isinstance(value, str) or not value.endswith(("Z", "+00:00")):
+        raise SystemExit(f"{label} is not a UTC timestamp")
+    parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.utcoffset() != datetime.timedelta(0):
+        raise SystemExit(f"{label} is not UTC")
+    return parsed
+
+
+binding_payload, binding = load_json(binding_path, 512 * 1024, canonical=True)
+manifest_payload, manifest = load_json(manifest_path, 256 * 1024, canonical=False)
+prepared_tmp_payload, prepared_tmp = load_json(
+    prepared_tmp_path, 64 * 1024, canonical=True
+)
+prepared_payload, prepared = load_json(
+    prepared_installed_path, 64 * 1024, canonical=True
+)
+broker_payload, broker = load_json(broker_path, 64 * 1024, canonical=True)
+_, migration = load_json(migration_path, 64 * 1024, canonical=True)
+_, backup_verification = load_json(
+    backup_verification_path, 128 * 1024, canonical=True
+)
+
+top_fields = {
+    "schema_version", "incident_id", "transaction_id", "target_commit",
+    "failed_target_commit", "recovery_controller_commit",
+    "minimum_recovery_ancestor", "manifest_sha256", "manifest",
+    "hybrid_fingerprint_sha256", "restore_profile_sha256",
+    "compose_environment_sha256", "broker_queue_sha256",
+    "prepared_receipt_path", "prepared_receipt_sha256", "prepared_receipt",
+    "broker_empty_receipt_sha256", "broker_empty_receipt",
+    "migration_receipt", "backup",
+}
+checks = (
+    set(binding) == top_fields,
+    binding.get("schema_version") == "palimpsest-interrupted-phase1-binding.v2",
+    binding.get("incident_id") == "2026-08-25-interrupted-phase1",
+    binding.get("transaction_id") == transaction,
+    binding.get("target_commit") == target,
+    binding.get("failed_target_commit") == failed_target,
+    binding.get("recovery_controller_commit") == target,
+    binding.get("minimum_recovery_ancestor") == minimum_recovery_ancestor,
+    binding.get("manifest_sha256") == manifest_sha,
+    hashlib.sha256(manifest_payload).hexdigest() == manifest_sha,
+    binding.get("manifest") == manifest,
+    binding.get("hybrid_fingerprint_sha256") == hybrid_sha,
+    binding.get("restore_profile_sha256") == restore_sha,
+    binding.get("compose_environment_sha256") == compose_environment_sha,
+    binding.get("broker_queue_sha256") == broker_queue_sha,
+    binding.get("prepared_receipt_path") == prepared_installed_path,
+    binding.get("prepared_receipt_sha256") == prepared_sha,
+    hashlib.sha256(prepared_payload).hexdigest() == prepared_sha,
+    prepared_tmp_payload == prepared_payload,
+    prepared_tmp == prepared,
+    binding.get("prepared_receipt") == prepared,
+    binding.get("broker_empty_receipt_sha256") == broker_sha,
+    hashlib.sha256(broker_payload).hexdigest() == broker_sha,
+    binding.get("broker_empty_receipt") == broker,
+    binding.get("migration_receipt") == migration,
+)
+if not all(checks):
+    raise SystemExit("interrupted Phase 1 binding authority is invalid")
+
+prepared_fields = {
+    "schema_version", "status", "prepared_at", "transaction_id",
+    "incident_id", "manifest_sha256", "hybrid_fingerprint_sha256",
+    "restore_profile_sha256", "compose_environment_sha256",
+    "broker_queue_sha256", "prior_checkout_commit", "prior_deployed_commit",
+    "failed_target_commit", "recovery_controller_commit",
+    "minimum_recovery_ancestor", "target_commit",
+}
+authority = manifest.get("authority")
+if not isinstance(authority, dict):
+    raise SystemExit("interrupted Phase 1 manifest authority is invalid")
+prepared_checks = (
+    set(prepared) == prepared_fields,
+    prepared.get("schema_version") == "palimpsest-interrupted-phase1-prepared.v2",
+    prepared.get("status") == "prepared",
+    prepared.get("transaction_id") == transaction,
+    prepared.get("incident_id") == binding["incident_id"],
+    prepared.get("manifest_sha256") == manifest_sha,
+    prepared.get("hybrid_fingerprint_sha256") == hybrid_sha,
+    prepared.get("restore_profile_sha256") == restore_sha,
+    prepared.get("compose_environment_sha256") == compose_environment_sha,
+    prepared.get("broker_queue_sha256") == broker_queue_sha,
+    prepared.get("prior_checkout_commit") == authority.get("prior_checkout_commit"),
+    prepared.get("prior_deployed_commit") == authority.get("prior_deployed_commit"),
+    prepared.get("failed_target_commit") == failed_target,
+    prepared.get("recovery_controller_commit") == target,
+    prepared.get("minimum_recovery_ancestor") == minimum_recovery_ancestor,
+    prepared.get("target_commit") == target,
+)
+prepared_time = parse_utc(prepared.get("prepared_at"), "prepared_at")
+if not all(prepared_checks):
+    raise SystemExit("interrupted Phase 1 prepared child is invalid")
+
+broker_fields = {
+    "schema_version", "generated_at", "status", "closed_queues_sha256",
+    "closed_queues", "required_zero_samples", "samples_observed", "final",
+}
+broker_final = broker.get("final")
+broker_checks = (
+    set(broker) == broker_fields,
+    broker.get("schema_version") == "palimpsest-celery-broker-release-gate.v1",
+    broker.get("status") == "empty",
+    broker.get("closed_queues_sha256") == broker_queue_sha,
+    broker.get("closed_queues")
+        == ["celery", "collectors", "warehouse", "censorwatch"],
+    broker.get("required_zero_samples") == 2,
+    isinstance(broker.get("samples_observed"), int)
+        and not isinstance(broker.get("samples_observed"), bool)
+        and broker["samples_observed"] >= 2,
+    isinstance(broker_final, dict)
+        and set(broker_final) == {"broker_depth", "unacknowledged"},
+    isinstance(broker_final, dict)
+        and broker_final.get("broker_depth")
+        == {"celery": 0, "collectors": 0, "warehouse": 0, "censorwatch": 0},
+    isinstance(broker_final, dict)
+        and broker_final.get("unacknowledged") == {"hash": 0, "index": 0},
+)
+broker_time = parse_utc(broker.get("generated_at"), "broker generated_at")
+if not all(broker_checks):
+    raise SystemExit("interrupted Phase 1 broker child is invalid")
+
+migration_fields = {
+    "schema_version", "status", "container_id", "image_id", "revision",
+    "backup_verified_at", "started_at", "exit_code",
+}
+migration_checks = (
+    set(migration) == migration_fields,
+    migration.get("schema_version")
+        == "palimpsest-interrupted-phase1-migration.v1",
+    migration.get("status") == "succeeded",
+    migration.get("container_id") == migration_container,
+    migration.get("image_id") == application_image,
+    migration.get("revision") == target,
+    migration.get("backup_verified_at") == backup_verified_at,
+    migration.get("started_at") == migration_started_at,
+    migration.get("exit_code") == 0
+        and not isinstance(migration.get("exit_code"), bool),
+)
+backup_time = parse_utc(backup_verified_at, "backup_verified_at")
+migration_time = parse_utc(migration_started_at, "migration_started_at")
+if not all(migration_checks):
+    raise SystemExit("interrupted Phase 1 migration child is invalid")
+if not prepared_time <= broker_time <= backup_time < migration_time:
+    raise SystemExit("interrupted Phase 1 recovery binding temporal order is invalid")
+
+backup = binding.get("backup")
+verification_counts = backup_verification.get("counts")
+verification_digests = backup_verification.get("digests")
+backup_checks = (
+    isinstance(backup, dict)
+        and set(backup) == {"reason", "core_snapshot", "current_snapshot", "verification"},
+    isinstance(backup, dict) and backup.get("reason") == backup_reason,
+    backup_reason == "interrupted-phase1-no-valid-prechange-snapshot",
+    isinstance(backup, dict) and backup.get("core_snapshot") == core_snapshot,
+    isinstance(backup, dict) and backup.get("current_snapshot") == current_snapshot,
+    core_snapshot == current_snapshot,
+    isinstance(backup, dict) and backup.get("verification") == backup_verification,
+    set(backup_verification) == {"counts", "digests", "schema", "snapshot", "status"},
+    backup_verification.get("schema")
+        == "palimpsest-node-backup-verification.v1",
+    backup_verification.get("status") == "verified",
+    backup_verification.get("snapshot") == current_snapshot,
+    re.fullmatch(r"20[0-9]{6}T[0-9]{6}Z", current_snapshot) is not None,
+    isinstance(verification_counts, dict)
+        and set(verification_counts) == {
+            "artifact_directories", "artifact_files", "artifact_members",
+            "checksum_entries", "snapshot_files", "witness_history_records",
+        },
+    isinstance(verification_counts, dict)
+        and verification_counts.get("snapshot_files") == 6,
+    isinstance(verification_counts, dict)
+        and verification_counts.get("checksum_entries") == 5,
+    isinstance(verification_counts, dict)
+        and isinstance(verification_counts.get("artifact_members"), int)
+        and not isinstance(verification_counts.get("artifact_members"), bool)
+        and verification_counts["artifact_members"] > 0,
+    isinstance(verification_counts, dict)
+        and isinstance(verification_counts.get("witness_history_records"), int)
+        and not isinstance(verification_counts.get("witness_history_records"), bool)
+        and verification_counts["witness_history_records"] > 0,
+    isinstance(verification_digests, dict)
+        and set(verification_digests) == {
+            "MANIFEST.txt", "artifacts.list", "artifacts.tar.gz",
+            "postgres.dump", "postgres.list",
+        },
+    isinstance(verification_digests, dict)
+        and all(
+            isinstance(name, str) and isinstance(digest, str)
+            and re.fullmatch(r"[0-9a-f]{64}", digest)
+            for name, digest in verification_digests.items()
+        ),
+)
+if not all(backup_checks):
+    raise SystemExit("interrupted Phase 1 backup child is invalid")
+PY
+  RECOVERY_PHASE3_BINDING_SHA256="$(sha256sum \
+    "$RECOVERY_PHASE3_BINDING_PATH" | awk '{print $1}')"
+  [[ "$RECOVERY_PHASE3_BINDING_SHA256" =~ ^[0-9a-f]{64}$ ]]
+else
+  test -z "$RECOVERY_MANIFEST_PATH"
+  test -z "$RECOVERY_PREPARED_RECEIPT_PATH"
+  test -z "$RECOVERY_BROKER_EMPTY_RECEIPT_PATH"
+  test -z "$RECOVERY_BACKUP_REASON"
+  test -z "$RECOVERY_MIGRATION_RECEIPT_PATH"
+fi
+
 release_finalized=0
 PHASE3_FAIL_SAFE_ARMED=1
+remove_uncommitted_success_receipt() {
+  local receipt_path="$1" expected_sha="$2" expected_mode="$3"
+  local expected_finalized expected_completion
+  expected_finalized="$RELEASE_RECEIPT_DIR/$RELEASE_RECEIPT_STEM.finalized.json"
+  expected_completion="${RECOVERY_COMPLETION_RECEIPT_PATH:-}"
+  if [[ "$receipt_path" != "$expected_finalized" \
+      && ( -z "$expected_completion" \
+        || "$receipt_path" != "$expected_completion" ) ]]; then
+    printf 'refusing unsafe uncommitted receipt removal target\n' >&2
+    return 1
+  fi
+  [[ "$expected_sha" =~ ^[0-9a-f]{64}$ ]] || return 1
+  sudo python3 - "$receipt_path" "$expected_sha" "$expected_mode" <<'PY'
+import hashlib
+import os
+import stat
+import sys
+
+path, expected_sha, expected_mode_raw = sys.argv[1:]
+expected_mode = int(expected_mode_raw, 8)
+try:
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+except FileNotFoundError:
+    raise SystemExit(0)
+try:
+    before = os.fstat(descriptor)
+    if (
+        not stat.S_ISREG(before.st_mode)
+        or before.st_uid != 0
+        or before.st_gid != 0
+        or stat.S_IMODE(before.st_mode) != expected_mode
+        or before.st_nlink != 1
+        or before.st_size > 512 * 1024
+    ):
+        raise SystemExit("uncommitted success receipt metadata is unsafe")
+    stable_fields = (
+        "st_dev", "st_ino", "st_mode", "st_uid", "st_gid", "st_nlink",
+        "st_size", "st_mtime_ns", "st_ctime_ns",
+    )
+    digest = hashlib.sha256()
+    bytes_read = 0
+    while True:
+        chunk = os.read(descriptor, 65536)
+        if not chunk:
+            break
+        digest.update(chunk)
+        bytes_read += len(chunk)
+    after = os.fstat(descriptor)
+    if (
+        any(getattr(before, field) != getattr(after, field)
+            for field in stable_fields)
+        or bytes_read != before.st_size
+    ):
+        raise SystemExit("uncommitted success receipt changed while hashing")
+    if digest.hexdigest() != expected_sha:
+        raise SystemExit("uncommitted success receipt digest changed")
+    parent, name = os.path.split(path)
+    directory = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        directory_metadata = os.fstat(directory)
+        if (
+            not stat.S_ISDIR(directory_metadata.st_mode)
+            or directory_metadata.st_uid != 0
+            or directory_metadata.st_gid != 0
+            or stat.S_IMODE(directory_metadata.st_mode) != 0o700
+        ):
+            raise SystemExit("uncommitted receipt directory is unsafe")
+        current = os.stat(name, dir_fd=directory, follow_symlinks=False)
+        descriptor_final = os.fstat(descriptor)
+        if (
+            any(getattr(after, field) != getattr(current, field)
+                for field in stable_fields)
+            or any(getattr(after, field) != getattr(descriptor_final, field)
+                   for field in stable_fields)
+        ):
+            raise SystemExit("uncommitted success receipt identity changed")
+        # The directory and file are root-only. Holding the verified descriptor
+        # through this dirfd-relative unlink bounds the remaining local race to
+        # a concurrent root process, which is outside this recovery contract.
+        os.unlink(name, dir_fd=directory)
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+finally:
+    os.close(descriptor)
+PY
+}
 phase3_fail_safe() {
   local original_status="${1:-1}"
+  local quiesce_status=0 cleanup_status=0 receipt_cleanup_status=0
   if (( release_finalized == 1 || PHASE3_FAIL_SAFE_ARMED == 0 )); then
     return 0
   fi
   (( RELEASE_FAIL_SAFE_RUNNING == 0 )) || return 0
   RELEASE_FAIL_SAFE_RUNNING=1
-  trap - ERR EXIT HUP INT TERM
+  trap - ERR EXIT
+  trap '' HUP INT TERM
   printf 'Phase 3 interrupted (%s); quiescing every release writer and activator\n' \
     "$original_status" >&2
-  release_quiesce_all
+  if [[ -n "${RECOVERY_COMPLETION_RECEIPT_SHA256:-}" \
+      && -n "${RECOVERY_COMPLETION_RECEIPT_PATH:-}" ]]; then
+    remove_uncommitted_success_receipt \
+      "$RECOVERY_COMPLETION_RECEIPT_PATH" \
+      "$RECOVERY_COMPLETION_RECEIPT_SHA256" 0400 \
+      || receipt_cleanup_status=$?
+  fi
+  if [[ -n "${FINALIZED_RECEIPT_SHA256:-}" \
+      && -n "${FINALIZED_RECEIPT_PATH:-}" ]]; then
+    remove_uncommitted_success_receipt "$FINALIZED_RECEIPT_PATH" \
+      "$FINALIZED_RECEIPT_SHA256" 0600 || receipt_cleanup_status=$?
+  fi
+  release_quiesce_all || quiesce_status=$?
+  cleanup_release_private_state || cleanup_status=$?
+  if (( receipt_cleanup_status != 0 \
+      || quiesce_status != 0 || cleanup_status != 0 )); then
+    printf 'Phase 3 fail-safe could not complete every safety action\n' >&2
+    return 1
+  fi
+  return 0
+}
+phase3_exit() {
+  local original_status="${1:-0}" fail_safe_status=0
+  trap - ERR EXIT
+  trap '' HUP INT TERM
+  set +e
+  phase3_fail_safe "$original_status" || fail_safe_status=$?
+  if (( original_status == 0 && release_finalized == 0 )); then
+    original_status=1
+  fi
+  if (( original_status == 0 && fail_safe_status != 0 )); then
+    original_status="$fail_safe_status"
+  fi
+  exit "$original_status"
 }
 phase3_abort() {
   local original_status="${1:-1}"
   if (( BASH_SUBSHELL > 0 )); then
+    printf '__PALIMPSEST_COMMAND_SUBSTITUTION_FAILED__\n'
     exit "$original_status"
   fi
   phase3_fail_safe "$original_status"
   exit "$original_status"
 }
 trap 'phase3_abort "$?"' ERR
-trap 'phase3_fail_safe "$?"' EXIT
+trap 'phase3_exit "$?"' EXIT
 trap 'phase3_fail_safe 129; exit 129' HUP
 trap 'phase3_fail_safe 130; exit 130' INT
 trap 'phase3_fail_safe 143; exit 143' TERM
 PHASE1_FAIL_SAFE_ARMED=0
+quiesce_dynamic_release_instances
 RELEASE_FAIL_SAFE_RUNNING=0
 
+for held_service in "${RELEASE_SERVICES[@]}"; do
+  stop_loaded_unit "$held_service"
+  if ! held_service_load_state="$(systemctl show \
+      --property=LoadState --value "$held_service" 2>/dev/null)" \
+      || ! held_service_active_state="$(read_active_state "$held_service")"; then
+    printf 'cannot recheck release service at Phase 3 takeover: %s\n' \
+      "$held_service" >&2
+    exit 1
+  fi
+  case "$held_service_load_state:$held_service_active_state" in
+    loaded:inactive|loaded:failed|masked:inactive|masked:failed|\
+    not-found:unknown|not-found:inactive) ;;
+    *) printf 'release service survived Phase 3 takeover: %s/%s/%s\n' \
+         "$held_service" "$held_service_load_state" \
+         "$held_service_active_state" >&2; exit 1 ;;
+  esac
+done
 for held_unit in "${RELEASE_ACTIVATORS[@]}"; do
-  held_state="$(systemctl is-active "$held_unit" 2>/dev/null || true)"
+  held_state="$(read_active_state "$held_unit")"
   case "$held_state" in
-    inactive|failed|unknown|"") ;;
+    inactive|failed|unknown) ;;
     *) printf 'captured activator restarted before finalization: %s (%s)\n' \
          "$held_unit" "$held_state" >&2; exit 1 ;;
   esac
@@ -3903,12 +6791,16 @@ declare -A FINAL_OBSERVER_EXIT_PAIR
 run_final_observer() {
   local unit="$1" status_path="$2" pre_release_id="$3"
   local observer="${4:-}" baseline="${5:-}"
-  local previous_id invocation_id condition_result result exec_status started
+  local previous_id='' invocation_id='' condition_result='' result=''
+  local exec_status='' started=''
   local start_rc release_rc
   local observer_proof=''
   local observer_ok=1
-  previous_id="$(systemctl show --property=InvocationID --value \
-    "$unit" 2>/dev/null || true)"
+  if ! previous_id="$(systemctl show --property=InvocationID --value \
+      "$unit" 2>/dev/null)"; then
+    printf 'cannot read prior final-observer invocation: %s\n' "$unit" >&2
+    return 1
+  fi
   pin_unit_for_proof "$unit" || return 1
   if systemctl is-failed --quiet "$unit"; then
     sudo systemctl reset-failed "$unit"
@@ -3919,17 +6811,20 @@ run_final_observer() {
   else
     start_rc=$?
   fi
-  invocation_id="$(systemctl show --property=InvocationID --value \
-    "$unit" 2>/dev/null || true)"
-  condition_result="$(systemctl show --property=ConditionResult --value \
-    "$unit" 2>/dev/null || true)"
-  result="$(systemctl show --property=Result --value \
-    "$unit" 2>/dev/null || true)"
-  exec_status="$(systemctl show --property=ExecMainStatus --value \
-    "$unit" 2>/dev/null || true)"
-  started="$(systemctl show \
-    --property=ExecMainStartTimestampMonotonic --value \
-    "$unit" 2>/dev/null || true)"
+  if ! invocation_id="$(systemctl show --property=InvocationID --value \
+      "$unit" 2>/dev/null)" \
+      || ! condition_result="$(systemctl show \
+        --property=ConditionResult --value "$unit" 2>/dev/null)" \
+      || ! result="$(systemctl show --property=Result --value \
+        "$unit" 2>/dev/null)" \
+      || ! exec_status="$(systemctl show --property=ExecMainStatus --value \
+        "$unit" 2>/dev/null)" \
+      || ! started="$(systemctl show \
+        --property=ExecMainStartTimestampMonotonic --value \
+        "$unit" 2>/dev/null)"; then
+    printf 'cannot read final-observer proof properties: %s\n' "$unit" >&2
+    observer_ok=0
+  fi
   release_rc=0
   release_proof_pin || release_rc=$?
 
@@ -4080,11 +6975,7 @@ SYNC_RECEIPT_SHA256="$(printf '%s\n' "$SYNC_RECEIPT_JSON" \
 sudo systemctl start palimpsest-investigative-broker.socket
 run_final_observer palimpsest-investigative-analysis.service '' ''
 stop_loaded_unit palimpsest-investigative-broker.socket
-sudo systemctl stop 'palimpsest-investigative-broker@*.service' \
-  2>/dev/null || true
-test -z "$(systemctl list-units --no-legend --plain \
-  --state=active,activating,deactivating \
-  'palimpsest-investigative-broker@*.service')"
+quiesce_dynamic_release_instances
 run_final_observer palimpsest-common-crawl-context.service '' ''
 
 run_final_observer palimpsest-freshness-watchdog.service \
@@ -4126,8 +7017,12 @@ test "$FINAL_PUBLIC_BLEED_NORMALIZED_SHA256" \
 if (( BACKUP_RELEASE_QUIESCE_ADDED == 1 )); then
   test "$(sudo sha256sum "$BACKUP_RELEASE_QUIESCE_TARGET" \
     | awk '{print $1}')" = "$BACKUP_RELEASE_QUIESCE_SHA256"
-  test -z "$(systemctl show --property=OnSuccess --value \
-    palimpsest-backup.service)"
+  if ! quiesced_backup_on_success="$(systemctl show \
+      --property=OnSuccess --value palimpsest-backup.service)"; then
+    printf 'failed to recheck Phase 3 backup success triggers\n' >&2
+    exit 1
+  fi
+  test -z "$quiesced_backup_on_success"
 else
   test "$(systemctl show --property=OnSuccess --value \
     palimpsest-backup.service)" = "$BACKUP_ON_SUCCESS"
@@ -4188,7 +7083,8 @@ python3 - "$RELEASE_RECEIPT_TMP" "$PREVIOUS_CHECKOUT_SHA" \
   "$CELERY_V4_BACKUP_RECEIPT_PATH" \
   "$CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH" \
   "$CELERY_CANDIDATE_FENCED_RECEIPT_PATH" \
-  "$COLLECTOR_RECOVERY_RECEIPT_PATH" "$CONTROLLER_MANIFEST_PATH" <<'PY'
+  "$COLLECTOR_RECOVERY_RECEIPT_PATH" "$CONTROLLER_MANIFEST_PATH" \
+  "$RECOVERY_PHASE3_BINDING_PATH" <<'PY'
 import base64
 import hashlib
 import json
@@ -4206,7 +7102,7 @@ from datetime import datetime, timezone
     handoff_path, sync_path, watchdog_path, witness_path, compose_path,
     prechange_celery_path, v4_backup_celery_path, consuming_celery_path,
     fenced_celery_path,
-    recovery_path, controller_manifest_path,
+    recovery_path, controller_manifest_path, interrupted_recovery_path,
 ) = sys.argv[1:]
 
 if bool(legacy_witness_path) != bool(legacy_witness_sha):
@@ -4313,6 +7209,8 @@ receipt = {
     "release_proof_present": True,
     "writers_restored": False,
 }
+if interrupted_recovery_path:
+    receipt["interrupted_phase1_resume"] = load_json(interrupted_recovery_path)
 payload = json.dumps(
     receipt, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     allow_nan=False,
@@ -4490,7 +7388,7 @@ ACTIVATOR_RESTORED_PATH="$OBSERVER_PREFLIGHT_DIR/activators-restored.tsv"
 : >"$ACTIVATOR_RESTORED_PATH"
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   restored_enablement="$(read_enablement "$unit")"
-  restored_active="$(systemctl is-active "$unit" 2>/dev/null || true)"
+  restored_active="$(read_active_state "$unit")"
   expected_active=0
   if [[ "${RELEASE_WAS_ACTIVE[$unit]}" == 1 ]] \
       || { [[ "${RELEASE_ENABLEMENT[$unit]}" == not-found ]] \
@@ -4531,13 +7429,28 @@ done
 # Beat is the final producer restored. Starting it earlier could enqueue work
 # between the last zero-queue proof and systemd state restoration.
 if [[ "${COMPOSE_WAS_RUNNING[beat]}" == 1 ]]; then
-  release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps beat
+  if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+    test "$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+      ps -q --all beat)" = "${RECOVERY_FAILED_CONTAINER_ID[beat]}"
+    release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps \
+      --force-recreate beat
+  else
+    release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps beat
+  fi
   restored_beat_id="$(release_compose ps -q beat)"
   [[ "$restored_beat_id" =~ ^[0-9a-f]{64}$ ]]
   test "$(docker inspect "$restored_beat_id" --format '{{.State.Status}}')" \
     = running
   test "$(docker inspect "$restored_beat_id" --format '{{.Image}}')" \
     = "$CANDIDATE_IMAGE_ID"
+  if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+    RECOVERY_TARGET_BEAT_CONTAINER_ID="$restored_beat_id"
+    test "$RECOVERY_TARGET_BEAT_CONTAINER_ID" \
+      != "${RECOVERY_FAILED_CONTAINER_ID[beat]}"
+    test "$(docker inspect "$RECOVERY_TARGET_BEAT_CONTAINER_ID" --format \
+      '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+      = "$EXPECTED_DEPLOY_SHA"
+  fi
 else
   release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat \
     >/dev/null 2>&1 || true
@@ -4578,6 +7491,131 @@ for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"; do
     >>"$COMPOSE_RESTORED_PATH"
 done
 verify_compose_container_inventory
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  recovery_final_active=0
+  declare -A RECOVERY_FINAL_WRITER_ID
+  for unit in "${RELEASE_ACTIVATORS[@]}"; do
+    if [[ "$unit" == palimpsest-node-offsite-backup.timer ]]; then
+      test "$(read_enablement "$unit")" = disabled
+      test "$(read_active_state "$unit")" = inactive
+    else
+      test "$(read_enablement "$unit")" = enabled
+      test "$(systemctl is-active "$unit")" = active
+      recovery_final_active=$((recovery_final_active + 1))
+    fi
+  done
+  test "$recovery_final_active" = 11
+  for compose_service in beat worker worker-collectors worker-warehouse; do
+    recovery_final_writer="$(release_compose \
+      "${COMPOSE_ALL_PROFILES[@]}" ps -q "$compose_service")"
+    [[ "$recovery_final_writer" =~ ^[0-9a-f]{64}$ ]]
+    RECOVERY_FINAL_WRITER_ID["$compose_service"]="$recovery_final_writer"
+    test "$(docker inspect "$recovery_final_writer" \
+      --format '{{.State.Status}}')" = running
+    test "$(docker inspect "$recovery_final_writer" --format '{{.Image}}')" \
+      = "$CANDIDATE_IMAGE_ID"
+    test "$(docker inspect "$recovery_final_writer" --format \
+      '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+      = "$EXPECTED_DEPLOY_SHA"
+  done
+  recovery_velocity="$(release_compose "${COMPOSE_ALL_PROFILES[@]}" \
+    ps -q --all worker-velocity)"
+  test -z "$recovery_velocity"
+  for compose_service in postgres redis; do
+    recovery_final_infra_id="$(release_compose \
+      "${COMPOSE_ALL_PROFILES[@]}" ps -q --all "$compose_service")"
+    test "$recovery_final_infra_id" \
+      = "${RECOVERY_INFRA_CONTAINER_ID[$compose_service]}"
+    test "$(docker inspect "$recovery_final_infra_id" \
+      --format '{{.State.Status}}')" = running
+    test "$(docker inspect "$recovery_final_infra_id" --format '{{.Image}}')" \
+      = "${RECOVERY_INFRA_IMAGE_ID[$compose_service]}"
+  done
+  test "$(release_compose --profile api ps -q api)" \
+    = "$RECOVERY_TARGET_API_CONTAINER_ID"
+  test "$(docker inspect "$RECOVERY_TARGET_API_CONTAINER_ID" \
+    --format '{{.State.Status}}')" = running
+  test "$(docker inspect "$RECOVERY_TARGET_API_CONTAINER_ID" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  test "$(docker inspect "$RECOVERY_TARGET_API_CONTAINER_ID" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "$EXPECTED_DEPLOY_SHA"
+  test "$(release_compose --profile api ps -q --all migrate)" \
+    = "$RECOVERY_MIGRATION_CONTAINER_ID"
+  test "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" \
+    --format '{{.State.Status}}')" = exited
+  test "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" \
+    --format '{{.State.ExitCode}}')" = 0
+  test "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" \
+    --format '{{.Image}}')" = "$CANDIDATE_IMAGE_ID"
+  test "$(docker inspect "$RECOVERY_MIGRATION_CONTAINER_ID" --format \
+    '{{index .Config.Labels "org.opencontainers.image.revision"}}')" \
+    = "$EXPECTED_DEPLOY_SHA"
+  RECOVERY_FINAL_RUNTIME_PATH="$OBSERVER_PREFLIGHT_DIR/interrupted-phase1-final-runtime.json"
+  python3 - "$RECOVERY_FINAL_RUNTIME_PATH" "$EXPECTED_DEPLOY_SHA" \
+    "$CANDIDATE_IMAGE_ID" "$RECOVERY_TARGET_API_CONTAINER_ID" \
+    "$RECOVERY_MIGRATION_CONTAINER_ID" "$RECOVERY_TARGET_BEAT_CONTAINER_ID" \
+    "${RECOVERY_FINAL_WRITER_ID[worker]}" \
+    "${RECOVERY_FINAL_WRITER_ID[worker-collectors]}" \
+    "${RECOVERY_FINAL_WRITER_ID[worker-warehouse]}" \
+    "${RECOVERY_INFRA_CONTAINER_ID[postgres]}" \
+    "${RECOVERY_INFRA_IMAGE_ID[postgres]}" \
+    "${RECOVERY_INFRA_CONTAINER_ID[redis]}" \
+    "${RECOVERY_INFRA_IMAGE_ID[redis]}" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+(
+    output, revision, application_image, api_id, migration_id, beat_id,
+    worker_id, collectors_id, warehouse_id,
+    postgres_id, postgres_image, redis_id, redis_image,
+) = sys.argv[1:]
+value = {
+    "schema_version": "palimpsest-interrupted-phase1-final-runtime.v1",
+    "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "infrastructure": {
+        "postgres": {"container_id": postgres_id, "image_id": postgres_image,
+                     "state": "running"},
+        "redis": {"container_id": redis_id, "image_id": redis_image,
+                  "state": "running"},
+    },
+    "api": {"container_id": api_id, "image_id": application_image,
+            "revision": revision, "state": "running"},
+    "migration": {"container_id": migration_id, "image_id": application_image,
+                  "revision": revision, "state": "exited", "exit_code": 0},
+    "beat": {"container_id": beat_id, "image_id": application_image,
+             "revision": revision, "state": "running"},
+    "workers": {
+        "worker": {"container_id": worker_id, "image_id": application_image,
+                   "revision": revision, "state": "running"},
+        "worker-collectors": {
+            "container_id": collectors_id, "image_id": application_image,
+            "revision": revision, "state": "running",
+        },
+        "worker-warehouse": {
+            "container_id": warehouse_id, "image_id": application_image,
+            "revision": revision, "state": "running",
+        },
+    },
+    "node_offsite": {"enablement": "disabled", "active_state": "inactive"},
+    "velocity": {"presence": "absent"},
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+    encoding="utf-8",
+)
+PY
+  RECOVERY_FINAL_RUNTIME_SHA256="$(sha256sum \
+    "$RECOVERY_FINAL_RUNTIME_PATH" | awk '{print $1}')"
+  [[ "$RECOVERY_FINAL_RUNTIME_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  test "$(sha256sum "$RECOVERY_PHASE3_BINDING_PATH" | awk '{print $1}')" \
+    = "$RECOVERY_PHASE3_BINDING_SHA256"
+fi
+
+quiesce_dynamic_release_instances
+cleanup_release_private_state
 
 FINALIZED_RECEIPT_TMP="$OBSERVER_PREFLIGHT_DIR/$RELEASE_RECEIPT_STEM.finalized.json"
 python3 - "$FINALIZED_RECEIPT_TMP" "$RELEASE_RESUME_TOKEN" \
@@ -4585,7 +7623,8 @@ python3 - "$FINALIZED_RECEIPT_TMP" "$RELEASE_RESUME_TOKEN" \
   "$EXPECTED_DEPLOY_SHA" "$PROOF_COMPLETE_RECEIPT_PATH" \
   "$PROOF_COMPLETE_RECEIPT_SHA256" "$CELERY_RESTORED_RECEIPT_PATH" \
   "$ACTIVATOR_RESTORED_PATH" "$COMPOSE_RESTORED_PATH" \
-  "$BACKUP_ON_SUCCESS" <<'PY'
+  "$BACKUP_ON_SUCCESS" "$RECOVERY_PHASE3_BINDING_PATH" \
+  "$RECOVERY_COMPLETION_RECEIPT_PATH" <<'PY'
 import json
 import pathlib
 import sys
@@ -4594,7 +7633,7 @@ from datetime import datetime, timezone
 (
     output, transaction, previous_checkout, previous_receipt, deployed,
     proof_path, proof_sha, celery_path, activator_path, compose_path,
-    backup_on_success,
+    backup_on_success, interrupted_recovery_path, completion_receipt_path,
 ) = sys.argv[1:]
 celery = json.loads(pathlib.Path(celery_path).read_text(encoding="utf-8"))
 
@@ -4646,25 +7685,33 @@ value = {
     "backup_on_success": backup_on_success,
     "backup_release_quiesce_present": False,
 }
+if interrupted_recovery_path:
+    if not completion_receipt_path:
+        raise SystemExit("recovery finalization lacks its completion path")
+    value["interrupted_phase1_resume"] = json.loads(
+        pathlib.Path(interrupted_recovery_path).read_text(encoding="utf-8")
+    )
+    value["interrupted_phase1_completion_required"] = True
+    value["interrupted_phase1_completion_receipt"] = completion_receipt_path
+elif completion_receipt_path:
+    raise SystemExit("ordinary finalization received a recovery completion path")
 payload = json.dumps(value, sort_keys=True, separators=(",", ":")).encode() + b"\n"
 pathlib.Path(output).write_bytes(payload)
 PY
 FINALIZED_RECEIPT_PATH="$RELEASE_RECEIPT_DIR/$RELEASE_RECEIPT_STEM.finalized.json"
 sudo test ! -e "$FINALIZED_RECEIPT_PATH"
-sudo install -o root -g root -m 0600 "$FINALIZED_RECEIPT_TMP" \
-  "$FINALIZED_RECEIPT_PATH"
-sudo cmp -s "$FINALIZED_RECEIPT_TMP" "$FINALIZED_RECEIPT_PATH"
-test "$(sudo stat -c '%u:%g:%a:%h' "$FINALIZED_RECEIPT_PATH")" \
-  = "0:0:600:1"
-FINALIZED_RECEIPT_SHA256="$(sudo sha256sum "$FINALIZED_RECEIPT_PATH" \
+sudo test ! -L "$FINALIZED_RECEIPT_PATH"
+FINALIZED_RECEIPT_SHA256="$(sha256sum "$FINALIZED_RECEIPT_TMP" \
   | awk '{print $1}')"
 [[ "$FINALIZED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
-test "$FINALIZED_RECEIPT_SHA256" \
-  = "$(sha256sum "$FINALIZED_RECEIPT_TMP" | awk '{print $1}')"
-sudo python3 - "$FINALIZED_RECEIPT_PATH" "$RELEASE_RESUME_TOKEN" \
+python3 - "$FINALIZED_RECEIPT_TMP" "$RELEASE_RESUME_TOKEN" \
   "$EXPECTED_PREVIOUS_CHECKOUT_SHA" "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
   "$EXPECTED_DEPLOY_SHA" "$PROOF_COMPLETE_RECEIPT_PATH" \
-  "$PROOF_COMPLETE_RECEIPT_SHA256" <<'PY'
+  "$PROOF_COMPLETE_RECEIPT_SHA256" "$INTERRUPTED_PHASE1_RECOVERY" \
+  "$RECOVERY_PHASE3_BINDING_SHA256" \
+  "$RECOVERY_COMPLETION_RECEIPT_PATH" <<'PY'
+import datetime
+import hashlib
 import json
 import pathlib
 import sys
@@ -4681,7 +7728,8 @@ def reject_duplicates(pairs):
 
 (
     receipt_path, transaction, previous_checkout, previous_receipt, deployed,
-    proof_path, proof_sha,
+    proof_path, proof_sha, interrupted_recovery, interrupted_recovery_sha,
+    completion_receipt_path,
 ) = sys.argv[1:]
 payload = pathlib.Path(receipt_path).read_bytes()
 if not payload.endswith(b"\n") or len(payload) > 512 * 1024:
@@ -4702,10 +7750,39 @@ expected_fields = {
     "restored_compose_writers", "restored_beat", "backup_on_success",
     "backup_release_quiesce_present",
 }
+if interrupted_recovery == "1":
+    expected_fields.update({
+        "interrupted_phase1_resume",
+        "interrupted_phase1_completion_required",
+        "interrupted_phase1_completion_receipt",
+    })
+elif interrupted_recovery == "0":
+    if (
+        {
+            "interrupted_phase1_resume",
+            "interrupted_phase1_completion_required",
+            "interrupted_phase1_completion_receipt",
+        } & set(value)
+        or interrupted_recovery_sha
+        or completion_receipt_path
+    ):
+        raise SystemExit("ordinary finalization contains recovery authority")
+else:
+    raise SystemExit("invalid interrupted recovery mode")
+canonical_payload = json.dumps(
+    value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+finalized_at = datetime.datetime.fromisoformat(
+    value.get("finalized_at", "").replace("Z", "+00:00")
+)
 checks = (
     isinstance(value, dict) and set(value) == expected_fields,
+    payload == canonical_payload,
     value.get("schema_version") == "palimpsest-host-release-finalization.v1",
     value.get("status") == "finalized",
+    finalized_at.utcoffset()
+        == datetime.timezone.utc.utcoffset(finalized_at),
     value.get("transaction_id") == transaction,
     value.get("previous_checkout_sha") == previous_checkout,
     value.get("previous_deployment_receipt_sha") == previous_receipt,
@@ -4725,11 +7802,356 @@ checks = (
 )
 if not all(checks):
     raise SystemExit("finalized receipt readback is invalid")
+interrupted = value.get("interrupted_phase1_resume")
+if interrupted_recovery == "1":
+    canonical = json.dumps(
+        interrupted, sort_keys=True, separators=(",", ":"),
+        ensure_ascii=False, allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if (
+        not isinstance(interrupted, dict)
+        or interrupted.get("schema_version")
+            != "palimpsest-interrupted-phase1-binding.v2"
+        or interrupted.get("transaction_id") != transaction
+        or hashlib.sha256(canonical).hexdigest() != interrupted_recovery_sha
+        or value.get("interrupted_phase1_completion_required") is not True
+        or value.get("interrupted_phase1_completion_receipt")
+            != completion_receipt_path
+    ):
+        raise SystemExit("finalized interrupted recovery binding is invalid")
 PY
-fsync_installed_paths "$FINALIZED_RECEIPT_PATH"
-release_finalized=1
-PHASE3_FAIL_SAFE_ARMED=0
-trap - ERR EXIT HUP INT TERM
+publish_finalized_receipt() {
+  sudo python3 - "$FINALIZED_RECEIPT_TMP" "$FINALIZED_RECEIPT_PATH" \
+    "$FINALIZED_RECEIPT_SHA256" <<'PY'
+import hashlib
+import os
+import stat
+import sys
+
+source, destination, expected_sha = sys.argv[1:]
+maximum_bytes = 512 * 1024
+source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+try:
+    before = os.fstat(source_fd)
+    if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 \
+            or not 0 < before.st_size <= maximum_bytes:
+        raise SystemExit("finalized receipt source is unsafe")
+    payload = bytearray()
+    while True:
+        chunk = os.read(source_fd, min(65536, maximum_bytes + 1 - len(payload)))
+        if not chunk:
+            break
+        payload.extend(chunk)
+        if len(payload) > maximum_bytes:
+            raise SystemExit("finalized receipt exceeds byte ceiling")
+    after = os.fstat(source_fd)
+    stable_fields = (
+        "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink",
+    )
+    if any(getattr(before, key) != getattr(after, key) for key in stable_fields) \
+            or len(payload) != before.st_size:
+        raise SystemExit("finalized receipt source changed while reading")
+finally:
+    os.close(source_fd)
+if hashlib.sha256(payload).hexdigest() != expected_sha:
+    raise SystemExit("finalized receipt source digest changed")
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+destination_fd = os.open(destination, flags, 0o600)
+try:
+    os.fchmod(destination_fd, 0o600)
+    written = 0
+    while written < len(payload):
+        written += os.write(destination_fd, payload[written:])
+    os.fsync(destination_fd)
+    metadata = os.fstat(destination_fd)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 \
+            or metadata.st_gid != 0 or stat.S_IMODE(metadata.st_mode) != 0o600 \
+            or metadata.st_nlink != 1 or metadata.st_size != len(payload):
+        raise SystemExit("finalized receipt destination is unsafe")
+finally:
+    os.close(destination_fd)
+directory_fd = os.open(
+    os.path.dirname(destination),
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+)
+try:
+    directory_metadata = os.fstat(directory_fd)
+    if (
+        not stat.S_ISDIR(directory_metadata.st_mode)
+        or directory_metadata.st_uid != 0
+        or directory_metadata.st_gid != 0
+        or stat.S_IMODE(directory_metadata.st_mode) != 0o700
+    ):
+        raise SystemExit("finalized receipt directory is unsafe")
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
+PY
+}
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  sudo test ! -e "$RECOVERY_COMPLETION_RECEIPT_PATH"
+  sudo test ! -L "$RECOVERY_COMPLETION_RECEIPT_PATH"
+  test "$(sha256sum "$RECOVERY_FINAL_RUNTIME_PATH" | awk '{print $1}')" \
+    = "$RECOVERY_FINAL_RUNTIME_SHA256"
+  RECOVERY_COMPLETION_TMP="$OBSERVER_PREFLIGHT_DIR/interrupted-phase1-complete.json"
+  python3 - "$RECOVERY_COMPLETION_TMP" "$RELEASE_RESUME_TOKEN" \
+    "$EXPECTED_DEPLOY_SHA" "$RECOVERY_FAILED_TARGET_SHA" \
+    "$RECOVERY_MANIFEST_SHA256" "$RECOVERY_PREPARED_RECEIPT_PATH" \
+    "$RECOVERY_PREPARED_RECEIPT_SHA256" "$RECOVERY_PHASE3_BINDING_SHA256" \
+    "$FINALIZED_RECEIPT_PATH" "$FINALIZED_RECEIPT_SHA256" \
+    "$RECOVERY_BACKUP_REASON" "$PRE_CHANGE_SNAPSHOT" \
+    "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" \
+    "$RELEASE_ENV_SNAPSHOT_SHA256" "$RECOVERY_BROKER_QUEUE_SHA256" \
+    "$RECOVERY_FINAL_RUNTIME_PATH" "$RECOVERY_FINAL_RUNTIME_SHA256" <<'PY'
+import json
+import pathlib
+import sys
+from datetime import datetime, timezone
+
+(output, transaction, target, failed_target, manifest_sha, prepared_path,
+ prepared_sha, binding_sha, finalized_path, finalized_sha, backup_reason,
+ snapshot, minimum_recovery_ancestor, compose_environment_sha,
+ broker_queue_sha, final_runtime_path, final_runtime_sha) = sys.argv[1:]
+value = {
+    "schema_version": "palimpsest-interrupted-phase1-completion.v2",
+    "status": "completed",
+    "completed_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    "incident_id": "2026-08-25-interrupted-phase1",
+    "transaction_id": transaction,
+    "target_commit": target,
+    "failed_target_commit": failed_target,
+    "recovery_controller_commit": target,
+    "minimum_recovery_ancestor": minimum_recovery_ancestor,
+    "manifest_sha256": manifest_sha,
+    "compose_environment_sha256": compose_environment_sha,
+    "broker_queue_sha256": broker_queue_sha,
+    "prepared_receipt_path": prepared_path,
+    "prepared_receipt_sha256": prepared_sha,
+    "phase3_binding_sha256": binding_sha,
+    "finalized_receipt_path": finalized_path,
+    "finalized_receipt_sha256": finalized_sha,
+    "backup_reason": backup_reason,
+    "recovery_snapshot": snapshot,
+    "final_runtime_sha256": final_runtime_sha,
+    "final_runtime": json.loads(
+        pathlib.Path(final_runtime_path).read_text(encoding="utf-8")
+    ),
+}
+pathlib.Path(output).write_text(
+    json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n",
+    encoding="utf-8",
+)
+PY
+  publish_recovery_completion_receipt() {
+    sudo python3 - "$RECOVERY_COMPLETION_TMP" \
+      "$RECOVERY_COMPLETION_RECEIPT_PATH" \
+      "$RECOVERY_COMPLETION_RECEIPT_SHA256" <<'PY'
+import hashlib
+import os
+import stat
+import sys
+
+source, destination, expected_sha = sys.argv[1:]
+maximum_bytes = 128 * 1024
+source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+try:
+    before = os.fstat(source_fd)
+    if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 \
+            or not 0 < before.st_size <= maximum_bytes:
+        raise SystemExit("completion receipt source is unsafe")
+    payload = bytearray()
+    while True:
+        chunk = os.read(source_fd, min(65536, maximum_bytes + 1 - len(payload)))
+        if not chunk:
+            break
+        payload.extend(chunk)
+        if len(payload) > maximum_bytes:
+            raise SystemExit("completion receipt exceeds byte ceiling")
+    after = os.fstat(source_fd)
+    stable_fields = (
+        "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns", "st_nlink",
+    )
+    if any(getattr(before, key) != getattr(after, key) for key in stable_fields) \
+            or len(payload) != before.st_size:
+        raise SystemExit("completion receipt source changed while reading")
+finally:
+    os.close(source_fd)
+if hashlib.sha256(payload).hexdigest() != expected_sha:
+    raise SystemExit("completion receipt source digest changed")
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+destination_fd = os.open(destination, flags, 0o400)
+try:
+    os.fchmod(destination_fd, 0o400)
+    written = 0
+    while written < len(payload):
+        written += os.write(destination_fd, payload[written:])
+    os.fsync(destination_fd)
+    metadata = os.fstat(destination_fd)
+    if not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 \
+            or metadata.st_gid != 0 or stat.S_IMODE(metadata.st_mode) != 0o400 \
+            or metadata.st_nlink != 1 or metadata.st_size != len(payload):
+        raise SystemExit("completion receipt destination is unsafe")
+finally:
+    os.close(destination_fd)
+directory_fd = os.open(
+    os.path.dirname(destination),
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+)
+try:
+    directory_metadata = os.fstat(directory_fd)
+    if (
+        not stat.S_ISDIR(directory_metadata.st_mode)
+        or directory_metadata.st_uid != 0
+        or directory_metadata.st_gid != 0
+        or stat.S_IMODE(directory_metadata.st_mode) != 0o700
+    ):
+        raise SystemExit("completion receipt directory is unsafe")
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
+PY
+  }
+  RECOVERY_COMPLETION_RECEIPT_SHA256="$(sha256sum \
+    "$RECOVERY_COMPLETION_TMP" | awk '{print $1}')"
+  [[ "$RECOVERY_COMPLETION_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  python3 - "$RECOVERY_COMPLETION_TMP" \
+    "$RELEASE_RESUME_TOKEN" "$EXPECTED_DEPLOY_SHA" \
+    "$RECOVERY_FAILED_TARGET_SHA" "$RECOVERY_MANIFEST_SHA256" \
+    "$RECOVERY_PREPARED_RECEIPT_SHA256" "$RECOVERY_PHASE3_BINDING_SHA256" \
+    "$RECOVERY_PREPARED_RECEIPT_PATH" "$FINALIZED_RECEIPT_SHA256" \
+    "$FINALIZED_RECEIPT_PATH" "$RECOVERY_BACKUP_REASON" \
+    "$PRE_CHANGE_SNAPSHOT" "$INTERRUPTED_PHASE1_RECOVERY_ANCESTOR" \
+    "$RELEASE_ENV_SNAPSHOT_SHA256" "$RECOVERY_BROKER_QUEUE_SHA256" \
+    "$RECOVERY_FINAL_RUNTIME_SHA256" \
+    "$CANDIDATE_IMAGE_ID" "$RECOVERY_TARGET_API_CONTAINER_ID" \
+    "$RECOVERY_MIGRATION_CONTAINER_ID" "$RECOVERY_TARGET_BEAT_CONTAINER_ID" \
+    "${RECOVERY_FINAL_WRITER_ID[worker]}" \
+    "${RECOVERY_FINAL_WRITER_ID[worker-collectors]}" \
+    "${RECOVERY_FINAL_WRITER_ID[worker-warehouse]}" \
+    "${RECOVERY_INFRA_CONTAINER_ID[postgres]}" \
+    "${RECOVERY_INFRA_IMAGE_ID[postgres]}" \
+    "${RECOVERY_INFRA_CONTAINER_ID[redis]}" \
+    "${RECOVERY_INFRA_IMAGE_ID[redis]}" <<'PY'
+import datetime
+import hashlib
+import json
+import pathlib
+import sys
+
+(path, transaction, target, failed_target, manifest_sha, prepared_sha,
+ binding_sha, prepared_path, finalized_sha, finalized_path, backup_reason,
+ snapshot, minimum_recovery_ancestor, compose_environment_sha,
+ broker_queue_sha, final_runtime_sha, application_image,
+ api_id, migration_id, beat_id, worker_id, collectors_id, warehouse_id,
+ postgres_id, postgres_image, redis_id, redis_image) = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate completion receipt key: {key}")
+        value[key] = item
+    return value
+
+payload = pathlib.Path(path).read_bytes()
+value = json.loads(
+    payload.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicates,
+    parse_constant=lambda item: (_ for _ in ()).throw(
+        ValueError(f"non-finite completion receipt value: {item}")
+    ),
+)
+expected_fields = {
+    "schema_version", "status", "completed_at", "incident_id",
+    "transaction_id", "target_commit", "failed_target_commit",
+    "recovery_controller_commit", "minimum_recovery_ancestor",
+    "manifest_sha256", "compose_environment_sha256", "broker_queue_sha256",
+    "prepared_receipt_path", "prepared_receipt_sha256",
+    "phase3_binding_sha256", "finalized_receipt_path",
+    "finalized_receipt_sha256", "backup_reason", "recovery_snapshot",
+    "final_runtime_sha256", "final_runtime",
+}
+canonical = json.dumps(
+    value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+completed_at = datetime.datetime.fromisoformat(
+    value.get("completed_at", "").replace("Z", "+00:00")
+)
+runtime = value.get("final_runtime")
+if not isinstance(runtime, dict):
+    raise SystemExit("completion receipt final runtime is invalid")
+runtime_canonical = json.dumps(
+    runtime, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+runtime_fields = {
+    "schema_version", "verified_at", "infrastructure", "api", "migration",
+    "beat", "workers", "node_offsite", "velocity",
+}
+runtime_verified_at = datetime.datetime.fromisoformat(
+    runtime.get("verified_at", "").replace("Z", "+00:00")
+)
+expected_application = lambda container, state: {
+    "container_id": container,
+    "image_id": application_image,
+    "revision": target,
+    "state": state,
+}
+checks = (
+    isinstance(value, dict) and set(value) == expected_fields,
+    payload == canonical and len(payload) <= 128 * 1024,
+    value.get("schema_version") == "palimpsest-interrupted-phase1-completion.v2",
+    value.get("status") == "completed",
+    completed_at.utcoffset() == datetime.timezone.utc.utcoffset(completed_at),
+    value.get("incident_id") == "2026-08-25-interrupted-phase1",
+    value.get("transaction_id") == transaction,
+    value.get("target_commit") == target,
+    value.get("failed_target_commit") == failed_target,
+    value.get("recovery_controller_commit") == target,
+    value.get("minimum_recovery_ancestor") == minimum_recovery_ancestor,
+    value.get("manifest_sha256") == manifest_sha,
+    value.get("compose_environment_sha256") == compose_environment_sha,
+    value.get("broker_queue_sha256") == broker_queue_sha,
+    value.get("prepared_receipt_path") == prepared_path,
+    value.get("prepared_receipt_sha256") == prepared_sha,
+    value.get("phase3_binding_sha256") == binding_sha,
+    value.get("finalized_receipt_path") == finalized_path,
+    value.get("finalized_receipt_sha256") == finalized_sha,
+    value.get("backup_reason") == backup_reason,
+    value.get("recovery_snapshot") == snapshot,
+    value.get("final_runtime_sha256") == final_runtime_sha,
+    hashlib.sha256(runtime_canonical).hexdigest() == final_runtime_sha,
+    isinstance(runtime, dict) and set(runtime) == runtime_fields,
+    runtime.get("schema_version")
+        == "palimpsest-interrupted-phase1-final-runtime.v1",
+    runtime_verified_at.utcoffset()
+        == datetime.timezone.utc.utcoffset(runtime_verified_at),
+    completed_at >= runtime_verified_at,
+    runtime.get("infrastructure") == {
+        "postgres": {"container_id": postgres_id, "image_id": postgres_image,
+                     "state": "running"},
+        "redis": {"container_id": redis_id, "image_id": redis_image,
+                  "state": "running"},
+    },
+    runtime.get("api") == expected_application(api_id, "running"),
+    runtime.get("migration") == {
+        **expected_application(migration_id, "exited"), "exit_code": 0,
+    },
+    runtime.get("beat") == expected_application(beat_id, "running"),
+    runtime.get("workers") == {
+        "worker": expected_application(worker_id, "running"),
+        "worker-collectors": expected_application(collectors_id, "running"),
+        "worker-warehouse": expected_application(warehouse_id, "running"),
+    },
+    runtime.get("node_offsite")
+        == {"enablement": "disabled", "active_state": "inactive"},
+    runtime.get("velocity") == {"presence": "absent"},
+)
+if not all(checks):
+    raise SystemExit("interrupted Phase 1 completion receipt is invalid")
+PY
+fi
 
 systemctl list-timers palimpsest-backup.timer \
   palimpsest-common-crawl-backup.timer \
@@ -4739,6 +8161,403 @@ systemctl list-timers palimpsest-backup.timer \
   palimpsest-public-osint-sync.timer \
   palimpsest-freshness-watchdog.timer \
   palimpsest-witness.timer --no-pager
+
+# A recovery completion is deliberately subordinate: it names and hashes the
+# still-absent finalized receipt, but is never release authority by itself.
+# Publishing it first makes every crash boundary fail closed.
+if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
+  publish_recovery_completion_receipt
+fi
+
+# Validate the exact authority pair through stable O_NOFOLLOW descriptors. In
+# ordinary mode the canonical finalized bytes stand alone. In recovery mode,
+# the installed completion must canonically bind these staged finalized bytes;
+# neither document is accepted without the other.
+sudo python3 - "$INTERRUPTED_PHASE1_RECOVERY" \
+  "$FINALIZED_RECEIPT_TMP" "${RECOVERY_COMPLETION_RECEIPT_PATH:-}" \
+  "$FINALIZED_RECEIPT_PATH" "${RECOVERY_COMPLETION_RECEIPT_PATH:-}" \
+  "$RELEASE_RESUME_TOKEN" "${RECOVERY_PHASE3_BINDING_SHA256:-}" \
+  "${RECOVERY_COMPLETION_RECEIPT_SHA256:-}" "$FINALIZED_RECEIPT_SHA256" \
+  "$EXPECTED_DEPLOY_SHA" "${RECOVERY_BACKUP_REASON:-}" \
+  "${PRE_CHANGE_SNAPSHOT:-}" <<'PY'
+import datetime
+import hashlib
+import json
+import os
+import re
+import stat
+import sys
+
+(
+    recovery_mode_raw, finalized_source, completion_source,
+    expected_finalized_path, expected_completion_path, transaction,
+    expected_binding_sha, expected_completion_sha, expected_finalized_sha,
+    target, expected_backup_reason, expected_snapshot,
+) = sys.argv[1:]
+if recovery_mode_raw not in {"0", "1"}:
+    raise SystemExit("invalid final authority mode")
+recovery_mode = recovery_mode_raw == "1"
+
+
+def reject_duplicates(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate final authority key: {key}")
+        result[key] = value
+    return result
+
+
+def load_canonical(path, maximum_bytes, label):
+    if not path:
+        raise SystemExit(f"{label} path is empty")
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        before = os.fstat(descriptor)
+        stable_fields = (
+            "st_dev", "st_ino", "st_mode", "st_uid", "st_gid", "st_nlink",
+            "st_size", "st_mtime_ns", "st_ctime_ns",
+        )
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_nlink != 1
+            or not 0 < before.st_size <= maximum_bytes
+        ):
+            raise SystemExit(f"{label} metadata is unsafe")
+        payload = bytearray()
+        while True:
+            chunk = os.read(
+                descriptor, min(65536, maximum_bytes + 1 - len(payload))
+            )
+            if not chunk:
+                break
+            payload.extend(chunk)
+            if len(payload) > maximum_bytes:
+                raise SystemExit(f"{label} exceeds its byte ceiling")
+        after = os.fstat(descriptor)
+        if (
+            any(getattr(before, field) != getattr(after, field)
+                for field in stable_fields)
+            or len(payload) != before.st_size
+        ):
+            raise SystemExit(f"{label} changed while reading")
+    finally:
+        os.close(descriptor)
+    value = json.loads(
+        bytes(payload).decode("utf-8", "strict"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite final authority value: {item}")
+        ),
+    )
+    if not isinstance(value, dict):
+        raise SystemExit(f"{label} is not an object")
+    canonical = json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8") + b"\n"
+    if bytes(payload) != canonical:
+        raise SystemExit(f"{label} is not canonical")
+    return bytes(payload), value
+
+
+def parse_utc(value, label):
+    if not isinstance(value, str) or not value.endswith(("Z", "+00:00")):
+        raise SystemExit(f"{label} is not a UTC timestamp")
+    parsed = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.utcoffset() != datetime.timedelta(0):
+        raise SystemExit(f"{label} is not UTC")
+    return parsed
+
+
+finalized_payload, finalized = load_canonical(
+    finalized_source, 512 * 1024, "finalized receipt"
+)
+base_finalized_fields = {
+    "schema_version", "status", "finalized_at", "transaction_id",
+    "previous_checkout_sha", "previous_deployment_receipt_sha",
+    "deployed_sha", "proof_complete_receipt",
+    "proof_complete_receipt_sha256", "release_proof_present",
+    "writers_restored", "restored_celery", "restored_activators",
+    "restored_compose_writers", "restored_beat", "backup_on_success",
+    "backup_release_quiesce_present",
+}
+finalized_checks = (
+    finalized.get("schema_version")
+        == "palimpsest-host-release-finalization.v1",
+    finalized.get("status") == "finalized",
+    parse_utc(finalized.get("finalized_at"), "finalized_at"),
+    finalized.get("transaction_id") == transaction,
+    finalized.get("deployed_sha") == target,
+    finalized.get("release_proof_present") is False,
+    finalized.get("writers_restored") is True,
+    finalized.get("backup_release_quiesce_present") is False,
+    isinstance(finalized.get("restored_activators"), dict)
+        and len(finalized["restored_activators"]) == 12,
+    isinstance(finalized.get("restored_compose_writers"), dict)
+        and set(finalized["restored_compose_writers"])
+        == {"beat", "worker", "worker-collectors", "worker-warehouse",
+            "worker-velocity"},
+    finalized.get("restored_beat")
+        == finalized.get("restored_compose_writers", {}).get("beat"),
+    hashlib.sha256(finalized_payload).hexdigest() == expected_finalized_sha,
+    re.fullmatch(r"[0-9a-f]{64}", expected_finalized_sha) is not None,
+    bool(expected_finalized_path),
+)
+if not all(finalized_checks):
+    raise SystemExit("finalized authority semantics are invalid")
+
+recovery_fields = {
+    "interrupted_phase1_resume",
+    "interrupted_phase1_completion_required",
+    "interrupted_phase1_completion_receipt",
+}
+if not recovery_mode:
+    if (
+        set(finalized) != base_finalized_fields
+        or recovery_fields & set(finalized)
+        or completion_source
+        or expected_completion_path
+        or expected_binding_sha
+        or expected_completion_sha
+        or expected_backup_reason
+    ):
+        raise SystemExit("ordinary finalized authority contains recovery state")
+    raise SystemExit(0)
+
+if set(finalized) != base_finalized_fields | recovery_fields:
+    raise SystemExit("recovery finalized authority fields are invalid")
+if (
+    finalized.get("interrupted_phase1_completion_required") is not True
+    or finalized.get("interrupted_phase1_completion_receipt")
+        != expected_completion_path
+    or completion_source != expected_completion_path
+):
+    raise SystemExit("recovery finalized authority lacks exact completion")
+
+binding = finalized.get("interrupted_phase1_resume")
+binding_fields = {
+    "schema_version", "incident_id", "transaction_id", "target_commit",
+    "failed_target_commit", "recovery_controller_commit",
+    "minimum_recovery_ancestor", "manifest_sha256", "manifest",
+    "hybrid_fingerprint_sha256", "restore_profile_sha256",
+    "compose_environment_sha256", "broker_queue_sha256",
+    "prepared_receipt_path", "prepared_receipt_sha256", "prepared_receipt",
+    "broker_empty_receipt_sha256", "broker_empty_receipt",
+    "migration_receipt", "backup",
+}
+if not isinstance(binding, dict) or set(binding) != binding_fields:
+    raise SystemExit("recovery finalized binding fields are invalid")
+binding_payload = json.dumps(
+    binding, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+backup = binding.get("backup")
+migration_receipt = binding.get("migration_receipt")
+backup_verification = (
+    backup.get("verification") if isinstance(backup, dict) else None
+)
+backup_counts = (
+    backup_verification.get("counts")
+    if isinstance(backup_verification, dict) else None
+)
+if (
+    binding.get("schema_version")
+        != "palimpsest-interrupted-phase1-binding.v2"
+    or binding.get("transaction_id") != transaction
+    or binding.get("target_commit") != target
+    or binding.get("recovery_controller_commit") != target
+    or hashlib.sha256(binding_payload).hexdigest() != expected_binding_sha
+    or not isinstance(backup, dict)
+    or set(backup) != {"reason", "core_snapshot", "current_snapshot",
+                      "verification"}
+    or backup.get("reason") != expected_backup_reason
+    or backup.get("core_snapshot") != expected_snapshot
+    or backup.get("current_snapshot") != expected_snapshot
+    or not isinstance(backup_verification, dict)
+    or backup_verification.get("schema")
+        != "palimpsest-node-backup-verification.v1"
+    or backup_verification.get("status") != "verified"
+    or backup_verification.get("snapshot") != expected_snapshot
+    or not isinstance(backup_counts, dict)
+    or backup_counts.get("snapshot_files") != 6
+    or backup_counts.get("checksum_entries") != 5
+    or not isinstance(backup_counts.get("artifact_members"), int)
+    or isinstance(backup_counts.get("artifact_members"), bool)
+    or backup_counts["artifact_members"] <= 0
+    or not isinstance(backup_counts.get("witness_history_records"), int)
+    or isinstance(backup_counts.get("witness_history_records"), bool)
+    or backup_counts["witness_history_records"] <= 0
+    or not isinstance(migration_receipt, dict)
+    or set(migration_receipt) != {
+        "schema_version", "status", "container_id", "image_id", "revision",
+        "backup_verified_at", "started_at", "exit_code",
+    }
+    or migration_receipt.get("schema_version")
+        != "palimpsest-interrupted-phase1-migration.v1"
+    or migration_receipt.get("status") != "succeeded"
+    or migration_receipt.get("revision") != target
+    or migration_receipt.get("exit_code") != 0
+):
+    raise SystemExit("recovery finalized binding semantics are invalid")
+
+completion_payload, completion = load_canonical(
+    completion_source, 128 * 1024, "recovery completion receipt"
+)
+completion_fields = {
+    "schema_version", "status", "completed_at", "incident_id",
+    "transaction_id", "target_commit", "failed_target_commit",
+    "recovery_controller_commit", "minimum_recovery_ancestor",
+    "manifest_sha256", "compose_environment_sha256", "broker_queue_sha256",
+    "prepared_receipt_path", "prepared_receipt_sha256",
+    "phase3_binding_sha256", "finalized_receipt_path",
+    "finalized_receipt_sha256", "backup_reason", "recovery_snapshot",
+    "final_runtime_sha256", "final_runtime",
+}
+if set(completion) != completion_fields:
+    raise SystemExit("recovery completion authority fields are invalid")
+runtime = completion.get("final_runtime")
+runtime_fields = {
+    "schema_version", "verified_at", "infrastructure", "api", "migration",
+    "beat", "workers", "node_offsite", "velocity",
+}
+if not isinstance(runtime, dict) or set(runtime) != runtime_fields:
+    raise SystemExit("recovery completion runtime fields are invalid")
+runtime_payload = json.dumps(
+    runtime, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    allow_nan=False,
+).encode("utf-8") + b"\n"
+completed_at = parse_utc(completion.get("completed_at"), "completed_at")
+runtime_at = parse_utc(runtime.get("verified_at"), "runtime verified_at")
+if completed_at < runtime_at:
+    raise SystemExit("recovery completion predates its runtime proof")
+
+application_entries = [
+    runtime.get("api"), runtime.get("migration"), runtime.get("beat"),
+]
+workers = runtime.get("workers")
+if not isinstance(workers, dict) or set(workers) != {
+    "worker", "worker-collectors", "worker-warehouse"
+}:
+    raise SystemExit("recovery completion worker inventory is invalid")
+application_entries.extend(workers.values())
+application_image = None
+for index, entry in enumerate(application_entries):
+    expected_fields = {"container_id", "image_id", "revision", "state"}
+    expected_state = "running"
+    if index == 1:
+        expected_fields.add("exit_code")
+        expected_state = "exited"
+    if (
+        not isinstance(entry, dict)
+        or set(entry) != expected_fields
+        or re.fullmatch(r"[0-9a-f]{64}", entry.get("container_id", "")) is None
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", entry.get("image_id", ""))
+            is None
+        or entry.get("revision") != target
+        or entry.get("state") != expected_state
+        or (index == 1 and entry.get("exit_code") != 0)
+    ):
+        raise SystemExit("recovery completion application runtime is invalid")
+    if application_image is None:
+        application_image = entry["image_id"]
+    elif entry["image_id"] != application_image:
+        raise SystemExit("recovery completion application images diverge")
+if runtime.get("migration") != {
+    "container_id": migration_receipt["container_id"],
+    "image_id": migration_receipt["image_id"],
+    "revision": migration_receipt["revision"],
+    "state": "exited",
+    "exit_code": migration_receipt["exit_code"],
+} or application_image != migration_receipt["image_id"]:
+    raise SystemExit("recovery completion migration does not match its binding")
+
+infrastructure = runtime.get("infrastructure")
+if not isinstance(infrastructure, dict) or set(infrastructure) != {
+    "postgres", "redis"
+}:
+    raise SystemExit("recovery completion infrastructure is invalid")
+for entry in infrastructure.values():
+    if (
+        not isinstance(entry, dict)
+        or set(entry) != {"container_id", "image_id", "state"}
+        or re.fullmatch(r"[0-9a-f]{64}", entry.get("container_id", "")) is None
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", entry.get("image_id", ""))
+            is None
+        or entry.get("state") != "running"
+    ):
+        raise SystemExit("recovery completion infrastructure state is invalid")
+
+completion_checks = (
+    completion.get("schema_version")
+        == "palimpsest-interrupted-phase1-completion.v2",
+    completion.get("status") == "completed",
+    completion.get("incident_id") == "2026-08-25-interrupted-phase1",
+    completion.get("incident_id") == binding.get("incident_id"),
+    completion.get("transaction_id") == transaction,
+    completion.get("target_commit") == target,
+    completion.get("recovery_controller_commit") == target,
+    completion.get("failed_target_commit")
+        == binding.get("failed_target_commit"),
+    completion.get("minimum_recovery_ancestor")
+        == binding.get("minimum_recovery_ancestor"),
+    completion.get("manifest_sha256") == binding.get("manifest_sha256"),
+    completion.get("compose_environment_sha256")
+        == binding.get("compose_environment_sha256"),
+    completion.get("broker_queue_sha256")
+        == binding.get("broker_queue_sha256"),
+    completion.get("prepared_receipt_path")
+        == binding.get("prepared_receipt_path"),
+    completion.get("prepared_receipt_sha256")
+        == binding.get("prepared_receipt_sha256"),
+    completion.get("phase3_binding_sha256") == expected_binding_sha,
+    completion.get("finalized_receipt_path") == expected_finalized_path,
+    completion.get("finalized_receipt_sha256") == expected_finalized_sha,
+    completion.get("backup_reason") == expected_backup_reason,
+    completion.get("recovery_snapshot") == expected_snapshot,
+    completion.get("final_runtime_sha256")
+        == hashlib.sha256(runtime_payload).hexdigest(),
+    runtime.get("schema_version")
+        == "palimpsest-interrupted-phase1-final-runtime.v1",
+    runtime.get("node_offsite")
+        == {"enablement": "disabled", "active_state": "inactive"},
+    runtime.get("velocity") == {"presence": "absent"},
+    hashlib.sha256(completion_payload).hexdigest() == expected_completion_sha,
+    re.fullmatch(r"[0-9a-f]{64}", expected_completion_sha) is not None,
+)
+if not all(completion_checks):
+    raise SystemExit("recovery completion authority semantics are invalid")
+PY
+
+# These are the last fallible live-state operations. Stop both dynamically
+# instantiated and fixed release services after the long Phase 2 pause, then
+# prove every fixed service is non-running before success can become authority.
+quiesce_dynamic_release_instances
+for final_service in "${RELEASE_SERVICES[@]}"; do
+  stop_loaded_unit "$final_service"
+  if ! final_service_load_state="$(systemctl show \
+      --property=LoadState --value "$final_service" 2>/dev/null)" \
+      || ! final_service_active_state="$(read_active_state "$final_service")"; then
+    printf 'cannot recheck release service before final authority: %s\n' \
+      "$final_service" >&2
+    exit 1
+  fi
+  case "$final_service_load_state:$final_service_active_state" in
+    loaded:inactive|loaded:failed|masked:inactive|masked:failed|\
+    not-found:unknown|not-found:inactive) ;;
+    *) printf 'release service survived final authority sweep: %s/%s/%s\n' \
+         "$final_service" "$final_service_load_state" \
+         "$final_service_active_state" >&2; exit 1 ;;
+  esac
+done
+
+# The exclusive, fsynced finalized receipt is the single authoritative commit
+# marker and therefore the final fallible action. A completion-only crash state
+# is intentionally non-authoritative; no command that can fail follows this.
+publish_finalized_receipt
+release_finalized=1
+PHASE3_FAIL_SAFE_ARMED=0
+trap - ERR EXIT HUP INT TERM
 ```
 
 ### Executing a forward repair
@@ -4752,6 +8571,27 @@ run this preflight, then execute all three phases against `REPAIR_TARGET_SHA`.
 
 ```bash
 set -Eeuo pipefail
+FORWARD_REPAIR_PREFLIGHT_COMPLETE=0
+forward_repair_abort() {
+  local original_status="${1:-1}"
+  trap - ERR EXIT
+  trap '' HUP INT TERM
+  if (( BASH_SUBSHELL > 0 )); then
+    printf '__PALIMPSEST_COMMAND_SUBSTITUTION_FAILED__\n'
+    exit "$original_status"
+  fi
+  if (( FORWARD_REPAIR_PREFLIGHT_COMPLETE == 0 )); then
+    printf 'forward-repair preflight aborted before exact proof (%s)\n' \
+      "$original_status" >&2
+    (( original_status != 0 )) || original_status=1
+  fi
+  exit "$original_status"
+}
+trap 'forward_repair_abort "$?"' ERR
+trap 'forward_repair_abort "$?"' EXIT
+trap 'forward_repair_abort 129' HUP
+trap 'forward_repair_abort 130' INT
+trap 'forward_repair_abort 143' TERM
 cd /home/palimpsest/palimpsest
 test -e .git
 PALIMPSEST_REPO_ROOT="$(pwd -P)"
@@ -4788,7 +8628,12 @@ CURRENT_RECEIPT_SHA='REPLACE_WITH_CURRENT_DEPLOYMENT_RECEIPT_40_HEX_SHA'
 [[ "$CURRENT_RECEIPT_SHA" =~ ^[0-9a-f]{40}$ ]]
 test -d .git
 test ! -L .git
-test -z "$(release_git status --porcelain=v1 --untracked-files=all)"
+if ! repair_git_status="$(release_git status \
+    --porcelain=v1 --untracked-files=all)"; then
+  printf 'failed to read forward-repair checkout status\n' >&2
+  exit 1
+fi
+test -z "$repair_git_status"
 test "$(release_git rev-parse HEAD)" = "$CURRENT_CHECKOUT_SHA"
 release_git -c fetch.fsckObjects=true -c transfer.fsckObjects=true fetch \
   --force --prune --no-tags https://github.com/beepboop2025/palimpsest.git \
@@ -4819,6 +8664,8 @@ export TRANSACTION_DIRECTION=forward
 printf 'Forward repair pinned: checkout=%s receipt=%s target=%s\n' \
   "$EXPECTED_PREVIOUS_CHECKOUT_SHA" "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
   "$EXPECTED_DEPLOY_SHA"
+FORWARD_REPAIR_PREFLIGHT_COMPLETE=1
+trap - ERR EXIT HUP INT TERM
 # Execute the complete Phase 1 block now, then Phases 2 and 3 as documented.
 ```
 

@@ -8,10 +8,12 @@ from pathlib import Path
 import sys
 
 import pytest
+import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "ops" / "celery_release_gate.py"
+COMPOSE_PATH = ROOT / "ops" / "docker" / "docker-compose.prod.yml"
 _SPEC = importlib.util.spec_from_file_location("celery_release_gate", MODULE_PATH)
 gate = importlib.util.module_from_spec(_SPEC)
 assert _SPEC.loader is not None
@@ -24,6 +26,7 @@ TOPOLOGY = (
     gate.NodeQueue("default@012345abcdef", "celery"),
     gate.NodeQueue("warehouse@789abc012def", "warehouse"),
 )
+CLOSED_QUEUES = gate.BROKER_QUEUES
 _UNSET = object()
 
 
@@ -95,10 +98,12 @@ class _FakeRedis:
 
     def hlen(self, key):
         assert key == "unacked"
+        self.app.redis_reads.append(("hlen", key))
         return self.app.current["unacked"]["hash"]
 
     def zcard(self, key):
         assert key == "unacked_index"
+        self.app.redis_reads.append(("zcard", key))
         value = self.app.current["unacked"]["index"]
         self.app.advance()
         return value
@@ -108,11 +113,15 @@ class _FakeChannel:
     unacked_key = "unacked"
     unacked_index_key = "unacked_index"
 
-    def __init__(self, app):
+    def __init__(self, app, *, transport_options):
         self.app = app
         self.closed = False
+        self.socket_timeout = transport_options.get("socket_timeout")
+        self.socket_connect_timeout = transport_options.get("socket_connect_timeout")
+        self.retry_on_timeout = transport_options.get("retry_on_timeout")
 
     def _size(self, queue):
+        self.app.queue_reads.append(queue)
         return self.app.current["broker"][queue]
 
     def conn_or_acquire(self):
@@ -127,8 +136,9 @@ class _FakeTransport:
 
 
 class _FakeConnection:
-    def __init__(self, app):
+    def __init__(self, app, connection_options):
         self.app = app
+        self.connection_options = connection_options
         self.transport = _FakeTransport()
 
     def __enter__(self):
@@ -138,7 +148,10 @@ class _FakeConnection:
         return None
 
     def channel(self):
-        channel = _FakeChannel(self.app)
+        channel = self.app.channel_factory(
+            self.app,
+            transport_options=self.connection_options["transport_options"],
+        )
         self.app.channels.append(channel)
         return channel
 
@@ -165,13 +178,24 @@ class _FakeControl:
 
 
 class _FakeApp:
-    def __init__(self, samples):
+    def __init__(self, samples, *, broker_transport_options=_UNSET):
         self.samples = samples
         self.index = 0
         self.channels = []
+        self.queue_reads = []
+        self.redis_reads = []
+        self.connection_calls = []
+        self.channel_factory = _FakeChannel
         self.bad_cancel_reply = False
         self.discovery_ping = None
         self.control = _FakeControl(self)
+        if broker_transport_options is _UNSET:
+            broker_transport_options = {"visibility_timeout": 3600}
+        self.conf = type(
+            "FakeConf",
+            (),
+            {"broker_transport_options": broker_transport_options},
+        )()
 
     @property
     def current(self):
@@ -180,8 +204,9 @@ class _FakeApp:
     def advance(self):
         self.index += 1
 
-    def connection_for_read(self):
-        return _FakeConnection(self)
+    def connection_for_read(self, **kwargs):
+        self.connection_calls.append(kwargs)
+        return _FakeConnection(self, kwargs)
 
 
 class _FakeClock:
@@ -273,6 +298,85 @@ def test_topology_accepts_optional_velocity_only_with_all_mandatory_roles():
     )
 
 
+def test_closed_queue_token_is_strict_canonical_and_complete():
+    token = gate.encode_broker_queues(reversed(CLOSED_QUEUES))
+
+    assert gate.decode_broker_queues(token) == CLOSED_QUEUES
+    document = json.loads(base64.b64decode(token, validate=True))
+    assert document == {
+        "schema_version": "palimpsest-celery-broker-queues.v1",
+        "closed_queues": ["celery", "collectors", "warehouse", "censorwatch"],
+    }
+    assert gate.broker_queues_sha256(CLOSED_QUEUES) == (
+        "57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b"
+    )
+
+    noncanonical = base64.b64encode(
+        json.dumps(document, indent=2).encode("utf-8")
+    ).decode("ascii")
+    with pytest.raises(gate.GateError, match="not canonical"):
+        gate.decode_broker_queues(noncanonical)
+
+
+def test_reviewed_queue_set_is_derived_and_matches_production_compose():
+    document = yaml.safe_load(COMPOSE_PATH.read_text(encoding="utf-8"))
+    services = document["services"]
+    service_by_role = {
+        "default": "worker",
+        "collectors": "worker-collectors",
+        "warehouse": "worker-warehouse",
+        "velocity": "worker-velocity",
+    }
+    discovered_worker_services = {
+        service
+        for service, definition in services.items()
+        if isinstance(definition.get("command"), list)
+        and definition["command"]
+        and definition["command"][0] == "celery"
+        and "worker" in definition["command"]
+        and "-Q" in definition["command"]
+    }
+    assert discovered_worker_services == set(service_by_role.values())
+    compose_queues = {}
+    for role, service in service_by_role.items():
+        command = services[service]["command"]
+        queue_index = command.index("-Q")
+        node_index = command.index("-n")
+        assert command[node_index + 1].split("@", 1)[0] == role
+        compose_queues[role] = command[queue_index + 1]
+
+    assert gate.BROKER_QUEUES == tuple(gate.SUPPORTED_NODE_QUEUES.values())
+    assert compose_queues == gate.SUPPORTED_NODE_QUEUES
+    assert tuple(compose_queues.values()) == gate.BROKER_QUEUES
+
+
+@pytest.mark.parametrize(
+    "queues",
+    [
+        ("celery", "collectors", "warehouse"),
+        ("celery", "collectors", "warehouse", "warehouse"),
+        ("celery", "collectors", "warehouse", "rogue"),
+        ("celery", "collectors", "warehouse", 1),
+    ],
+)
+def test_closed_queue_token_rejects_incomplete_duplicate_or_malformed_lists(queues):
+    with pytest.raises(gate.GateError, match="closed queue"):
+        gate.encode_broker_queues(queues)
+
+
+@pytest.mark.parametrize(
+    "token",
+    [
+        "not-base64!",
+        "A" * (gate.MAX_BROKER_QUEUE_BYTES * 2 + 1),
+        base64.b64encode(b"{}").decode("ascii"),
+    ],
+)
+def test_closed_queue_token_fails_closed_on_malformed_or_oversized_input(token):
+    with pytest.raises(gate.GateError, match="closed queue"):
+        gate.decode_broker_queues(token)
+
+
 def test_sample_requires_exact_worker_replies_and_closes_broker_channel():
     app = _FakeApp([_sample()])
 
@@ -297,6 +401,24 @@ def test_sample_requires_exact_worker_replies_and_closes_broker_channel():
         },
     ]
     assert app.channels[0].closed is True
+
+
+@pytest.mark.parametrize(
+    "inspect_timeout_seconds",
+    [0, gate.MAX_INSPECT_TIMEOUT_SECONDS + 1],
+)
+def test_sample_rejects_out_of_bound_inspection_timeout(inspect_timeout_seconds):
+    app = _FakeApp([_sample()])
+
+    with pytest.raises(gate.GateError, match="inspect timeout"):
+        gate.sample_state(
+            app,
+            TOPOLOGY,
+            inspect_timeout_seconds=inspect_timeout_seconds,
+        )
+
+    assert app.control.inspect_calls == []
+    assert app.channels == []
 
 
 @pytest.mark.parametrize("mode", ["extra", "missing", "malformed", "bad-pong"])
@@ -363,6 +485,320 @@ def test_wait_needs_two_consecutive_zero_samples_and_counts_unacked_work():
     assert receipt["final"]["unacknowledged"] == {"hash": 0, "index": 0}
     assert app.control.inspect_calls[::2] == [{"timeout": 10}] * 4
     assert len(app.control.inspect_calls) == 8
+
+
+def test_broker_empty_passes_only_after_two_zero_samples():
+    app = _FakeApp([_sample(), _sample()])
+    clock = _FakeClock()
+
+    receipt = gate.wait_for_broker_empty(
+        app,
+        CLOSED_QUEUES,
+        timeout_seconds=10,
+        interval_seconds=1,
+        clock=clock,
+        sleeper=clock.sleep,
+        now=_now,
+    )
+
+    assert receipt == {
+        "schema_version": "palimpsest-celery-broker-release-gate.v1",
+        "generated_at": "2026-08-25T01:02:03Z",
+        "status": "empty",
+        "closed_queues_sha256": gate.broker_queues_sha256(CLOSED_QUEUES),
+        "closed_queues": ["celery", "collectors", "warehouse", "censorwatch"],
+        "required_zero_samples": 2,
+        "samples_observed": 2,
+        "final": {
+            "broker_depth": {
+                "celery": 0,
+                "collectors": 0,
+                "warehouse": 0,
+                "censorwatch": 0,
+            },
+            "unacknowledged": {"hash": 0, "index": 0},
+        },
+    }
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
+    assert app.queue_reads == list(CLOSED_QUEUES) * 2
+    assert app.redis_reads == [
+        (operation, key)
+        for _ in range(2)
+        for operation, key in (
+            ("hlen", "unacked"),
+            ("zcard", "unacked_index"),
+        )
+    ]
+    assert (
+        app.connection_calls
+        == [
+            {
+                "connect_timeout": gate.BROKER_OPERATION_TIMEOUT_SECONDS,
+                "transport_options": {
+                    "visibility_timeout": 3600,
+                    "socket_timeout": gate.BROKER_OPERATION_TIMEOUT_SECONDS,
+                    "socket_connect_timeout": gate.BROKER_OPERATION_TIMEOUT_SECONDS,
+                    "retry_on_timeout": False,
+                },
+            }
+        ]
+        * 2
+    )
+    canonical = gate.canonical_receipt(receipt)
+    assert canonical == json.dumps(
+        json.loads(canonical),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    )
+
+
+def test_broker_empty_resets_consecutive_count_after_nonzero_sample():
+    app = _FakeApp([_sample(), _sample(broker=1), _sample(), _sample()])
+    clock = _FakeClock()
+
+    receipt = gate.wait_for_broker_empty(
+        app,
+        CLOSED_QUEUES,
+        timeout_seconds=10,
+        interval_seconds=1,
+        clock=clock,
+        sleeper=clock.sleep,
+        now=_now,
+    )
+
+    assert receipt["samples_observed"] == 4
+    assert receipt["final"]["broker_depth"] == {queue: 0 for queue in CLOSED_QUEUES}
+    assert clock.value == 3
+
+
+@pytest.mark.parametrize(
+    "sample",
+    [
+        None,
+        {"broker_depth": {}, "unacknowledged": {}},
+        {
+            "broker_depth": {queue: 0 for queue in CLOSED_QUEUES[:-1]},
+            "unacknowledged": {"hash": 0, "index": 0},
+        },
+        {
+            "broker_depth": {**{queue: 0 for queue in CLOSED_QUEUES}, "rogue": 0},
+            "unacknowledged": {"hash": 0, "index": 0},
+        },
+        {
+            "broker_depth": {queue: 0 for queue in CLOSED_QUEUES},
+            "unacknowledged": {"hash": 0},
+        },
+        {
+            "broker_depth": {queue: 0 for queue in CLOSED_QUEUES},
+            "unacknowledged": {"hash": 0, "index": 0, "rogue": 0},
+        },
+        {
+            "broker_depth": {queue: 0 for queue in CLOSED_QUEUES},
+            "unacknowledged": {"hash": 0, "index": 0},
+            "rogue": {},
+        },
+    ],
+)
+def test_broker_empty_rejects_missing_or_extra_sample_counters(monkeypatch, sample):
+    app = _FakeApp([_sample()])
+    monkeypatch.setattr(gate, "sample_broker_state", lambda *_args: sample)
+
+    with pytest.raises(gate.GateError, match="exact reviewed"):
+        gate.wait_for_broker_empty(app, CLOSED_QUEUES)
+
+    assert app.channels == []
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
+
+
+@pytest.mark.parametrize("work", ["ready", "unacked-hash", "unacked-index"])
+def test_broker_empty_blocks_ready_and_unacknowledged_work(work):
+    sample = _sample()
+    if work == "ready":
+        sample["broker"]["censorwatch"] = 1
+    elif work == "unacked-hash":
+        sample["unacked"]["hash"] = 1
+    else:
+        sample["unacked"]["index"] = 1
+    app = _FakeApp([sample])
+    clock = _FakeClock()
+
+    with pytest.raises(gate.GateError, match="stable empty state"):
+        gate.wait_for_broker_empty(
+            app,
+            CLOSED_QUEUES,
+            timeout_seconds=2,
+            interval_seconds=1,
+            clock=clock,
+            sleeper=clock.sleep,
+        )
+
+
+@pytest.mark.parametrize("value", [-1, True, "0", gate.MAX_BROKER_RECORDS + 1])
+def test_broker_empty_rejects_malformed_or_oversized_counts(value):
+    sample = _sample()
+    sample["broker"]["warehouse"] = value
+    app = _FakeApp([sample])
+
+    with pytest.raises(gate.GateError, match="bounded nonnegative count"):
+        gate.wait_for_broker_empty(app, CLOSED_QUEUES)
+
+
+class _MissingSizeChannel(_FakeChannel):
+    _size = None
+
+
+class _MissingAcquireChannel(_FakeChannel):
+    conn_or_acquire = None
+
+
+class _MissingUnackedKeyChannel(_FakeChannel):
+    unacked_key = None
+
+
+class _StalledRedisChannel(_FakeChannel):
+    def _size(self, _queue):
+        raise TimeoutError("simulated stalled Redis socket")
+
+
+class _IgnoredTimeoutChannel(_FakeChannel):
+    def __init__(self, app, *, transport_options):
+        super().__init__(app, transport_options=transport_options)
+        self.socket_timeout = None
+        self.socket_connect_timeout = None
+
+
+@pytest.mark.parametrize(
+    "channel_factory",
+    [_MissingSizeChannel, _MissingAcquireChannel, _MissingUnackedKeyChannel],
+)
+def test_broker_empty_fails_closed_when_reviewed_broker_api_drifts(channel_factory):
+    app = _FakeApp([_sample()])
+    app.channel_factory = channel_factory
+
+    with pytest.raises(gate.GateError, match="reviewed count API"):
+        gate.wait_for_broker_empty(app, CLOSED_QUEUES)
+
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
+
+
+def test_broker_probe_preserves_transport_options_and_applies_stricter_timeouts():
+    configured = {
+        "visibility_timeout": 3600,
+        "global_keyprefix": "palimpsest:",
+        "socket_timeout": 2,
+        "socket_connect_timeout": None,
+        "retry_on_timeout": False,
+    }
+    app = _FakeApp([_sample()], broker_transport_options=configured)
+
+    sample = gate.sample_broker_state(app, CLOSED_QUEUES)
+
+    assert sample["broker_depth"] == {queue: 0 for queue in CLOSED_QUEUES}
+    assert app.connection_calls == [
+        {
+            "connect_timeout": gate.BROKER_OPERATION_TIMEOUT_SECONDS,
+            "transport_options": {
+                "visibility_timeout": 3600,
+                "global_keyprefix": "palimpsest:",
+                "socket_timeout": 2.0,
+                "socket_connect_timeout": gate.BROKER_OPERATION_TIMEOUT_SECONDS,
+                "retry_on_timeout": False,
+            },
+        }
+    ]
+    assert app.conf.broker_transport_options == configured
+    assert app.channels[0].socket_timeout == 2.0
+    assert (
+        app.channels[0].socket_connect_timeout == gate.BROKER_OPERATION_TIMEOUT_SECONDS
+    )
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
+
+
+@pytest.mark.parametrize(
+    "options",
+    [
+        None,
+        [],
+        {1: "not-a-string-key"},
+        {"global_keyprefix": b"not-text"},
+        {"socket_timeout": 0},
+        {"socket_connect_timeout": "5"},
+        {"retry_on_timeout": True},
+    ],
+)
+def test_broker_probe_fails_closed_on_malformed_transport_options(options):
+    app = _FakeApp([_sample()], broker_transport_options=options)
+
+    with pytest.raises(gate.GateError, match="broker transport options"):
+        gate.sample_broker_state(app, CLOSED_QUEUES)
+
+    assert app.connection_calls == []
+    assert app.channels == []
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
+
+
+def test_broker_probe_fails_closed_when_bounded_redis_read_times_out():
+    app = _FakeApp([_sample()])
+    app.channel_factory = _StalledRedisChannel
+
+    with pytest.raises(gate.GateError, match="Redis broker count probe failed"):
+        gate.sample_broker_state(app, CLOSED_QUEUES)
+
+    assert app.connection_calls[0]["transport_options"]["socket_timeout"] == (
+        gate.BROKER_OPERATION_TIMEOUT_SECONDS
+    )
+    assert app.channels[0].closed is True
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
+
+
+def test_broker_probe_rejects_channel_that_ignores_bounded_timeouts():
+    app = _FakeApp([_sample()])
+    app.channel_factory = _IgnoredTimeoutChannel
+
+    with pytest.raises(
+        gate.GateError, match="did not apply bounded non-retrying timeouts"
+    ):
+        gate.sample_broker_state(app, CLOSED_QUEUES)
+
+    assert app.queue_reads == []
+    assert app.redis_reads == []
+    assert app.channels[0].closed is True
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
+
+
+@pytest.mark.parametrize(
+    ("timeout_seconds", "interval_seconds", "message"),
+    [
+        (0, 1, "wait timeout"),
+        (gate.MAX_WAIT_SECONDS + 1, 1, "wait timeout"),
+        (1, 0, "sample interval"),
+        (1, gate.MAX_INTERVAL_SECONDS + 1, "sample interval"),
+    ],
+)
+def test_broker_empty_rejects_out_of_bound_wait_inputs(
+    timeout_seconds, interval_seconds, message
+):
+    app = _FakeApp([_sample(), _sample()])
+
+    with pytest.raises(gate.GateError, match=message):
+        gate.wait_for_broker_empty(
+            app,
+            CLOSED_QUEUES,
+            timeout_seconds=timeout_seconds,
+            interval_seconds=interval_seconds,
+        )
+
+    assert app.channels == []
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
 
 
 def test_wait_fails_closed_on_wrong_consumer_queue():
@@ -501,7 +937,9 @@ def test_external_control_errors_are_sanitized(boundary):
             return gate.sample_state(app, TOPOLOGY)
 
     elif boundary == "broker":
-        app.connection_for_read = lambda: (_ for _ in ()).throw(RuntimeError(secret))
+        app.connection_for_read = lambda **_kwargs: (_ for _ in ()).throw(
+            RuntimeError(secret)
+        )
 
         def operation():
             return gate.sample_state(app, TOPOLOGY)
@@ -554,6 +992,55 @@ def test_cli_can_encode_without_importing_the_production_scheduler(capsys):
         gate.NodeQueue("default@012345abcdef", "celery"),
         gate.NodeQueue("warehouse@789abc012def", "warehouse"),
     )
+    assert sys.modules.get("core.scheduler") is before
+
+
+def test_cli_broker_empty_emits_canonical_receipt_without_worker_control(capsys):
+    before = sys.modules.get("core.scheduler")
+    assert (
+        gate.main(
+            [
+                "encode-broker-queues",
+                "--queue",
+                "celery",
+                "--queue",
+                "collectors",
+                "--queue",
+                "warehouse",
+                "--queue",
+                "censorwatch",
+            ]
+        )
+        == 0
+    )
+    token = capsys.readouterr().out.strip()
+    app = _FakeApp([_sample(), _sample()])
+
+    assert (
+        gate.main(
+            [
+                "broker-empty",
+                "--closed-queues-b64",
+                token,
+                "--timeout-seconds",
+                "1",
+                "--interval-seconds",
+                "0.001",
+            ],
+            app=app,
+        )
+        == 0
+    )
+
+    payload = capsys.readouterr().out.strip()
+    receipt = json.loads(payload)
+    assert payload == json.dumps(receipt, sort_keys=True, separators=(",", ":"))
+    assert receipt["schema_version"] == ("palimpsest-celery-broker-release-gate.v1")
+    assert receipt["status"] == "empty"
+    assert receipt["required_zero_samples"] == 2
+    assert receipt["samples_observed"] == 2
+    assert app.control.inspect_calls == []
+    assert app.control.cancel_calls == []
     assert sys.modules.get("core.scheduler") is before
 
 

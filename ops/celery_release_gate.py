@@ -3,9 +3,12 @@
 
 The gate binds a reviewed set of worker node names to their one allowed queue,
 requires exact Celery inspection replies, and joins that worker view to the
-Redis broker's ready and unacknowledged counts.  It never discards work.  A
-release may proceed only after two consecutive zero-work observations and, for
-``quiesce``, after every exact worker has stopped consuming its bound queue.
+Redis broker's ready and unacknowledged counts.  The independent
+``broker-empty`` recovery path binds the complete closed queue set and reads
+only those broker counts; it never needs a live worker.  The gate never
+discards work.  A release may proceed only after two consecutive zero-work
+observations and, for ``quiesce``, after every exact worker has stopped
+consuming its bound queue.
 
 The module deliberately imports no application code at import time.  Public
 functions accept an injected Celery app; the production app is imported only
@@ -21,6 +24,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import re
 import sys
 import time
@@ -30,6 +34,8 @@ from typing import Any
 
 TOPOLOGY_SCHEMA = "palimpsest-celery-release-topology.v1"
 RECEIPT_SCHEMA = "palimpsest-celery-release-gate.v1"
+BROKER_QUEUE_SCHEMA = "palimpsest-celery-broker-queues.v1"
+BROKER_RECEIPT_SCHEMA = "palimpsest-celery-broker-release-gate.v1"
 SUPPORTED_NODE_QUEUES = {
     "default": "celery",
     "collectors": "collectors",
@@ -37,9 +43,10 @@ SUPPORTED_NODE_QUEUES = {
     "velocity": "censorwatch",
 }
 MANDATORY_PRODUCTION_ROLES = frozenset({"default", "collectors", "warehouse"})
-BROKER_QUEUES = ("celery", "collectors", "warehouse", "censorwatch")
+BROKER_QUEUES = tuple(SUPPORTED_NODE_QUEUES.values())
 INSPECT_TASK_METHODS = ("active", "reserved", "scheduled")
 MAX_TOPOLOGY_BYTES = 4096
+MAX_BROKER_QUEUE_BYTES = 1024
 MAX_RECEIPT_BYTES = 64 * 1024
 MAX_TASK_RECORDS_PER_NODE = 10_000
 MAX_ACTIVE_QUEUES_PER_NODE = 16
@@ -47,6 +54,9 @@ MAX_BROKER_RECORDS = 1_000_000
 MAX_WAIT_SECONDS = 3 * 60 * 60
 MAX_INTERVAL_SECONDS = 60
 MAX_INSPECT_TIMEOUT_SECONDS = 30
+BROKER_OPERATION_TIMEOUT_SECONDS = 5.0
+MAX_BROKER_TRANSPORT_OPTIONS = 64
+MAX_BROKER_GLOBAL_KEYPREFIX_BYTES = 256
 MAX_SAMPLES = MAX_WAIT_SECONDS + 2
 REQUIRED_ZERO_SAMPLES = 2
 _NODE = re.compile(
@@ -176,6 +186,80 @@ def topology_sha256(topology: tuple[NodeQueue, ...]) -> str:
     return hashlib.sha256(_canonical_bytes(_topology_document(topology))).hexdigest()
 
 
+def _validated_closed_queues(queues: Iterable[str]) -> tuple[str, ...]:
+    try:
+        values = tuple(queues)
+    except TypeError as error:
+        raise GateError("closed queue list is malformed") from error
+    if any(type(value) is not str for value in values):
+        raise GateError("closed queue list contains a non-string queue")
+    if len(values) != len(BROKER_QUEUES) or set(values) != set(BROKER_QUEUES):
+        raise GateError("closed queue list must contain every reviewed broker queue")
+    if len(set(values)) != len(values):
+        raise GateError("closed queue list contains a duplicate queue")
+    return BROKER_QUEUES
+
+
+def _broker_queue_document(queues: tuple[str, ...]) -> dict[str, object]:
+    return {
+        "schema_version": BROKER_QUEUE_SCHEMA,
+        "closed_queues": list(queues),
+    }
+
+
+def encode_broker_queues(queues: Iterable[str]) -> str:
+    """Return a strict token binding the complete reviewed broker queue set."""
+    closed_queues = _validated_closed_queues(queues)
+    payload = _canonical_bytes(_broker_queue_document(closed_queues))
+    if len(payload) > MAX_BROKER_QUEUE_BYTES:
+        raise GateError("closed queue document exceeds its byte ceiling")
+    return base64.b64encode(payload).decode("ascii")
+
+
+def decode_broker_queues(token: str) -> tuple[str, ...]:
+    """Decode an exact, canonical closed-queue token."""
+    if (
+        not isinstance(token, str)
+        or not token
+        or len(token) > MAX_BROKER_QUEUE_BYTES * 2
+    ):
+        raise GateError("closed queue token is missing or oversized")
+    try:
+        encoded = token.encode("ascii")
+        payload = base64.b64decode(encoded, validate=True)
+        if len(payload) > MAX_BROKER_QUEUE_BYTES:
+            raise GateError("closed queue document exceeds its byte ceiling")
+        document = json.loads(
+            payload.decode("utf-8", "strict"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON number: {value}")
+            ),
+        )
+    except (UnicodeError, ValueError, binascii.Error) as error:
+        raise GateError("closed queue token is not strict canonical JSON") from error
+    if not isinstance(document, dict) or set(document) != {
+        "schema_version",
+        "closed_queues",
+    }:
+        raise GateError("closed queue document has unexpected fields")
+    if document.get("schema_version") != BROKER_QUEUE_SCHEMA:
+        raise GateError("closed queue schema is unsupported")
+    raw_queues = document.get("closed_queues")
+    if not isinstance(raw_queues, list):
+        raise GateError("closed queues are not a list")
+    queues = _validated_closed_queues(raw_queues)
+    canonical = _canonical_bytes(_broker_queue_document(queues))
+    if payload != canonical or base64.b64encode(canonical) != encoded:
+        raise GateError("closed queue token is not canonical")
+    return queues
+
+
+def broker_queues_sha256(queues: tuple[str, ...]) -> str:
+    queues = _validated_closed_queues(queues)
+    return hashlib.sha256(_canonical_bytes(_broker_queue_document(queues))).hexdigest()
+
+
 def _exact_mapping_reply(
     method: str,
     reply: object,
@@ -246,11 +330,67 @@ def _bounded_count(value: object, label: str) -> int:
     return value
 
 
-def _broker_counts_unchecked(app: object) -> tuple[dict[str, int], dict[str, int]]:
+def _bounded_broker_transport_options(app: object) -> dict[str, object]:
+    conf = getattr(app, "conf", None)
+    if conf is None:
+        raise GateError("Celery app has no broker transport configuration")
+    try:
+        configured = getattr(conf, "broker_transport_options")
+    except Exception as error:
+        raise GateError("broker transport options cannot be read") from error
+    if not isinstance(configured, Mapping):
+        raise GateError("broker transport options are not a mapping")
+    try:
+        items = tuple(configured.items())
+        options = dict(items)
+    except Exception as error:
+        raise GateError("broker transport options are malformed") from error
+    if not len(items) <= MAX_BROKER_TRANSPORT_OPTIONS or any(
+        type(key) is not str or not key or len(key) > 128 for key, _value in items
+    ):
+        raise GateError("broker transport options have invalid keys or size")
+
+    global_keyprefix = options.get("global_keyprefix")
+    if global_keyprefix is not None and (
+        type(global_keyprefix) is not str
+        or len(global_keyprefix.encode("utf-8")) > MAX_BROKER_GLOBAL_KEYPREFIX_BYTES
+        or "\x00" in global_keyprefix
+    ):
+        raise GateError("broker transport options have an invalid global key prefix")
+    retry_on_timeout = options.get("retry_on_timeout")
+    if retry_on_timeout is not None and type(retry_on_timeout) is not bool:
+        raise GateError("broker transport options have malformed retry behavior")
+    if retry_on_timeout is True:
+        raise GateError("broker transport options cannot retry a bounded timeout")
+    options["retry_on_timeout"] = False
+
+    for name in ("socket_timeout", "socket_connect_timeout"):
+        configured_timeout = options.get(name)
+        if configured_timeout is None:
+            options[name] = BROKER_OPERATION_TIMEOUT_SECONDS
+            continue
+        if type(configured_timeout) not in (int, float):
+            raise GateError("broker transport options have a malformed timeout")
+        numeric_timeout = float(configured_timeout)
+        if not math.isfinite(numeric_timeout) or numeric_timeout <= 0:
+            raise GateError("broker transport options have an invalid timeout")
+        options[name] = min(numeric_timeout, BROKER_OPERATION_TIMEOUT_SECONDS)
+    return options
+
+
+def _broker_counts_unchecked(
+    app: object,
+    queues: tuple[str, ...] = BROKER_QUEUES,
+) -> tuple[dict[str, int], dict[str, int]]:
+    queues = _validated_closed_queues(queues)
     connection_factory = getattr(app, "connection_for_read", None)
     if not callable(connection_factory):
         raise GateError("Celery app cannot open a broker read connection")
-    with connection_factory() as connection:
+    transport_options = _bounded_broker_transport_options(app)
+    with connection_factory(
+        connect_timeout=BROKER_OPERATION_TIMEOUT_SECONDS,
+        transport_options=transport_options,
+    ) as connection:
         transport = getattr(connection, "transport", None)
         if getattr(transport, "driver_type", None) != "redis":
             raise GateError("release gate requires the reviewed Redis transport")
@@ -259,6 +399,16 @@ def _broker_counts_unchecked(app: object) -> tuple[dict[str, int], dict[str, int
             raise GateError("broker connection cannot open a channel")
         channel = channel_factory()
         try:
+            if (
+                getattr(channel, "socket_timeout", None)
+                != transport_options["socket_timeout"]
+                or getattr(channel, "socket_connect_timeout", None)
+                != transport_options["socket_connect_timeout"]
+                or getattr(channel, "retry_on_timeout", None) is not False
+            ):
+                raise GateError(
+                    "Redis broker channel did not apply bounded non-retrying timeouts"
+                )
             size = getattr(channel, "_size", None)
             acquire = getattr(channel, "conn_or_acquire", None)
             unacked_key = getattr(channel, "unacked_key", None)
@@ -272,7 +422,7 @@ def _broker_counts_unchecked(app: object) -> tuple[dict[str, int], dict[str, int
                 raise GateError("Redis broker channel lacks the reviewed count API")
             depths = {
                 queue: _bounded_count(size(queue), f"{queue} broker depth")
-                for queue in BROKER_QUEUES
+                for queue in queues
             }
             with acquire() as client:
                 unacked = {
@@ -290,9 +440,12 @@ def _broker_counts_unchecked(app: object) -> tuple[dict[str, int], dict[str, int
     return depths, unacked
 
 
-def _broker_counts(app: object) -> tuple[dict[str, int], dict[str, int]]:
+def _broker_counts(
+    app: object,
+    queues: tuple[str, ...] = BROKER_QUEUES,
+) -> tuple[dict[str, int], dict[str, int]]:
     try:
-        return _broker_counts_unchecked(app)
+        return _broker_counts_unchecked(app, queues)
     except GateError:
         raise
     except Exception as error:
@@ -375,6 +528,45 @@ def _sample_is_zero(sample: dict[str, object]) -> bool:
     )
 
 
+def sample_broker_state(
+    app: object,
+    closed_queues: tuple[str, ...],
+) -> dict[str, object]:
+    """Read one bounded Redis broker sample without Celery worker control."""
+    closed_queues = _validated_closed_queues(closed_queues)
+    broker_depth, unacknowledged = _broker_counts(app, closed_queues)
+    return {
+        "broker_depth": broker_depth,
+        "unacknowledged": unacknowledged,
+    }
+
+
+def _broker_sample_is_zero(sample: Mapping[str, object]) -> bool:
+    if not isinstance(sample, Mapping) or set(sample) != {
+        "broker_depth",
+        "unacknowledged",
+    }:
+        raise GateError("broker sample does not contain the exact reviewed fields")
+    broker_depth = sample.get("broker_depth")
+    unacknowledged = sample.get("unacknowledged")
+    if not isinstance(broker_depth, Mapping) or not isinstance(unacknowledged, Mapping):
+        raise GateError("broker sample has an unexpected shape")
+    if set(broker_depth) != set(BROKER_QUEUES) or set(unacknowledged) != {
+        "hash",
+        "index",
+    }:
+        raise GateError("broker sample does not contain the exact reviewed counters")
+    counts = (
+        *(
+            _bounded_count(broker_depth[queue], f"{queue} broker depth")
+            for queue in BROKER_QUEUES
+        ),
+        _bounded_count(unacknowledged["hash"], "unacknowledged hash"),
+        _bounded_count(unacknowledged["index"], "unacknowledged index"),
+    )
+    return all(count == 0 for count in counts)
+
+
 def _utc_timestamp(now: Callable[[], datetime]) -> str:
     value = now()
     if value.tzinfo is None or value.utcoffset() is None:
@@ -415,6 +607,56 @@ def canonical_receipt(document: Mapping[str, object]) -> str:
     if len(payload) > MAX_RECEIPT_BYTES:
         raise GateError("release gate receipt exceeds its byte ceiling")
     return payload.decode("utf-8")
+
+
+def wait_for_broker_empty(
+    app: object,
+    closed_queues: tuple[str, ...],
+    *,
+    timeout_seconds: float = MAX_WAIT_SECONDS,
+    interval_seconds: float = 5,
+    clock: Callable[[], float] = time.monotonic,
+    sleeper: Callable[[float], None] = time.sleep,
+    now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+) -> dict[str, object]:
+    """Prove two consecutive zero samples using broker reads only."""
+    closed_queues = _validated_closed_queues(closed_queues)
+    if not 0 < timeout_seconds <= MAX_WAIT_SECONDS:
+        raise GateError("wait timeout is outside the supported bound")
+    if not 0 < interval_seconds <= MAX_INTERVAL_SECONDS:
+        raise GateError("sample interval is outside the supported bound")
+    started = clock()
+    consecutive = 0
+    samples = 0
+    while True:
+        sample = sample_broker_state(app, closed_queues)
+        samples += 1
+        if samples > MAX_SAMPLES:
+            raise GateError("broker release gate exceeded its sample ceiling")
+        if _broker_sample_is_zero(sample):
+            consecutive += 1
+            if consecutive == REQUIRED_ZERO_SAMPLES:
+                receipt = {
+                    "schema_version": BROKER_RECEIPT_SCHEMA,
+                    "generated_at": _utc_timestamp(now),
+                    "status": "empty",
+                    "closed_queues_sha256": broker_queues_sha256(closed_queues),
+                    "closed_queues": list(closed_queues),
+                    "required_zero_samples": REQUIRED_ZERO_SAMPLES,
+                    "samples_observed": samples,
+                    "final": sample,
+                }
+                if len(_canonical_bytes(receipt)) > MAX_RECEIPT_BYTES:
+                    raise GateError(
+                        "broker release gate receipt exceeds its byte ceiling"
+                    )
+                return receipt
+        else:
+            consecutive = 0
+        elapsed = clock() - started
+        if elapsed >= timeout_seconds:
+            raise GateError("Redis broker did not reach a stable empty state")
+        sleeper(min(interval_seconds, timeout_seconds - elapsed))
 
 
 def wait_for_quiet(
@@ -568,6 +810,12 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     encode = commands.add_parser("encode-topology")
     encode.add_argument("--pair", action="append", type=_pair, required=True)
+    encode_broker = commands.add_parser("encode-broker-queues")
+    encode_broker.add_argument("--queue", action="append", required=True)
+    broker_empty = commands.add_parser("broker-empty")
+    broker_empty.add_argument("--closed-queues-b64", required=True)
+    broker_empty.add_argument("--timeout-seconds", type=float, default=MAX_WAIT_SECONDS)
+    broker_empty.add_argument("--interval-seconds", type=float, default=5)
     for command in ("check", "quiesce"):
         subparser = commands.add_parser(command)
         subparser.add_argument("--topology-b64", required=True)
@@ -590,6 +838,23 @@ def main(argv: list[str] | None = None, *, app: object | None = None) -> int:
     try:
         if args.command == "encode-topology":
             print(encode_topology(args.pair))
+            return 0
+        if args.command == "encode-broker-queues":
+            print(encode_broker_queues(args.queue))
+            return 0
+        if args.command == "broker-empty":
+            closed_queues = decode_broker_queues(args.closed_queues_b64)
+            if app is None:
+                from core.scheduler import app as production_app
+
+                app = production_app
+            receipt = wait_for_broker_empty(
+                app,
+                closed_queues,
+                timeout_seconds=args.timeout_seconds,
+                interval_seconds=args.interval_seconds,
+            )
+            print(canonical_receipt(receipt))
             return 0
         topology = decode_topology(args.topology_b64)
         if app is None:
