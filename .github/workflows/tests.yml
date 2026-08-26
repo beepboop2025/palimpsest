@@ -1085,6 +1085,8 @@ jobs:
             --url https://api.seiche.info/palimpsest/mcp \
             --module "$RUNNER_TEMP/deployed-mcp-contract/palimpsest_mcp.py" \
             --manifest "$RUNNER_TEMP/deployed-mcp-contract/server.json" \
+            --bootstrap-deny \
+            --expected-publication-sha '${{ needs.contract.outputs.revision }}' \
             --timeout 20
 
   pages-artifact:
@@ -1129,6 +1131,67 @@ jobs:
           mkdir -p "$RUNNER_TEMP/pages-root"
           git archive --format=tar "$PUBLICATION_SHA" |
             tar -xf - -C "$RUNNER_TEMP/pages-root"
+          # Capture exact identifiers from the denied ledger before staging.
+          # This independent byte-set is intentionally outside the candidate
+          # selector used by the remediation script.
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          runner_temp = Path(os.environ["RUNNER_TEMP"])
+          ledger = runner_temp / "pages-root/readings/china-econ-observations.jsonl"
+          sentinels = set()
+          records = 0
+          for line in ledger.read_text(encoding="utf-8").splitlines():
+              if not line.strip():
+                  continue
+              row = json.loads(line)
+              records += 1
+              for field in ("observation_id", "raw_sha256"):
+                  value = row.get(field)
+                  if isinstance(value, str) and len(value) >= 32:
+                      sentinels.add(value)
+          if records == 0 or not sentinels:
+              raise SystemExit("denied-ledger sentinel set is empty")
+          (runner_temp / "cfets-denied-sentinels.txt").write_text(
+              "\n".join(sorted(sentinels)) + "\n", encoding="utf-8"
+          )
+          PY
+          # The source-policy registry is the publication authority for China
+          # economic values. Replace every denied-value endpoint (including
+          # derived surfaces) with same-path restricted metadata, then prove
+          # the exact staged tree contains no CFETS value leakage.
+          publication_epoch=$(git show -s --format=%ct "$PUBLICATION_SHA")
+          rights_edition_at=$(date -u -d "@$publication_epoch" +%Y-%m-%dT%H:%M:%SZ)
+          rights_admission_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          rights_receipt="$RUNNER_TEMP/pages-rights-release-receipt.json"
+          rights_args=(
+            --root "$RUNNER_TEMP/pages-root"
+            --publication-sha "$PUBLICATION_SHA"
+            --evaluated-at "$rights_edition_at"
+            --admission-at "$rights_admission_at"
+            --receipt "$rights_receipt"
+          )
+          python3 -m scripts.stage_pages_rights "${rights_args[@]}"
+          python3 -m scripts.stage_pages_rights "${rights_args[@]}" --check
+          # Scan the entire exact archive independently of the Python gate's
+          # suffix/candidate selection. No original CFETS row identity/hash or
+          # direct/mapping-key numeric value may remain in any served file.
+          command -v rg >/dev/null
+          if rg --no-ignore --hidden --binary -l -F \
+            -f "$RUNNER_TEMP/cfets-denied-sentinels.txt" \
+            "$RUNNER_TEMP/pages-root"; then
+            echo "Pages artifact retained denied CFETS source bytes" >&2
+            exit 1
+          fi
+          if rg --no-ignore --hidden --binary -l \
+            -e '"(fdr001|fdr007|fdr014|fr001|fr007|fr014|shibor_(on|1w|2w|1m|3m|6m|9m|1y)|usdcny_parity)"[[:space:]]*(:|=)[[:space:]]*"?[+-]?[0-9]' \
+            -e '"(cfets_benchmarks|chinamoney)"[[:space:]]*:[[:space:]]*"?[+-]?[0-9]' \
+            "$RUNNER_TEMP/pages-root"; then
+            echo "Pages artifact retained denied CFETS values or zero-derivatives" >&2
+            exit 1
+          fi
           # upload-pages-artifact deliberately excludes dot paths. Preserve the
           # public RFC 9116 endpoint through a single reviewed archive-name
           # transform while all other hidden operational files stay excluded.
@@ -1139,7 +1202,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/pages-root/.pytest_cache"
           test ! -e "$RUNNER_TEMP/pages-root/.ruff_cache"
 
-      - name: Archive immutable wire analysis history in exact Pages staging
+      - name: Archive or rights-suppress immutable wire analysis history in exact Pages staging
         env:
           PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
         run: |
@@ -1165,56 +1228,30 @@ jobs:
         id: pages_size
         env:
           PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
-          # Release bridge: 1000 MiB admits the measured append-only history while
-          # retaining a hard 24 MiB reserve below the pinned deploy action's
-          # 1 GiB warning threshold.
-          # Keep the high-growth Newswire publisher disabled until history moves
-          # behind a path-preserving same-origin archive.
-          PAGES_ARTIFACT_LIMIT_BYTES: "1048576000"
         run: |
           set -euo pipefail
           # The pinned upload action creates and uploads this exact tar path.
           # Measuring it avoids substituting workspace size or compressed size.
-          artifact="$RUNNER_TEMP/artifact.tar"
-          receipt="$RUNNER_TEMP/pages-artifact-size.json"
-          test -f "$artifact"
-          artifact_bytes=$(wc -c < "$artifact" | tr -d '[:space:]')
-          artifact_sha256=$(sha256sum "$artifact" | awk '{print $1}')
-          case "$artifact_bytes" in
-            ''|*[!0-9]*) echo "invalid Pages artifact byte count" >&2; exit 1 ;;
-          esac
-          if [ "$artifact_bytes" -le 0 ]; then
-            echo "Pages artifact is empty" >&2
-            exit 1
-          fi
-          if [ "${#artifact_sha256}" -ne 64 ] ||
-             [ -n "${artifact_sha256//[0-9a-f]/}" ]; then
-            echo "invalid Pages artifact SHA-256" >&2
-            exit 1
-          fi
-          headroom_bytes=$((PAGES_ARTIFACT_LIMIT_BYTES - artifact_bytes))
-          if [ "$artifact_bytes" -le "$PAGES_ARTIFACT_LIMIT_BYTES" ]; then
-            within_limit=true
-            status=within-limit
-          else
-            within_limit=false
-            status=over-limit
-          fi
-          printf '%s\n' \
-            "{\"artifact_bytes\":$artifact_bytes,\"artifact_name\":\"github-pages/artifact.tar\",\"artifact_sha256\":\"$artifact_sha256\",\"headroom_bytes\":$headroom_bytes,\"limit_bytes\":$PAGES_ARTIFACT_LIMIT_BYTES,\"publication_sha\":\"$PUBLICATION_SHA\",\"schema_version\":\"palimpsest.pages-artifact-size.v1\",\"status\":\"$status\"}" \
-            > "$receipt"
-          {
-            echo "artifact_bytes=$artifact_bytes"
-            echo "headroom_bytes=$headroom_bytes"
-            echo "within_limit=$within_limit"
-          } >> "$GITHUB_OUTPUT"
-          cat "$receipt" >> "$GITHUB_STEP_SUMMARY"
+          python3 scripts/pages_artifact_capacity.py measure \
+            --artifact "$RUNNER_TEMP/artifact.tar" \
+            --publication-sha "$PUBLICATION_SHA" \
+            --receipt "$RUNNER_TEMP/pages-artifact-size.json" \
+            --github-output "$GITHUB_OUTPUT" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload the Pages artifact size receipt
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: pages-artifact-size-${{ needs.contract.outputs.revision }}
           path: ${{ runner.temp }}/pages-artifact-size.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload the Pages rights release receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: pages-rights-release-${{ needs.contract.outputs.revision }}
+          path: ${{ runner.temp }}/pages-rights-release-receipt.json
           if-no-files-found: error
           retention-days: 30
 
@@ -1269,3 +1306,60 @@ jobs:
       - name: Deploy the exact accepted edition
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4
+
+  verify-live-rights-closure:
+    name: Verify exact Pages and native MCP rights closure
+    needs:
+      - contract
+      - deploy-pages
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.deploy-pages.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+          persist-credentials: false
+
+      - name: Prove served Pages identity through the complete MCP route matrix
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+        run: |
+          set -euo pipefail
+          receipt="$RUNNER_TEMP/pages-mcp-rights-live-receipt.json"
+          verified=0
+          for _attempt in $(seq 1 24); do
+            if python3 scripts/smoke_palimpsest_mcp.py \
+              --url https://api.seiche.info/palimpsest/mcp \
+              --module mcp/palimpsest_mcp.py \
+              --manifest server.json \
+              --expected-publication-sha "$PUBLICATION_SHA" \
+              --timeout 20 > "$receipt"; then
+              verified=1
+              break
+            fi
+            sleep 10
+          done
+          test "$verified" = 1
+          jq -e \
+            --arg sha "$PUBLICATION_SHA" '
+              .rights_verification.integrity == "verified" and
+              .rights_verification.publication_sha == $sha and
+              (.rights_verification.status_sha256
+                | type == "string" and test("^[0-9a-f]{64}$")) and
+              (.calls | index("whats_happening:rights-restricted") != null)
+            ' "$receipt" >/dev/null
+
+      - name: Upload immutable Pages and MCP rights receipt
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: pages-mcp-rights-live-${{ needs.contract.outputs.revision }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pages-mcp-rights-live-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0

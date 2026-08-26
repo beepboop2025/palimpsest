@@ -12,7 +12,11 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from scripts import push_data_commit, validate_investigation_dependencies
+from scripts import (
+    pages_artifact_capacity,
+    push_data_commit,
+    validate_investigation_dependencies,
+)
 
 
 def _git(repo: Path, *arguments: str) -> str:
@@ -1393,11 +1397,12 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
         < pages_artifact
     )
     assert workflow.count("steps.identity.outputs.scope == 'complete'") == 3
-    # MCP admission, Pages artifact/deploy, and the non-Pages China review bundle.
-    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 4
+    # MCP admission, Pages artifact/deploy, the non-Pages China review bundle,
+    # and the final live Pages/MCP rights-closure proof.
+    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 5
     assert (
         workflow[mcp_admission:].count("github.event_name == 'repository_dispatch'")
-        == 3
+        == 4
     )
     assert (
         "python -m scripts.build_data_catalog --check"
@@ -1415,10 +1420,19 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     assert "git diff --exit-code --" not in replay_gate
     assert 'git archive --format=tar "$PUBLICATION_SHA"' in workflow
     assert "Pages artifact refuses tracked symbolic links" in workflow
-    assert "Archive immutable wire analysis history in exact Pages staging" in workflow
+    archive_or_suppress = workflow.index(
+        "Archive or rights-suppress immutable wire analysis history in exact Pages staging"
+    )
+    rights_stage = workflow.index("python3 -m scripts.stage_pages_rights")
+    upload_pages = workflow.index("Upload the exact Pages artifact")
+    assert rights_stage < archive_or_suppress < upload_pages
     assert 'archive_builder="$RUNNER_TEMP/pages-root/scripts/build_pages_wire_archive.py"' in workflow
-    assert workflow.count('--root "$RUNNER_TEMP/pages-root"') == 2
-    assert workflow.count('--publication-sha "$PUBLICATION_SHA"') == 2
+    # Rights staging plus both archive-or-suppression passes operate on the
+    # same exact temporary Pages root.
+    assert workflow.count('--root "$RUNNER_TEMP/pages-root"') == 3
+    # Rights staging, both archive-or-suppression passes, and the exact
+    # artifact-capacity receipt bind output to the admitted publication SHA.
+    assert workflow.count('--publication-sha "$PUBLICATION_SHA"') == 4
     assert "            --check" in workflow
     assert "TAR_OPTIONS: '--transform=s|^\\./well-known|./.well-known|'" in workflow
     assert (
@@ -1769,7 +1783,7 @@ def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
         index
         for index, step in enumerate(steps)
         if step.get("name")
-        == "Archive immutable wire analysis history in exact Pages staging"
+        == "Archive or rights-suppress immutable wire analysis history in exact Pages staging"
     )
     upload_index = next(
         index
@@ -1801,7 +1815,7 @@ def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
     )
 
     archive = by_name[
-        "Archive immutable wire analysis history in exact Pages staging"
+        "Archive or rights-suppress immutable wire analysis history in exact Pages staging"
     ]
     assert archive["env"]["PUBLICATION_SHA"] == (
         "${{ needs.contract.outputs.revision }}"
@@ -1812,25 +1826,18 @@ def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
     assert archive["run"].rstrip().endswith("--check")
 
     measure = by_name["Measure the exact staged Pages artifact"]
-    limit = int(measure["env"]["PAGES_ARTIFACT_LIMIT_BYTES"])
+    limit = pages_artifact_capacity.PAGES_ARTIFACT_LIMIT_BYTES
     assert limit == 1000 * 1024 * 1024
     assert limit == (1024 - 24) * 1024 * 1024
     assert measure["env"]["PUBLICATION_SHA"] == (
         "${{ needs.contract.outputs.revision }}"
     )
-    for field in (
-        "artifact_bytes",
-        "artifact_sha256",
-        "headroom_bytes",
-        "limit_bytes",
-        "publication_sha",
-        "schema_version",
-        "status",
-    ):
-        assert f'\\"{field}\\"' in measure["run"]
-    assert 'artifact="$RUNNER_TEMP/artifact.tar"' in measure["run"]
-    assert "artifact_bytes=$(wc -c" in measure["run"]
-    assert "artifact_sha256=$(sha256sum" in measure["run"]
+    assert "PAGES_ARTIFACT_LIMIT_BYTES" not in measure.get("env", {})
+    assert "scripts/pages_artifact_capacity.py measure" in measure["run"]
+    assert '--artifact "$RUNNER_TEMP/artifact.tar"' in measure["run"]
+    assert '--publication-sha "$PUBLICATION_SHA"' in measure["run"]
+    assert '--receipt "$RUNNER_TEMP/pages-artifact-size.json"' in measure["run"]
+    assert '--github-output "$GITHUB_OUTPUT"' in measure["run"]
 
     receipt = by_name["Upload the Pages artifact size receipt"]
     assert receipt["uses"] == (

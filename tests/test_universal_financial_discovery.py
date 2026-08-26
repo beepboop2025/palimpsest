@@ -12,7 +12,11 @@ CATALOG_PATH = ROOT / ".well-known" / "ai-catalog.json"
 MANIFEST_SERVER_VERSION = json.loads(
     (ROOT / "server.json").read_text(encoding="utf-8")
 )["version"]
+# The immutable receipts below prove the currently deployed release.  The
+# checked-in manifest may describe the next candidate before deployment and
+# must not be retroactively equated with these live-release receipts.
 SERVER_VERSION = "1.9.1"
+CANDIDATE_SERVER_VERSION = "1.9.2"
 MCP_RELEASE_SHA = "9b3d71422b01252907a02530708e45682a2320b4"
 MCP_DEPLOY_RUN_URL = (
     "https://github.com/beepboop2025/palimpsest/actions/runs/32889866464"
@@ -125,7 +129,10 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
         "Live censorship, China economic, and tamper-evident AI evaluation "
         "tools with bounded analysis."
     )
-    assert mcp["data"] == json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    registry_snapshot = json.loads(
+        MCP_REGISTRY_SNAPSHOT_PATH.read_text(encoding="utf-8")
+    )
+    assert mcp["data"] == registry_snapshot["server"]
     assert mcp["data"]["version"] == SERVER_VERSION
     assert mcp["version"] == SERVER_VERSION
     assert mcp["updatedAt"] == MCP_REGISTRY_PUBLISHED_AT
@@ -161,8 +168,10 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     assert SERVER_VERSION in mcp["description"]
 
 
-def test_manifest_matches_the_proven_live_release():
-    assert MANIFEST_SERVER_VERSION == SERVER_VERSION == "1.9.1"
+def test_candidate_manifest_does_not_rewrite_the_proven_live_release():
+    assert SERVER_VERSION == "1.9.1"
+    assert MANIFEST_SERVER_VERSION == CANDIDATE_SERVER_VERSION
+    assert MANIFEST_SERVER_VERSION != SERVER_VERSION
 
 
 def test_mcp_release_receipts_are_durable_exact_bytes():
@@ -209,10 +218,13 @@ def test_mcp_release_receipts_are_durable_exact_bytes():
     assert registry["registry_response_sha256"] == (
         MCP_REGISTRY_SNAPSHOT_SHA256.removeprefix("sha256:")
     )
-    manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
     deployed_manifest = registry_snapshot["server"]
-    assert deployed_manifest == manifest
-    assert manifest["version"] == SERVER_VERSION
+    catalog_manifest = _catalog_entries()[
+        "urn:air:palimpsest.info:mcp:evidence-observatory"
+    ]["data"]
+    assert deployed_manifest == catalog_manifest
+    assert deployed_manifest["version"] == SERVER_VERSION
+    assert MANIFEST_SERVER_VERSION == CANDIDATE_SERVER_VERSION
     official = registry_snapshot["_meta"]["io.modelcontextprotocol.registry/official"]
     assert official["status"] == "active"
     assert official["isLatest"] is True
@@ -229,18 +241,27 @@ def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
     assert openapi["url"] == "https://palimpsest.info/openapi.json"
     assert "independent of the deployed MCP" in openapi["metadata"]["versionAuthority"]
     assert ledger["metadata"]["manifest"].endswith(
-        "/readings/china-econ-observations-latest.json"
+        "/readings/china-publication-rights-latest.json"
     )
     assert ledger["metadata"]["observationSchema"].endswith(
-        "/protocol/economic-observation-v1.schema.json"
+        "/protocol/restricted-publication-v1.schema.json"
     )
-    assert index["metadata"]["schema"].endswith("/protocol/china-index-v1.schema.json")
+    assert ledger["metadata"]["access"] == "metadata-only-restricted"
+    assert index["metadata"]["schema"].endswith(
+        "/protocol/restricted-publication-v1.schema.json"
+    )
+    assert index["metadata"]["access"] == "metadata-only-restricted"
     assert router["url"] == SKILL_RAW_URL
     assert router["version"] == SKILL_REVISION
     assert router["metadata"]["canonicalDirectory"] == SKILL_DIRECTORY
     assert index["metadata"]["freshnessAuthority"].startswith(
-        "Read the current generation"
+        "Read rights_evaluated_at"
     )
+    assert "separate deployment" in entries[
+        "urn:air:palimpsest.info:mcp:evidence-observatory"
+    ]["description"]
+    assert "download economic observation ledger" not in openapi["capabilities"]
+    assert "metadata-only China publication-rights status" in openapi["description"]
     assert "updatedAt" not in index
     assert {"Palimpsest", "Seiche", "LiquiLens", "Undertow"} <= set(
         router["description"].split()

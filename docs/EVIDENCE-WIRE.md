@@ -272,6 +272,19 @@ append-only history does not exceed the host's artifact limit:
 - every event-dossier revision remains a direct JSON file. It is never moved
   into this analysis-only archive.
 
+The publication-rights transform always runs first. The Pages archive builder
+then reads the canonical
+`/readings/china-publication-rights-latest.json` for the exact publication
+commit. If its `quarantined_paths` contains any wire `analysis.json` or
+`analysis/revisions/*.json` path, rights take precedence: the builder returns
+`mode=rights-suppressed`, creates neither the archive nor its receipt, and
+verifies that neither output already exists. Directly safe wire files and the
+same-path restricted stubs remain untouched. Suppression still proves that each
+unrestricted current head has one regular, byte-identical named revision; it
+cannot hide unrelated missing, drifted, or ambiguous history. A malformed,
+non-canonical, or different-commit rights status fails the Pages build instead
+of falling back to archiving.
+
 The access receipt at
 `/news/wire/analysis-revisions-archive.json` binds the exact publication commit,
 archive byte count and SHA-256, expanded entry count and bytes, deterministic
@@ -281,12 +294,18 @@ adds the archive digest as a cache-busting query. Consumers should fetch that
 URL, verify `archive.sha256`, run `xz -t`, and then read the requested exact
 member path. A non-current analysis revision returning 404 at its former direct
 Pages URL means “use the archive access map,” not “the revision was deleted.”
+If the archive and access receipt are both absent, consumers must check the
+exact-edition publication-rights status first; a listed wire restriction means
+the archive was deliberately suppressed, not lost.
 
 The archive is an exact-Pages staging transformation only. It does not rewrite
 or thin repository history, and deployment fails if a current head is missing,
 ambiguous, or differs by one byte from its named revision; if an archive member
 is a link, duplicate, or non-canonical path; if xz integrity fails; or if the
-archive and public receipt disagree.
+archive and public receipt disagree. Production CLI build and `--check` use the
+same rights-aware decision as `build_for_pages(root, publication_sha)` and
+`verify_for_pages(root, publication_sha)`; the lower-level `build` and `verify`
+APIs retain the archive-only contract for existing callers.
 
 ## Event dossier
 

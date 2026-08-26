@@ -27,6 +27,18 @@ _REQUEST_HEADERS = {
     "Content-Type": "application/json",
     "User-Agent": "palimpsest-mcp-release-smoke/1",
 }
+_EXPECTED_RIGHTS_RESOURCE = "palimpsest://china-economic/publication-rights"
+_EXPECTED_AFFECTED_SIGNALS = {
+    "board-alarm", "china-econ", "china-econ-forecast", "china-situation",
+    "china-economic-pulse", "coverage-guard", "cross-layer",
+    "editorial-readiness", "event-flags", "evidence-catalog", "evidence-wire",
+    "forecast-ledger", "investigations", "machine-investigations", "newsroom",
+    "osint-china", "evidence-mesh",
+}
+_EXPECTED_AFFECTED_VIEWS = {
+    "economy", "editorial-readiness", "interconnection", "investigations",
+    "machine-analysis", "newsroom", "wire",
+}
 
 
 class SmokeError(RuntimeError):
@@ -91,11 +103,42 @@ def load_contract(module_path: Path, manifest_path: Path) -> dict[str, Any]:
     prompts = getattr(module, "PROMPTS", None)
     if not isinstance(tools, dict) or not isinstance(prompts, dict):
         raise SmokeError("contract module has no tool/prompt inventories")
+    resource_uri = getattr(module, "ECON_RIGHTS_RESOURCE_URI", None)
+    affected_signals = getattr(module, "ECON_RIGHTS_AFFECTED_SIGNALS", None)
+    affected_views = getattr(module, "ECON_RIGHTS_AFFECTED_NEWSROOM_VIEWS", None)
+    signal_inventory = getattr(module, "SIGNALS", None)
+    if resource_uri != _EXPECTED_RIGHTS_RESOURCE:
+        raise SmokeError("contract module has the wrong publication-rights resource")
+    if set(affected_signals or ()) != _EXPECTED_AFFECTED_SIGNALS:
+        raise SmokeError("contract module has the wrong restricted signal closure")
+    if set(affected_views or ()) != _EXPECTED_AFFECTED_VIEWS:
+        raise SmokeError("contract module has the wrong restricted newsroom closure")
+    if not isinstance(signal_inventory, dict) or any(
+        name not in signal_inventory for name in affected_signals
+    ):
+        raise SmokeError("contract module cannot map its restricted signal closure")
     return {
         "version": version,
         "server_name": getattr(module, "SERVER_NAME", None),
         "tools": sorted(tools),
         "prompts": sorted(prompts),
+        "resources": [resource_uri],
+        "affected_signals": sorted(affected_signals),
+        "affected_paths": sorted(
+            signal_inventory[name][0].lstrip("/") for name in affected_signals
+        ),
+        "affected_views": sorted(affected_views),
+        "policy_sha256": getattr(module, "ECON_RIGHTS_POLICY_SHA256", None),
+        "policy_bytes": getattr(module, "ECON_RIGHTS_POLICY_BYTES", None),
+        "expected_counts": {
+            "input_records": getattr(module, "ECON_RIGHTS_EXPECTED_INPUT_RECORDS", None),
+            "allowed_records": getattr(module, "ECON_RIGHTS_EXPECTED_ALLOWED_RECORDS", None),
+            "restricted_records": getattr(module, "ECON_RIGHTS_EXPECTED_RESTRICTED_RECORDS", None),
+            "published_records": 0,
+            "quarantined_artifacts": getattr(
+                module, "ECON_RIGHTS_EXPECTED_QUARANTINED_ARTIFACTS", None
+            ),
+        },
     }
 
 
@@ -310,6 +353,198 @@ def _rpc_result(response: dict[str, Any], expected_id: int, label: str) -> dict[
     return result
 
 
+def _tool_body(result: dict[str, Any], label: str) -> dict[str, Any]:
+    """Require the two MCP tool representations to be strict and identical."""
+
+    structured = result.get("structuredContent")
+    content = result.get("content")
+    if result.get("isError") is not False or not isinstance(structured, dict):
+        raise SmokeError(f"{label} returned no successful structured content")
+    if (
+        not isinstance(content, list)
+        or len(content) != 1
+        or not isinstance(content[0], dict)
+        or content[0].get("type") != "text"
+        or type(content[0].get("text")) is not str
+    ):
+        raise SmokeError(f"{label} returned no singular JSON text content")
+    text_body = _decode_json(content[0]["text"].encode("utf-8"), f"{label} text")
+    if text_body != structured:
+        raise SmokeError(f"{label} text and structured content differ")
+    return structured
+
+
+def _validate_rights_payload(
+    body: Any,
+    contract: dict[str, Any],
+    *,
+    require_verified: bool | None = True,
+    expected_publication_sha: str | None = None,
+) -> None:
+    if not isinstance(body, dict):
+        raise SmokeError("publication-rights payload is not an object")
+    if (
+        body.get("schema_version") != "palimpsest.mcp-china-economic-rights.v1"
+        or body.get("status") != "restricted"
+        or body.get("availability") != "unavailable"
+        or body.get("evidence_class") != "restricted"
+        or body.get("publication_allowed") is not False
+        or body.get("no_partial_rows") is not True
+    ):
+        raise SmokeError("publication-rights payload is not fail-closed")
+    artifact = body.get("status_artifact")
+    integrity = artifact.get("integrity") if isinstance(artifact, dict) else None
+    if require_verified is None:
+        if integrity not in {"verified", "unavailable"}:
+            raise SmokeError("publication-rights status integrity is invalid")
+        verified_mode = integrity == "verified"
+    else:
+        verified_mode = require_verified
+    expected_integrity = "verified" if verified_mode else "unavailable"
+    if (
+        not isinstance(artifact, dict)
+        or artifact.get("integrity") != expected_integrity
+        or artifact.get("url") != (
+            "https://palimpsest.info/readings/china-publication-rights-latest.json"
+        )
+    ):
+        raise SmokeError("publication-rights status artifact is not verified")
+    if verified_mode:
+        digest = artifact.get("sha256")
+        if (
+            type(digest) is not str
+            or len(digest) != 64
+            or any(char not in "0123456789abcdef" for char in digest)
+            or type(body.get("rights_evaluated_at")) is not str
+            or type(body.get("publication_sha")) is not str
+            or len(body["publication_sha"]) != 40
+            or any(char not in "0123456789abcdef" for char in body["publication_sha"])
+        ):
+            raise SmokeError(
+                "publication-rights status lacks digest, publication SHA, or evaluation clock"
+            )
+        if (
+            expected_publication_sha is not None
+            and body["publication_sha"] != expected_publication_sha
+            and require_verified is True
+        ):
+            raise SmokeError("publication-rights status is for a different Pages SHA")
+    policy = body.get("policy")
+    if (
+        not isinstance(policy, dict)
+        or policy.get("default_decision") != "deny"
+        or policy.get("sha256") != contract["policy_sha256"]
+        or policy.get("bytes") != contract["policy_bytes"]
+        or type(policy.get("rechecked_at")) is not str
+        or type(body.get("mcp_checked_at")) is not str
+    ):
+        raise SmokeError("publication-rights payload does not bind the reviewed policy and clocks")
+    counts = body.get("counts")
+    if verified_mode:
+        floors = contract["expected_counts"]
+        if (
+            not isinstance(counts, dict)
+            or set(counts) != set(floors)
+            or counts.get("allowed_records") != floors["allowed_records"]
+            or counts.get("published_records") != 0
+            or any(
+                type(counts.get(field)) is not int
+                or counts[field] < floors[field]
+                for field in (
+                    "input_records",
+                    "restricted_records",
+                    "quarantined_artifacts",
+                )
+            )
+        ):
+            raise SmokeError("publication-rights counts differ from the reviewed release")
+    elif not isinstance(counts, dict) or counts.get("published_records") != 0:
+        raise SmokeError("unverified publication-rights fallback is not zero-publication")
+    rows = body.get("source_decisions")
+    if not isinstance(rows, list):
+        raise SmokeError("publication-rights payload has no source decisions")
+    by_source = {
+        row.get("source_id"): row for row in rows
+        if isinstance(row, dict) and isinstance(row.get("source_id"), str)
+    }
+    for source_id in ("cfets_benchmarks", "chinamoney"):
+        row = by_source.get(source_id)
+        if (
+            not isinstance(row, dict)
+            or row.get("availability") != "restricted"
+            or row.get("values_allowed") is not False
+            or row.get("seiche_export_allowed") is not False
+            or row.get("published_records") != 0
+        ):
+            raise SmokeError(f"{source_id} is not explicitly denied")
+    wdi = by_source.get("world_bank_wdi")
+    if verified_mode and (
+        not isinstance(wdi, dict)
+        or wdi.get("decision") != "allow"
+        or wdi.get("availability") != "unavailable"
+        or wdi.get("input_records") != 0
+    ):
+        raise SmokeError("allowed-but-empty WDI is not explicit")
+    paths = body.get("quarantined_paths")
+    if verified_mode:
+        if not isinstance(paths, list) or paths != sorted(set(paths)):
+            raise SmokeError("publication-rights quarantine closure is invalid")
+        if not set(contract["affected_paths"]).issubset(paths):
+            raise SmokeError("publication-rights status omits a native MCP route")
+        if counts["quarantined_artifacts"] < len(paths):
+            raise SmokeError("MCP quarantine closure exceeds the Pages archive count")
+    forbidden_keys = {
+        "observations", "value", "forecast", "direction", "score", "health",
+        "calm", "carrier", "evidence_carrier",
+    }
+    stack = [body]
+    while stack:
+        value = stack.pop()
+        if isinstance(value, dict):
+            leaked = forbidden_keys.intersection(value)
+            if leaked:
+                raise SmokeError(
+                    "publication-rights payload contains value/neutral keys: "
+                    + ", ".join(sorted(leaked))
+                )
+            stack.extend(value.values())
+        elif isinstance(value, list):
+            stack.extend(value)
+
+
+def rights_preflight(
+    module_path: Path,
+    manifest_path: Path,
+    *,
+    bootstrap_deny: bool = False,
+    expected_publication_sha: str | None = None,
+) -> dict[str, Any]:
+    """Verify the live Pages status with the exact candidate parser before deploy."""
+    contract = load_contract(module_path, manifest_path)
+    module = _load_module(module_path)
+    status = getattr(module, "economic_rights_status", None)
+    if not callable(status):
+        raise SmokeError("candidate has no native publication-rights status")
+    body = status()
+    _validate_rights_payload(
+        body,
+        contract,
+        require_verified=None if bootstrap_deny else True,
+        expected_publication_sha=expected_publication_sha,
+    )
+    integrity = body["status_artifact"]["integrity"]
+    return {
+        "version": contract["version"],
+        "rights_preflight": (
+            "bootstrap-deny" if integrity == "unavailable" else "verified"
+        ),
+        "policy_sha256": contract["policy_sha256"],
+        "counts": body["counts"],
+        "rights_evaluated_at": body["rights_evaluated_at"],
+        "status_sha256": body["status_artifact"]["sha256"],
+    }
+
+
 def probe(
     url: str,
     contract: dict[str, Any],
@@ -317,6 +552,8 @@ def probe(
     basic: bool = False,
     *,
     allow_http_loopback: bool = False,
+    bootstrap_deny: bool = False,
+    expected_publication_sha: str | None = None,
 ) -> dict[str, Any]:
     def rpc(payload: dict[str, Any]) -> dict[str, Any]:
         return post_json(
@@ -355,8 +592,9 @@ def probe(
     if not isinstance(capabilities, dict) or not {
         "tools",
         "prompts",
+        "resources",
     }.issubset(capabilities):
-        raise SmokeError("live server does not advertise tool and prompt capabilities")
+        raise SmokeError("live server does not advertise tool, prompt and resource capabilities")
 
     tool_result = _rpc_result(
         rpc(
@@ -394,73 +632,235 @@ def probe(
     if prompt_names != contract["prompts"] or len(prompts) != len(prompt_names):
         raise SmokeError("live prompt inventory differs from the candidate")
 
+    resource_result = _rpc_result(
+        rpc({"jsonrpc": "2.0", "id": 4, "method": "resources/list", "params": {}}),
+        4,
+        "resources/list",
+    )
+    resources = resource_result.get("resources")
+    resource_uris = sorted(
+        resource.get("uri")
+        for resource in resources or []
+        if isinstance(resource, dict) and isinstance(resource.get("uri"), str)
+    )
+    if resource_uris != contract["resources"] or len(resources or []) != len(resource_uris):
+        raise SmokeError("live resource inventory differs from the candidate")
+
     calls: list[str] = []
+    rights_verification = None
     if not basic:
+        rights_result = _rpc_result(
+            rpc({
+                "jsonrpc": "2.0", "id": 5, "method": "resources/read",
+                "params": {"uri": _EXPECTED_RIGHTS_RESOURCE},
+            }),
+            5,
+            "resources/read publication-rights",
+        )
+        contents = rights_result.get("contents")
+        if not isinstance(contents, list) or len(contents) != 1:
+            raise SmokeError("publication-rights resource returned no singular content")
+        content = contents[0]
+        if not isinstance(content, dict) or type(content.get("text")) is not str:
+            raise SmokeError("publication-rights resource returned no JSON text")
+        rights_body = _decode_json(
+            content["text"].encode("utf-8"), "publication-rights resource"
+        )
+        rights_mode = None if bootstrap_deny else True
+        _validate_rights_payload(
+            rights_body,
+            contract,
+            require_verified=rights_mode,
+            expected_publication_sha=expected_publication_sha,
+        )
+        rights_verification = {
+            "publication_sha": rights_body.get("publication_sha"),
+            "status_sha256": rights_body.get("status_artifact", {}).get("sha256"),
+            "integrity": rights_body.get("status_artifact", {}).get("integrity"),
+            "rights_evaluated_at": rights_body.get("rights_evaluated_at"),
+        }
+        calls.append("resources/read:china-economic-publication-rights")
+
         signals = _rpc_result(
             rpc(
                 {
                     "jsonrpc": "2.0",
-                    "id": 4,
+                    "id": 6,
                     "method": "tools/call",
                     "params": {"name": "list_signals", "arguments": {}},
                 },
             ),
-            4,
+            6,
             "tools/call list_signals",
         )
-        signal_content = signals.get("structuredContent")
-        if signals.get("isError") is not False or not isinstance(signal_content, dict):
-            raise SmokeError("list_signals live call failed")
+        signal_content = _tool_body(signals, "list_signals")
         if not isinstance(signal_content.get("signals"), list) or not signal_content["signals"]:
             raise SmokeError("list_signals returned an empty or malformed roster")
+        _validate_rights_payload(
+            signal_content.get("china_economic_rights"),
+            contract,
+            require_verified=rights_mode,
+            expected_publication_sha=expected_publication_sha,
+        )
+        by_signal = {
+            row.get("name"): row for row in signal_content["signals"]
+            if isinstance(row, dict) and isinstance(row.get("name"), str)
+        }
+        for name in contract["affected_signals"]:
+            row = by_signal.get(name)
+            if (
+                not isinstance(row, dict)
+                or row.get("status") != "restricted"
+                or row.get("availability") != "unavailable"
+                or row.get("publication_allowed") is not False
+            ):
+                raise SmokeError(f"list_signals does not restrict {name}")
         calls.append("list_signals")
 
-        newsroom = _rpc_result(
+        query = _rpc_result(
             rpc(
                 {
                     "jsonrpc": "2.0",
-                    "id": 5,
+                    "id": 7,
                     "method": "tools/call",
                     "params": {
-                        "name": "get_newsroom",
-                        "arguments": {"view": "interconnection", "limit": 1},
+                        "name": "query_economic_observations",
+                        "arguments": {},
                     },
                 },
             ),
-            5,
-            "tools/call get_newsroom(interconnection)",
+            7,
+            "tools/call query_economic_observations",
         )
-        structured = newsroom.get("structuredContent")
-        if newsroom.get("isError") is not False or not isinstance(structured, dict):
-            raise SmokeError("interconnection live call failed")
-        if structured.get("view") != "interconnection":
-            raise SmokeError("interconnection call returned the wrong view")
-        if structured.get("signal") != "china-situation":
-            raise SmokeError("interconnection call returned the wrong source signal")
-        if "unavailable" in structured or not isinstance(structured.get("data"), dict):
-            raise SmokeError("interconnection artifact was unavailable")
-        calls.append("get_newsroom:interconnection")
+        query_body = _tool_body(query, "query_economic_observations")
+        _validate_rights_payload(
+            query_body,
+            contract,
+            require_verified=rights_mode,
+            expected_publication_sha=expected_publication_sha,
+        )
+        calls.append("query_economic_observations:rights-status")
+
+        next_id = 8
+        for name in contract["affected_signals"]:
+            result = _rpc_result(
+                rpc({
+                    "jsonrpc": "2.0", "id": next_id, "method": "tools/call",
+                    "params": {"name": "get_signal", "arguments": {"name": name}},
+                }),
+                next_id,
+                f"tools/call get_signal({name})",
+            )
+            structured = _tool_body(result, f"get_signal({name})")
+            if (
+                structured.get("status") != "restricted"
+                or structured.get("availability") != "unavailable"
+                or "unavailable" in structured
+            ):
+                raise SmokeError(f"{name} did not return evidence-class restriction")
+            _validate_rights_payload(
+                structured.get("data"),
+                contract,
+                require_verified=rights_mode,
+                expected_publication_sha=expected_publication_sha,
+            )
+            calls.append(f"get_signal:{name}:restricted")
+            next_id += 1
+
+        for view in contract["affected_views"]:
+            result = _rpc_result(
+                rpc({
+                    "jsonrpc": "2.0", "id": next_id, "method": "tools/call",
+                    "params": {
+                        "name": "get_newsroom", "arguments": {"view": view, "limit": 1}
+                    },
+                }),
+                next_id,
+                f"tools/call get_newsroom({view})",
+            )
+            structured = _tool_body(result, f"get_newsroom({view})")
+            if (
+                structured.get("status") != "restricted"
+                or structured.get("availability") != "unavailable"
+                or "unavailable" in structured
+            ):
+                raise SmokeError(f"{view} did not return evidence-class restriction")
+            _validate_rights_payload(
+                structured.get("data"),
+                contract,
+                require_verified=rights_mode,
+                expected_publication_sha=expected_publication_sha,
+            )
+            calls.append(f"get_newsroom:{view}:restricted")
+            next_id += 1
+
+        happening = _rpc_result(
+            rpc({
+                "jsonrpc": "2.0", "id": next_id, "method": "tools/call",
+                "params": {"name": "whats_happening", "arguments": {}},
+            }),
+            next_id,
+            "tools/call whats_happening",
+        )
+        happening_body = _tool_body(happening, "whats_happening")
+        if (
+            happening_body.get("status") != "restricted"
+            or happening_body.get("availability") != "unavailable"
+            or happening_body.get("publication_allowed") is not False
+        ):
+            raise SmokeError("whats_happening did not fail closed for rights")
+        _validate_rights_payload(
+            happening_body.get("data"),
+            contract,
+            require_verified=rights_mode,
+            expected_publication_sha=expected_publication_sha,
+        )
+        calls.append("whats_happening:rights-restricted")
 
     return {
         "endpoint": url,
         "version": contract["version"],
         "tool_count": len(tool_names),
         "prompt_count": len(prompt_names),
+        "resource_count": len(resource_uris),
         "calls": calls,
+        "rights_verification": rights_verification,
     }
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", required=True)
+    parser.add_argument("--url")
     parser.add_argument("--module", required=True, type=Path)
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--expected-publication-sha")
     parser.add_argument("--allow-http-loopback", action="store_true")
     parser.add_argument(
         "--basic",
         action="store_true",
         help="verify initialize and discovery only (rollback/recovery use only)",
+    )
+    parser.add_argument(
+        "--rights-preflight",
+        action="store_true",
+        help="verify the live Pages rights status with the candidate parser before deploy",
+    )
+    parser.add_argument(
+        "--rights-bootstrap-preflight",
+        action="store_true",
+        help=(
+            "verify either the exact Pages status or the native default-deny fallback "
+            "during the first rights release"
+        ),
+    )
+    parser.add_argument(
+        "--bootstrap-deny",
+        action="store_true",
+        help=(
+            "probe the complete native rights closure while allowing only the "
+            "metadata-only unavailable fallback"
+        ),
     )
     return parser.parse_args(argv)
 
@@ -470,15 +870,39 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if not (0.1 <= args.timeout <= 60):
             raise SmokeError("timeout must be between 0.1 and 60 seconds")
-        validate_url(args.url, args.allow_http_loopback)
-        contract = load_contract(args.module, args.manifest)
-        summary = probe(
-            args.url,
-            contract,
-            args.timeout,
-            args.basic,
-            allow_http_loopback=args.allow_http_loopback,
-        )
+        if args.expected_publication_sha is not None and (
+            len(args.expected_publication_sha) != 40
+            or any(
+                char not in "0123456789abcdef"
+                for char in args.expected_publication_sha
+            )
+        ):
+            raise SmokeError("expected publication SHA must be 40 lowercase hex")
+        if args.rights_preflight or args.rights_bootstrap_preflight:
+            if (
+                args.rights_preflight and args.rights_bootstrap_preflight
+            ) or args.url is not None or args.basic or args.allow_http_loopback or args.bootstrap_deny:
+                raise SmokeError("rights preflight does not accept endpoint probe options")
+            summary = rights_preflight(
+                args.module,
+                args.manifest,
+                bootstrap_deny=args.rights_bootstrap_preflight,
+                expected_publication_sha=args.expected_publication_sha,
+            )
+        else:
+            if not args.url:
+                raise SmokeError("--url is required unless --rights-preflight is used")
+            validate_url(args.url, args.allow_http_loopback)
+            contract = load_contract(args.module, args.manifest)
+            summary = probe(
+                args.url,
+                contract,
+                args.timeout,
+                args.basic,
+                allow_http_loopback=args.allow_http_loopback,
+                bootstrap_deny=args.bootstrap_deny,
+                expected_publication_sha=args.expected_publication_sha,
+            )
     except SmokeError as exc:
         print(f"MCP smoke failed: {exc}", file=sys.stderr)
         return 1

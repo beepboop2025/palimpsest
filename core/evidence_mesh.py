@@ -148,7 +148,7 @@ _CATALOG_DATASET_REQUIRED = frozenset({
     "count_fields", "license",
 })
 _CATALOG_DATASET_ALLOWED = _CATALOG_DATASET_REQUIRED | {
-    "history", "freshness_budget", "freshness_semantics",
+    "history", "freshness_budget", "freshness_semantics", "publication_allowed",
 }
 
 _OSINT_TOP_FIELDS = frozenset({
@@ -587,6 +587,13 @@ def _validate_catalog(value: Any) -> dict[str, Any]:
         ids.add(dataset_id)
         for key in ("name", "description", "layer", "stage", "collection_mode", "status", "cadence", "latest", "landing_page", "method"):
             _text(dataset[key], f"{path}.{key}")
+        publication_allowed = dataset.get("publication_allowed", True)
+        if type(publication_allowed) is not bool:
+            raise EvidenceMeshError(f"{path}.publication_allowed must be boolean")
+        if publication_allowed is False and dataset["status"] != "gated":
+            raise EvidenceMeshError(
+                f"{path} must be gated when publication_allowed is false"
+            )
         _duration(dataset["cadence"], f"{path}.cadence")
         has_budget = "freshness_budget" in dataset
         has_semantics = "freshness_semantics" in dataset
@@ -847,6 +854,12 @@ def _extract_clocks(payload: Mapping[str, Any]) -> dict[str, str | None]:
 
 
 def _rights(dataset: Mapping[str, Any]) -> dict[str, str]:
+    if dataset.get("publication_allowed") is False:
+        return {
+            "redistribution": "RESTRICTED",
+            "reuse": "metadata_only",
+            "training": "prohibited",
+        }
     name = str(dataset["license"]["name"]).casefold()
     status = dataset["status"]
     derived = dataset["collection_mode"].startswith("derived") or dataset["stage"] in {
@@ -1221,6 +1234,16 @@ def build_evidence_mesh(
                 availability = bri_wdi_context_resource["availability"]
                 clocks = dict(bri_wdi_context_resource["clocks"])
                 fresh = dict(bri_wdi_context_resource["freshness"])
+        if dataset.get("publication_allowed") is False:
+            availability = "unavailable"
+            fresh = _freshness(
+                None,
+                None,
+                moment,
+                dataset["cadence"],
+                availability,
+                dataset.get("freshness_budget"),
+            )
         role = _catalog_role(dataset)
         evidence_class = _catalog_class(dataset)
         groups = upstream_groups(dataset_id)
@@ -1245,6 +1268,10 @@ def build_evidence_mesh(
         limitations = [dataset["description"]]
         if dataset.get("freshness_semantics") is not None:
             limitations.append(dataset["freshness_semantics"])
+        if dataset.get("publication_allowed") is False:
+            limitations.append(
+                "Current source policy restricts value publication; this resource is metadata-only."
+            )
         if availability != "available":
             limitations.append("The current resource is unavailable or stale; absence is not a zero observation.")
         resources.append(_resource(

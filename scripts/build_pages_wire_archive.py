@@ -21,6 +21,7 @@ import tempfile
 import zlib
 from collections import Counter
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO, Iterable
 
@@ -28,10 +29,16 @@ from typing import BinaryIO, Iterable
 ARCHIVE_RELATIVE_PATH = Path("news/wire/analysis-revisions.tar.xz")
 RECEIPT_RELATIVE_PATH = Path("news/wire/analysis-revisions-archive.json")
 INTEGRITY_RELATIVE_PATH = Path("news/wire-history-integrity.json")
+RIGHTS_STATUS_RELATIVE_PATH = Path(
+    "readings/china-publication-rights-latest.json"
+)
 CANONICAL_ARCHIVE_URL = (
     "https://palimpsest.info/news/wire/analysis-revisions.tar.xz"
 )
 SCHEMA_VERSION = "palimpsest-pages-wire-analysis-archive.v1"
+RIGHTS_STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
+RIGHTS_ENDPOINT_STATUS_SCHEMA = "palimpsest-restricted-publication-endpoint.v1"
+MAX_RIGHTS_STATUS_BYTES = 64 * 1024 * 1024
 PUBLICATION_SHA_RE = re.compile(r"[0-9a-f]{40}\Z")
 EVENT_ID_RE = re.compile(r"event-[0-9a-f]{24}\Z")
 ANALYSIS_ID_RE = re.compile(r"analysisv-[0-9a-f]{24}\Z")
@@ -42,9 +49,76 @@ REVISION_PATH_RE = re.compile(
 EVENT_REVISION_PATH_RE = re.compile(
     r"news/wire/event-[0-9a-f]{24}/revisions/eventv-[0-9a-f]{24}\.json\Z"
 )
+WIRE_ANALYSIS_HEAD_SHAPE_RE = re.compile(
+    r"news/wire/[^/]+/analysis\.json\Z"
+)
+WIRE_ANALYSIS_REVISION_SHAPE_RE = re.compile(
+    r"news/wire/[^/]+/analysis/revisions/[^/]+\.json\Z"
+)
+ANALYSIS_HEAD_PATH_RE = re.compile(
+    r"news/wire/event-[0-9a-f]{24}/analysis\.json\Z"
+)
 XZ_CHECK = "SHA-256"
 XZ_MAGIC = b"\xfd7zXZ\x00"
 XZ_SHA256_FLAGS = b"\x00\x0a"
+
+RIGHTS_STATUS_FIELDS = frozenset(
+    {
+        "artifact",
+        "availability",
+        "counts",
+        "limitations",
+        "policy",
+        "publication_allowed",
+        "publication_sha",
+        "quarantined_paths",
+        "reason",
+        "rights_evaluated_at",
+        "schema_version",
+        "source_decisions",
+        "status",
+    }
+)
+RIGHTS_POLICY_FIELDS = frozenset(
+    {
+        "bytes",
+        "default_decision",
+        "path",
+        "policy_scope",
+        "schema_version",
+        "sha256",
+    }
+)
+RIGHTS_COUNT_FIELDS = frozenset(
+    {
+        "allowed_records",
+        "input_records",
+        "published_records",
+        "quarantined_artifacts",
+        "restricted_records",
+    }
+)
+RIGHTS_SOURCE_DECISION_FIELDS = frozenset(
+    {
+        "attribution",
+        "availability",
+        "configured_decision",
+        "decision",
+        "decision_sha256",
+        "expires_at",
+        "input_records",
+        "license",
+        "license_url",
+        "published_records",
+        "reason",
+        "reviewed_at",
+        "rights_evidence_url",
+        "seiche_export_allowed",
+        "source_id",
+        "values_allowed",
+    }
+)
+RIGHTS_SOURCE_ID_RE = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*\Z")
 
 
 class ArchiveError(RuntimeError):
@@ -63,6 +137,13 @@ class ArchiveInspection:
     entries: tuple[Entry, ...]
     expanded_bytes: int
     entry_tree_sha256: str
+
+
+@dataclass(frozen=True)
+class RightsInspection:
+    status_bytes: int
+    status_sha256: str
+    restricted_wire_paths: tuple[str, ...]
 
 
 def _sha256_file(path: Path) -> str:
@@ -106,7 +187,7 @@ def _pretty_json(document: object) -> bytes:
     )
 
 
-def _strict_json(path: Path) -> dict[str, object]:
+def _strict_json_bytes(path: Path, raw: bytes) -> dict[str, object]:
     def reject_duplicates(pairs: list[tuple[str, object]]) -> dict[str, object]:
         document: dict[str, object] = {}
         for key, value in pairs:
@@ -117,17 +198,434 @@ def _strict_json(path: Path) -> dict[str, object]:
 
     try:
         document = json.loads(
-            path.read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=reject_duplicates,
             parse_constant=lambda value: (_ for _ in ()).throw(
                 ArchiveError(f"non-finite JSON value {value!r} in {path}")
             ),
         )
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+    except (UnicodeError, json.JSONDecodeError) as exc:
         raise ArchiveError(f"cannot read strict JSON from {path}: {exc}") from exc
     if not isinstance(document, dict):
         raise ArchiveError(f"expected a JSON object in {path}")
     return document
+
+
+def _strict_json(path: Path) -> dict[str, object]:
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise ArchiveError(f"cannot read strict JSON from {path}: {exc}") from exc
+    return _strict_json_bytes(path, raw)
+
+
+def _regular_bounded_bytes(path: Path, *, label: str, limit: int) -> bytes:
+    if path.is_symlink() or not path.is_file():
+        raise ArchiveError(f"{label} is not a regular file: {path}")
+    try:
+        size = path.stat().st_size
+    except OSError as exc:
+        raise ArchiveError(f"cannot inspect {label} {path}: {exc}") from exc
+    if size > limit:
+        raise ArchiveError(f"{label} exceeds {limit} bytes: {path}")
+    try:
+        with path.open("rb") as handle:
+            raw = handle.read(limit + 1)
+    except OSError as exc:
+        raise ArchiveError(f"cannot read {label} {path}: {exc}") from exc
+    if len(raw) > limit:
+        raise ArchiveError(f"{label} exceeds {limit} bytes: {path}")
+    return raw
+
+
+def _validated_quarantined_paths(document: dict[str, object]) -> tuple[str, ...]:
+    values = document.get("quarantined_paths")
+    if not isinstance(values, list) or any(
+        not isinstance(value, str) or not value or len(value) > 1024
+        for value in values
+    ):
+        raise ArchiveError("publication-rights quarantine list is invalid")
+    paths = tuple(values)
+    if len(paths) > 50_000 or list(paths) != sorted(set(paths)):
+        raise ArchiveError("publication-rights quarantine list is not sorted and unique")
+    for relative in paths:
+        candidate = PurePosixPath(relative)
+        if (
+            candidate.is_absolute()
+            or candidate.as_posix() != relative
+            or any(part in {"", ".", ".."} for part in candidate.parts)
+            or "\x00" in relative
+        ):
+            raise ArchiveError(
+                f"publication-rights quarantine path is not canonical: {relative!r}"
+            )
+    return paths
+
+
+def _validated_utc_second(value: object, *, field: str) -> str:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise ArchiveError(f"publication-rights {field} is not a UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.removesuffix("Z") + "+00:00")
+    except ValueError as exc:
+        raise ArchiveError(
+            f"publication-rights {field} is not a valid timestamp"
+        ) from exc
+    canonical = parsed.astimezone(UTC).isoformat(timespec="seconds").replace(
+        "+00:00", "Z"
+    )
+    if parsed.microsecond or canonical != value:
+        raise ArchiveError(
+            f"publication-rights {field} must use canonical whole UTC seconds"
+        )
+    return value
+
+
+def _validate_timestamp(value: object, *, field: str) -> None:
+    if not isinstance(value, str):
+        raise ArchiveError(f"publication-rights {field} is not a timestamp")
+    normalized = value.removesuffix("Z") + ("+00:00" if value.endswith("Z") else "")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ArchiveError(
+            f"publication-rights {field} is not a valid timestamp"
+        ) from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ArchiveError(
+            f"publication-rights {field} is not timezone-aware"
+        )
+
+
+def _validated_source_decisions(
+    document: dict[str, object], counts: dict[str, object]
+) -> None:
+    rows = document.get("source_decisions")
+    if not isinstance(rows, list) or not rows or len(rows) > 256:
+        raise ArchiveError("publication-rights source decisions are invalid")
+    source_ids: list[str] = []
+    allowed_records = 0
+    restricted_records = 0
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != RIGHTS_SOURCE_DECISION_FIELDS:
+            raise ArchiveError("publication-rights source decision has an invalid shape")
+        source_id = row.get("source_id")
+        decision = row.get("decision")
+        configured = row.get("configured_decision")
+        availability = row.get("availability")
+        input_records = row.get("input_records")
+        if (
+            not isinstance(source_id, str)
+            or len(source_id) > 128
+            or RIGHTS_SOURCE_ID_RE.fullmatch(source_id) is None
+            or decision
+            not in ("allow", "deny", "expired", "not_yet_effective", "unknown")
+            or configured not in ("allow", "deny", None)
+            or availability not in ("available", "unavailable", "restricted")
+            or type(row.get("values_allowed")) is not bool
+            or type(row.get("seiche_export_allowed")) is not bool
+            or type(input_records) is not int
+            or input_records < 0
+            or type(row.get("published_records")) is not int
+            or row.get("published_records") != 0
+        ):
+            raise ArchiveError("publication-rights source decision identity is invalid")
+        for field in ("license", "attribution"):
+            value = row.get(field)
+            if value is not None and (
+                not isinstance(value, str) or not value.strip()
+            ):
+                raise ArchiveError(
+                    f"publication-rights source decision {field} is invalid"
+                )
+        for field in ("license_url", "rights_evidence_url"):
+            value = row.get(field)
+            if value is not None and (
+                not isinstance(value, str) or not value.startswith("https://")
+            ):
+                raise ArchiveError(
+                    f"publication-rights source decision {field} is invalid"
+                )
+        for field in ("reviewed_at", "expires_at"):
+            value = row.get(field)
+            if value is not None:
+                _validate_timestamp(value, field=f"source_decisions.{field}")
+        reason = row.get("reason")
+        decision_sha256 = row.get("decision_sha256")
+        if not isinstance(reason, str) or not reason.strip():
+            raise ArchiveError("publication-rights source decision reason is invalid")
+        if decision_sha256 is not None and (
+            not isinstance(decision_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}\Z", decision_sha256) is None
+        ):
+            raise ArchiveError("publication-rights decision digest is invalid")
+        if decision == "deny" and (
+            configured != "deny"
+            or availability != "restricted"
+            or row["values_allowed"] is not False
+            or row["seiche_export_allowed"] is not False
+        ):
+            raise ArchiveError("publication-rights deny decision is inconsistent")
+        if decision == "allow" and (
+            configured != "allow"
+            or availability
+            != ("available" if input_records else "unavailable")
+            or row["values_allowed"] is not True
+            or row["seiche_export_allowed"] is not True
+        ):
+            raise ArchiveError("publication-rights allow decision is inconsistent")
+        if decision in ("expired", "not_yet_effective") and (
+            availability != "restricted"
+            or row["values_allowed"] is not False
+            or row["seiche_export_allowed"] is not False
+        ):
+            raise ArchiveError("publication-rights expired decision is inconsistent")
+        if decision == "unknown" and (
+            configured is not None
+            or availability != "restricted"
+            or row["values_allowed"] is not False
+            or row["seiche_export_allowed"] is not False
+            or any(
+                row[field] is not None
+                for field in (
+                    "license",
+                    "license_url",
+                    "rights_evidence_url",
+                    "attribution",
+                    "reviewed_at",
+                    "expires_at",
+                    "decision_sha256",
+                )
+            )
+        ):
+            raise ArchiveError("publication-rights unknown decision is inconsistent")
+        source_ids.append(source_id)
+        if row["values_allowed"]:
+            allowed_records += input_records
+        else:
+            restricted_records += input_records
+    if source_ids != sorted(set(source_ids)):
+        raise ArchiveError("publication-rights source decisions are not sorted and unique")
+    if (
+        allowed_records != counts["allowed_records"]
+        or restricted_records != counts["restricted_records"]
+        or allowed_records + restricted_records != counts["input_records"]
+    ):
+        raise ArchiveError("publication-rights source decision counts are inconsistent")
+
+
+def _restricted_endpoint_bytes(
+    master: dict[str, object],
+    *,
+    artifact_path: str,
+    master_sha256: str,
+    master_bytes: int,
+) -> bytes:
+    policy = master["policy"]
+    counts = master["counts"]
+    limitations = master["limitations"]
+    if not isinstance(policy, dict) or not isinstance(counts, dict):
+        raise ArchiveError("publication-rights status cannot bind endpoint stubs")
+    if not isinstance(limitations, list):
+        raise ArchiveError("publication-rights status cannot bind endpoint limitations")
+    return _pretty_json(
+        {
+            "schema_version": RIGHTS_ENDPOINT_STATUS_SCHEMA,
+            "publication_sha": master["publication_sha"],
+            "rights_evaluated_at": master["rights_evaluated_at"],
+            "status": "restricted",
+            "availability": "unavailable",
+            "publication_allowed": False,
+            "reason": master["reason"],
+            "artifact": {
+                "path": artifact_path,
+                "media_type": "application/json",
+            },
+            "policy": dict(policy),
+            "master_status": {
+                "path": "/" + RIGHTS_STATUS_RELATIVE_PATH.as_posix(),
+                "sha256": master_sha256,
+                "bytes": master_bytes,
+            },
+            "counts": {
+                "input_records": counts["input_records"],
+                "restricted_records": counts["restricted_records"],
+                "published_records": 0,
+            },
+            "limitations": list(limitations),
+        }
+    )
+
+
+def _restricted_wire_paths(
+    root: Path,
+    document: dict[str, object],
+    paths: tuple[str, ...],
+    *,
+    status_sha256: str,
+    status_bytes: int,
+) -> tuple[str, ...]:
+    restricted: list[str] = []
+    for relative in paths:
+        is_head = WIRE_ANALYSIS_HEAD_SHAPE_RE.fullmatch(relative) is not None
+        is_revision = WIRE_ANALYSIS_REVISION_SHAPE_RE.fullmatch(relative) is not None
+        if not is_head and not is_revision:
+            continue
+        if is_head and ANALYSIS_HEAD_PATH_RE.fullmatch(relative) is None:
+            raise ArchiveError(
+                f"publication-rights status has a non-canonical wire head: {relative}"
+            )
+        if is_revision and REVISION_PATH_RE.fullmatch(relative) is None:
+            raise ArchiveError(
+                "publication-rights status has a non-canonical wire revision: "
+                f"{relative}"
+            )
+        endpoint_path = root / PurePosixPath(relative)
+        endpoint_raw = _regular_bounded_bytes(
+            endpoint_path,
+            label="restricted wire endpoint",
+            limit=MAX_RIGHTS_STATUS_BYTES,
+        )
+        expected = _restricted_endpoint_bytes(
+            document,
+            artifact_path=relative,
+            master_sha256=status_sha256,
+            master_bytes=status_bytes,
+        )
+        if endpoint_raw != expected:
+            raise ArchiveError(
+                f"restricted wire endpoint is not the exact status-bound stub: {relative}"
+            )
+        restricted.append(relative)
+
+    restricted_revisions_by_event = {
+        PurePosixPath(relative).parts[2]
+        for relative in restricted
+        if REVISION_PATH_RE.fullmatch(relative)
+    }
+    for relative in restricted:
+        if ANALYSIS_HEAD_PATH_RE.fullmatch(relative):
+            event_id = PurePosixPath(relative).parts[2]
+            if event_id not in restricted_revisions_by_event:
+                raise ArchiveError(
+                    "restricted wire head lacks a restricted revision in the same "
+                    f"event: {relative}"
+                )
+
+    _head_revision_paths(
+        root,
+        _revision_entries(root),
+        ignored_head_paths=frozenset(
+            relative
+            for relative in restricted
+            if ANALYSIS_HEAD_PATH_RE.fullmatch(relative)
+        ),
+        forbidden_revision_paths=frozenset(
+            relative
+            for relative in restricted
+            if REVISION_PATH_RE.fullmatch(relative)
+        ),
+    )
+
+    return tuple(restricted)
+
+
+def _rights_inspection(root: Path, publication_sha: str) -> RightsInspection:
+    """Validate the canonical exact-SHA rights status needed for Pages mode."""
+
+    status_path = root / RIGHTS_STATUS_RELATIVE_PATH
+    raw = _regular_bounded_bytes(
+        status_path,
+        label="publication-rights status",
+        limit=MAX_RIGHTS_STATUS_BYTES,
+    )
+    document = _strict_json_bytes(status_path, raw)
+    if raw != _pretty_json(document):
+        raise ArchiveError("publication-rights status is not canonical JSON")
+    if set(document) != RIGHTS_STATUS_FIELDS:
+        raise ArchiveError("publication-rights status has an invalid v1 shape")
+    if document.get("schema_version") != RIGHTS_STATUS_SCHEMA:
+        raise ArchiveError("publication-rights status has an unsupported schema")
+    if document.get("publication_sha") != publication_sha:
+        raise ArchiveError("publication-rights status is for a different publication SHA")
+    if (
+        document.get("status") != "restricted"
+        or document.get("availability") != "unavailable"
+        or document.get("publication_allowed") is not False
+    ):
+        raise ArchiveError("publication-rights status is not fail-closed")
+
+    artifact = document.get("artifact")
+    if artifact != {
+        "media_type": "application/json",
+        "path": RIGHTS_STATUS_RELATIVE_PATH.as_posix(),
+    }:
+        raise ArchiveError("publication-rights status has the wrong artifact identity")
+
+    paths = _validated_quarantined_paths(document)
+    counts = document.get("counts")
+    if not isinstance(counts, dict) or set(counts) != RIGHTS_COUNT_FIELDS:
+        raise ArchiveError("publication-rights status has invalid counts")
+    if any(type(counts.get(field)) is not int or counts[field] < 0 for field in counts):
+        raise ArchiveError("publication-rights status has non-integer counts")
+    if (
+        counts["published_records"] != 0
+        or counts["quarantined_artifacts"] != len(paths)
+        or counts["allowed_records"] + counts["restricted_records"]
+        != counts["input_records"]
+    ):
+        raise ArchiveError("publication-rights status counts are inconsistent")
+
+    limitations = document.get("limitations")
+    if (
+        not isinstance(limitations, list)
+        or len(limitations) < 3
+        or any(not isinstance(value, str) or not value.strip() for value in limitations)
+        or not isinstance(document.get("reason"), str)
+        or not str(document["reason"]).strip()
+    ):
+        raise ArchiveError("publication-rights status metadata is invalid")
+    _validated_utc_second(
+        document.get("rights_evaluated_at"), field="rights_evaluated_at"
+    )
+    _validated_source_decisions(document, counts)
+
+    policy = document.get("policy")
+    if not isinstance(policy, dict) or set(policy) != RIGHTS_POLICY_FIELDS:
+        raise ArchiveError("publication-rights status has an invalid policy binding")
+    policy_relative = policy.get("path")
+    if policy_relative != "config/china_econ_source_policy.json":
+        raise ArchiveError("publication-rights status has the wrong policy path")
+    policy_path = root / str(policy_relative)
+    policy_raw = _regular_bounded_bytes(
+        policy_path,
+        label="publication-rights policy",
+        limit=MAX_RIGHTS_STATUS_BYTES,
+    )
+    if (
+        policy.get("bytes") != len(policy_raw)
+        or policy.get("sha256") != hashlib.sha256(policy_raw).hexdigest()
+        or policy.get("schema_version")
+        != "palimpsest.china-economic-source-policy.v1"
+        or policy.get("policy_scope")
+        != "china_economic_values_and_seiche_export"
+        or policy.get("default_decision") != "deny"
+    ):
+        raise ArchiveError("publication-rights status policy binding does not match staging")
+
+    status_sha256 = hashlib.sha256(raw).hexdigest()
+    restricted_wire_paths = _restricted_wire_paths(
+        root,
+        document,
+        paths,
+        status_sha256=status_sha256,
+        status_bytes=len(raw),
+    )
+    return RightsInspection(
+        status_bytes=len(raw),
+        status_sha256=status_sha256,
+        restricted_wire_paths=restricted_wire_paths,
+    )
 
 
 def _entry_tree(entries: Iterable[Entry]) -> str:
@@ -222,7 +720,11 @@ def _event_revision_entries(root: Path) -> tuple[Entry, ...]:
 
 
 def _head_revision_paths(
-    root: Path, entries: tuple[Entry, ...]
+    root: Path,
+    entries: tuple[Entry, ...],
+    *,
+    ignored_head_paths: frozenset[str] = frozenset(),
+    forbidden_revision_paths: frozenset[str] = frozenset(),
 ) -> tuple[set[str], int]:
     by_event_and_digest: Counter[tuple[str, str]] = Counter()
     available_paths = {entry.path: entry for entry in entries}
@@ -237,12 +739,17 @@ def _head_revision_paths(
     )
     if not heads:
         raise ArchiveError("wire current analysis head set is empty")
+    validated_heads = 0
     for head_path in heads:
         if head_path.is_symlink() or not head_path.is_file():
             raise ArchiveError(f"current analysis head is not a regular file: {head_path}")
+        relative = head_path.relative_to(root).as_posix()
+        if relative in ignored_head_paths:
+            continue
         event_name = head_path.parent.name
         if not EVENT_ID_RE.fullmatch(event_name):
             raise ArchiveError(f"current analysis has invalid event path: {head_path}")
+        validated_heads += 1
         document = _strict_json(head_path)
         analysis_id = document.get("analysis_id")
         if not isinstance(analysis_id, str) or not ANALYSIS_ID_RE.fullmatch(analysis_id):
@@ -254,6 +761,11 @@ def _head_revision_paths(
             / "revisions"
             / f"{analysis_id}.json"
         ).as_posix()
+        if expected in forbidden_revision_paths:
+            raise ArchiveError(
+                "unrestricted current analysis points to a restricted revision: "
+                f"{relative}"
+            )
         revision = available_paths.get(expected)
         if revision is None:
             raise ArchiveError(f"current analysis revision is missing: {expected}")
@@ -270,9 +782,9 @@ def _head_revision_paths(
                 f"{head_path}"
             )
         retained.add(expected)
-    if len(retained) != len(heads):
+    if len(retained) != validated_heads:
         raise ArchiveError("multiple current analyses resolve to one revision path")
-    return retained, len(heads)
+    return retained, validated_heads
 
 
 def _integrity_binding(
@@ -603,6 +1115,69 @@ def verify(root: Path, publication_sha: str) -> dict[str, object]:
     return receipt
 
 
+def _assert_suppressed_outputs_absent(root: Path) -> None:
+    for label, relative in (
+        ("wire archive", ARCHIVE_RELATIVE_PATH),
+        ("wire archive receipt", RECEIPT_RELATIVE_PATH),
+    ):
+        path = root / relative
+        if path.exists() or path.is_symlink():
+            raise ArchiveError(
+                f"rights-suppressed Pages mode refuses preexisting {label}: {path}"
+            )
+
+
+def _suppression_result(
+    publication_sha: str, rights: RightsInspection
+) -> dict[str, object]:
+    return {
+        "mode": "rights-suppressed",
+        "publication_sha": publication_sha,
+        "reason": "canonical-rights-status-quarantines-wire-analysis",
+        "restricted_wire_path_count": len(rights.restricted_wire_paths),
+        "rights_status": {
+            "bytes": rights.status_bytes,
+            "path": RIGHTS_STATUS_RELATIVE_PATH.as_posix(),
+            "sha256": rights.status_sha256,
+        },
+        "suppressed_outputs": {
+            "archive": ARCHIVE_RELATIVE_PATH.as_posix(),
+            "receipt": RECEIPT_RELATIVE_PATH.as_posix(),
+        },
+    }
+
+
+def build_for_pages(root: Path, publication_sha: str) -> dict[str, object]:
+    """Apply the rights-first Pages archive transform for one exact edition."""
+
+    root = root.resolve()
+    _validate_publication_sha(publication_sha)
+    rights = _rights_inspection(root, publication_sha)
+    if rights.restricted_wire_paths:
+        _reject_wire_symlinks(root / "news/wire")
+        _assert_suppressed_outputs_absent(root)
+        result = _suppression_result(publication_sha, rights)
+    else:
+        result = {"mode": "archived", **build(root, publication_sha)}
+    verified = verify_for_pages(root, publication_sha)
+    if verified != result:
+        raise ArchiveError("Pages wire archive result changed during verification")
+    return result
+
+
+def verify_for_pages(root: Path, publication_sha: str) -> dict[str, object]:
+    """Verify either the archived or rights-suppressed Pages representation."""
+
+    root = root.resolve()
+    _validate_publication_sha(publication_sha)
+    rights = _rights_inspection(root, publication_sha)
+    if rights.restricted_wire_paths:
+        _reject_wire_symlinks(root / "news/wire")
+        _assert_suppressed_outputs_absent(root)
+        return _suppression_result(publication_sha, rights)
+    return {"mode": "archived", **verify(root, publication_sha)}
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -615,7 +1190,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--check",
         action="store_true",
-        help="verify an existing archive and receipt without modifying staging",
+        help=(
+            "verify the rights-aware Pages representation without modifying "
+            "staging (archive/receipt presence or deliberate absence)"
+        ),
     )
     return parser
 
@@ -624,15 +1202,23 @@ def main(argv: list[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     try:
         if arguments.check:
-            receipt = verify(arguments.root, arguments.publication_sha)
+            result = verify_for_pages(arguments.root, arguments.publication_sha)
         else:
-            receipt = build(arguments.root, arguments.publication_sha)
+            result = build_for_pages(arguments.root, arguments.publication_sha)
     except ArchiveError as exc:
         print(f"wire analysis archive refused: {exc}", file=sys.stderr)
         return 1
-    archive = receipt["archive"]
+    if result["mode"] == "rights-suppressed":
+        print(
+            "wire-analysis-archive "
+            "mode=rights-suppressed "
+            f"publication_sha={result['publication_sha']} "
+            f"restricted_wire_paths={result['restricted_wire_path_count']}"
+        )
+        return 0
+    archive = result["archive"]
     print(
-        "wire-analysis-archive "
+        "wire-analysis-archive mode=archived "
         f"entries={archive['entry_count']} expanded_bytes={archive['expanded_bytes']} "
         f"archive_bytes={archive['bytes']} sha256={archive['sha256']}"
     )

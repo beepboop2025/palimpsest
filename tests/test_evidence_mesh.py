@@ -207,6 +207,60 @@ def test_every_catalog_dataset_and_current_osint_signal_is_accounted_for(
     }
 
 
+def test_catalog_publication_denials_remain_metadata_only_in_mesh(
+    mesh: dict,
+) -> None:
+    catalog = json.loads((ROOT / "config/public_data_catalog.json").read_text())
+    denied = {
+        row["id"]
+        for row in catalog["datasets"]
+        if row.get("publication_allowed") is False
+    }
+
+    assert len(denied) == 11
+    for dataset_id in denied:
+        resource = _resource(mesh, f"palimpsest:catalog:{dataset_id}")
+        assert resource["availability"] == "unavailable"
+        assert resource["freshness"]["status"] == "unavailable"
+        assert resource["rights"] == {
+            "redistribution": "RESTRICTED",
+            "reuse": "metadata_only",
+            "training": "prohibited",
+        }
+        assert any("metadata-only" in value for value in resource["limitations"])
+
+
+@pytest.mark.parametrize("publication_allowed", [None, 0, 1, "false"])
+def test_catalog_publication_gate_requires_a_boolean(
+    tmp_path: Path,
+    publication_allowed: object,
+) -> None:
+    root = _isolated_root(tmp_path)
+    catalog_path = root / "config/public_data_catalog.json"
+    catalog = json.loads(catalog_path.read_text())
+    catalog["datasets"][0]["publication_allowed"] = publication_allowed
+    _write_json(catalog_path, catalog)
+
+    with pytest.raises(EvidenceMeshError, match="publication_allowed must be boolean"):
+        build_evidence_mesh(root, now=NOW)
+
+
+def test_catalog_publication_denial_requires_gated_status(tmp_path: Path) -> None:
+    root = _isolated_root(tmp_path)
+    catalog_path = root / "config/public_data_catalog.json"
+    catalog = json.loads(catalog_path.read_text())
+    target = next(
+        row
+        for row in catalog["datasets"]
+        if row.get("publication_allowed") is False
+    )
+    target["status"] = "live"
+    _write_json(catalog_path, catalog)
+
+    with pytest.raises(EvidenceMeshError, match="must be gated"):
+        build_evidence_mesh(root, now=NOW)
+
+
 def test_weekly_situation_is_derived_not_an_independent_upstream(mesh: dict) -> None:
     weekly = _resource(mesh, "palimpsest:catalog:weekly-situation")
     assert weekly["independence_eligible"] is False
@@ -278,28 +332,42 @@ def test_catalog_freshness_policy_is_strict_and_drives_resource_deadlines(
     mesh: dict,
     tmp_path: Path,
 ) -> None:
-    observations = _resource(mesh, "palimpsest:catalog:china-economic-observations")
+    observations = _resource(mesh, "palimpsest:catalog:bri-economic-observations")
+    context = _resource(mesh, "palimpsest:context:bri-world-bank-wdi")
     observed = datetime.fromisoformat(
         observations["freshness"]["observed_at"].replace("Z", "+00:00")
     )
     deadline = datetime.fromisoformat(
         observations["freshness"]["deadline"].replace("Z", "+00:00")
     )
-    assert deadline - observed == timedelta(days=10)
-    assert any("collector" in limitation for limitation in observations["limitations"])
+    # The generic catalog row describes the same bytes as the receipt-bound
+    # WDI context node.  Its public availability must therefore expire with
+    # the exact-deployment proof instead of outliving it under the broader
+    # source data-currency budget.
+    assert observations["freshness"] == context["freshness"]
+    assert deadline - observed == timedelta(days=1)
+    declared = next(
+        row
+        for row in json.loads(
+            (ROOT / "config/public_data_catalog.json").read_text()
+        )["datasets"]
+        if row["id"] == "bri-economic-observations"
+    )
+    assert declared["freshness_budget"] == "P120D"
+    assert declared["freshness_semantics"] in observations["limitations"]
 
     root = _isolated_root(tmp_path)
     catalog_path = root / "config/public_data_catalog.json"
     catalog = json.loads(catalog_path.read_text())
     target = next(
-        row for row in catalog["datasets"] if row["id"] == "china-economic-observations"
+        row for row in catalog["datasets"] if row["id"] == "bri-economic-observations"
     )
     target["freshness_budget"] = "P0D"
     _write_json(catalog_path, catalog)
     with pytest.raises(EvidenceMeshError, match="cadence must be positive"):
         build_evidence_mesh(root, now=NOW)
 
-    target["freshness_budget"] = "P10D"
+    target["freshness_budget"] = "P120D"
     target.pop("freshness_semantics")
     _write_json(catalog_path, catalog)
     with pytest.raises(EvidenceMeshError, match="must be declared together"):
@@ -579,9 +647,18 @@ def test_publication_plane_payloads_cannot_feed_back_into_mesh(tmp_path: Path) -
     second = build_evidence_mesh(root, now=NOW)
 
     assert canonical_json_bytes(first) == canonical_json_bytes(second)
+    catalog = {
+        row["id"]: row
+        for row in json.loads(
+            (root / "config/public_data_catalog.json").read_text()
+        )["datasets"]
+    }
     for dataset_id in publication_paths:
         plane = _resource(second, f"palimpsest:catalog:{dataset_id}")
-        assert plane["availability"] == "available"
+        publication_allowed = catalog[dataset_id].get("publication_allowed", True)
+        assert plane["availability"] == (
+            "available" if publication_allowed else "unavailable"
+        )
         assert set(plane["clocks"].values()) == {None}
         assert plane["allowed_role"] == "context"
         assert plane["independence_eligible"] is False

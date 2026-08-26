@@ -28,7 +28,7 @@
           }
         ]
       },
-      "description": "The Palimpsest 1.9.1 release boundary exposes six anonymous, read-only tools. It can discover and retrieve public readings, query the fixed bitemporal China economic observation ledger, inspect evidence-newsroom desks, request the bounded board verdict, and keep network and model-layer censorship distinct.",
+      "description": "The proven Palimpsest 1.9.1 release boundary exposes six anonymous, read-only tools. Native fail-closed China publication-rights behavior belongs to a separate deployment candidate and is not claimed live by this card; clients must independently honor the metadata-only Pages restriction until that release is proven.",
       "tags": [
         "China economy evidence",
         "China money markets",
@@ -46,8 +46,8 @@
         "gfw_reading"
       ],
       "representativeQueries": [
-        "What do the latest official CFETS repo and SHIBOR observations show, with release and collection clocks?",
-        "Retrieve point-in-time China economic observations without using revisions that were not yet known.",
+        "Read the current China publication-rights status without inferring an economic value or direction.",
+        "Which China economic routes are metadata-only restricted on the static site?",
         "What does Palimpsest currently observe about Stock Connect, and what cannot that channel establish?",
         "Is the China economy evidence broad enough for a composite conclusion, or is the observatory abstaining?",
         "Which Chinese information-control measurements are current, stale or missing?"
@@ -92,7 +92,7 @@
       "displayName": "Palimpsest Public Readings OpenAPI",
       "type": "application/vnd.oai.openapi+json",
       "url": "https://palimpsest.info/openapi.json",
-      "description": "OpenAPI 3.1 contract for static public readings, including the China Observatory index, bitemporal economic observations, the global Belt and Road coverage contract, newsroom evidence and evaluation records.",
+      "description": "OpenAPI 3.1 contract for static public readings, including metadata-only China publication-rights status, the global Belt and Road coverage contract, newsroom evidence and evaluation records.",
       "tags": [
         "OpenAPI",
         "China economy API",
@@ -103,15 +103,14 @@
       ],
       "capabilities": [
         "discover public datasets",
-        "read China Observatory state",
-        "download economic observation ledger",
+        "read metadata-only China publication-rights status",
         "inspect BRI lifecycle, economics, local-impact and source gaps",
-        "inspect source clocks and revisions",
+        "inspect source-policy and rights-evaluation clocks",
         "read explicit abstentions"
       ],
       "representativeQueries": [
-        "Give me a keyless API for current China money-market evidence.",
-        "Download aggregate China observations with release and collection timestamps.",
+        "Give me the current metadata-only China publication-rights status.",
+        "Which China economic endpoints are unavailable under the reviewed source policy?",
         "Inspect the BRI source and project-field contract for Gwadar, CPEC, CMEC and Kyaukpyu.",
         "Check whether Palimpsest has promoted any China economic forecast target."
       ],
@@ -133,7 +132,7 @@
       "displayName": "Palimpsest China Economic Observation Ledger",
       "type": "application/x-ndjson",
       "url": "https://palimpsest.info/readings/china-econ-observations.jsonl",
-      "description": "Aggregate, append-only China economic observations with distinct economic-period, release and collection clocks, revision fields, source IDs, evidence URLs and exact-byte provenance. Current published coverage is the named CFETS benchmark family; it is not complete China-economy coverage.",
+      "description": "Metadata-only restricted endpoint for the former aggregate China economic observation ledger. The reviewed policy denies CFETS and ChinaMoney value publication, so it exposes no observations or derivatives and must not be interpreted as zero, calm or directional evidence.",
       "tags": [
         "CFETS",
         "SHIBOR",
@@ -143,25 +142,24 @@
         "China money markets"
       ],
       "capabilities": [
-        "point-in-time economic evidence",
-        "revision-aware observations",
-        "source and collection clocks",
-        "exact-byte verification"
+        "inspect publication restriction",
+        "inspect reviewed source decisions",
+        "inspect rights-evaluation clock",
+        "verify status and policy digests"
       ],
       "representativeQueries": [
-        "What was the published FDR007 observation as known at a specified time?",
-        "Show the difference between a CFETS trading day and when Palimpsest collected the print.",
-        "Which China money-market series are actually present in the public ledger?"
+        "Why are China economic observations unavailable for publication?",
+        "Which reviewed source decisions deny value redistribution?",
+        "What policy and status digests bind the current restricted endpoint?"
       ],
-      "updatedAt": "2026-08-23T01:47:39Z",
       "metadata": {
         "authentication": "none",
-        "access": "public-read-only",
-        "manifest": "https://palimpsest.info/readings/china-econ-observations-latest.json",
-        "observationSchema": "https://palimpsest.info/protocol/economic-observation-v1.schema.json",
-        "manifestSchema": "https://palimpsest.info/protocol/economic-observation-manifest-v1.schema.json",
-        "rights": "Palimpsest software, schemas and original metadata are MIT-licensed; source observations retain publisher rights and attribution requirements.",
-        "coverageBoundary": "The published manifest is authoritative. Registered or planned sources are not represented as collected rows."
+        "access": "metadata-only-restricted",
+        "manifest": "https://palimpsest.info/readings/china-publication-rights-latest.json",
+        "observationSchema": "https://palimpsest.info/protocol/restricted-publication-v1.schema.json",
+        "manifestSchema": "https://palimpsest.info/protocol/restricted-publication-v1.schema.json",
+        "rights": "The reviewed default-deny source policy does not authorize publication of the CFETS or ChinaMoney value family or affected derivatives.",
+        "coverageBoundary": "The status publishes policy-derived metadata and zero observation rows; unavailable or restricted evidence is not a measurement."
       }
     },
     {
@@ -169,7 +167,7 @@
       "displayName": "Palimpsest China Observatory Index",
       "type": "application/json",
       "url": "https://palimpsest.info/readings/china-index-latest.json",
-      "description": "Machine index joining current China evidence, source and release clocks, coverage gates, observed Stock Connect statistics and explicit broad-composite abstention without claiming true GDP, causality or general capital-market coverage.",
+      "description": "Metadata-only restricted endpoint for the current China Observatory index because its mixed dependency graph contains rights-denied economic derivatives. It exposes no score, state or direction.",
       "tags": [
         "China economy",
         "economic evidence coverage",
@@ -178,22 +176,22 @@
         "abstention"
       ],
       "capabilities": [
-        "inspect evidence readiness",
-        "discover source coverage",
-        "read Stock Connect scope",
-        "find current data distributions"
+        "inspect publication restriction",
+        "discover reviewed source decisions",
+        "verify status and policy digests",
+        "find quarantined endpoint coverage"
       ],
       "representativeQueries": [
-        "Is the current China evidence broad enough to state an economy-wide direction?",
-        "What Stock Connect evidence is available and where does its scope end?",
-        "Which registered China source families are live, warming up, blocked or only planned?"
+        "Why is the current China Observatory index unavailable?",
+        "Which policy clock governs the metadata-only restriction?",
+        "Which endpoints are included in the quarantine closure?"
       ],
       "metadata": {
         "authentication": "none",
-        "access": "public-read-only",
-        "schema": "https://palimpsest.info/protocol/china-index-v1.schema.json",
+        "access": "metadata-only-restricted",
+        "schema": "https://palimpsest.info/protocol/restricted-publication-v1.schema.json",
         "humanLandingPage": "https://palimpsest.info/china/",
-        "freshnessAuthority": "Read the current generation and source clocks from the linked China index; this catalog does not freeze them."
+        "freshnessAuthority": "Read rights_evaluated_at and the policy review intervals from the publication-rights status; this catalog does not freeze them."
       }
     },
     {

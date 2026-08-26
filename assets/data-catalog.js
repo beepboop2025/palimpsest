@@ -159,7 +159,12 @@
     var meta = element("dl", "dataset__meta");
     meta.appendChild(metaRow("Observed", item.artifacts.observed_at ? relativeTime(item.artifacts.observed_at) : "Not published"));
     meta.appendChild(metaRow("Collection target", item.cadence));
-    meta.appendChild(metaRow("History", formatNumber(item.artifacts.history_rows) + " rows · " + formatBytes(item.artifacts.history_bytes)));
+    meta.appendChild(metaRow(
+      "History",
+      item.artifacts.history_available
+        ? formatNumber(item.artifacts.history_rows) + " rows · " + formatBytes(item.artifacts.history_bytes)
+        : "Unavailable"
+    ));
     var counts = Object.entries(item.artifacts.counts || {}).map(function (pair) { return pair[0] + "=" + formatNumber(pair[1]); }).join(" · ");
     meta.appendChild(metaRow("Counts", counts || "No single headline denominator"));
     meta.appendChild(metaRow("Sources", item.sources.join(" · ")));
