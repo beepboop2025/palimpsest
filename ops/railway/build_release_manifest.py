@@ -95,7 +95,9 @@ def build_manifest(root: Path, source_commit: str, built_at: str) -> dict[str, A
         "built_at": built_at,
         "deployment_source": "local-git-archive",
         "github_required": False,
-        "state": "candidate_not_deployed",
+        # This describes the immutable artifact, not any environment that may serve it.
+        # Runtime deployment proof belongs to the health endpoint and provider receipt.
+        "state": "artifact_ready",
         "file_count": len(file_rows),
         "total_bytes": sum(size for _relative, size, _digest in file_rows),
         "tree_sha256": tree.hexdigest(),

@@ -39,6 +39,7 @@ def test_manifest_is_canonical_local_release_evidence(tmp_path: Path) -> None:
     manifest = manifest_module.write_manifest(root, "a" * 40, "2026-08-26T18:00:00Z")
     assert manifest["deployment_source"] == "local-git-archive"
     assert manifest["github_required"] is False
+    assert manifest["state"] == "artifact_ready"
     assert manifest["file_count"] == len(manifest_module.CRITICAL_PATHS)
     assert len(manifest["tree_sha256"]) == 64
     parsed = json.loads((root / "railway-release.json").read_text(encoding="utf-8"))
