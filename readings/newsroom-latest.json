@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 4 are live. Health qualifiers: 2 degraded, 33 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 5 are live. Health qualifiers: 2 degraded, 32 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-26T05:18:00Z",
+  "generated_at": "2026-08-26T07:23:47Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "908e4781b246e76e2afe4858291ca7f084381181",
+  "source_commit": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 4,
+    "live": 5,
     "status": "degraded",
     "counts": {
-      "live": 4,
+      "live": 5,
       "degraded": 2,
-      "stale": 33,
+      "stale": 32,
       "missing": 0,
       "corrupt": 0
     }
@@ -719,8 +719,8 @@
       "type": "analysis",
       "priority": "high",
       "status": "stale",
-      "published_at": "2026-08-24T15:58:43Z",
-      "modified_at": "2026-08-24T15:58:43Z",
+      "published_at": "2026-08-25T00:57:18Z",
+      "modified_at": "2026-08-25T00:57:18Z",
       "claim_fingerprint": "sha256:4bd4edc49218e2e302a6d81d19577f713b49ca2341a10bd6bc8150a3064abd38",
       "metric": {
         "label": null,
@@ -741,10 +741,10 @@
         "url": "https://palimpsest.info/readings/undertext-latest.json",
         "input": {
           "filename": "undertext-latest.json",
-          "sha256": "b1bdd039a2018048a730d003cc483ebf094c081598397fe8f5c745819e6b5750",
+          "sha256": "d4398c8bec7cb76e713ca9815c6531293b09b817fb4ba3796e4b540157c7199b",
           "bytes": 266822
         },
-        "source_timestamp": "2026-08-24T15:58:43Z"
+        "source_timestamp": "2026-08-25T00:57:18Z"
       },
       "method": {
         "summary": "Offline fusion of every committed sample/reconstruction through china_observation.enrich_observation, URL clustering, and honest cross-signal joins. A matching URL/host/digest on the existing node lake attaches a sanitized receipt; an empty or absent lake abstains. Optional live surfaces require UNDERTEXT_LIVE_SURFACES=1 and an injected or operator fetch.",
@@ -824,8 +824,8 @@
       "type": "analysis",
       "priority": "background",
       "status": "stale",
-      "published_at": "2026-08-24T06:48:00Z",
-      "modified_at": "2026-08-24T06:48:00Z",
+      "published_at": "2026-08-25T00:48:00Z",
+      "modified_at": "2026-08-25T00:48:00Z",
       "claim_fingerprint": "sha256:390f4ecae19ce16f52553a3c134b1eaf29cbca0171069ce17b474fdb7d160f4b",
       "metric": {
         "label": null,
@@ -846,10 +846,10 @@
         "url": "https://palimpsest.info/readings/peer-context-latest.json",
         "input": {
           "filename": "peer-context-latest.json",
-          "sha256": "dc6853ccb7317dbcea98de4f536f043af344958fd06504326379d22c31f82d25",
-          "bytes": 80880
+          "sha256": "18c2dc90782af7dd587abf800764822a3662450d90180ce648a65c819ef3ce41",
+          "bytes": 76140
         },
-        "source_timestamp": "2026-08-24T06:48:00Z"
+        "source_timestamp": "2026-08-25T00:48:00Z"
       },
       "method": {
         "summary": "GreatFire lookups are cached by the greatfire-context job. OONI is an exact host join against already-held ooni-gfw-latest / ooni-bulk warehouse objects. CDT keeps titles, links, and excerpts bounded at 280 characters. Weiboscope is a documented abstention.",
@@ -1248,8 +1248,8 @@
       "type": "measurement",
       "priority": "background",
       "status": "stale",
-      "published_at": "2026-08-23T00:57:39Z",
-      "modified_at": "2026-08-23T00:57:39Z",
+      "published_at": "2026-08-25T00:57:18Z",
+      "modified_at": "2026-08-25T00:57:18Z",
       "claim_fingerprint": "sha256:491da606cfd905f6d8d7e1debefc95cfd3be2cee2d7bd824cb5358109324b168",
       "metric": {
         "label": null,
@@ -1270,13 +1270,13 @@
         "url": "https://palimpsest.info/readings/bleedthrough-latest.json",
         "input": {
           "filename": "bleedthrough-latest.json",
-          "sha256": "33d75dc7364ae206bbd4ad14ae0df84a5ab3c6e30d895a6283ca16364f64e893",
-          "bytes": 2781
+          "sha256": "543cbbdc41f0504cdb4ff2e1db5fef178267a3c116b7b5a545e0f944b0b520a1",
+          "bytes": 2760
         },
-        "source_timestamp": "2026-08-23T00:57:39Z"
+        "source_timestamp": "2026-08-25T00:57:18Z"
       },
       "method": {
-        "summary": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs + open-resolver fallback. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
+        "summary": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
         "version": 3
       },
       "limitations": [
@@ -1300,8 +1300,8 @@
       "type": "measurement",
       "priority": "background",
       "status": "stale",
-      "published_at": "2026-08-24T06:33:11Z",
-      "modified_at": "2026-08-24T06:33:11Z",
+      "published_at": "2026-08-25T00:33:10Z",
+      "modified_at": "2026-08-25T00:33:10Z",
       "claim_fingerprint": "sha256:b3454f495a8be309e4212ca1f602e4a34b54992e80667f291c519ce5a3576a88",
       "metric": {
         "label": null,
@@ -1322,10 +1322,10 @@
         "url": "https://palimpsest.info/readings/greatfire-context-latest.json",
         "input": {
           "filename": "greatfire-context-latest.json",
-          "sha256": "4d5715dd5101d63103cee737aead33677ea8f1d09b1d4ba13ae3da7b02b6836d",
-          "bytes": 62277
+          "sha256": "645a252a9b6f381d3086f9498be6a0d30a0369ad69c64dc516e99b4dc2b78661",
+          "bytes": 57537
         },
-        "source_timestamp": "2026-08-24T06:33:11Z"
+        "source_timestamp": "2026-08-25T00:33:10Z"
       },
       "method": {
         "summary": "Keyless /api/url/ and /api/verdict lookups for already-held Palimpsest URLs. Per-test history discarded. Not a 700k catalog crawl.",
@@ -2084,20 +2084,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "Private runtime bridge: no current finding",
-      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
+      "headline": "The sanitized intelligence bridge ranks 173 aggregate topics",
+      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "stale",
-      "published_at": "2026-08-23T01:14:16Z",
-      "modified_at": "2026-08-23T01:14:16Z",
-      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
+      "status": "live",
+      "published_at": "2026-08-26T07:14:16Z",
+      "modified_at": "2026-08-26T07:14:16Z",
+      "claim_fingerprint": "sha256:c1851b919f3b1d30e52e01ad5a52e49a45d8156f85b6c117b9a4cebb3fdba24f",
       "metric": {
-        "label": null,
-        "value": null,
-        "unit": null,
+        "label": "topics ranked",
+        "value": 173,
+        "unit": "count",
         "denominator": {
           "label": null,
           "value": null
@@ -2105,25 +2105,24 @@
       },
       "claims": [
         {
-          "type": "availability",
-          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
+          "type": "observation",
+          "statement": "The current sanitized optional export contains 173 ranked aggregate topics."
         }
       ],
       "evidence": {
         "url": "https://palimpsest.info/readings/nemesis-latest.json",
         "input": {
           "filename": "nemesis-latest.json",
-          "sha256": "b42f2649f36c92a81fe758ce207d12d1a2820cbe7473ae90aab057fa49cc5838",
-          "bytes": 170425
+          "sha256": "539ca3da1c9947504f432a1746451b836e9a62726e66eb6a1c4a9bc33cc5bcd9",
+          "bytes": 154753
         },
-        "source_timestamp": "2026-08-23T01:14:16Z"
+        "source_timestamp": "2026-08-26T07:14:16Z"
       },
       "method": {
         "summary": "Observed public-source topic attention, novelty, and economic-topic share",
         "version": "nemesis-public-v2"
       },
       "limitations": [
-        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [

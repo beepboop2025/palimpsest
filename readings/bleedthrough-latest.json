@@ -39,10 +39,10 @@
       "vantage": "CN/AS9808"
     }
   ],
-  "generated_at": "2026-08-23T00:57:39.521153Z",
-  "last_changed_at": "2026-08-22T00:57:42.383621Z",
-  "max_process_count": 3,
-  "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs + open-resolver fallback. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
+  "generated_at": "2026-08-25T00:57:18.347665Z",
+  "last_changed_at": "2026-08-24T12:57:16.134438Z",
+  "max_process_count": 2,
+  "method": "the censor as sensor — benign stateless UDP DNS probes provoke the GFW's own injectors to answer; we fingerprint the fleet from the forgeries. Transport this round: direct injection over dark IPs. Direct receive windows overlap; outbound sends remain rate-capped. Injector count is a FLOOR, not a census: each injector answers a given query at most once, so a silent injector is undercounted.",
   "method_version": 3,
   "pool_sampling_suspected": true,
   "probe_domain": "torproject.org",
@@ -61,11 +61,11 @@
     "transports": {
       "direct": {
         "ran": true,
-        "targets": 215
+        "targets": 216
       },
       "open_resolver": {
-        "ran": true,
-        "targets": 1
+        "ran": false,
+        "targets": null
       }
     },
     "vantage_count": 1,
