@@ -121,11 +121,27 @@ def test_receipt_cannot_bless_changed_artifact_or_schema_bytes() -> None:
         )
 
 
-def test_production_proof_is_structured_and_new_admission_resets_it() -> None:
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("repository", "other/project"),
+        ("commit_sha", "0" * 40),
+        ("deployment_id", 1),
+        ("deployment_environment", "Preview"),
+        ("deployment_url", "https://unrelated-project.vercel.app"),
+        ("production_url", "https://example.com"),
+        ("test_run_id", 1),
+        ("registry_run_id", 1),
+        ("registry_version", "9.9.9"),
+        ("verified_at", "2099-01-01T00:00:00Z"),
+        ("verification_checks", ["github_deployment_success"]),
+    ],
+)
+def test_production_proof_is_bound_field_by_field(field: str, replacement: object) -> None:
     artifact, _, receipt, artifact_raw, schema_raw = _bundle()
     changed = json.loads(json.dumps(receipt))
-    changed["deployment"]["verification_checks"] = ["github_deployment_success"]
-    with pytest.raises(NarcoScopeCorridorError, match="verification checks"):
+    changed["deployment"][field] = replacement
+    with pytest.raises(NarcoScopeCorridorError, match="reviewed production proof"):
         validate_receipt(
             changed,
             artifact_raw=artifact_raw,
@@ -133,6 +149,9 @@ def test_production_proof_is_structured_and_new_admission_resets_it() -> None:
             artifact=artifact,
         )
 
+
+def test_new_admission_resets_production_proof() -> None:
+    artifact, _, receipt, artifact_raw, schema_raw = _bundle()
     next_receipt = admission_receipt(
         artifact,
         artifact_raw,
@@ -148,6 +167,15 @@ def test_production_proof_is_structured_and_new_admission_resets_it() -> None:
         schema_raw=schema_raw,
         artifact=artifact,
     ) == next_receipt
+
+
+def test_pin_receipt_bytes_must_be_canonical(tmp_path: Path) -> None:
+    artifact, _, receipt, _, _ = _bundle()
+    receipt_path = tmp_path / "pin.json"
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    with pytest.raises(NarcoScopeCorridorError, match="not canonical JSON"):
+        load_bundle(DEFAULT_ARTIFACT_PATH, DEFAULT_SCHEMA_PATH, receipt_path)
+    assert artifact["artifactId"] == ARTIFACT_ID
 
 
 def test_bri_contract_points_to_the_pinned_local_v2_path() -> None:

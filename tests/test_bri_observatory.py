@@ -97,9 +97,11 @@ def test_narcoscope_bridge_is_production_verified_and_cannot_infer_actors() -> N
             encoding="utf-8"
         )
     )
+    product_card = json.loads((ROOT / "product-card.json").read_text(encoding="utf-8"))
     [bridge] = registry["partner_bridges"]
     assert bridge["contract"] == "narcoscope.palimpsest.corridor-aggregate.v2"
-    assert bridge["status"] == "production_verified"
+    assert bridge["status"] == pin["status"] == "production_verified"
+    assert product_card["integrations"]["narcoscope"]["corridor_overlay_status"] == pin["status"]
     assert bridge["join_policy"] == "geography_and_time_only"
     assert bridge["actor_inference"] == "prohibited"
     source = next(source for source in registry["sources"] if source["source_id"] == "narcoscope_corridors_v2")

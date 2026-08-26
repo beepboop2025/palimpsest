@@ -34,6 +34,19 @@ PRODUCTION_VERIFICATION_CHECKS = [
     "mcp_contract_v1.1.0",
     "mcp_registry_v1.1.0",
 ]
+EXPECTED_PRODUCTION_PROOF = {
+    "repository": "beepboop2025/narcoscope",
+    "commit_sha": "5bf6a31cfd98e56dadca495f35b99ecb73c1d74f",
+    "deployment_id": 6103284752,
+    "deployment_environment": "Production",
+    "deployment_url": "https://narcoscope-4l7l78jxx-beepboop2025s-projects.vercel.app",
+    "production_url": "https://narcoscope.com",
+    "test_run_id": 32966260157,
+    "registry_run_id": 32966416333,
+    "registry_version": "1.1.0",
+    "verified_at": "2026-08-26T12:03:34Z",
+    "verification_checks": list(PRODUCTION_VERIFICATION_CHECKS),
+}
 MAX_BYTES = 2 * 1024 * 1024
 MAX_ROWS = 20_000
 MAX_HISTORY = 128
@@ -383,6 +396,8 @@ def _validate_deployment_proof(proof: Any, *, admitted_at: datetime) -> None:
     }
     if type(proof) is not dict or set(proof) != expected_fields:
         raise NarcoScopeCorridorError("deployment proof fields changed")
+    if proof != EXPECTED_PRODUCTION_PROOF:
+        raise NarcoScopeCorridorError("deployment does not match the reviewed production proof")
     if proof["repository"] != "beepboop2025/narcoscope":
         raise NarcoScopeCorridorError("deployment proof repository changed")
     if type(proof["commit_sha"]) is not str or not _GIT_SHA_RE.fullmatch(proof["commit_sha"]):
@@ -460,6 +475,9 @@ def load_bundle(
     artifact = strict_json_loads(artifact_raw, label="NarcoScope corridor artifact")
     schema = strict_json_loads(schema_raw, label="NarcoScope corridor schema")
     validate_artifact(artifact, schema)
-    receipt = strict_json_loads(receipt_path.read_bytes(), label="NarcoScope corridor pin")
+    receipt_raw = receipt_path.read_bytes()
+    receipt = strict_json_loads(receipt_raw, label="NarcoScope corridor pin")
+    if receipt_raw != canonical_receipt_bytes(receipt):
+        raise NarcoScopeCorridorError("NarcoScope corridor pin is not canonical JSON")
     validate_receipt(receipt, artifact_raw=artifact_raw, schema_raw=schema_raw, artifact=artifact)
     return artifact, schema, receipt

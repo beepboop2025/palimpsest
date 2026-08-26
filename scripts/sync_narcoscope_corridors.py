@@ -118,7 +118,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             previous_artifact_raw = _read_regular(args.artifact)
             previous_schema_raw = _read_regular(args.schema)
             previous_artifact = strict_json_loads(previous_artifact_raw, label="current corridor artifact")
-            previous = strict_json_loads(_read_regular(args.receipt), label="current corridor receipt")
+            previous_receipt_raw = _read_regular(args.receipt)
+            previous = strict_json_loads(previous_receipt_raw, label="current corridor receipt")
+            if previous_receipt_raw != canonical_receipt_bytes(previous):
+                raise NarcoScopeCorridorError("current corridor receipt is not canonical JSON")
             validate_receipt(
                 previous,
                 artifact_raw=previous_artifact_raw,
