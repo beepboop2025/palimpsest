@@ -1,8 +1,7 @@
 # Censorwatch source registry — DELIBERATELY SEPARATE from the platform's
-# config/sources.yaml. Entries there are auto-swept into the production Celery
-# beat by core.scheduler.build_beat_schedule(); putting censorwatch sources there
-# would leak ungated collect-* jobs into production. The censorwatch beat
-# (beat.py) is hand-authored and flag-gated instead.
+# config/sources.yaml. Entries there are auto-swept into the primary Celery
+# beat; putting CensorWatch sources there would cross the dedicated broker and
+# database boundary. Only censorwatch.celery_app reads this registry.
 #
 # Adding a new source = one entry here + one file in collectors/. No core changes.
 

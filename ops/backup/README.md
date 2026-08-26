@@ -6,7 +6,10 @@ excludes the reconstructible bulk mirror. See
 [`COMMON-CRAWL-OFFSITE.md`](COMMON-CRAWL-OFFSITE.md). The generic nightly backup
 described below still covers PostgreSQL, `readings/`, `data/`, the private
 evidence-wire ledger, the investigative-analysis state and immutable runs, and
-the independent witness's append-only observations.
+the independent witness's append-only observations. Format v5 also makes the
+isolated CensorWatch PostgreSQL/durable-data-Redis pair an explicit all-or-none
+recovery component. Its control Redis is intentionally ephemeral and never
+restored, so an old heartbeat cannot become current evidence.
 
 `palimpsest-backup.sh` creates one timestamped directory containing:
 
@@ -16,6 +19,25 @@ the independent witness's append-only observations.
   `analysis/`, and bounded `witness/` recovery state, plus its successful tar
   listing;
 - a small, secret-free manifest and SHA-256 checksums for every backup file.
+
+`PALIMPSEST_CENSORWATCH_BACKUP_MODE` is mandatory and accepts only `absent` or
+`included`. `absent` produces the six-file base inventory and fails if any
+CensorWatch profile service is running. `included` produces the ten-file
+inventory by adding `censorwatch-postgres.dump`,
+`censorwatch-postgres.list`, `censorwatch-redis.tar.gz`, and
+`censorwatch-redis.list`. It first stops both schedulers plus the data and
+control/heartbeat workers; dumps the isolated PostgreSQL database; cleanly
+stops the durable data Redis; and archives its complete cold `/data` named
+volume. The separate control Redis has no persistence and is excluded. Redis ACLs and all
+password/URL files live under Docker's `/run/secrets`, outside that volume, so
+the snapshot cannot copy them. The script restores only services that were
+running before the fence. Any dump, stop, archive, validation, or restart
+failure removes the incomplete directory and publishes neither isolated store.
+The root-owned CensorWatch runtime files (staged as `root:10001`, mode `0640`,
+one link, never symlinks) are configuration secrets, not state: neither `/etc/palimpsest/censorwatch` nor `/run/secrets`
+is a backup source. Preserve
+those values only through the approved secret escrow and recreate their exact
+host metadata during recovery.
 
 Work is written under `.incomplete-*` and renamed to `YYYYMMDDTHHMMSSZ` only
 after both archives validate. The job uses `flock`, so timer catch-up cannot
@@ -38,7 +60,7 @@ their coordination lock used by the analytical freezer (normally
 `/var/lib/palimpsest/newswire`). That closed four-file inventory is archived
 under the portable top-level name `newswire/`.
 `PALIMPSEST_WITNESS_ROOT` locates the canonical independent observer directory
-(normally `/home/palimpsest/.palimpsest-witness`). The v4 archive requires
+(normally `/home/palimpsest/.palimpsest-witness`). The v5 archive requires
 exactly both nonempty `*.witness.jsonl` histories and the bounded public
 freshness latch. Every record is parsed with duplicate-field rejection and
 fixed fields, hashes, timestamps, and integer bounds; all three files must be
@@ -51,11 +73,22 @@ device/inode with `O_NOFOLLOW`; the container requires that same identity on
 its read-only bind before traversal. Numeric ownership and the exact source
 modes are preserved.
 
-Format v4 has exactly five portable artifact roots, in this order:
+Format v5 has exactly five portable artifact roots, in this order:
 `readings`, `data`, `newswire`, `analysis`, and `witness`. Neither the witness
 machine-status envelope nor an arbitrary file from its home directory is part
 of that archive; `witness/` is closed to the two append-only histories and
 `public-freshness-state.json`.
+
+Those five roots remain one `artifacts.tar.gz`; CensorWatch database/broker
+state is not mixed into it. The manifest always records `censorwatch_mode`,
+the isolated PostgreSQL and durable data-Redis versions, and the canonical
+four-service writer fence. The standalone
+verifier accepts only the exact six-file `absent` or ten-file `included`
+inventory, verifies every checksum, checks both PostgreSQL custom-format
+framings, and inspects the Redis archive against its exact listing without
+extracting it. Redis state is closed to `dump.rdb` and Redis 7 multi-part-AOF
+files under `appendonlydir/`; configuration, ACL, link, special, traversal, and
+unexpected files fail closed.
 
 ## Install the nightly timer
 
@@ -75,6 +108,11 @@ sudo systemctl status palimpsest-backup.service --no-pager
 systemctl list-timers palimpsest-backup.timer
 ```
 
+The example starts with `PALIMPSEST_CENSORWATCH_BACKUP_MODE=absent`. Before
+CensorWatch activation, change it to `included`, run one manual local backup
+and the off-site drill, and retain `included` for every subsequent snapshot.
+Never activate the velocity profile while the mode remains `absent`.
+
 ## Required pre-change release proof
 
 A node release stops this timer and service before changing the checkout, then
@@ -82,9 +120,9 @@ records the newest complete snapshot name. Before an exact-SHA checkout, image
 build, migration, receipt change, or candidate process, it starts the installed
 service once while every receipt and immutable host bundle still names the old
 deployment. That first snapshot is the exact database/core rollback point. If
-the installed image predates format v4, it may necessarily be a v3 snapshot;
-the release must preserve it rather than pretending the old image archived
-witness history. If the removable node-offsite `OnSuccess` drop-in is
+the installed image predates format v5, it may necessarily be a v4 snapshot;
+the release must preserve it rather than pretending the old image explicitly
+covered CensorWatch. If the removable node-offsite `OnSuccess` drop-in is
 installed, the release first installs the reviewed lexically-last
 `zz-release-quiesce.conf` drop-in on this local backup service. Its empty
 `OnSuccess=` resets every success trigger while the transaction is in flight.
@@ -101,9 +139,9 @@ removed immediately after requiring `ConditionResult=yes`,
 `ExecMainStatus=0`, a fresh invocation ID, and a nonzero monotonic start time.
 The release additionally requires a new complete snapshot name and the
 standalone snapshot verifier. The verifier independently requires the
-exact six-file inventory, nonempty dump/list/manifest artifacts, exact checksum
-and manifest inventories, valid PostgreSQL framing, and an archive that
-exactly matches its listing:
+exact mode-dependent six- or ten-file inventory, nonempty dump/list/manifest
+artifacts, exact checksum and manifest inventories, valid PostgreSQL framing,
+and archives that exactly match their listings:
 
 ```bash
 PRE_CHANGE_SNAPSHOT_BEFORE="$(latest_node_snapshot)"
@@ -113,7 +151,18 @@ test -n "$PRE_CHANGE_SNAPSHOT"
 test "$PRE_CHANGE_SNAPSHOT" != "$PRE_CHANGE_SNAPSHOT_BEFORE"
 sudo bash -c 'cd "$1" && sha256sum --check SHA256SUMS' \
   _ "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT"
-BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\npostgres.dump\npostgres.list'
+BACKUP_CENSORWATCH_MODE="$(sudo awk -F= \
+  '$1 == "censorwatch_mode" {print $2}' \
+  "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/MANIFEST.txt")"
+case "$BACKUP_CENSORWATCH_MODE" in
+  absent)
+    BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\npostgres.dump\npostgres.list'
+    ;;
+  included)
+    BACKUP_EXPECTED_INVENTORY=$'MANIFEST.txt\nSHA256SUMS\nartifacts.list\nartifacts.tar.gz\ncensorwatch-postgres.dump\ncensorwatch-postgres.list\ncensorwatch-redis.list\ncensorwatch-redis.tar.gz\npostgres.dump\npostgres.list'
+    ;;
+  *) exit 1 ;;
+esac
 BACKUP_ACTUAL_INVENTORY="$(sudo find \
   "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" -mindepth 1 -maxdepth 1 \
   -printf '%f\n' | LC_ALL=C sort)"
@@ -122,6 +171,12 @@ for backup_file in MANIFEST.txt artifacts.list artifacts.tar.gz \
     postgres.dump postgres.list; do
   sudo test -s "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/$backup_file"
 done
+if test "$BACKUP_CENSORWATCH_MODE" = included; then
+  for backup_file in censorwatch-postgres.dump censorwatch-postgres.list \
+      censorwatch-redis.list censorwatch-redis.tar.gz; do
+    sudo test -s "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT/$backup_file"
+  done
+fi
 BACKUP_VERIFICATION_JSON="$(sudo python3 \
   ops/backup/node_backup_snapshot.py verify \
   "$NODE_BACKUP_ROOT/$PRE_CHANGE_SNAPSHOT" \
@@ -130,7 +185,9 @@ printf '%s\n' "$BACKUP_VERIFICATION_JSON" | python3 -c '
 import json, sys
 value = json.load(sys.stdin)
 if value.get("schema") != "palimpsest-node-backup-verification.v1" \
-        or value.get("status") != "verified":
+        or value.get("status") != "verified" \
+        or value.get("format_version") != 5 \
+        or value.get("censorwatch", {}).get("mode") not in {"absent", "included"}:
     raise SystemExit("pre-change snapshot receipt is not verified")
 '
 ```
@@ -146,12 +203,14 @@ drop-in, reload systemd, and require the captured original `OnSuccess` value to
 be restored. A failed transaction leaves the quiesce installed and every
 captured timer stopped.
 
-When upgrading a node whose installed image cannot create v4, the runbook then
+When upgrading a node whose installed image cannot create v5, the runbook then
 builds the exact target image while the database and broker remain drained. It
 starts only the candidate default worker, proves that worker quiet and fences
 its consumer, and invokes the target backup once before migration or bundle
-installation. The target verifier must accept format v4, all five artifact
-roots, and a positive `witness_history_records` count. That verified candidate
+installation. The target verifier must accept format v5, all five artifact
+roots, a positive `witness_history_records` count, and the operator-selected
+CensorWatch mode. A velocity activation requires `censorwatch.mode=included`.
+That verified candidate
 snapshot becomes the transaction's restore snapshot and the temporary worker
 is stopped. This bounded bootstrap does not replace the earlier core snapshot
 and does not authorize any producer, scheduler, migration, or public write.

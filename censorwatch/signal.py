@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import statistics
 from datetime import datetime, timezone
 
@@ -179,10 +178,10 @@ def run_signal(settings: CensorwatchSettings | None = None, now: datetime | None
     from datetime import timedelta
     lookback_start = now - timedelta(minutes=window_min * (baseline_windows + 1))
 
-    from api.database import SessionLocal
+    from censorwatch.db import writer_session
     from censorwatch.models import CensoredPost, PostDeletion, DeletionVelocitySnapshot
 
-    db = SessionLocal()
+    db = writer_session()
     try:
         # The denominator, read FIRST. For 24 days this stage computed over an empty
         # censored_posts table and wrote ~1,161 rows all reading "0 deletions" — which is
@@ -233,9 +232,8 @@ def run_signal(settings: CensorwatchSettings | None = None, now: datetime | None
 def _publish(signal: dict) -> None:
     """Cache the latest signal in Redis for the dashboard (best-effort)."""
     try:
-        import redis
-        r = redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-                           decode_responses=True)
+        from censorwatch.cache import open_writer_cache
+        r = open_writer_cache()
         r.set("censorwatch:velocity:latest", json.dumps(signal, ensure_ascii=False),
               ex=3600)
         r.close()

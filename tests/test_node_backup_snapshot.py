@@ -31,17 +31,31 @@ verifier = _load_verifier_module()
 
 
 def _manifest(
-    *, artifact_roots: str = "readings,data,newswire,analysis,witness"
+    *,
+    artifact_roots: str = "readings,data,newswire,analysis,witness",
+    censorwatch_mode: str = "absent",
 ) -> bytes:
+    included = censorwatch_mode == "included"
+    contents = "postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list"
+    if included:
+        contents += (
+            ",censorwatch-postgres.dump,censorwatch-postgres.list,"
+            "censorwatch-redis.tar.gz,censorwatch-redis.list"
+        )
     return (
-        "format_version=4\n"
+        "format_version=5\n"
         f"snapshot_id={SNAPSHOT_ID}\n"
         "created_at_utc=2026-08-13T01:02:04Z\n"
         "host=palimpsest-fixture\n"
         "compose_project=palimpsest\n"
         "postgres_version=16.14\n"
         f"artifact_roots={artifact_roots}\n"
-        "contents=postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list\n"
+        f"censorwatch_mode={censorwatch_mode}\n"
+        f"censorwatch_postgres_version={'16.14' if included else 'absent'}\n"
+        f"censorwatch_redis_version={'7.4.5' if included else 'absent'}\n"
+        "censorwatch_writer_fence="
+        f"{'beat-velocity-data,beat-velocity-control,worker-velocity,worker-velocity-control' if included else 'not-applicable'}\n"
+        f"contents={contents}\n"
     ).encode()
 
 
@@ -123,7 +137,10 @@ def _archive(members: list[tuple[str, str, bytes | None]] | None = None):
 
 def _refresh_checksums(snapshot: Path) -> None:
     lines = []
-    for name in verifier.HASHED_FILES:
+    mode = (
+        "included" if (snapshot / "censorwatch-postgres.dump").exists() else "absent"
+    )
+    for name in verifier.HASHED_FILES_BY_MODE[mode]:
         digest = hashlib.sha256((snapshot / name).read_bytes()).hexdigest()
         lines.append(f"{digest}  {name}\n")
     (snapshot / "SHA256SUMS").write_text("".join(lines), encoding="utf-8")
@@ -131,11 +148,61 @@ def _refresh_checksums(snapshot: Path) -> None:
         path.chmod(0o600)
 
 
-def _fixture(tmp_path: Path) -> Path:
+def _redis_archive(
+    members: list[tuple[str, bytes | None, str]] | None = None,
+    *,
+    pax_member: str | None = None,
+) -> tuple[bytes, list[str]]:
+    payload = io.BytesIO()
+    selected = members or [
+        ("redis", None, "directory"),
+        ("redis/appendonlydir", None, "directory"),
+        (
+            "redis/appendonlydir/appendonly.aof.1.base.rdb",
+            b"REDIS0011fixture",
+            "file",
+        ),
+        (
+            "redis/appendonlydir/appendonly.aof.manifest",
+            b"file appendonly.aof.1.base.rdb seq 1 type b\n",
+            "file",
+        ),
+    ]
+    listing: list[str] = []
+    with tarfile.open(fileobj=payload, mode="w:gz") as archive:
+        for name, content, kind in selected:
+            member = tarfile.TarInfo(name)
+            member.uid = 999
+            member.gid = 999
+            if name == pax_member:
+                member.pax_headers = {"comment": "untrusted-extension"}
+            if kind == "directory":
+                member.type = tarfile.DIRTYPE
+                member.mode = 0o750
+                archive.addfile(member)
+                listing.append(f"{name}/")
+            elif kind == "symlink":
+                member.type = tarfile.SYMTYPE
+                member.linkname = str(content)
+                archive.addfile(member)
+                listing.append(name)
+            else:
+                assert content is not None
+                member.type = tarfile.REGTYPE
+                member.mode = 0o600
+                member.size = len(content)
+                archive.addfile(member, io.BytesIO(content))
+                listing.append(name)
+    return payload.getvalue(), listing
+
+
+def _fixture(tmp_path: Path, *, censorwatch_mode: str = "absent") -> Path:
     snapshot = tmp_path / SNAPSHOT_ID
     snapshot.mkdir(mode=0o700)
     archive_payload, listing = _archive()
-    (snapshot / "MANIFEST.txt").write_bytes(_manifest())
+    (snapshot / "MANIFEST.txt").write_bytes(
+        _manifest(censorwatch_mode=censorwatch_mode)
+    )
     (snapshot / "artifacts.tar.gz").write_bytes(archive_payload)
     (snapshot / "artifacts.list").write_text(
         "".join(f"{name}\n" for name in listing), encoding="utf-8"
@@ -145,6 +212,20 @@ def _fixture(tmp_path: Path) -> Path:
         "; Archive created at 2026-08-13 01:02:03 UTC\n",
         encoding="utf-8",
     )
+    if censorwatch_mode == "included":
+        redis_payload, redis_listing = _redis_archive()
+        (snapshot / "censorwatch-postgres.dump").write_bytes(
+            b"PGDMP\x01censorwatch-fixture"
+        )
+        (snapshot / "censorwatch-postgres.list").write_text(
+            "; CensorWatch archive created at 2026-08-13 01:02:03 UTC\n",
+            encoding="utf-8",
+        )
+        (snapshot / "censorwatch-redis.tar.gz").write_bytes(redis_payload)
+        (snapshot / "censorwatch-redis.list").write_text(
+            "".join(f"{name}\n" for name in redis_listing),
+            encoding="utf-8",
+        )
     (snapshot / "SHA256SUMS").touch()
     _refresh_checksums(snapshot)
     snapshot.chmod(0o700)
@@ -210,6 +291,14 @@ def test_good_snapshot_produces_deterministic_restore_proof(tmp_path):
     assert first["schema"] == "palimpsest-node-backup-verification.v1"
     assert first["status"] == "verified"
     assert first["snapshot"] == SNAPSHOT_ID
+    assert first["format_version"] == 5
+    assert first["censorwatch"] == {
+        "mode": "absent",
+        "postgres_dump_bytes": 0,
+        "redis_archive_bytes": 0,
+        "redis_members": 0,
+        "redis_uncompressed_bytes": 0,
+    }
     assert first["counts"] == {
         "artifact_directories": 7,
         "artifact_files": 8,
@@ -219,6 +308,143 @@ def test_good_snapshot_produces_deterministic_restore_proof(tmp_path):
         "witness_history_records": 2,
     }
     assert set(first["digests"]) == set(verifier.HASHED_FILES)
+
+
+def test_included_snapshot_proves_both_isolated_stores(tmp_path):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+
+    result = _verify(snapshot)
+
+    assert result["censorwatch"]["mode"] == "included"
+    assert result["censorwatch"]["postgres_dump_bytes"] > 5
+    assert result["censorwatch"]["redis_archive_bytes"] > 0
+    assert result["censorwatch"]["redis_members"] == 4
+    assert result["censorwatch"]["redis_uncompressed_bytes"] > 0
+    assert result["counts"]["checksum_entries"] == 9
+    assert result["counts"]["snapshot_files"] == 10
+    assert set(result["digests"]) == set(
+        verifier.HASHED_FILES_BY_MODE["included"]
+    )
+
+
+def test_censorwatch_mode_and_inventory_must_agree(tmp_path):
+    snapshot = _fixture(tmp_path)
+    (snapshot / "MANIFEST.txt").write_bytes(_manifest(censorwatch_mode="included"))
+    _refresh_checksums(snapshot)
+
+    with pytest.raises(verifier.VerificationError, match="declared CensorWatch mode"):
+        _verify(snapshot)
+
+
+def test_included_manifest_requires_postgres16_and_redis7(tmp_path):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+    manifest = (snapshot / "MANIFEST.txt").read_bytes().replace(
+        b"censorwatch_redis_version=7.4.5\n",
+        b"censorwatch_redis_version=8.0.0\n",
+    )
+    (snapshot / "MANIFEST.txt").write_bytes(manifest)
+    _refresh_checksums(snapshot)
+
+    with pytest.raises(verifier.VerificationError, match="manifest is inconsistent"):
+        _verify(snapshot)
+
+
+def test_partial_censorwatch_inventory_is_never_accepted(tmp_path):
+    snapshot = _fixture(tmp_path)
+    (snapshot / "censorwatch-postgres.dump").write_bytes(b"PGDMP\x01partial")
+
+    with pytest.raises(verifier.VerificationError, match="inventory is not exact"):
+        _verify(snapshot)
+
+
+def test_censorwatch_postgres_requires_custom_dump_framing(tmp_path):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+    (snapshot / "censorwatch-postgres.dump").write_bytes(b"not-a-custom-dump")
+    _refresh_checksums(snapshot)
+
+    with pytest.raises(verifier.VerificationError, match="custom-format framing"):
+        _verify(snapshot)
+
+
+def test_censorwatch_redis_listing_must_match_cold_archive(tmp_path):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+    listing = (snapshot / "censorwatch-redis.list").read_text(encoding="utf-8")
+    (snapshot / "censorwatch-redis.list").write_text(
+        listing.replace("redis/appendonlydir/\n", ""),
+        encoding="utf-8",
+    )
+    _refresh_checksums(snapshot)
+
+    with pytest.raises(verifier.VerificationError, match="does not match"):
+        _verify(snapshot)
+
+
+@pytest.mark.parametrize(
+    ("members", "match"),
+    [
+        (
+            [
+                ("redis", None, "directory"),
+                ("redis/appendonlydir", None, "directory"),
+                (
+                    "redis/appendonlydir/appendonly.aof.manifest",
+                    b"file ../secret seq 1 type b\n",
+                    "file",
+                ),
+            ],
+            "manifest is malformed",
+        ),
+        (
+            [
+                ("redis", None, "directory"),
+                ("redis/redis.conf", b"requirepass secret\n", "file"),
+            ],
+            "secret-bearing",
+        ),
+        (
+            [
+                ("redis", None, "directory"),
+                ("redis/appendonlydir", None, "directory"),
+                (
+                    "redis/appendonlydir/appendonly.aof.1.base.rdb",
+                    b"/etc/shadow",
+                    "symlink",
+                ),
+            ],
+            "link or special",
+        ),
+    ],
+)
+def test_censorwatch_redis_archive_rejects_unsafe_or_secret_state(
+    tmp_path, members, match
+):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+    payload, listing = _redis_archive(members)
+    (snapshot / "censorwatch-redis.tar.gz").write_bytes(payload)
+    (snapshot / "censorwatch-redis.list").write_text(
+        "".join(f"{name}\n" for name in listing),
+        encoding="utf-8",
+    )
+    _refresh_checksums(snapshot)
+
+    with pytest.raises(verifier.VerificationError, match=match):
+        _verify(snapshot)
+
+
+def test_censorwatch_redis_archive_rejects_pax_extensions(tmp_path):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+    payload, listing = _redis_archive(
+        pax_member="redis/appendonlydir/appendonly.aof.1.base.rdb"
+    )
+    (snapshot / "censorwatch-redis.tar.gz").write_bytes(payload)
+    (snapshot / "censorwatch-redis.list").write_text(
+        "".join(f"{name}\n" for name in listing),
+        encoding="utf-8",
+    )
+    _refresh_checksums(snapshot)
+
+    with pytest.raises(verifier.VerificationError, match="PAX metadata"):
+        _verify(snapshot)
 
 
 def test_artifact_traversal_is_rejected_even_with_fresh_checksums(tmp_path):
@@ -330,11 +556,11 @@ def test_manifest_contract_mismatch_is_rejected(tmp_path):
 def test_legacy_manifest_cannot_claim_witness_covered_restore(tmp_path):
     snapshot = _fixture(tmp_path)
     (snapshot / "MANIFEST.txt").write_bytes(
-        _manifest().replace(b"format_version=4\n", b"format_version=3\n")
+        _manifest().replace(b"format_version=5\n", b"format_version=4\n")
     )
     _refresh_checksums(snapshot)
 
-    with pytest.raises(verifier.VerificationError, match="format version is not 4"):
+    with pytest.raises(verifier.VerificationError, match="format version is not 5"):
         _verify(snapshot)
 
 
@@ -379,6 +605,18 @@ def test_payload_hash_mismatch_is_rejected(tmp_path):
         _verify(snapshot)
 
 
+def test_checksum_manifest_order_is_canonical(tmp_path):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+    lines = (snapshot / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
+    (snapshot / "SHA256SUMS").write_text(
+        "\n".join(reversed(lines)) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(verifier.VerificationError, match="inventory is not exact"):
+        _verify(snapshot)
+
+
 def test_artifact_list_must_exactly_match_the_archive(tmp_path):
     snapshot = _fixture(tmp_path)
     lines = (snapshot / "artifacts.list").read_text(encoding="utf-8").splitlines()
@@ -414,6 +652,28 @@ def test_pack_uses_exact_open_files_and_builds_an_inspectable_outer_tar(tmp_path
             SNAPSHOT_ID,
             *(f"{SNAPSHOT_ID}/{name}" for name in sorted(verifier.SNAPSHOT_FILES)),
         ]
+
+
+def test_pack_preserves_included_censorwatch_inventory_and_mode(tmp_path):
+    snapshot = _fixture(tmp_path, censorwatch_mode="included")
+    output = tmp_path / "included-transport.tar"
+
+    packed = verifier.pack_snapshot(
+        snapshot,
+        snapshot_id=SNAPSHOT_ID,
+        output=output,
+        expected_uid=os.getuid(),
+        expected_gid=os.getgid(),
+    )
+    inspected = verifier.inspect_outer_archive(output, snapshot_id=SNAPSHOT_ID)
+
+    assert packed["censorwatch_mode"] == "included"
+    assert inspected["censorwatch_mode"] == "included"
+    assert packed["counts"] == {"members": 11, "snapshot_files": 10}
+    assert inspected["counts"] == {"members": 11, "snapshot_files": 10}
+    assert set(inspected["digests"]) == verifier.SNAPSHOT_FILES_BY_MODE[
+        "included"
+    ]
 
 
 def test_pack_fsyncs_the_output_file_and_parent_directory(tmp_path, monkeypatch):

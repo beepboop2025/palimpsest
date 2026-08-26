@@ -1,0 +1,22 @@
+# Import this file at Caddyfile top level, then place
+# `import palimpsest_censorwatch` inside the intended public site block.
+# The upstream is the dedicated loopback-only CensorWatch API, never the
+# Palimpsest operator API on port 8010.
+(palimpsest_censorwatch) {
+	@palimpsest_censorwatch path \
+ /api/v5/censorwatch \
+ /api/v5/censorwatch/*
+
+	handle @palimpsest_censorwatch {
+		header Cache-Control "no-store"
+		header Referrer-Policy "no-referrer"
+		header X-Content-Type-Options "nosniff"
+		header X-Frame-Options "DENY"
+		reverse_proxy 127.0.0.1:8011 {
+			header_up -X-Forwarded-For
+			header_up -X-Forwarded-Host
+			header_up -X-Forwarded-Proto
+			header_down -Server
+		}
+	}
+}

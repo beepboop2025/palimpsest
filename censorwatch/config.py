@@ -93,6 +93,11 @@ class CensorwatchSettings:
     max_cache_bytes: int = 32 * 1024 * 1024
     max_redirects: int = 5
     min_archive_free_bytes: int = 1024 * 1024 * 1024
+    raw_dir: str = "./data/censorwatch/raw"
+    max_raw_snapshot_bytes: int = 16 * 1024 * 1024
+    max_raw_total_bytes: int = 2 * 1024 * 1024 * 1024
+    raw_retention_days: int = 30
+    max_archive_total_bytes: int = 20 * 1024 * 1024 * 1024
 
     # Browser execution belongs in the credential-free render gateway.  Blank
     # means JS-required sources abstain; the worker never falls back to a local
@@ -164,6 +169,35 @@ def get_settings() -> CensorwatchSettings:
             min(
                 16 * 1024 * 1024 * 1024,
                 _int("CENSORWATCH_MIN_ARCHIVE_FREE_BYTES", 1024 * 1024 * 1024),
+            ),
+        ),
+        raw_dir=os.getenv("RAW_DATA_DIR", "./data/censorwatch/raw"),
+        max_raw_snapshot_bytes=max(
+            64 * 1024,
+            min(
+                64 * 1024 * 1024,
+                _int("CENSORWATCH_MAX_RAW_SNAPSHOT_BYTES", 16 * 1024 * 1024),
+            ),
+        ),
+        max_raw_total_bytes=max(
+            64 * 1024 * 1024,
+            min(
+                64 * 1024 * 1024 * 1024,
+                _int("CENSORWATCH_MAX_RAW_TOTAL_BYTES", 2 * 1024 * 1024 * 1024),
+            ),
+        ),
+        raw_retention_days=max(
+            1,
+            min(365, _int("CENSORWATCH_RAW_RETENTION_DAYS", 30)),
+        ),
+        max_archive_total_bytes=max(
+            256 * 1024 * 1024,
+            min(
+                512 * 1024 * 1024 * 1024,
+                _int(
+                    "CENSORWATCH_MAX_ARCHIVE_TOTAL_BYTES",
+                    20 * 1024 * 1024 * 1024,
+                ),
             ),
         ),
         render_gateway_url=(os.getenv("CENSORWATCH_RENDER_GATEWAY_URL") or "").strip() or None,

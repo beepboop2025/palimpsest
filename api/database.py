@@ -29,6 +29,4 @@ def init_db():
     # create_all; without this, create_all sees an empty registry and silently
     # creates nothing (the "articles"/DDTI tables would be missing).
     import storage.models  # noqa: F401
-    import censorwatch.models  # noqa: F401
-
     Base.metadata.create_all(bind=engine)

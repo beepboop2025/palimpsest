@@ -259,6 +259,32 @@ def test_non_raster_payload_is_not_archived_as_an_image():
         assert not (Path(path) / "images").exists()
 
 
+def test_total_archive_quota_refuses_new_evidence_without_deleting_old(tmp_path):
+    existing = tmp_path / "eastmoney_guba" / "old" / "page.html"
+    existing.parent.mkdir(parents=True)
+    existing.write_bytes(b"x" * 256)
+    settings = dataclasses.replace(
+        _settings(str(tmp_path)),
+        max_archive_total_bytes=300,
+    )
+    html = "<html><body>" + ("真实正文内容" * 20) + "</body></html>"
+
+    path = asyncio.run(
+        archive_post(
+            "https://guba.eastmoney.com/news,600519,18.html",
+            "eastmoney_guba",
+            "18",
+            fetcher=_FakeFetcher(html),
+            settings=settings,
+            raw_html=html,
+        )
+    )
+
+    assert path is None
+    assert existing.read_bytes() == b"x" * 256
+    assert not (tmp_path / "eastmoney_guba" / "18").exists()
+
+
 def _run_all():
     test_extract_image_urls()
     print("  PASS extract_image_urls")

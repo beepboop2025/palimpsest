@@ -23,23 +23,35 @@ CHECKSUM_LINE = re.compile(r"([0-9a-f]{64})  ([A-Za-z0-9][A-Za-z0-9._-]*)")
 COMPOSE_PROJECT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 HOST = re.compile(r"[A-Za-z0-9][A-Za-z0-9.-]{0,252}")
 
-SNAPSHOT_FILES = frozenset(
-    {
-        "MANIFEST.txt",
-        "SHA256SUMS",
-        "artifacts.tar.gz",
-        "artifacts.list",
-        "postgres.dump",
-        "postgres.list",
-    }
-)
-HASHED_FILES = (
+BASE_HASHED_FILES = (
     "postgres.dump",
     "postgres.list",
     "artifacts.tar.gz",
     "artifacts.list",
     "MANIFEST.txt",
 )
+CENSORWATCH_HASHED_FILES = (
+    "censorwatch-postgres.dump",
+    "censorwatch-postgres.list",
+    "censorwatch-redis.tar.gz",
+    "censorwatch-redis.list",
+)
+HASHED_FILES_BY_MODE = {
+    "absent": BASE_HASHED_FILES,
+    "included": (
+        *BASE_HASHED_FILES[:-1],
+        *CENSORWATCH_HASHED_FILES,
+        "MANIFEST.txt",
+    ),
+}
+SNAPSHOT_FILES_BY_MODE = {
+    mode: frozenset({"SHA256SUMS", *hashed_files})
+    for mode, hashed_files in HASHED_FILES_BY_MODE.items()
+}
+ALL_SNAPSHOT_FILES = frozenset().union(*SNAPSHOT_FILES_BY_MODE.values())
+# Compatibility alias for callers that build the always-valid absent fixture.
+SNAPSHOT_FILES = SNAPSHOT_FILES_BY_MODE["absent"]
+HASHED_FILES = BASE_HASHED_FILES
 MANIFEST_FIELDS = frozenset(
     {
         "format_version",
@@ -49,12 +61,22 @@ MANIFEST_FIELDS = frozenset(
         "compose_project",
         "postgres_version",
         "artifact_roots",
+        "censorwatch_mode",
+        "censorwatch_postgres_version",
+        "censorwatch_redis_version",
+        "censorwatch_writer_fence",
         "contents",
     }
 )
 ARTIFACT_ROOTS = ("readings", "data", "newswire", "analysis", "witness")
 ARTIFACT_ROOT_SET = frozenset(ARTIFACT_ROOTS)
-ARTIFACT_CONTENTS = "postgres.dump,postgres.list,artifacts.tar.gz,artifacts.list"
+CONTENTS_BY_MODE = {
+    mode: ",".join(name for name in hashed_files if name != "MANIFEST.txt")
+    for mode, hashed_files in HASHED_FILES_BY_MODE.items()
+}
+CENSORWATCH_WRITER_FENCE = (
+    "beat-velocity-data,beat-velocity-control,worker-velocity,worker-velocity-control"
+)
 WITNESS_UID = 1001
 WITNESS_GID = 1001
 WITNESS_HISTORY_FILES = frozenset(
@@ -78,6 +100,11 @@ MAX_ARTIFACT_LIST_BYTES = 256 * 1024 * 1024
 MAX_ARTIFACT_MEMBERS = 1_100_000
 MAX_ARTIFACT_DEPTH = 65
 MAX_ARTIFACT_LIST_LINE_BYTES = 4098
+MAX_REDIS_LIST_BYTES = 16 * 1024 * 1024
+MAX_REDIS_MEMBERS = 100_000
+MAX_REDIS_UNCOMPRESSED_BYTES = 384 * 1024 * 1024
+MAX_REDIS_MEMBER_BYTES = 384 * 1024 * 1024
+MAX_REDIS_MANIFEST_BYTES = 1024 * 1024
 MAX_WITNESS_HISTORY_BYTES = 64 * 1024 * 1024
 MAX_WITNESS_HISTORY_RECORDS = 1_000_000
 MAX_WITNESS_HISTORY_LINE_BYTES = 4096
@@ -85,6 +112,10 @@ MAX_WITNESS_FRESHNESS_BYTES = 64 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
 OUTER_SCHEMA = "palimpsest-node-backup-outer-archive.v1"
 PACK_SCHEMA = "palimpsest-node-backup-pack.v1"
+VERSION_VALUE = re.compile(r"[0-9][A-Za-z0-9.+_-]{0,63}")
+REDIS_AOF_FILE = re.compile(
+    r"appendonly\.aof(?:\.manifest|\.[0-9]+\.(?:base\.rdb|incr\.aof))"
+)
 
 
 class VerificationError(RuntimeError):
@@ -199,11 +230,15 @@ def _inspect_snapshot_files(
         names = os.listdir(directory_descriptor)
     except OSError as exc:
         raise VerificationError("snapshot inventory cannot be read") from exc
-    if len(names) != len(SNAPSHOT_FILES) or set(names) != SNAPSHOT_FILES:
+    name_set = frozenset(names)
+    if (
+        len(names) != len(name_set)
+        or name_set not in SNAPSHOT_FILES_BY_MODE.values()
+    ):
         raise VerificationError("snapshot file inventory is not exact")
 
     metadata_by_name: dict[str, os.stat_result] = {}
-    for name in sorted(SNAPSHOT_FILES):
+    for name in sorted(name_set):
         try:
             metadata = os.stat(
                 name,
@@ -384,14 +419,32 @@ def _parse_manifest(payload: bytes, *, snapshot_id: str) -> dict[str, str]:
 
     if set(fields) != MANIFEST_FIELDS:
         raise VerificationError("manifest field inventory is not exact")
-    if fields["format_version"] != "4":
-        raise VerificationError("manifest format version is not 4")
+    if fields["format_version"] != "5":
+        raise VerificationError("manifest format version is not 5")
     if fields["snapshot_id"] != snapshot_id:
         raise VerificationError("manifest snapshot id does not match")
     if fields["artifact_roots"] != ",".join(ARTIFACT_ROOTS):
         raise VerificationError("manifest artifact roots are not exact")
-    if fields["contents"] != ARTIFACT_CONTENTS:
+    mode = fields["censorwatch_mode"]
+    if mode not in SNAPSHOT_FILES_BY_MODE:
+        raise VerificationError("manifest CensorWatch mode is not exact")
+    if fields["contents"] != CONTENTS_BY_MODE[mode]:
         raise VerificationError("manifest contents are not exact")
+    if mode == "absent":
+        if (
+            fields["censorwatch_postgres_version"] != "absent"
+            or fields["censorwatch_redis_version"] != "absent"
+            or fields["censorwatch_writer_fence"] != "not-applicable"
+        ):
+            raise VerificationError("absent CensorWatch manifest is inconsistent")
+    elif (
+        VERSION_VALUE.fullmatch(fields["censorwatch_postgres_version"]) is None
+        or VERSION_VALUE.fullmatch(fields["censorwatch_redis_version"]) is None
+        or not fields["censorwatch_postgres_version"].startswith("16.")
+        or not fields["censorwatch_redis_version"].startswith("7.")
+        or fields["censorwatch_writer_fence"] != CENSORWATCH_WRITER_FENCE
+    ):
+        raise VerificationError("included CensorWatch manifest is inconsistent")
     if not HOST.fullmatch(fields["host"]):
         raise VerificationError("manifest host is malformed")
     if not COMPOSE_PROJECT.fullmatch(fields["compose_project"]):
@@ -403,9 +456,14 @@ def _parse_manifest(payload: bytes, *, snapshot_id: str) -> dict[str, str]:
     return fields
 
 
-def _parse_checksums(payload: bytes) -> dict[str, str]:
+def _parse_checksums(
+    payload: bytes,
+    *,
+    hashed_files: tuple[str, ...],
+) -> dict[str, str]:
     text = _decode_strict_text(payload, label="checksum manifest")
     checksums: dict[str, str] = {}
+    observed_names: list[str] = []
     for line in text.splitlines():
         match = CHECKSUM_LINE.fullmatch(line)
         if match is None:
@@ -414,7 +472,8 @@ def _parse_checksums(payload: bytes) -> dict[str, str]:
         if name in checksums:
             raise VerificationError("checksum manifest contains a duplicate entry")
         checksums[name] = digest
-    if len(checksums) != len(HASHED_FILES) or set(checksums) != set(HASHED_FILES):
+        observed_names.append(name)
+    if tuple(observed_names) != hashed_files:
         raise VerificationError("checksum manifest inventory is not exact")
     return checksums
 
@@ -659,7 +718,15 @@ def _inspect_artifact_archive(
         source = os.fdopen(descriptor, "rb", closefd=False)
         try:
             with tarfile.open(fileobj=source, mode="r:gz") as archive:
+                if archive.pax_headers:
+                    raise VerificationError(
+                        "artifact archive contains global PAX metadata"
+                    )
                 for member in archive:
+                    if member.pax_headers:
+                        raise VerificationError(
+                            "artifact archive contains PAX metadata"
+                        )
                     display_name = _canonical_artifact_member(member)
                     if display_name in seen:
                         raise VerificationError(
@@ -825,6 +892,185 @@ def _inspect_artifact_open_descriptor(
     return tuple(members), files, directories, witness_history_records
 
 
+def _parse_redis_listing_payload(
+    payload: bytes,
+    *,
+    expected_digest: str,
+) -> tuple[str, ...]:
+    if hashlib.sha256(payload).hexdigest() != expected_digest:
+        raise VerificationError("CensorWatch Redis listing fails its checksum")
+    text = _decode_strict_text(payload, label="CensorWatch Redis listing")
+    lines = tuple(text.splitlines())
+    if (
+        not lines
+        or len(lines) > MAX_REDIS_MEMBERS
+        or any(not line or len(line.encode("utf-8")) >= MAX_ARTIFACT_LIST_LINE_BYTES for line in lines)
+    ):
+        raise VerificationError("CensorWatch Redis listing is invalid")
+    return lines
+
+
+def _canonical_redis_member(member: tarfile.TarInfo) -> str:
+    name = member.name.rstrip("/")
+    if (
+        not name
+        or member.name.startswith("/")
+        or "\\" in member.name
+        or "\x00" in member.name
+        or "//" in member.name
+    ):
+        raise VerificationError("CensorWatch Redis archive contains an unsafe path")
+    parts = name.split("/")
+    if (
+        len(parts) > 3
+        or parts[0] != "redis"
+        or any(
+            component in {"", ".", ".."}
+            or SAFE_COMPONENT.fullmatch(component) is None
+            for component in parts
+        )
+    ):
+        raise VerificationError("CensorWatch Redis archive contains an unsafe path")
+    if member.isdir():
+        if name not in {"redis", "redis/appendonlydir"}:
+            raise VerificationError(
+                "CensorWatch Redis archive directory inventory is not exact"
+            )
+        return f"{name}/"
+    if not member.isreg() or member.issparse():
+        raise VerificationError(
+            "CensorWatch Redis archive contains a link or special member"
+        )
+    relative = name.removeprefix("redis/")
+    if relative != "dump.rdb" and not (
+        relative.startswith("appendonlydir/")
+        and REDIS_AOF_FILE.fullmatch(relative.removeprefix("appendonlydir/"))
+    ):
+        raise VerificationError(
+            "CensorWatch Redis archive contains non-state or secret-bearing bytes"
+        )
+    if member.size < 0 or member.size > MAX_REDIS_MEMBER_BYTES:
+        raise VerificationError("CensorWatch Redis archive member is oversized")
+    return name
+
+
+def _validate_redis_aof_manifest(
+    payload: bytes,
+    *,
+    archived_files: set[str],
+) -> None:
+    text = _decode_strict_text(payload, label="CensorWatch Redis AOF manifest")
+    referenced: set[str] = set()
+    for line in text.splitlines():
+        match = re.fullmatch(
+            r"file (appendonly\.aof\.[0-9]+\.(?:base\.rdb|incr\.aof)) "
+            r"seq [0-9]+ type [bi]",
+            line,
+        )
+        if match is None or match.group(1) in referenced:
+            raise VerificationError("CensorWatch Redis AOF manifest is malformed")
+        referenced.add(match.group(1))
+    archived_aof = {
+        name.removeprefix("redis/appendonlydir/")
+        for name in archived_files
+        if name.startswith("redis/appendonlydir/")
+        and name != "redis/appendonlydir/appendonly.aof.manifest"
+    }
+    if not referenced or referenced != archived_aof:
+        raise VerificationError(
+            "CensorWatch Redis AOF manifest does not match the cold archive"
+        )
+
+
+def _inspect_redis_open_descriptor(
+    descriptor: int,
+    opened_metadata: os.stat_result,
+) -> tuple[tuple[str, ...], int]:
+    source = os.fdopen(os.dup(descriptor), "rb")
+    members: list[str] = []
+    seen: set[str] = set()
+    archived_files: set[str] = set()
+    aof_manifest: bytes | None = None
+    total_bytes = 0
+    try:
+        source.seek(0)
+        try:
+            with tarfile.open(fileobj=source, mode="r:gz") as archive:
+                if archive.pax_headers:
+                    raise VerificationError(
+                        "CensorWatch Redis archive contains global PAX metadata"
+                    )
+                for member in archive:
+                    if member.pax_headers:
+                        raise VerificationError(
+                            "CensorWatch Redis archive contains PAX metadata"
+                        )
+                    display_name = _canonical_redis_member(member)
+                    if display_name in seen:
+                        raise VerificationError(
+                            "CensorWatch Redis archive contains a duplicate member"
+                        )
+                    seen.add(display_name)
+                    members.append(display_name)
+                    if len(members) > MAX_REDIS_MEMBERS:
+                        raise VerificationError(
+                            "CensorWatch Redis archive exceeds its entry bound"
+                        )
+                    if not member.isdir():
+                        archived_files.add(display_name)
+                        total_bytes += member.size
+                        if total_bytes > MAX_REDIS_UNCOMPRESSED_BYTES:
+                            raise VerificationError(
+                                "CensorWatch Redis archive exceeds its byte bound"
+                            )
+                        if display_name == (
+                            "redis/appendonlydir/appendonly.aof.manifest"
+                        ):
+                            if member.size > MAX_REDIS_MANIFEST_BYTES:
+                                raise VerificationError(
+                                    "CensorWatch Redis AOF manifest is oversized"
+                                )
+                            extracted = archive.extractfile(member)
+                            if extracted is None:
+                                raise VerificationError(
+                                    "CensorWatch Redis AOF manifest cannot be read"
+                                )
+                            aof_manifest = extracted.read(member.size + 1)
+                            if len(aof_manifest) != member.size:
+                                raise VerificationError(
+                                    "CensorWatch Redis AOF manifest is truncated"
+                                )
+        except (OSError, EOFError, tarfile.TarError) as exc:
+            raise VerificationError(
+                "CensorWatch Redis archive is corrupt or unreadable"
+            ) from exc
+    finally:
+        source.close()
+    if _metadata_signature(os.fstat(descriptor)) != _metadata_signature(
+        opened_metadata
+    ):
+        raise VerificationError("CensorWatch Redis archive changed during inspection")
+    if (
+        "redis/" not in seen
+        or "redis/appendonlydir/" not in seen
+        or aof_manifest is None
+        or not archived_files
+    ):
+        raise VerificationError("CensorWatch Redis archive inventory is incomplete")
+    _validate_redis_aof_manifest(aof_manifest, archived_files=archived_files)
+    return tuple(members), total_bytes
+
+
+def _require_postgres_dump(
+    descriptor: int,
+    metadata: os.stat_result,
+    *,
+    label: str,
+) -> None:
+    if metadata.st_size <= 5 or os.pread(descriptor, 5, 0) != b"PGDMP":
+        raise VerificationError(f"{label} is empty or lacks custom-format framing")
+
+
 def _open_all_snapshot_files(
     directory_descriptor: int,
     metadata_by_name: dict[str, os.stat_result],
@@ -836,7 +1082,7 @@ def _open_all_snapshot_files(
     descriptors: dict[str, int] = {}
     opened_metadata: dict[str, os.stat_result] = {}
     try:
-        for name in sorted(SNAPSHOT_FILES):
+        for name in sorted(metadata_by_name):
             descriptor, metadata = _open_regular_file(
                 directory_descriptor,
                 name,
@@ -868,17 +1114,27 @@ def _verify_open_snapshot(
         opened_metadata["MANIFEST.txt"],
         maximum_bytes=MAX_MANIFEST_BYTES,
     )
-    _parse_manifest(manifest_payload, snapshot_id=snapshot_id)
+    manifest = _parse_manifest(manifest_payload, snapshot_id=snapshot_id)
+    censorwatch_mode = manifest["censorwatch_mode"]
+    snapshot_files = SNAPSHOT_FILES_BY_MODE[censorwatch_mode]
+    hashed_files = HASHED_FILES_BY_MODE[censorwatch_mode]
+    if set(file_descriptors) != snapshot_files or set(opened_metadata) != snapshot_files:
+        raise VerificationError(
+            "snapshot inventory does not match the declared CensorWatch mode"
+        )
     checksum_payload = _read_open_descriptor(
         file_descriptors["SHA256SUMS"],
         "SHA256SUMS",
         opened_metadata["SHA256SUMS"],
         maximum_bytes=MAX_CHECKSUM_BYTES,
     )
-    expected_digests = _parse_checksums(checksum_payload)
+    expected_digests = _parse_checksums(
+        checksum_payload,
+        hashed_files=hashed_files,
+    )
 
     actual_digests: dict[str, str] = {}
-    for name in HASHED_FILES:
+    for name in hashed_files:
         actual = _sha256_open_descriptor(
             file_descriptors[name], name, opened_metadata[name]
         )
@@ -886,10 +1142,53 @@ def _verify_open_snapshot(
             raise VerificationError(f"snapshot file fails its checksum: {name}")
         actual_digests[name] = actual
 
-    if opened_metadata["postgres.dump"].st_size <= 0:
-        raise VerificationError("PostgreSQL dump is empty")
+    _require_postgres_dump(
+        file_descriptors["postgres.dump"],
+        opened_metadata["postgres.dump"],
+        label="PostgreSQL dump",
+    )
     if opened_metadata["postgres.list"].st_size <= 0:
         raise VerificationError("PostgreSQL listing is empty")
+
+    redis_members: tuple[str, ...] = ()
+    redis_uncompressed_bytes = 0
+    if censorwatch_mode == "included":
+        _require_postgres_dump(
+            file_descriptors["censorwatch-postgres.dump"],
+            opened_metadata["censorwatch-postgres.dump"],
+            label="CensorWatch PostgreSQL dump",
+        )
+        if opened_metadata["censorwatch-postgres.list"].st_size <= 0:
+            raise VerificationError("CensorWatch PostgreSQL listing is empty")
+        redis_listing_payload = _read_open_descriptor(
+            file_descriptors["censorwatch-redis.list"],
+            "censorwatch-redis.list",
+            opened_metadata["censorwatch-redis.list"],
+            maximum_bytes=MAX_REDIS_LIST_BYTES,
+        )
+        redis_listing = _parse_redis_listing_payload(
+            redis_listing_payload,
+            expected_digest=actual_digests["censorwatch-redis.list"],
+        )
+        redis_members, redis_uncompressed_bytes = _inspect_redis_open_descriptor(
+            file_descriptors["censorwatch-redis.tar.gz"],
+            opened_metadata["censorwatch-redis.tar.gz"],
+        )
+        redis_digest_after_inspection = _sha256_open_descriptor(
+            file_descriptors["censorwatch-redis.tar.gz"],
+            "censorwatch-redis.tar.gz",
+            opened_metadata["censorwatch-redis.tar.gz"],
+        )
+        if redis_digest_after_inspection != actual_digests[
+            "censorwatch-redis.tar.gz"
+        ]:
+            raise VerificationError(
+                "CensorWatch Redis archive changed during inspection"
+            )
+        if redis_listing != redis_members:
+            raise VerificationError(
+                "CensorWatch Redis archive does not match its listing"
+            )
 
     artifact_listing_payload = _read_open_descriptor(
         file_descriptors["artifacts.list"],
@@ -920,7 +1219,7 @@ def _verify_open_snapshot(
     if artifact_listing != archive_members:
         raise VerificationError("artifact archive does not match artifacts.list")
 
-    for name in sorted(SNAPSHOT_FILES):
+    for name in sorted(snapshot_files):
         _validate_file_unchanged(
             directory_descriptor,
             name,
@@ -932,22 +1231,38 @@ def _verify_open_snapshot(
         directory_metadata
     ):
         raise VerificationError("snapshot directory changed during verification")
-    if set(os.listdir(directory_descriptor)) != SNAPSHOT_FILES:
+    if set(os.listdir(directory_descriptor)) != snapshot_files:
         raise VerificationError("snapshot file inventory changed during verification")
 
     return {
+        "censorwatch": {
+            "mode": censorwatch_mode,
+            "postgres_dump_bytes": (
+                opened_metadata["censorwatch-postgres.dump"].st_size
+                if censorwatch_mode == "included"
+                else 0
+            ),
+            "redis_archive_bytes": (
+                opened_metadata["censorwatch-redis.tar.gz"].st_size
+                if censorwatch_mode == "included"
+                else 0
+            ),
+            "redis_members": len(redis_members),
+            "redis_uncompressed_bytes": redis_uncompressed_bytes,
+        },
         "counts": {
             "artifact_directories": artifact_directories,
             "artifact_files": artifact_files,
             "artifact_members": len(archive_members),
             "checksum_entries": len(actual_digests),
-            "snapshot_files": len(SNAPSHOT_FILES),
+            "snapshot_files": len(snapshot_files),
             "witness_history_records": witness_history_records,
         },
         "digests": dict(sorted(actual_digests.items())),
         "schema": SCHEMA,
         "snapshot": snapshot_id,
         "status": "verified",
+        "format_version": 5,
     }
 
 
@@ -1046,7 +1361,7 @@ def _write_outer_archive(
             root.size = 0
             archive.addfile(root)
 
-            for name in sorted(SNAPSHOT_FILES):
+            for name in sorted(file_descriptors):
                 metadata = opened_metadata[name]
                 member = tarfile.TarInfo(f"{snapshot_id}/{name}")
                 member.type = tarfile.REGTYPE
@@ -1073,7 +1388,8 @@ def _write_outer_archive(
     finally:
         destination.close()
 
-    for name in sorted(SNAPSHOT_FILES):
+    snapshot_files = frozenset(file_descriptors)
+    for name in sorted(snapshot_files):
         _validate_file_unchanged(
             directory_descriptor,
             name,
@@ -1084,7 +1400,7 @@ def _write_outer_archive(
         directory_metadata
     ):
         raise VerificationError("snapshot directory changed while it was packed")
-    if set(os.listdir(directory_descriptor)) != SNAPSHOT_FILES:
+    if set(os.listdir(directory_descriptor)) != snapshot_files:
         raise VerificationError("snapshot inventory changed while it was packed")
 
 
@@ -1094,12 +1410,9 @@ def _inspect_outer_descriptor(
     *,
     snapshot_id: str,
 ) -> tuple[dict[str, str], int]:
-    expected_names = {
-        snapshot_id,
-        *(f"{snapshot_id}/{name}" for name in SNAPSHOT_FILES),
-    }
     seen: set[str] = set()
     payload_digests: dict[str, str] = {}
+    manifest_payload: bytes | None = None
     owner: tuple[int, int] | None = None
     end_offset = 0
     os.lseek(descriptor, 0, os.SEEK_SET)
@@ -1112,15 +1425,22 @@ def _inspect_outer_descriptor(
                         "outer archive contains global PAX metadata"
                     )
                 for member in archive:
-                    if len(seen) >= len(expected_names):
+                    if len(seen) > len(ALL_SNAPSHOT_FILES):
                         raise VerificationError("outer archive inventory is not exact")
+                    safe_child = member.name.removeprefix(f"{snapshot_id}/")
                     if (
                         member.name.startswith("/")
                         or "\\" in member.name
                         or "\x00" in member.name
                         or "//" in member.name
                         or member.name in seen
-                        or member.name not in expected_names
+                        or (
+                            member.name != snapshot_id
+                            and (
+                                not member.name.startswith(f"{snapshot_id}/")
+                                or safe_child not in ALL_SNAPSHOT_FILES
+                            )
+                        )
                         or member.pax_headers
                     ):
                         raise VerificationError(
@@ -1161,22 +1481,42 @@ def _inspect_outer_descriptor(
                         raise VerificationError("outer archive member cannot be read")
                     digest = hashlib.sha256()
                     bytes_read = 0
+                    manifest_bytes = bytearray()
                     while chunk := extracted.read(READ_CHUNK_BYTES):
                         digest.update(chunk)
                         bytes_read += len(chunk)
+                        if safe_child == "MANIFEST.txt":
+                            manifest_bytes.extend(chunk)
+                            if len(manifest_bytes) > MAX_MANIFEST_BYTES:
+                                raise VerificationError(
+                                    "outer archive manifest is oversized"
+                                )
                     if bytes_read != member.size:
                         raise VerificationError("outer archive member is truncated")
-                    payload_digests[member.name.removeprefix(f"{snapshot_id}/")] = (
-                        digest.hexdigest()
-                    )
+                    payload_digests[safe_child] = digest.hexdigest()
+                    if safe_child == "MANIFEST.txt":
+                        manifest_payload = bytes(manifest_bytes)
                 end_offset = archive.offset
         except (OSError, EOFError, tarfile.TarError) as exc:
             raise VerificationError("outer archive is corrupt or unreadable") from exc
     finally:
         source.close()
 
-    if seen != expected_names or set(payload_digests) != SNAPSHOT_FILES:
+    snapshot_files = frozenset(payload_digests)
+    if (
+        manifest_payload is None
+        or snapshot_files not in SNAPSHOT_FILES_BY_MODE.values()
+        or seen != {
+            snapshot_id,
+            *(f"{snapshot_id}/{name}" for name in snapshot_files),
+        }
+    ):
         raise VerificationError("outer archive inventory is not exact")
+    manifest = _parse_manifest(manifest_payload, snapshot_id=snapshot_id)
+    if snapshot_files != SNAPSHOT_FILES_BY_MODE[manifest["censorwatch_mode"]]:
+        raise VerificationError(
+            "outer archive inventory does not match its CensorWatch mode"
+        )
     os.lseek(descriptor, end_offset, os.SEEK_SET)
     trailing_bytes = bytearray()
     while chunk := os.read(descriptor, READ_CHUNK_BYTES):
@@ -1239,7 +1579,12 @@ def inspect_outer_archive(
     return {
         "archive_bytes": opened_metadata.st_size,
         "archive_sha256": archive_sha256,
-        "counts": {"members": members, "snapshot_files": len(SNAPSHOT_FILES)},
+        "counts": {"members": members, "snapshot_files": len(payload_digests)},
+        "censorwatch_mode": (
+            "included"
+            if frozenset(payload_digests) == SNAPSHOT_FILES_BY_MODE["included"]
+            else "absent"
+        ),
         "digests": payload_digests,
         "schema": OUTER_SCHEMA,
         "snapshot": snapshot_id,
@@ -1397,7 +1742,11 @@ def pack_snapshot(
         return {
             "archive_bytes": output_metadata.st_size,
             "archive_sha256": archive_sha256,
-            "counts": {"members": members, "snapshot_files": len(SNAPSHOT_FILES)},
+            "counts": {
+                "members": members,
+                "snapshot_files": len(file_descriptors),
+            },
+            "censorwatch_mode": verification["censorwatch"]["mode"],
             "digests": payload_digests,
             "schema": PACK_SCHEMA,
             "snapshot": snapshot_id,

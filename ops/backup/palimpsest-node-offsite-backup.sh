@@ -41,6 +41,7 @@ minimum_free_mb="${PALIMPSEST_NODE_OFFSITE_MIN_FREE_MB:-512}"
 source_uid="${PALIMPSEST_NODE_OFFSITE_SOURCE_UID:-1001}"
 source_gid="${PALIMPSEST_NODE_OFFSITE_SOURCE_GID:-1001}"
 postgres_image_id_file="$script_dir/POSTGRES_IMAGE_ID"
+redis_image_id_file="$script_dir/REDIS_IMAGE_ID"
 
 for command_name in awk bash cmp curl date df dirname docker flock gpg grep mktemp \
   mv python3 readlink realpath rm rclone seq sha256sum sleep stat tar tr wc; do
@@ -96,6 +97,26 @@ revision="$(tr -d '\n' <"$revision_file")"
 postgres_image="$(tr -d '\n' <"$postgres_image_id_file")"
 [[ "$postgres_image" =~ ^sha256:[0-9a-f]{64}$ ]] \
   || die "pinned PostgreSQL image identity is malformed"
+[[ -f "$redis_image_id_file" && ! -L "$redis_image_id_file" \
+    && "$(stat -c '%u:%g:%a:%h' "$redis_image_id_file")" == "0:0:444:1" ]] \
+  || die "pinned Redis image receipt is missing or unsafe"
+redis_image="$(tr -d '\n' <"$redis_image_id_file")"
+[[ "$redis_image" =~ ^sha256:[0-9a-f]{64}$ ]] \
+  || die "pinned Redis image identity is malformed"
+postgres_runtime_version="$(
+  docker run --rm --pull never --network none --read-only --log-driver none \
+    --security-opt no-new-privileges:true --cap-drop ALL \
+    --entrypoint postgres "$postgres_image" --version
+)"
+[[ "$postgres_runtime_version" == "postgres (PostgreSQL) 16."* ]] \
+  || die "pinned PostgreSQL verifier is not major version 16"
+redis_runtime_version="$(
+  docker run --rm --pull never --network none --read-only --log-driver none \
+    --security-opt no-new-privileges:true --cap-drop ALL \
+    --entrypoint redis-server "$redis_image" --version
+)"
+[[ "$redis_runtime_version" == "Redis server v=7."* ]] \
+  || die "pinned Redis verifier is not major version 7"
 [[ -f "$passphrase_file" && ! -L "$passphrase_file" ]] \
   || die "backup passphrase is missing or unsafe"
 [[ "$(stat -c '%u:%g:%a:%h' "$passphrase_file")" == "0:0:400:1" ]] \
@@ -141,6 +162,7 @@ completed=0
 snapshot_id=""
 archive_sha=""
 archive_bytes=0
+censorwatch_mode=""
 
 mapfile -t storage_metadata < <(
   python3 - "$rclone_config" "$rclone_remote" "$curl_config" <<'PY'
@@ -206,14 +228,14 @@ PY
   temporary="$(mktemp "${status_path}.tmp.XXXXXX")"
   python3 - "$temporary" "$state" "$attempt_id" "$snapshot_id" "$bucket" \
     "$prefix" "$archive_sha" "$archive_bytes" "$retention_days" \
-    "$failure_class" "$previous_success" <<'PY'
+    "$failure_class" "$previous_success" "$censorwatch_mode" <<'PY'
 import json
 import os
 import sys
 from datetime import datetime, timezone
 
 (path, state, attempt, snapshot, bucket, prefix, digest, size, days,
- failure_class, previous_success) = sys.argv[1:]
+ failure_class, previous_success, censorwatch_mode) = sys.argv[1:]
 now = datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
 document = {
     "schema_version": "palimpsest-node-offsite-status/v1",
@@ -227,6 +249,7 @@ document = {
     "archive_sha256": digest or None,
     "archive_bytes": int(size),
     "object_lock": {"mode": "COMPLIANCE", "days": int(days)},
+    "censorwatch_mode": censorwatch_mode or None,
     "failure_class": failure_class or None,
     "pending": {"attempt_id": attempt, "snapshot_id": snapshot or None}
     if state == "running" else None,
@@ -238,6 +261,7 @@ if state == "success":
         "snapshot_id": snapshot,
         "archive_sha256": digest,
         "archive_bytes": int(size),
+        "censorwatch_mode": censorwatch_mode,
         "verified_at": now,
     }
 with open(path, "w", encoding="utf-8") as handle:
@@ -257,6 +281,10 @@ cleanup() {
   if [[ -n "${restore_container:-}" \
         && "${restore_container_started:-0}" == 1 ]]; then
     docker rm -f "$restore_container" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "${redis_restore_container:-}" \
+        && "${redis_restore_container_started:-0}" == 1 ]]; then
+    docker rm -f "$redis_restore_container" >/dev/null 2>&1 || true
   fi
   if (( result != 0 && completed == 0 )); then
     write_status failed operational_failure 2>/dev/null || true
@@ -288,6 +316,24 @@ log "validating local snapshot $snapshot_id under the producer lease"
 python3 "$snapshot_tool" verify "$snapshot_path" \
   --snapshot-id "$snapshot_id" --expected-uid "$source_uid" \
   --expected-gid "$source_gid" >"$run_root/local-verification.json"
+censorwatch_mode="$(
+  python3 - "$run_root/local-verification.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    receipt = json.load(handle)
+mode = receipt.get("censorwatch", {}).get("mode")
+if (
+    receipt.get("schema") != "palimpsest-node-backup-verification.v1"
+    or receipt.get("status") != "verified"
+    or receipt.get("format_version") != 5
+    or mode not in {"absent", "included"}
+):
+    raise SystemExit("local backup verification receipt is not v5")
+print(mode)
+PY
+)" || die "local backup does not carry a valid v5 CensorWatch mode"
 
 log "encrypting the complete recovery point before network transfer"
 python3 "$snapshot_tool" pack "$snapshot_path" --snapshot-id "$snapshot_id" \
@@ -372,11 +418,43 @@ tar --extract --no-same-owner --no-same-permissions --directory "$restore_root" 
 python3 "$snapshot_tool" verify "$restore_root/$snapshot_id" \
   --snapshot-id "$snapshot_id" --scratch-restore \
   >"$run_root/restore-verification.json"
-pg_restore --list "$restore_root/$snapshot_id/postgres.dump" \
+restored_censorwatch_mode="$(
+  python3 - "$run_root/restore-verification.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    receipt = json.load(handle)
+if (
+    receipt.get("schema") != "palimpsest-node-backup-verification.v1"
+    or receipt.get("status") != "verified"
+    or receipt.get("format_version") != 5
+):
+    raise SystemExit("remote restore verification receipt is not v5")
+print(receipt.get("censorwatch", {}).get("mode", ""))
+PY
+)" || die "downloaded backup did not reproduce its v5 verification receipt"
+[[ "$restored_censorwatch_mode" == "$censorwatch_mode" ]] || \
+  die "downloaded backup changed its CensorWatch mode"
+
+docker run --rm --pull never --network none --read-only --log-driver none \
+  --security-opt no-new-privileges:true --cap-drop ALL \
+  --entrypoint pg_restore "$postgres_image" --list \
+  <"$restore_root/$snapshot_id/postgres.dump" \
   >"$run_root/restored-postgres.list"
 cmp -s "$run_root/restored-postgres.list" \
   "$restore_root/$snapshot_id/postgres.list" \
   || die "restored PostgreSQL archive listing differs"
+if [[ "$censorwatch_mode" == included ]]; then
+  docker run --rm --pull never --network none --read-only --log-driver none \
+    --security-opt no-new-privileges:true --cap-drop ALL \
+    --entrypoint pg_restore "$postgres_image" --list \
+    <"$restore_root/$snapshot_id/censorwatch-postgres.dump" \
+    >"$run_root/restored-censorwatch-postgres.list"
+  cmp -s "$run_root/restored-censorwatch-postgres.list" \
+    "$restore_root/$snapshot_id/censorwatch-postgres.list" \
+    || die "restored CensorWatch PostgreSQL archive listing differs"
+fi
 
 restore_container="palimpsest-node-restore-${attempt_id,,}-$$"
 restore_container="${restore_container//:/-}"
@@ -413,19 +491,79 @@ for relation in articles collection_logs observation_artifacts ddti_index_snapsh
     --command "select to_regclass('public.${relation}') is not null;")" == t ]] \
     || die "isolated restore is missing a required core relation"
 done
+if [[ "$censorwatch_mode" == included ]]; then
+  docker exec "$restore_container" createdb -U postgres censorwatch_restore
+  docker exec -i "$restore_container" pg_restore --exit-on-error --no-owner \
+    --no-privileges --username postgres --dbname censorwatch_restore \
+    <"$restore_root/$snapshot_id/censorwatch-postgres.dump"
+  for relation in censored_posts post_deletions deletion_velocity_snapshots; do
+    [[ "$(docker exec "$restore_container" psql --no-psqlrc --tuples-only \
+      --no-align --username postgres --dbname censorwatch_restore \
+      --command "select to_regclass('public.${relation}') is not null;")" == t ]] \
+      || die "isolated restore is missing a required CensorWatch relation"
+  done
+fi
 cleanup_restore_container
 restore_container_started=0
 
+redis_restore_container="palimpsest-redis-restore-${attempt_id,,}-$$"
+redis_restore_container="${redis_restore_container//:/-}"
+redis_restore_container_started=0
+cleanup_redis_restore_container() {
+  if (( redis_restore_container_started == 1 )); then
+    docker rm -f "$redis_restore_container" >/dev/null 2>&1 || true
+  fi
+}
+if [[ "$censorwatch_mode" == included ]]; then
+  log "materializing CensorWatch Redis in an isolated, networkless verifier"
+  docker run --detach --pull never --network none --read-only --log-driver none \
+    --name "$redis_restore_container" \
+    --security-opt no-new-privileges:true --cap-drop ALL \
+    --pids-limit 96 --memory 512m --memory-swap 512m --cpus 0.5 \
+    --tmpfs /data:rw,noexec,nosuid,size=512m \
+    --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+    --mount "type=bind,src=$restore_root/$snapshot_id/censorwatch-redis.tar.gz,dst=/snapshot/censorwatch-redis.tar.gz,readonly" \
+    --entrypoint /bin/sh "$redis_image" -eu -c \
+    'cd /data; tar -xzf /snapshot/censorwatch-redis.tar.gz; exec redis-server --dir /data/redis --appendonly yes --protected-mode yes --bind 127.0.0.1 --port 6379 --save ""' \
+    >/dev/null
+  redis_restore_container_started=1
+  for _ in $(seq 1 60); do
+    docker exec "$redis_restore_container" redis-cli -h 127.0.0.1 ping \
+      2>/dev/null | grep -qx PONG && break
+    sleep 1
+  done
+  docker exec "$redis_restore_container" redis-cli -h 127.0.0.1 ping \
+    | grep -qx PONG \
+    || die "isolated CensorWatch Redis verifier did not become ready"
+  docker exec "$redis_restore_container" redis-cli -h 127.0.0.1 \
+    info persistence \
+    | tr -d '\r' >"$run_root/restored-censorwatch-redis-persistence.txt"
+  grep -qx 'loading:0' "$run_root/restored-censorwatch-redis-persistence.txt" \
+    || die "isolated CensorWatch Redis restore is still loading"
+  grep -qx 'aof_enabled:1' "$run_root/restored-censorwatch-redis-persistence.txt" \
+    || die "isolated CensorWatch Redis restore did not load AOF state"
+  for database in 0 1 2; do
+    restored_keys="$(
+      docker exec "$redis_restore_container" redis-cli -h 127.0.0.1 \
+        -n "$database" dbsize
+    )"
+    [[ "$restored_keys" =~ ^[0-9]+$ ]] || \
+      die "isolated CensorWatch Redis DB $database is unreadable"
+  done
+  cleanup_redis_restore_container
+  redis_restore_container_started=0
+fi
+
 python3 - "$receipt" "$snapshot_id" "$revision" "$bucket" "$prefix" \
   "$archive_sha" "$archive_bytes" "$retention_days" "$attempt_id" \
-  "$postgres_image" <<'PY'
+  "$postgres_image" "$redis_image" "$censorwatch_mode" <<'PY'
 import json
 import os
 import sys
 from datetime import datetime, timezone
 
 (path, snapshot, revision, bucket, prefix, digest, size, days, attempt,
- postgres_image) = sys.argv[1:]
+ postgres_image, redis_image, censorwatch_mode) = sys.argv[1:]
 receipt = {
     "schema_version": "palimpsest-node-offsite-receipt/v1",
     "status": "isolated_restore_verified",
@@ -438,8 +576,10 @@ receipt = {
     "prefix": prefix,
     "archive": {"bytes": int(size), "sha256": digest},
     "encryption": "gpg-symmetric-aes256-salted-s2k",
-    "verification": "remote-download-sha256-decrypt-safe-extract-node-v3-and-isolated-postgresql-restore",
+    "verification": "remote-download-sha256-decrypt-safe-extract-node-v5-and-networkless-postgresql16-redis7-restore",
     "postgres_verifier_image": postgres_image,
+    "redis_verifier_image": redis_image,
+    "censorwatch_mode": censorwatch_mode,
     "object_lock": {"mode": "COMPLIANCE", "days": int(days)},
 }
 with open(path, "x", encoding="utf-8") as handle:

@@ -8,8 +8,10 @@
 #
 # Optional pieces are behind compose profiles so the base `up` stays lean:
 #   --profile warehouse adds the bounded OONI bulk worker
-#   --profile velocity  adds the CensorWatch worker + quarantined renderer
+#   --profile velocity  adds the isolated non-browser CensorWatch data/control planes
+#   --profile velocity-browser adds the separately gated renderer
 #   --profile api       adds the FastAPI service on a localhost-only port
+#   --profile velocity-api adds the isolated CensorWatch read-only API
 #
 # Usage:
 #   ops/docker/prod-compose up -d --build
@@ -17,6 +19,7 @@
 #   ops/docker/prod-compose --profile warehouse up -d --build
 #   ops/docker/prod-compose --profile velocity up -d --build
 #   ops/docker/prod-compose --profile api up -d --build
+#   ops/docker/prod-compose --profile velocity --profile velocity-api up -d --build
 #
 # The wrapper supplies ops/docker/.env to both Compose interpolation and the
 # container env_file. Running the long `docker compose -f ...` form from the
@@ -97,6 +100,54 @@ x-app: &app
     redis:    {condition: service_healthy}
 
 services:
+  preflight-censorwatch:
+    <<: *app
+    profiles: ["velocity"]
+    restart: "no"
+    env_file: []
+    command: ["python", "-m", "censorwatch.preflight"]
+    environment:
+      CENSORWATCH_POSTGRES_ADMIN_PASSWORD_FILE: /run/secrets/censorwatch_postgres_admin_password
+      CENSORWATCH_DATABASE_ADMIN_URL_FILE: /run/secrets/censorwatch_database_admin_url
+      CENSORWATCH_DATABASE_WRITER_URL_FILE: /run/secrets/censorwatch_database_writer_url
+      CENSORWATCH_DATABASE_READER_URL_FILE: /run/secrets/censorwatch_database_reader_url
+      CENSORWATCH_REDIS_DATA_ACL_FILE: /run/secrets/censorwatch_redis_data_acl
+      CENSORWATCH_REDIS_CONTROL_ACL_FILE: /run/secrets/censorwatch_redis_control_acl
+      CENSORWATCH_REDIS_DATA_HEALTH_PASSWORD_FILE: /run/secrets/censorwatch_redis_data_health_password
+      CENSORWATCH_REDIS_CONTROL_HEALTH_PASSWORD_FILE: /run/secrets/censorwatch_redis_control_health_password
+      CENSORWATCH_CELERY_DATA_PRODUCER_URL_FILE: /run/secrets/censorwatch_celery_data_producer_url
+      CENSORWATCH_CELERY_CONTROL_PRODUCER_URL_FILE: /run/secrets/censorwatch_celery_control_producer_url
+      CENSORWATCH_CELERY_DATA_URL_FILE: /run/secrets/censorwatch_celery_data_url
+      CENSORWATCH_CELERY_CONTROL_URL_FILE: /run/secrets/censorwatch_celery_control_url
+      CENSORWATCH_REDIS_WRITER_URL_FILE: /run/secrets/censorwatch_redis_writer_url
+      CENSORWATCH_REDIS_CONTROL_URL_FILE: /run/secrets/censorwatch_redis_control_url
+      CENSORWATCH_REDIS_DATA_READER_URL_FILE: /run/secrets/censorwatch_redis_data_reader_url
+      CENSORWATCH_REDIS_CONTROL_READER_URL_FILE: /run/secrets/censorwatch_redis_control_reader_url
+    secrets:
+      - censorwatch_postgres_admin_password
+      - censorwatch_database_admin_url
+      - censorwatch_database_writer_url
+      - censorwatch_database_reader_url
+      - censorwatch_redis_data_acl
+      - censorwatch_redis_control_acl
+      - censorwatch_redis_data_health_password
+      - censorwatch_redis_control_health_password
+      - censorwatch_celery_data_producer_url
+      - censorwatch_celery_control_producer_url
+      - censorwatch_celery_data_url
+      - censorwatch_celery_control_url
+      - censorwatch_redis_writer_url
+      - censorwatch_redis_control_url
+      - censorwatch_redis_data_reader_url
+      - censorwatch_redis_control_reader_url
+    volumes: []
+    network_mode: none
+    depends_on: {}
+    mem_limit: 192m
+    memswap_limit: 192m
+    pids_limit: 48
+    cpus: 0.2
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -153,6 +204,132 @@ services:
       retries: 5
       start_period: 10s
 
+  # CensorWatch never shares either primary state service. These two services
+  # are visible only on dedicated internal networks and start only with the
+  # velocity profile. Operator-supplied Docker secrets are mandatory.
+  postgres-censorwatch:
+    profiles: ["velocity"]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      POSTGRES_USER: censorwatch_admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/censorwatch_postgres_admin_password
+      POSTGRES_DB: censorwatch
+    secrets: [censorwatch_postgres_admin_password]
+    group_add: ["10001"]
+    volumes:
+      - censorwatch-pgdata:/var/lib/postgresql/data
+    networks: [censorwatch-db-admin, censorwatch-db-writer, censorwatch-db-reader]
+    mem_limit: 768m
+    memswap_limit: 768m
+    pids_limit: 192
+    cpus: 0.75
+    logging: *bounded-logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U censorwatch_admin -d censorwatch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      preflight-censorwatch: {condition: service_completed_successfully}
+
+  redis-censorwatch-data:
+    profiles: ["velocity"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command:
+      - redis-server
+      - --aclfile
+      - /run/secrets/censorwatch_redis_data_acl
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --aof-use-rdb-preamble
+      - "yes"
+      - --maxmemory
+      - ${CENSORWATCH_REDIS_DATA_MAXMEMORY:-192mb}
+      - --maxmemory-policy
+      - noeviction
+    secrets:
+      - censorwatch_redis_data_acl
+      - censorwatch_redis_data_health_password
+    group_add: ["10001"]
+    volumes:
+      - censorwatch-redisdata:/data
+    networks:
+      - censorwatch-data-broker
+      - censorwatch-data-cache-writer
+      - censorwatch-data-cache-reader
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 96
+    cpus: 0.35
+    logging: *bounded-logging
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          REDISCLI_AUTH="$$(cat /run/secrets/censorwatch_redis_data_health_password)"
+          redis-cli --user censorwatch_data_health ping | grep -qx PONG
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      preflight-censorwatch: {condition: service_completed_successfully}
+
+  # Heartbeat/control state is a separate, deliberately ephemeral failure
+  # domain. Restarting it cannot replay an old heartbeat as current evidence.
+  redis-censorwatch-control:
+    profiles: ["velocity"]
+    image: redis:7-alpine
+    restart: unless-stopped
+    stop_grace_period: 15s
+    command:
+      - redis-server
+      - --aclfile
+      - /run/secrets/censorwatch_redis_control_acl
+      - --appendonly
+      - "no"
+      - --save
+      - ""
+      - --maxmemory
+      - ${CENSORWATCH_REDIS_CONTROL_MAXMEMORY:-32mb}
+      - --maxmemory-policy
+      - noeviction
+    secrets:
+      - censorwatch_redis_control_acl
+      - censorwatch_redis_control_health_password
+    group_add: ["10001"]
+    volumes: []
+    tmpfs:
+      - /data:size=32m,mode=0700
+    networks:
+      - censorwatch-control-broker
+      - censorwatch-control-cache-writer
+      - censorwatch-control-cache-reader
+    mem_limit: 64m
+    memswap_limit: 64m
+    pids_limit: 64
+    cpus: 0.2
+    logging: *bounded-logging
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          REDISCLI_AUTH="$$(cat /run/secrets/censorwatch_redis_control_health_password)"
+          redis-cli --user censorwatch_control_health ping | grep -qx PONG
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      preflight-censorwatch: {condition: service_completed_successfully}
+
   # Additive schema gate. This repository does not have Alembic yet, so run
   # SQLAlchemy's idempotent create-all exactly once and require a clean exit
   # before any process can write collection results.
@@ -163,6 +340,29 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis:    {condition: service_healthy}
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 64
+    cpus: 0.25
+
+  migrate-censorwatch:
+    <<: *app
+    profiles: ["velocity"]
+    restart: "no"
+    env_file: []
+    command: ["python", "-m", "censorwatch.provision"]
+    environment:
+      CENSORWATCH_DATABASE_ADMIN_URL_FILE: /run/secrets/censorwatch_database_admin_url
+      CENSORWATCH_DATABASE_WRITER_URL_FILE: /run/secrets/censorwatch_database_writer_url
+      CENSORWATCH_DATABASE_READER_URL_FILE: /run/secrets/censorwatch_database_reader_url
+    secrets:
+      - censorwatch_database_admin_url
+      - censorwatch_database_writer_url
+      - censorwatch_database_reader_url
+    volumes: []
+    networks: [censorwatch-db-admin]
+    depends_on:
+      postgres-censorwatch: {condition: service_healthy}
     mem_limit: 256m
     memswap_limit: 256m
     pids_limit: 64
@@ -260,7 +460,10 @@ services:
   # database-bearing worker keeps the lean application image and never starts
   # Chromium locally.
   censorwatch-render-gateway:
-    profiles: ["velocity"]
+    # No currently admitted source needs a browser. Keep Chromium out of the
+    # Eastmoney activation profile; a future reviewed browser source must be
+    # activated through this separate profile and release gate.
+    profiles: ["velocity-browser"]
     build:
       context: ../..
       dockerfile: ops/docker/Dockerfile.render-gateway
@@ -269,7 +472,6 @@ services:
     image: palimpsest/censorwatch-render-gateway:local
     restart: unless-stopped
     environment:
-      CENSORWATCH_GATEWAY_PROXY_URL: ${CENSORWATCH_PROXY_URL:-}
       CENSORWATCH_GATEWAY_MAX_HTML_BYTES: ${CENSORWATCH_MAX_PAGE_BYTES:-8388608}
       CENSORWATCH_GATEWAY_TIMEOUT_S: ${CENSORWATCH_TIMEOUT_S:-30}
       CENSORWATCH_GATEWAY_SETTLE_MS: ${CENSORWATCH_GATEWAY_SETTLE_MS:-1500}
@@ -294,6 +496,37 @@ services:
       retries: 3
       start_period: 45s
 
+  censorwatch-egress-proxy:
+    <<: *app
+    profiles: ["velocity"]
+    # This sidecar has the only internet-capable interface in the Eastmoney
+    # lane. It has no env file, credentials, state mounts, or access to either
+    # CensorWatch database network.
+    env_file: []
+    environment: {}
+    command: ["python", "-m", "censorwatch.egress_proxy"]
+    volumes: []
+    depends_on: {}
+    networks: [censorwatch-egress-handoff, censorwatch-egress]
+    mem_limit: 192m
+    memswap_limit: 192m
+    pids_limit: 64
+    cpus: 0.25
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import socket;
+          s=socket.create_connection(('127.0.0.1',3128),2);
+          s.sendall(b'GET /healthz HTTP/1.1\r\nHost: localhost\r\n\r\n');
+          assert b' 200 ' in s.recv(128)
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   worker-velocity:
     <<: *app
     profiles: ["velocity"]
@@ -302,16 +535,18 @@ services:
     # allowlist and nothing for Radar, OpenRouter, webhooks, or unrelated jobs.
     env_file: []
     depends_on:
-      <<: *runtime-depends
-      censorwatch-render-gateway: {condition: service_healthy}
-    command: ["celery", "-A", "core.scheduler", "worker", "-c", "1", "-Q", "censorwatch", "-n", "velocity@%h"]
+      postgres-censorwatch: {condition: service_healthy}
+      redis-censorwatch-data: {condition: service_healthy}
+      migrate-censorwatch: {condition: service_completed_successfully}
+      censorwatch-egress-proxy: {condition: service_healthy}
+    command: ["celery", "-A", "censorwatch.celery_app", "worker", "-c", "1", "-Q", "censorwatch", "-n", "velocity@%h", "--without-gossip", "--without-mingle", "--without-heartbeat"]
     environment:
-      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in ops/docker/.env}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
-      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
-      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-redis://redis:6379/1}
+      CENSORWATCH_DATABASE_WRITER_URL_FILE: /run/secrets/censorwatch_database_writer_url
+      CENSORWATCH_CELERY_ROLE: data
+      CENSORWATCH_CELERY_DATA_URL_FILE: /run/secrets/censorwatch_celery_data_url
+      CENSORWATCH_REDIS_WRITER_URL_FILE: /run/secrets/censorwatch_redis_writer_url
       CENSORWATCH_ENABLED: ${CENSORWATCH_ENABLED:-0}
-      CENSORWATCH_PROXY_URL: ${CENSORWATCH_PROXY_URL:-}
+      CENSORWATCH_PROXY_URL: http://censorwatch-egress-proxy:3128
       CENSORWATCH_CONFIRMATIONS: ${CENSORWATCH_CONFIRMATIONS:-3}
       CENSORWATCH_MIN_DELAY_S: ${CENSORWATCH_MIN_DELAY_S:-2}
       CENSORWATCH_MAX_DELAY_S: ${CENSORWATCH_MAX_DELAY_S:-6}
@@ -324,27 +559,149 @@ services:
       CENSORWATCH_MAX_CACHE_BYTES: ${CENSORWATCH_MAX_CACHE_BYTES:-33554432}
       CENSORWATCH_MAX_REDIRECTS: ${CENSORWATCH_MAX_REDIRECTS:-5}
       CENSORWATCH_MIN_ARCHIVE_FREE_BYTES: ${CENSORWATCH_MIN_ARCHIVE_FREE_BYTES:-1073741824}
+      CENSORWATCH_MAX_RAW_SNAPSHOT_BYTES: ${CENSORWATCH_MAX_RAW_SNAPSHOT_BYTES:-16777216}
+      CENSORWATCH_MAX_RAW_TOTAL_BYTES: ${CENSORWATCH_MAX_RAW_TOTAL_BYTES:-2147483648}
+      CENSORWATCH_RAW_RETENTION_DAYS: ${CENSORWATCH_RAW_RETENTION_DAYS:-30}
+      CENSORWATCH_MAX_ARCHIVE_TOTAL_BYTES: ${CENSORWATCH_MAX_ARCHIVE_TOTAL_BYTES:-21474836480}
       CENSORWATCH_VELOCITY_WINDOW_MIN: ${CENSORWATCH_VELOCITY_WINDOW_MIN:-60}
       CENSORWATCH_BASELINE_WINDOWS: ${CENSORWATCH_BASELINE_WINDOWS:-24}
       CENSORWATCH_SPIKE_Z: ${CENSORWATCH_SPIKE_Z:-3.0}
       CENSORWATCH_ARCHIVE_DIR: /app/data/censorwatch/archive
       RAW_DATA_DIR: /app/data/censorwatch/raw
-      CENSORWATCH_RENDER_GATEWAY_URL: http://censorwatch-render-gateway:8080
+    secrets:
+      - censorwatch_database_writer_url
+      - censorwatch_celery_data_url
+      - censorwatch_redis_writer_url
     # The hostile-content lane can write only its own archive/raw subtree. It
     # cannot alter public readings or any other collector's durable evidence.
     volumes:
       - ${PALIMPSEST_CENSORWATCH_DATA_HOST_PATH:-../../data/censorwatch}:/app/data/censorwatch:rw
-    networks: [default, render-handoff]
+    networks:
+      - censorwatch-db-writer
+      - censorwatch-data-broker
+      - censorwatch-data-cache-writer
+      - censorwatch-egress-handoff
     mem_limit: 1024m
     memswap_limit: 1024m
     pids_limit: 128
     cpus: 1.0
     healthcheck:
-      test: ["CMD-SHELL", "celery -A core.scheduler inspect ping -d \"velocity@$$HOSTNAME\" --timeout 5 | grep -q pong"]
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import redis;
+          from censorwatch.runtime_secrets import redis_url;
+          c=redis.from_url(redis_url('broker-data'),socket_connect_timeout=2,socket_timeout=2);
+          assert c.ping();
+          c.close()
       interval: 60s
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # The control worker is deliberately separate from the concurrency-one data
+  # worker. It has no database, archive, proxy, or internet authority: its sole
+  # job is to execute the heartbeat that makes readiness meaningful while a
+  # long collection/recheck task occupies the hostile-data lane.
+  worker-velocity-control:
+    <<: *app
+    profiles: ["velocity"]
+    env_file: []
+    depends_on:
+      redis-censorwatch-control: {condition: service_healthy}
+      migrate-censorwatch: {condition: service_completed_successfully}
+    command: ["celery", "-A", "censorwatch.celery_app", "worker", "-c", "1", "-Q", "censorwatch-control", "-n", "velocity-control@%h", "--without-gossip", "--without-mingle", "--without-heartbeat"]
+    environment:
+      CENSORWATCH_CELERY_ROLE: control
+      CENSORWATCH_CELERY_CONTROL_URL_FILE: /run/secrets/censorwatch_celery_control_url
+      CENSORWATCH_REDIS_CONTROL_URL_FILE: /run/secrets/censorwatch_redis_control_url
+      CENSORWATCH_ENABLED: ${CENSORWATCH_ENABLED:-0}
+    secrets:
+      - censorwatch_celery_control_url
+      - censorwatch_redis_control_url
+    volumes: []
+    networks: [censorwatch-control-broker, censorwatch-control-cache-writer]
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 96
+    cpus: 0.25
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import redis;
+          from censorwatch.runtime_secrets import redis_url;
+          c=redis.from_url(redis_url('broker-control'),socket_connect_timeout=2,socket_timeout=2);
+          assert c.ping();
+          c.close()
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  beat-velocity-data:
+    <<: *app
+    profiles: ["velocity"]
+    env_file: []
+    depends_on:
+      redis-censorwatch-data: {condition: service_healthy}
+      migrate-censorwatch: {condition: service_completed_successfully}
+      worker-velocity: {condition: service_healthy}
+    command:
+      - celery
+      - -A
+      - censorwatch.celery_app
+      - beat
+      - --pidfile=
+      - -s
+      - /tmp/censorwatch-data-beat-schedule
+    environment:
+      CENSORWATCH_CELERY_ROLE: producer-data
+      CENSORWATCH_BEAT_PLANE: data
+      CENSORWATCH_CELERY_DATA_PRODUCER_URL_FILE: /run/secrets/censorwatch_celery_data_producer_url
+      CENSORWATCH_ENABLED: ${CENSORWATCH_ENABLED:-0}
+    secrets:
+      - censorwatch_celery_data_producer_url
+    volumes: []
+    networks: [censorwatch-data-broker]
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 96
+    cpus: 0.25
+
+  beat-velocity-control:
+    <<: *app
+    profiles: ["velocity"]
+    env_file: []
+    depends_on:
+      redis-censorwatch-control: {condition: service_healthy}
+      migrate-censorwatch: {condition: service_completed_successfully}
+      worker-velocity-control: {condition: service_healthy}
+    command:
+      - celery
+      - -A
+      - censorwatch.celery_app
+      - beat
+      - --pidfile=
+      - -s
+      - /tmp/censorwatch-control-beat-schedule
+    environment:
+      CENSORWATCH_CELERY_ROLE: producer-control
+      CENSORWATCH_BEAT_PLANE: control
+      CENSORWATCH_CELERY_CONTROL_PRODUCER_URL_FILE: /run/secrets/censorwatch_celery_control_producer_url
+      CENSORWATCH_ENABLED: ${CENSORWATCH_ENABLED:-0}
+    secrets:
+      - censorwatch_celery_control_producer_url
+    volumes: []
+    networks: [censorwatch-control-broker]
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 96
+    cpus: 0.25
 
   # --- optional: FastAPI service ------------------------------------------
   # Only enable if you decide to serve the API from this box rather than keeping
@@ -358,6 +715,9 @@ services:
       - ${PALIMPSEST_READINGS_HOST_PATH:-../../readings}:/app/readings:ro
       - ${PALIMPSEST_DATA_HOST_PATH:-../../data}:/app/data:ro
       - ${PALIMPSEST_OSINT_AUTHORITY_HOST_PATH:-/var/lib/palimpsest-public-osint-sync/authoritative}:/app/osint-authority:ro
+    environment:
+      <<: *app-environment
+    networks: [default]
     mem_limit: 512m
     memswap_limit: 512m
     pids_limit: 128
@@ -371,17 +731,118 @@ services:
       retries: 3
       start_period: 20s
 
+  # CensorWatch presentation is a separate process and authority domain. It
+  # does not inherit the primary env file, mounts, default network, database,
+  # or cache. Use both velocity profiles explicitly so its dependencies exist.
+  api-censorwatch:
+    <<: *app
+    profiles: ["velocity-api"]
+    env_file: []
+    depends_on:
+      postgres-censorwatch: {condition: service_healthy}
+      redis-censorwatch-data: {condition: service_healthy}
+      redis-censorwatch-control: {condition: service_healthy}
+      migrate-censorwatch: {condition: service_completed_successfully}
+    command: ["uvicorn", "censorwatch.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      CENSORWATCH_DATABASE_READER_URL_FILE: /run/secrets/censorwatch_database_reader_url
+      CENSORWATCH_REDIS_DATA_READER_URL_FILE: /run/secrets/censorwatch_redis_data_reader_url
+      CENSORWATCH_REDIS_CONTROL_READER_URL_FILE: /run/secrets/censorwatch_redis_control_reader_url
+      CENSORWATCH_REDIS_TIMEOUT_S: ${CENSORWATCH_REDIS_TIMEOUT_S:-2}
+      CENSORWATCH_SIGNAL_FRESHNESS_S: ${CENSORWATCH_SIGNAL_FRESHNESS_S:-1800}
+      CENSORWATCH_BEAT_FRESHNESS_S: ${CENSORWATCH_BEAT_FRESHNESS_S:-180}
+      CENSORWATCH_CAPTURE_FRESHNESS_S: ${CENSORWATCH_CAPTURE_FRESHNESS_S:-1800}
+      CENSORWATCH_DETECTOR_FRESHNESS_S: ${CENSORWATCH_DETECTOR_FRESHNESS_S:-1800}
+      CENSORWATCH_API_MAX_CACHE_BYTES: ${CENSORWATCH_API_MAX_CACHE_BYTES:-262144}
+      CENSORWATCH_API_MAX_HEALTH_BYTES: ${CENSORWATCH_API_MAX_HEALTH_BYTES:-16384}
+    secrets:
+      - censorwatch_database_reader_url
+      - censorwatch_redis_data_reader_url
+      - censorwatch_redis_control_reader_url
+    volumes: []
+    networks:
+      - censorwatch-db-reader
+      - censorwatch-data-cache-reader
+      - censorwatch-control-cache-reader
+    mem_limit: 256m
+    memswap_limit: 256m
+    pids_limit: 96
+    cpus: 0.25
+    ports:
+      - "127.0.0.1:${CENSORWATCH_API_PORT:-8011}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8000/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
 volumes:
   pgdata:
   redisdata:
+  censorwatch-pgdata:
+  censorwatch-redisdata:
 
 networks:
+  censorwatch-db-admin:
+    internal: true
+  censorwatch-db-writer:
+    internal: true
+  censorwatch-db-reader:
+    internal: true
+  censorwatch-data-broker:
+    internal: true
+  censorwatch-data-cache-writer:
+    internal: true
+  censorwatch-data-cache-reader:
+    internal: true
+  censorwatch-control-broker:
+    internal: true
+  censorwatch-control-cache-writer:
+    internal: true
+  censorwatch-control-cache-reader:
+    internal: true
   render-handoff:
     internal: true
   render-egress: {}
+  censorwatch-egress-handoff:
+    internal: true
+  censorwatch-egress: {}
 
 secrets:
   # The committed default is intentionally empty. To enable Radar, point this
   # variable at a chmod-600 host file and set the separate schedule flag.
   cloudflare_radar_api_token:
     file: ${PALIMPSEST_CLOUDFLARE_TOKEN_FILE:-./cloudflare-radar-token.disabled}
+  censorwatch_postgres_admin_password:
+    file: ${CENSORWATCH_POSTGRES_ADMIN_PASSWORD_FILE:-./censorwatch-secret.disabled}
+  censorwatch_database_admin_url:
+    file: ${CENSORWATCH_DATABASE_ADMIN_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_database_writer_url:
+    file: ${CENSORWATCH_DATABASE_WRITER_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_database_reader_url:
+    file: ${CENSORWATCH_DATABASE_READER_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_celery_data_url:
+    file: ${CENSORWATCH_CELERY_DATA_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_celery_control_url:
+    file: ${CENSORWATCH_CELERY_CONTROL_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_redis_writer_url:
+    file: ${CENSORWATCH_REDIS_WRITER_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_redis_control_url:
+    file: ${CENSORWATCH_REDIS_CONTROL_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_redis_data_acl:
+    file: ${CENSORWATCH_REDIS_DATA_ACL_FILE:-./censorwatch-redis-acl.disabled}
+  censorwatch_redis_control_acl:
+    file: ${CENSORWATCH_REDIS_CONTROL_ACL_FILE:-./censorwatch-redis-acl.disabled}
+  censorwatch_redis_data_health_password:
+    file: ${CENSORWATCH_REDIS_DATA_HEALTH_PASSWORD_FILE:-./censorwatch-secret.disabled}
+  censorwatch_redis_control_health_password:
+    file: ${CENSORWATCH_REDIS_CONTROL_HEALTH_PASSWORD_FILE:-./censorwatch-secret.disabled}
+  censorwatch_celery_data_producer_url:
+    file: ${CENSORWATCH_CELERY_DATA_PRODUCER_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_celery_control_producer_url:
+    file: ${CENSORWATCH_CELERY_CONTROL_PRODUCER_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_redis_data_reader_url:
+    file: ${CENSORWATCH_REDIS_DATA_READER_URL_FILE:-./censorwatch-secret.disabled}
+  censorwatch_redis_control_reader_url:
+    file: ${CENSORWATCH_REDIS_CONTROL_READER_URL_FILE:-./censorwatch-secret.disabled}

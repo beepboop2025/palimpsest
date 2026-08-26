@@ -41,6 +41,11 @@ def test_installer_requires_a_clean_deployed_revision_and_stages_git_bytes() -> 
     assert "com.docker.compose.service=postgres" in source
     assert "postgres_image_id" in source
     assert "POSTGRES_IMAGE_ID" in source
+    assert "com.docker.compose.service=redis" in source
+    assert "redis_image_id" in source
+    assert "REDIS_IMAGE_ID" in source
+    assert "PostgreSQL image is not major version 16" in source
+    assert "Redis image is not major version 7" in source
     assert "--format '{{.Image}}'" in source
     assert "MANIFEST.sha256" in source
     assert "checkout changed while the bundle was staged" in source
@@ -55,6 +60,7 @@ def test_installer_switches_an_immutable_bundle_without_managing_secrets() -> No
     assert "0:0:755" in source
     assert "0:0:$expected_mode:1" in source
     assert "'POSTGRES_IMAGE_ID:444'" in source
+    assert "'REDIS_IMAGE_ID:444'" in source
     assert "palimpsest-node-offsite-backup.service" in source
     assert "palimpsest-node-offsite-backup.timer" in source
     assert "must be stopped before installation" in source
@@ -81,6 +87,10 @@ def test_service_uses_systemd_credentials_and_the_root_owned_bundle() -> None:
     assert "AssertPathExists=/etc/palimpsest/node-offsite-rclone.conf" in unit
     assert (
         "AssertPathExists=/usr/local/libexec/palimpsest-node-offsite/current/POSTGRES_IMAGE_ID"
+        in unit
+    )
+    assert (
+        "AssertPathExists=/usr/local/libexec/palimpsest-node-offsite/current/REDIS_IMAGE_ID"
         in unit
     )
     assert "AssertPathExists=/home/palimpsest/backups/node/.backup.lock" in unit
@@ -191,6 +201,8 @@ def test_runbook_requires_isolated_credentials_lock_and_restore_proof() -> None:
     )
     assert "RECEIPT.json" in documentation
     assert '"isolated_restore_verified"' in documentation
+    assert "PostgreSQL 16 and Redis 7" in documentation
+    assert "censorwatch_mode=included" in documentation
     assert "enable --now palimpsest-node-offsite-backup.timer" in documentation
     assert "disable --now palimpsest-node-offsite-backup.timer" in documentation
     assert "provider" in documentation and "location" in documentation

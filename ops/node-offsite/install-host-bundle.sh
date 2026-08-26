@@ -143,6 +143,31 @@ postgres_image_id="$(docker inspect --format '{{.Image}}' "$postgres_container")
   || die "production PostgreSQL image identity is malformed"
 [[ "$(docker inspect --format '{{.State.Running}}' "$postgres_container")" == true ]] \
   || die "production PostgreSQL container is not running"
+redis_container="$(
+  docker ps --filter 'label=com.docker.compose.project=palimpsest' \
+    --filter 'label=com.docker.compose.service=redis' --quiet
+)"
+[[ "$redis_container" =~ ^[0-9a-f]{12,64}$ ]] \
+  || die "cannot identify exactly one running production Redis container"
+redis_image_id="$(docker inspect --format '{{.Image}}' "$redis_container")"
+[[ "$redis_image_id" =~ ^sha256:[0-9a-f]{64}$ ]] \
+  || die "production Redis image identity is malformed"
+[[ "$(docker inspect --format '{{.State.Running}}' "$redis_container")" == true ]] \
+  || die "production Redis container is not running"
+postgres_binary_version="$(
+  docker run --rm --pull never --network none --read-only --log-driver none \
+    --security-opt no-new-privileges:true --cap-drop ALL \
+    --entrypoint postgres "$postgres_image_id" --version
+)"
+[[ "$postgres_binary_version" == "postgres (PostgreSQL) 16."* ]] \
+  || die "production PostgreSQL image is not major version 16"
+redis_binary_version="$(
+  docker run --rm --pull never --network none --read-only --log-driver none \
+    --security-opt no-new-privileges:true --cap-drop ALL \
+    --entrypoint redis-server "$redis_image_id" --version
+)"
+[[ "$redis_binary_version" == "Redis server v=7."* ]] \
+  || die "production Redis image is not major version 7"
 
 systemd-analyze verify \
   "$repo_root/ops/systemd/$service_name" \
@@ -206,9 +231,13 @@ chmod 0444 "$bundle_tmp/REVISION"
 printf '%s\n' "$postgres_image_id" >"$bundle_tmp/POSTGRES_IMAGE_ID"
 chown root:root "$bundle_tmp/POSTGRES_IMAGE_ID"
 chmod 0444 "$bundle_tmp/POSTGRES_IMAGE_ID"
+printf '%s\n' "$redis_image_id" >"$bundle_tmp/REDIS_IMAGE_ID"
+chown root:root "$bundle_tmp/REDIS_IMAGE_ID"
+chmod 0444 "$bundle_tmp/REDIS_IMAGE_ID"
 (
   cd "$bundle_tmp"
-  sha256sum README.md REVISION POSTGRES_IMAGE_ID node_backup_snapshot.py \
+  sha256sum README.md REVISION POSTGRES_IMAGE_ID REDIS_IMAGE_ID \
+    node_backup_snapshot.py \
     palimpsest-node-offsite-backup.sh verify-host-bundle.sh \
     >MANIFEST.sha256
 )
@@ -235,7 +264,7 @@ if [[ -e "$bundle_final" || -L "$bundle_final" ]]; then
     || die "existing version path is not a regular directory"
   [[ "$(stat -c '%u:%g:%a' "$bundle_final")" == "0:0:755" ]] \
     || die "existing bundle directory ownership or mode is unsafe"
-  expected_inventory=$'MANIFEST.sha256\nPOSTGRES_IMAGE_ID\nREADME.md\nREVISION\nnode_backup_snapshot.py\npalimpsest-node-offsite-backup.sh\nverify-host-bundle.sh'
+  expected_inventory=$'MANIFEST.sha256\nPOSTGRES_IMAGE_ID\nREADME.md\nREDIS_IMAGE_ID\nREVISION\nnode_backup_snapshot.py\npalimpsest-node-offsite-backup.sh\nverify-host-bundle.sh'
   actual_inventory="$(
     find "$bundle_final" -mindepth 1 -maxdepth 1 -printf '%f\n' \
       | LC_ALL=C sort
@@ -245,6 +274,7 @@ if [[ -e "$bundle_final" || -L "$bundle_final" ]]; then
   for specification in \
     'MANIFEST.sha256:444' \
     'POSTGRES_IMAGE_ID:444' \
+    'REDIS_IMAGE_ID:444' \
     'README.md:444' \
     'REVISION:444' \
     'node_backup_snapshot.py:444' \

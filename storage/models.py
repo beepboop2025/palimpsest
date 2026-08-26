@@ -7,9 +7,8 @@ This is the censorship-only schema. Core tables:
   3. collection_logs        — terminal outcome of every scheduled acquisition
   4. observation_artifacts  — immutable normalized observations retained by the node
 
-The CensorWatch velocity leg defines its own isolated tables on the same
-``Base`` (see ``censorwatch/models.py``): censored_posts, post_deletions,
-deletion_velocity_snapshots.
+The CensorWatch velocity leg defines its own metadata and tables in a dedicated
+database (see ``censorwatch/models.py``); none are registered on this ``Base``.
 """
 
 from datetime import datetime, timezone

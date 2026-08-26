@@ -1,10 +1,8 @@
 """Isolated SQLAlchemy models for censorwatch.
 
-Three tables, all on the shared ``api.database.Base`` so they live in the same
-Postgres database as the rest of the platform — but they are **never** written to
-by production code paths, and ``db.create_censorwatch_tables()`` creates only
-these three (via ``create_all(tables=[...])``), so initializing them cannot
-touch or migrate the production schema.
+Three tables on ``censorwatch.db.CensorwatchBase``. They are physically hosted
+in the dedicated CensorWatch Postgres service; the primary Palimpsest engine and
+metadata never register or migrate them.
 
   1. censored_posts             — every captured post + its deletion lifecycle
   2. post_deletions             — append-only event log of *confirmed* deletions
@@ -22,14 +20,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 
-from api.database import Base
+from censorwatch.db import CensorwatchBase
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class CensoredPost(Base):
+class CensoredPost(CensorwatchBase):
     """A captured public post and the running state of its deletion lifecycle.
 
     Idempotency key is ``(source, post_id)`` — re-capturing the same post is a
@@ -76,7 +74,7 @@ class CensoredPost(Base):
     )
 
 
-class PostDeletion(Base):
+class PostDeletion(CensorwatchBase):
     """Append-only log of *confirmed* deletions — one row per scrubbed post.
 
     The signal layer reads from here exclusively, so by construction it only ever
@@ -110,7 +108,7 @@ class PostDeletion(Base):
     )
 
 
-class DeletionVelocitySnapshot(Base):
+class DeletionVelocitySnapshot(CensorwatchBase):
     """Time-series of the deletion-velocity / scrub-cluster signal.
 
     Mirrors ``storage/models.DDTIIndexSnapshot``: scalar columns are denormalized

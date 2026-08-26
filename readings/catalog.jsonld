@@ -100,22 +100,9 @@
         "NL"
       ],
       "temporalResolution": "PT2H",
-      "dateModified": "2026-08-24T02:10:02.474356Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Inside View — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/inside-view-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "Inside View — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/inside-view-history.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -815,85 +802,46 @@
       "@type": "Dataset",
       "identifier": "data-darkness",
       "name": "Official-data darkness",
-      "description": "Tracks publication freshness across official monetary, statistical, exchange, and rail surfaces while separating unreachability from missing publication.",
+      "description": "Publication is gated because the current aggregate includes CFETS-derived freshness values whose redistribution is denied. The public endpoint exposes restriction metadata only; unavailable is not zero or calm.",
       "url": "https://palimpsest.info/readings/index.html#state",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
         "CN"
       ],
       "temporalResolution": "PT12H",
-      "dateModified": "2026-08-23T10:32:44Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Official-data darkness — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/data-darkness-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "Official-data darkness — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/data-darkness-history.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
       "identifier": "china-econ",
       "name": "China economic telemetry",
-      "description": "Historical bitemporal observations of official CFETS and related benchmarks, retaining publication and effective dates separately. Automated collection is stopped because written redistribution licensing has not been established.",
+      "description": "Historical collection metadata for official CFETS and related benchmarks. Value publication is gated because written redistribution licensing has not been established; the same-path public endpoints expose restriction metadata only.",
       "url": "https://palimpsest.info/readings/index.html#state",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
         "CN"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-23T01:47:39Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "China economic telemetry — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/china-econ-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "China economic telemetry — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/china-econ-history.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
       "identifier": "china-economic-observations",
       "name": "China economic observation ledger",
-      "description": "Aggregate-only, bitemporal economic observations with separate reference-period, source-release and Palimpsest-collection clocks, revision identity and exact evidence hashes. The current public ledger is narrow and mostly CFETS-derived; it is an auditable interchange, not a complete national activity index or an estimate of true GDP.",
+      "description": "Metadata-only restricted endpoint for the former narrow, aggregate-only bitemporal ledger; it was an auditable interchange, not an estimate of true GDP. The reviewed policy denies CFETS/ChinaMoney value publication, so zero observation rows or derivatives are public; restricted is not a current economic reading.",
       "url": "https://palimpsest.info/china/",
       "license": "https://palimpsest.info/data.html#rights",
       "spatialCoverage": [
         "CN"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-23T01:47:39.298387Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "China economic observation ledger — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/china-econ-observations-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "China economic observation ledger — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/china-econ-observations.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -927,29 +875,22 @@
       "@type": "Dataset",
       "identifier": "china-economic-forecast",
       "name": "China named-series forecast and backtest audit",
-      "description": "Deterministic pseudo-real-time backtests over the bitemporal observation ledger, scoring first-release and latest-revised outcomes separately. Every model, failed fold and promotion gate remains public; named-series forecasts stay null until frozen history, independence, revision and calibration gates all pass. This is not an economy-wide activity forecast.",
+      "description": "Publication-gated pseudo-real-time backtests derived from the restricted China observation ledger. Named-series forecasts stay null; no score, warming state or direction is public while denied upstream values remain in the dependency graph.",
       "url": "https://palimpsest.info/china/",
       "license": "https://palimpsest.info/data.html#rights",
       "spatialCoverage": [
         "CN"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-23T01:47:39.298387Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "China named-series forecast and backtest audit — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/china-econ-forecast-latest.json"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
       "identifier": "cny-fix-gap",
       "name": "CNY fixing gap",
-      "description": "Same-day comparison between China's central parity and independent central-bank reference rates, with explicit abstention when date parity is absent.",
+      "description": "Publication-gated comparison formerly derived from CFETS central parity and independent central-bank reference rates. The current public endpoint exposes restriction metadata only and does not infer a zero gap.",
       "url": "https://palimpsest.info/readings/index.html#state",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
@@ -958,22 +899,9 @@
         "CA"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-23T17:27:00Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "CNY fixing gap — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/cny-fix-gap-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "CNY fixing gap — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/cny-fix-gap-history.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1290,7 +1218,7 @@
       "@type": "Dataset",
       "identifier": "china-article-stream",
       "name": "Palimpsest China Article Stream",
-      "description": "Newest-first, one-entry-per-publisher-item China and Hong Kong feed projected from the evidence wire. Every entry includes its event-bound Palimpsest position, source-independence assessment, declared collector context, known unknowns and next verification moves. Reviewed ScamShield Telegram aggregates remain a separate context-only lane and never count as corroboration.",
+      "description": "Temporarily publication-gated mixed China article stream because the current artifact embeds economic context derived from rights-denied CFETS inputs. A filtered build is required before unaffected publisher metadata can return.",
       "url": "https://palimpsest.info/news/china/",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
@@ -1298,16 +1226,9 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-25T20:24:17Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Palimpsest China Article Stream — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/china-article-stream-latest.json"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1322,22 +1243,9 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-23T01:15:19Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Bounded Social Observation Ledger — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/social-observations-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "Bounded Social Observation Ledger — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/social-observations-versions.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1411,7 +1319,7 @@
       "@type": "Dataset",
       "identifier": "china-situation",
       "name": "China Situation Synthesis",
-      "description": "Deterministic event dossiers that place attributed publisher reports, exact-link institutional social observations, human-reviewed source-free Telegram signals and declared Observatory measurements in one view while preserving their different evidentiary roles. Exact URL joins are used for social context; topic-level measurements never become article verification.",
+      "description": "Temporarily publication-gated deterministic event dossiers that preserve different evidentiary roles, exact URL joins, and the rule that topic-level measurements never become article verification. The current mixed artifact carries CFETS-derived Observatory context, so whole-endpoint quarantine applies until an unaffected rebuild exists.",
       "url": "https://palimpsest.info/news/china/situation/",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
@@ -1419,16 +1327,9 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-25T20:24:17Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "China Situation Synthesis — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/china-situation-latest.json"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1457,7 +1358,7 @@
       "@type": "Dataset",
       "identifier": "china-economic-pulse",
       "name": "China Economic Pulse",
-      "description": "Revision-safe synthesis of official economic releases, market prints and physical telemetry. It preserves as-of clocks, source independence, release gaps and revisions, and abstains from a composite state claim until declared coverage gates pass; it is not an estimate of true GDP.",
+      "description": "Publication-gated revision-safe synthesis whose current dependency graph includes rights-denied CFETS values. Its coverage gates formerly preserved as-of clocks and abstained from a composite rather than estimating true GDP; the public endpoint is now metadata-only and exposes no metrics, warming states, scores or direction.",
       "url": "https://palimpsest.info/news/economy/",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
@@ -1465,16 +1366,9 @@
         "HK"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-23T17:27:00Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "China Economic Pulse — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/china-economic-pulse-latest.json"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1503,7 +1397,7 @@
       "@type": "Dataset",
       "identifier": "evidence-mesh",
       "name": "Palimpsest Evidence Mesh",
-      "description": "Deterministic, no-network inventory of public aggregate evidence, analytical context, provenance lineage, freshness and reuse rights. It maps eligible inputs without copying private data, identifying people, joining records into allegations or treating partner artifacts as automatically admitted evidence.",
+      "description": "Temporarily publication-gated deterministic evidence inventory. It maps partner artifacts without treating them as automatically admitted evidence, but the current mixed endpoint carries dependency material derived from a rights-denied CFETS family; a future filtered build can restore unaffected resources.",
       "url": "https://palimpsest.info/news/analysis/",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
@@ -1511,22 +1405,15 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-25T20:27:01Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Palimpsest Evidence Mesh — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/evidence-mesh-latest.json"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
       "identifier": "machine-investigations",
       "name": "Palimpsest Machine Analysis Desk",
-      "description": "Deterministic machine-written evidence analyses with sentence-level citations, source-lineage de-duplication, explicit countercases, limitations, falsifiers, correction history and reproducibility gates. It conducts no human interviews, makes no person-level allegations and publishes an AbstentionReport when its declared evidence threshold is not met.",
+      "description": "Temporarily publication-gated deterministic machine analysis with sentence-level citations, no human interviews, explicit countercases and an AbstentionReport below threshold. The current mixed endpoint embeds an economic-readiness branch derived from rights-denied CFETS inputs, so whole-endpoint quarantine applies pending a filtered rebuild.",
       "url": "https://palimpsest.info/news/analysis/",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
@@ -1534,16 +1421,9 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-25T20:27:01Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Palimpsest Machine Analysis Desk — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/machine-investigations-latest.json"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1629,16 +1509,9 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT1H",
-      "dateModified": "2026-08-12T11:24:43Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Protected Human-Source Workflow Summary — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/source-workflow-latest.json"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1675,22 +1548,9 @@
         "GLOBAL"
       ],
       "temporalResolution": "P1D",
-      "dateModified": "2026-08-23T08:02:43.590725Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Generative Firewall Index — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "Generative Firewall Index — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/history.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1703,22 +1563,9 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-24T04:54:42.622246Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Frontier refusal churn — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/refusal-drift-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "Frontier refusal churn — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/refusal-drift-history.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",
@@ -1842,7 +1689,7 @@
       "@type": "Dataset",
       "identifier": "reading-analysis",
       "name": "Reading analysis and review rank",
-      "description": "Per-instrument unusualness versus that instrument's own history, plus unlabeled editorial review ranks for live news rows. This is analysis context, not a motive sentence, not a cross-instrument censorship rate, and not automatic publication permission.",
+      "description": "Temporarily publication-gated per-instrument unusualness and editorial-review context because the current mixed artifact includes CFETS-derived values. It is not a motive sentence or cross-instrument rate; no zero, calm, rank or direction is public until a filtered rebuild separates unaffected instruments.",
       "url": "https://palimpsest.info/osint-china.html",
       "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
       "spatialCoverage": [
@@ -1850,22 +1697,9 @@
         "GLOBAL"
       ],
       "temporalResolution": "PT6H",
-      "dateModified": "2026-08-24T10:34:36Z",
+      "dateModified": null,
       "isAccessibleForFree": true,
-      "distribution": [
-        {
-          "@type": "DataDownload",
-          "name": "Reading analysis and review rank — latest",
-          "encodingFormat": "application/json",
-          "contentUrl": "https://palimpsest.info/readings/reading-analysis-latest.json"
-        },
-        {
-          "@type": "DataDownload",
-          "name": "Reading analysis and review rank — history",
-          "encodingFormat": "application/x-ndjson",
-          "contentUrl": "https://palimpsest.info/readings/reading-analysis-history.jsonl"
-        }
-      ]
+      "distribution": []
     },
     {
       "@type": "Dataset",

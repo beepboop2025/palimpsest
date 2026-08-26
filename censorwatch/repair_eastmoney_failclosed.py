@@ -584,8 +584,6 @@ def _parser() -> argparse.ArgumentParser:
                         help="apply the exact existing dry-run manifest")
     parser.add_argument("--result-manifest", type=Path,
                         help="required with --apply; new applied-result manifest")
-    parser.add_argument("--database-url", default=os.getenv("DATABASE_URL"))
-    parser.add_argument("--redis-url", default=os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     parser.add_argument("--raw-dir", type=Path,
                         default=Path(os.getenv("RAW_DATA_DIR", "./data/raw")) / SOURCE)
     parser.add_argument("--archive-dir", type=Path,
@@ -599,13 +597,10 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    if not args.database_url:
-        raise SystemExit("DATABASE_URL or --database-url is required")
-    # api.database constructs its engine at import time.
-    os.environ["DATABASE_URL"] = args.database_url
-    from api.database import SessionLocal
+    from censorwatch.db import writer_session
+    from censorwatch.runtime_secrets import redis_url
 
-    session = SessionLocal()
+    session = writer_session()
     try:
         if args.apply:
             if os.getenv("CENSORWATCH_ENABLED", "").strip().lower() in {
@@ -615,7 +610,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.result_manifest is None:
                 raise SystemExit("--result-manifest is required with --apply")
             plan = _strict_json(args.manifest.resolve())
-            result = apply_plan(session, plan, redis_url=args.redis_url)
+            result = apply_plan(session, plan, redis_url=redis_url("writer-cache"))
             _atomic_json(args.result_manifest, result, exclusive=True)
             print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
             if result.get("redis_error"):

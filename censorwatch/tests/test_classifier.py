@@ -2,7 +2,7 @@
 
 Covers three things that matter most:
   1. Real-ish fixture pages map to the right LivenessState.
-  2. The defensive HTTP-status rules (404→GONE; 401/403/429/451/5xx→UNKNOWN).
+  2. Defensive HTTP rules (bare 404/401/403/429/451/5xx all abstain).
   3. Ordering: an interstitial (captcha/login/empty) that returns 200 must be
      UNKNOWN, never a false LIVE — this is the outside-China false-positive guard.
 
@@ -51,8 +51,10 @@ def test_fixture_pages():
 
 
 def test_http_status_rules():
-    # 404 with no body → GONE (the canonical removal signal).
-    assert classify_state(404, "")[0] == LivenessState.GONE
+    # Bare 404 lacks a same-endpoint control and is only disappearance evidence.
+    state, reason = classify_state(404, "")
+    assert state == LivenessState.UNKNOWN
+    assert reason == "bare_404_without_same_family_control"
     # Ambiguous errors → UNKNOWN, never deleted, never falsely alive.
     for s in (401, 403, 429, 451, 500, 502, 503):
         assert classify_state(s, "")[0] == LivenessState.UNKNOWN, f"HTTP {s}"
@@ -82,6 +84,12 @@ def test_per_source_marker():
     assert state == LivenessState.LIVE  # marker absent → not gone
     state, reason = classify_state(200, body + "该帖子可能已被删除",
                                    extra_markers=("该帖子可能已被删除",))
+    assert state == LivenessState.GONE and reason.startswith("source_marker")
+    state, reason = classify_state(
+        404,
+        body + "该帖子可能已被删除",
+        extra_markers=("该帖子可能已被删除",),
+    )
     assert state == LivenessState.GONE and reason.startswith("source_marker")
 
 
@@ -140,7 +148,7 @@ def test_hidden_marker_template_is_not_a_deletion_notice():
 
 def test_classify_wrapper_stamps_observation():
     obs = classify(FetchResult(url="u", status=404, text=""))
-    assert obs.state == LivenessState.GONE
+    assert obs.state == LivenessState.UNKNOWN
     assert obs.http_status == 404 and obs.checked_at is not None
     # Transport error never yields GONE.
     obs2 = classify(FetchResult(url="u", status=None, text=None, error="timeout"))

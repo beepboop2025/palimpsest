@@ -286,16 +286,15 @@ def test_topology_rejects_wrong_duplicate_or_unknown_bindings(pairs):
     ],
 )
 def test_topology_rejects_subsets_of_mandatory_production_roles(pairs):
-    with pytest.raises(gate.GateError, match="three or four|missing mandatory"):
+    with pytest.raises(gate.GateError, match="exactly three|invalid worker"):
         gate.encode_topology(pairs)
 
 
-def test_topology_accepts_optional_velocity_only_with_all_mandatory_roles():
+def test_primary_topology_rejects_censorwatch_even_with_all_primary_roles():
     topology = TOPOLOGY + (gate.NodeQueue("velocity@456def789abc", "censorwatch"),)
 
-    assert gate.decode_topology(gate.encode_topology(topology)) == tuple(
-        sorted(topology)
-    )
+    with pytest.raises(gate.GateError, match="exactly three"):
+        gate.encode_topology(topology)
 
 
 def test_closed_queue_token_is_strict_canonical_and_complete():
@@ -305,10 +304,10 @@ def test_closed_queue_token_is_strict_canonical_and_complete():
     document = json.loads(base64.b64decode(token, validate=True))
     assert document == {
         "schema_version": "palimpsest-celery-broker-queues.v1",
-        "closed_queues": ["celery", "collectors", "warehouse", "censorwatch"],
+        "closed_queues": ["celery", "collectors", "warehouse"],
     }
     assert gate.broker_queues_sha256(CLOSED_QUEUES) == (
-        "57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b"
+        "83c53c4939f125f025e21eb78bda012f65a3cad975df31a5d6dc2337ab441101"
     )
 
     noncanonical = base64.b64encode(
@@ -318,6 +317,61 @@ def test_closed_queue_token_is_strict_canonical_and_complete():
         gate.decode_broker_queues(noncanonical)
 
 
+def test_legacy_recovery_queue_token_and_hash_remain_byte_exact():
+    token = gate.encode_legacy_recovery_broker_queues(
+        gate.LEGACY_RECOVERY_BROKER_QUEUES
+    )
+
+    assert token == (
+        "eyJjbG9zZWRfcXVldWVzIjpbImNlbGVyeSIsImNvbGxlY3RvcnMiLCJ3YXJlaG91"
+        "c2UiLCJjZW5zb3J3YXRjaCJdLCJzY2hlbWFfdmVyc2lvbiI6InBhbGltcHNlc3Qt"
+        "Y2VsZXJ5LWJyb2tlci1xdWV1ZXMudjEifQ=="
+    )
+    assert gate.decode_legacy_recovery_broker_queues(token) == (
+        "celery", "collectors", "warehouse", "censorwatch"
+    )
+    assert gate.broker_queues_sha256(
+        gate.LEGACY_RECOVERY_BROKER_QUEUES,
+        gate.LEGACY_RECOVERY_BROKER_QUEUES,
+    ) == "57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b"
+
+
+def test_censorwatch_queue_token_cannot_cross_primary_scope():
+    token = gate.encode_censorwatch_broker_queues(
+        gate.CENSORWATCH_BROKER_QUEUES
+    )
+    assert gate.decode_censorwatch_broker_queues(token) == (
+        "censorwatch", "censorwatch-control"
+    )
+    with pytest.raises(gate.GateError, match="closed queue"):
+        gate.decode_broker_queues(token)
+
+
+def test_censorwatch_physical_brokers_have_distinct_singleton_tokens():
+    data_token = gate.encode_censorwatch_data_broker_queues(
+        gate.CENSORWATCH_DATA_BROKER_QUEUES
+    )
+    control_token = gate.encode_censorwatch_control_broker_queues(
+        gate.CENSORWATCH_CONTROL_BROKER_QUEUES
+    )
+
+    assert gate.CENSORWATCH_BROKER_QUEUES == (
+        *gate.CENSORWATCH_DATA_BROKER_QUEUES,
+        *gate.CENSORWATCH_CONTROL_BROKER_QUEUES,
+    )
+    assert gate.decode_censorwatch_data_broker_queues(data_token) == (
+        "censorwatch",
+    )
+    assert gate.decode_censorwatch_control_broker_queues(control_token) == (
+        "censorwatch-control",
+    )
+    assert data_token != control_token
+    with pytest.raises(gate.GateError, match="closed queue"):
+        gate.decode_censorwatch_control_broker_queues(data_token)
+    with pytest.raises(gate.GateError, match="closed queue"):
+        gate.decode_censorwatch_data_broker_queues(control_token)
+
+
 def test_reviewed_queue_set_is_derived_and_matches_production_compose():
     document = yaml.safe_load(COMPOSE_PATH.read_text(encoding="utf-8"))
     services = document["services"]
@@ -325,7 +379,10 @@ def test_reviewed_queue_set_is_derived_and_matches_production_compose():
         "default": "worker",
         "collectors": "worker-collectors",
         "warehouse": "worker-warehouse",
-        "velocity": "worker-velocity",
+    }
+    censorwatch_services = {
+        "worker-velocity": "censorwatch",
+        "worker-velocity-control": "censorwatch-control",
     }
     discovered_worker_services = {
         service
@@ -336,7 +393,9 @@ def test_reviewed_queue_set_is_derived_and_matches_production_compose():
         and "worker" in definition["command"]
         and "-Q" in definition["command"]
     }
-    assert discovered_worker_services == set(service_by_role.values())
+    assert discovered_worker_services == (
+        set(service_by_role.values()) | set(censorwatch_services)
+    )
     compose_queues = {}
     for role, service in service_by_role.items():
         command = services[service]["command"]
@@ -348,12 +407,16 @@ def test_reviewed_queue_set_is_derived_and_matches_production_compose():
     assert gate.BROKER_QUEUES == tuple(gate.SUPPORTED_NODE_QUEUES.values())
     assert compose_queues == gate.SUPPORTED_NODE_QUEUES
     assert tuple(compose_queues.values()) == gate.BROKER_QUEUES
+    assert tuple(
+        services[service]["command"][services[service]["command"].index("-Q") + 1]
+        for service in censorwatch_services
+    ) == gate.CENSORWATCH_BROKER_QUEUES
 
 
 @pytest.mark.parametrize(
     "queues",
     [
-        ("celery", "collectors", "warehouse"),
+        ("celery", "collectors"),
         ("celery", "collectors", "warehouse", "warehouse"),
         ("celery", "collectors", "warehouse", "rogue"),
         ("celery", "collectors", "warehouse", 1),
@@ -386,7 +449,6 @@ def test_sample_requires_exact_worker_replies_and_closes_broker_channel():
         "celery": 0,
         "collectors": 0,
         "warehouse": 0,
-        "censorwatch": 0,
     }
     assert result["unacknowledged"] == {"hash": 0, "index": 0}
     assert app.control.inspect_calls == [
@@ -506,7 +568,7 @@ def test_broker_empty_passes_only_after_two_zero_samples():
         "generated_at": "2026-08-25T01:02:03Z",
         "status": "empty",
         "closed_queues_sha256": gate.broker_queues_sha256(CLOSED_QUEUES),
-        "closed_queues": ["celery", "collectors", "warehouse", "censorwatch"],
+        "closed_queues": ["celery", "collectors", "warehouse"],
         "required_zero_samples": 2,
         "samples_observed": 2,
         "final": {
@@ -514,7 +576,6 @@ def test_broker_empty_passes_only_after_two_zero_samples():
                 "celery": 0,
                 "collectors": 0,
                 "warehouse": 0,
-                "censorwatch": 0,
             },
             "unacknowledged": {"hash": 0, "index": 0},
         },
@@ -617,7 +678,7 @@ def test_broker_empty_rejects_missing_or_extra_sample_counters(monkeypatch, samp
 def test_broker_empty_blocks_ready_and_unacknowledged_work(work):
     sample = _sample()
     if work == "ready":
-        sample["broker"]["censorwatch"] = 1
+        sample["broker"]["warehouse"] = 1
     elif work == "unacked-hash":
         sample["unacked"]["hash"] = 1
     else:
@@ -1007,8 +1068,6 @@ def test_cli_broker_empty_emits_canonical_receipt_without_worker_control(capsys)
                 "collectors",
                 "--queue",
                 "warehouse",
-                "--queue",
-                "censorwatch",
             ]
         )
         == 0

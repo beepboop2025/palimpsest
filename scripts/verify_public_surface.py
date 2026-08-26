@@ -80,6 +80,13 @@ ALLOWED_EMAILS = (
 
 EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
+# A systemd template instance is operational identity, not a mailbox. Keep this
+# exemption deliberately narrower than a generic ``*.service`` suffix: only the
+# numeric broker instances created by the Palimpsest release controller qualify.
+SYSTEMD_BROKER_INSTANCE = re.compile(
+    r"palimpsest-investigative-broker@[0-9]+-[0-9]+-10001\.service"
+)
+
 WHITESPACE = re.compile(r"\s+")
 
 PATTERNS = [
@@ -118,8 +125,8 @@ def identity_rules() -> tuple:
         source = os.path.basename(LOCAL_STRINGS)
     else:
         return (), None
-    rules = [l.strip() for l in raw.splitlines()
-             if l.strip() and not l.strip().startswith("#")]
+    rules = [line.strip() for line in raw.splitlines()
+             if line.strip() and not line.strip().startswith("#")]
     return tuple(rules), source
 
 
@@ -178,7 +185,10 @@ def _findings_in(path: str, text: str, rules: tuple, patterns: bool = True) -> l
             for pattern, why in PATTERNS:
                 if pattern.search(line):
                     problems.append(Finding(path, n, why, blocks))
-        for address in EMAIL.findall(line):
+        for address_match in EMAIL.finditer(line):
+            address = address_match.group(0)
+            if SYSTEMD_BROKER_INSTANCE.fullmatch(address):
+                continue
             if address in ALLOWED_EMAILS:
                 continue
             if any(address.lower().endswith("@" + d) for d in ALLOWED_EMAIL_DOMAINS):

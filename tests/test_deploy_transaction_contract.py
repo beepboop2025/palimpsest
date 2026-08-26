@@ -18,12 +18,12 @@ BACKUP_GUIDE = ROOT / "ops" / "backup" / "README.md"
 NODE_OFFSITE_GUIDE = ROOT / "ops" / "node-offsite" / "README.md"
 RELEASE_QUIESCE = ROOT / "ops" / "systemd" / "palimpsest-backup.release-quiesce.conf"
 INTERRUPTED_PHASE1_MANIFEST = (
-    ROOT / "ops" / "release-recovery" / "2026-08-25-api-readiness-retry.json"
+    ROOT / "ops" / "release-recovery" / "2026-08-25-common-crawl-bind-alias-retry.json"
 )
 INTERRUPTED_PHASE1_MANIFEST_SHA256 = (
-    "6a3a393a7f9ebdfb6fb38cf984db4f4558b3af9fa7cc973683116c274d9d3218"
+    "62dd4970775c4acc840649f4531c50f73dc73906ad816d7bf45c49e1f323d834"
 )
-RECOVERY_BACKUP_REASON = "api-readiness-retry-fresh-target-backup"
+RECOVERY_BACKUP_REASON = "common-crawl-bind-alias-retry-fresh-target-backup"
 COMPATIBILITY_SEED = ROOT / "ops" / "osint-sync" / "deploy-compatibility-seed.sh"
 
 
@@ -270,7 +270,7 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
         "palimpsest-common-crawl-mirror@*.service",
         "palimpsest-common-crawl-filter@*.service",
         "palimpsest-investigative-broker@*.service",
-        'for compose_service in "${COMPOSE_WRITER_SERVICES[@]}"',
+        'for compose_service in "${CONTROLLED_COMPOSE_WRITER_SERVICES[@]}"',
         "docker ps -a --no-trunc",
         "label=com.docker.compose.project.working_dir=$compose_working_dir",
         "label=com.docker.compose.project.config_files=$compose_config_file",
@@ -364,6 +364,7 @@ def test_emergency_quiescer_fails_on_inventory_and_systemd_stop_errors() -> None
 set -uo pipefail
 PALIMPSEST_REPO_ROOT=/home/palimpsest/palimpsest
 COMPOSE_WRITER_SERVICES=(worker)
+CONTROLLED_COMPOSE_WRITER_SERVICES=(worker)
 RELEASE_SERVICES=(palimpsest-test.service)
 ACTIVE_PROOF_PIN=''
 release_proof_pin() {{ return 0; }}
@@ -531,6 +532,7 @@ def test_emergency_quiescer_accepts_failed_activators_and_services_only_when_saf
 set -uo pipefail
 PALIMPSEST_REPO_ROOT=/home/palimpsest/palimpsest
 COMPOSE_WRITER_SERVICES=(worker)
+CONTROLLED_COMPOSE_WRITER_SERVICES=(worker)
 RELEASE_ACTIVATORS=(palimpsest-test.timer)
 RELEASE_SERVICES=(palimpsest-test.service)
 ACTIVE_PROOF_PIN=''
@@ -613,6 +615,7 @@ def test_emergency_quiescer_stops_writers_and_instances_discovered_late(
 set -uo pipefail
 PALIMPSEST_REPO_ROOT=/home/palimpsest/palimpsest
 COMPOSE_WRITER_SERVICES=(worker)
+CONTROLLED_COMPOSE_WRITER_SERVICES=(worker)
 RELEASE_ACTIVATORS=(missing-release.timer)
 RELEASE_SERVICES=(missing-release.service)
 ACTIVE_PROOF_PIN=''
@@ -1190,6 +1193,9 @@ def test_common_crawl_storage_and_tools_preflight_before_receipt_change() -> Non
 
 def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() -> None:
     transaction = _transaction()
+    mount_helper = _bash_function_source(
+        transaction, "assert_collector_common_crawl_mount_identity"
+    )
     compose_start = transaction.index(
         'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d'
     )
@@ -1200,15 +1206,89 @@ def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() ->
 
     assert "ps -q worker-collectors" in proof
     assert 'eq .Destination "/app/common-crawl-derived"' in proof
-    assert "{{.Source}}" in proof
-    assert '= "$COMMON_CRAWL_DERIVED_SOURCE"' in proof
-    assert "{{.RW}}" in proof
-    assert '= "false"' in proof
+    assert (
+        '{{printf "%s\\t%s\\t%t\\t%s\\n" '
+        ".Type .Source .RW .Propagation}}"
+    ) in proof
+    assert 'test "$COLLECTOR_COMMON_CRAWL_TYPE" = bind' in proof
+    assert 'test "$COLLECTOR_COMMON_CRAWL_RW" = false' in proof
+    assert 'test "$COLLECTOR_COMMON_CRAWL_PROPAGATION" = rprivate' in proof
+    assert "COMMON_CRAWL_STABLE_ROOT='/var/lib/palimpsest/common-crawl'" in transaction
+    assert (
+        '"$COMMON_CRAWL_DERIVED_SOURCE"|"$COMMON_CRAWL_STABLE_DERIVED_SOURCE")'
+    ) in proof
+    assert '/usr/bin/mountpoint -q "$COMMON_CRAWL_STABLE_ROOT"' in mount_helper
+    assert (
+        '"$COMMON_CRAWL_WAREHOUSE_SOURCE" "$COMMON_CRAWL_STABLE_ROOT"'
+    ) in mount_helper
+    assert (
+        '"$COMMON_CRAWL_DERIVED_SOURCE" "$COMMON_CRAWL_STABLE_DERIVED_SOURCE"'
+    ) in mount_helper
+    assert ('stat -c \'%a\' "$COMMON_CRAWL_STABLE_ROOT")" = 750') in mount_helper
+    assert (
+        'stat -c \'%a\' "$COMMON_CRAWL_STABLE_DERIVED_SOURCE")" = 700'
+    ) in mount_helper
+    assert "assert_same_directory_identity \\" in mount_helper
+    assert (
+        '"$COMMON_CRAWL_DERIVED_SOURCE" "$COLLECTOR_COMMON_CRAWL_SOURCE"'
+    ) in mount_helper
+    assert (
+        'docker exec -i "$COLLECTOR_CONTAINER_ID" \\\n'
+        "    /usr/local/bin/python3 - <<'PY'"
+    ) in mount_helper
+    assert "os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC" in mount_helper
+    assert 'with open("/proc/self/mountinfo", encoding="utf-8")' in mount_helper
+    assert 'if "ro" not in target_mounts[0] or "rw" in target_mounts[0]' in (
+        mount_helper
+    )
+    assert 'elif mountpoint.startswith(f"{path}/")' in mount_helper
+    assert 'if descendant_mounts:' in mount_helper
+    assert "collector Common Crawl mount has descendant mounts" in mount_helper
+    assert 'print(f"{value.st_dev}:{value.st_ino}")' in mount_helper
+    assert '"$mounted_identity"' in mount_helper
+    assert '= "$COMMON_CRAWL_DERIVED_SOURCE"' not in proof
     assert (
         "PALIMPSEST_COMMON_CRAWL_FEATURES="
         "/app/common-crawl-derived/common-crawl-features.jsonl"
     ) in proof
-    assert 'test "$CONTAINER_FEATURE_SHA256" = "$HOST_FEATURE_SHA256"' in proof
+    assert 'test "$container_feature_sha256" = "$host_feature_sha256"' in mount_helper
+    assert proof.count("assert_collector_common_crawl_mount_identity") == 2
+
+
+def test_common_crawl_bind_alias_requires_the_same_directory_identity(
+    tmp_path: Path,
+) -> None:
+    transaction = _transaction()
+    helper = _bash_function_source(transaction, "assert_same_directory_identity")
+    source = _python_heredoc_after("assert_same_directory_identity() {")
+    expected = tmp_path / "expected"
+    different = tmp_path / "different"
+    expected.mkdir()
+    different.mkdir()
+    expected_stat = expected.stat()
+    expected_identity = f"{expected_stat.st_dev}:{expected_stat.st_ino}"
+    wrong_identity = f"{expected_stat.st_dev}:{expected_stat.st_ino + 1}"
+
+    accepted = _run_embedded_python(source, expected, expected, expected_identity)
+    rejected = _run_embedded_python(source, expected, different, expected_identity)
+    wrong_mount = _run_embedded_python(source, expected, expected, wrong_identity)
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode != 0
+    assert "does not match warehouse identity" in rejected.stderr
+    assert wrong_mount.returncode != 0
+    assert "does not match mounted container identity" in wrong_mount.stderr
+    for marker in (
+        '[[ "$path" =~ ^/[A-Za-z0-9._/-]+$ ]]',
+        'test "$path" != /',
+        'test ! -L "$path"',
+        'test "$(realpath -e -- "$path")" = "$path"',
+        'test "$(stat -c \'%u:%g\' "$path")" = "10001:10001"',
+        "os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC",
+        "metadata[0].st_dev, metadata[0].st_ino",
+        "mounted_device, mounted_inode",
+    ):
+        assert marker in helper
 
 
 def test_release_recovers_deployment_controlled_collectors_in_dependency_order() -> (
@@ -1355,16 +1435,21 @@ def test_runbook_queue_mapping_matches_the_closed_broker_queue_set() -> None:
         "worker-collectors": "collectors",
         "worker-warehouse": "warehouse",
         "worker-velocity": "censorwatch",
+        "worker-velocity-control": "censorwatch-control",
     }
-    assert set(mapping.values()) == {
+    assert {mapping[name] for name in (
+        "worker", "worker-collectors", "worker-warehouse"
+    )} == {
         "celery",
         "collectors",
         "warehouse",
-        "censorwatch",
     }
+    assert {mapping[name] for name in (
+        "worker-velocity", "worker-velocity-control"
+    )} == {"censorwatch", "censorwatch-control"}
 
 
-def test_candidate_v4_backup_binds_witness_history_before_installation() -> None:
+def test_candidate_v5_backup_binds_witness_and_censorwatch_before_installation() -> None:
     transaction = _transaction()
     checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
     build = transaction.index("release_compose build", checkout)
@@ -1378,9 +1463,10 @@ def test_candidate_v4_backup_binds_witness_history_before_installation() -> None
     )
 
     assert "PRE_CHANGE_CORE_SNAPSHOT" in transaction[build:v4_backup]
-    assert "format_version=4" in (ROOT / "ops/backup/palimpsest-backup.sh").read_text(
+    assert "format_version=5" in (ROOT / "ops/backup/palimpsest-backup.sh").read_text(
         encoding="utf-8"
     )
+    assert 'censorwatch.get("mode") == expected_mode' in transaction[v4_backup:select_v4]
     assert checkout < build < v4_backup < witness_proof < select_v4 < first_install
 
 
@@ -1673,10 +1759,7 @@ def test_compose_inventory_is_exact_before_capture_and_after_restoration() -> No
         "--filter label=com.docker.compose.project", docker_inventory
     )
     required = transaction.index("required = {", global_projects)
-    optional = transaction.index(
-        'allowed = required | {"censorwatch-render-gateway", "worker-velocity"}',
-        required,
-    )
+    optional = transaction.index("allowed = required | {", required)
     provenance_labels = transaction.index(
         'com.docker.compose.project.working_dir"', global_projects
     )
@@ -1711,6 +1794,20 @@ def test_compose_inventory_is_exact_before_capture_and_after_restoration() -> No
         '"worker-warehouse"',
     ):
         assert service in transaction[required:optional]
+    for service in (
+        '"api-censorwatch"',
+        '"beat-velocity-data"',
+        '"beat-velocity-control"',
+        '"censorwatch-egress-proxy"',
+        '"migrate-censorwatch"',
+        '"postgres-censorwatch"',
+        '"preflight-censorwatch"',
+        '"redis-censorwatch-data"',
+        '"redis-censorwatch-control"',
+        '"worker-velocity"',
+        '"worker-velocity-control"',
+    ):
+        assert service in transaction[optional:alternate_refusal]
     assert (
         '{{printf "%s\\t%s\\t%s\\t%s\\t%s" '
         '(.Label "com.docker.compose.project")'
@@ -1749,7 +1846,6 @@ def test_compose_inventory_allows_unrelated_shared_host_workers(
     required = (
         "api",
         "beat",
-        "censorwatch-render-gateway",
         "migrate",
         "postgres",
         "redis",
@@ -2037,15 +2133,48 @@ exit 23
 
 def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
     transaction = _transaction()
-    legacy_expected = transaction.index("LEGACY_COMPOSE_CONFIG_SERVICES=")
-    target_expected = transaction.index(
-        "RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES=", legacy_expected
+    pre_render_blob = transaction.index("PRE_RENDER_COMPOSE_CONFIG_BLOB=")
+    pre_render_services = transaction.index(
+        "PRE_RENDER_COMPOSE_CONFIG_SERVICES=", pre_render_blob
     )
-    previous_blob = transaction.index("PREVIOUS_COMPOSE_CONFIG_BLOB=", target_expected)
-    previous_render = transaction.index("config --services", previous_blob)
+    render_blob = transaction.index(
+        "RENDER_ISOLATED_COMPOSE_CONFIG_BLOB=", pre_render_services
+    )
+    render_services = transaction.index(
+        "RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES=", render_blob
+    )
+    isolated_blob = transaction.index("ISOLATED_COMPOSE_CONFIG_BLOB=", render_services)
+    target_services = transaction.index(
+        "TARGET_COMPOSE_CONFIG_SERVICES=", isolated_blob
+    )
+    previous_blob = transaction.index("PREVIOUS_COMPOSE_CONFIG_BLOB=", target_services)
+    previous_hash = transaction.index(
+        "hash-object ops/docker/docker-compose.prod.yml", previous_blob
+    )
+    previous_render = transaction.index("config --services", previous_hash)
+    previous_case = transaction.index(
+        'case "$PREVIOUS_COMPOSE_CONFIG_BLOB" in', previous_render
+    )
+    pre_render_topology = transaction.index(
+        "PREDECESSOR_COMPOSE_TOPOLOGY=pre-render", previous_case
+    )
+    render_topology = transaction.index(
+        "PREDECESSOR_COMPOSE_TOPOLOGY=render-legacy", pre_render_topology
+    )
+    isolated_topology = transaction.index(
+        "PREDECESSOR_COMPOSE_TOPOLOGY=isolated", render_topology
+    )
     previous_exact = transaction.index(
-        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"',
-        previous_render,
+        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"',
+        isolated_topology,
+    )
+    ordinary_pre_render_rejection = transaction.index(
+        'if [[ "$PREDECESSOR_COMPOSE_TOPOLOGY" == pre-render ]]',
+        isolated_topology,
+    )
+    interrupted_render_only = transaction.index(
+        'test "$PREDECESSOR_COMPOSE_TOPOLOGY" = render-legacy',
+        ordinary_pre_render_rejection,
     )
     interpreter_preflight = transaction.index(
         "for compose_service in worker worker-collectors worker-warehouse; do",
@@ -2061,51 +2190,92 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
     )
     clean_target = transaction.index('test -z "$release_git_status"', checkout)
     target_blob = transaction.index("TARGET_COMPOSE_CONFIG_BLOB=", clean_target)
-    target_render = transaction.index("config --services", target_blob)
+    target_hash = transaction.index(
+        "hash-object ops/docker/docker-compose.prod.yml", target_blob
+    )
+    target_blob_exact = transaction.index(
+        '= "$ISOLATED_COMPOSE_CONFIG_BLOB"', target_hash
+    )
+    target_render = transaction.index("config --services", target_blob_exact)
     target_exact = transaction.index(
-        'test "$ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES"', target_render
+        '= "$TARGET_COMPOSE_CONFIG_SERVICES"', target_render
     )
     build = transaction.index("release_compose build", target_exact)
 
-    legacy_block = transaction[legacy_expected:target_expected]
-    target_block = transaction[target_expected:previous_blob]
-    legacy_services = (
+    pre_render_block = transaction[pre_render_services:render_blob]
+    render_block = transaction[render_services:isolated_blob]
+    target_block = transaction[target_services:previous_blob]
+    assert "censorwatch-render-gateway" not in pre_render_block
+    assert "censorwatch-render-gateway" in render_block
+    for target_only in (
+        "api-censorwatch",
+        "beat-velocity-data",
+        "beat-velocity-control",
+        "censorwatch-egress-proxy",
+        "postgres-censorwatch",
+        "preflight-censorwatch",
+        "redis-censorwatch-data",
+        "redis-censorwatch-control",
+        "worker-velocity-control",
+    ):
+        assert target_only not in pre_render_block
+        assert target_only not in render_block
+
+    for service in (
         "api",
+        "api-censorwatch",
         "beat",
+        "beat-velocity-data",
+        "beat-velocity-control",
+        "censorwatch-egress-proxy",
         "migrate",
+        "migrate-censorwatch",
         "postgres",
+        "postgres-censorwatch",
+        "preflight-censorwatch",
         "redis",
+        "redis-censorwatch-data",
+        "redis-censorwatch-control",
         "worker",
         "worker-collectors",
         "worker-velocity",
+        "worker-velocity-control",
         "worker-warehouse",
-    )
-    for service in legacy_services:
-        assert service in legacy_block
+    ):
         assert service in target_block
-    assert "censorwatch-render-gateway" not in legacy_block
-    assert "censorwatch-render-gateway" in target_block
+    assert "censorwatch-render-gateway" not in target_block
     assert (
         "38000e2f73ded26e12caa4e21e0dbf4b7fa0ec33"
-        in transaction[
-            transaction.index("LEGACY_COMPOSE_CONFIG_BLOB=") : legacy_expected
-        ]
+        in transaction[pre_render_blob:pre_render_services]
     )
     assert (
         "4e7ecd9e57a4a386a5387ee07dad578e003332cc"
-        in transaction[
-            transaction.index("RENDER_ISOLATED_COMPOSE_CONFIG_BLOB=") : target_expected
-        ]
+        in transaction[render_blob:render_services]
+    )
+    assert (
+        "aa77b4e9100dc485ad5aa1cb2315c24d177d29c2"
+        in transaction[isolated_blob:target_services]
     )
     assert (
         'os.path.realpath(sys.executable) != "/usr/local/bin/python3.12"'
         in (transaction[interpreter_exec:fail_safe])
     )
     assert (
-        legacy_expected
-        < target_expected
+        pre_render_blob
+        < pre_render_services
+        < render_blob
+        < render_services
+        < isolated_blob
+        < target_services
         < previous_blob
+        < previous_hash
         < previous_render
+        < previous_case
+        < pre_render_topology
+        < render_topology
+        < isolated_topology
+        < ordinary_pre_render_rejection
+        < interrupted_render_only
         < previous_exact
         < interpreter_preflight
         < interpreter_exec
@@ -2113,32 +2283,192 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
         < checkout
         < clean_target
         < target_blob
+        < target_hash
+        < target_blob_exact
         < target_render
         < target_exact
         < build
     )
 
 
-def test_velocity_renderer_is_exact_sha_and_restored_before_its_worker() -> None:
+def test_pre_render_predecessor_is_rejected_and_recovery_is_render_pinned() -> None:
+    transaction = _transaction()
+    start = transaction.index("PRE_RENDER_COMPOSE_CONFIG_BLOB=")
+    end = transaction.index(
+        "# The official Python application image installs its interpreter", start
+    )
+    admission = transaction[start:end]
+
+    def run_admission(
+        interrupted_recovery: int, topology: str
+    ) -> subprocess.CompletedProcess[str]:
+        assert topology in {"pre-render", "render-isolated"}
+        if topology == "pre-render":
+            blob_variable = "PRE_RENDER_COMPOSE_CONFIG_BLOB"
+            services_variable = "PRE_RENDER_COMPOSE_CONFIG_SERVICES"
+        else:
+            blob_variable = "RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"
+            services_variable = "RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES"
+        script = f"""\
+set -euo pipefail
+INTERRUPTED_PHASE1_RECOVERY={interrupted_recovery}
+CENSORWATCH_ISOLATION_ACTIVATE=0
+EXPECTED_PREVIOUS_CHECKOUT_SHA={'1' * 40}
+COMPOSE_ALL_PROFILES=(--profile api)
+LEGACY_COMPOSE_WRITER_SERVICES=(worker worker-collectors worker-velocity worker-warehouse beat)
+TARGET_COMPOSE_WRITER_SERVICES=()
+PRIMARY_CELERY_WORKER_SERVICES=(worker worker-collectors worker-warehouse)
+CENSORWATCH_CELERY_WORKER_SERVICES=()
+release_git() {{ printf '%s\n' "${{{blob_variable}}}"; }}
+release_compose() {{ printf '%s\n' "${{{services_variable}}}"; }}
+{admission}
+printf 'downstream-state-capture-reached\n'
+"""
+        return subprocess.run(
+            ["/bin/bash"], input=script, text=True, capture_output=True, check=False
+        )
+
+    ordinary = run_admission(0, "pre-render")
+    assert ordinary.returncode == 1
+    assert "pre-render predecessor is admitted only for interrupted recovery" in (
+        ordinary.stderr
+    )
+    assert "downstream-state-capture-reached" not in ordinary.stdout
+
+    superseded_recovery = run_admission(1, "pre-render")
+    assert superseded_recovery.returncode == 1
+    assert "downstream-state-capture-reached" not in superseded_recovery.stdout
+
+    current_recovery = run_admission(1, "render-isolated")
+    assert current_recovery.returncode == 0, current_recovery.stderr
+    assert current_recovery.stdout == "downstream-state-capture-reached\n"
+
+
+def test_censorwatch_legacy_transfer_uses_fixed_runtime_identity() -> None:
+    transaction = _transaction()
+    assert "readonly CENSORWATCH_RUNTIME_UID=10001" in transaction
+    assert "readonly CENSORWATCH_RUNTIME_GID=10001" in transaction
+    assert '-o "$CENSORWATCH_RUNTIME_UID"' in transaction
+    assert '-g "$CENSORWATCH_RUNTIME_GID"' in transaction
+    assert (
+        '"${CENSORWATCH_RUNTIME_UID}:${CENSORWATCH_RUNTIME_GID}:700:1"'
+        in transaction
+    )
+    assert "-o 10001" not in transaction
+
+
+def test_this_release_forces_censorwatch_absent_before_quiesce() -> None:
+    transaction = _transaction()
+    input_validation = transaction.index(
+        "[[ \"$CENSORWATCH_ISOLATION_ACTIVATE\" == 0"
+    )
+    closed_gate = transaction.index(
+        "CensorWatch activation is closed for this release; use absent mode",
+        input_validation,
+    )
+    fail_safe = transaction.index("PHASE1_FAIL_SAFE_ARMED=1", closed_gate)
+    state_capture = transaction.index(
+        "active isolated CensorWatch requires a later included-mode release",
+        fail_safe,
+    )
+    absent_mode = transaction.index(
+        "CENSORWATCH_BACKUP_MODE_REQUIRED=absent", state_capture
+    )
+    quiesce = transaction.index(
+        'release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat', absent_mode
+    )
+
+    assert input_validation < closed_gate < fail_safe
+    assert fail_safe < state_capture < absent_mode < quiesce
+    assert 'test "$CENSORWATCH_ACTIVATION_INTENT" = 0' in transaction[
+        state_capture:absent_mode
+    ]
+
+
+def test_censorwatch_split_secret_inventory_and_api_state_are_exact() -> None:
+    transaction = _transaction()
+    verifier = transaction.index("verify_censorwatch_secret_files() {")
+    verifier_end = transaction.index("censorwatch_secret_host_path() {", verifier)
+    block = transaction[verifier:verifier_end]
+    expected = {
+        "censorwatch_postgres_admin_password",
+        "censorwatch_database_admin_url",
+        "censorwatch_database_writer_url",
+        "censorwatch_database_reader_url",
+        "censorwatch_redis_data_acl",
+        "censorwatch_redis_control_acl",
+        "censorwatch_redis_data_health_password",
+        "censorwatch_redis_control_health_password",
+        "censorwatch_celery_data_producer_url",
+        "censorwatch_celery_control_producer_url",
+        "censorwatch_celery_data_url",
+        "censorwatch_celery_control_url",
+        "censorwatch_redis_writer_url",
+        "censorwatch_redis_control_url",
+        "censorwatch_redis_data_reader_url",
+        "censorwatch_redis_control_reader_url",
+    }
+    required_start = block.index("required = {")
+    required_end = block.index("}\n", required_start)
+    required_block = block[required_start:required_end]
+    assert {
+        line.strip().strip('",')
+        for line in required_block.splitlines()[1:]
+        if line.strip().startswith('"')
+    } == expected
+    for stale in (
+        '"censorwatch_redis_acl"',
+        '"censorwatch_redis_health_password"',
+        '"censorwatch_celery_producer_url"',
+        '"censorwatch_redis_reader_url"',
+    ):
+        assert stale not in block
+    assert "os.O_NOFOLLOW" in block
+    assert "CensorWatch Compose secret inventory is not exact" in block
+    assert "metadata.st_uid != 0" in block
+    assert "metadata.st_gid != runtime_id" in block
+    assert "stat.S_IMODE(metadata.st_mode) != 0o640" in block
+    assert "metadata.st_nlink != 1" in block
+    assert "os.setuid(runtime_id)" in block
+
+    capture = transaction.index(
+        'CENSORWATCH_API_WAS_ACTIVE="${COMPOSE_WAS_RUNNING[api-censorwatch]}"'
+    )
+    restore = transaction.index(
+        "&& CENSORWATCH_API_WAS_ACTIVE == 1", capture
+    )
+    start = transaction.index("--force-recreate api-censorwatch", restore)
+    inactive = transaction.index("stop api-censorwatch", start)
+    assert capture < restore < start < inactive
+
+
+def test_censorwatch_browser_is_excluded_and_isolated_plane_restores_in_order() -> None:
     transaction = _transaction()
     checkout = transaction.index('release_git switch --detach "$EXPECTED_DEPLOY_SHA"')
-    build = transaction.index(
-        "--profile velocity build censorwatch-render-gateway", checkout
+    candidate = transaction.index("CANDIDATE_RENDER_IMAGE_ID=absent", checkout)
+    preflight = transaction.index(
+        "preflight-censorwatch", transaction.index("# Prepare the isolated", candidate)
     )
-    candidate = transaction.index("CANDIDATE_RENDER_IMAGE_ID=", build)
-    revision = transaction.index("org.opencontainers.image.revision", candidate)
-    proof_field = transaction.index("candidate_render_gateway_image_id", revision)
-    restore = transaction.index("RESTORED_RENDER_GATEWAY_ID=", proof_field)
-    force_recreate = transaction.index("--force-recreate", restore)
-    gateway_service = transaction.index("censorwatch-render-gateway", force_recreate)
-    healthy = transaction.index("restored_renderer_ready", gateway_service)
-    worker_restore = transaction.index(
-        'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d --no-deps',
-        healthy,
+    postgres = transaction.index(
+        "postgres-censorwatch redis-censorwatch-data redis-censorwatch-control",
+        preflight,
     )
-    assert checkout < build < candidate < revision < proof_field
-    assert proof_field < restore < force_recreate < gateway_service
-    assert gateway_service < healthy < worker_restore
+    migration = transaction.index("migrate-censorwatch", postgres)
+    proxy = transaction.index("censorwatch-egress-proxy", migration)
+    restore = transaction.index("# The hostile-content plane restores", proxy)
+    control = transaction.index("worker-velocity-control worker-velocity", restore)
+    data = transaction.index('ps -q worker-velocity)"', control)
+    data_broker = transaction.index("censorwatch-data-broker-empty", data)
+    control_broker = transaction.index(
+        "censorwatch-control-broker-empty", data_broker
+    )
+    beat = transaction.index("beat-velocity-control beat-velocity-data", control_broker)
+
+    build_window = transaction[checkout:preflight]
+    assert "build censorwatch-render-gateway" not in build_window
+    assert "--profile velocity-browser" not in transaction[candidate:restore]
+    assert candidate < preflight < postgres < migration < proxy
+    assert proxy < restore < control < data < data_broker < control_broker < beat
 
 
 def test_release_compose_authentication_cannot_be_masked_by_conditional_call(
@@ -2828,8 +3158,12 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
     enable = transaction.index('gh workflow enable "$OSINT_WORKFLOW"', arm_restore)
     active = transaction.index('test "$(osint_workflow_state)" = active', enable)
     dispatch = transaction.index('gh workflow run "$OSINT_WORKFLOW"', active)
-    immediate_restore = transaction.index("restore_osint_workflow_freeze\n", dispatch)
-    discover = transaction.index("OSINT_RUN_ID=''", immediate_restore)
+    discover = transaction.index("OSINT_RUN_ID=''", dispatch)
+    watch = transaction.index('gh run watch "$OSINT_RUN_ID"', discover)
+    restore_after_watch = transaction.index(
+        "restore_osint_workflow_freeze\n", watch
+    )
+    conclusion = transaction.index('--json conclusion --jq .conclusion)', restore_after_watch)
     assert (
         cleanup
         < cleanup_restore
@@ -2839,8 +3173,10 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         < enable
         < active
         < dispatch
-        < immediate_restore
         < discover
+        < watch
+        < restore_after_watch
+        < conclusion
     )
 
     public_match = transaction.index(
@@ -3405,7 +3741,7 @@ def test_backup_and_node_offsite_guides_repeat_the_release_safety_boundary() -> 
         "PRE_CHANGE_SNAPSHOT",
         "sha256sum --check SHA256SUMS",
         "node_backup_snapshot.py verify",
-        "exact six-file inventory",
+        "exact mode-dependent six- or ten-file inventory",
         "zz-release-quiesce.conf",
         "OnSuccess=",
     ):
@@ -3490,7 +3826,7 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
     )
     recovery = transaction.index("if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then")
     previous_config = transaction.index(
-        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"',
+        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"',
         pinned_manifest,
     )
     target_manifest = transaction.index(
@@ -3511,16 +3847,20 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
         'fsync_installed_paths "$RECOVERY_PREPARED_RECEIPT_PATH"', prepared_install
     )
     broker_empty = transaction.index(
-        'broker-empty --closed-queues-b64 "$RECOVERY_BROKER_QUEUES_B64"',
+        "legacy-recovery-broker-empty",
         prepared_fsync,
     )
+    closed_queues = transaction.index(
+        '--closed-queues-b64 "$RECOVERY_BROKER_QUEUES_B64"',
+        broker_empty,
+    )
     checkout = transaction.index(
-        'release_git switch --detach "$EXPECTED_DEPLOY_SHA"', broker_empty
+        'release_git switch --detach "$EXPECTED_DEPLOY_SHA"', closed_queues
     )
     clean_target = transaction.index('test -z "$release_git_status"', checkout)
     target_blob = transaction.index("TARGET_COMPOSE_CONFIG_BLOB=", clean_target)
     target_config = transaction.index(
-        'test "$ACTUAL_TARGET_COMPOSE_CONFIG_SERVICES"', target_blob
+        'test "$TARGET_ACTUAL_COMPOSE_CONFIG_SERVICES"', target_blob
     )
     build = transaction.index("release_compose build", target_config)
     target_abi = transaction.index(
@@ -3574,8 +3914,8 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
     assert (
         mode
         < pinned_manifest
-        < previous_config
         < recovery
+        < previous_config
         < target_manifest
         < extracted_digest
         < verifier
@@ -3941,7 +4281,7 @@ def test_interrupted_manifest_scope_environment_and_infrastructure_are_exact() -
         transaction.count(
             "57cba36db8a74f1091b3478b831c833a6325023d57a8c4aa33190112e483f42b"
         )
-        == 3
+            == 4
     )
     phase_three = transaction.index("### Phase 3:")
     assert (
@@ -3954,6 +4294,123 @@ def test_interrupted_manifest_scope_environment_and_infrastructure_are_exact() -
     )
     assert "for compose_service in postgres redis; do" in transaction[phase_three:]
     assert "verify_compose_container_inventory\n" in transaction[phase_three:]
+
+
+def test_common_crawl_retry_preserves_the_complete_prepared_receipt_chain() -> None:
+    manifest = json.loads(INTERRUPTED_PHASE1_MANIFEST.read_text(encoding="utf-8"))
+    continuation = manifest["continuation"]
+    prepared = continuation["predecessor_prepared_receipt"]
+    failed = manifest["failed_attempt"]
+    mount = failed["common_crawl_mount_identity"]
+
+    assert manifest["incident_id"] == "2026-08-25-common-crawl-bind-alias-retry"
+    assert set(manifest["authority"].values()) == {
+        "913a6aa64e705bd5d2b2f6f022a91e07389999e0"
+    }
+    assert continuation["predecessor_incident_id"] == ("2026-08-25-api-readiness-retry")
+    assert continuation["predecessor_manifest"] == {
+        "path": "ops/release-recovery/2026-08-25-api-readiness-retry.json",
+        "sha256": ("6a3a393a7f9ebdfb6fb38cf984db4f4558b3af9fa7cc973683116c274d9d3218"),
+    }
+    assert prepared["path"].endswith("api-readiness-retry.prepared.json")
+    assert prepared["sha256"] == (
+        "1699c22c16241f971b344b93e972f6358aae974352dccbac7cfe61114467b561"
+    )
+    assert prepared["transaction_id"] == "81459025a36873031dba693c229baa7c"
+    assert continuation["predecessor_completion_receipt"] == {
+        "expected_absent": True,
+        "path": (
+            "/var/lib/palimpsest-release/recovery/"
+            "2026-08-25-api-readiness-retry.complete.json"
+        ),
+    }
+    assert manifest["observed_safe_boundary"]["absent_compose_services"] == [
+        "censorwatch-render-gateway",
+        "worker-velocity",
+    ]
+    assert (
+        '"absent-services.txt": (2, boundary["absent_compose_services"])'
+        in _transaction()
+    )
+    restore_payload = json.dumps(
+        manifest["pre_failure_state"],
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode()
+    assert hashlib.sha256(restore_payload).hexdigest() == (
+        "705aaf3b5e52cc400fcb51957f0f2cf6167869e86b4622637b01ad512641c08a"
+    )
+    assert mount["expected_source"] != mount["observed_source"]
+    assert mount["source_identity"] == {
+        "device": 2064,
+        "gid": 10001,
+        "inode": 62128631,
+        "mode": "0700",
+        "uid": 10001,
+    }
+    assert mount["mount_type"] == "bind"
+    assert mount["read_only"] is True
+    assert failed["common_crawl_import_started"] is False
+    assert failed["phase1_handoff_created"] is False
+    assert failed["phase2_started"] is False
+    assert failed["phase3_binding_created"] is False
+    assert failed["post_failure_diagnostic"]["restored_to_quiescent"] is True
+    assert failed["post_failure_diagnostic"]["activation_cause"] == (
+        "accidental activation by a diagnostic watcher command"
+    )
+    instances = manifest["observed_safe_boundary"]["dynamic_release_instances"]
+    assert len(instances) == 30
+    assert [item["unit"] for item in instances] == sorted(
+        item["unit"] for item in instances
+    )
+    assert all(
+        item
+        == {
+            "active_state": "failed",
+            "fragment_path": (
+                "/etc/systemd/system/palimpsest-investigative-broker@.service"
+            ),
+            "load_state": "loaded",
+            "sub_state": "failed",
+            "unit": item["unit"],
+        }
+        for item in instances
+    )
+    transaction = _transaction()
+    assert '"dynamic-instance-names.txt": (' in transaction
+    assert '"dynamic-instances.tsv": (' in transaction
+    assert transaction.count("        30,") >= 2
+    assert "capture_release_instance_inventory \\" in transaction
+    assert 'dynamic-instance-names.txt" \\' in transaction
+    assert 'done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/dynamic-instances.tsv"' in (
+        transaction
+    )
+
+
+def test_external_publication_wait_covers_a_full_pages_deployment() -> None:
+    transaction = _transaction()
+
+    assert "PUBLICATION_WAIT_BUDGET_SECONDS=2700" in transaction
+    assert "PUBLICATION_CURL_MAX_SECONDS=30" in transaction
+    assert "PUBLICATION_WAIT_INTERVAL_SECONDS=15" in transaction
+    assert transaction.count("PUBLICATION_WAIT_DEADLINE_MONOTONIC_NS=") == 1
+    assert "time.monotonic_ns() + budget_seconds * 1_000_000_000" in transaction
+    assert "int(sys.argv[1], 10) - time.monotonic_ns()" in transaction
+    assert "publication_remaining_seconds()" in transaction
+    wait_helper = _bash_function_source(transaction, "wait_for_publication_sha256")
+    assert 'request_timeout_seconds="$PUBLICATION_CURL_MAX_SECONDS"' in wait_helper
+    assert "request_timeout_seconds > remaining_seconds" in wait_helper
+    assert '--max-time "$request_timeout_seconds"' in wait_helper
+    assert wait_helper.count('remaining_seconds="$(publication_remaining_seconds)"') == 2
+    assert 'sleep_seconds="$PUBLICATION_WAIT_INTERVAL_SECONDS"' in wait_helper
+    assert "sleep_seconds > remaining_seconds" in wait_helper
+    assert 'sleep "$sleep_seconds"' in wait_helper
+    assert transaction.count("wait_for_publication_sha256 \\") == 3
+    assert "PUBLICATION_WAIT_ATTEMPTS" not in transaction
+    assert "publication_attempt" not in transaction
+    assert "{1..80}" not in transaction
 
 
 def test_recovery_broker_and_migration_validator_passes_and_rejects_tamper(
@@ -4357,6 +4814,24 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
     v4_backup = json_fixture("v4-backup.json", {"stage": "v4-backup"})
     consuming = json_fixture("consuming.json", {"stage": "consuming"})
     fenced = json_fixture("fenced.json", {"stage": "fenced"})
+    censorwatch_prechange = json_fixture(
+        "censorwatch-prechange.json", {"status": "inactive"}
+    )
+    censorwatch_prebackup_preflight = json_fixture(
+        "censorwatch-prebackup-preflight.json", {"status": "not-required"}
+    )
+    censorwatch_prebackup_migration = json_fixture(
+        "censorwatch-prebackup-migration.json", {"status": "not-required"}
+    )
+    censorwatch_transfer = json_fixture(
+        "censorwatch-transfer.json", {"status": "not-required"}
+    )
+    censorwatch_preflight = json_fixture(
+        "censorwatch-preflight.json", {"status": "inactive"}
+    )
+    censorwatch_migration = json_fixture(
+        "censorwatch-migration.json", {"status": "inactive"}
+    )
     recovery = json_fixture("recovery.json", {"status": "recovered"})
     binding_value = {
         "schema_version": "palimpsest-interrupted-phase1-binding.v2",
@@ -4369,7 +4844,9 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
     controller_manifest = tmp_path / "controller-manifest.json"
     controller_manifest.write_bytes(b"controller manifest fixture\n")
 
-    def arguments(output: Path, interrupted_path: object) -> tuple[object, ...]:
+    def arguments(
+        output: Path, interrupted_path: object, predecessor_topology: str
+    ) -> tuple[object, ...]:
         return (
             output,
             "5" * 40,
@@ -4402,13 +4879,27 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
             v4_backup,
             consuming,
             fenced,
+            predecessor_topology,
+            "0",
+            "0",
+            "0",
+            "0",
+            "0",
+            censorwatch_prechange,
+            censorwatch_prebackup_preflight,
+            censorwatch_prebackup_migration,
+            censorwatch_transfer,
+            censorwatch_preflight,
+            censorwatch_migration,
             recovery,
             controller_manifest,
             interrupted_path,
         )
 
     ordinary_output = tmp_path / "ordinary-proof-complete.json"
-    ordinary = _run_embedded_python(patched_generator, *arguments(ordinary_output, ""))
+    ordinary = _run_embedded_python(
+        patched_generator, *arguments(ordinary_output, "", "render-legacy")
+    )
     assert ordinary.returncode == 0, ordinary.stderr
     ordinary_value = json.loads(ordinary_output.read_text(encoding="utf-8"))
     ordinary_fields = {
@@ -4421,6 +4912,7 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
         "publication",
         "observers",
         "celery",
+        "censorwatch",
         "recovery",
         "compose_before",
         "controller_manifest_sha256",
@@ -4431,11 +4923,15 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
     assert set(ordinary_value) == ordinary_fields
     assert ordinary_value["schema_version"] == "palimpsest-host-release.v1"
     assert ordinary_value["deployment"]["candidate_render_gateway_image_id"] is None
+    assert ordinary_value["censorwatch"]["previously_active"] is False
+    assert ordinary_value["censorwatch"]["activation_intent"] is False
+    assert ordinary_value["censorwatch"]["activation_authorized"] is False
+    assert ordinary_value["censorwatch"]["predecessor_topology"] == "render-legacy"
     assert "interrupted_phase1_resume" not in ordinary_value
 
     recovery_output = tmp_path / "recovery-proof-complete.json"
     recovery_result = _run_embedded_python(
-        patched_generator, *arguments(recovery_output, binding)
+        patched_generator, *arguments(recovery_output, binding, "pre-render")
     )
     assert recovery_result.returncode == 0, recovery_result.stderr
     recovery_value = json.loads(recovery_output.read_text(encoding="utf-8"))
@@ -4444,12 +4940,13 @@ _fixture_pathlib.Path.read_bytes = _read_fixture_or_real
 
     binding.write_text('{"schema_version":', encoding="utf-8")
     tampered = _run_embedded_python(
-        patched_generator, *arguments(tmp_path / "tampered.json", binding)
+        patched_generator,
+        *arguments(tmp_path / "tampered.json", binding, "pre-render"),
     )
     assert tampered.returncode != 0
     arity = _run_embedded_python(
         patched_generator,
-        *arguments(tmp_path / "arity.json", binding)[:-1],
+        *arguments(tmp_path / "arity.json", binding, "pre-render")[:-1],
     )
     assert arity.returncode != 0
 
@@ -4469,10 +4966,12 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
     proof_sha = "5" * 64
     incident = _interrupted_phase1_incident()
     celery_path = tmp_path / "celery.json"
+    censorwatch_path = tmp_path / "censorwatch.json"
     activators_path = tmp_path / "activators.tsv"
     compose_path = tmp_path / "compose.tsv"
     binding_path = tmp_path / "binding.json"
     _write_canonical_json(celery_path, {"status": "consuming"})
+    _write_canonical_json(censorwatch_path, {"status": "inactive"})
     activators_path.write_text(
         "".join(
             f"unit-{index}.timer\tdisabled\t0\tdisabled\tinactive\n"
@@ -4509,6 +5008,8 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
         proof_path,
         proof_sha,
         celery_path,
+        censorwatch_path,
+        "0",
         activators_path,
         compose_path,
         "palimpsest-node-offsite-backup.service",
@@ -4553,6 +5054,25 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
     assert recovery_tampered.returncode != 0
 
     ordinary_output = tmp_path / "ordinary-finalized.json"
+    ordinary_compose_path = tmp_path / "ordinary-compose.tsv"
+    ordinary_rows = []
+    for index, service in enumerate(
+        (
+            "beat",
+            "worker",
+            "worker-collectors",
+            "worker-warehouse",
+                "beat-velocity-data",
+                "beat-velocity-control",
+            "worker-velocity",
+            "worker-velocity-control",
+        ),
+        1,
+    ):
+        ordinary_rows.append(
+            f"{service}\t0\t\t\tabsent\t\n"
+        )
+    ordinary_compose_path.write_text("".join(ordinary_rows), encoding="utf-8")
     ordinary_generated = _run_embedded_python(
         generator,
         ordinary_output,
@@ -4563,8 +5083,10 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
         proof_path,
         proof_sha,
         celery_path,
+        censorwatch_path,
+        "0",
         activators_path,
-        compose_path,
+        ordinary_compose_path,
         "palimpsest-node-offsite-backup.service",
         "",
         "",
@@ -4903,6 +5425,19 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
             "worker",
             "worker-collectors",
             "worker-warehouse",
+            "beat-velocity-data",
+            "beat-velocity-control",
+            "worker-velocity",
+            "worker-velocity-control",
+        )
+    }
+    legacy_restored_compose = {
+        service: {"state": "running"}
+        for service in (
+            "beat",
+            "worker",
+            "worker-collectors",
+            "worker-warehouse",
             "worker-velocity",
         )
     }
@@ -4919,6 +5454,10 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
         "release_proof_present": False,
         "writers_restored": True,
         "restored_celery": {},
+        "restored_censorwatch": {
+            "explicitly_active": False,
+            "broker": {"status": "inactive"},
+        },
         "restored_activators": {f"unit-{index}.timer": {} for index in range(12)},
         "restored_compose_writers": restored_compose,
         "restored_beat": restored_compose["beat"],
@@ -4951,6 +5490,8 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
     completion_path = tmp_path / "recovery-complete.json"
     recovery_finalized = {
         **finalized_base,
+        "restored_compose_writers": legacy_restored_compose,
+        "restored_beat": legacy_restored_compose["beat"],
         "interrupted_phase1_resume": binding,
         "interrupted_phase1_completion_required": True,
         "interrupted_phase1_completion_receipt": str(completion_path),
