@@ -1,0 +1,21 @@
+# GitHub Linguist should report authored implementation languages, not the
+# deterministic HTML editions emitted by Palimpsest's publication builders.
+# Keep the reviewed hand-authored exceptions after their generated trees so
+# the more specific assignment wins.
+news/**/*.html linguist-generated=true
+news/standards/index.html linguist-generated=false
+
+china/**/*.html linguist-generated=true
+china/capital-markets/index.html linguist-generated=false
+china/money-markets/index.html linguist-generated=false
+
+journal/**/*.html linguist-generated=true
+evals/**/*.html linguist-generated=true
+belt-and-road/index.html linguist-generated=true
+china-brief.html linguist-generated=true
+weekly-situation.html linguist-generated=true
+readings/generative-firewall-index.html linguist-generated=true
+citations/palimpsest.bib linguist-generated=true
+
+# Third-party GoatCounter client retained locally under its ISC license.
+assets/count.js linguist-vendored=true
