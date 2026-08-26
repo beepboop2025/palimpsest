@@ -293,7 +293,12 @@ def test_instagram_edit_state_and_observation_time_advance_situation(inputs):
         wire, analyses, "in-scope", social_platform="instagram"
     )
     registry = social_observations.load_source_registry()
-    first_time = _minutes_after(reference["published_at"])
+    prior_situation_time = max(
+        reference["published_at"],
+        event["updated_at"],
+        analyses[event["event_id"]]["generated_at"],
+    )
+    first_time = _minutes_after(prior_situation_time)
     edited_time = _minutes_after(first_time)
     original = _social_record(reference, observed_at=first_time)
     receipts = _social_receipts(registry, original["source_id"])
