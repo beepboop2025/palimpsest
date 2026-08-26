@@ -27,6 +27,7 @@ SUPPORTED_DATASET_FIELDS = {
     "dateModified",
     "description",
     "distribution",
+    "hasPart",
     "identifier",
     "isAccessibleForFree",
     "isPartOf",

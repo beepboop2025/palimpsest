@@ -1422,7 +1422,9 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     assert "Archive immutable wire analysis history in exact Pages staging" in workflow
     assert 'archive_builder="$RUNNER_TEMP/pages-root/scripts/build_pages_wire_archive.py"' in workflow
     assert workflow.count('--root "$RUNNER_TEMP/pages-root"') == 2
-    assert workflow.count('--publication-sha "$PUBLICATION_SHA"') == 2
+    # Two wire-archive passes plus the exact artifact-capacity receipt must all
+    # bind their output to the admitted publication SHA.
+    assert workflow.count('--publication-sha "$PUBLICATION_SHA"') == 3
     assert "            --check" in workflow
     assert "TAR_OPTIONS: '--transform=s|^\\./well-known|./.well-known|'" in workflow
     assert (
