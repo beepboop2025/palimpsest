@@ -19,6 +19,8 @@ from urllib.parse import urlsplit
 RELEASE_SCHEMA = "palimpsest.railway-static-release.v1"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+CANONICAL_MCP_REMOTE = "https://api.seiche.info/palimpsest/mcp"
+AI_CATALOG_PATH = "/.well-known/ai-catalog.json"
 
 
 def _load_release(site_root: Path) -> dict[str, Any]:
@@ -65,7 +67,14 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
         self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("X-Frame-Options", "DENY")
         path = urlsplit(self.path).path
-        if path in {"/healthz", "/livez", "/readyz", "/railway-release.json"}:
+        if path in {
+            "/healthz",
+            "/livez",
+            "/readyz",
+            "/railway-release.json",
+            "/mcp",
+            "/mcp/",
+        }:
             self.send_header("Cache-Control", "no-store")
         elif path.startswith("/assets/"):
             self.send_header(
@@ -88,6 +97,8 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             payload = {
                 "status": "ready",
                 "service": "palimpsest-publication",
+                "topology": "static-only",
+                "mcp_available_here": False,
                 "source_commit": release["source_commit"],
                 "tree_sha256": release["tree_sha256"],
             }
@@ -107,15 +118,42 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
         if include_body:
             self.wfile.write(body)
 
+    def _mcp_not_here(self, include_body: bool) -> None:
+        payload = {
+            "status": "not_found",
+            "service": "palimpsest-publication",
+            "topology": "static-only",
+            "mcp_available_here": False,
+            "canonical_mcp_remote": CANONICAL_MCP_REMOTE,
+            "discovery": AI_CATALOG_PATH,
+        }
+        body = (
+            json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+        ).encode()
+        self.send_response(HTTPStatus.NOT_FOUND)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if include_body:
+            self.wfile.write(body)
+
     def do_GET(self) -> None:  # noqa: N802
-        if urlsplit(self.path).path in {"/healthz", "/livez", "/readyz"}:
+        path = urlsplit(self.path).path
+        if path in {"/healthz", "/livez", "/readyz"}:
             self._health(include_body=True)
+            return
+        if path in {"/mcp", "/mcp/"}:
+            self._mcp_not_here(include_body=True)
             return
         super().do_GET()
 
     def do_HEAD(self) -> None:  # noqa: N802
-        if urlsplit(self.path).path in {"/healthz", "/livez", "/readyz"}:
+        path = urlsplit(self.path).path
+        if path in {"/healthz", "/livez", "/readyz"}:
             self._health(include_body=False)
+            return
+        if path in {"/mcp", "/mcp/"}:
+            self._mcp_not_here(include_body=False)
             return
         super().do_HEAD()
 

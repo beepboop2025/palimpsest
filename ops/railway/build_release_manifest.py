@@ -18,12 +18,18 @@ MANIFEST_NAME = "railway-release.json"
 CRITICAL_PATHS = (
     ".well-known/ai-catalog.json",
     "belt-and-road/index.html",
+    "config/china_econ_source_policy.json",
+    "config/pages_public_binary_allowlist.json",
     "index.html",
     "openapi.json",
     "protocol/bri-economic-observations-v1.schema.json",
     "protocol/bri-wdi-pages-publication-v1.schema.json",
+    "protocol/pages-rights-release-receipt-v1.schema.json",
+    "protocol/restricted-publication-endpoint-v1.schema.json",
+    "protocol/restricted-publication-v1.schema.json",
     "readings/belt-and-road-observatory-latest.json",
     "readings/bri-economic-observations-latest.json",
+    "readings/china-publication-rights-latest.json",
     "server.json",
 )
 

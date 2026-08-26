@@ -28,7 +28,6 @@ test("compiles the exact local-upload publication service", async () => {
       healthcheckPath: "/healthz",
       healthcheckTimeout: 300,
       numReplicas: 1,
-      restartPolicyType: "ON_FAILURE",
       restartPolicyMaxRetries: 5,
     },
     networking: {

@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import re
+import shutil
 import threading
 import urllib.error
 import urllib.request
+from datetime import UTC, datetime
 from http import HTTPStatus
 from pathlib import Path
+
+import pytest
+
+from scripts import build_pages_wire_archive as wire_archive
+from scripts import stage_pages_rights
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +34,18 @@ manifest_module = _load_module(
     "palimpsest_railway_manifest", RAILWAY / "build_release_manifest.py"
 )
 server_module = _load_module("palimpsest_railway_server", RAILWAY / "static_server.py")
+rights_scan_module = _load_module(
+    "palimpsest_railway_rights_scan", RAILWAY / "verify_rights_clean.py"
+)
+
+RIGHTS_CRITICAL_PATHS = {
+    "config/china_econ_source_policy.json",
+    "config/pages_public_binary_allowlist.json",
+    "protocol/pages-rights-release-receipt-v1.schema.json",
+    "protocol/restricted-publication-endpoint-v1.schema.json",
+    "protocol/restricted-publication-v1.schema.json",
+    "readings/china-publication-rights-latest.json",
+}
 
 
 def _publication_root(tmp_path: Path) -> Path:
@@ -46,6 +66,22 @@ def test_manifest_is_canonical_local_release_evidence(tmp_path: Path) -> None:
     assert len(manifest["tree_sha256"]) == 64
     parsed = json.loads((root / "railway-release.json").read_text(encoding="utf-8"))
     assert parsed == manifest
+
+
+def test_manifest_binds_every_rights_critical_file(tmp_path: Path) -> None:
+    root = _publication_root(tmp_path)
+    manifest = manifest_module.build_manifest(
+        root, "c" * 40, "2026-08-26T18:00:00Z"
+    )
+
+    assert RIGHTS_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
+    for relative in RIGHTS_CRITICAL_PATHS:
+        raw = (root / relative).read_bytes()
+        assert manifest["critical_files"][relative] == {
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+    assert "pages-rights-release-receipt.json" not in manifest["critical_files"]
 
 
 def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
@@ -94,10 +130,32 @@ def test_server_serves_manifest_bound_publication(tmp_path: Path) -> None:
             health = json.loads(response.read())
             assert health["source_commit"] == "b" * 40
             assert health["tree_sha256"] == manifest["tree_sha256"]
+            assert health["topology"] == "static-only"
+            assert health["mcp_available_here"] is False
             assert response.headers["Cache-Control"] == "no-store"
         with urllib.request.urlopen(base + "/belt-and-road/", timeout=5) as response:
             assert response.status == 200
             assert response.read() == b"fixture:belt-and-road/index.html\n"
+
+        with pytest.raises(urllib.error.HTTPError) as missing_mcp:
+            urllib.request.urlopen(base + "/mcp", timeout=5)
+        assert missing_mcp.value.code == 404
+        assert missing_mcp.value.headers["Cache-Control"] == "no-store"
+        topology = json.loads(missing_mcp.value.read())
+        assert topology == {
+            "canonical_mcp_remote": server_module.CANONICAL_MCP_REMOTE,
+            "discovery": "/.well-known/ai-catalog.json",
+            "mcp_available_here": False,
+            "service": "palimpsest-publication",
+            "status": "not_found",
+            "topology": "static-only",
+        }
+
+        with pytest.raises(urllib.error.HTTPError) as missing_receipt:
+            urllib.request.urlopen(
+                base + "/pages-rights-release-receipt.json", timeout=5
+            )
+        assert missing_receipt.value.code == 404
     finally:
         server.shutdown()
         server.server_close()
@@ -116,7 +174,7 @@ def test_railway_iac_contract_preserves_local_upload_runtime() -> None:
     assert 'healthcheckPath:"/healthz"' in compact
     assert "healthcheckTimeout:300" in compact
     assert "numReplicas:1" in compact
-    assert 'restartPolicyType:"ON_FAILURE"' in compact
+    assert "restartPolicyType:" not in compact
     assert "restartPolicyMaxRetries:5" in compact
     assert 'domains:["palimpsest.info","www.palimpsest.info"]' in compact
     assert "source:" not in compact
@@ -139,3 +197,132 @@ def test_railway_container_is_non_root_and_bundle_stays_public_only() -> None:
     assert "railway.static.json" not in builder
     assert 'top_level_path" == .*' in builder
     assert 'top_level_path" != ".well-known"' in builder
+
+
+def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
+    builder = (RAILWAY / "build-static-bundle.sh").read_text(encoding="utf-8")
+
+    capture = builder.index('verify_rights_clean.py" capture')
+    stage = builder.index('python3 -m scripts.stage_pages_rights "${rights_args[@]}"')
+    stage_check = builder.index(
+        'python3 -m scripts.stage_pages_rights "${rights_args[@]}" --check'
+    )
+    independent_scan = builder.index('verify_rights_clean.py" verify')
+    wire = builder.index('scripts/build_pages_wire_archive.py"')
+    wire_check = builder.index("--check", wire)
+    manifest = builder.index("ops/railway/build_release_manifest.py")
+
+    assert capture < stage < stage_check < independent_scan < wire < wire_check < manifest
+    assert 'rights_receipt="$control_directory/' in builder
+    assert 'final_rights_receipt="$output_parent/' in builder
+    assert '--receipt "$rights_receipt"' in builder
+    assert "PALIMPSEST_RAILWAY_ADMISSION_EPOCH" in builder
+    assert "mv \"$staging_directory/.well-known\"" not in builder
+
+
+def _copy_public_fixture(root: Path, relative: str) -> None:
+    destination = root / relative
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / relative, destination)
+
+
+def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> None:
+    public_root = tmp_path / "public"
+    control_root = tmp_path / "control"
+    control_root.mkdir()
+    for relative in (
+        "config/china_econ_source_policy.json",
+        "readings/china-econ-observations.jsonl",
+        "readings/bri-economic-observations-latest.json",
+    ):
+        _copy_public_fixture(public_root, relative)
+
+    event_id = "event-" + "a" * 24
+    analysis_id = "analysisv-" + "b" * 24
+    denied_analysis = (
+        json.dumps(
+            {
+                "analysis_id": analysis_id,
+                "series_id": "cn.cfets.fdr007",
+                "source_id": "cfets_benchmarks",
+                "value": 9.876,
+            },
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode()
+    head = public_root / f"news/wire/{event_id}/analysis.json"
+    revision = (
+        public_root
+        / f"news/wire/{event_id}/analysis/revisions/{analysis_id}.json"
+    )
+    for path in (head, revision):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(denied_analysis)
+
+    sentinels = control_root / "denied-sentinels.txt"
+    receipt = control_root / "pages-rights-release-receipt.json"
+    captured = rights_scan_module.capture_sentinels(public_root, sentinels)
+    assert captured["ledger_rows"] > 0
+    assert captured["sentinels"] > 0
+
+    bri_path = public_root / "readings/bri-economic-observations-latest.json"
+    bri_before = hashlib.sha256(bri_path.read_bytes()).hexdigest()
+    clock = datetime(2026, 8, 26, 18, 0, 0, tzinfo=UTC)
+    publication_sha = "d" * 40
+    status = stage_pages_rights.stage_pages_tree(
+        public_root,
+        publication_sha=publication_sha,
+        evaluated_at=clock,
+        admission_at=clock,
+    )
+    stage_pages_rights.write_release_receipt(
+        receipt,
+        root=public_root,
+        status=status,
+        publication_sha=publication_sha,
+        evaluated_at=clock,
+        admission_at=clock,
+    )
+    verified = stage_pages_rights.verify_staged_tree(
+        public_root,
+        publication_sha=publication_sha,
+        evaluated_at=clock,
+        admission_at=clock,
+    )
+
+    assert verified == status
+    assert hashlib.sha256(bri_path.read_bytes()).hexdigest() == bri_before
+    assert rights_scan_module.verify_clean(public_root, sentinels)["files"] > 0
+    assert not (public_root / receipt.name).exists()
+    assert receipt.is_file()
+    assert {
+        head.relative_to(public_root).as_posix(),
+        revision.relative_to(public_root).as_posix(),
+    } <= set(status["quarantined_paths"])
+
+    closure = wire_archive.build_for_pages(public_root, publication_sha)
+    assert closure["mode"] == "rights-suppressed"
+    assert wire_archive.verify_for_pages(public_root, publication_sha) == closure
+    assert not (public_root / wire_archive.ARCHIVE_RELATIVE_PATH).exists()
+    assert not (public_root / wire_archive.RECEIPT_RELATIVE_PATH).exists()
+
+    leaked = public_root / "leaked-identity.txt"
+    leaked.write_bytes(sentinels.read_bytes().splitlines()[0] + b"\n")
+    with pytest.raises(rights_scan_module.RightsScanError, match="retained denied"):
+        rights_scan_module.verify_clean(public_root, sentinels)
+
+
+def test_static_mcp_topology_preserves_the_canonical_external_remote() -> None:
+    catalog = json.loads((ROOT / ".well-known/ai-catalog.json").read_text())
+    entry = next(
+        row
+        for row in catalog["entries"]
+        if row["identifier"]
+        == "urn:air:palimpsest.info:mcp:evidence-observatory"
+    )
+
+    assert entry["data"]["remotes"] == [
+        {"type": "streamable-http", "url": server_module.CANONICAL_MCP_REMOTE}
+    ]
+    assert "railway.app/mcp" not in json.dumps(entry)

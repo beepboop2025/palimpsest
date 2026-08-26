@@ -12,7 +12,8 @@ export default defineRailway(() => {
       healthcheckPath: "/healthz",
       healthcheckTimeout: 300,
       numReplicas: 1,
-      restartPolicyType: "ON_FAILURE",
+      // Railway normalizes its default restart type to null in the IaC graph.
+      // Omit the default so a successful apply converges to a zero-change plan.
       restartPolicyMaxRetries: 5,
     },
     domains: ["palimpsest.info", "www.palimpsest.info"],
