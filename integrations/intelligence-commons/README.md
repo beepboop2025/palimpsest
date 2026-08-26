@@ -105,6 +105,30 @@ missing modalities remain missing. The object contains no designation subject
 name, alias, exact address, entity identifier, raw communication, private lead,
 or entity-to-entity allegation.
 
+### Corridor v2: repository-ready, not deployed
+
+The additive
+[`narcoscope-palimpsest-corridors-v2.json`](narcoscope-palimpsest-corridors-v2.json)
+pin covers official country aggregates for China, Myanmar and Pakistan. Its
+producer contract is `narcoscope.palimpsest.corridor-aggregate.v2`; its schema
+and exact artifact bytes are jointly bound by
+[`narcoscope-corridors-pin-v2.json`](narcoscope-corridors-pin-v2.json).
+
+This v2 path is intentionally **repository-ready, not deployed**. Palimpsest
+does not remote-check or advertise the canonical producer URL as live until
+served-byte verification succeeds. The only permitted join is geography plus
+time. The artifact cannot classify a political party, civic movement, armed
+organization, community, person, infrastructure project or bilateral route,
+and it cannot establish guilt or causality. In particular, the current Myanmar
+precursor record says that origin was not reported; the validator refuses a
+candidate that turns it into a China-Myanmar flow.
+
+Offline verification:
+
+```sh
+python3 -m scripts.sync_narcoscope_corridors --check
+```
+
 ## Publication gate
 
 A public consumer must, in order:

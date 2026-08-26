@@ -1,0 +1,763 @@
+{
+  "$schema": "./narcoscope-palimpsest-corridors-v2.schema.json",
+  "schemaVersion": "narcoscope.palimpsest.corridor-aggregate.v2",
+  "artifactId": "narcoscope.china-pakistan-myanmar.official-coverage",
+  "dataAsOf": "2026-08-26",
+  "geographies": [
+    {
+      "country": "China",
+      "iso2": "CN",
+      "iso3": "CHN"
+    },
+    {
+      "country": "Myanmar",
+      "iso2": "MM",
+      "iso3": "MMR"
+    },
+    {
+      "country": "Pakistan",
+      "iso2": "PK",
+      "iso3": "PAK"
+    }
+  ],
+  "disclosure": {
+    "level": "public_country_aggregate",
+    "sourcePolicy": "official_only",
+    "subjectEntityDisclosure": "none",
+    "exactAddressDisclosure": "none",
+    "preciseCoordinateDisclosure": "none",
+    "identifierDisclosure": "none",
+    "illustrativeDataIncluded": false,
+    "runtimeCoupling": "none_static_artifact",
+    "joinPolicy": "geography_and_time_only",
+    "politicalOrArmedActorInference": "prohibited"
+  },
+  "datasets": {
+    "retailDrugPrices": {
+      "datasetId": "retail_drug_prices",
+      "topic": "drug_market_prices",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "statistical_measurement",
+        "method": "UNODC typical retail value, with a documented midpoint fallback for a complete minimum and maximum range",
+        "unit": "nominal USD per gram; purity in percent where reported",
+        "grain": "country, drug and year"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 2019,
+        "toYear": 2019,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "United Nations Office on Drugs and Crime",
+        "title": "World Drug Report 2025, Statistical Annex 8.1: Prices and purities of drugs",
+        "url": "https://www.unodc.org/documents/data-and-analysis/WDR_2025/Annex/8.1_Prices_and_purities_of_drugs.xlsx",
+        "sourceEdition": "2025",
+        "localDataDate": "2026-08-26",
+        "input": {
+          "path": "src/data/prices.ts",
+          "sha256": "8c306848db7ed72b8643bdd415730427acaa5e4bce7bf8a07f98f927343916db"
+        }
+      },
+      "data": {
+        "recordCount": 9,
+        "countries": [
+          {
+            "geography": {
+              "country": "China",
+              "iso2": "CN",
+              "iso3": "CHN"
+            },
+            "coverageStatus": "observed",
+            "recordCount": 4,
+            "observations": [
+              {
+                "drug": "cannabis",
+                "year": 2019,
+                "priceUsdPerGram": 39.65,
+                "purityPct": null
+              },
+              {
+                "drug": "cocaine",
+                "year": 2019,
+                "priceUsdPerGram": 127.21,
+                "purityPct": 40
+              },
+              {
+                "drug": "heroin",
+                "year": 2019,
+                "priceUsdPerGram": 88.18,
+                "purityPct": 35
+              },
+              {
+                "drug": "methamphetamine",
+                "year": 2019,
+                "priceUsdPerGram": 50.13,
+                "purityPct": 72
+              }
+            ]
+          },
+          {
+            "geography": {
+              "country": "Myanmar",
+              "iso2": "MM",
+              "iso3": "MMR"
+            },
+            "coverageStatus": "observed",
+            "recordCount": 3,
+            "observations": [
+              {
+                "drug": "cannabis",
+                "year": 2019,
+                "priceUsdPerGram": 0.2,
+                "purityPct": null
+              },
+              {
+                "drug": "heroin",
+                "year": 2019,
+                "priceUsdPerGram": 19.63,
+                "purityPct": null
+              },
+              {
+                "drug": "methamphetamine",
+                "year": 2019,
+                "priceUsdPerGram": 6.54,
+                "purityPct": null
+              }
+            ]
+          },
+          {
+            "geography": {
+              "country": "Pakistan",
+              "iso2": "PK",
+              "iso3": "PAK"
+            },
+            "coverageStatus": "observed",
+            "recordCount": 2,
+            "observations": [
+              {
+                "drug": "cocaine",
+                "year": 2019,
+                "priceUsdPerGram": 106.42,
+                "purityPct": null
+              },
+              {
+                "drug": "methamphetamine",
+                "year": 2019,
+                "priceUsdPerGram": 9.98,
+                "purityPct": null
+              }
+            ]
+          }
+        ]
+      },
+      "limitations": [
+        "The retained extract contains one year for these countries and cannot establish a trend.",
+        "Prices are nominal reported retail values, not market-size, availability or transaction-volume estimates.",
+        "Cross-country price comparisons require exchange-rate, purchasing-power, purity and reporting-context caveats."
+      ]
+    },
+    "drugSeizures": {
+      "datasetId": "drug_seizures",
+      "topic": "drug_seizures",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "administrative_measurement",
+        "method": "UNODC-reported seizure quantities retained at country, drug and year grain and summarized independently within each country",
+        "unit": "kilograms",
+        "grain": "country, drug and year; summarized by year and drug group"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 2019,
+        "toYear": 2023,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "United Nations Office on Drugs and Crime",
+        "title": "UNODC World Drug Report 2025 - Statistical Annex 7.1: Drug seizures 2019-2023 (kilograms)",
+        "url": "https://www.unodc.org/documents/data-and-analysis/WDR_2025/Annex/7.1_Drug_seizures_2019-2023.xlsx",
+        "sourceEdition": "World Drug Report 2025",
+        "localDataDate": "2026-07-03",
+        "input": {
+          "path": "src/data/seizures.json",
+          "sha256": "c0536294fbc104016f0d4cdb4a5add8766a4f72e968fed925de6f05e34cd0fc1"
+        }
+      },
+      "data": {
+        "sourceRowCount": 283,
+        "countries": [
+          {
+            "geography": {
+              "country": "China",
+              "iso2": "CN",
+              "iso3": "CHN"
+            },
+            "coverageStatus": "observed",
+            "sourceRowCount": 102,
+            "quantityKg": 152336.66,
+            "byYear": [
+              {
+                "year": 2019,
+                "sourceRowCount": 33,
+                "quantityKg": 61104
+              },
+              {
+                "year": 2020,
+                "sourceRowCount": 20,
+                "quantityKg": 31625.61
+              },
+              {
+                "year": 2021,
+                "sourceRowCount": 10,
+                "quantityKg": 22663.61
+              },
+              {
+                "year": 2022,
+                "sourceRowCount": 19,
+                "quantityKg": 15640.15
+              },
+              {
+                "year": 2023,
+                "sourceRowCount": 20,
+                "quantityKg": 21303.29
+              }
+            ],
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 12,
+                "quantityKg": 88022.95
+              },
+              {
+                "drugGroup": "Any other drugs/substances",
+                "sourceRowCount": 3,
+                "quantityKg": 4499
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 20,
+                "quantityKg": 18079.2
+              },
+              {
+                "drugGroup": "Cocaine-type",
+                "sourceRowCount": 5,
+                "quantityKg": 4172.69
+              },
+              {
+                "drugGroup": "Hallucinogens",
+                "sourceRowCount": 4,
+                "quantityKg": 0.75
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 6,
+                "quantityKg": 5666
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 39,
+                "quantityKg": 30676.82
+              },
+              {
+                "drugGroup": "Sedatives and tranquillizers",
+                "sourceRowCount": 9,
+                "quantityKg": 502.83
+              },
+              {
+                "drugGroup": "“Ecstasy”-type substances",
+                "sourceRowCount": 4,
+                "quantityKg": 716.42
+              }
+            ]
+          },
+          {
+            "geography": {
+              "country": "Myanmar",
+              "iso2": "MM",
+              "iso3": "MMR"
+            },
+            "coverageStatus": "observed",
+            "sourceRowCount": 86,
+            "quantityKg": 231058.14,
+            "byYear": [
+              {
+                "year": 2019,
+                "sourceRowCount": 16,
+                "quantityKg": 29070
+              },
+              {
+                "year": 2020,
+                "sourceRowCount": 19,
+                "quantityKg": 64839.05
+              },
+              {
+                "year": 2021,
+                "sourceRowCount": 22,
+                "quantityKg": 40338.13
+              },
+              {
+                "year": 2022,
+                "sourceRowCount": 14,
+                "quantityKg": 44949.9
+              },
+              {
+                "year": 2023,
+                "sourceRowCount": 15,
+                "quantityKg": 51861.06
+              }
+            ],
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 16,
+                "quantityKg": 182604.6
+              },
+              {
+                "drugGroup": "Any other drugs/substances",
+                "sourceRowCount": 1,
+                "quantityKg": 2543
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 13,
+                "quantityKg": 3632.21
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 14,
+                "quantityKg": 23710.34
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 28,
+                "quantityKg": 18200.33
+              },
+              {
+                "drugGroup": "Sedatives and tranquillizers",
+                "sourceRowCount": 9,
+                "quantityKg": 93.04
+              },
+              {
+                "drugGroup": "“Ecstasy”-type substances",
+                "sourceRowCount": 5,
+                "quantityKg": 274.62
+              }
+            ]
+          },
+          {
+            "geography": {
+              "country": "Pakistan",
+              "iso2": "PK",
+              "iso3": "PAK"
+            },
+            "coverageStatus": "observed",
+            "sourceRowCount": 95,
+            "quantityKg": 1469663.17,
+            "byYear": [
+              {
+                "year": 2019,
+                "sourceRowCount": 21,
+                "quantityKg": 307801
+              },
+              {
+                "year": 2020,
+                "sourceRowCount": 32,
+                "quantityKg": 515449
+              },
+              {
+                "year": 2021,
+                "sourceRowCount": 16,
+                "quantityKg": 288746.46
+              },
+              {
+                "year": 2022,
+                "sourceRowCount": 16,
+                "quantityKg": 220927.92
+              },
+              {
+                "year": 2023,
+                "sourceRowCount": 10,
+                "quantityKg": 136738.79
+              }
+            ],
+            "byDrugGroup": [
+              {
+                "drugGroup": "Amphetamine-type stimulants (excluding “ecstasy”)",
+                "sourceRowCount": 10,
+                "quantityKg": 18489.07
+              },
+              {
+                "drugGroup": "Any other drugs/substances",
+                "sourceRowCount": 6,
+                "quantityKg": 43843.62
+              },
+              {
+                "drugGroup": "Cannabis-type drugs (excluding synthetic cannabinoids)",
+                "sourceRowCount": 11,
+                "quantityKg": 997504.95
+              },
+              {
+                "drugGroup": "Cocaine-type",
+                "sourceRowCount": 5,
+                "quantityKg": 338.58
+              },
+              {
+                "drugGroup": "NPS",
+                "sourceRowCount": 5,
+                "quantityKg": 2832.46
+              },
+              {
+                "drugGroup": "Opioids",
+                "sourceRowCount": 20,
+                "quantityKg": 289253.99
+              },
+              {
+                "drugGroup": "Precursors",
+                "sourceRowCount": 18,
+                "quantityKg": 116934.97
+              },
+              {
+                "drugGroup": "Sedatives and tranquillizers",
+                "sourceRowCount": 16,
+                "quantityKg": 167.14
+              },
+              {
+                "drugGroup": "“Ecstasy”-type substances",
+                "sourceRowCount": 4,
+                "quantityKg": 298.39
+              }
+            ]
+          }
+        ]
+      },
+      "limitations": [
+        "Seizures measure detected and reported enforcement events, not total production, movement or consumption.",
+        "Country totals are not added across countries because reporting systems and drug composition differ.",
+        "A change can reflect enforcement capacity, classification or reporting practice as well as underlying activity."
+      ]
+    },
+    "precursorCorridorIncidents": {
+      "datasetId": "precursor_corridor_incidents",
+      "topic": "precursor_flows",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "administrative_measurement",
+        "method": "Target-geography matches in audited INCB statements, retaining source wording, bounds, record kinds and paragraph locators",
+        "unit": "reported kilograms or qualified bounds; qualitative operation records remain non-summable",
+        "grain": "source statement and named geography role"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 2024,
+        "toYear": 2025,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "International Narcotics Control Board",
+        "title": "Precursors Report 2025",
+        "url": "https://www.incb.org/incb/uploads/documents/Publications/AnnualReports/AR2025/Precursors_Report/E_INCB_2025_4_eng.pdf",
+        "sourceEdition": "2025, published February 2026",
+        "localDataDate": "2026-08-12",
+        "documentSha256": "8397f2799116fe33ce6851ec2c7e03a042886fb9c048f72cdb259724de5ddd6e",
+        "retrievedAt": "2026-08-12T13:50:25Z",
+        "input": {
+          "path": "src/data/flows.ts",
+          "sha256": "00799d3f4c7756a7790ccea8e1d0b8c4ac5fa97f7b7df26fe972d074864bc4dc"
+        }
+      },
+      "data": {
+        "includedQuantitativeRecordCount": 2,
+        "includedContextRecordCount": 1,
+        "crossTargetBilateralRecordCount": 0,
+        "quantityAggregation": {
+          "status": "not_computed_mixed_claim_semantics",
+          "summedQuantityKg": null,
+          "reason": "The retained records include bounds, different precursor bases and different geographic roles."
+        },
+        "corridors": [
+          {
+            "geographyMatches": [
+              "CHN"
+            ],
+            "reportedOrigin": "China",
+            "transit": null,
+            "destination": "European Union",
+            "seizureLocation": null,
+            "year": 2025,
+            "precursor": "meth_pre_precursors",
+            "quantityKg": 5000,
+            "quantityRelation": "less_than",
+            "quantityBasis": "Combined substance mass across nine PICS incidents; the source reports nearly 5 tons, retained as a less-than 5,000 kg bound.",
+            "recordKind": "multi_incident_aggregate",
+            "aggregationEligibility": "ineligible_non_exact",
+            "aggregationGroup": "meth_pre_precursor_substance_mass",
+            "incidentCount": 9,
+            "sourceLocator": {
+              "pdfPage": 44,
+              "printedPage": 26,
+              "paragraph": 94
+            }
+          },
+          {
+            "geographyMatches": [
+              "MMR"
+            ],
+            "reportedOrigin": "Not reported",
+            "transit": null,
+            "destination": "Myanmar",
+            "seizureLocation": "Thailand",
+            "year": 2025,
+            "precursor": "mdma_precursors",
+            "quantityKg": 1000,
+            "quantityRelation": "less_than",
+            "quantityBasis": "Derived upper bound for the amount seized in Thailand: two thirds of a six-seizure aggregate reported as less than 1,500 kg of substance.",
+            "recordKind": "single_incident",
+            "aggregationEligibility": "ineligible_non_exact",
+            "aggregationGroup": "mdma_precursor_substance_mass",
+            "incidentCount": 1,
+            "sourceLocator": {
+              "pdfPage": 43,
+              "printedPage": 25,
+              "paragraph": 92
+            }
+          }
+        ],
+        "contextRecords": [
+          {
+            "geographyMatches": [
+              "CHN"
+            ],
+            "contextId": "operation-pseudonym-australia-new-zealand-origins-2024",
+            "precursor": "meth_precursors",
+            "origins": [
+              "China",
+              "India"
+            ],
+            "destinations": [
+              "Australia",
+              "New Zealand"
+            ],
+            "year": 2024,
+            "recordKind": "qualitative_context",
+            "allocationStatus": "not_reported_by_origin_destination_pair",
+            "operationReportedSeizureCount": 168,
+            "countScope": "four_reporting_countries_operation_total",
+            "summary": "INCB reports that four participating countries recorded 168 seizures during Operation Pseudonym, most in Australia and New Zealand, and that origins for substances in both countries were reported as China and India. The report does not allocate seizure count or mass by origin-and-destination pair.",
+            "sourceLocator": {
+              "pdfPage": 31,
+              "printedPage": 13,
+              "paragraph": 46
+            }
+          }
+        ]
+      },
+      "limitations": [
+        "A geography match is not proof of a bilateral route between target countries.",
+        "The Myanmar record reports Myanmar as destination and explicitly leaves origin unreported; it is not a China-Myanmar flow.",
+        "Operation Pseudonym names China and India as reported origins but does not allocate count or mass by origin-destination pair.",
+        "The records are selected reported incidents, not a complete flow series or an estimate of successful movement."
+      ]
+    },
+    "ofacDesignations": {
+      "datasetId": "ofac_designations",
+      "topic": "official_designations",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_action_record",
+        "valueType": "administrative_action",
+        "method": "Count of OFAC SDN records carrying each target country as a country of record and a retained narcotics or TCO program; subject fields removed",
+        "unit": "designation records",
+        "grain": "country of record and program family"
+      },
+      "temporalCoverage": {
+        "kind": "snapshot",
+        "fromYear": null,
+        "toYear": null,
+        "snapshotDate": "2026-08-26"
+      },
+      "provenance": {
+        "publisher": "US Department of the Treasury, Office of Foreign Assets Control",
+        "title": "US Treasury OFAC - Specially Designated Nationals List",
+        "url": "https://sanctionslist.ofac.treas.gov/Home/SdnList",
+        "sourceEdition": "SDN snapshot",
+        "localDataDate": "2026-08-26",
+        "input": {
+          "path": "src/data/designations.json",
+          "sha256": "9a9674e82ced38729833de7aa6ebea60e904ce48c9ff9f630379f938c74d190b"
+        }
+      },
+      "data": {
+        "countries": [
+          {
+            "geography": {
+              "country": "China",
+              "iso2": "CN",
+              "iso3": "CHN"
+            },
+            "coverageStatus": "observed",
+            "recordCount": 118,
+            "narcoticsSpecificProgramRecordCount": 79,
+            "tcoOnlyRecordCount": 39
+          },
+          {
+            "geography": {
+              "country": "Myanmar",
+              "iso2": "MM",
+              "iso3": "MMR"
+            },
+            "coverageStatus": "no_matching_rows_in_snapshot",
+            "recordCount": 0,
+            "narcoticsSpecificProgramRecordCount": 0,
+            "tcoOnlyRecordCount": 0
+          },
+          {
+            "geography": {
+              "country": "Pakistan",
+              "iso2": "PK",
+              "iso3": "PAK"
+            },
+            "coverageStatus": "observed",
+            "recordCount": 28,
+            "narcoticsSpecificProgramRecordCount": 17,
+            "tcoOnlyRecordCount": 11
+          }
+        ]
+      },
+      "limitations": [
+        "A designation is a published government action, not an adjudication of guilt or independent proof of described conduct.",
+        "Country of record comes from the retained OFAC address geography and is not a nationality finding.",
+        "No matching rows means only that this scoped snapshot produced none; it is not a claim that no relevant actor or action exists.",
+        "No subject name, alias, identifier or address crosses this bridge."
+      ]
+    },
+    "wildlifeConfiscations": {
+      "datasetId": "wildlife_confiscations",
+      "topic": "wildlife_confiscations",
+      "sourceStatus": "official",
+      "measurement": {
+        "status": "official_reported",
+        "valueType": "administrative_measurement",
+        "method": "CITES confiscation-record counts where a target country appears in the retained exporter or importer ranking",
+        "unit": "confiscation records, not physical quantity",
+        "grain": "country role in retained top-country table"
+      },
+      "temporalCoverage": {
+        "kind": "year_range",
+        "fromYear": 1977,
+        "toYear": 2025,
+        "snapshotDate": null
+      },
+      "provenance": {
+        "publisher": "Convention on International Trade in Endangered Species of Wild Fauna and Flora",
+        "title": "CITES Trade Database - confiscation records (Source = I)",
+        "url": "https://trade.cites.org/",
+        "sourceEdition": "Trade Database extract",
+        "localDataDate": "2026-07-27",
+        "input": {
+          "path": "src/data/wildlifeSeizures.json",
+          "sha256": "af0aa9afd5f130e25bfb34e333e4e4af0a21e9bdd8fcb15ff11deda33dbf04ff"
+        }
+      },
+      "data": {
+        "datasetRecordCount": 232208,
+        "countries": [
+          {
+            "geography": {
+              "country": "China",
+              "iso2": "CN",
+              "iso3": "CHN"
+            },
+            "exporterOfRecord": {
+              "coverageStatus": "observed",
+              "recordCount": 20214,
+              "rankInRetainedTable": 2
+            },
+            "importerOfRecord": {
+              "coverageStatus": "observed",
+              "recordCount": 2222,
+              "rankInRetainedTable": 5
+            }
+          },
+          {
+            "geography": {
+              "country": "Myanmar",
+              "iso2": "MM",
+              "iso3": "MMR"
+            },
+            "exporterOfRecord": {
+              "coverageStatus": "not_in_retained_top_table",
+              "recordCount": null,
+              "rankInRetainedTable": null
+            },
+            "importerOfRecord": {
+              "coverageStatus": "not_in_retained_top_table",
+              "recordCount": null,
+              "rankInRetainedTable": null
+            }
+          },
+          {
+            "geography": {
+              "country": "Pakistan",
+              "iso2": "PK",
+              "iso3": "PAK"
+            },
+            "exporterOfRecord": {
+              "coverageStatus": "not_in_retained_top_table",
+              "recordCount": null,
+              "rankInRetainedTable": null
+            },
+            "importerOfRecord": {
+              "coverageStatus": "not_in_retained_top_table",
+              "recordCount": null,
+              "rankInRetainedTable": null
+            }
+          }
+        ]
+      },
+      "limitations": [
+        "Not in the retained top table is an unavailable value, never zero.",
+        "Exporter and importer record counts can overlap and must not be added.",
+        "CITES quantities mix incompatible units, so the bridge counts records and never sums physical quantities.",
+        "Coverage is limited to listed species and depends on party reporting and enforcement."
+      ]
+    }
+  },
+  "exclusions": [
+    {
+      "component": "myanmar_constructed_and_illustrative_series",
+      "classification": "illustrative_or_constructed",
+      "reason": "Regional flow volumes, the meth activity index and country-to-region precursor inflows are not official observations."
+    },
+    {
+      "component": "acled_conflict_rows",
+      "classification": "licensed_conflict_data",
+      "reason": "Conflict-event data has separate licensing and claim semantics and does not enter this official drug-market bridge."
+    },
+    {
+      "component": "political_and_armed_movements",
+      "classification": "out_of_scope",
+      "reason": "No political party, civil-society movement, armed organization or community is classified through aggregate drug-market data."
+    },
+    {
+      "component": "designation_subject_details",
+      "classification": "privacy_minimized",
+      "reason": "Names, aliases, identifiers and addresses do not cross the aggregate boundary."
+    },
+    {
+      "component": "tactical_location_and_methods",
+      "classification": "safety_minimized",
+      "reason": "The bridge carries no navigable coordinates, operational vulnerabilities, synthesis routes, yields or procurement guidance."
+    }
+  ],
+  "limitations": [
+    "This is a deterministic country-level evidence overlay, not a risk score, relationship graph or live feed.",
+    "A shared geography or period does not establish that two datasets describe the same event, actor or causal chain.",
+    "Official source status describes provenance and does not make a source complete or convert an allegation into a finding.",
+    "Palimpsest must byte-pin and review a changed artifact before using it in a public claim."
+  ]
+}

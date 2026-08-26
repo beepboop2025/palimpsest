@@ -726,11 +726,13 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # weekly-situation, collector-health and gazetteer-phylogeny are derived fusion and
 # ops surfaces over inputs already counted here; weibo-hotsearch-terms is the
 # title-union dump of the already-counted hot-search board; and the remaining files are generic
-# model evaluation surfaces. Research-corpus metadata is a first-party China-adjacent
-# input and is listed in SIGNALS.
+# model evaluation surfaces. The Belt and Road observatory is a planning/source-coverage
+# contract rather than a live China signal. Research-corpus metadata is a first-party
+# China-adjacent input and is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset(
     {
         "china-article-stream-latest.json",
+        "belt-and-road-observatory-latest.json",
         "china-censorship-analysis-latest.json",
         "china-econ-forecast-latest.json",
         "china-econ-observations-latest.json",

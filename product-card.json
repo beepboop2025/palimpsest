@@ -1,11 +1,11 @@
 {
   "schema": "liquidity-lab.product-card.v1",
-  "updated": "2026-08-24",
+  "updated": "2026-08-26",
   "product": {
     "name": "Palimpsest",
     "canonical_url": "https://palimpsest.info/",
-    "category": "Censorship observatory, revision-safe China Economic Observatory, verifiable AI evaluation registry, evidence-bound Eval Journal and structured evidence commons",
-    "description": "A free public good that measures information control, publishes a revision-safe China Economic Observatory, maintains pre-registered hash-chained AI evaluations, and explains them through an evidence-bound Eval Journal. Palimpsest software, schemas and original metadata are MIT-licensed; source observations retain their publishers' rights.",
+    "category": "Censorship observatory, revision-safe China Economic Observatory, global Belt and Road evidence contract, verifiable AI evaluation registry, evidence-bound Eval Journal and structured evidence commons",
+    "description": "A free public good that measures information control, publishes revision-safe China economic evidence, maps the global Belt and Road evidence surface with deep Pakistan and Myanmar coverage, maintains pre-registered hash-chained AI evaluations, and explains them through evidence-bound publications. Palimpsest software, schemas and original metadata are MIT-licensed; source observations retain their publishers' rights.",
     "license": "MIT",
     "license_scope": [
       "Palimpsest software",
@@ -17,7 +17,7 @@
       "catalog": "https://palimpsest.info/data.html#rights"
     },
     "price": "Free",
-    "geography": "China-facing measurements plus aggregate transnational reference contexts and model-evaluation research",
+    "geography": "Global Belt and Road coverage, with priority depth for China, Pakistan, Myanmar, Balochistan, Gwadar and Rakhine, plus China-facing measurements and model-evaluation research",
     "topics": [
       "internet censorship measurement",
       "AI model refusal and narrative substitution",
@@ -27,6 +27,9 @@
       "information-control OSINT",
       "privacy-minimized scam intelligence interchange",
       "China monetary-plumbing context",
+      "Belt and Road project lifecycle and economic evidence",
+      "CPEC, Gwadar, CMEC and Kyaukpyu infrastructure coverage",
+      "Balochistan political economy, rights and plural movement taxonomy",
       "aggregate narcotics and precursor observables",
       "observed, derived and scenario evidence separation"
     ]
@@ -37,6 +40,8 @@
     "An agent needs a read-only MCP server that reconciles multiple censorship signals without inventing a finding from a coverage gap.",
     "A researcher needs raw JSON readings whose freshness, vantage and limitations remain attached.",
     "A researcher or agent needs bounded, point-in-time queries over aggregate China economic observations with release and collection clocks, revisions and provenance hashes intact.",
+    "A researcher needs a global BRI source and project-field contract that keeps announcements, commitments, disbursements, construction, completion and operation distinct.",
+    "A journalist or public-interest group needs deep Pakistan, Myanmar, Gwadar, Balochistan or Rakhine coverage with local-impact fields and explicit evidence gaps.",
     "A threat researcher or ScamShield operator needs a reviewed typology and source map whose support level stays separate from an allegation.",
     "A researcher needs to search and inspect every field retained by the China roll-up rather than only its headline cards."
   ],
@@ -49,6 +54,8 @@
     "Exporting raw Telegram messages, exact indicators, private Evidence Capsules or owner-only liquidity values into a public dataset.",
     "Automatically publishing a ScamShield assessment or treating a typology match as proof about a person, wallet, channel or transaction.",
     "Inferring criminal origin or causation from temporal co-movement between censorship, money-market, drug-market or scam signals.",
+    "Treating the Balochistan liberation movement as one actor, equating peaceful civic activity with armed activity, or publishing tactical vulnerabilities or person-level dossiers.",
+    "Calling a listed BRI source ingested, current or independently corroborated when its implementation and rights fields say otherwise.",
     "Estimating a national black economy, drug market or laundering total from bounded public samples.",
     "Sizing financial risk, selling a named-list seat, or treating Palimpsest, Evidence Signal or NarcoScope as Liquidity Lab software."
   ],
@@ -78,6 +85,9 @@
     "china_economy_api_guide": "https://palimpsest.info/china-economy-api/",
     "china_economic_forecast": "https://palimpsest.info/readings/china-econ-forecast-latest.json",
     "china_economic_forecast_schema": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json",
+    "belt_and_road_observatory": "https://palimpsest.info/belt-and-road/",
+    "belt_and_road_observatory_json": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
+    "belt_and_road_observatory_schema": "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json",
     "evidence_capsules": "https://palimpsest.info/evidence-capsules.html",
     "scamshield_intelligence_pack": "https://palimpsest.info/integrations/scamshield/intelligence-pack-v1.json",
     "scamshield_bridge_docs": "https://github.com/beepboop2025/palimpsest/blob/main/integrations/scamshield/README.md",
@@ -85,6 +95,8 @@
     "evidence_envelope": "https://github.com/beepboop2025/palimpsest/blob/main/protocol/lab-evidence-envelope-v1.md",
     "narcoscope_public_aggregate": "https://palimpsest.info/integrations/intelligence-commons/narcoscope-palimpsest-v1.json",
     "narcoscope_public_schema": "https://palimpsest.info/integrations/intelligence-commons/narcoscope-palimpsest-v1.schema.json",
+    "narcoscope_corridor_aggregate": "https://palimpsest.info/integrations/intelligence-commons/narcoscope-palimpsest-corridors-v2.json",
+    "narcoscope_corridor_schema": "https://palimpsest.info/integrations/intelligence-commons/narcoscope-palimpsest-corridors-v2.schema.json",
     "source_code": "https://github.com/beepboop2025/palimpsest"
   },
   "integrations": {
@@ -122,6 +134,9 @@
     "narcoscope": {
       "status": "active_public_aggregate",
       "schema": "narcoscope.palimpsest.china-aggregate.v1",
+      "corridor_overlay_status": "repository_ready_not_deployed",
+      "corridor_contract": "narcoscope.palimpsest.corridor-aggregate.v2",
+      "corridor_join_policy": "geography_and_time_only",
       "public_boundary": "Only aggregate official observations, coverage, provenance and limitations cross into Palimpsest; named entities, addresses and identifiers are excluded."
     },
     "seiche": {
@@ -139,6 +154,8 @@
     "eval_journal": "https://palimpsest.info/evals/",
     "china_observatory": "https://palimpsest.info/china/",
     "china_observatory_index": "https://palimpsest.info/readings/china-index-latest.json",
+    "belt_and_road_observatory": "https://palimpsest.info/belt-and-road/",
+    "belt_and_road_observatory_json": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
     "quickstart": "https://palimpsest.info/developers.html",
     "ai_catalog": "https://palimpsest.info/.well-known/ai-catalog.json",
     "financial_evidence_agent_skill": "https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence",
@@ -158,5 +175,5 @@
     "fund": "https://palimpsest.info/fund.html",
     "authentication": "All six hosted MCP tools and all published readings are read-only and require no token."
   },
-  "citation": "Palimpsest. Censorship Observatory, China Economic Observatory and Verifiable AI Evaluation Registry. https://palimpsest.info/ (cite the specific reading, generated_at timestamp, measurement vantage and stated limitations)."
+  "citation": "Palimpsest. Censorship Observatory, China Economic Observatory, Belt and Road Observatory and Verifiable AI Evaluation Registry. https://palimpsest.info/ (cite the specific reading, timestamp, source state, measurement vantage and stated limitations)."
 }

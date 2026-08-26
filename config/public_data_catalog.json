@@ -11,6 +11,23 @@
   },
   "datasets": [
     {
+      "id": "belt-and-road-observatory",
+      "name": "Belt and Road Observatory coverage contract",
+      "description": "Global BRI project, finance, debt, trade, infrastructure and local-impact source ledger, with first deep dossiers for Pakistan/CPEC/Gwadar, Myanmar/CMEC/Kyaukpyu and a plural Balochistan political-economy record. This is a repository-ready coverage contract, not a claim that every source has been ingested.",
+      "layer": "cross-layer",
+      "stage": "planning",
+      "collection_mode": "rights-gated-source-registry",
+      "status": "warming",
+      "cadence": "P1D",
+      "geography": ["GLOBAL", "CN", "PK", "MM"],
+      "sources": ["China and host-country primary records", "World Bank and UN datasets", "rights-reviewed research datasets", "NarcoScope official aggregate bridge"],
+      "latest": "readings/belt-and-road-observatory-latest.json",
+      "landing_page": "belt-and-road/",
+      "method": "protocol/belt-and-road-observatory-v1.schema.json",
+      "count_fields": ["coverage_report.source_count", "coverage_report.build_ready_source_count", "watch_targets"],
+      "license": {"name": "MIT for Palimpsest schema and metadata; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "ddti",
       "name": "Domestic Discourse Tightening Index",
       "description": "Ranks topics receiving censor attention in China Digital Times' curated deletion and directive feeds; it measures attention allocation, not a population deletion rate.",

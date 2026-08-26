@@ -9,7 +9,7 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 76,
+    "datasets": 77,
     "states": {
       "disabled": 1,
       "fresh": 18,
@@ -17,11 +17,11 @@
       "historical": 1,
       "private-node": 1,
       "stale": 37,
-      "warming": 12
+      "warming": 13
     },
     "layers": {
       "content": 15,
-      "cross-layer": 21,
+      "cross-layer": 22,
       "economy": 5,
       "integrity": 2,
       "model": 7,
@@ -30,10 +30,64 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 28129127,
+    "published_bytes": 28220915,
     "history_rows": 10884
   },
   "datasets": [
+    {
+      "id": "belt-and-road-observatory",
+      "name": "Belt and Road Observatory coverage contract",
+      "description": "Global BRI project, finance, debt, trade, infrastructure and local-impact source ledger, with first deep dossiers for Pakistan/CPEC/Gwadar, Myanmar/CMEC/Kyaukpyu and a plural Balochistan political-economy record. This is a repository-ready coverage contract, not a claim that every source has been ingested.",
+      "layer": "cross-layer",
+      "stage": "planning",
+      "collection_mode": "rights-gated-source-registry",
+      "status": "warming",
+      "cadence": "P1D",
+      "geography": [
+        "GLOBAL",
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "sources": [
+        "China and host-country primary records",
+        "World Bank and UN datasets",
+        "rights-reviewed research datasets",
+        "NarcoScope official aggregate bridge"
+      ],
+      "latest": "readings/belt-and-road-observatory-latest.json",
+      "landing_page": "belt-and-road/",
+      "method": "protocol/belt-and-road-observatory-v1.schema.json",
+      "count_fields": [
+        "coverage_report.source_count",
+        "coverage_report.build_ready_source_count",
+        "watch_targets"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest schema and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "warming",
+        "observed_at": "2026-08-26T07:00:00Z",
+        "age_seconds": 1690,
+        "counts": {
+          "coverage_report.source_count": 42,
+          "coverage_report.build_ready_source_count": 10,
+          "watch_targets": 12
+        },
+        "latest_bytes": 89495,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
+        "landing_page": "https://palimpsest.info/belt-and-road/",
+        "method": "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json"
+      }
+    },
     {
       "id": "ddti",
       "name": "Domestic Discourse Tightening Index",
@@ -2865,11 +2919,11 @@
         "age_seconds": 259,
         "counts": {
           "inputs": 8,
-          "resources": 130,
-          "dependency_groups": 110,
+          "resources": 131,
+          "dependency_groups": 114,
           "projects": 5
         },
-        "latest_bytes": 212123,
+        "latest_bytes": 214416,
         "history_bytes": 0,
         "history_rows": 0,
         "latest_available": true,
