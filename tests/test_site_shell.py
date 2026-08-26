@@ -30,6 +30,8 @@ Standard library only, like the rest of tests/.
 """
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -38,15 +40,16 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import site_nav  # noqa: E402
 import sync_nav  # noqa: E402
 
-# Pages a Python generator writes wholesale. They import site_nav directly rather
-# than being stamped by sync_nav, so they are checked for the shell but not for a
-# byte-identical stamped block — their nav is rendered at build time.
+# Pages a Python generator writes wholesale. Discovery also stamps their managed
+# marker blocks, while this list separately verifies that future generator runs
+# keep importing the canonical source instead of restoring private nav markup.
 GENERATED = {
     "china-brief.html",
     "weekly-situation.html",
     "news/china/situation/index.html",
     "news/china/rumour/index.html",
     "readings/generative-firewall-index.html",
+    "belt-and-road/index.html",
 } | {
     str(path.relative_to(ROOT))
     for path in (ROOT / "journal").glob("**/index.html")
@@ -67,6 +70,39 @@ def _pages():
         path = ROOT / rel
         if path.exists():
             yield rel, current, path
+
+
+def _tracked_marker_pages() -> set[str]:
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.html"],
+        cwd=ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    pages = set()
+    for raw_relative_path in result.stdout.split(b"\0"):
+        if not raw_relative_path:
+            continue
+        relative_path = raw_relative_path.decode("utf-8")
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        if site_nav.BEGIN in text or site_nav.END in text:
+            pages.add(relative_path)
+    return pages
+
+
+def test_nav_discovery_covers_every_tracked_marker_page():
+    expected = _tracked_marker_pages()
+
+    assert len(expected) > 2_000
+    assert set(sync_nav.PAGES) == expected
+    assert all(
+        (ROOT / relative_path).read_text(encoding="utf-8").count(site_nav.BEGIN) == 1
+        and (ROOT / relative_path).read_text(encoding="utf-8").count(site_nav.END) == 1
+        for relative_path in expected
+    )
+    assert sync_nav._served_path("index.html") == "/"
+    assert sync_nav._served_path("news/wire/page/2/index.html") == "/news/wire/page/2/"
+    assert sync_nav._served_path("readings/inside-view.html") == "/readings/inside-view.html"
 
 
 def test_every_managed_page_exists():
@@ -192,6 +228,7 @@ def test_generated_pages_use_the_shared_nav():
     """The generators must import site_nav rather than keeping their own copy,
     or the next cron run reverts the site to the old navigation."""
     for script, page in (
+        ("scripts/build_bri_observatory.py", "belt-and-road/index.html"),
         ("scripts/build_china_brief.py", "china-brief.html"),
         ("scripts/build_china_situation.py", "news/china/situation/index.html"),
         ("scripts/generative_firewall_reading.py",
@@ -259,6 +296,24 @@ def test_observatory_flyout_is_active_for_generated_china_routes():
     )
 
 
+def test_bri_regions_are_first_class_primary_navigation_destinations():
+    regional = next(item for item in site_nav.NAV if item["label"] == "BRI regions")
+    links = {
+        title: href
+        for column in regional["columns"]
+        for href, title, *_rest in column["links"]
+    }
+
+    assert links == {
+        "BRI & Corridors": "/belt-and-road/#bri-corridors",
+        "Balochistan": "/belt-and-road/#balochistan",
+        "Pakistan & Gwadar": "/belt-and-road/#pakistan-gwadar",
+        "Myanmar": "/belt-and-road/#myanmar",
+    }
+    assert site_nav._within(regional, "/belt-and-road/")
+    assert 'data-within=""' in site_nav.render("/belt-and-road/")
+
+
 def test_mobile_menu_owns_focus_until_it_closes():
     """Pin the focus-entry, Tab containment and focus-return modal contract."""
     script = (ROOT / "assets/shell.js").read_text(encoding="utf-8")
@@ -269,6 +324,146 @@ def test_mobile_menu_owns_focus_until_it_closes():
     assert "last.focus();" in script
     assert "first.focus();" in script
     assert "burger.focus();" in script
+
+
+def test_mobile_internal_navigation_closes_sheet_without_preventing_activation():
+    node = shutil.which("node")
+    assert node is not None, "Node.js is required for the shell interaction contract"
+    harness = r'''
+const fs = require("fs");
+const vm = require("vm");
+
+class Element {
+  constructor(tag) {
+    this.tag = tag;
+    this.attrs = {};
+    this.listeners = {};
+    this.parent = null;
+    this.children = [];
+    this.classList = { add() {} };
+  }
+  setAttribute(name, value) { this.attrs[name] = String(value); }
+  removeAttribute(name) { delete this.attrs[name]; }
+  hasAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attrs, name); }
+  getAttribute(name) { return this.hasAttribute(name) ? this.attrs[name] : null; }
+  addEventListener(kind, callback) { (this.listeners[kind] ||= []).push(callback); }
+  emit(kind, event) { (this.listeners[kind] || []).forEach((callback) => callback(event)); }
+  appendChild(child) { child.parent = this; this.children.push(child); }
+  contains(node) {
+    for (let current = node; current; current = current.parent) {
+      if (current === this) return true;
+    }
+    return false;
+  }
+  closest(selector) {
+    if (selector === "a[href]") {
+      for (let current = this; current; current = current.parent) {
+        if (current.tag === "a" && current.hasAttribute("href")) return current;
+      }
+    }
+    return null;
+  }
+  focus() { document.activeElement = this; }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
+}
+
+const body = new Element("body");
+const nav = new Element("nav");
+const menu = new Element("div");
+const burger = new Element("button");
+const scrim = new Element("div");
+const link = new Element("a");
+const nested = new Element("b");
+link.setAttribute("href", "/belt-and-road/#myanmar");
+link.appendChild(nested);
+menu.appendChild(link);
+nav.appendChild(menu);
+nav.appendChild(burger);
+nav.appendChild(scrim);
+nav.querySelectorAll = () => [];
+nav.querySelector = (selector) => ({
+  ".ps-nav__burger": burger,
+  ".ps-nav__items": menu,
+  ".ps-nav__scrim": scrim
+}[selector] || null);
+menu.querySelectorAll = () => [link];
+menu.querySelector = () => link;
+
+global.document = {
+  readyState: "complete",
+  body,
+  activeElement: null,
+  hidden: false,
+  title: "Shell interaction",
+  documentElement: { classList: { add() {} } },
+  head: { appendChild() {} },
+  querySelector(selector) {
+    if (selector === ".ps-nav") return nav;
+    if (selector === "script[data-cf-beacon]") return new Element("script");
+    return null;
+  },
+  querySelectorAll() { return []; },
+  addEventListener() {},
+  createElement(tag) { return new Element(tag); }
+};
+global.window = global;
+window.location = {
+  href: "https://palimpsest.info/current/",
+  origin: "https://palimpsest.info",
+  pathname: "/current/",
+  reload() {}
+};
+global.location = window.location;
+global.CSS = { supports() { return false; } };
+global.matchMedia = (query) => ({
+  matches: query.includes("max-width"),
+  addEventListener() {},
+  addListener() {}
+});
+global.requestAnimationFrame = (callback) => { callback(0); return 1; };
+global.addEventListener = () => {};
+global.scrollY = 0;
+global.setInterval = () => 1;
+
+vm.runInThisContext(fs.readFileSync("assets/shell.js", "utf8"), {
+  filename: "assets/shell.js"
+});
+
+function activate(target) {
+  let prevented = false;
+  menu.emit("click", {
+    target,
+    preventDefault() { prevented = true; },
+    stopPropagation() {}
+  });
+  return prevented;
+}
+
+burger.emit("click", { target: burger });
+if (!body.hasAttribute("data-ps-menu")) throw new Error("menu did not open");
+if (burger.getAttribute("aria-expanded") !== "true") throw new Error("burger not expanded");
+if (activate(nested)) throw new Error("internal navigation was prevented");
+if (body.hasAttribute("data-ps-menu")) throw new Error("internal link did not unlock body");
+if (burger.getAttribute("aria-expanded") !== "false") throw new Error("burger stayed expanded");
+
+burger.emit("click", { target: burger });
+link.setAttribute("href", "https://example.org/out");
+activate(nested);
+if (!body.hasAttribute("data-ps-menu")) throw new Error("external link closed menu");
+
+link.setAttribute("href", "#main");
+activate(nested);
+if (body.hasAttribute("data-ps-menu")) throw new Error("fragment link did not unlock body");
+'''
+    result = subprocess.run(
+        [node, "-e", harness],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_mobile_menu_resets_when_the_viewport_becomes_desktop():

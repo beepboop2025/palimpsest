@@ -1,7 +1,10 @@
 """Offline contracts for the Belt and Road evidence backbone."""
 from __future__ import annotations
 
+import copy
+import html as html_lib
 import json
+from collections import Counter
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -14,7 +17,7 @@ from processors.bri_observatory import (
     ground_level_priority_adjustment,
     load_registry,
 )
-from scripts.build_bri_observatory import build
+from scripts.build_bri_observatory import _render_region_section, build
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -194,6 +197,127 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
     assert '"@id":"https://www.worldbank.org/#organization"' in page
     assert '"url":"https://www.worldbank.org/"' in page
     assert "never project, actor, corridor or causal evidence" in page
+
+
+def test_generated_page_has_durable_region_anchors_and_artifact_bound_readiness() -> None:
+    artifact = json.loads(READING.read_text(encoding="utf-8"))
+    page = PAGE.read_text(encoding="utf-8")
+    targets = {row["target_id"]: row for row in artifact["watch_targets"]}
+    sources = {row["source_id"]: row for row in artifact["sources"]}
+
+    for anchor in ("bri-corridors", "balochistan", "pakistan-gwadar", "myanmar"):
+        assert page.count(f'id="{anchor}"') == 1
+
+    region_targets = {
+        "balochistan": (
+            "balochistan_resources_revenue",
+            "balochistan_movement_history",
+        ),
+        "pakistan-gwadar": (
+            "cpec_portfolio",
+            "gwadar_port_free_zone",
+            "gwadar_connectivity",
+            "gwadar_public_services",
+            "balochistan_resources_revenue",
+        ),
+        "myanmar": (
+            "cmec_portfolio",
+            "kyaukpyu_port_sez",
+            "china_myanmar_pipelines",
+            "mandalay_muse_rail",
+        ),
+    }
+    for anchor, target_ids in region_targets.items():
+        section = page.split(f'id="{anchor}"', 1)[1].split("</section>", 1)[0]
+        source_ids = {
+            source_id
+            for target_id in target_ids
+            for source_id in targets[target_id]["source_ids"]
+        }
+        build_ready = sum(
+            sources[source_id]["implementation"] in PUBLIC_BUILD_STATES
+            for source_id in source_ids
+        )
+        assert f"{build_ready} of {len(source_ids)} named routes" in section
+        assert "discovery, not ingestion" in section
+        assert "not a verified project record" in section
+        for target_id in target_ids:
+            assert f'data-bri-region-target="{target_id}"' in section
+            assert targets[target_id]["label"] in section
+
+
+def test_balochistan_target_cards_preserve_exact_sources_rights_and_boundaries() -> None:
+    artifact = json.loads(READING.read_text(encoding="utf-8"))
+    page = PAGE.read_text(encoding="utf-8")
+    section = page.split('id="balochistan"', 1)[1].split("</section>", 1)[0]
+    targets = {row["target_id"]: row for row in artifact["watch_targets"]}
+    sources = {row["source_id"]: row for row in artifact["sources"]}
+
+    for target_id in (
+        "balochistan_resources_revenue",
+        "balochistan_movement_history",
+    ):
+        target = targets[target_id]
+        card = section.split(
+            f'data-bri-region-target="{target_id}"', 1
+        )[1].split("</article>", 1)[0]
+        target_sources = [sources[source_id] for source_id in target["source_ids"]]
+        implementation_counts = Counter(
+            source["implementation"] for source in target_sources
+        )
+        rights_counts = Counter(source["rights_status"] for source in target_sources)
+
+        for state, count in implementation_counts.items():
+            assert f'{count} {state.replace("_", " ")}' in card
+        for rights_state, count in rights_counts.items():
+            assert f'{count} {rights_state.replace("_", " ")}' in card
+        for field in target["required_coverage"]:
+            assert f"<code>{html_lib.escape(field)}</code>" in card
+        for source in target_sources:
+            assert f'href="{html_lib.escape(source["url"], quote=True)}"' in card
+            assert f'>{html_lib.escape(source["name"])}</a>' in card
+
+    assert "not classifications of a person, community or political position" in section
+    assert "resources/revenue target cannot infer affiliation" in section
+    assert "plural movement-history target cannot merge electoral politics" in section
+    assert artifact["movement_taxonomy"]["identity_rule"] in section
+
+
+def test_region_renderer_escapes_all_artifact_and_editorial_surfaces() -> None:
+    artifact = copy.deepcopy(build_public_artifact(load_registry(REGISTRY)))
+    target = next(
+        row for row in artifact["watch_targets"] if row["target_id"] == "cpec_portfolio"
+    )
+    source = next(
+        row for row in artifact["sources"] if row["source_id"] == target["source_ids"][0]
+    )
+    attack = '\"><img src=x onerror=alert(1)>'
+    script_attack = '<script>alert("region")</script>'
+    malicious_url = 'https://example.test/?q=\"><script>alert(2)</script>'
+    target["label"] = script_attack
+    target["evidence_status"] = attack
+    target["required_coverage"] = [attack, script_attack]
+    target["source_ids"] = [source["source_id"]]
+    source["name"] = script_attack
+    source["url"] = malicious_url
+    source["implementation"] = attack
+    source["rights_status"] = script_attack
+
+    rendered = _render_region_section(
+        artifact,
+        anchor=attack,
+        eyebrow=script_attack,
+        title=attack,
+        introduction=script_attack,
+        geography_codes=("PAK",),
+        target_ids=("cpec_portfolio",),
+    )
+
+    assert "<script>" not in rendered
+    assert "<img " not in rendered
+    for value in (attack, script_attack, malicious_url):
+        assert value not in rendered
+        assert html_lib.escape(value, quote=True) in rendered
 
 
 def test_schema_allows_a_future_fully_covered_registry() -> None:

@@ -1947,7 +1947,7 @@ def render_investigations_index(investigations: Mapping[str, Any]) -> str:
     ]
     abstained = [case for case in cases if case["status"] == "abstained"]
     body = f"""<body class="ps newsroom-page newsroom-page--investigations">
-{site_nav.render("/news/")}
+{site_nav.render("/news/investigations/")}
 <main id="main" class="nw-shell">
   <header class="nw-investigations-head">
     <p class="nw-section__label">Public case register</p>
@@ -2189,8 +2189,9 @@ def render_investigation_case(case: Mapping[str, Any]) -> str:
             "PUBLISHED INVESTIGATION.</strong> Draft claims remain under test and "
             "must not be read as findings.</p>"
         )
+    current_path = _site_path(_case_public_url(case))
     body = f"""<body class="ps newsroom-page newsroom-page--investigation-case">
-{site_nav.render("/news/")}
+{site_nav.render(current_path)}
 <main id="main" class="nw-shell">
   <article class="nw-case-file" data-publication-state="{_h(state)}">
     <header class="nw-case-file__header">
@@ -2441,7 +2442,7 @@ def render_machine_analysis_index(analyses: Mapping[str, Any]) -> str:
         "edition.</strong></div>"
     )
     body = f"""<body class="ps newsroom-page newsroom-page--analysis">
-{site_nav.render("/news/")}
+{site_nav.render("/news/analysis/")}
 <main id="main" class="nw-shell">
   <header class="nw-investigations-head nw-analysis-head">
     <p class="nw-section__label">Deterministic analysis register</p>
@@ -2927,8 +2928,9 @@ def render_machine_analysis_case(case: Mapping[str, Any]) -> str:
         _human_time(case["published_at"]) if case["published_at"] else "Not published"
     )
     attributions = _machine_case_attributions(case)
+    current_path = _site_path(_machine_case_public_url(case))
     body = f"""<body class="ps newsroom-page newsroom-page--analysis-case">
-{site_nav.render("/news/")}
+{site_nav.render(current_path)}
 <main id="main" class="nw-shell">
   <article class="nw-case-file nw-analysis-file" data-publication-state="{state}" data-report-type="{_h(case["report_type"])}">
     <header class="nw-case-file__header">
@@ -3198,8 +3200,9 @@ def render_story(
     if story["metric"]["value"] is not None:
         metric = f"""<div class="nw-metric-block" aria-label="Headline metric"><strong>{_h(_metric_value(story))}</strong><span>{_h(_metric_caption(story))}</span></div>"""
     status_class = "" if story["status"] == "live" else " nw-kicker--warning"
+    current_path = _site_path(story["url"])
     body = f"""<body class="ps newsroom-page">
-{site_nav.render("/news/")}
+{site_nav.render(current_path)}
 <main id="main" class="nw-shell">
   <article class="nw-article">
     <header class="nw-article__header">
@@ -3537,8 +3540,9 @@ def render_event(
     dek_language = _text_language(
         event["dek"], source_id=event["evidence_refs"][0]["source_id"]
     )
+    current_path = _site_path(event["url"])
     body = f"""<body class="ps newsroom-page newsroom-page--dossier">
-{site_nav.render("/news/")}
+{site_nav.render(current_path)}
 <main id="main" class="nw-shell">
   <article class="nw-article nw-dossier">
     <header class="nw-article__header">
@@ -3633,7 +3637,7 @@ def render_wire_archive(
     )
     canonical = f"{SITE}/news/wire/" if page == 1 else f"{SITE}/news/wire/page/{page}/"
     body = f"""<body class="ps newsroom-page newsroom-page--archive">
-{site_nav.render("/news/")}
+{site_nav.render(_site_path(canonical))}
 <main id="main" class="nw-shell">
   <header class="nw-article__header nw-archive-head"><p class="nw-article__kicker">Attributed publisher records{_h(page_suffix)}</p><h1>Publisher source index</h1><p class="nw-article__dek">This is not independent Palimpsest reporting. Every accepted current-window publisher item is assigned to one source record; single-source and multiple-independent-group records remain visibly different.</p></header>
   {pagination}
@@ -4018,7 +4022,7 @@ def render_china_article_stream(
     )
     suffix = f" · page {page} of {n_pages}" if n_pages > 1 else ""
     body = f"""<body class="ps newsroom-page china-stream-page">
-{site_nav.render("/news/")}
+{site_nav.render(_site_path(canonical))}
 <main id="main">
   <header class="cs-hero">
     <div class="cs-hero__grid"><div><p class="cs-eyebrow">Palimpsest / China publisher index{_h(suffix)}</p><h1>Publisher reports.<br><em>Our additions<br>labeled.</em></h1></div><p class="cs-hero__dek">A chronological index of China/Hong Kong items retained from the monitored publisher registry. Read the publisher for the report; open Palimpsest's panel for source structure, measurement context, unknowns and next verification moves.</p></div>
@@ -4292,7 +4296,7 @@ def render_dragon_whispers(document: Mapping[str, Any]) -> str:
   <p>The raw Telegram companion is active, but nothing from it appears here until a public-channel ScamShield capsule is human-reviewed, made China-relevant, stripped of identifiers and exact indicators, and approved as context only.</p>
 </section>"""
     body = f"""<body class="ps newsroom-page dragon-whispers-page">
-{site_nav.render("/news/")}
+{site_nav.render("/news/china/whispers/")}
 <main id="main">
   <header class="dw-hero">
     <div class="dw-shell dw-hero__grid">
@@ -4486,7 +4490,7 @@ def render_economic_page(pulse: Mapping[str, Any]) -> str:
         for row in pulse["coverage"]["matrix"]
     )
     body = f"""<body class="ps newsroom-page newsroom-page--economy">
-{site_nav.render("/news/")}
+{site_nav.render("/news/economy/")}
 <main id="main" class="nw-shell">
   <header class="nw-article__header nw-economy-head"><p class="nw-article__kicker">China economic evidence · {_h(pulse["economic_state"]["status"])} · as known {_h(_human_time(pulse["as_of"]))}</p><h1>The economic pulse abstains—and shows you exactly why.</h1><p class="nw-article__dek">{_h(pulse["economic_state"]["claim"])}</p></header>
   <section class="nw-econ-gates"><div><p class="nw-kicker nw-kicker--economic">Readiness, not rhetoric</p><h2>Composite gates</h2><p>{_h(pulse["readiness"]["abstention_reason"])}</p></div><ul>{gate_rows}</ul></section>

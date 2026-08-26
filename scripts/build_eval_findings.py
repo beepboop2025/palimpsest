@@ -433,11 +433,12 @@ def render_article(
         f'<li><a href="revisions/{_h(revision)}.json">{_h(revision)}</a>{" <span>current</span>" if revision == article["revision_id"] else ""}</li>'
         for revision in revisions
     )
+    current_path = str(article["url"])
     return f"""<!doctype html>
 <html lang="en"><head>
 {head}
 </head><body class="ps ej ej--article" data-finding-state="{_h(article['finding_state'])}">
-{site_nav.render('/journal/')}
+{site_nav.render(current_path)}
 <main id="main">
   <article>
     <header class="ej-article-head ej-wrap">

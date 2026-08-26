@@ -73,6 +73,26 @@ NAV = [
         ],
     },
     {
+        "label": "BRI regions",
+        "lede": "Move from corridor-wide evidence rules into the regional ledgers without treating source discovery as a verified project claim.",
+        "match_prefixes": ["/belt-and-road/"],
+        "columns": [
+            {
+                "head": "Belt and Road evidence",
+                "links": [
+                    ("/belt-and-road/#bri-corridors", "BRI & Corridors",
+                     "Open lifecycle rules, economics and global source coverage", "new"),
+                    ("/belt-and-road/#balochistan", "Balochistan",
+                     "Keep civic, political, armed, legal and rights records separate", "new"),
+                    ("/belt-and-road/#pakistan-gwadar", "Pakistan & Gwadar",
+                     "Inspect CPEC, port, public-service and local-impact readiness", "new"),
+                    ("/belt-and-road/#myanmar", "Myanmar",
+                     "Inspect CMEC, Kyaukpyu, pipeline and rail readiness", "new"),
+                ],
+            },
+        ],
+    },
+    {
         "label": "Tools + feeds",
         "lede": "Go directly to something usable. These links open a tool, data file, feed or verification surface.",
         "columns": [

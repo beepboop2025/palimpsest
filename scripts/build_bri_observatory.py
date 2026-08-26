@@ -8,9 +8,11 @@ import json
 import os
 import re
 import tempfile
+from collections import Counter
 from pathlib import Path
 
 from processors.bri_observatory import (
+    PUBLIC_BUILD_STATES,
     WDI_ARTIFACT_PATH,
     WDI_OBSERVATION_SCHEMA_PATH,
     WDI_PUBLICATION_RECEIPT_PATH,
@@ -102,6 +104,138 @@ def _chips(values: list[str]) -> str:
     return "".join(f'<li><code>{_esc(value)}</code></li>' for value in values)
 
 
+_IMPLEMENTATION_ORDER = (
+    "live", "repository_ready", "adapter_ready", "link_only", "planned",
+    "blocked", "out_of_scope",
+)
+
+
+def _state_summary(counts: Counter[str], *, preferred: tuple[str, ...] = ()) -> str:
+    ordered = [key for key in preferred if counts.get(key)]
+    ordered.extend(sorted(key for key in counts if key not in ordered))
+    return " · ".join(
+        f'{counts[key]} {_esc(key.replace("_", " "))}' for key in ordered
+    )
+
+
+def _target_projection(
+    artifact: dict,
+    *,
+    target_ids: tuple[str, ...],
+    card_class: str = "bri-card",
+) -> dict:
+    """Project exact target/source readiness into escaped human-readable cards."""
+
+    targets_by_id = {row["target_id"]: row for row in artifact["watch_targets"]}
+    sources_by_id = {row["source_id"]: row for row in artifact["sources"]}
+    missing_targets = [
+        target_id for target_id in target_ids if target_id not in targets_by_id
+    ]
+    if missing_targets:
+        raise ValueError(f"regional projection is missing targets {missing_targets}")
+
+    targets = [targets_by_id[target_id] for target_id in target_ids]
+    target_source_ids = list(dict.fromkeys(
+        source_id
+        for target in targets
+        for source_id in target["source_ids"]
+    ))
+    missing_sources = [
+        source_id for source_id in target_source_ids if source_id not in sources_by_id
+    ]
+    if missing_sources:
+        raise ValueError(f"regional projection is missing sources {missing_sources}")
+    target_sources = [sources_by_id[source_id] for source_id in target_source_ids]
+    implementation_counts = Counter(
+        source["implementation"] for source in target_sources
+    )
+    rights_counts = Counter(source["rights_status"] for source in target_sources)
+    target_status_counts = Counter(target["evidence_status"] for target in targets)
+    build_ready_count = sum(
+        count
+        for state, count in implementation_counts.items()
+        if state in PUBLIC_BUILD_STATES
+    )
+
+    cards = []
+    for target in targets:
+        target_sources_for_card = [
+            sources_by_id[source_id] for source_id in target["source_ids"]
+        ]
+        card_states = Counter(
+            source["implementation"] for source in target_sources_for_card
+        )
+        card_rights = Counter(
+            source["rights_status"] for source in target_sources_for_card
+        )
+        source_routes = "; ".join(
+            f'<a href="{_esc(source["url"])}" target="_blank" rel="noopener">'
+            f'{_esc(source["name"])}</a>'
+            for source in target_sources_for_card
+        )
+        cards.append(
+            f'<article class="{_esc(card_class)}" '
+            f'data-bri-region-target="{_esc(target["target_id"])}">'
+            f'<p class="bri-eyebrow">{_esc(target["evidence_status"].replace("_", " "))}</p>'
+            f'<h3>{_esc(target["label"])}</h3>'
+            f'<p><b>Readiness:</b> {_state_summary(card_states, preferred=_IMPLEMENTATION_ORDER)}. '
+            f'<b>Rights:</b> {_state_summary(card_rights)}.</p>'
+            f'<p><b>Registered source routes:</b> {source_routes}.</p>'
+            f'<ul class="bri-chips">{_chips(target["required_coverage"])}</ul>'
+            '</article>'
+        )
+
+    return {
+        "build_ready_count": build_ready_count,
+        "cards": "".join(cards),
+        "implementation_counts": implementation_counts,
+        "rights_counts": rights_counts,
+        "source_count": len(target_sources),
+        "target_count": len(targets),
+        "target_status_counts": target_status_counts,
+    }
+
+
+def _render_region_section(
+    artifact: dict,
+    *,
+    anchor: str,
+    eyebrow: str,
+    title: str,
+    introduction: str,
+    geography_codes: tuple[str, ...],
+    target_ids: tuple[str, ...],
+) -> str:
+    """Render a regional reading lane from the public artifact only.
+
+    A missing target, source or geography is a build failure. Quietly dropping
+    one would make the human page less complete than its machine contract.
+    """
+
+    geography_report = artifact["coverage_report"]["geographies"]
+    missing_geographies = [
+        code for code in geography_codes if code not in geography_report
+    ]
+    if missing_geographies:
+        raise ValueError(
+            f"regional section {anchor} is missing geographies {missing_geographies}"
+        )
+    projection = _target_projection(artifact, target_ids=target_ids)
+    geography_source_ids = {
+        source_id
+        for code in geography_codes
+        for source_id in geography_report[code]["source_ids"]
+    }
+
+    return f"""<section class="bri-section" id="{_esc(anchor)}" aria-labelledby="{_esc(anchor)}-title">
+    <p class="bri-eyebrow">{_esc(eyebrow)}</p><h2 id="{_esc(anchor)}-title">{_esc(title)}</h2>
+    <p>{_esc(introduction)} The broader registry associates {len(geography_source_ids)} source families with this geography; the {projection["target_count"]} target ledgers below name {projection["source_count"]} distinct source routes directly.</p>
+    <dl class="bri-contract"><div><dt>Target status</dt><dd>{_state_summary(projection["target_status_counts"])}</dd></div><div><dt>Source readiness</dt><dd>{_state_summary(projection["implementation_counts"], preferred=_IMPLEMENTATION_ORDER)}</dd></div><div><dt>Public build-state gate</dt><dd>{projection["build_ready_count"]} of {projection["source_count"]} named routes</dd></div></dl>
+    <p><strong>Rights states:</strong> {_state_summary(projection["rights_counts"])}. Build-ready describes a source route, not a verified project record. Link-only and planned routes are discovery, not ingestion; no status here proves construction, operation, attribution, local benefit or harm.</p>
+    <div class="bri-grid">{projection["cards"]}</div>
+  </section>"""
+
+
 def _render_observation_datasets(artifact: dict) -> str:
     rows = artifact.get("observation_datasets")
     if not rows:
@@ -183,6 +317,49 @@ def _render_html(artifact: dict) -> bytes:
         )
         for source in artifact["sources"]
     )
+    balochistan_targets = _target_projection(
+        artifact,
+        target_ids=(
+            "balochistan_resources_revenue",
+            "balochistan_movement_history",
+        ),
+        card_class="bri-lane",
+    )
+    pakistan_gwadar = _render_region_section(
+        artifact,
+        anchor="pakistan-gwadar",
+        eyebrow="Pakistan and Gwadar · target-specific readiness",
+        title="CPEC, port, connectivity and public-service records stay claim by claim.",
+        introduction=(
+            "This lane keeps national finance context, provincial records and "
+            "Gwadar-specific project sources at their published geographic grain."
+        ),
+        geography_codes=("PAK", "PAK-BAL", "PAK-GWD"),
+        target_ids=(
+            "cpec_portfolio",
+            "gwadar_port_free_zone",
+            "gwadar_connectivity",
+            "gwadar_public_services",
+            "balochistan_resources_revenue",
+        ),
+    )
+    myanmar = _render_region_section(
+        artifact,
+        anchor="myanmar",
+        eyebrow="Myanmar · target-specific readiness",
+        title="CMEC, Kyaukpyu, pipelines and rail remain separate evidence records.",
+        introduction=(
+            "This lane preserves the difference between official proposals, "
+            "investment approvals, economic context and observed implementation."
+        ),
+        geography_codes=("MMR", "MMR-RKH"),
+        target_ids=(
+            "cmec_portfolio",
+            "kyaukpyu_port_sez",
+            "china_myanmar_pipelines",
+            "mandalay_muse_rail",
+        ),
+    )
     schema_org_document = {
         "@context": "https://schema.org",
         "@type": "Dataset",
@@ -259,7 +436,7 @@ def _render_html(artifact: dict) -> bytes:
     <p class="bri-actions"><a href="/readings/belt-and-road-observatory-latest.json">Download the machine contract</a><a href="#sources">Inspect the source ledger</a><a href="#balochistan">Read the Balochistan boundary</a></p>
   </header>
 
-  <section class="bri-section" aria-labelledby="meaning-title">
+  <section class="bri-section" id="bri-corridors" aria-labelledby="meaning-title">
     <p class="bri-eyebrow">The counting rule</p><h2 id="meaning-title">An announcement is not a disbursement. Completion is not operation.</h2>
     <p>Palimpsest records announcement, approval, contract, commitment, disbursement, construction, completion and operation separately. It preserves currency, price basis, sovereign guarantees, revisions and source clocks before any total is calculated.</p>
     <div class="bri-columns"><div><h3>Economic depth</h3><ul class="bri-chips">{_chips(artifact["economic_metrics"])}</ul></div><div><h3>Ground-level outcomes</h3><ul class="bri-chips">{_chips(artifact["local_impact_fields"])}</ul></div></div>
@@ -280,7 +457,18 @@ def _render_html(artifact: dict) -> bytes:
     <p class="bri-eyebrow">Balochistan: plural record, never one label</p><h2 id="balochistan-title">The umbrella term is a research concept, not a database actor.</h2>
     <p>{_esc(artifact["movement_taxonomy"]["identity_rule"])}</p>
     <div class="bri-lanes">{lanes}</div>
+    <div class="bri-region-evidence" aria-labelledby="balochistan-targets-title">
+      <p class="bri-eyebrow">Artifact targets · exact source readiness</p><h3 id="balochistan-targets-title">Resources and revenue are not movement affiliation; movement history is not one actor.</h3>
+      <p>The machine contract exposes {balochistan_targets["target_count"]} separate Balochistan target ledgers backed by {balochistan_targets["source_count"]} distinct named source routes. These are scope and readiness records, not classifications of a person, community or political position.</p>
+      <p><b>Target status:</b> {_state_summary(balochistan_targets["target_status_counts"])}. <b>Source readiness:</b> {_state_summary(balochistan_targets["implementation_counts"], preferred=_IMPLEMENTATION_ORDER)}. <b>Rights:</b> {_state_summary(balochistan_targets["rights_counts"])}. <b>Public build-state gate:</b> {balochistan_targets["build_ready_count"]} of {balochistan_targets["source_count"]} named routes.</p>
+      <div class="bri-lanes">{balochistan_targets["cards"]}</div>
+      <p>Link-only and planned routes are discovery, not ingestion. Build-ready describes a source route, not a verified project record or actor record. The resources/revenue target cannot infer affiliation; the plural movement-history target cannot merge electoral politics, peaceful civic advocacy, armed organizations, state actions, legal designations, rights reporting or political economy.</p>
+    </div>
   </section>
+
+  {pakistan_gwadar}
+
+  {myanmar}
 
   <section class="bri-section" aria-labelledby="narco-title">
     <p class="bri-eyebrow">NarcoScope integration</p><h2 id="narco-title">Country context beside the dossier—not a label on it.</h2>

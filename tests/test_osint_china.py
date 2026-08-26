@@ -145,6 +145,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "gfi-transcripts-latest.json",
         "investigations-latest.json",
         "machine-investigations-latest.json",
+        "ucdp-aggregate-latest.json",
         "network-rounds-latest.json",
         "newswire-latest.json",
         "newsroom-latest.json",

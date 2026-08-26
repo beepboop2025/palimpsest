@@ -14,6 +14,8 @@ import subprocess
 
 import pytest
 
+from scripts import sync_nav
+
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PAGE = ROOT / "osint-china.html"
@@ -296,7 +298,7 @@ async function dispatch(path) {
 
 
 def test_route_is_present_on_every_discovery_surface():
-    assert '"osint-china.html": "/osint-china.html"' in _text("scripts/sync_nav.py")
+    assert sync_nav.PAGES["osint-china.html"] == "/osint-china.html"
     assert '("/osint-china.html", "Signal board"' in _text("scripts/site_nav.py")
     assert "https://palimpsest.info/osint-china.html" in _text("sitemap.xml")
     assert "https://palimpsest.info/osint-china.html" in _text("llms.txt")
