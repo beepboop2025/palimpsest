@@ -24,17 +24,17 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 
-try:
-    from scripts import build_pages_wire_archive as wire_archive
-except ModuleNotFoundError as exc:
-    if exc.name != "scripts":
-        raise
-    import build_pages_wire_archive as wire_archive
-
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts import build_pages_wire_archive as wire_archive
+from scripts import stage_pages_rights as pages_rights
+
+
 GIT_EXECUTABLE = "/usr/bin/git"
 SYSTEM_TAR_EXECUTABLE = "/usr/bin/tar"
 GNU_TAR_CANDIDATES = (
@@ -190,18 +190,72 @@ def _candidate_publication_sha(tree: str) -> str:
     return hashlib.sha256(material).hexdigest()[:40]
 
 
-def _apply_pages_transforms(stage: Path, tree: str) -> str:
-    """Apply and verify the reviewed production staging transforms in order."""
+def _candidate_rights_clock() -> datetime:
+    """Return one second-precision clock for temporary rights staging."""
+
+    raw = os.getenv("SOURCE_DATE_EPOCH", "").strip()
+    if raw:
+        try:
+            clock = datetime.fromtimestamp(int(raw), tz=UTC)
+        except (ValueError, OSError, OverflowError) as error:
+            raise PagesArtifactError("SOURCE_DATE_EPOCH is invalid") from error
+    else:
+        clock = datetime.now(UTC)
+    return clock.replace(microsecond=0)
+
+
+def _apply_pages_transforms(stage: Path, tree: str) -> dict[str, dict[str, object]]:
+    """Apply rights, path, and wire transforms in production order."""
 
     publication_sha = _candidate_publication_sha(tree)
+    rights_clock = _candidate_rights_clock()
     try:
-        wire_archive.build(stage, publication_sha)
-        wire_archive.verify(stage, publication_sha)
+        rights_status = pages_rights.stage_pages_tree(
+            stage,
+            publication_sha=publication_sha,
+            evaluated_at=rights_clock,
+            admission_at=rights_clock,
+        )
+        verified_rights = pages_rights.verify_staged_tree(
+            stage,
+            publication_sha=publication_sha,
+            evaluated_at=rights_clock,
+            admission_at=rights_clock,
+        )
+    except pages_rights.PagesRightsError as error:
+        raise PagesArtifactError(
+            f"Pages rights transform refused: {error}"
+        ) from error
+    if verified_rights != rights_status:
+        raise PagesArtifactError("Pages rights transform verification drifted")
+
+    _prepare_pages_root(stage)
+    try:
+        wire_result = wire_archive.build_for_pages(stage, publication_sha)
+        verified_wire = wire_archive.verify_for_pages(stage, publication_sha)
     except wire_archive.ArchiveError as error:
         raise PagesArtifactError(
             f"wire analysis archive transform refused: {error}"
         ) from error
-    return publication_sha
+    if verified_wire != wire_result:
+        raise PagesArtifactError("wire analysis archive verification drifted")
+
+    return {
+        "pages_rights": {
+            "publication_sha": publication_sha,
+            "quarantined_path_count": len(rights_status["quarantined_paths"]),
+            "rights_evaluated_at": rights_status["rights_evaluated_at"],
+            "schema_version": pages_rights.STATUS_SCHEMA,
+        },
+        "wire_analysis_archive": {
+            "mode": wire_result["mode"],
+            "publication_sha": wire_result["publication_sha"],
+            "restricted_wire_path_count": wire_result.get(
+                "restricted_wire_path_count", 0
+            ),
+            "schema_version": wire_archive.SCHEMA_VERSION,
+        },
+    }
 
 
 def _gnu_tar() -> str | None:
@@ -338,8 +392,7 @@ def build_candidate_artifact(
         stage = temporary_root / "pages-root"
         stage.mkdir()
         _extract_tree(repo, tree, stage)
-        _prepare_pages_root(stage)
-        transform_sha = _apply_pages_transforms(stage, tree)
+        transforms = _apply_pages_transforms(stage, tree)
         artifact = output or (temporary_root / "artifact.tar")
         packager = _create_action_tar(stage, artifact)
         receipt = measure_artifact(
@@ -348,12 +401,7 @@ def build_candidate_artifact(
             packager=packager,
             tree_sha=tree,
         )
-        receipt["staging_transforms"] = {
-            "wire_analysis_archive": {
-                "publication_sha": transform_sha,
-                "schema_version": wire_archive.SCHEMA_VERSION,
-            }
-        }
+        receipt["staging_transforms"] = transforms
         return receipt
 
 

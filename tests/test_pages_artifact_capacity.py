@@ -6,18 +6,21 @@ import json
 import os
 import subprocess
 import tarfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from scripts import build_pages_wire_archive as wire_archive
 from scripts import pages_artifact_capacity as capacity
+from scripts import stage_pages_rights as pages_rights
 
 
 EVENT = "event-" + "a" * 24
 CURRENT_ANALYSIS = "analysisv-" + "b" * 24
 OLD_ANALYSIS = "analysisv-" + "c" * 24
 EVENT_REVISION = "eventv-" + "d" * 24
+RIGHTS_CLOCK = datetime(2026, 8, 26, 0, 0, tzinfo=UTC)
 
 
 def _git(repo: Path, *arguments: str) -> str:
@@ -40,16 +43,25 @@ def _write(path: Path, raw: bytes) -> None:
     path.write_bytes(raw)
 
 
-def _wire_fixture(repo: Path) -> tuple[str, str]:
+def _wire_fixture(repo: Path, *, denied: bool = False) -> tuple[str, str]:
     current_path = (
         f"news/wire/{EVENT}/analysis/revisions/{CURRENT_ANALYSIS}.json"
     )
     old_path = f"news/wire/{EVENT}/analysis/revisions/{OLD_ANALYSIS}.json"
-    current = _json_bytes({"analysis_id": CURRENT_ANALYSIS, "summary": "current"})
+    current_document = {"analysis_id": CURRENT_ANALYSIS, "summary": "current"}
+    old_document = {"analysis_id": OLD_ANALYSIS, "summary": "historical"}
+    if denied:
+        current_document.update(
+            {"source_id": "cfets_benchmarks", "value": 987654.321}
+        )
+        old_document.update(
+            {"source_id": "cfets_benchmarks", "value": 123456.789}
+        )
+    current = _json_bytes(current_document)
     _write(repo / current_path, current)
     _write(
         repo / old_path,
-        _json_bytes({"analysis_id": OLD_ANALYSIS, "summary": "historical"}),
+        _json_bytes(old_document),
     )
     _write(repo / f"news/wire/{EVENT}/analysis.json", current)
     _write(
@@ -78,7 +90,7 @@ def _wire_fixture(repo: Path) -> tuple[str, str]:
     return current_path, old_path
 
 
-def _repository(tmp_path: Path) -> Path:
+def _repository(tmp_path: Path, *, denied_wire: bool = False) -> Path:
     repo = tmp_path / "repo"
     _git(tmp_path, "init", "-q", "-b", "main", str(repo))
     _git(repo, "config", "user.name", "Pages capacity tests")
@@ -95,7 +107,11 @@ def _repository(tmp_path: Path) -> Path:
     )
     (repo / "tracked.txt").write_text("committed\n", encoding="utf-8")
     (repo / "removed.txt").write_text("remove me\n", encoding="utf-8")
-    _wire_fixture(repo)
+    _write(
+        repo / pages_rights.POLICY_RELATIVE_PATH,
+        (capacity.ROOT / pages_rights.POLICY_RELATIVE_PATH).read_bytes(),
+    )
+    _wire_fixture(repo, denied=denied_wire)
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "initial")
     return repo
@@ -151,6 +167,10 @@ def test_staged_tree_wins_over_head_unstaged_and_untracked_bytes(tmp_path: Path)
     old_path = f"news/wire/{EVENT}/analysis/revisions/{OLD_ANALYSIS}.json"
     assert current_path in names
     assert old_path not in names
+    rights_path = pages_rights.STATUS_RELATIVE_PATH.as_posix()
+    assert rights_path in contents
+    rights_status = json.loads(contents[rights_path])
+    assert rights_status["schema_version"] == pages_rights.STATUS_SCHEMA
     assert wire_archive.ARCHIVE_RELATIVE_PATH.as_posix() in names
     receipt_path = wire_archive.RECEIPT_RELATIVE_PATH.as_posix()
     assert receipt_path in contents
@@ -158,18 +178,27 @@ def test_staged_tree_wins_over_head_unstaged_and_untracked_bytes(tmp_path: Path)
     assert archive_receipt["publication_sha"] == capacity._candidate_publication_sha(
         tree
     )
-    assert receipt["staging_transforms"] == {
-        "wire_analysis_archive": {
-            "publication_sha": archive_receipt["publication_sha"],
-            "schema_version": wire_archive.SCHEMA_VERSION,
-        }
+    transforms = receipt["staging_transforms"]
+    assert transforms["pages_rights"] == {
+        "publication_sha": archive_receipt["publication_sha"],
+        "quarantined_path_count": 0,
+        "rights_evaluated_at": rights_status["rights_evaluated_at"],
+        "schema_version": pages_rights.STATUS_SCHEMA,
+    }
+    assert transforms["wire_analysis_archive"] == {
+        "mode": "archived",
+        "publication_sha": archive_receipt["publication_sha"],
+        "restricted_wire_path_count": 0,
+        "schema_version": wire_archive.SCHEMA_VERSION,
     }
     assert capacity.staged_tree(repo) == tree
 
 
 def test_candidate_transform_is_deterministic_and_runs_before_tar(
     tmp_path: Path,
+    monkeypatch,
 ) -> None:
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(int(RIGHTS_CLOCK.timestamp())))
     repo = _repository(tmp_path)
     tree = capacity.staged_tree(repo)
     first_artifact = tmp_path / "first.tar"
@@ -188,6 +217,39 @@ def test_candidate_transform_is_deterministic_and_runs_before_tar(
     assert first_contents[archive_path] == second_contents[archive_path]
     assert first_contents[receipt_path] == second_contents[receipt_path]
     assert capacity.staged_tree(repo) == tree
+
+
+def test_candidate_suppresses_wire_archive_after_rights_quarantine(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", str(int(RIGHTS_CLOCK.timestamp())))
+    repo = _repository(tmp_path, denied_wire=True)
+    tree = capacity.staged_tree(repo)
+    artifact = tmp_path / "rights-suppressed.tar"
+
+    receipt = capacity.build_candidate_artifact(repo, tree, output=artifact)
+    names, contents = _members(artifact)
+
+    assert wire_archive.ARCHIVE_RELATIVE_PATH.as_posix() not in names
+    assert wire_archive.RECEIPT_RELATIVE_PATH.as_posix() not in names
+    current_path = f"news/wire/{EVENT}/analysis/revisions/{CURRENT_ANALYSIS}.json"
+    old_path = f"news/wire/{EVENT}/analysis/revisions/{OLD_ANALYSIS}.json"
+    head_path = f"news/wire/{EVENT}/analysis.json"
+    for relative in (current_path, old_path, head_path):
+        stub = json.loads(contents[relative])
+        assert stub["schema_version"] == pages_rights.ENDPOINT_STATUS_SCHEMA
+        assert stub["publication_allowed"] is False
+        assert stub["artifact"]["path"] == relative
+
+    transforms = receipt["staging_transforms"]
+    assert transforms["pages_rights"]["quarantined_path_count"] >= 3
+    assert transforms["wire_analysis_archive"] == {
+        "mode": "rights-suppressed",
+        "publication_sha": capacity._candidate_publication_sha(tree),
+        "restricted_wire_path_count": 3,
+        "schema_version": wire_archive.SCHEMA_VERSION,
+    }
 
 
 def test_candidate_fails_closed_before_tar_on_invalid_wire_integrity(
