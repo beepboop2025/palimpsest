@@ -26,6 +26,13 @@ import tarfile
 import tempfile
 from pathlib import Path, PurePosixPath
 
+try:
+    from scripts import build_pages_wire_archive as wire_archive
+except ModuleNotFoundError as exc:
+    if exc.name != "scripts":
+        raise
+    import build_pages_wire_archive as wire_archive
+
 
 ROOT = Path(__file__).resolve().parents[1]
 GIT_EXECUTABLE = "/usr/bin/git"
@@ -168,6 +175,35 @@ def _prepare_pages_root(stage: Path) -> None:
     hidden.rename(visible)
 
 
+def _candidate_publication_sha(tree: str) -> str:
+    """Return a fixed-width temporary identity derived from an exact Git tree.
+
+    A staged tree has no commit ID yet, while the Pages wire-archive contract
+    deliberately requires the 40-hex publication shape used in production.
+    This identity exists only inside temporary candidate staging; the release
+    job rebuilds the receipt against the admitted commit SHA.
+    """
+
+    if OBJECT_ID_RE.fullmatch(tree) is None:
+        raise PagesArtifactError("candidate transform requires an exact tree object ID")
+    material = f"{PAGES_ARTIFACT_SCHEMA}\0staged-tree:{tree}".encode("ascii")
+    return hashlib.sha256(material).hexdigest()[:40]
+
+
+def _apply_pages_transforms(stage: Path, tree: str) -> str:
+    """Apply and verify the reviewed production staging transforms in order."""
+
+    publication_sha = _candidate_publication_sha(tree)
+    try:
+        wire_archive.build(stage, publication_sha)
+        wire_archive.verify(stage, publication_sha)
+    except wire_archive.ArchiveError as error:
+        raise PagesArtifactError(
+            f"wire analysis archive transform refused: {error}"
+        ) from error
+    return publication_sha
+
+
 def _gnu_tar() -> str | None:
     for candidate in GNU_TAR_CANDIDATES:
         try:
@@ -303,14 +339,22 @@ def build_candidate_artifact(
         stage.mkdir()
         _extract_tree(repo, tree, stage)
         _prepare_pages_root(stage)
+        transform_sha = _apply_pages_transforms(stage, tree)
         artifact = output or (temporary_root / "artifact.tar")
         packager = _create_action_tar(stage, artifact)
-        return measure_artifact(
+        receipt = measure_artifact(
             artifact,
             publication_sha=f"staged-tree:{tree}",
             packager=packager,
             tree_sha=tree,
         )
+        receipt["staging_transforms"] = {
+            "wire_analysis_archive": {
+                "publication_sha": transform_sha,
+                "schema_version": wire_archive.SCHEMA_VERSION,
+            }
+        }
+        return receipt
 
 
 def _write_receipt(path: Path, receipt: dict) -> None:

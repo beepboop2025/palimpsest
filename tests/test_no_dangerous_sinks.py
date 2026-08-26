@@ -212,6 +212,8 @@ def test_pages_capacity_guard_keeps_a_closed_staged_tree_process_boundary():
     assert "OBJECT_ID_RE.fullmatch(revision)" in source
     assert "COMMIT_SHA_RE.fullmatch(publication_sha)" in source
     assert 'tree = _git(repo, "write-tree")' in source
+    assert "wire_archive.build(stage, publication_sha)" in source
+    assert "wire_archive.verify(stage, publication_sha)" in source
     assert "stdin=subprocess.DEVNULL" in source
     assert "env=GIT_ENVIRONMENT" in source
     assert "env=TAR_ENVIRONMENT" in source

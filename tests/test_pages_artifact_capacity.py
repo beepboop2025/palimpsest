@@ -10,7 +10,14 @@ from pathlib import Path
 
 import pytest
 
+from scripts import build_pages_wire_archive as wire_archive
 from scripts import pages_artifact_capacity as capacity
+
+
+EVENT = "event-" + "a" * 24
+CURRENT_ANALYSIS = "analysisv-" + "b" * 24
+OLD_ANALYSIS = "analysisv-" + "c" * 24
+EVENT_REVISION = "eventv-" + "d" * 24
 
 
 def _git(repo: Path, *arguments: str) -> str:
@@ -22,6 +29,53 @@ def _git(repo: Path, *arguments: str) -> str:
         text=True,
     )
     return completed.stdout.strip()
+
+
+def _json_bytes(document: object) -> bytes:
+    return json.dumps(document, sort_keys=True, indent=2).encode("utf-8") + b"\n"
+
+
+def _write(path: Path, raw: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(raw)
+
+
+def _wire_fixture(repo: Path) -> tuple[str, str]:
+    current_path = (
+        f"news/wire/{EVENT}/analysis/revisions/{CURRENT_ANALYSIS}.json"
+    )
+    old_path = f"news/wire/{EVENT}/analysis/revisions/{OLD_ANALYSIS}.json"
+    current = _json_bytes({"analysis_id": CURRENT_ANALYSIS, "summary": "current"})
+    _write(repo / current_path, current)
+    _write(
+        repo / old_path,
+        _json_bytes({"analysis_id": OLD_ANALYSIS, "summary": "historical"}),
+    )
+    _write(repo / f"news/wire/{EVENT}/analysis.json", current)
+    _write(
+        repo / f"news/wire/{EVENT}/revisions/{EVENT_REVISION}.json",
+        b'{"event":"current"}\n',
+    )
+    analysis_entries = wire_archive._revision_entries(repo)
+    event_entries = wire_archive._event_revision_entries(repo)
+    _write(
+        repo / "news/wire-history-integrity.json",
+        _json_bytes(
+            {
+                "schema_version": "palimpsest-wire-history-integrity.v1",
+                "entry_algorithm": "sha256(canonical-entry-json-lines)/v1",
+                "history_tree_sha256": wire_archive._history_tree(
+                    analysis_entries, event_entries
+                ),
+                "n_analysis_revisions": len(analysis_entries),
+                "n_event_revisions": len(event_entries),
+                "n_revisions": len(analysis_entries) + len(event_entries),
+                "total_bytes": sum(entry.size for entry in analysis_entries)
+                + sum(entry.size for entry in event_entries),
+            }
+        ),
+    )
+    return current_path, old_path
 
 
 def _repository(tmp_path: Path) -> Path:
@@ -41,6 +95,7 @@ def _repository(tmp_path: Path) -> Path:
     )
     (repo / "tracked.txt").write_text("committed\n", encoding="utf-8")
     (repo / "removed.txt").write_text("remove me\n", encoding="utf-8")
+    _wire_fixture(repo)
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "initial")
     return repo
@@ -92,6 +147,61 @@ def test_staged_tree_wins_over_head_unstaged_and_untracked_bytes(tmp_path: Path)
     assert not any(name == ".github" or name.startswith(".github/") for name in names)
     assert ".hidden" not in names
     assert "visible/.nested-hidden" not in names
+    current_path = f"news/wire/{EVENT}/analysis/revisions/{CURRENT_ANALYSIS}.json"
+    old_path = f"news/wire/{EVENT}/analysis/revisions/{OLD_ANALYSIS}.json"
+    assert current_path in names
+    assert old_path not in names
+    assert wire_archive.ARCHIVE_RELATIVE_PATH.as_posix() in names
+    receipt_path = wire_archive.RECEIPT_RELATIVE_PATH.as_posix()
+    assert receipt_path in contents
+    archive_receipt = json.loads(contents[receipt_path])
+    assert archive_receipt["publication_sha"] == capacity._candidate_publication_sha(
+        tree
+    )
+    assert receipt["staging_transforms"] == {
+        "wire_analysis_archive": {
+            "publication_sha": archive_receipt["publication_sha"],
+            "schema_version": wire_archive.SCHEMA_VERSION,
+        }
+    }
+    assert capacity.staged_tree(repo) == tree
+
+
+def test_candidate_transform_is_deterministic_and_runs_before_tar(
+    tmp_path: Path,
+) -> None:
+    repo = _repository(tmp_path)
+    tree = capacity.staged_tree(repo)
+    first_artifact = tmp_path / "first.tar"
+    second_artifact = tmp_path / "second.tar"
+
+    first = capacity.build_candidate_artifact(repo, tree, output=first_artifact)
+    second = capacity.build_candidate_artifact(repo, tree, output=second_artifact)
+    first_names, first_contents = _members(first_artifact)
+    second_names, second_contents = _members(second_artifact)
+
+    archive_path = wire_archive.ARCHIVE_RELATIVE_PATH.as_posix()
+    receipt_path = wire_archive.RECEIPT_RELATIVE_PATH.as_posix()
+    assert first["artifact_bytes"] == second["artifact_bytes"]
+    assert first["staging_transforms"] == second["staging_transforms"]
+    assert first_names == second_names
+    assert first_contents[archive_path] == second_contents[archive_path]
+    assert first_contents[receipt_path] == second_contents[receipt_path]
+    assert capacity.staged_tree(repo) == tree
+
+
+def test_candidate_fails_closed_before_tar_on_invalid_wire_integrity(
+    tmp_path: Path,
+) -> None:
+    repo = _repository(tmp_path)
+    integrity = repo / "news/wire-history-integrity.json"
+    document = json.loads(integrity.read_text(encoding="utf-8"))
+    document["n_analysis_revisions"] += 1
+    integrity.write_bytes(_json_bytes(document))
+    _git(repo, "add", integrity.relative_to(repo).as_posix())
+
+    with pytest.raises(capacity.PagesArtifactError, match="transform refused"):
+        capacity.build_candidate_artifact(repo, capacity.staged_tree(repo))
 
 
 def test_tracked_symbolic_links_are_refused_before_materialization(tmp_path: Path):
