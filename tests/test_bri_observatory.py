@@ -25,7 +25,7 @@ PAGE = ROOT / "belt-and-road" / "index.html"
 
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
     registry = load_registry(REGISTRY)
-    assert registry["as_of"] == "2026-08-26T07:00:00Z"
+    assert registry["as_of"] == "2026-08-26T12:03:34Z"
     report = coverage_report(registry)
     assert report["source_count"] >= 40
     assert {"official_china", "official_host", "multilateral", "research", "civil_society", "legal", "partner"} <= set(report["source_classes"])
@@ -92,6 +92,11 @@ def test_administrative_designations_allegations_and_legal_status_stay_distinct(
 
 def test_narcoscope_bridge_is_production_verified_and_cannot_infer_actors() -> None:
     registry = load_registry(REGISTRY)
+    pin = json.loads(
+        (ROOT / "integrations" / "intelligence-commons" / "narcoscope-corridors-pin-v2.json").read_text(
+            encoding="utf-8"
+        )
+    )
     [bridge] = registry["partner_bridges"]
     assert bridge["contract"] == "narcoscope.palimpsest.corridor-aggregate.v2"
     assert bridge["status"] == "production_verified"
@@ -100,6 +105,7 @@ def test_narcoscope_bridge_is_production_verified_and_cannot_infer_actors() -> N
     source = next(source for source in registry["sources"] if source["source_id"] == "narcoscope_corridors_v2")
     assert source["implementation"] == "live"
     assert "5bf6a31cfd98e56dadca495f35b99ecb73c1d74f" in source["notes"]
+    assert registry["as_of"] >= pin["deployment"]["verified_at"]
 
 
 def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
