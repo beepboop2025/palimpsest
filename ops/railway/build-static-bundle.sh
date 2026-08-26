@@ -68,6 +68,7 @@ staging_directory="$(mktemp -d "$output_parent/.palimpsest-railway-stage.XXXXXX"
 control_directory="$(mktemp -d "$output_parent/.palimpsest-railway-control.XXXXXX")"
 cleanup() {
   if [[ -n "${staging_directory:-}" && -d "$staging_directory" ]]; then
+    chmod -R u+w -- "$staging_directory" 2>/dev/null || true
     rm -rf -- "$staging_directory"
   fi
   if [[ -n "${control_directory:-}" && -d "$control_directory" ]]; then
@@ -161,7 +162,14 @@ env PYTHONDONTWRITEBYTECODE=1 "$python_runtime" \
   --source-commit "$expected_sha" \
   --built-at "$rights_admission_at" >/dev/null
 
+# A promoted release is an immutable input to deployment and review.  Seal it
+# before promotion so a later verifier cannot add bytecode, test caches, or
+# any other file that is absent from the exact manifest.
+find "$staging_directory" -type f -exec chmod a-w -- {} +
+find "$staging_directory" -depth -type d -exec chmod a-w -- {} +
+
 mv "$rights_receipt" "$final_rights_receipt"
+chmod a-w -- "$final_rights_receipt"
 mv "$staging_directory" "$output_parent/$output_name"
 staging_directory=""
 rm -- "$denied_sentinels"
