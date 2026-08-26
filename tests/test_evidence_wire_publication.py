@@ -515,6 +515,24 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
     assert workflow.count("python -m scripts.newswire_pull") == 3
     assert workflow.count("--snapshot-out") == 1
     assert workflow.count("--snapshot-in") == 2
+    guard = "python -B scripts/pages_artifact_capacity.py candidate --staged"
+    assert workflow.count(guard) == 3
+
+    add_positions = [
+        match.start()
+        for match in re.finditer(
+            r"git add -A -- readings china news datapackage\.json", workflow
+        )
+    ]
+    guard_positions = [match.start() for match in re.finditer(re.escape(guard), workflow)]
+    assert len(add_positions) == len(guard_positions) == 3
+    for position, (staged_at, guarded_at) in enumerate(
+        zip(add_positions, guard_positions, strict=True)
+    ):
+        next_guard = guard_positions[position + 1] if position + 1 < 3 else len(workflow)
+        candidate_section = workflow[guarded_at:next_guard]
+        assert staged_at < guarded_at
+        assert re.search(r"git commit(?: --amend)?", candidate_section)
 
     build_graph = re.findall(
         r"python -m scripts\.build_economic_pulse\n"

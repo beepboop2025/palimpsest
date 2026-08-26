@@ -12,7 +12,11 @@ from types import SimpleNamespace
 import pytest
 import yaml
 
-from scripts import push_data_commit, validate_investigation_dependencies
+from scripts import (
+    pages_artifact_capacity,
+    push_data_commit,
+    validate_investigation_dependencies,
+)
 
 
 def _git(repo: Path, *arguments: str) -> str:
@@ -1812,25 +1816,18 @@ def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
     assert archive["run"].rstrip().endswith("--check")
 
     measure = by_name["Measure the exact staged Pages artifact"]
-    limit = int(measure["env"]["PAGES_ARTIFACT_LIMIT_BYTES"])
+    limit = pages_artifact_capacity.PAGES_ARTIFACT_LIMIT_BYTES
     assert limit == 1000 * 1024 * 1024
     assert limit == (1024 - 24) * 1024 * 1024
     assert measure["env"]["PUBLICATION_SHA"] == (
         "${{ needs.contract.outputs.revision }}"
     )
-    for field in (
-        "artifact_bytes",
-        "artifact_sha256",
-        "headroom_bytes",
-        "limit_bytes",
-        "publication_sha",
-        "schema_version",
-        "status",
-    ):
-        assert f'\\"{field}\\"' in measure["run"]
-    assert 'artifact="$RUNNER_TEMP/artifact.tar"' in measure["run"]
-    assert "artifact_bytes=$(wc -c" in measure["run"]
-    assert "artifact_sha256=$(sha256sum" in measure["run"]
+    assert "PAGES_ARTIFACT_LIMIT_BYTES" not in measure.get("env", {})
+    assert "scripts/pages_artifact_capacity.py measure" in measure["run"]
+    assert '--artifact "$RUNNER_TEMP/artifact.tar"' in measure["run"]
+    assert '--publication-sha "$PUBLICATION_SHA"' in measure["run"]
+    assert '--receipt "$RUNNER_TEMP/pages-artifact-size.json"' in measure["run"]
+    assert '--github-output "$GITHUB_OUTPUT"' in measure["run"]
 
     receipt = by_name["Upload the Pages artifact size receipt"]
     assert receipt["uses"] == (

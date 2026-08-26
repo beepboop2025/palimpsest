@@ -28,6 +28,7 @@ from pathlib import Path
 
 from collectors.ddti_probe import DDTIProbeCollector
 from core.safe_fetch import FetchError, safe_fetch_response
+from inject_ddti import inject_dashboard
 from processors.ddti_index import compute_selectivity_novelty, extract_terms, load_domain_map
 from processors.zh_finance import load_lexicon
 
@@ -389,14 +390,7 @@ def store_disk(index: dict) -> dict:
 def embed_in_dashboard(index: dict) -> bool:
     """Inject the real snapshot so opening the HTML file shows real data offline."""
     try:
-        html = DASHBOARD.read_text(encoding="utf-8")
-        payload = json.dumps(index, ensure_ascii=False).replace("</", "<\\/")
-        block = (f"<!--DDTI_EMBED--><script>window.__DDTI_EMBED__={payload};"
-                 f"window.__DDTI_EMBED_AT__=\"{index['generated_at'][:16]}Z\";</script>")
-        html = re.sub(r"<!--DDTI_EMBED-->(<script>window\.__DDTI_EMBED__=.*?</script>)?",
-                      block, html, count=1, flags=re.DOTALL)
-        DASHBOARD.write_text(html, encoding="utf-8")
-        return True
+        return inject_dashboard(DASHBOARD, index) in {"updated", "unchanged"}
     except Exception as e:
         print(f"  embed failed: {e}")
         return False
