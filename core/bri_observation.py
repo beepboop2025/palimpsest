@@ -84,7 +84,10 @@ def _source_text(
         raise BRIObservationError(f"{name} must be text")
     if len(value.encode("utf-8")) > maximum_bytes:
         raise BRIObservationError(f"{name} exceeds {maximum_bytes} UTF-8 bytes")
-    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in value):
+    if any(
+        (ord(character) < 0x20 and character not in "\t\n\r") or ord(character) == 0x7F
+        for character in value
+    ):
         raise BRIObservationError(f"{name} contains control characters")
     return value
 

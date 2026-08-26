@@ -414,6 +414,7 @@ def _required_text(
     path: str,
     maximum_bytes: int = MAX_SOURCE_TEXT_BYTES,
     allow_empty: bool = False,
+    allow_source_whitespace: bool = False,
 ) -> str:
     if type(value) is not str:
         raise BRIWDIError(f"{path} must be text")
@@ -421,7 +422,14 @@ def _required_text(
         raise BRIWDIError(f"{path} must be non-empty")
     if len(value.encode("utf-8")) > maximum_bytes:
         raise BRIWDIError(f"{path} exceeds {maximum_bytes} UTF-8 bytes")
-    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in value):
+    if any(
+        (
+            ord(character) < 0x20
+            and not (allow_source_whitespace and character in "\t\n\r")
+        )
+        or ord(character) == 0x7F
+        for character in value
+    ):
         raise BRIWDIError(f"{path} contains control characters")
     return value
 
@@ -810,7 +818,10 @@ def parse_response(
 
         _required_text(row["unit"], path=f"row {position} unit", allow_empty=True)
         scale = _required_text(
-            row.get("scale", ""), path=f"row {position} scale", allow_empty=True
+            row.get("scale", ""),
+            path=f"row {position} scale",
+            allow_empty=True,
+            allow_source_whitespace=True,
         )
         obs_status = _required_text(
             row["obs_status"],
@@ -821,6 +832,7 @@ def parse_response(
             row["footnote"],
             path=f"row {position} footnote",
             allow_empty=True,
+            allow_source_whitespace=True,
         )
         if obs_status not in {"", "F"}:
             raise BRIWDIError(

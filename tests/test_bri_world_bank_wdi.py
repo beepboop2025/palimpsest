@@ -242,6 +242,27 @@ def test_lastupdated_is_only_an_upper_bound_when_retrieved_same_day():
     }
 
 
+def test_source_footnote_preserves_standard_multiline_whitespace_verbatim():
+    raw = _mutated_response(
+        lambda document: document[1][0].update(footnote="Line one.\nLine two.\t")
+    )
+    parsed = _parse(raw)
+    matching = next(
+        row
+        for row in parsed.observations
+        if row.country_code == "CHN"
+        and row.indicator_id == "NY.GDP.MKTP.KD.ZG"
+        and row.period_start.year == 2024
+    )
+    assert matching.footnote == "Line one.\nLine two.\t"
+
+    rejected = _mutated_response(
+        lambda document: document[1][0].update(footnote="unsafe\u0000footnote")
+    )
+    with pytest.raises(BRIWDIError, match="control characters"):
+        _parse(rejected)
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [

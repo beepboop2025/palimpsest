@@ -101,6 +101,12 @@ def test_canonical_json_and_identity_are_order_independent_and_strict():
         qualified = replace(base, **changes)
         assert qualified.observation_id != base.observation_id
 
+    multiline = replace(base, footnote="Source qualification.\n")
+    assert multiline.footnote == "Source qualification.\n"
+    assert multiline.observation_id != base.observation_id
+    with pytest.raises(BRIObservationError, match="control characters"):
+        replace(base, footnote="unsafe\x00qualification")
+
 
 def test_null_is_an_explicit_unavailable_state_never_numeric_zero():
     unavailable = _observation(
