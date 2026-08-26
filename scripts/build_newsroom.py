@@ -1147,6 +1147,16 @@ def _organization() -> dict[str, Any]:
     }
 
 
+def _dataset_organization() -> dict[str, str]:
+    """Return Google's supported, canonical Palimpsest Dataset identity."""
+    return {
+        "@type": "Organization",
+        "@id": f"{SITE}/#org",
+        "name": "Palimpsest",
+        "url": f"{SITE}/",
+    }
+
+
 def _receipt(story: Mapping[str, Any]) -> str:
     evidence = story["evidence"]
     source_time = evidence["source_timestamp"]
@@ -4456,7 +4466,7 @@ def render_economic_page(pulse: Mapping[str, Any]) -> str:
                 "description": pulse["scope"],
                 "dateModified": pulse["generated_at"],
                 "url": f"{SITE}/readings/china-economic-pulse-latest.json",
-                "creator": _organization(),
+                "creator": _dataset_organization(),
             },
         )
         + "\n"

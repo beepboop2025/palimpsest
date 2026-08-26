@@ -11,6 +11,10 @@ from processors.weekly_situation import (
     substance,
 )
 from scripts.weekly_situation_pull import append_history_if_changed
+from scripts import site_nav, sync_nav
+
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def _write(path: Path, payload: dict) -> None:
@@ -146,6 +150,20 @@ def test_html_is_a_rendering_not_a_second_score(tmp_path: Path) -> None:
     assert "not a newspaper" in html.lower()
     assert "—" not in html
     assert "–" not in html
+
+
+def test_committed_html_matches_the_renderer_and_canonical_dataset_identity() -> None:
+    report = json.loads(
+        (ROOT / "readings" / "weekly-situation-latest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    rendered = render_html(report)
+    rendered = sync_nav.BLOCK.sub(
+        lambda _: site_nav.render("/weekly-situation.html"), rendered, count=1
+    )
+
+    assert rendered == (ROOT / "weekly-situation.html").read_text(encoding="utf-8")
 
 
 def test_hourly_reseal_does_not_duplicate_unchanged_history(tmp_path: Path) -> None:

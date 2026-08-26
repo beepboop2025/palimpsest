@@ -288,6 +288,21 @@ def test_dense_tables_are_named_keyboard_scroll_regions(publication) -> None:
     assert economy_page.count('scope="col"') >= 4
 
 
+def test_economic_dataset_uses_the_canonical_google_organization(publication) -> None:
+    _feed, _wire, _pulse, outputs = publication
+    page = outputs[Path("news/economy/index.html")].decode("utf-8")
+    match = re.search(
+        r'<script type="application/ld\+json">(.*?)</script>',
+        page,
+        flags=re.DOTALL,
+    )
+
+    assert match is not None
+    metadata = json.loads(match.group(1))
+    assert metadata["@type"] == "Dataset"
+    assert metadata["creator"] == build_newsroom._dataset_organization()
+
+
 def test_unified_machine_feeds_have_stable_unique_dossier_ids(publication) -> None:
     feed, wire, _pulse, outputs = publication
     json_feed = json.loads(outputs[Path("news/feed.json")])
