@@ -1700,6 +1700,7 @@ assert_collector_common_crawl_mount_identity() {
   (( $# == 0 ))
   local mounted_identity host_feature_sha256 container_feature_sha256
   local feature_bytes
+  PHASE1_STAGE='common-crawl-container-metadata'
   mounted_identity="$(docker exec -i "$COLLECTOR_CONTAINER_ID" \
     /usr/local/bin/python3 - <<'PY'
 import os
@@ -1758,19 +1759,24 @@ finally:
 PY
 )"
   [[ "$mounted_identity" =~ ^[0-9]+:[0-9]+$ ]]
+  PHASE1_STAGE='common-crawl-host-mount-metadata'
   /usr/bin/mountpoint -q "$COMMON_CRAWL_STABLE_ROOT"
   test "$(stat -c '%a' "$COMMON_CRAWL_WAREHOUSE_SOURCE")" = 750
   test "$(stat -c '%a' "$COMMON_CRAWL_STABLE_ROOT")" = 750
   test "$(stat -c '%a' "$COMMON_CRAWL_DERIVED_SOURCE")" = 700
   test "$(stat -c '%a' "$COMMON_CRAWL_STABLE_DERIVED_SOURCE")" = 700
+  PHASE1_STAGE='common-crawl-root-identity'
   assert_same_directory_identity \
     "$COMMON_CRAWL_WAREHOUSE_SOURCE" "$COMMON_CRAWL_STABLE_ROOT"
+  PHASE1_STAGE='common-crawl-derived-alias-identity'
   assert_same_directory_identity \
     "$COMMON_CRAWL_DERIVED_SOURCE" "$COMMON_CRAWL_STABLE_DERIVED_SOURCE" \
     "$mounted_identity"
+  PHASE1_STAGE='common-crawl-compose-source-identity'
   assert_same_directory_identity \
     "$COMMON_CRAWL_DERIVED_SOURCE" "$COLLECTOR_COMMON_CRAWL_SOURCE" \
     "$mounted_identity"
+  PHASE1_STAGE='common-crawl-feature-metadata'
   test -f "$COMMON_CRAWL_FEATURE_EXPORT"
   test ! -L "$COMMON_CRAWL_FEATURE_EXPORT"
   test "$(stat -c '%u:%g' "$COMMON_CRAWL_FEATURE_EXPORT")" = "10001:10001"
@@ -1778,6 +1784,7 @@ PY
   [[ "$feature_bytes" =~ ^[0-9]+$ ]]
   (( feature_bytes > 0 ))
   (( feature_bytes <= COMMON_CRAWL_FEATURE_MAX_BYTES ))
+  PHASE1_STAGE='common-crawl-feature-hash'
   host_feature_sha256="$(sha256sum "$COMMON_CRAWL_FEATURE_EXPORT" | \
     awk '{print $1}')"
   container_feature_sha256="$(docker exec "$COLLECTOR_CONTAINER_ID" \
@@ -1786,6 +1793,7 @@ PY
   [[ "$host_feature_sha256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$container_feature_sha256" =~ ^[0-9a-f]{64}$ ]]
   test "$container_feature_sha256" = "$host_feature_sha256"
+  PHASE1_STAGE='common-crawl-mount-validated'
 }
 
 test -x /usr/bin/systemd-run
@@ -2792,6 +2800,7 @@ release_quiesce_all() {
 PHASE1_SHELL_PID="$$"
 [[ "$PHASE1_SHELL_PID" =~ ^[1-9][0-9]*$ ]]
 PHASE1_FAIL_SAFE_ARMED=1
+PHASE1_STAGE='fail-safe-armed'
 RELEASE_FAIL_SAFE_RUNNING=0
 phase1_fail_safe() {
   local original_status="${1:-1}"
@@ -2801,8 +2810,8 @@ phase1_fail_safe() {
   RELEASE_FAIL_SAFE_RUNNING=1
   trap - ERR EXIT
   trap '' HUP INT TERM
-  printf 'Phase 1 interrupted (%s); quiescing every release writer and activator\n' \
-    "$original_status" >&2
+  printf 'Phase 1 interrupted (%s) at stage %s; quiescing every release writer and activator\n' \
+    "$original_status" "${PHASE1_STAGE:-unknown}" >&2
   release_quiesce_all || quiesce_status=$?
   cleanup_release_private_state || cleanup_status=$?
   if (( quiesce_status != 0 || cleanup_status != 0 )); then
@@ -5348,6 +5357,7 @@ case "$COLLECTOR_COMMON_CRAWL_SOURCE" in
     ;;
 esac
 assert_collector_common_crawl_mount_identity
+PHASE1_STAGE='common-crawl-environment'
 test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
   '{{range .Config.Env}}{{println .}}{{end}}' | \
   grep -Fx 'PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl')" \
@@ -5359,12 +5369,14 @@ CANDIDATE_COLLECTOR_HOSTNAME="$(docker inspect "$COLLECTOR_CONTAINER_ID" \
   --format '{{.Config.Hostname}}')"
 WAREHOUSE_WORKER_HOSTNAME="$(docker inspect "$WAREHOUSE_CONTAINER_ID" \
   --format '{{.Config.Hostname}}')"
+PHASE1_STAGE='celery-candidate-topology'
 CELERY_CANDIDATE_TOPOLOGY_B64="$(/usr/bin/python3 "$CELERY_GATE_PATH" \
   encode-topology \
   --pair "default@${CANDIDATE_WORKER_HOSTNAME}=celery" \
   --pair "collectors@${CANDIDATE_COLLECTOR_HOSTNAME}=collectors" \
   --pair "warehouse@${WAREHOUSE_WORKER_HOSTNAME}=warehouse")"
 [[ "$CELERY_CANDIDATE_TOPOLOGY_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
+PHASE1_STAGE='celery-candidate-consuming'
 CELERY_CANDIDATE_CONSUMING_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/celery-candidate-consuming.json"
 docker exec -i "$CANDIDATE_WORKER_ID" /usr/local/bin/python3 - check \
   --consumer-state consuming \
@@ -5375,12 +5387,15 @@ docker exec -i "$CANDIDATE_WORKER_ID" /usr/local/bin/python3 - check \
 
 # Import the new Common Crawl bundle before any context run. Analysis and
 # context remain stopped until the public OSINT sync advances in Phase 3.
+PHASE1_STAGE='common-crawl-pre-import-identity'
 assert_collector_common_crawl_mount_identity
+PHASE1_STAGE='common-crawl-import'
 start_and_verify_oneshot palimpsest-common-crawl-import.service
 
 # Run the exact controller bytes synchronously inside the candidate collector
 # image. It invokes no send_task/delay/apply_async seam, so there is no retry or
 # result-backend residue to survive the release boundary.
+PHASE1_STAGE='collector-snapshot-recovery'
 COLLECTOR_RECOVERY_RECEIPT_PATH="$OBSERVER_PREFLIGHT_DIR/collector-recovery.json"
 docker exec -i -w /app "$COLLECTOR_CONTAINER_ID" /usr/local/bin/python3 -c '
 import sys

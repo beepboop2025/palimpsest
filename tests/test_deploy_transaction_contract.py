@@ -312,6 +312,12 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
     assert 'docker rm --force "$container_id"' in quiescer_block
     assert "created|running|restarting|paused" in quiescer_block
     assert "emergency release quiescence is incomplete" in quiescer_block
+    assert "PHASE1_STAGE='fail-safe-armed'" in transaction[
+        quiescer:phase_one_fail_safe
+    ]
+    assert '"${PHASE1_STAGE:-unknown}"' in transaction[
+        phase_one_fail_safe:phase_one_abort
+    ]
     assert preflight_abort < preflight_err < first_preflight < direction_gate
     for abort_block in (
         transaction[phase_one_abort:phase_one_err],
@@ -346,6 +352,28 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
         < phase_three_exit
         < takeover
     )
+
+
+def test_common_crawl_mount_gate_records_nonsecret_failure_stages() -> None:
+    transaction = _transaction()
+    mount_gate = _bash_function_source(
+        transaction, "assert_collector_common_crawl_mount_identity"
+    )
+
+    expected_stages = (
+        "common-crawl-container-metadata",
+        "common-crawl-host-mount-metadata",
+        "common-crawl-root-identity",
+        "common-crawl-derived-alias-identity",
+        "common-crawl-compose-source-identity",
+        "common-crawl-feature-metadata",
+        "common-crawl-feature-hash",
+        "common-crawl-mount-validated",
+    )
+    positions = [
+        mount_gate.index(f"PHASE1_STAGE='{stage}'") for stage in expected_stages
+    ]
+    assert positions == sorted(positions)
 
 
 def test_emergency_quiescer_fails_on_inventory_and_systemd_stop_errors() -> None:
