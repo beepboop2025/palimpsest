@@ -5,6 +5,7 @@ import json
 import threading
 import urllib.error
 import urllib.request
+from http import HTTPStatus
 from pathlib import Path
 
 
@@ -65,6 +66,18 @@ def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_access_request_logs_use_stdout(capsys) -> None:
+    handler = object.__new__(server_module.PalimpsestStaticHandler)
+    handler.client_address = ("127.0.0.1", 12345)
+    handler.requestline = "GET /healthz HTTP/1.1"
+
+    handler.log_request(HTTPStatus.OK, 128)
+
+    captured = capsys.readouterr()
+    assert '"GET /healthz HTTP/1.1" 200 128' in captured.out
+    assert captured.err == ""
 
 
 def test_server_serves_manifest_bound_publication(tmp_path: Path) -> None:

@@ -8,6 +8,7 @@ import functools
 import json
 import os
 import re
+import sys
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -43,6 +44,21 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, directory: str, **kwargs: Any) -> None:
         self.site_root = Path(directory).resolve()
         super().__init__(*args, directory=str(self.site_root), **kwargs)
+
+    def log_request(self, code: int | str = "-", size: int | str = "-") -> None:
+        """Keep successful access telemetry out of Railway's error stream."""
+        if isinstance(code, HTTPStatus):
+            code = code.value
+        message = f'"{self.requestline}" {code} {size}'
+        sys.stdout.write(
+            "%s - - [%s] %s\n"
+            % (
+                self.address_string(),
+                self.log_date_time_string(),
+                message.translate(self._control_char_table),
+            )
+        )
+        sys.stdout.flush()
 
     def end_headers(self) -> None:
         self.send_header("X-Content-Type-Options", "nosniff")
