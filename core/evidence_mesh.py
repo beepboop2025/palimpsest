@@ -27,10 +27,17 @@ from core.narcoscope_bridge import (
     validate_artifact as validate_narcoscope_artifact,
     validate_receipt as validate_narcoscope_receipt,
 )
+from core.pages_publication_receipt import (
+    PagesPublicationReceiptError,
+    load_pages_publication_receipt,
+)
 from processors.bri_observatory import (
     BriRegistryError,
+    WDI_DATASET_ID,
+    WDI_PRODUCTION_PUBLICATION_STATE,
     registry_projection_from_public_artifact,
     validate_observation_dataset_descriptor,
+    validate_observation_dataset_descriptor_shape,
 )
 
 
@@ -1258,6 +1265,60 @@ def build_evidence_mesh(
                     maximum,
                 )
                 bri_registry = registry_projection_from_public_artifact(payload)
+                shaped_descriptor = validate_observation_dataset_descriptor_shape(
+                    descriptor,
+                    registry=bri_registry,
+                )
+                publication_receipt_validation = None
+                if (
+                    shaped_descriptor["publication_state"]
+                    == WDI_PRODUCTION_PUBLICATION_STATE
+                ):
+                    locator = shaped_descriptor["publication_receipt"]
+                    publication_receipt_path = _repo_path(
+                        root,
+                        locator["repository_path"],
+                        "bri.observation.publication_receipt.repository_path",
+                    )
+                    archived_size_receipt_path = _repo_path(
+                        root,
+                        (
+                            ".well-known/receipts/pages-artifact-size-"
+                            + locator["release_a_sha"]
+                            + ".json"
+                        ),
+                        "bri.observation.publication_receipt.archived_size_path",
+                    )
+                    expected_resources = {
+                        shaped_descriptor["artifact"]["path"]: {
+                            "bytes": len(artifact_raw),
+                            "sha256": hashlib.sha256(artifact_raw).hexdigest(),
+                        },
+                        shaped_descriptor["observation_schema"]["path"]: {
+                            "bytes": len(observation_schema_raw),
+                            "sha256": hashlib.sha256(
+                                observation_schema_raw
+                            ).hexdigest(),
+                        },
+                        shaped_descriptor["series_registry"]["path"]: {
+                            "bytes": len(series_registry_raw),
+                            "sha256": hashlib.sha256(
+                                series_registry_raw
+                            ).hexdigest(),
+                        },
+                    }
+                    publication_receipt_validation = load_pages_publication_receipt(
+                        publication_receipt_path,
+                        archived_size_receipt_path=archived_size_receipt_path,
+                        expected_dataset_id=WDI_DATASET_ID,
+                        expected_source_id="world_bank_wdi",
+                        expected_collection_id=artifact_document["collection_id"],
+                        expected_resources=expected_resources,
+                        verification_cutoff=_parse_timestamp(
+                            bri_registry["as_of"],
+                            "bri.registry.as_of",
+                        ),
+                    )
                 validated_descriptor = validate_observation_dataset_descriptor(
                     descriptor,
                     registry=bri_registry,
@@ -1266,8 +1327,16 @@ def build_evidence_mesh(
                     observation_schema_raw=observation_schema_raw,
                     series_registry_raw=series_registry_raw,
                     series_registry_path=series_registry_path,
+                    publication_receipt_validation=(
+                        publication_receipt_validation
+                    ),
                 )
-            except (BriRegistryError, KeyError, TypeError) as exc:
+            except (
+                BriRegistryError,
+                KeyError,
+                PagesPublicationReceiptError,
+                TypeError,
+            ) as exc:
                 raise EvidenceMeshError(
                     f"invalid BRI WDI observation descriptor: {exc}"
                 ) from exc
@@ -1277,6 +1346,76 @@ def build_evidence_mesh(
                 "bri.observation.clocks.retrieved_at",
             )
             coverage = validated_descriptor["coverage"]
+            publication_receipt = validated_descriptor["publication_receipt"]
+            if publication_receipt is None:
+                publication_time = None
+                wdi_availability = "available"
+                wdi_freshness = _freshness(
+                    retrieved_at,
+                    None,
+                    moment,
+                    "P1Y",
+                    wdi_availability,
+                )
+                publication_limitations = [
+                    "The null publication receipt means repository-ready bytes are not yet production-verified."
+                ]
+                input_observed_at = validated_descriptor["generated_at"]
+                input_reason = (
+                    "Repository-ready context bytes; publication receipt remains null "
+                    "until an exact production deployment is verified."
+                )
+            else:
+                publication_time = publication_receipt["verified_at"]
+                publication_verified_at = _parse_timestamp(
+                    publication_time,
+                    "bri.observation.publication_receipt.verified_at",
+                )
+                publication_fresh_until = _parse_timestamp(
+                    publication_receipt["fresh_until"],
+                    "bri.observation.publication_receipt.fresh_until",
+                )
+                wdi_freshness = _freshness(
+                    publication_verified_at,
+                    publication_fresh_until,
+                    moment,
+                    None,
+                    "available",
+                )
+                wdi_availability = (
+                    "stale" if wdi_freshness["status"] == "stale" else "available"
+                )
+                publication_limitations = [
+                    (
+                        "The immutable publication receipt proves these exact served "
+                        f"bytes at {publication_time}; this is point-in-time deployment "
+                        "evidence, not continuous availability."
+                    ),
+                    (
+                        "Deployment verification freshness expires at "
+                        f"{publication_receipt['fresh_until']}; the mesh marks this "
+                        "resource stale after that clock until a new public re-probe."
+                    ),
+                    (
+                        "WDI data currency is separate from deployment freshness: the "
+                        f"source knowledge time is {_iso_z(retrieved_at)} and its context "
+                        "cadence is yearly."
+                    ),
+                ]
+                input_observed_at = publication_time
+                if wdi_availability == "stale":
+                    input_reason = (
+                        "Exact artifact bytes were production-verified by the immutable "
+                        f"receipt at {publication_time}, but that point-in-time deployment "
+                        f"verification expired at {publication_receipt['fresh_until']}; "
+                        "current availability requires a new public re-probe."
+                    )
+                else:
+                    input_reason = (
+                        "Exact artifact bytes were production-verified by the immutable "
+                        f"receipt at {publication_time}; this point-in-time availability "
+                        f"check expires at {publication_receipt['fresh_until']}."
+                    )
             input_id = "palimpsest-bri-wdi-world-bank"
             resources.append(_resource(
                 resource_id="palimpsest:context:bri-world-bank-wdi",
@@ -1284,7 +1423,7 @@ def build_evidence_mesh(
                 namespace="context",
                 source_id="world-bank-wdi",
                 title="World Bank WDI national economic context for BRI countries",
-                availability="available",
+                availability=wdi_availability,
                 allowed_role="context",
                 evidence_class="OFFICIAL_STATISTIC",
                 independence_group="publisher:world-bank",
@@ -1301,15 +1440,9 @@ def build_evidence_mesh(
                 clocks={
                     "event_time": None,
                     "knowledge_time": _iso_z(retrieved_at),
-                    "publication_time": None,
+                    "publication_time": publication_time,
                 },
-                freshness=_freshness(
-                    retrieved_at,
-                    None,
-                    moment,
-                    "P1Y",
-                    "available",
-                ),
+                freshness=wdi_freshness,
                 source_temporal_coverage={
                     "kind": "year_range",
                     "from_year": coverage["start_year"],
@@ -1322,7 +1455,7 @@ def build_evidence_mesh(
                 limitations=[
                     "Country-period context only; this resource cannot establish a BRI project, corridor, actor or causal effect.",
                     "Source-marked forecasts remain forecasts and source-null values remain unavailable, never observed zeroes.",
-                    "The null publication receipt means repository-ready bytes are not yet production-verified.",
+                    *publication_limitations,
                 ],
             ))
             bri_observation_inputs.append(_receipt(
@@ -1330,18 +1463,15 @@ def build_evidence_mesh(
                 project_id="palimpsest",
                 contract="palimpsest.bri-economic-observations.v1",
                 required=False,
-                availability="available",
+                availability=wdi_availability,
                 locator=validated_descriptor["artifact"]["path"],
                 public_url=validated_descriptor["artifact"]["url"],
                 raw=artifact_raw,
                 observed_version=artifact_document["schema_version"],
-                observed_at=validated_descriptor["generated_at"],
+                observed_at=input_observed_at,
                 expected_sha256=validated_descriptor["artifact"]["sha256"],
                 resource_count=coverage["source_rows"],
-                reason=(
-                    "Repository-ready context bytes; publication receipt remains null "
-                    "until an exact production deployment is verified."
-                ),
+                reason=input_reason,
             ))
 
     for signal in osint["signals"]:

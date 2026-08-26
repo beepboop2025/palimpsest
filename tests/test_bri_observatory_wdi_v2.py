@@ -217,6 +217,7 @@ def test_v2_binds_exact_bundle_contracts_counts_clocks_rights_and_boundaries(
     assert "Country-period context" in page
     assert "Source-marked forecasts" not in page
     assert "repository ready not deployed" in page
+    assert "Inspect the immutable receipt" not in page
 
 
 @pytest.mark.parametrize(
@@ -400,6 +401,7 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
         if row["resource_id"] == "palimpsest:context:bri-world-bank-wdi"
     )
     assert resource["allowed_role"] == "context"
+    assert resource["availability"] == "available"
     assert resource["independence_eligible"] is False
     assert resource["rights"] == {
         "redistribution": "ATTRIBUTION_REQUIRED",
@@ -411,6 +413,11 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
         "knowledge_time": "2026-08-26T10:30:00Z",
         "publication_time": None,
     }
+    assert resource["freshness"]["cadence"] == "P1Y"
+    assert any(
+        "null publication receipt" in limitation
+        for limitation in resource["limitations"]
+    )
     assert resource["source_temporal_coverage"] == {
         "kind": "year_range",
         "from_year": 2024,
@@ -423,6 +430,8 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
         if row["input_id"] == "palimpsest-bri-wdi-world-bank"
     )
     assert receipt["byte_identity"] == "match"
+    assert receipt["availability"] == "available"
+    assert "publication receipt remains null" in receipt["reason"]
     assert receipt["resource_count"] == 54
     assert receipt["sha256"] == sha256_bytes(bundle_path.read_bytes())
 

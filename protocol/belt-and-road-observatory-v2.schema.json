@@ -280,8 +280,8 @@
       "properties": {
         "dataset_id": {"const": "bri-economic-context-world-bank-wdi"},
         "source_id": {"const": "world_bank_wdi"},
-        "implementation_state": {"enum": ["adapter_ready", "repository_ready"]},
-        "publication_state": {"const": "repository_ready_not_deployed"},
+        "implementation_state": {"enum": ["adapter_ready", "repository_ready", "live"]},
+        "publication_state": {"enum": ["repository_ready_not_deployed", "production_verified"]},
         "artifact": {"$ref": "#/$defs/artifactLocator"},
         "observation_schema": {"$ref": "#/$defs/contractLocator"},
         "series_registry": {"$ref": "#/$defs/contractLocator"},
@@ -291,7 +291,71 @@
         "clocks": {"$ref": "#/$defs/observationClocks"},
         "rights": {"$ref": "#/$defs/wdiRights"},
         "context_boundary": {"$ref": "#/$defs/contextBoundary"},
-        "publication_receipt": {"type": "null"}
+        "publication_receipt": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/publicationReceiptLocator"}
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "publication_state": {"const": "repository_ready_not_deployed"}
+            },
+            "required": ["publication_state"]
+          },
+          "then": {
+            "properties": {
+              "implementation_state": {"enum": ["adapter_ready", "repository_ready"]},
+              "publication_receipt": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "publication_state": {"const": "production_verified"}
+            },
+            "required": ["publication_state"]
+          },
+          "then": {
+            "properties": {
+              "implementation_state": {"const": "live"},
+              "publication_receipt": {"$ref": "#/$defs/publicationReceiptLocator"}
+            }
+          }
+        }
+      ]
+    },
+    "publicationReceiptLocator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "status",
+        "repository_path",
+        "public_url",
+        "receipt_sha256",
+        "release_a_sha",
+        "verified_at",
+        "fresh_until",
+        "availability_semantics"
+      ],
+      "properties": {
+        "schema_version": {"const": "palimpsest.bri-wdi-pages-publication-locator.v1"},
+        "status": {"const": "production_verified"},
+        "repository_path": {"const": ".well-known/receipts/bri-wdi-pages-publication-v1.json"},
+        "public_url": {"const": "https://palimpsest.info/.well-known/receipts/bri-wdi-pages-publication-v1.json"},
+        "receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "release_a_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "verified_at": {"type": "string", "format": "date-time"},
+        "fresh_until": {"type": "string", "format": "date-time"},
+        "availability_semantics": {"const": "verified_at_release_not_continuous_monitoring"}
       }
     },
     "artifactLocator": {

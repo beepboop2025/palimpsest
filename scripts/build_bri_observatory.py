@@ -6,12 +6,14 @@ import argparse
 import html
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
 from processors.bri_observatory import (
     WDI_ARTIFACT_PATH,
     WDI_OBSERVATION_SCHEMA_PATH,
+    WDI_PUBLICATION_RECEIPT_PATH,
     WDI_SERIES_REGISTRY_PATH,
     build_public_artifact,
     build_wdi_observation_descriptor,
@@ -27,6 +29,46 @@ DEFAULT_HTML = ROOT / "belt-and-road" / "index.html"
 DEFAULT_WDI_BUNDLE = ROOT / WDI_ARTIFACT_PATH
 DEFAULT_WDI_SCHEMA = ROOT / WDI_OBSERVATION_SCHEMA_PATH
 DEFAULT_WDI_SERIES_REGISTRY = ROOT / WDI_SERIES_REGISTRY_PATH
+DEFAULT_WDI_PUBLICATION_RECEIPT = ROOT / WDI_PUBLICATION_RECEIPT_PATH
+_AUTO_WDI_PUBLICATION_RECEIPT = object()
+_PUBLICATION_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+
+
+def _resolve_wdi_publication_receipts(
+    publication_receipt_path: Path | None | object,
+    archived_size_receipt_path: Path | None,
+    *,
+    source_implementation: str,
+) -> tuple[Path | None, Path | None]:
+    """Resolve no-flag production proof without weakening explicit fixture mode."""
+
+    if publication_receipt_path is not _AUTO_WDI_PUBLICATION_RECEIPT:
+        return publication_receipt_path, archived_size_receipt_path
+    if source_implementation != "live":
+        return None, archived_size_receipt_path
+    if not DEFAULT_WDI_PUBLICATION_RECEIPT.is_file():
+        return None, archived_size_receipt_path
+    if archived_size_receipt_path is not None:
+        return DEFAULT_WDI_PUBLICATION_RECEIPT, archived_size_receipt_path
+    try:
+        document = json.loads(
+            DEFAULT_WDI_PUBLICATION_RECEIPT.read_text(encoding="utf-8")
+        )
+        publication_sha = document["workflow"]["publication_sha"]
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise ValueError(
+            "cannot resolve the default WDI Pages publication receipt"
+        ) from exc
+    if type(publication_sha) is not str or not _PUBLICATION_SHA_RE.fullmatch(
+        publication_sha
+    ):
+        raise ValueError(
+            "default WDI Pages receipt publication_sha must be lowercase 40-hex"
+        )
+    size_receipt = ROOT / (
+        ".well-known/receipts/pages-artifact-size-" + publication_sha + ".json"
+    )
+    return DEFAULT_WDI_PUBLICATION_RECEIPT, size_receipt
 
 
 def _json_bytes(document: dict) -> bytes:
@@ -68,11 +110,24 @@ def _render_observation_datasets(artifact: dict) -> str:
     coverage = dataset["coverage"]
     rights = dataset["rights"]
     boundary = dataset["context_boundary"]
+    receipt = dataset["publication_receipt"]
+    if receipt is None:
+        publication_proof = ""
+    else:
+        publication_proof = (
+            '    <p><strong>Point-in-time publication proof:</strong> '
+            f'<a href="{_esc(receipt["public_url"])}">Inspect the immutable receipt</a>. '
+            f'Exact served bytes were verified at <code>{_esc(receipt["verified_at"])}</code>; '
+            "the release-verification freshness window ends at "
+            f'<code>{_esc(receipt["fresh_until"])}</code> and may already have ended. '
+            "This is release-time proof, not continuous monitoring "
+            f'(<code>{_esc(receipt["availability_semantics"])}</code>).</p>\n'
+        )
     return f"""<section class="bri-section" id="economic-context" aria-labelledby="economic-context-title">
     <p class="bri-eyebrow">Normalized economic context · {_esc(dataset["publication_state"].replace("_", " "))}</p><h2 id="economic-context-title">Country-period context with forecasts, nulls and source clocks intact</h2>
     <p>This exact World Bank WDI bundle contains {_esc(coverage["source_rows"])} country-series-year rows across China, Myanmar and Pakistan. It keeps {_esc(coverage["forecast_rows"])} source-marked forecasts separate from {_esc(coverage["observed_rows"])} observed values and retains {_esc(coverage["unavailable_rows"])} unavailable rows as null—not zero.</p>
     <dl class="bri-contract"><div><dt>Coverage</dt><dd>{_esc(coverage["start_year"])}–{_esc(coverage["end_year"])} · {_esc(coverage["indicators"])} indicators</dd></div><div><dt>Knowledge time</dt><dd><code>{_esc(dataset["clocks"]["retrieved_at"])}</code></dd></div><div><dt>Role</dt><dd>{_esc(boundary["allowed_role"])} only · {_esc(boundary["join_scope"].replace("_", " "))}</dd></div><div><dt>Rights</dt><dd>{_esc(rights["license"])} · {_esc(rights["attribution"])}</dd></div></dl>
-    <p>No row may infer a project, actor, corridor or causal effect. <a href="/{_esc(dataset["artifact"]["path"])}">Inspect the normalized bundle</a> · <a href="/{_esc(dataset["observation_schema"]["path"])}">Validate its schema</a></p>
+{publication_proof}    <p>No row may infer a project, actor, corridor or causal effect. <a href="/{_esc(dataset["artifact"]["path"])}">Inspect the normalized bundle</a> · <a href="/{_esc(dataset["observation_schema"]["path"])}">Validate its schema</a></p>
   </section>"""
 
 
@@ -269,10 +324,25 @@ def build(
     wdi_observation_schema_repository_path: str = WDI_OBSERVATION_SCHEMA_PATH,
     wdi_series_registry_path: Path = DEFAULT_WDI_SERIES_REGISTRY,
     wdi_series_registry_repository_path: str = WDI_SERIES_REGISTRY_PATH,
+    wdi_publication_receipt_path: Path | None | object = _AUTO_WDI_PUBLICATION_RECEIPT,
+    wdi_archived_size_receipt_path: Path | None = None,
 ) -> tuple[bytes, bytes]:
     registry = load_registry(registry_path)
     observation_datasets = None
     if wdi_bundle_path is not None:
+        source_implementation = next(
+            source["implementation"]
+            for source in registry["sources"]
+            if source["source_id"] == "world_bank_wdi"
+        )
+        (
+            resolved_publication_receipt,
+            resolved_archived_size_receipt,
+        ) = _resolve_wdi_publication_receipts(
+            wdi_publication_receipt_path,
+            wdi_archived_size_receipt_path,
+            source_implementation=source_implementation,
+        )
         observation_datasets = [
             build_wdi_observation_descriptor(
                 registry,
@@ -286,6 +356,8 @@ def build(
                 series_registry_repository_path=(
                     wdi_series_registry_repository_path
                 ),
+                publication_receipt_path=resolved_publication_receipt,
+                archived_size_receipt_path=resolved_archived_size_receipt,
             )
         ]
     artifact = build_public_artifact(
@@ -321,6 +393,23 @@ def main() -> int:
         type=Path,
         default=DEFAULT_WDI_SERIES_REGISTRY,
     )
+    parser.add_argument(
+        "--wdi-publication-receipt",
+        type=Path,
+        default=_AUTO_WDI_PUBLICATION_RECEIPT,
+        help=(
+            "canonical production receipt; defaults to the checked-in receipt "
+            "when present"
+        ),
+    )
+    parser.add_argument(
+        "--wdi-archived-size-receipt",
+        type=Path,
+        help=(
+            "canonical checked-in Pages size receipt; defaults to the exact "
+            "publication-SHA path"
+        ),
+    )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     json_payload, html_payload = build(
@@ -329,6 +418,8 @@ def main() -> int:
         wdi_artifact_path=args.wdi_artifact_path,
         wdi_observation_schema_path=args.wdi_observation_schema,
         wdi_series_registry_path=args.wdi_series_registry,
+        wdi_publication_receipt_path=args.wdi_publication_receipt,
+        wdi_archived_size_receipt_path=args.wdi_archived_size_receipt,
     )
     outputs = ((args.json_output, json_payload), (args.html_output, html_payload))
     if args.check:
