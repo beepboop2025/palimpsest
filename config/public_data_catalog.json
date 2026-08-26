@@ -28,6 +28,25 @@
       "license": {"name": "MIT for Palimpsest schema and metadata; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "bri-economic-observations",
+      "name": "BRI-country World Development Indicators context",
+      "description": "Attributed annual World Development Indicators for China, Pakistan and Myanmar with observed, forecast and unavailable rows kept distinct. This is country-period context only: it cannot establish a BRI project, actor, corridor or causal effect, and source nulls are never converted to zero.",
+      "layer": "economy",
+      "stage": "observation",
+      "collection_mode": "passive-review-gated-aggregate",
+      "status": "warming",
+      "cadence": "P7D",
+      "freshness_budget": "P120D",
+      "freshness_semantics": "Economic period, World Bank dataset-release upper bound and Palimpsest retrieval time are separate. Retrieval does not make an annual value current, and the dataset remains warming until its exact public bytes receive a production receipt.",
+      "geography": ["CN", "PK", "MM"],
+      "sources": ["World Bank World Development Indicators"],
+      "latest": "readings/bri-economic-observations-latest.json",
+      "landing_page": "belt-and-road/",
+      "method": "docs/BRI-WDI-OBSERVATIONS.md",
+      "count_fields": ["coverage.source_rows", "coverage.observed_rows", "coverage.forecast_rows", "coverage.unavailable_rows"],
+      "license": {"name": "World Bank WDI, CC BY 4.0; attribution required", "url": "https://datacatalog.worldbank.org/public-licenses"}
+    },
+    {
       "id": "ddti",
       "name": "Domestic Discourse Tightening Index",
       "description": "Ranks topics receiving censor attention in China Digital Times' curated deletion and directive feeds; it measures attention allocation, not a population deletion rate.",

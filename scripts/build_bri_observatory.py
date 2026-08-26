@@ -9,7 +9,14 @@ import os
 import tempfile
 from pathlib import Path
 
-from processors.bri_observatory import build_public_artifact, load_registry
+from processors.bri_observatory import (
+    WDI_ARTIFACT_PATH,
+    WDI_OBSERVATION_SCHEMA_PATH,
+    WDI_SERIES_REGISTRY_PATH,
+    build_public_artifact,
+    build_wdi_observation_descriptor,
+    load_registry,
+)
 from scripts import site_nav
 
 
@@ -17,6 +24,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "config" / "bri_observatory.json"
 DEFAULT_JSON = ROOT / "readings" / "belt-and-road-observatory-latest.json"
 DEFAULT_HTML = ROOT / "belt-and-road" / "index.html"
+DEFAULT_WDI_BUNDLE = ROOT / WDI_ARTIFACT_PATH
+DEFAULT_WDI_SCHEMA = ROOT / WDI_OBSERVATION_SCHEMA_PATH
+DEFAULT_WDI_SERIES_REGISTRY = ROOT / WDI_SERIES_REGISTRY_PATH
 
 
 def _json_bytes(document: dict) -> bytes:
@@ -48,6 +58,22 @@ def _esc(value: object) -> str:
 
 def _chips(values: list[str]) -> str:
     return "".join(f'<li><code>{_esc(value)}</code></li>' for value in values)
+
+
+def _render_observation_datasets(artifact: dict) -> str:
+    rows = artifact.get("observation_datasets")
+    if not rows:
+        return ""
+    [dataset] = rows
+    coverage = dataset["coverage"]
+    rights = dataset["rights"]
+    boundary = dataset["context_boundary"]
+    return f"""<section class="bri-section" id="economic-context" aria-labelledby="economic-context-title">
+    <p class="bri-eyebrow">Normalized economic context · {_esc(dataset["publication_state"].replace("_", " "))}</p><h2 id="economic-context-title">Country-period context with forecasts, nulls and source clocks intact</h2>
+    <p>This exact World Bank WDI bundle contains {_esc(coverage["source_rows"])} country-series-year rows across China, Myanmar and Pakistan. It keeps {_esc(coverage["forecast_rows"])} source-marked forecasts separate from {_esc(coverage["observed_rows"])} observed values and retains {_esc(coverage["unavailable_rows"])} unavailable rows as null—not zero.</p>
+    <dl class="bri-contract"><div><dt>Coverage</dt><dd>{_esc(coverage["start_year"])}–{_esc(coverage["end_year"])} · {_esc(coverage["indicators"])} indicators</dd></div><div><dt>Knowledge time</dt><dd><code>{_esc(dataset["clocks"]["retrieved_at"])}</code></dd></div><div><dt>Role</dt><dd>{_esc(boundary["allowed_role"])} only · {_esc(boundary["join_scope"].replace("_", " "))}</dd></div><div><dt>Rights</dt><dd>{_esc(rights["license"])} · {_esc(rights["attribution"])}</dd></div></dl>
+    <p>No row may infer a project, actor, corridor or causal effect. <a href="/{_esc(dataset["artifact"]["path"])}">Inspect the normalized bundle</a> · <a href="/{_esc(dataset["observation_schema"]["path"])}">Validate its schema</a></p>
+  </section>"""
 
 
 def _render_html(artifact: dict) -> bytes:
@@ -102,7 +128,7 @@ def _render_html(artifact: dict) -> bytes:
         )
         for source in artifact["sources"]
     )
-    schema_org = json.dumps({
+    schema_org_document = {
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": "Palimpsest Belt and Road Observatory coverage contract",
@@ -115,7 +141,36 @@ def _render_html(artifact: dict) -> bytes:
             "encodingFormat": "application/json",
             "contentUrl": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
         },
-    }, ensure_ascii=False, separators=(",", ":"))
+    }
+    observation_datasets = artifact.get("observation_datasets", [])
+    if observation_datasets:
+        [dataset] = observation_datasets
+        schema_org_document["hasPart"] = {
+            "@type": "Dataset",
+            "name": "BRI-country World Development Indicators context",
+            "description": (
+                "Attributed national country-period context for China, Myanmar "
+                "and Pakistan; never project, actor, corridor or causal evidence."
+            ),
+            "license": dataset["rights"]["license_url"],
+            "creator": {
+                "@type": "Organization",
+                "@id": "https://www.worldbank.org/#organization",
+                "name": "World Bank",
+                "url": "https://www.worldbank.org/",
+            },
+            "distribution": {
+                "@type": "DataDownload",
+                "encodingFormat": dataset["artifact"]["media_type"],
+                "contentUrl": dataset["artifact"]["url"],
+            },
+        }
+    schema_org = json.dumps(
+        schema_org_document,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    schema_path = artifact["$schema"]
     document = f"""<!doctype html>
 <html lang="en" data-tk-theme="light">
 <head>
@@ -180,7 +235,7 @@ def _render_html(artifact: dict) -> bytes:
 
   <section class="bri-section" id="sources" aria-labelledby="sources-title">
     <p class="bri-eyebrow">Source and rights ledger</p><h2 id="sources-title">Open, pending, licensed and blocked routes all stay visible.</h2>
-    <p>{states.get("live", 0)} sources are live, {states.get("adapter_ready", 0)} adapters are ready, and {states.get("blocked", 0)} licensed route is blocked from public redistribution. Link-only entries are discovery, not ingestion.</p>
+    <p>{states.get("live", 0)} sources are live, {states.get("repository_ready", 0)} input is repository ready, {states.get("adapter_ready", 0)} adapters are ready, and {states.get("blocked", 0)} licensed route is blocked from public redistribution. Link-only entries are discovery, not ingestion.</p>
     <div class="bri-controls"><label>Search<input type="search" data-bri-source-search placeholder="Source, publisher, evidence field…"></label><label>Implementation<select data-bri-state><option value="all">All states</option>{''.join(f'<option value="{_esc(state)}">{_esc(state.replace("_", " "))} ({count})</option>' for state, count in states.items())}</select></label><p data-bri-source-count aria-live="polite"></p></div>
     <ul class="bri-sources" data-bri-sources>{sources}</ul>
   </section>
@@ -190,17 +245,53 @@ def _render_html(artifact: dict) -> bytes:
     <p>Conflict events publish only after a delay and at administrative-area grain. The observatory carries no person-level dossiers, live tactical coordinates, vulnerability maps or operational guidance. Allegations, government positions, administrative designations, legal status, coded events and adjudicated findings remain distinct.</p>
   </section>
 </main>
-<footer class="bri-footer"><p><strong>Palimpsest Belt and Road Observatory</strong> · Source rights, lifecycle states, local impacts and corrections before conclusions.</p><p><a href="/readings/belt-and-road-observatory-latest.json">JSON</a> · <a href="/protocol/belt-and-road-observatory-v1.schema.json">Schema</a> · <a href="/challenge.html">Challenge a source or method</a></p></footer>
+<footer class="bri-footer"><p><strong>Palimpsest Belt and Road Observatory</strong> · Source rights, lifecycle states, local impacts and corrections before conclusions.</p><p><a href="/readings/belt-and-road-observatory-latest.json">JSON</a> · <a href="{_esc(schema_path)}">Schema</a> · <a href="/challenge.html">Challenge a source or method</a></p></footer>
 {site_nav.FOOT}
 <script src="/assets/bri.js" defer></script>
 </body>
 </html>
 """
+    economic_context = _render_observation_datasets(artifact)
+    if economic_context:
+        marker = '  <section class="bri-section" aria-labelledby="narco-title">'
+        if document.count(marker) != 1:
+            raise ValueError("BRI page economic-context insertion marker changed")
+        document = document.replace(marker, f"  {economic_context}\n\n{marker}")
     return document.encode("utf-8")
 
 
-def build(registry_path: Path = DEFAULT_REGISTRY) -> tuple[bytes, bytes]:
-    artifact = build_public_artifact(load_registry(registry_path))
+def build(
+    registry_path: Path = DEFAULT_REGISTRY,
+    *,
+    wdi_bundle_path: Path | None = DEFAULT_WDI_BUNDLE,
+    wdi_artifact_path: str = WDI_ARTIFACT_PATH,
+    wdi_observation_schema_path: Path = DEFAULT_WDI_SCHEMA,
+    wdi_observation_schema_repository_path: str = WDI_OBSERVATION_SCHEMA_PATH,
+    wdi_series_registry_path: Path = DEFAULT_WDI_SERIES_REGISTRY,
+    wdi_series_registry_repository_path: str = WDI_SERIES_REGISTRY_PATH,
+) -> tuple[bytes, bytes]:
+    registry = load_registry(registry_path)
+    observation_datasets = None
+    if wdi_bundle_path is not None:
+        observation_datasets = [
+            build_wdi_observation_descriptor(
+                registry,
+                bundle_path=wdi_bundle_path,
+                artifact_path=wdi_artifact_path,
+                observation_schema_path=wdi_observation_schema_path,
+                observation_schema_repository_path=(
+                    wdi_observation_schema_repository_path
+                ),
+                series_registry_path=wdi_series_registry_path,
+                series_registry_repository_path=(
+                    wdi_series_registry_repository_path
+                ),
+            )
+        ]
+    artifact = build_public_artifact(
+        registry,
+        observation_datasets=observation_datasets,
+    )
     return _json_bytes(artifact), _render_html(artifact)
 
 
@@ -209,9 +300,36 @@ def main() -> int:
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--json-output", type=Path, default=DEFAULT_JSON)
     parser.add_argument("--html-output", type=Path, default=DEFAULT_HTML)
+    parser.add_argument(
+        "--wdi-bundle",
+        type=Path,
+        default=DEFAULT_WDI_BUNDLE,
+        help="exact normalized WDI bundle to bind into a v2 observatory build",
+    )
+    parser.add_argument(
+        "--wdi-artifact-path",
+        default=WDI_ARTIFACT_PATH,
+        help="repository-relative public path advertised for --wdi-bundle",
+    )
+    parser.add_argument(
+        "--wdi-observation-schema",
+        type=Path,
+        default=DEFAULT_WDI_SCHEMA,
+    )
+    parser.add_argument(
+        "--wdi-series-registry",
+        type=Path,
+        default=DEFAULT_WDI_SERIES_REGISTRY,
+    )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    json_payload, html_payload = build(args.registry)
+    json_payload, html_payload = build(
+        args.registry,
+        wdi_bundle_path=args.wdi_bundle,
+        wdi_artifact_path=args.wdi_artifact_path,
+        wdi_observation_schema_path=args.wdi_observation_schema,
+        wdi_series_registry_path=args.wdi_series_registry,
+    )
     outputs = ((args.json_output, json_payload), (args.html_output, html_payload))
     if args.check:
         drift = [str(path.relative_to(ROOT)) for path, payload in outputs if not path.is_file() or path.read_bytes() != payload]

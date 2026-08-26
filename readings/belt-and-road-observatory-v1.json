@@ -1,7 +1,7 @@
 {
-  "$schema": "/protocol/belt-and-road-observatory-v2.schema.json",
-  "schema_version": "palimpsest.belt-and-road-observatory.v2",
-  "as_of": "2026-08-26T13:17:34.790676Z",
+  "$schema": "/protocol/belt-and-road-observatory-v1.schema.json",
+  "schema_version": "palimpsest.belt-and-road-observatory.v1",
+  "as_of": "2026-08-26T12:03:34Z",
   "scope": "A global, provenance-first Belt and Road economic and infrastructure observatory, with high-resolution Pakistan/CPEC/Gwadar, Myanmar/CMEC/Kyaukpyu, Balochistan political-economy and rights coverage, plus a strictly bounded NarcoScope country-aggregate overlay.",
   "publication_policy": {
     "project_total_rule": "never_mix_lifecycle_states",
@@ -18,12 +18,11 @@
   "coverage_report": {
     "source_count": 42,
     "implementation_states": {
-      "adapter_ready": 8,
+      "adapter_ready": 9,
       "blocked": 1,
       "link_only": 23,
       "live": 1,
-      "planned": 8,
-      "repository_ready": 1
+      "planned": 8
     },
     "source_classes": {
       "civil_society": 1,
@@ -886,7 +885,7 @@
     {
       "workstream_id": "global_bri_economic_backbone",
       "label": "Global BRI projects, finance, debt, trade and corridor economics",
-      "status": "national_context_repository_ready_project_finance_adapters_pending",
+      "status": "source_spine_ready_adapters_pending",
       "required_coverage": [
         "project_identity",
         "project_status",
@@ -1405,7 +1404,7 @@
       "authority_role": "independent_observation",
       "access_mode": "open_keyless",
       "rights_status": "attribution",
-      "implementation": "repository_ready",
+      "implementation": "adapter_ready",
       "cadence": "annual",
       "geographies": [
         "GLOBAL",
@@ -1422,10 +1421,9 @@
       ],
       "independence_group": "world_bank_wdi",
       "claim_classes": [
-        "official_statistic",
-        "modeled_estimate"
+        "official_statistic"
       ],
-      "notes": "World Bank compilation of national context with indicator-specific upstream authority, modeled-estimate labels, revisions and source clocks; it is not independent project, actor, corridor or causal BRI evidence."
+      "notes": "Country-level comparator series with indicator-specific source and revision metadata."
     },
     {
       "source_id": "world_bank_ids",
@@ -3062,66 +3060,5 @@
     "Announcement, commitment, contract, disbursement, construction, completion and operation are different lifecycle states.",
     "The Balochistan liberation movement is an umbrella research concept, never a single actor or automatic militancy label.",
     "NarcoScope contributes country aggregates only; shared geography or time does not establish an actor or causal relationship."
-  ],
-  "observation_datasets": [
-    {
-      "dataset_id": "bri-economic-context-world-bank-wdi",
-      "source_id": "world_bank_wdi",
-      "implementation_state": "repository_ready",
-      "publication_state": "repository_ready_not_deployed",
-      "artifact": {
-        "path": "readings/bri-economic-observations-latest.json",
-        "url": "https://palimpsest.info/readings/bri-economic-observations-latest.json",
-        "media_type": "application/json",
-        "bytes": 6915160,
-        "sha256": "68b9f96e3cfc1e5692b4305c93b42b64dd45d065655ccade6947e086285dc099"
-      },
-      "observation_schema": {
-        "path": "protocol/bri-economic-observations-v1.schema.json",
-        "url": "https://palimpsest.info/protocol/bri-economic-observations-v1.schema.json",
-        "sha256": "e0e98cf313a8446667a0749ac49b5160d8e8d41f59eb76c8aaab66fd27e3ea8f"
-      },
-      "series_registry": {
-        "path": "config/bri_wdi_series.json",
-        "url": "https://palimpsest.info/config/bri_wdi_series.json",
-        "sha256": "5c0c8e9487aa0145ac2cb8f77697d1ac75f75f38eb3f87239fd8c9685104bda9"
-      },
-      "collection_id": "b279cf29edafa4e6e8f3a5b817239a1d9a5169a12cefb609c231067d72d65d1e",
-      "generated_at": "2026-08-26T13:17:34.790676Z",
-      "coverage": {
-        "countries": 3,
-        "end_year": 2025,
-        "forecast_rows": 0,
-        "indicators": 18,
-        "observed_rows": 1940,
-        "source_rows": 3564,
-        "start_year": 1960,
-        "unavailable_rows": 1624
-      },
-      "clocks": {
-        "dataset_last_updated": "2026-07-13",
-        "source_release_upper_bound": "2026-07-13T23:59:59Z",
-        "retrieved_at": "2026-08-26T13:17:34.790676Z"
-      },
-      "rights": {
-        "attribution": "World Bank, World Development Indicators",
-        "license": "CC-BY-4.0",
-        "license_url": "https://creativecommons.org/licenses/by/4.0/",
-        "redistribution_status": "allowed_with_attribution",
-        "rights_evidence_url": "https://datacatalog.worldbank.org/search/dataset/0037712/world-development-indicators"
-      },
-      "context_boundary": {
-        "allowed_role": "context",
-        "join_scope": "country_period_only",
-        "project_inference": "prohibited",
-        "actor_inference": "prohibited",
-        "corridor_inference": "prohibited",
-        "causal_inference": "prohibited",
-        "tactical_data": "prohibited",
-        "missing_value_policy": "source_null_remains_unavailable",
-        "forecast_policy": "source_obs_status_F_remains_forecast"
-      },
-      "publication_receipt": null
-    }
   ]
 }

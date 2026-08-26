@@ -1,0 +1,45 @@
+{
+  "schema_version": "palimpsest.bri-wdi-series.v1",
+  "dataset": {
+    "source_id": "world_bank_wdi",
+    "source_number": "2",
+    "name": "World Development Indicators",
+    "publisher": "World Bank",
+    "api_base": "https://api.worldbank.org/v2",
+    "catalog_url": "https://datacatalog.worldbank.org/search/dataset/0037712/world-development-indicators",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "rights_evidence_url": "https://datacatalog.worldbank.org/search/dataset/0037712/world-development-indicators",
+    "redistribution_status": "allowed_with_attribution",
+    "attribution": "World Bank, World Development Indicators",
+    "release_time_semantics": "dataset_lastupdated_upper_bound",
+    "context_scope": "national_economic_context",
+    "causality_boundary": "not_evidence_of_bri_causality",
+    "indicator_provenance_boundary": "World Bank indicator titles are preserved and reviewed; dataset licensing does not convert a national series into project-level or causal BRI evidence."
+  },
+  "countries": [
+    {"country_code": "CHN", "api_country_id": "CN", "name": "China"},
+    {"country_code": "MMR", "api_country_id": "MM", "name": "Myanmar"},
+    {"country_code": "PAK", "api_country_id": "PK", "name": "Pakistan"}
+  ],
+  "series": [
+    {"indicator_id": "NY.GDP.MKTP.KD.ZG", "series_id": "bri.context.wdi.gdp_real_growth", "source_title": "GDP growth (annual %)", "name": "Real GDP growth", "unit": "annual percent", "topic": "macro"},
+    {"indicator_id": "NY.GDP.MKTP.CD", "series_id": "bri.context.wdi.gdp_current_usd", "source_title": "GDP (current US$)", "name": "GDP", "unit": "current US dollars", "topic": "macro"},
+    {"indicator_id": "NE.TRD.GNFS.ZS", "series_id": "bri.context.wdi.trade_share_gdp", "source_title": "Trade (% of GDP)", "name": "Trade share of GDP", "unit": "percent of GDP", "topic": "trade"},
+    {"indicator_id": "NE.EXP.GNFS.CD", "series_id": "bri.context.wdi.exports_current_usd", "source_title": "Exports of goods and services (current US$)", "name": "Exports of goods and services", "unit": "current US dollars", "topic": "trade"},
+    {"indicator_id": "NE.IMP.GNFS.CD", "series_id": "bri.context.wdi.imports_current_usd", "source_title": "Imports of goods and services (current US$)", "name": "Imports of goods and services", "unit": "current US dollars", "topic": "trade"},
+    {"indicator_id": "BX.KLT.DINV.WD.GD.ZS", "series_id": "bri.context.wdi.fdi_net_inflows_share", "source_title": "Foreign direct investment, net inflows (% of GDP)", "name": "Foreign direct investment net inflows", "unit": "percent of GDP", "topic": "finance"},
+    {"indicator_id": "GC.DOD.TOTL.GD.ZS", "series_id": "bri.context.wdi.central_government_debt_share", "source_title": "Central government debt, total (% of GDP)", "name": "Central government debt", "unit": "percent of GDP", "topic": "finance"},
+    {"indicator_id": "GC.XPN.TOTL.GD.ZS", "series_id": "bri.context.wdi.government_expense_share", "source_title": "Expense (% of GDP)", "name": "Government expense", "unit": "percent of GDP", "topic": "finance"},
+    {"indicator_id": "GC.REV.XGRT.GD.ZS", "series_id": "bri.context.wdi.government_revenue_share", "source_title": "Revenue, excluding grants (% of GDP)", "name": "Government revenue excluding grants", "unit": "percent of GDP", "topic": "finance"},
+    {"indicator_id": "SL.UEM.TOTL.ZS", "series_id": "bri.context.wdi.unemployment_rate", "source_title": "Unemployment, total (% of total labor force) (modeled ILO estimate)", "name": "Unemployment rate", "unit": "percent of labor force", "topic": "labor"},
+    {"indicator_id": "SL.EMP.TOTL.SP.ZS", "series_id": "bri.context.wdi.employment_ratio", "source_title": "Employment to population ratio, 15+, total (%) (modeled ILO estimate)", "name": "Employment to population ratio", "unit": "percent ages 15 and older", "topic": "labor"},
+    {"indicator_id": "EG.ELC.ACCS.ZS", "series_id": "bri.context.wdi.electricity_access", "source_title": "Access to electricity (% of population)", "name": "Electricity access", "unit": "percent of population", "topic": "energy"},
+    {"indicator_id": "EG.USE.ELEC.KH.PC", "series_id": "bri.context.wdi.electric_power_use", "source_title": "Electric power consumption (kWh per capita)", "name": "Electric power consumption", "unit": "kilowatt-hours per capita", "topic": "energy"},
+    {"indicator_id": "EN.GHG.CO2.PC.CE.AR5", "series_id": "bri.context.wdi.co2_emissions_per_capita", "source_title": "Carbon dioxide (CO2) emissions excluding LULUCF per capita (t CO2e/capita)", "name": "Carbon dioxide emissions excluding LULUCF per capita", "unit": "metric tons CO2 equivalent per capita", "topic": "environment"},
+    {"indicator_id": "IS.RRS.TOTL.KM", "series_id": "bri.context.wdi.rail_route_length", "source_title": "Rail lines (total route-km)", "name": "Rail route length", "unit": "route-kilometers", "topic": "logistics"},
+    {"indicator_id": "IS.SHP.GOOD.TU", "series_id": "bri.context.wdi.container_port_traffic", "source_title": "Container port traffic (TEU: 20 foot equivalent units)", "name": "Container port traffic", "unit": "twenty-foot equivalent units", "topic": "logistics"},
+    {"indicator_id": "IT.NET.BBND.P2", "series_id": "bri.context.wdi.fixed_broadband_density", "source_title": "Fixed broadband subscriptions (per 100 people)", "name": "Fixed broadband subscriptions", "unit": "per 100 people", "topic": "digital"},
+    {"indicator_id": "SP.POP.TOTL", "series_id": "bri.context.wdi.population", "source_title": "Population, total", "name": "Population", "unit": "people", "topic": "demographics"}
+  ]
+}

@@ -1139,6 +1139,21 @@ jobs:
           test ! -e "$RUNNER_TEMP/pages-root/.pytest_cache"
           test ! -e "$RUNNER_TEMP/pages-root/.ruff_cache"
 
+      - name: Archive immutable wire analysis history in exact Pages staging
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+        run: |
+          set -euo pipefail
+          archive_builder="$RUNNER_TEMP/pages-root/scripts/build_pages_wire_archive.py"
+          test -f "$archive_builder"
+          python3 "$archive_builder" \
+            --root "$RUNNER_TEMP/pages-root" \
+            --publication-sha "$PUBLICATION_SHA"
+          python3 "$archive_builder" \
+            --root "$RUNNER_TEMP/pages-root" \
+            --publication-sha "$PUBLICATION_SHA" \
+            --check
+
       - name: Upload the exact Pages artifact
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b  # v4
         env:

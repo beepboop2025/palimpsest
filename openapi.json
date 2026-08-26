@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Palimpsest Public Readings API",
-    "version": "1.10.0",
+    "version": "2.0.0",
     "description": "Stable public readings from Palimpsest's censorship observatory, revision-safe China Economic Observatory, global Belt and Road coverage contract, evidence-bound AI Eval Journal and verifiable AI evaluation registry. The API also exposes the evidence wire, bounded social observation ledger, combined China Situation index, per-event analysis layer, primary-document archive, corroboration ledger, longitudinal network rounds, review-gated newsroom and deterministic machine-analysis desk. Every reading carries its own freshness and scope. Missing evidence is not evidence of calm."
   },
   "servers": [{"url": "https://palimpsest.info"}],
@@ -46,6 +46,12 @@
       },
       "BeltAndRoadObservatory": {
         "$ref": "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json"
+      },
+      "BeltAndRoadObservatoryV2": {
+        "$ref": "https://palimpsest.info/protocol/belt-and-road-observatory-v2.schema.json"
+      },
+      "BRIEconomicObservations": {
+        "$ref": "https://palimpsest.info/protocol/bri-economic-observations-v1.schema.json"
       },
       "TelegramWatch": {
         "$ref": "https://palimpsest.info/protocol/telegram-watch-v1.schema.json"
@@ -328,8 +334,16 @@
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ChinaSituation"}}}
       },
       "BeltAndRoadObservatory": {
-        "description": "Global BRI source, project-field and economics coverage contract with deep Pakistan, Myanmar, Gwadar, Balochistan and NarcoScope corridor boundaries",
+        "description": "Deprecated frozen v1 global BRI coverage contract",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BeltAndRoadObservatory"}}}
+      },
+      "BeltAndRoadObservatoryV2": {
+        "description": "Global BRI source, project-field and economics coverage contract with deep Pakistan, Myanmar, Gwadar, Balochistan, NarcoScope and hash-bound WDI context",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BeltAndRoadObservatoryV2"}}}
+      },
+      "BRIEconomicObservations": {
+        "description": "Attributed national World Development Indicators context for China, Myanmar and Pakistan; forecasts and unavailable rows remain distinct and causal inference is prohibited",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/BRIEconomicObservations"}}}
       },
       "ChinaIndex": {
         "description": "Published machine-readable index of China Observatory sources, releases, datasets, readiness and evidence rails",
@@ -442,9 +456,20 @@
       "responses": {"200": {"$ref": "#/components/responses/ChinaSituation"}}
     }},
     "/readings/belt-and-road-observatory-latest.json": {"get": {
-      "operationId": "getBeltAndRoadObservatory",
-      "summary": "Read the global BRI coverage, lifecycle, economic, local-impact and corridor integration contract",
+      "operationId": "getBeltAndRoadObservatoryV2",
+      "summary": "Read the current global BRI coverage, lifecycle, economic, local-impact and corridor integration contract with hash-bound WDI context",
+      "responses": {"200": {"$ref": "#/components/responses/BeltAndRoadObservatoryV2"}}
+    }},
+    "/readings/belt-and-road-observatory-v1.json": {"get": {
+      "operationId": "getBeltAndRoadObservatoryV1",
+      "deprecated": true,
+      "summary": "Read the frozen v1 BRI coverage contract retained for compatibility",
       "responses": {"200": {"$ref": "#/components/responses/BeltAndRoadObservatory"}}
+    }},
+    "/readings/bri-economic-observations-latest.json": {"get": {
+      "operationId": "getBRIEconomicObservations",
+      "summary": "Read authenticated annual World Development Indicators context for China, Myanmar and Pakistan",
+      "responses": {"200": {"$ref": "#/components/responses/BRIEconomicObservations"}}
     }},
     "/news/wire/{event_id}/analysis.json": {"get": {
       "operationId": "getEventAnalysis",

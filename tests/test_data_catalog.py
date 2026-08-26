@@ -263,6 +263,43 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     assert "context-only" in wdi["description"]
     assert "null availability" in wdi["freshness_semantics"]
 
+    bri_wdi = by_id["bri-economic-observations"]
+    assert (bri_wdi["layer"], bri_wdi["stage"], bri_wdi["collection_mode"]) == (
+        "economy",
+        "observation",
+        "passive-review-gated-aggregate",
+    )
+    assert bri_wdi["status"] == "warming"
+    assert bri_wdi["cadence"] == "P7D"
+    assert bri_wdi["freshness_budget"] == "P120D"
+    assert bri_wdi["geography"] == ["CN", "PK", "MM"]
+    assert bri_wdi["sources"] == ["World Bank World Development Indicators"]
+    assert bri_wdi["latest"] == "readings/bri-economic-observations-latest.json"
+    assert bri_wdi["landing_page"] == "belt-and-road/"
+    assert bri_wdi["method"] == "docs/BRI-WDI-OBSERVATIONS.md"
+    assert bri_wdi["count_fields"] == [
+        "coverage.source_rows",
+        "coverage.observed_rows",
+        "coverage.forecast_rows",
+        "coverage.unavailable_rows",
+    ]
+    assert bri_wdi["license"] == wdi["license"]
+    assert "country-period context only" in bri_wdi["description"]
+
+    built, _jsonld, _package = catalog.build_catalog(
+        now=datetime(2026, 8, 26, 14, tzinfo=timezone.utc)
+    )
+    built_bri_wdi = next(
+        item for item in built["datasets"] if item["id"] == "bri-economic-observations"
+    )
+    assert built_bri_wdi["artifacts"]["evidence_state"] == "warming"
+    assert built_bri_wdi["artifacts"]["counts"] == {
+        "coverage.source_rows": 3564,
+        "coverage.observed_rows": 1940,
+        "coverage.forecast_rows": 0,
+        "coverage.unavailable_rows": 1624,
+    }
+
     forecast = by_id["china-economic-forecast"]
     assert forecast["latest"] == "readings/china-econ-forecast-latest.json"
     assert forecast["landing_page"] == "china/"

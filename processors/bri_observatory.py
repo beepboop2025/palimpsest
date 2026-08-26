@@ -9,15 +9,75 @@ collapsed into one misleading project count.
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter, defaultdict
-from datetime import datetime
-from pathlib import Path
-from typing import Any
+from datetime import datetime, time, timezone
+from pathlib import Path, PurePosixPath
+from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
+
+from collectors.bri_world_bank_wdi import load_registry as load_wdi_registry
+from core.bri_observation import (
+    BRIEconomicObservation,
+    BRIObservationError,
+    BUNDLE_SCHEMA_VERSION,
+    canonical_json_bytes,
+    sha256_bytes,
+)
 
 
 class BriRegistryError(ValueError):
     """The BRI source registry or public contract failed closed."""
+
+
+WDI_DATASET_ID = "bri-economic-context-world-bank-wdi"
+WDI_ARTIFACT_PATH = "readings/bri-economic-observations-latest.json"
+WDI_OBSERVATION_SCHEMA_PATH = "protocol/bri-economic-observations-v1.schema.json"
+WDI_SERIES_REGISTRY_PATH = "config/bri_wdi_series.json"
+WDI_PUBLICATION_STATE = "repository_ready_not_deployed"
+WDI_MAX_BUNDLE_BYTES = 128 * 1024 * 1024
+WDI_CONTEXT_BOUNDARY = {
+    "allowed_role": "context",
+    "join_scope": "country_period_only",
+    "project_inference": "prohibited",
+    "actor_inference": "prohibited",
+    "corridor_inference": "prohibited",
+    "causal_inference": "prohibited",
+    "tactical_data": "prohibited",
+    "missing_value_policy": "source_null_remains_unavailable",
+    "forecast_policy": "source_obs_status_F_remains_forecast",
+}
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_WDI_BUNDLE_FIELDS = {
+    "schema_version", "collection_id", "generated_at", "context_policy",
+    "source", "registry_sha256", "coverage", "request_receipts",
+    "observations_sha256", "observations",
+}
+_WDI_COVERAGE_FIELDS = {
+    "start_year", "end_year", "countries", "indicators", "source_rows",
+    "observed_rows", "forecast_rows", "unavailable_rows",
+}
+_WDI_REQUEST_RECEIPT_FIELDS = {
+    "acquisition_id", "request_id", "evidence_url", "raw_response_sha256",
+    "response_bytes", "source_rows", "observed_rows", "forecast_rows",
+    "unavailable_rows", "dataset_last_updated", "source_release_upper_bound",
+    "retrieved_at",
+}
+_WDI_DESCRIPTOR_FIELDS = {
+    "dataset_id", "source_id", "implementation_state", "publication_state",
+    "artifact", "observation_schema", "series_registry", "collection_id",
+    "generated_at", "coverage", "clocks", "rights", "context_boundary",
+    "publication_receipt",
+}
+_WDI_ARTIFACT_FIELDS = {"path", "url", "media_type", "bytes", "sha256"}
+_WDI_CONTRACT_FIELDS = {"path", "url", "sha256"}
+_WDI_CLOCK_FIELDS = {
+    "dataset_last_updated", "source_release_upper_bound", "retrieved_at",
+}
+_WDI_RIGHTS_FIELDS = {
+    "license", "license_url", "attribution", "redistribution_status",
+    "rights_evidence_url",
+}
 
 
 SOURCE_CLASSES = {
@@ -255,6 +315,566 @@ def validate_registry(document: Any) -> dict[str, Any]:
     return document
 
 
+def _exact_mapping(value: Any, fields: set[str], path: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping) or set(value) != fields:
+        actual = set(value) if isinstance(value, Mapping) else set()
+        raise BriRegistryError(
+            f"{path} fields differ: missing={sorted(fields - actual)}, "
+            f"unknown={sorted(actual - fields)}"
+        )
+    return value
+
+
+def _sha256(value: Any, path: str) -> str:
+    if type(value) is not str or not _SHA256_RE.fullmatch(value):
+        raise BriRegistryError(f"{path} must be a lowercase SHA-256 digest")
+    return value
+
+
+def _bounded_count(value: Any, path: str, *, maximum: int = 1_000_000) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value <= maximum:
+        raise BriRegistryError(f"{path} must be an integer between 0 and {maximum}")
+    return value
+
+
+def _canonical_utc(value: Any, path: str) -> datetime:
+    if type(value) is not str or not value.endswith("Z"):
+        raise BriRegistryError(f"{path} must be a canonical UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise BriRegistryError(f"{path} must be a canonical UTC timestamp") from exc
+    normalized = parsed.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    if normalized != value:
+        raise BriRegistryError(f"{path} must be a canonical UTC timestamp")
+    return parsed
+
+
+def _calendar_date(value: Any, path: str) -> datetime:
+    if type(value) is not str or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        raise BriRegistryError(f"{path} must be an ISO calendar date")
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError as exc:
+        raise BriRegistryError(f"{path} must be an ISO calendar date") from exc
+    return parsed
+
+
+def _safe_repository_path(value: Any, path: str) -> str:
+    if type(value) is not str or not value or "\\" in value:
+        raise BriRegistryError(f"{path} must be a repository-relative POSIX path")
+    candidate = PurePosixPath(value)
+    if candidate.is_absolute() or ".." in candidate.parts or "." in candidate.parts:
+        raise BriRegistryError(f"{path} must be a repository-relative POSIX path")
+    if str(candidate) != value:
+        raise BriRegistryError(f"{path} must be a canonical repository path")
+    return value
+
+
+def _public_url_for(path: str) -> str:
+    return f"https://palimpsest.info/{path}"
+
+
+def _strict_json_bytes(raw: bytes, path: str, *, maximum: int) -> dict[str, Any]:
+    if type(raw) is not bytes or not raw or len(raw) > maximum:
+        raise BriRegistryError(f"{path} is empty or exceeds {maximum} bytes")
+    try:
+        text = raw.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise BriRegistryError(f"{path} is not strict UTF-8") from exc
+
+    def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in result:
+                raise BriRegistryError(f"{path} contains duplicate JSON key {key!r}")
+            result[key] = value
+        return result
+
+    def reject_constant(value: str) -> None:
+        raise BriRegistryError(f"{path} contains non-finite JSON number {value}")
+
+    try:
+        value = json.loads(
+            text,
+            object_pairs_hook=unique_object,
+            parse_constant=reject_constant,
+        )
+    except json.JSONDecodeError as exc:
+        raise BriRegistryError(f"{path} is not valid JSON") from exc
+    if type(value) is not dict:
+        raise BriRegistryError(f"{path} must be a JSON object")
+    return value
+
+
+def validate_wdi_bundle(
+    document: Any,
+    *,
+    raw: bytes,
+    series_registry_path: str | Path,
+) -> dict[str, Any]:
+    """Validate an exact normalized WDI bundle and all of its projections.
+
+    This is intentionally stricter than JSON Schema alone: it recomputes the
+    collection identity, validates every observation identity, reconciles the
+    matrix and receipt counts, and binds the checked-in series registry bytes.
+    """
+
+    bundle = dict(_exact_mapping(document, _WDI_BUNDLE_FIELDS, "WDI bundle"))
+    if bundle["schema_version"] != BUNDLE_SCHEMA_VERSION:
+        raise BriRegistryError("WDI bundle schema_version is unsupported")
+    if canonical_json_bytes(bundle) != raw:
+        raise BriRegistryError("WDI bundle must use canonical JSON bytes")
+
+    registry_path = Path(series_registry_path)
+    try:
+        series_raw = registry_path.read_bytes()
+        series_registry = load_wdi_registry(registry_path)
+    except (OSError, UnicodeError, ValueError, TypeError) as exc:
+        raise BriRegistryError(f"cannot validate WDI series registry: {exc}") from exc
+    if bundle["registry_sha256"] != sha256_bytes(series_raw):
+        raise BriRegistryError("WDI bundle registry_sha256 does not match registry bytes")
+
+    expected_policy = {
+        "scope": "national_economic_context",
+        "aggregate_level": "country",
+        "countries": ["CHN", "MMR", "PAK"],
+        "causality_boundary": "not_evidence_of_bri_causality",
+        "actor_inference": "prohibited",
+        "project_attribution": "prohibited",
+        "tactical_data": "prohibited",
+        "missing_value_policy": "source_null_remains_unavailable",
+        "forecast_policy": "source_obs_status_F_remains_forecast",
+        "qualification_policy": "obs_status_footnote_scale_preserved_verbatim",
+        "downstream_semantics": {
+            "observed": "numeric_source_value_without_forecast_marker",
+            "forecast": "numeric_source_value_marked_F_not_observed",
+            "unavailable": "source_null_not_zero_or_imputed",
+            "join_boundary": "country_period_context_only_no_project_actor_or_causal_join",
+        },
+    }
+    if bundle["context_policy"] != expected_policy:
+        raise BriRegistryError("WDI bundle context policy was weakened or changed")
+
+    dataset = series_registry.dataset
+    expected_source = {
+        "source_id": dataset["source_id"],
+        "name": dataset["name"],
+        "publisher": dataset["publisher"],
+        "catalog_url": dataset["catalog_url"],
+        "license": dataset["license"],
+        "license_url": dataset["license_url"],
+        "attribution": dataset["attribution"],
+        "redistribution_status": dataset["redistribution_status"],
+        "rights_evidence_url": dataset["rights_evidence_url"],
+        "indicator_provenance_boundary": dataset["indicator_provenance_boundary"],
+    }
+    if bundle["source"] != expected_source:
+        raise BriRegistryError("WDI bundle source or rights differ from the reviewed registry")
+
+    coverage = _exact_mapping(bundle["coverage"], _WDI_COVERAGE_FIELDS, "WDI coverage")
+    start_year = _bounded_count(coverage["start_year"], "WDI coverage.start_year", maximum=2200)
+    end_year = _bounded_count(coverage["end_year"], "WDI coverage.end_year", maximum=2200)
+    if not 1900 <= start_year <= end_year:
+        raise BriRegistryError("WDI coverage year range is invalid")
+    expected_dimensions = {
+        "countries": len(series_registry.countries),
+        "indicators": len(series_registry.bindings),
+    }
+    for key, expected in expected_dimensions.items():
+        if _bounded_count(coverage[key], f"WDI coverage.{key}") != expected:
+            raise BriRegistryError(f"WDI coverage {key} does not match the registry")
+    for key in ("source_rows", "observed_rows", "forecast_rows", "unavailable_rows"):
+        _bounded_count(coverage[key], f"WDI coverage.{key}", maximum=12_000)
+    expected_rows = (end_year - start_year + 1) * coverage["countries"] * coverage["indicators"]
+    if coverage["source_rows"] != expected_rows:
+        raise BriRegistryError("WDI coverage does not contain the complete requested matrix")
+    if coverage["source_rows"] != sum(
+        coverage[key] for key in ("observed_rows", "forecast_rows", "unavailable_rows")
+    ):
+        raise BriRegistryError("WDI coverage evidence-state counts do not reconcile")
+
+    receipts = bundle["request_receipts"]
+    if type(receipts) is not list or len(receipts) != 1:
+        raise BriRegistryError("WDI bundle must contain exactly one request receipt")
+    receipt = _exact_mapping(receipts[0], _WDI_REQUEST_RECEIPT_FIELDS, "WDI request receipt")
+    for field in ("acquisition_id", "request_id", "raw_response_sha256"):
+        _sha256(receipt[field], f"WDI request receipt.{field}")
+    _https(receipt["evidence_url"], "WDI request receipt.evidence_url")
+    response_bytes = _bounded_count(
+        receipt["response_bytes"], "WDI request receipt.response_bytes",
+        maximum=12 * 1024 * 1024,
+    )
+    if response_bytes == 0:
+        raise BriRegistryError("WDI request receipt response_bytes must be positive")
+    for key in ("source_rows", "observed_rows", "forecast_rows", "unavailable_rows"):
+        if receipt[key] != coverage[key]:
+            raise BriRegistryError(f"WDI request receipt {key} does not match coverage")
+
+    generated_at = _canonical_utc(bundle["generated_at"], "WDI bundle.generated_at")
+    retrieved_at = _canonical_utc(receipt["retrieved_at"], "WDI receipt.retrieved_at")
+    release_upper_bound = _canonical_utc(
+        receipt["source_release_upper_bound"],
+        "WDI receipt.source_release_upper_bound",
+    )
+    dataset_date = _calendar_date(
+        receipt["dataset_last_updated"], "WDI receipt.dataset_last_updated"
+    )
+    if generated_at != retrieved_at:
+        raise BriRegistryError("WDI bundle generated_at must equal the retrieval clock")
+    if dataset_date.date() > retrieved_at.date():
+        raise BriRegistryError("WDI dataset_last_updated is after retrieval")
+    expected_release = min(
+        datetime.combine(dataset_date.date(), time(23, 59, 59), tzinfo=timezone.utc),
+        retrieved_at,
+    )
+    if release_upper_bound != expected_release:
+        raise BriRegistryError("WDI source release upper bound does not match its clock semantics")
+
+    observations = bundle["observations"]
+    if type(observations) is not list or len(observations) != coverage["source_rows"]:
+        raise BriRegistryError("WDI observation rows do not match coverage")
+    if bundle["observations_sha256"] != sha256_bytes(canonical_json_bytes(observations)):
+        raise BriRegistryError("WDI observations_sha256 does not bind the observation rows")
+    bindings = series_registry.bindings
+    expected_series = {
+        binding.series_id: indicator_id for indicator_id, binding in bindings.items()
+    }
+    natural_keys: set[tuple[str, str, str, str]] = set()
+    state_counts = Counter()
+    for index, row in enumerate(observations):
+        try:
+            observation = BRIEconomicObservation.from_dict(row)
+        except (BRIObservationError, TypeError, ValueError) as exc:
+            raise BriRegistryError(f"WDI observation {index} is invalid: {exc}") from exc
+        if expected_series.get(observation.series_id) != observation.indicator_id:
+            raise BriRegistryError("WDI observation series does not match the registry")
+        if not start_year <= observation.period_start.year <= end_year:
+            raise BriRegistryError("WDI observation lies outside requested coverage")
+        natural_key = (
+            observation.series_id,
+            observation.country_code,
+            observation.period_start.isoformat(),
+            observation.period_end.isoformat(),
+        )
+        if natural_key in natural_keys:
+            raise BriRegistryError("WDI bundle contains a duplicate observation")
+        natural_keys.add(natural_key)
+        state_counts[observation.evidence_state] += 1
+        if (
+            observation.retrieved_at != retrieved_at
+            or observation.source_release_upper_bound != release_upper_bound
+            or observation.source_dataset_last_updated != dataset_date.date()
+            or observation.request_id != receipt["request_id"]
+            or observation.acquisition_id != receipt["acquisition_id"]
+            or observation.raw_response_sha256 != receipt["raw_response_sha256"]
+            or observation.evidence_url != receipt["evidence_url"]
+        ):
+            raise BriRegistryError("WDI observation is detached from the request receipt")
+    if len(natural_keys) != expected_rows:
+        raise BriRegistryError("WDI observation matrix is incomplete")
+    expected_states = {
+        "observed": coverage["observed_rows"],
+        "forecast": coverage["forecast_rows"],
+        "unavailable": coverage["unavailable_rows"],
+    }
+    if dict(state_counts) != {key: value for key, value in expected_states.items() if value}:
+        raise BriRegistryError("WDI observation evidence-state counts do not reconcile")
+
+    _sha256(bundle["collection_id"], "WDI bundle.collection_id")
+    collection_payload = dict(bundle)
+    collection_id = collection_payload.pop("collection_id")
+    if collection_id != sha256_bytes(canonical_json_bytes(collection_payload)):
+        raise BriRegistryError("WDI collection_id does not authenticate the bundle")
+    return bundle
+
+
+def load_wdi_bundle(
+    path: str | Path,
+    *,
+    series_registry_path: str | Path,
+) -> tuple[dict[str, Any], bytes]:
+    try:
+        raw = Path(path).read_bytes()
+    except OSError as exc:
+        raise BriRegistryError(f"cannot read WDI bundle: {exc}") from exc
+    document = _strict_json_bytes(raw, "WDI bundle", maximum=WDI_MAX_BUNDLE_BYTES)
+    return validate_wdi_bundle(
+        document,
+        raw=raw,
+        series_registry_path=series_registry_path,
+    ), raw
+
+
+def build_wdi_observation_descriptor(
+    registry: dict[str, Any],
+    *,
+    bundle_path: str | Path,
+    artifact_path: str = WDI_ARTIFACT_PATH,
+    observation_schema_path: str | Path,
+    observation_schema_repository_path: str = WDI_OBSERVATION_SCHEMA_PATH,
+    series_registry_path: str | Path,
+    series_registry_repository_path: str = WDI_SERIES_REGISTRY_PATH,
+) -> dict[str, Any]:
+    """Build a pre-publication descriptor bound to exact normalized bytes."""
+
+    validate_registry(registry)
+    artifact_repository_path = _safe_repository_path(artifact_path, "WDI artifact.path")
+    observation_schema_repository_path = _safe_repository_path(
+        observation_schema_repository_path, "WDI observation_schema.path"
+    )
+    series_registry_repository_path = _safe_repository_path(
+        series_registry_repository_path, "WDI series_registry.path"
+    )
+    bundle, bundle_raw = load_wdi_bundle(
+        bundle_path,
+        series_registry_path=series_registry_path,
+    )
+    try:
+        observation_schema_raw = Path(observation_schema_path).read_bytes()
+        series_registry_raw = Path(series_registry_path).read_bytes()
+    except OSError as exc:
+        raise BriRegistryError(f"cannot read WDI contract bytes: {exc}") from exc
+    schema = _strict_json_bytes(
+        observation_schema_raw,
+        "WDI observation schema",
+        maximum=2 * 1024 * 1024,
+    )
+    if schema.get("$id") != _public_url_for(observation_schema_repository_path):
+        raise BriRegistryError("WDI observation schema ID does not match its public path")
+
+    source = next(
+        (row for row in registry["sources"] if row["source_id"] == "world_bank_wdi"),
+        None,
+    )
+    if source is None:
+        raise BriRegistryError("BRI registry does not contain world_bank_wdi")
+    implementation = source["implementation"]
+    if implementation not in {"adapter_ready", "repository_ready"}:
+        raise BriRegistryError("pre-proof WDI source must be adapter_ready or repository_ready")
+    registry_as_of = _canonical_utc(registry["as_of"], "BRI registry.as_of")
+    generated_at = _canonical_utc(bundle["generated_at"], "WDI bundle.generated_at")
+    if registry_as_of < generated_at:
+        raise BriRegistryError("BRI registry as_of precedes the WDI bundle retrieval clock")
+
+    [receipt] = bundle["request_receipts"]
+    rights = {
+        key: bundle["source"][key] for key in sorted(_WDI_RIGHTS_FIELDS)
+    }
+    descriptor = {
+        "dataset_id": WDI_DATASET_ID,
+        "source_id": "world_bank_wdi",
+        "implementation_state": implementation,
+        "publication_state": WDI_PUBLICATION_STATE,
+        "artifact": {
+            "path": artifact_repository_path,
+            "url": _public_url_for(artifact_repository_path),
+            "media_type": "application/json",
+            "bytes": len(bundle_raw),
+            "sha256": sha256_bytes(bundle_raw),
+        },
+        "observation_schema": {
+            "path": observation_schema_repository_path,
+            "url": _public_url_for(observation_schema_repository_path),
+            "sha256": sha256_bytes(observation_schema_raw),
+        },
+        "series_registry": {
+            "path": series_registry_repository_path,
+            "url": _public_url_for(series_registry_repository_path),
+            "sha256": sha256_bytes(series_registry_raw),
+        },
+        "collection_id": bundle["collection_id"],
+        "generated_at": bundle["generated_at"],
+        "coverage": dict(bundle["coverage"]),
+        "clocks": {
+            "dataset_last_updated": receipt["dataset_last_updated"],
+            "source_release_upper_bound": receipt["source_release_upper_bound"],
+            "retrieved_at": receipt["retrieved_at"],
+        },
+        "rights": rights,
+        "context_boundary": dict(WDI_CONTEXT_BOUNDARY),
+        "publication_receipt": None,
+    }
+    validate_observation_dataset_descriptor(
+        descriptor,
+        registry=registry,
+        artifact_raw=bundle_raw,
+        artifact_document=bundle,
+        observation_schema_raw=observation_schema_raw,
+        series_registry_raw=series_registry_raw,
+        series_registry_path=series_registry_path,
+    )
+    return descriptor
+
+
+def validate_observation_dataset_descriptor(
+    descriptor: Any,
+    *,
+    registry: dict[str, Any],
+    artifact_raw: bytes,
+    artifact_document: Any,
+    observation_schema_raw: bytes,
+    series_registry_raw: bytes,
+    series_registry_path: str | Path,
+) -> dict[str, Any]:
+    """Validate a v2 observation descriptor against all bytes it advertises."""
+
+    row = validate_observation_dataset_descriptor_shape(descriptor, registry=registry)
+    artifact = row["artifact"]
+    if artifact["bytes"] != len(artifact_raw) or artifact["sha256"] != sha256_bytes(artifact_raw):
+        raise BriRegistryError("WDI descriptor artifact bytes or hash mismatch")
+
+    for name, raw in (
+        ("observation_schema", observation_schema_raw),
+        ("series_registry", series_registry_raw),
+    ):
+        contract = row[name]
+        if contract["sha256"] != sha256_bytes(raw):
+            raise BriRegistryError(f"WDI descriptor {name} hash mismatch")
+    observation_schema = _strict_json_bytes(
+        observation_schema_raw,
+        "WDI observation schema",
+        maximum=2 * 1024 * 1024,
+    )
+    if observation_schema.get("$id") != _public_url_for(WDI_OBSERVATION_SCHEMA_PATH):
+        raise BriRegistryError("WDI observation schema ID does not match its public path")
+
+    bundle = validate_wdi_bundle(
+        artifact_document,
+        raw=artifact_raw,
+        series_registry_path=series_registry_path,
+    )
+    if bundle["registry_sha256"] != sha256_bytes(series_registry_raw):
+        raise BriRegistryError("WDI bundle and descriptor bind different series registries")
+    [receipt] = bundle["request_receipts"]
+    if row["collection_id"] != bundle["collection_id"] or row["generated_at"] != bundle["generated_at"]:
+        raise BriRegistryError("WDI descriptor collection identity or generation clock mismatch")
+    if row["coverage"] != bundle["coverage"]:
+        raise BriRegistryError("WDI descriptor coverage counts mismatch the bundle")
+    expected_clocks = {
+        "dataset_last_updated": receipt["dataset_last_updated"],
+        "source_release_upper_bound": receipt["source_release_upper_bound"],
+        "retrieved_at": receipt["retrieved_at"],
+    }
+    if row["clocks"] != expected_clocks:
+        raise BriRegistryError("WDI descriptor clocks mismatch the request receipt")
+    expected_rights = {key: bundle["source"][key] for key in sorted(_WDI_RIGHTS_FIELDS)}
+    if row["rights"] != expected_rights:
+        raise BriRegistryError("WDI descriptor rights mismatch the bundle")
+    return row
+
+
+def validate_observation_dataset_descriptor_shape(
+    descriptor: Any,
+    *,
+    registry: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate descriptor semantics that do not require its advertised files."""
+
+    validate_registry(registry)
+    row = dict(_exact_mapping(descriptor, _WDI_DESCRIPTOR_FIELDS, "WDI descriptor"))
+    if row["dataset_id"] != WDI_DATASET_ID or row["source_id"] != "world_bank_wdi":
+        raise BriRegistryError("WDI descriptor identity changed")
+    source = next(
+        (item for item in registry["sources"] if item["source_id"] == row["source_id"]),
+        None,
+    )
+    if source is None or row["implementation_state"] != source["implementation"]:
+        raise BriRegistryError("WDI descriptor implementation state mismatches the source registry")
+    if row["implementation_state"] not in {"adapter_ready", "repository_ready"}:
+        raise BriRegistryError("pre-proof WDI implementation state is invalid")
+    if row["publication_receipt"] is not None:
+        raise BriRegistryError("pre-proof WDI publication_receipt must be null")
+    if row["publication_state"] != WDI_PUBLICATION_STATE:
+        raise BriRegistryError("null WDI publication receipt requires repository_ready_not_deployed")
+
+    artifact = _exact_mapping(row["artifact"], _WDI_ARTIFACT_FIELDS, "WDI descriptor.artifact")
+    artifact_path = _safe_repository_path(artifact["path"], "WDI descriptor.artifact.path")
+    if artifact_path != WDI_ARTIFACT_PATH:
+        raise BriRegistryError("WDI descriptor artifact path changed")
+    if artifact["url"] != _public_url_for(artifact_path) or artifact["media_type"] != "application/json":
+        raise BriRegistryError("WDI descriptor artifact locator or media type changed")
+    if _bounded_count(artifact["bytes"], "WDI descriptor.artifact.bytes", maximum=WDI_MAX_BUNDLE_BYTES) == 0:
+        raise BriRegistryError("WDI descriptor artifact must contain bytes")
+    _sha256(artifact["sha256"], "WDI descriptor.artifact.sha256")
+
+    expected_contract_paths = {
+        "observation_schema": WDI_OBSERVATION_SCHEMA_PATH,
+        "series_registry": WDI_SERIES_REGISTRY_PATH,
+    }
+    for name, expected_path in expected_contract_paths.items():
+        contract = _exact_mapping(row[name], _WDI_CONTRACT_FIELDS, f"WDI descriptor.{name}")
+        contract_path = _safe_repository_path(contract["path"], f"WDI descriptor.{name}.path")
+        if contract_path != expected_path:
+            raise BriRegistryError(f"WDI descriptor {name} path changed")
+        if contract["url"] != _public_url_for(contract_path):
+            raise BriRegistryError(f"WDI descriptor {name} URL does not match its path")
+        _sha256(contract["sha256"], f"WDI descriptor.{name}.sha256")
+
+    _sha256(row["collection_id"], "WDI descriptor.collection_id")
+    generated_at = _canonical_utc(row["generated_at"], "WDI descriptor.generated_at")
+    coverage = _exact_mapping(row["coverage"], _WDI_COVERAGE_FIELDS, "WDI descriptor.coverage")
+    start_year = _bounded_count(coverage["start_year"], "WDI descriptor.coverage.start_year", maximum=2200)
+    end_year = _bounded_count(coverage["end_year"], "WDI descriptor.coverage.end_year", maximum=2200)
+    if not 1900 <= start_year <= end_year:
+        raise BriRegistryError("WDI descriptor coverage years are invalid")
+    if coverage["countries"] != 3:
+        raise BriRegistryError("WDI descriptor must cover exactly three countries")
+    indicators = _bounded_count(
+        coverage["indicators"],
+        "WDI descriptor.coverage.indicators",
+        maximum=24,
+    )
+    if indicators == 0:
+        raise BriRegistryError("WDI descriptor must contain at least one indicator")
+    for key in ("source_rows", "observed_rows", "forecast_rows", "unavailable_rows"):
+        _bounded_count(coverage[key], f"WDI descriptor.coverage.{key}", maximum=12_000)
+    if coverage["source_rows"] != sum(
+        coverage[key] for key in ("observed_rows", "forecast_rows", "unavailable_rows")
+    ):
+        raise BriRegistryError("WDI descriptor coverage evidence-state counts do not reconcile")
+    if coverage["source_rows"] != (end_year - start_year + 1) * 3 * indicators:
+        raise BriRegistryError("WDI descriptor source_rows does not match its matrix dimensions")
+
+    clocks = _exact_mapping(row["clocks"], _WDI_CLOCK_FIELDS, "WDI descriptor.clocks")
+    retrieved_at = _canonical_utc(clocks["retrieved_at"], "WDI descriptor.clocks.retrieved_at")
+    release_upper_bound = _canonical_utc(
+        clocks["source_release_upper_bound"],
+        "WDI descriptor.clocks.source_release_upper_bound",
+    )
+    dataset_date = _calendar_date(
+        clocks["dataset_last_updated"],
+        "WDI descriptor.clocks.dataset_last_updated",
+    )
+    if generated_at != retrieved_at:
+        raise BriRegistryError("WDI descriptor generated_at must equal retrieved_at")
+    expected_release = min(
+        datetime.combine(dataset_date.date(), time(23, 59, 59), tzinfo=timezone.utc),
+        retrieved_at,
+    )
+    if release_upper_bound != expected_release:
+        raise BriRegistryError("WDI descriptor release clock semantics changed")
+
+    _exact_mapping(row["rights"], _WDI_RIGHTS_FIELDS, "WDI descriptor.rights")
+    if row["rights"] != {
+        "attribution": "World Bank, World Development Indicators",
+        "license": "CC-BY-4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "redistribution_status": "allowed_with_attribution",
+        "rights_evidence_url": (
+            "https://datacatalog.worldbank.org/search/dataset/0037712/"
+            "world-development-indicators"
+        ),
+    }:
+        raise BriRegistryError("WDI descriptor rights differ from reviewed CC BY 4.0 terms")
+    if row["context_boundary"] != WDI_CONTEXT_BOUNDARY:
+        raise BriRegistryError("WDI descriptor context boundary was weakened or changed")
+    registry_as_of = _canonical_utc(registry["as_of"], "BRI registry.as_of")
+    if registry_as_of < generated_at:
+        raise BriRegistryError("BRI registry as_of precedes the WDI descriptor")
+    return row
+
+
 def coverage_report(registry: dict[str, Any]) -> dict[str, Any]:
     validate_registry(registry)
     sources = registry["sources"]
@@ -345,9 +965,13 @@ def prioritized_backlog(registry: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(candidates, key=lambda item: (-item["priority_score"], item["source_id"]))
 
 
-def build_public_artifact(registry: dict[str, Any]) -> dict[str, Any]:
+def build_public_artifact(
+    registry: dict[str, Any],
+    *,
+    observation_datasets: Sequence[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
     validate_registry(registry)
-    return {
+    artifact = {
         "$schema": "/protocol/belt-and-road-observatory-v1.schema.json",
         "schema_version": "palimpsest.belt-and-road-observatory.v1",
         "as_of": registry["as_of"],
@@ -371,6 +995,51 @@ def build_public_artifact(registry: dict[str, Any]) -> dict[str, Any]:
             "NarcoScope contributes country aggregates only; shared geography or time does not establish an actor or causal relationship.",
         ],
     }
+    if observation_datasets is None:
+        return artifact
+    if type(observation_datasets) not in {list, tuple} or len(observation_datasets) != 1:
+        raise BriRegistryError("BRI observatory v2 requires exactly one observation dataset")
+    descriptor = observation_datasets[0]
+    if not isinstance(descriptor, Mapping) or descriptor.get("dataset_id") != WDI_DATASET_ID:
+        raise BriRegistryError("BRI observatory v2 received an unknown observation dataset")
+    descriptor = validate_observation_dataset_descriptor_shape(
+        descriptor,
+        registry=registry,
+    )
+    artifact["$schema"] = "/protocol/belt-and-road-observatory-v2.schema.json"
+    artifact["schema_version"] = "palimpsest.belt-and-road-observatory.v2"
+    artifact["observation_datasets"] = [descriptor]
+    return artifact
+
+
+def registry_projection_from_public_artifact(artifact: Mapping[str, Any]) -> dict[str, Any]:
+    """Recover the source-registry fields carried verbatim by a public artifact."""
+
+    fields = {
+        "as_of": "as_of",
+        "purpose": "scope",
+        "publication_policy": "publication_policy",
+        "project_fields": "project_fields",
+        "economic_metrics": "economic_metrics",
+        "local_impact_fields": "local_impact_fields",
+        "movement_taxonomy": "movement_taxonomy",
+        "geographies": "geographies",
+        "workstreams": "workstreams",
+        "watch_targets": "watch_targets",
+        "partner_bridges": "partner_bridges",
+        "sources": "sources",
+    }
+    missing = [public for public in fields.values() if public not in artifact]
+    if missing:
+        raise BriRegistryError(
+            "BRI public artifact lacks registry projection fields: " + ", ".join(missing)
+        )
+    registry = {
+        "schema_version": "palimpsest.bri-source-registry.v1",
+        **{registry_key: artifact[public_key] for registry_key, public_key in fields.items()},
+    }
+    validate_registry(registry)
+    return registry
 
 
 def independence_collisions(registry: dict[str, Any]) -> dict[str, list[str]]:

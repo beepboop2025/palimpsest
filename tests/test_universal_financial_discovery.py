@@ -228,6 +228,84 @@ def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
     )
 
 
+def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
+    entries = _catalog_entries()
+    openapi = entries["urn:air:palimpsest.info:openapi:public-readings"]
+    bri = entries["urn:air:palimpsest.info:dataset:belt-and-road-observatory"]
+    wdi = entries["urn:air:palimpsest.info:dataset:bri-economic-observations"]
+
+    assert openapi["version"] == "2.0.0"
+    assert openapi["metadata"]["access"] == "public-read-only-after-deployment"
+    assert openapi["metadata"]["deploymentBoundary"] == (
+        "repository-ready-not-deployed"
+    )
+    assert "independent of the deployed MCP" in openapi["metadata"][
+        "versionAuthority"
+    ]
+
+    assert bri["metadata"] == {
+        "authentication": "none",
+        "access": "public-read-only-after-deployment",
+        "deploymentBoundary": "repository-ready-not-deployed",
+        "schema": (
+            "https://palimpsest.info/protocol/"
+            "belt-and-road-observatory-v2.schema.json"
+        ),
+        "v1Archive": (
+            "https://palimpsest.info/readings/belt-and-road-observatory-v1.json"
+        ),
+        "v1ArchiveSchema": (
+            "https://palimpsest.info/protocol/"
+            "belt-and-road-observatory-v1.schema.json"
+        ),
+        "economicContext": (
+            "https://palimpsest.info/readings/"
+            "bri-economic-observations-latest.json"
+        ),
+        "humanLandingPage": "https://palimpsest.info/belt-and-road/",
+        "coverageBoundary": (
+            "Source discovery and adapter readiness are not ingestion, and unlike "
+            "project lifecycle or claim states are never summed. WDI national "
+            "series cannot establish BRI causation or project, actor or corridor "
+            "facts."
+        ),
+    }
+    assert bri["updatedAt"] == "2026-08-26T13:17:34.790676Z"
+
+    assert wdi["url"] == (
+        "https://palimpsest.info/readings/bri-economic-observations-latest.json"
+    )
+    assert wdi["updatedAt"] == "2026-08-26T13:17:34.790676Z"
+    metadata = wdi["metadata"]
+    assert metadata["access"] == "public-read-only-after-deployment"
+    assert metadata["deploymentBoundary"] == "repository-ready-not-deployed"
+    assert metadata["schema"].endswith(
+        "/protocol/bri-economic-observations-v1.schema.json"
+    )
+    assert metadata["seriesRegistry"].endswith("/config/bri_wdi_series.json")
+    assert metadata["source"] == "World Bank World Development Indicators"
+    assert metadata["attribution"] == "World Bank, World Development Indicators"
+    assert metadata["license"] == "CC-BY-4.0"
+    assert metadata["acquiredAt"] == "2026-08-26T13:17:34.790676Z"
+    assert metadata["coverage"] == {
+        "countries": ["CHN", "MMR", "PAK"],
+        "startYear": 1960,
+        "endYear": 2025,
+        "sourceRows": 3564,
+        "observedRows": 1940,
+        "forecastRows": 0,
+        "unavailableRows": 1624,
+    }
+    assert metadata["contextBoundary"] == {
+        "allowedRole": "context",
+        "projectInference": "prohibited",
+        "actorInference": "prohibited",
+        "corridorInference": "prohibited",
+        "causalInference": "prohibited",
+    }
+    assert "do not establish BRI causation" in wdi["description"]
+
+
 def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
     catalog_url = "https://palimpsest.info/.well-known/ai-catalog.json"
     robots = _read("robots.txt")

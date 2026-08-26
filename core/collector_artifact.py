@@ -160,6 +160,17 @@ def project_reading(path: Path, *, collector_id: str | None = None) -> dict[str,
             abstention={"code": "unreadable", "reason": f"{path.name} is not JSON: {exc}"},
             payload=None,
         )
+    if (
+        isinstance(document, Mapping)
+        and document.get("schema_version")
+        == "palimpsest.bri-economic-observations.v1"
+    ):
+        return _project_bri_wdi(
+            document,
+            raw=raw,
+            digest=digest,
+            collector_id=collector_id,
+        )
     observed_at = _observed_at(document)
     receipt = _receipt(document)
     coverage = {"latest_bytes": len(raw), "file_sha256": digest}
@@ -185,6 +196,66 @@ def project_reading(path: Path, *, collector_id: str | None = None) -> dict[str,
         "freshness": freshness,
         "coverage": coverage,
         "abstention": abstention,
+        "payload_sha256": digest,
+    }
+    validate_artifact(artifact)
+    return artifact
+
+
+def _project_bri_wdi(
+    document: Mapping[str, Any],
+    *,
+    raw: bytes,
+    digest: str,
+    collector_id: str,
+) -> dict[str, Any]:
+    """Project one normalized WDI bundle without merging forecast states.
+
+    The collector envelope records acquisition and knowledge clocks.  Annual
+    source periods remain inside the bundle; treating their year-end as an
+    observed instant here would manufacture temporal precision.
+    """
+
+    from processors.bri_observatory import validate_wdi_bundle
+
+    root = Path(__file__).resolve().parents[1]
+    validated = validate_wdi_bundle(
+        document,
+        raw=raw,
+        series_registry_path=root / "config" / "bri_wdi_series.json",
+    )
+    [request] = validated["request_receipts"]
+    coverage = dict(validated["coverage"])
+    source_receipt = {
+        "url": request["evidence_url"],
+        "request_id": request["request_id"],
+        "acquisition_id": request["acquisition_id"],
+        "raw_response_sha256": request["raw_response_sha256"],
+        "response_bytes": request["response_bytes"],
+        "retrieved_at": request["retrieved_at"],
+        "counts": {
+            key: request[key]
+            for key in (
+                "source_rows",
+                "observed_rows",
+                "forecast_rows",
+                "unavailable_rows",
+            )
+        },
+    }
+    artifact = {
+        "schema_version": SCHEMA_VERSION,
+        "collector_id": collector_id,
+        "source_receipt": source_receipt,
+        "freshness": {
+            "evidence_state": "fresh",
+            "observed_at": request["source_release_upper_bound"],
+            "knowledge_time": request["retrieved_at"],
+            "generated_at": validated["generated_at"],
+            "release_time_semantics": "dataset_lastupdated_upper_bound",
+        },
+        "coverage": coverage,
+        "abstention": None,
         "payload_sha256": digest,
     }
     validate_artifact(artifact)

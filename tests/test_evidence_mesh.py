@@ -6,7 +6,7 @@ import copy
 import hashlib
 import json
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -14,6 +14,7 @@ import pytest
 from scripts import build_erasure_trail
 from core.evidence_mesh import (
     EvidenceMeshError,
+    _freshness,
     build_evidence_mesh,
     canonical_json_bytes,
     check_evidence_mesh,
@@ -53,6 +54,23 @@ def _resource(document: dict, resource_id: str) -> dict:
 
 def _receipt(document: dict, input_id: str) -> dict:
     return next(row for row in document["inputs"] if row["input_id"] == input_id)
+
+
+def test_freshness_age_uses_the_exact_serialized_second_precision() -> None:
+    observed = datetime(2026, 8, 26, 13, 17, 34, 790676, tzinfo=timezone.utc)
+    now = datetime(2026, 8, 26, 13, 36, 23, tzinfo=timezone.utc)
+
+    freshness = _freshness(observed, None, now, "P1Y", "available")
+
+    assert freshness["observed_at"] == "2026-08-26T13:17:34Z"
+    assert freshness["age_hours"] == round(
+        (
+            now
+            - datetime(2026, 8, 26, 13, 17, 34, tzinfo=timezone.utc)
+        ).total_seconds()
+        / 3600.0,
+        3,
+    )
 
 
 def test_erasure_trail_declares_every_runtime_dependency_in_the_mesh() -> None:

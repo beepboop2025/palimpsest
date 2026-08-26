@@ -27,6 +27,11 @@ from core.narcoscope_bridge import (
     validate_artifact as validate_narcoscope_artifact,
     validate_receipt as validate_narcoscope_receipt,
 )
+from processors.bri_observatory import (
+    BriRegistryError,
+    registry_projection_from_public_artifact,
+    validate_observation_dataset_descriptor,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -912,6 +917,14 @@ def _freshness(
             "status": "unknown", "observed_at": None, "deadline": None,
             "age_hours": None, "cadence": cadence,
         }
+    # The public mesh contract serializes clocks at whole-second precision.
+    # Normalize before doing freshness arithmetic so ``age_hours`` is derived
+    # from the exact clocks a verifier will parse, including for sources such
+    # as WDI whose acquisition receipts retain microseconds.
+    observed = observed.astimezone(timezone.utc).replace(microsecond=0)
+    now = now.astimezone(timezone.utc).replace(microsecond=0)
+    if deadline is not None:
+        deadline = deadline.astimezone(timezone.utc).replace(microsecond=0)
     if observed > now:
         raise EvidenceMeshError("freshness observation cannot be after the build time")
     computed_deadline = deadline
@@ -1107,6 +1120,7 @@ def build_evidence_mesh(
         return groups
 
     resources: list[dict[str, Any]] = []
+    bri_observation_inputs: list[dict[str, Any]] = []
     catalog_publication = _parse_timestamp(osint["generated_at"], "osint.generated_at")
     for dataset in catalog["datasets"]:
         dataset_id = dataset["id"]
@@ -1204,6 +1218,131 @@ def build_evidence_mesh(
             freshness=fresh, contract="palimpsest-public-data-catalog/v1",
             public_url=public_url, input_id="palimpsest-catalog", limitations=limitations,
         ))
+        if (
+            dataset_id == "belt-and-road-observatory"
+            and payload is not None
+            and payload.get("schema_version")
+            == "palimpsest.belt-and-road-observatory.v2"
+        ):
+            descriptors = payload.get("observation_datasets")
+            if type(descriptors) is not list or len(descriptors) != 1:
+                raise EvidenceMeshError(
+                    "BRI observatory v2 must expose exactly one observation dataset"
+                )
+            descriptor = descriptors[0]
+            if not isinstance(descriptor, Mapping):
+                raise EvidenceMeshError("BRI observation descriptor must be an object")
+            try:
+                artifact_path = _repo_path(
+                    root,
+                    descriptor["artifact"]["path"],
+                    "bri.observation.artifact.path",
+                )
+                artifact_document, artifact_raw = _load_json(artifact_path, maximum)
+                observation_schema_path = _repo_path(
+                    root,
+                    descriptor["observation_schema"]["path"],
+                    "bri.observation.schema.path",
+                )
+                _observation_schema, observation_schema_raw = _load_json(
+                    observation_schema_path,
+                    maximum,
+                )
+                series_registry_path = _repo_path(
+                    root,
+                    descriptor["series_registry"]["path"],
+                    "bri.observation.series_registry.path",
+                )
+                _series_registry, series_registry_raw = _load_json(
+                    series_registry_path,
+                    maximum,
+                )
+                bri_registry = registry_projection_from_public_artifact(payload)
+                validated_descriptor = validate_observation_dataset_descriptor(
+                    descriptor,
+                    registry=bri_registry,
+                    artifact_raw=artifact_raw,
+                    artifact_document=artifact_document,
+                    observation_schema_raw=observation_schema_raw,
+                    series_registry_raw=series_registry_raw,
+                    series_registry_path=series_registry_path,
+                )
+            except (BriRegistryError, KeyError, TypeError) as exc:
+                raise EvidenceMeshError(
+                    f"invalid BRI WDI observation descriptor: {exc}"
+                ) from exc
+            clocks = validated_descriptor["clocks"]
+            retrieved_at = _parse_timestamp(
+                clocks["retrieved_at"],
+                "bri.observation.clocks.retrieved_at",
+            )
+            coverage = validated_descriptor["coverage"]
+            input_id = "palimpsest-bri-wdi-world-bank"
+            resources.append(_resource(
+                resource_id="palimpsest:context:bri-world-bank-wdi",
+                project_id="palimpsest",
+                namespace="context",
+                source_id="world-bank-wdi",
+                title="World Bank WDI national economic context for BRI countries",
+                availability="available",
+                allowed_role="context",
+                evidence_class="OFFICIAL_STATISTIC",
+                independence_group="publisher:world-bank",
+                upstream_groups=["publisher:world-bank"],
+                independence_eligible=False,
+                dependency_resource_ids=[
+                    "palimpsest:catalog:belt-and-road-observatory"
+                ],
+                rights={
+                    "redistribution": "ATTRIBUTION_REQUIRED",
+                    "reuse": "full_text",
+                    "training": "prohibited",
+                },
+                clocks={
+                    "event_time": None,
+                    "knowledge_time": _iso_z(retrieved_at),
+                    "publication_time": None,
+                },
+                freshness=_freshness(
+                    retrieved_at,
+                    None,
+                    moment,
+                    "P1Y",
+                    "available",
+                ),
+                source_temporal_coverage={
+                    "kind": "year_range",
+                    "from_year": coverage["start_year"],
+                    "to_year": coverage["end_year"],
+                    "snapshot_date": None,
+                },
+                contract="palimpsest.bri-economic-observations.v1",
+                public_url=validated_descriptor["artifact"]["url"],
+                input_id=input_id,
+                limitations=[
+                    "Country-period context only; this resource cannot establish a BRI project, corridor, actor or causal effect.",
+                    "Source-marked forecasts remain forecasts and source-null values remain unavailable, never observed zeroes.",
+                    "The null publication receipt means repository-ready bytes are not yet production-verified.",
+                ],
+            ))
+            bri_observation_inputs.append(_receipt(
+                input_id=input_id,
+                project_id="palimpsest",
+                contract="palimpsest.bri-economic-observations.v1",
+                required=False,
+                availability="available",
+                locator=validated_descriptor["artifact"]["path"],
+                public_url=validated_descriptor["artifact"]["url"],
+                raw=artifact_raw,
+                observed_version=artifact_document["schema_version"],
+                observed_at=validated_descriptor["generated_at"],
+                expected_sha256=validated_descriptor["artifact"]["sha256"],
+                resource_count=coverage["source_rows"],
+                reason=(
+                    "Repository-ready context bytes; publication receipt remains null "
+                    "until an exact production deployment is verified."
+                ),
+            ))
 
     for signal in osint["signals"]:
         signal_id = signal["id"]
@@ -1398,6 +1537,7 @@ def build_evidence_mesh(
             resource_count=len(pin_receipt["superseded"]) + 1,
         ),
     ]
+    inputs.extend(bri_observation_inputs)
 
     for project_id, input_id in (("seiche", "seiche-partner-snapshot"), ("liquilens", "liquilens-partner-snapshot")):
         contract = contracts[input_id][1]

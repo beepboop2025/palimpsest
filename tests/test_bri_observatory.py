@@ -25,7 +25,7 @@ PAGE = ROOT / "belt-and-road" / "index.html"
 
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
     registry = load_registry(REGISTRY)
-    assert registry["as_of"] == "2026-08-26T12:03:34Z"
+    assert registry["as_of"] == "2026-08-26T13:17:34.790676Z"
     report = coverage_report(registry)
     assert report["source_count"] >= 40
     assert {"official_china", "official_host", "multilateral", "research", "civil_society", "legal", "partner"} <= set(report["source_classes"])
@@ -115,9 +115,30 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
     assert READING.read_bytes() == expected_json
     assert PAGE.read_bytes() == expected_html
     artifact = json.loads(expected_json)
-    schema = json.loads((ROOT / "protocol" / "belt-and-road-observatory-v1.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "protocol" / "belt-and-road-observatory-v2.schema.json").read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(artifact)
-    assert artifact == build_public_artifact(load_registry(REGISTRY))
+    assert artifact["schema_version"] == "palimpsest.belt-and-road-observatory.v2"
+    [dataset] = artifact["observation_datasets"]
+    assert dataset["implementation_state"] == "repository_ready"
+    assert dataset["publication_state"] == "repository_ready_not_deployed"
+    assert dataset["coverage"] == {
+        "start_year": 1960,
+        "end_year": 2025,
+        "countries": 3,
+        "indicators": 18,
+        "source_rows": 3564,
+        "observed_rows": 1940,
+        "forecast_rows": 0,
+        "unavailable_rows": 1624,
+    }
+    assert dataset["publication_receipt"] is None
+
+    page = expected_html.decode("utf-8")
+    assert "repository ready not deployed" in page
+    assert '"license":"https://creativecommons.org/licenses/by/4.0/"' in page
+    assert '"@id":"https://www.worldbank.org/#organization"' in page
+    assert '"url":"https://www.worldbank.org/"' in page
+    assert "never project, actor, corridor or causal evidence" in page
 
 
 def test_schema_allows_a_future_fully_covered_registry() -> None:

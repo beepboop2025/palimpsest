@@ -209,6 +209,12 @@ CONTRACT = {
         reason="a source and coverage inventory rather than a sampled measurement: every "
                "source is enumerated, and coverage counts are complete projections over "
                "that declared registry rather than rates over an unstated population."),
+    "bri-economic-observations": _d(
+        "generated_at", ["source", "request_receipts", "context_policy"],
+        reason="the bundle enumerates a complete country-indicator-year grid while "
+               "coverage separately reports observed, forecast and unavailable rows; "
+               "one top-level denominator would hide source nulls or imply those "
+               "evidence states are interchangeable."),
     # scheduled first-party import from the fixed external prober
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -776,8 +782,18 @@ def test_openapi_publishes_social_observations_and_china_situation_contracts():
         ),
         "BeltAndRoadObservatory": (
             "belt-and-road-observatory-v1.schema.json",
+            "/readings/belt-and-road-observatory-v1.json",
+            "getBeltAndRoadObservatoryV1",
+        ),
+        "BeltAndRoadObservatoryV2": (
+            "belt-and-road-observatory-v2.schema.json",
             "/readings/belt-and-road-observatory-latest.json",
-            "getBeltAndRoadObservatory",
+            "getBeltAndRoadObservatoryV2",
+        ),
+        "BRIEconomicObservations": (
+            "bri-economic-observations-v1.schema.json",
+            "/readings/bri-economic-observations-latest.json",
+            "getBRIEconomicObservations",
         ),
     }
 
@@ -796,6 +812,9 @@ def test_openapi_publishes_social_observations_and_china_situation_contracts():
         assert operation["responses"]["200"] == {
             "$ref": f"#/components/responses/{name}"
         }
+    assert spec["paths"]["/readings/belt-and-road-observatory-v1.json"]["get"][
+        "deprecated"
+    ] is True
 
 
 @pytest.mark.parametrize("path", _readings(), ids=_name)
