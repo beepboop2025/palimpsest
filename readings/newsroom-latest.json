@@ -2,23 +2,23 @@
   "schema_version": "palimpsest-news.v1",
   "feed_id": "palimpsest-china-newsroom",
   "title": "Palimpsest China Newsroom",
-  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 5 are live. Health qualifiers: 2 degraded, 32 stale.",
+  "headline": "No current board-level analytic headline is available. 39 of 39 configured sources report; 1 are live. Health qualifiers: 2 degraded, 36 stale.",
   "url": "https://palimpsest.info/news/",
-  "generated_at": "2026-08-26T07:23:47Z",
+  "generated_at": "2026-08-26T13:03:39Z",
   "n_stories": 39,
   "source": "https://palimpsest.info/readings/osint-china-latest.json",
-  "source_commit": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+  "source_commit": "d0fbfc3037700dc02c00931c81a833ded3cdc781",
   "method": "Deterministic aggregate-only editorial transform of the osint-china.v1 roll-up; no signal payload rows or person-level data are copied into this feed.",
   "scope": "Aggregate China public-source measurements, methods and integrity updates, edited into evidence-linked stories with missing, stale and degraded sources kept explicit.",
   "coverage": {
     "total": 39,
     "reporting": 39,
-    "live": 5,
+    "live": 1,
     "status": "degraded",
     "counts": {
-      "live": 5,
+      "live": 1,
       "degraded": 2,
-      "stale": 32,
+      "stale": 36,
       "missing": 0,
       "corrupt": 0
     }
@@ -977,20 +977,20 @@
       "slug": "censored-planet-china-interference",
       "url": "https://palimpsest.info/news/censored-planet-china-interference/",
       "signal_id": "censored-planet",
-      "headline": "Independent remote scans put China's interference rate at 4.27%",
-      "dek": "Censored Planet supplies an outside-in method that is independent of OONI's in-country volunteer probes.",
+      "headline": "Censored Planet: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 3,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T06:07:17Z",
       "modified_at": "2026-08-24T06:07:17Z",
-      "claim_fingerprint": "sha256:b83ff60b8826f7545695eca3d2a336d4a63b210352364eb1e02c12dbe6b5e8c5",
+      "claim_fingerprint": "sha256:be8e581e5b3419cecac55f6c6a7e610858608c1321175ac0872607cfc11cf672",
       "metric": {
-        "label": "CN interference rate",
-        "value": 4.27,
-        "unit": "percent",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -998,8 +998,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "Censored Planet's current remote side-channel measurement reports a 4.27% China interference rate."
+          "type": "availability",
+          "statement": "No current finding is published for Censored Planet because the source status is stale."
         }
       ],
       "evidence": {
@@ -1016,6 +1016,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "The remote-scan denominator and method differ from OONI's anomaly index, so their percentages are not interchangeable."
       ],
       "related_signal_ids": [
@@ -1135,20 +1136,20 @@
       "slug": "circumvention-demand",
       "url": "https://palimpsest.info/news/circumvention-demand/",
       "signal_id": "circumvention-demand",
-      "headline": "Tor Metrics estimates 2,661 bridge users connecting from China",
-      "dek": "Bridge and transport estimates show demand for alternate routes without identifying individual users.",
+      "headline": "Circumvention demand: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "network",
       "order": 6,
       "type": "measurement",
       "priority": "standard",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T05:52:26Z",
       "modified_at": "2026-08-24T05:52:26Z",
-      "claim_fingerprint": "sha256:181f05759db24d99620dd8493f9fc5131c265588354321538ff7f5f90868247f",
+      "claim_fingerprint": "sha256:00dfc560aa65139f926d54d86d3af1f37c6dea9823fdfb299e4be6c293810408",
       "metric": {
-        "label": "bridge users",
-        "value": 2661,
-        "unit": "estimated users",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -1156,8 +1157,8 @@
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "Tor Metrics estimates 2,661 bridge users for China in the current reading."
+          "type": "availability",
+          "statement": "No current finding is published for Circumvention demand because the source status is stale."
         }
       ],
       "evidence": {
@@ -1174,6 +1175,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Bridge-user values are privacy-preserving estimates and should not be read as exact people or devices."
       ],
       "related_signal_ids": [
@@ -1611,29 +1613,29 @@
       "slug": "apple-censorship-corpus",
       "url": "https://palimpsest.info/news/apple-censorship-corpus/",
       "signal_id": "apple-censorship",
-      "headline": "28.13% of 110,432 tested apps are unavailable in mainland China",
-      "dek": "The corpus-scale storefront comparison complements the smaller fixed panel with a much broader catalogue.",
+      "headline": "AppleCensorship corpus: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "erasure",
       "order": 6,
       "type": "measurement",
       "priority": "high",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-24T06:06:32Z",
       "modified_at": "2026-08-24T06:06:32Z",
-      "claim_fingerprint": "sha256:7c2b60416e2123d5c0ea1d4b3348c1fe4400e2d6c342a08c2f50bff324f6fc90",
+      "claim_fingerprint": "sha256:16c18cebfa01d95308379b71231821c5c1dda160cf53ed1d3761655c788bf0a5",
       "metric": {
-        "label": "apps unavailable",
-        "value": 28.13,
-        "unit": "percent",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
-          "label": "apps tested",
-          "value": 110432
+          "label": null,
+          "value": null
         }
       },
       "claims": [
         {
-          "type": "finding",
-          "statement": "The current AppleCensorship corpus reports 28.13% unavailable among 110,432 tested apps for mainland China."
+          "type": "availability",
+          "statement": "No current finding is published for AppleCensorship corpus because the source status is stale."
         }
       ],
       "evidence": {
@@ -1650,6 +1652,7 @@
         "version": 1
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "Storefront unavailability can have policy, licensing, commercial or technical causes; the percentage alone does not identify cause."
       ],
       "related_signal_ids": [
@@ -2084,20 +2087,20 @@
       "slug": "private-runtime-bridge",
       "url": "https://palimpsest.info/news/private-runtime-bridge/",
       "signal_id": "nemesis",
-      "headline": "The sanitized intelligence bridge ranks 173 aggregate topics",
-      "dek": "Only allowlisted aggregate fields cross the optional signed bridge; its absence never reduces a public measurement to zero.",
+      "headline": "Private runtime bridge: no current finding",
+      "dek": "The source is stale. Palimpsest keeps the availability and evidence record visible without publishing retained values as current news.",
       "section": "nemesis",
       "order": 1,
       "type": "intelligence",
       "priority": "background",
-      "status": "live",
+      "status": "stale",
       "published_at": "2026-08-26T07:14:16Z",
       "modified_at": "2026-08-26T07:14:16Z",
-      "claim_fingerprint": "sha256:c1851b919f3b1d30e52e01ad5a52e49a45d8156f85b6c117b9a4cebb3fdba24f",
+      "claim_fingerprint": "sha256:2910f6a0ca7e3b741566ea28c45c132cab586c651b3214a4ed21abb434e04292",
       "metric": {
-        "label": "topics ranked",
-        "value": 173,
-        "unit": "count",
+        "label": null,
+        "value": null,
+        "unit": null,
         "denominator": {
           "label": null,
           "value": null
@@ -2105,8 +2108,8 @@
       },
       "claims": [
         {
-          "type": "observation",
-          "statement": "The current sanitized optional export contains 173 ranked aggregate topics."
+          "type": "availability",
+          "statement": "No current finding is published for Private runtime bridge because the source status is stale."
         }
       ],
       "evidence": {
@@ -2123,6 +2126,7 @@
         "version": "nemesis-public-v2"
       },
       "limitations": [
+        "Current finding withheld: freshness deadline has passed",
         "This deployment-dependent export supplies analytical leads, not independently verified public-source findings."
       ],
       "related_signal_ids": [
