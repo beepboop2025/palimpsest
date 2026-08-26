@@ -585,7 +585,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v19"' in worker
+    assert 'const CACHE = "palimpsest-v20"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert '"/readings/gfi-transcripts-latest.json"' in worker
     for endpoint in (
@@ -623,6 +623,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert '"/readings/china-econ-observations.jsonl"' in worker
     assert '"/readings/china-econ-forecast-latest.json"' in worker
     assert '"/readings/china-index-latest.json"' in worker
+    assert '"/readings/china-publication-rights-latest.json"' in worker
     assert '"/readings/china-situation-latest.json"' in worker
     assert '"/readings/social-observations-latest.json"' in worker
     assert '"/readings/social-observations-versions.jsonl"' in worker

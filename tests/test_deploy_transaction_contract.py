@@ -18,12 +18,12 @@ BACKUP_GUIDE = ROOT / "ops" / "backup" / "README.md"
 NODE_OFFSITE_GUIDE = ROOT / "ops" / "node-offsite" / "README.md"
 RELEASE_QUIESCE = ROOT / "ops" / "systemd" / "palimpsest-backup.release-quiesce.conf"
 INTERRUPTED_PHASE1_MANIFEST = (
-    ROOT / "ops" / "release-recovery" / "2026-08-25-api-readiness-retry.json"
+    ROOT / "ops" / "release-recovery" / "2026-08-25-common-crawl-bind-alias-retry.json"
 )
 INTERRUPTED_PHASE1_MANIFEST_SHA256 = (
-    "6a3a393a7f9ebdfb6fb38cf984db4f4558b3af9fa7cc973683116c274d9d3218"
+    "62dd4970775c4acc840649f4531c50f73dc73906ad816d7bf45c49e1f323d834"
 )
-RECOVERY_BACKUP_REASON = "api-readiness-retry-fresh-target-backup"
+RECOVERY_BACKUP_REASON = "common-crawl-bind-alias-retry-fresh-target-backup"
 COMPATIBILITY_SEED = ROOT / "ops" / "osint-sync" / "deploy-compatibility-seed.sh"
 
 
@@ -1190,6 +1190,9 @@ def test_common_crawl_storage_and_tools_preflight_before_receipt_change() -> Non
 
 def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() -> None:
     transaction = _transaction()
+    mount_helper = _bash_function_source(
+        transaction, "assert_collector_common_crawl_mount_identity"
+    )
     compose_start = transaction.index(
         'release_compose "${COMPOSE_ALL_PROFILES[@]}" up -d'
     )
@@ -1200,15 +1203,89 @@ def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() ->
 
     assert "ps -q worker-collectors" in proof
     assert 'eq .Destination "/app/common-crawl-derived"' in proof
-    assert "{{.Source}}" in proof
-    assert '= "$COMMON_CRAWL_DERIVED_SOURCE"' in proof
-    assert "{{.RW}}" in proof
-    assert '= "false"' in proof
+    assert (
+        '{{printf "%s\\t%s\\t%t\\t%s\\n" '
+        ".Type .Source .RW .Propagation}}"
+    ) in proof
+    assert 'test "$COLLECTOR_COMMON_CRAWL_TYPE" = bind' in proof
+    assert 'test "$COLLECTOR_COMMON_CRAWL_RW" = false' in proof
+    assert 'test "$COLLECTOR_COMMON_CRAWL_PROPAGATION" = rprivate' in proof
+    assert "COMMON_CRAWL_STABLE_ROOT='/var/lib/palimpsest/common-crawl'" in transaction
+    assert (
+        '"$COMMON_CRAWL_DERIVED_SOURCE"|"$COMMON_CRAWL_STABLE_DERIVED_SOURCE")'
+    ) in proof
+    assert '/usr/bin/mountpoint -q "$COMMON_CRAWL_STABLE_ROOT"' in mount_helper
+    assert (
+        '"$COMMON_CRAWL_WAREHOUSE_SOURCE" "$COMMON_CRAWL_STABLE_ROOT"'
+    ) in mount_helper
+    assert (
+        '"$COMMON_CRAWL_DERIVED_SOURCE" "$COMMON_CRAWL_STABLE_DERIVED_SOURCE"'
+    ) in mount_helper
+    assert ('stat -c \'%a\' "$COMMON_CRAWL_STABLE_ROOT")" = 750') in mount_helper
+    assert (
+        'stat -c \'%a\' "$COMMON_CRAWL_STABLE_DERIVED_SOURCE")" = 700'
+    ) in mount_helper
+    assert "assert_same_directory_identity \\" in mount_helper
+    assert (
+        '"$COMMON_CRAWL_DERIVED_SOURCE" "$COLLECTOR_COMMON_CRAWL_SOURCE"'
+    ) in mount_helper
+    assert (
+        'docker exec -i "$COLLECTOR_CONTAINER_ID" \\\n'
+        "    /usr/local/bin/python3 - <<'PY'"
+    ) in mount_helper
+    assert "os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC" in mount_helper
+    assert 'with open("/proc/self/mountinfo", encoding="utf-8")' in mount_helper
+    assert 'if "ro" not in target_mounts[0] or "rw" in target_mounts[0]' in (
+        mount_helper
+    )
+    assert 'elif mountpoint.startswith(f"{path}/")' in mount_helper
+    assert 'if descendant_mounts:' in mount_helper
+    assert "collector Common Crawl mount has descendant mounts" in mount_helper
+    assert 'print(f"{value.st_dev}:{value.st_ino}")' in mount_helper
+    assert '"$mounted_identity"' in mount_helper
+    assert '= "$COMMON_CRAWL_DERIVED_SOURCE"' not in proof
     assert (
         "PALIMPSEST_COMMON_CRAWL_FEATURES="
         "/app/common-crawl-derived/common-crawl-features.jsonl"
     ) in proof
-    assert 'test "$CONTAINER_FEATURE_SHA256" = "$HOST_FEATURE_SHA256"' in proof
+    assert 'test "$container_feature_sha256" = "$host_feature_sha256"' in mount_helper
+    assert proof.count("assert_collector_common_crawl_mount_identity") == 2
+
+
+def test_common_crawl_bind_alias_requires_the_same_directory_identity(
+    tmp_path: Path,
+) -> None:
+    transaction = _transaction()
+    helper = _bash_function_source(transaction, "assert_same_directory_identity")
+    source = _python_heredoc_after("assert_same_directory_identity() {")
+    expected = tmp_path / "expected"
+    different = tmp_path / "different"
+    expected.mkdir()
+    different.mkdir()
+    expected_stat = expected.stat()
+    expected_identity = f"{expected_stat.st_dev}:{expected_stat.st_ino}"
+    wrong_identity = f"{expected_stat.st_dev}:{expected_stat.st_ino + 1}"
+
+    accepted = _run_embedded_python(source, expected, expected, expected_identity)
+    rejected = _run_embedded_python(source, expected, different, expected_identity)
+    wrong_mount = _run_embedded_python(source, expected, expected, wrong_identity)
+
+    assert accepted.returncode == 0, accepted.stderr
+    assert rejected.returncode != 0
+    assert "does not match warehouse identity" in rejected.stderr
+    assert wrong_mount.returncode != 0
+    assert "does not match mounted container identity" in wrong_mount.stderr
+    for marker in (
+        '[[ "$path" =~ ^/[A-Za-z0-9._/-]+$ ]]',
+        'test "$path" != /',
+        'test ! -L "$path"',
+        'test "$(realpath -e -- "$path")" = "$path"',
+        'test "$(stat -c \'%u:%g\' "$path")" = "10001:10001"',
+        "os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC",
+        "metadata[0].st_dev, metadata[0].st_ino",
+        "mounted_device, mounted_inode",
+    ):
+        assert marker in helper
 
 
 def test_release_recovers_deployment_controlled_collectors_in_dependency_order() -> (
@@ -2044,7 +2121,7 @@ def test_release_compose_config_is_proved_before_fail_safe_is_armed() -> None:
     previous_blob = transaction.index("PREVIOUS_COMPOSE_CONFIG_BLOB=", target_expected)
     previous_render = transaction.index("config --services", previous_blob)
     previous_exact = transaction.index(
-        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"',
+        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"',
         previous_render,
     )
     interpreter_preflight = transaction.index(
@@ -3490,7 +3567,7 @@ def test_interrupted_phase_one_resume_is_manifest_pinned_and_prepared_before_mut
     )
     recovery = transaction.index("if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then")
     previous_config = transaction.index(
-        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"',
+        'test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"',
         pinned_manifest,
     )
     target_manifest = transaction.index(
@@ -3954,6 +4031,123 @@ def test_interrupted_manifest_scope_environment_and_infrastructure_are_exact() -
     )
     assert "for compose_service in postgres redis; do" in transaction[phase_three:]
     assert "verify_compose_container_inventory\n" in transaction[phase_three:]
+
+
+def test_common_crawl_retry_preserves_the_complete_prepared_receipt_chain() -> None:
+    manifest = json.loads(INTERRUPTED_PHASE1_MANIFEST.read_text(encoding="utf-8"))
+    continuation = manifest["continuation"]
+    prepared = continuation["predecessor_prepared_receipt"]
+    failed = manifest["failed_attempt"]
+    mount = failed["common_crawl_mount_identity"]
+
+    assert manifest["incident_id"] == "2026-08-25-common-crawl-bind-alias-retry"
+    assert set(manifest["authority"].values()) == {
+        "913a6aa64e705bd5d2b2f6f022a91e07389999e0"
+    }
+    assert continuation["predecessor_incident_id"] == ("2026-08-25-api-readiness-retry")
+    assert continuation["predecessor_manifest"] == {
+        "path": "ops/release-recovery/2026-08-25-api-readiness-retry.json",
+        "sha256": ("6a3a393a7f9ebdfb6fb38cf984db4f4558b3af9fa7cc973683116c274d9d3218"),
+    }
+    assert prepared["path"].endswith("api-readiness-retry.prepared.json")
+    assert prepared["sha256"] == (
+        "1699c22c16241f971b344b93e972f6358aae974352dccbac7cfe61114467b561"
+    )
+    assert prepared["transaction_id"] == "81459025a36873031dba693c229baa7c"
+    assert continuation["predecessor_completion_receipt"] == {
+        "expected_absent": True,
+        "path": (
+            "/var/lib/palimpsest-release/recovery/"
+            "2026-08-25-api-readiness-retry.complete.json"
+        ),
+    }
+    assert manifest["observed_safe_boundary"]["absent_compose_services"] == [
+        "censorwatch-render-gateway",
+        "worker-velocity",
+    ]
+    assert (
+        '"absent-services.txt": (2, boundary["absent_compose_services"])'
+        in _transaction()
+    )
+    restore_payload = json.dumps(
+        manifest["pre_failure_state"],
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode()
+    assert hashlib.sha256(restore_payload).hexdigest() == (
+        "705aaf3b5e52cc400fcb51957f0f2cf6167869e86b4622637b01ad512641c08a"
+    )
+    assert mount["expected_source"] != mount["observed_source"]
+    assert mount["source_identity"] == {
+        "device": 2064,
+        "gid": 10001,
+        "inode": 62128631,
+        "mode": "0700",
+        "uid": 10001,
+    }
+    assert mount["mount_type"] == "bind"
+    assert mount["read_only"] is True
+    assert failed["common_crawl_import_started"] is False
+    assert failed["phase1_handoff_created"] is False
+    assert failed["phase2_started"] is False
+    assert failed["phase3_binding_created"] is False
+    assert failed["post_failure_diagnostic"]["restored_to_quiescent"] is True
+    assert failed["post_failure_diagnostic"]["activation_cause"] == (
+        "accidental activation by a diagnostic watcher command"
+    )
+    instances = manifest["observed_safe_boundary"]["dynamic_release_instances"]
+    assert len(instances) == 30
+    assert [item["unit"] for item in instances] == sorted(
+        item["unit"] for item in instances
+    )
+    assert all(
+        item
+        == {
+            "active_state": "failed",
+            "fragment_path": (
+                "/etc/systemd/system/palimpsest-investigative-broker@.service"
+            ),
+            "load_state": "loaded",
+            "sub_state": "failed",
+            "unit": item["unit"],
+        }
+        for item in instances
+    )
+    transaction = _transaction()
+    assert '"dynamic-instance-names.txt": (' in transaction
+    assert '"dynamic-instances.tsv": (' in transaction
+    assert transaction.count("        30,") >= 2
+    assert "capture_release_instance_inventory \\" in transaction
+    assert 'dynamic-instance-names.txt" \\' in transaction
+    assert 'done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/dynamic-instances.tsv"' in (
+        transaction
+    )
+
+
+def test_external_publication_wait_covers_a_full_pages_deployment() -> None:
+    transaction = _transaction()
+
+    assert "PUBLICATION_WAIT_BUDGET_SECONDS=2700" in transaction
+    assert "PUBLICATION_CURL_MAX_SECONDS=30" in transaction
+    assert "PUBLICATION_WAIT_INTERVAL_SECONDS=15" in transaction
+    assert transaction.count("PUBLICATION_WAIT_DEADLINE_MONOTONIC_NS=") == 1
+    assert "time.monotonic_ns() + budget_seconds * 1_000_000_000" in transaction
+    assert "int(sys.argv[1], 10) - time.monotonic_ns()" in transaction
+    assert "publication_remaining_seconds()" in transaction
+    wait_helper = _bash_function_source(transaction, "wait_for_publication_sha256")
+    assert 'request_timeout_seconds="$PUBLICATION_CURL_MAX_SECONDS"' in wait_helper
+    assert "request_timeout_seconds > remaining_seconds" in wait_helper
+    assert '--max-time "$request_timeout_seconds"' in wait_helper
+    assert wait_helper.count('remaining_seconds="$(publication_remaining_seconds)"') == 2
+    assert 'sleep_seconds="$PUBLICATION_WAIT_INTERVAL_SECONDS"' in wait_helper
+    assert "sleep_seconds > remaining_seconds" in wait_helper
+    assert 'sleep "$sleep_seconds"' in wait_helper
+    assert transaction.count("wait_for_publication_sha256 \\") == 3
+    assert "PUBLICATION_WAIT_ATTEMPTS" not in transaction
+    assert "publication_attempt" not in transaction
+    assert "{1..80}" not in transaction
 
 
 def test_recovery_broker_and_migration_validator_passes_and_rejects_tamper(

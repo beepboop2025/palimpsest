@@ -210,18 +210,27 @@ def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
     assert openapi["url"] == "https://palimpsest.info/openapi.json"
     assert "independent of the deployed MCP" in openapi["metadata"]["versionAuthority"]
     assert ledger["metadata"]["manifest"].endswith(
-        "/readings/china-econ-observations-latest.json"
+        "/readings/china-publication-rights-latest.json"
     )
     assert ledger["metadata"]["observationSchema"].endswith(
-        "/protocol/economic-observation-v1.schema.json"
+        "/protocol/restricted-publication-v1.schema.json"
     )
-    assert index["metadata"]["schema"].endswith("/protocol/china-index-v1.schema.json")
+    assert ledger["metadata"]["access"] == "metadata-only-restricted"
+    assert index["metadata"]["schema"].endswith(
+        "/protocol/restricted-publication-v1.schema.json"
+    )
+    assert index["metadata"]["access"] == "metadata-only-restricted"
     assert router["url"] == SKILL_RAW_URL
     assert router["version"] == SKILL_REVISION
     assert router["metadata"]["canonicalDirectory"] == SKILL_DIRECTORY
     assert index["metadata"]["freshnessAuthority"].startswith(
-        "Read the current generation"
+        "Read rights_evaluated_at"
     )
+    assert "separate deployment" in entries[
+        "urn:air:palimpsest.info:mcp:evidence-observatory"
+    ]["description"]
+    assert "download economic observation ledger" not in openapi["capabilities"]
+    assert "metadata-only China publication-rights status" in openapi["description"]
     assert "updatedAt" not in index
     assert {"Palimpsest", "Seiche", "LiquiLens", "Undertow"} <= set(
         router["description"].split()

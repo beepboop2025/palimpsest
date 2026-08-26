@@ -58,6 +58,27 @@ def test_an_address_on_a_domain_this_project_does_not_own_is_caught():
     assert _findings_in("docs/x.md", f"write to {address}", ())
 
 
+def test_numeric_release_broker_instance_is_not_mistaken_for_an_address():
+    unit = (
+        "palimpsest-investigative-broker"
+        + "@580-4016203-10001"
+        + ".service"
+    )
+    assert not _findings_in("ops/release-recovery/incident.json", unit, ())
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    (
+        "someone" + "@580-4016203-10001" + ".service",
+        "palimpsest-investigative-broker" + "@580-4016203-10002" + ".service",
+        "palimpsest-investigative-broker" + "@580-4016203-10001" + ".service.example",
+    ),
+)
+def test_release_broker_exemption_does_not_hide_nearby_address_shapes(candidate):
+    assert _findings_in("ops/release-recovery/incident.json", candidate, ())
+
+
 def test_the_project_s_own_addresses_are_not_flagged():
     """desk@ and bot@ are published on purpose; a check that cries wolf on them gets turned
     off within the week."""

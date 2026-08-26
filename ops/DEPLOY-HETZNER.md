@@ -1518,13 +1518,15 @@ EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRE
 COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA}"
 TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward}"
 INTERRUPTED_PHASE1_RECOVERY="${INTERRUPTED_PHASE1_RECOVERY:-0}"
-INTERRUPTED_PHASE1_INCIDENT='2026-08-25-api-readiness-retry'
+INTERRUPTED_PHASE1_INCIDENT='2026-08-25-common-crawl-bind-alias-retry'
 INTERRUPTED_PHASE1_MANIFEST_SOURCE="ops/release-recovery/${INTERRUPTED_PHASE1_INCIDENT}.json"
-INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_api_readiness_retry_manifest.py'
-INTERRUPTED_PHASE1_MANIFEST_SHA256='6a3a393a7f9ebdfb6fb38cf984db4f4558b3af9fa7cc973683116c274d9d3218'
-INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='1ae25399c7b36dca60e316cc966ea7d9636ec62b'
+INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_common_crawl_bind_alias_retry_manifest.py'
+INTERRUPTED_PHASE1_MANIFEST_SHA256='62dd4970775c4acc840649f4531c50f73dc73906ad816d7bf45c49e1f323d834'
+INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='913a6aa64e705bd5d2b2f6f022a91e07389999e0'
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
 COMMON_CRAWL_DERIVED_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE/derived"
+COMMON_CRAWL_STABLE_ROOT='/var/lib/palimpsest/common-crawl'
+COMMON_CRAWL_STABLE_DERIVED_SOURCE="$COMMON_CRAWL_STABLE_ROOT/derived"
 COMMON_CRAWL_FEATURE_EXPORT="$COMMON_CRAWL_DERIVED_SOURCE/common-crawl-features.jsonl"
 COMMON_CRAWL_FEATURE_MAX_BYTES=16777216
 OBSERVER_POLICY_SOURCE='ops/observer-release-policy-20260824.json'
@@ -1636,6 +1638,154 @@ for path in sorted(
     finally:
         os.close(descriptor)
 PY
+}
+
+assert_same_directory_identity() {
+  (( $# == 2 || $# == 3 ))
+  local expected_path="$1" observed_path="$2"
+  local mounted_identity="${3:-}" path
+  if [[ -n "$mounted_identity" ]]; then
+    [[ "$mounted_identity" =~ ^[0-9]+:[0-9]+$ ]]
+  fi
+  for path in "$expected_path" "$observed_path"; do
+    [[ "$path" =~ ^/[A-Za-z0-9._/-]+$ ]]
+    test "$path" != /
+    test -d "$path"
+    test ! -L "$path"
+    test "$(realpath -e -- "$path")" = "$path"
+    test "$(stat -c '%u:%g' "$path")" = "10001:10001"
+  done
+  python3 - "$expected_path" "$observed_path" "$mounted_identity" <<'PY'
+import os
+import stat
+import sys
+
+descriptors: list[int] = []
+metadata: list[os.stat_result] = []
+mounted_identity = sys.argv[3] if len(sys.argv) == 4 else ""
+try:
+    for path in sys.argv[1:3]:
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+        )
+        descriptors.append(descriptor)
+        value = os.fstat(descriptor)
+        if not stat.S_ISDIR(value.st_mode):
+            raise SystemExit(f"release mount source is not a directory: {path}")
+        metadata.append(value)
+    if (metadata[0].st_dev, metadata[0].st_ino) != (
+        metadata[1].st_dev,
+        metadata[1].st_ino,
+    ):
+        raise SystemExit("release mount source does not match warehouse identity")
+    if mounted_identity:
+        mounted_device, mounted_inode = (
+            int(value, 10) for value in mounted_identity.split(":", 1)
+        )
+        if (metadata[0].st_dev, metadata[0].st_ino) != (
+            mounted_device,
+            mounted_inode,
+        ):
+            raise SystemExit(
+                "release mount source does not match mounted container identity"
+            )
+finally:
+    for descriptor in descriptors:
+        os.close(descriptor)
+PY
+}
+
+assert_collector_common_crawl_mount_identity() {
+  (( $# == 0 ))
+  local mounted_identity host_feature_sha256 container_feature_sha256
+  local feature_bytes
+  mounted_identity="$(docker exec -i "$COLLECTOR_CONTAINER_ID" \
+    /usr/local/bin/python3 - <<'PY'
+import os
+import re
+import stat
+
+path = "/app/common-crawl-derived"
+
+
+def decode_mountinfo_path(value: str) -> str:
+    return re.sub(
+        r"\\([0-7]{3})",
+        lambda match: chr(int(match.group(1), 8)),
+        value,
+    )
+
+
+target_mounts: list[set[str]] = []
+descendant_mounts: list[str] = []
+with open("/proc/self/mountinfo", encoding="utf-8") as mountinfo:
+    for raw_line in mountinfo:
+        fields = raw_line.split(" - ", 1)[0].split()
+        if len(fields) < 6:
+            raise SystemExit("collector mountinfo record is malformed")
+        mountpoint = decode_mountinfo_path(fields[4])
+        if mountpoint == path:
+            target_mounts.append(set(fields[5].split(",")))
+        elif mountpoint.startswith(f"{path}/"):
+            descendant_mounts.append(mountpoint)
+if len(target_mounts) != 1:
+    raise SystemExit("collector Common Crawl mount is not unique in mountinfo")
+if "ro" not in target_mounts[0] or "rw" in target_mounts[0]:
+    raise SystemExit("collector Common Crawl mount is not effectively read-only")
+if descendant_mounts:
+    raise SystemExit(
+        "collector Common Crawl mount has descendant mounts: "
+        + ", ".join(sorted(descendant_mounts))
+    )
+
+descriptor = os.open(
+    path,
+    os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+)
+try:
+    value = os.fstat(descriptor)
+    if (
+        not stat.S_ISDIR(value.st_mode)
+        or value.st_uid != 10001
+        or value.st_gid != 10001
+        or stat.S_IMODE(value.st_mode) != 0o700
+    ):
+        raise SystemExit("collector Common Crawl mount metadata is invalid")
+    print(f"{value.st_dev}:{value.st_ino}")
+finally:
+    os.close(descriptor)
+PY
+)"
+  [[ "$mounted_identity" =~ ^[0-9]+:[0-9]+$ ]]
+  /usr/bin/mountpoint -q "$COMMON_CRAWL_STABLE_ROOT"
+  test "$(stat -c '%a' "$COMMON_CRAWL_WAREHOUSE_SOURCE")" = 750
+  test "$(stat -c '%a' "$COMMON_CRAWL_STABLE_ROOT")" = 750
+  test "$(stat -c '%a' "$COMMON_CRAWL_DERIVED_SOURCE")" = 700
+  test "$(stat -c '%a' "$COMMON_CRAWL_STABLE_DERIVED_SOURCE")" = 700
+  assert_same_directory_identity \
+    "$COMMON_CRAWL_WAREHOUSE_SOURCE" "$COMMON_CRAWL_STABLE_ROOT"
+  assert_same_directory_identity \
+    "$COMMON_CRAWL_DERIVED_SOURCE" "$COMMON_CRAWL_STABLE_DERIVED_SOURCE" \
+    "$mounted_identity"
+  assert_same_directory_identity \
+    "$COMMON_CRAWL_DERIVED_SOURCE" "$COLLECTOR_COMMON_CRAWL_SOURCE" \
+    "$mounted_identity"
+  test -f "$COMMON_CRAWL_FEATURE_EXPORT"
+  test ! -L "$COMMON_CRAWL_FEATURE_EXPORT"
+  test "$(stat -c '%u:%g' "$COMMON_CRAWL_FEATURE_EXPORT")" = "10001:10001"
+  feature_bytes="$(stat -c '%s' "$COMMON_CRAWL_FEATURE_EXPORT")"
+  [[ "$feature_bytes" =~ ^[0-9]+$ ]]
+  (( feature_bytes > 0 ))
+  (( feature_bytes <= COMMON_CRAWL_FEATURE_MAX_BYTES ))
+  host_feature_sha256="$(sha256sum "$COMMON_CRAWL_FEATURE_EXPORT" | \
+    awk '{print $1}')"
+  container_feature_sha256="$(docker exec "$COLLECTOR_CONTAINER_ID" \
+    sha256sum /app/common-crawl-derived/common-crawl-features.jsonl | \
+    awk '{print $1}')"
+  [[ "$host_feature_sha256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$container_feature_sha256" =~ ^[0-9a-f]{64}$ ]]
+  test "$container_feature_sha256" = "$host_feature_sha256"
 }
 
 test -x /usr/bin/systemd-run
@@ -1796,10 +1946,11 @@ COMPOSE_QUEUE_BY_SERVICE[worker-warehouse]=warehouse
 COMPOSE_QUEUE_BY_SERVICE[worker-velocity]=censorwatch
 
 # Prove that the isolated Docker/Compose environment can load the reviewed
-# production file before the fail-safe is armed. The interrupted transaction
-# starts on the pre-renderer 1ae topology, while ordinary releases may start on
-# either reviewed side of that topology change. Bind the service list to the
-# exact Compose Git blob so a same-shaped but unreviewed file cannot pass.
+# production file before the fail-safe is armed. Ordinary releases may start on
+# either reviewed side of the renderer topology change, while the successor
+# incident is pinned to the render-isolated topology already installed by its
+# failed predecessor. Bind the service list to the exact Compose Git blob so a
+# same-shaped but unreviewed file cannot pass.
 LEGACY_COMPOSE_CONFIG_BLOB='38000e2f73ded26e12caa4e21e0dbf4b7fa0ec33'
 LEGACY_COMPOSE_CONFIG_SERVICES=$'api\nbeat\nmigrate\npostgres\nredis\nworker\nworker-collectors\nworker-velocity\nworker-warehouse'
 RENDER_ISOLATED_COMPOSE_CONFIG_BLOB='4e7ecd9e57a4a386a5387ee07dad578e003332cc'
@@ -1826,9 +1977,9 @@ case "$PREVIOUS_COMPOSE_CONFIG_BLOB" in
     ;;
 esac
 if [[ "$INTERRUPTED_PHASE1_RECOVERY" == 1 ]]; then
-  test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$LEGACY_COMPOSE_CONFIG_BLOB"
+  test "$PREVIOUS_COMPOSE_CONFIG_BLOB" = "$RENDER_ISOLATED_COMPOSE_CONFIG_BLOB"
   test "$ACTUAL_PREVIOUS_COMPOSE_CONFIG_SERVICES" \
-    = "$LEGACY_COMPOSE_CONFIG_SERVICES"
+    = "$RENDER_ISOLATED_COMPOSE_CONFIG_SERVICES"
 fi
 
 # The official Python application image installs its interpreter under
@@ -2806,6 +2957,8 @@ RECOVERY_EXPECTED_ENV_SHA256=''
 RECOVERY_COMPOSE_SCOPE_PROJECT=''
 RECOVERY_COMPOSE_SCOPE_WORKING_DIR=''
 RECOVERY_COMPOSE_SCOPE_CONFIG_FILES=''
+RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256=''
+RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256=''
 RECOVERY_PREPARED_RECEIPT_PATH=''
 RECOVERY_PREPARED_RECEIPT_SHA256=''
 RECOVERY_PREPARED_TMP=''
@@ -2872,14 +3025,10 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
     | sha256sum | awk '{print $1}')"
   test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH")" \
-    = "validated API readiness retry manifest: $RECOVERY_MANIFEST_SHA256"
-  test "$(sudo /usr/bin/python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
-    "$RECOVERY_MANIFEST_PATH" --verify-host-continuation \
-    --repository-root "$PALIMPSEST_REPO_ROOT")" \
-    = "validated API readiness retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256 prepared=e9f506a44e19f78ecb094bd13c5d7c29f62f894174a5213de67b402b42a74f66"
+    = "validated Common Crawl bind-alias retry manifest: $RECOVERY_MANIFEST_SHA256"
 
   if ! recovery_authority_projection="$(python3 - \
-      "$RECOVERY_MANIFEST_PATH" <<'PY'
+      "$RECOVERY_MANIFEST_PATH" "$PALIMPSEST_REPO_ROOT" <<'PY'
 import datetime
 import hashlib
 import json
@@ -2887,6 +3036,16 @@ import pathlib
 import sys
 
 manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+repository_root = pathlib.Path(sys.argv[2]).resolve(strict=True)
+predecessor = manifest["continuation"]["predecessor_manifest"]
+predecessor_relative = pathlib.PurePosixPath(predecessor["path"])
+if predecessor_relative.is_absolute() or ".." in predecessor_relative.parts:
+    raise SystemExit("predecessor manifest path is outside the repository")
+predecessor_path = repository_root.joinpath(*predecessor_relative.parts)
+predecessor_payload = predecessor_path.read_bytes()
+if hashlib.sha256(predecessor_payload).hexdigest() != predecessor["sha256"]:
+    raise SystemExit("predecessor manifest digest does not match continuation")
+predecessor_manifest = json.loads(predecessor_payload)
 canonical = lambda value: json.dumps(
     value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     allow_nan=False,
@@ -2903,13 +3062,15 @@ print(manifest["observed_safe_boundary"]["compose_environment_sha256"])
 print(manifest["observed_safe_boundary"]["compose_scope"]["project"])
 print(manifest["observed_safe_boundary"]["compose_scope"]["working_dir"])
 print(manifest["observed_safe_boundary"]["compose_scope"]["config_files"])
+print(manifest["continuation"]["predecessor_prepared_receipt"]["sha256"])
+print(predecessor_manifest["continuation"]["predecessor_prepared_receipt"]["sha256"])
 PY
   )"; then
     printf 'failed to project interrupted Phase 1 manifest authority\n' >&2
     exit 1
   fi
   mapfile -t recovery_authority <<<"$recovery_authority_projection"
-  test "${#recovery_authority[@]}" = 12
+  test "${#recovery_authority[@]}" = 14
   test "${recovery_authority[0]}" = "$INTERRUPTED_PHASE1_INCIDENT"
   test "${recovery_authority[1]}" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
   test "${recovery_authority[2]}" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
@@ -2925,8 +3086,19 @@ PY
   RECOVERY_COMPOSE_SCOPE_PROJECT="${recovery_authority[9]}"
   RECOVERY_COMPOSE_SCOPE_WORKING_DIR="${recovery_authority[10]}"
   RECOVERY_COMPOSE_SCOPE_CONFIG_FILES="${recovery_authority[11]}"
+  RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256="${recovery_authority[12]}"
+  RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256="${recovery_authority[13]}"
   [[ "$RECOVERY_HYBRID_FINGERPRINT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_RESTORE_PROFILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256" \
+    =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  test "$(sudo /usr/bin/python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
+    "$RECOVERY_MANIFEST_PATH" --verify-host-continuation \
+    --repository-root "$PALIMPSEST_REPO_ROOT")" \
+    = "validated Common Crawl bind-alias retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256"\
+" prepared=$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256"\
+" original_prepared=$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256"
   test "$RECOVERY_EXPECTED_ENV_SHA256" \
     = 2ce97c2f94ce93336b592e1ddee78cfdbec1e8b19d35b39faab6ac069d332c95
   test "$RELEASE_ENV_SNAPSHOT_SHA256" = "$RECOVERY_EXPECTED_ENV_SHA256"
@@ -2990,7 +3162,21 @@ outputs = {
             for item in boundary["infrastructure_containers"]
         ],
     ),
-    "absent-services.txt": (1, boundary["absent_compose_services"]),
+    "dynamic-instance-names.txt": (
+        30,
+        sorted(item["unit"] for item in boundary["dynamic_release_instances"]),
+    ),
+    "dynamic-instances.tsv": (
+        30,
+        [
+            fields(
+                item["unit"], item["load_state"], item["active_state"],
+                item["sub_state"], item["fragment_path"],
+            )
+            for item in boundary["dynamic_release_instances"]
+        ],
+    ),
+    "absent-services.txt": (2, boundary["absent_compose_services"]),
     "local-image.txt": (
         4,
         [
@@ -3096,7 +3282,7 @@ PY
 
   assert_interrupted_phase1_boundary() {
     local actual expected service container_id unit unit_state unit_active
-    local unit_load_state
+    local unit_load_state unit_sub_state unit_fragment_path
     local unit_active_status=0 dynamic_instances
     materialize_interrupted_phase1_boundary
     test "$(release_git rev-parse HEAD)" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
@@ -3145,6 +3331,23 @@ PY
       return 1
     fi
     test -z "$dynamic_instances"
+    capture_release_instance_inventory \
+      "$RECOVERY_BOUNDARY_PROJECTION_DIR/actual-dynamic-instance-names.txt"
+    cmp -s \
+      "$RECOVERY_BOUNDARY_PROJECTION_DIR/dynamic-instance-names.txt" \
+      "$RECOVERY_BOUNDARY_PROJECTION_DIR/actual-dynamic-instance-names.txt"
+    while IFS=$'\t' read -r unit unit_load_state unit_active \
+        unit_sub_state unit_fragment_path; do
+      test -n "$unit"
+      test "$(systemctl show --property=LoadState --value "$unit")" \
+        = "$unit_load_state"
+      test "$(systemctl show --property=ActiveState --value "$unit")" \
+        = "$unit_active"
+      test "$(systemctl show --property=SubState --value "$unit")" \
+        = "$unit_sub_state"
+      test "$(systemctl show --property=FragmentPath --value "$unit")" \
+        = "$unit_fragment_path"
+    done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/dynamic-instances.tsv"
     if ! expected="$(<"$RECOVERY_BOUNDARY_PROJECTION_DIR/running-services.txt")"; then
       return 1
     fi
@@ -4782,7 +4985,7 @@ for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
 done
 PRE_CHANGE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
-  RECOVERY_BACKUP_REASON='api-readiness-retry-fresh-target-backup'
+  RECOVERY_BACKUP_REASON='common-crawl-bind-alias-retry-fresh-target-backup'
   RECOVERY_BACKUP_VERIFIED_AT="$(date -u +'%Y-%m-%dT%H:%M:%S.%NZ')"
   PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
   test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
@@ -5122,21 +5325,33 @@ for candidate_container_id in \
   test "$(docker inspect "$candidate_container_id" --format '{{.Image}}')" \
     = "$CANDIDATE_IMAGE_ID"
 done
-test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
-  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.Source}}{{end}}{{end}}')" \
-  = "$COMMON_CRAWL_DERIVED_SOURCE"
-test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
-  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{.RW}}{{end}}{{end}}')" \
-  = "false"
+COLLECTOR_COMMON_CRAWL_MOUNT_PATH="$OBSERVER_PREFLIGHT_DIR/collector-common-crawl-mount.tsv"
+docker inspect "$COLLECTOR_CONTAINER_ID" --format \
+  '{{range .Mounts}}{{if eq .Destination "/app/common-crawl-derived"}}{{printf "%s\t%s\t%t\t%s\n" .Type .Source .RW .Propagation}}{{end}}{{end}}' \
+  >"$COLLECTOR_COMMON_CRAWL_MOUNT_PATH"
+mapfile -t COLLECTOR_COMMON_CRAWL_MOUNTS \
+  <"$COLLECTOR_COMMON_CRAWL_MOUNT_PATH"
+test "${#COLLECTOR_COMMON_CRAWL_MOUNTS[@]}" = 1
+IFS=$'\t' read -r COLLECTOR_COMMON_CRAWL_TYPE \
+  COLLECTOR_COMMON_CRAWL_SOURCE COLLECTOR_COMMON_CRAWL_RW \
+  COLLECTOR_COMMON_CRAWL_PROPAGATION \
+  <<<"${COLLECTOR_COMMON_CRAWL_MOUNTS[0]}"
+test "$COLLECTOR_COMMON_CRAWL_TYPE" = bind
+test "$COLLECTOR_COMMON_CRAWL_RW" = false
+test "$COLLECTOR_COMMON_CRAWL_PROPAGATION" = rprivate
+case "$COLLECTOR_COMMON_CRAWL_SOURCE" in
+  "$COMMON_CRAWL_DERIVED_SOURCE"|"$COMMON_CRAWL_STABLE_DERIVED_SOURCE") ;;
+  *)
+    printf 'collector Common Crawl source is not an approved alias: %s\n' \
+      "$COLLECTOR_COMMON_CRAWL_SOURCE" >&2
+    exit 1
+    ;;
+esac
+assert_collector_common_crawl_mount_identity
 test "$(docker inspect "$COLLECTOR_CONTAINER_ID" --format \
   '{{range .Config.Env}}{{println .}}{{end}}' | \
   grep -Fx 'PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl')" \
   = "PALIMPSEST_COMMON_CRAWL_FEATURES=/app/common-crawl-derived/common-crawl-features.jsonl"
-HOST_FEATURE_SHA256="$(sha256sum "$COMMON_CRAWL_FEATURE_EXPORT" | awk '{print $1}')"
-CONTAINER_FEATURE_SHA256="$(docker exec "$COLLECTOR_CONTAINER_ID" \
-  sha256sum /app/common-crawl-derived/common-crawl-features.jsonl | \
-  awk '{print $1}')"
-test "$CONTAINER_FEATURE_SHA256" = "$HOST_FEATURE_SHA256"
 
 CANDIDATE_WORKER_HOSTNAME="$(docker inspect "$CANDIDATE_WORKER_ID" \
   --format '{{.Config.Hostname}}')"
@@ -5160,6 +5375,7 @@ docker exec -i "$CANDIDATE_WORKER_ID" /usr/local/bin/python3 - check \
 
 # Import the new Common Crawl bundle before any context run. Analysis and
 # context remain stopped until the public OSINT sync advances in Phase 3.
+assert_collector_common_crawl_mount_identity
 start_and_verify_oneshot palimpsest-common-crawl-import.service
 
 # Run the exact controller bytes synchronously inside the candidate collector
@@ -5699,33 +5915,88 @@ REPOSITORY_LEDGER_RAW_SHA256="$(file_sha256 "$REPOSITORY_LEDGER_TMP")"
 [[ "$REPOSITORY_LEDGER_RAW_SHA256" =~ ^[0-9a-f]{64}$ ]]
 test -s "$REPOSITORY_LEDGER_TMP"
 PUBLIC_OSINT_URL="https://palimpsest.info/readings/osint-china-latest.json?publication=$OSINT_PUBLICATION_SHA"
-PUBLIC_OSINT_RAW_SHA256=''
-for _ in {1..80}; do
-  if curl --fail --silent --show-error --location --max-filesize 4194304 \
-      --max-time 30 --output "$PUBLIC_OSINT_TMP" "$PUBLIC_OSINT_URL"; then
-    PUBLIC_OSINT_RAW_SHA256="$(file_sha256 "$PUBLIC_OSINT_TMP")"
-    if [[ "$PUBLIC_OSINT_RAW_SHA256" \
-        == "$REPOSITORY_OSINT_RAW_SHA256" ]]; then
-      break
+PUBLICATION_WAIT_BUDGET_SECONDS=2700
+PUBLICATION_CURL_MAX_SECONDS=30
+PUBLICATION_WAIT_INTERVAL_SECONDS=15
+PUBLICATION_WAIT_DEADLINE_MONOTONIC_NS="$(python3 - \
+  "$PUBLICATION_WAIT_BUDGET_SECONDS" <<'PY'
+import sys
+import time
+
+budget_seconds = int(sys.argv[1], 10)
+if budget_seconds <= 0:
+    raise SystemExit("publication wait budget must be positive")
+print(time.monotonic_ns() + budget_seconds * 1_000_000_000)
+PY
+)"
+[[ "$PUBLICATION_WAIT_DEADLINE_MONOTONIC_NS" =~ ^[0-9]+$ ]]
+
+publication_remaining_seconds() {
+  (( $# == 0 ))
+  python3 - "$PUBLICATION_WAIT_DEADLINE_MONOTONIC_NS" <<'PY'
+import sys
+import time
+
+remaining_ns = int(sys.argv[1], 10) - time.monotonic_ns()
+print(0 if remaining_ns <= 0 else (remaining_ns + 999_999_999) // 1_000_000_000)
+PY
+}
+
+wait_for_publication_sha256() {
+  (( $# == 4 ))
+  local url="$1" output_path="$2" expected_sha256="$3"
+  local max_filesize="$4" actual_sha256 remaining_seconds
+  local request_timeout_seconds sleep_seconds
+  [[ "$expected_sha256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$max_filesize" =~ ^[0-9]+$ ]]
+  (( max_filesize > 0 ))
+  while true; do
+    remaining_seconds="$(publication_remaining_seconds)"
+    [[ "$remaining_seconds" =~ ^[0-9]+$ ]]
+    if (( remaining_seconds == 0 )); then
+      printf 'shared publication deadline expired while waiting for %s\n' \
+        "$url" >&2
+      return 1
     fi
-  fi
-  sleep 15
-done
+    request_timeout_seconds="$PUBLICATION_CURL_MAX_SECONDS"
+    if (( request_timeout_seconds > remaining_seconds )); then
+      request_timeout_seconds="$remaining_seconds"
+    fi
+    if curl --fail --silent --show-error --location \
+        --max-filesize "$max_filesize" \
+        --max-time "$request_timeout_seconds" \
+        --output "$output_path" "$url"; then
+      actual_sha256="$(file_sha256 "$output_path")"
+      if [[ "$actual_sha256" == "$expected_sha256" ]]; then
+        return 0
+      fi
+    fi
+    remaining_seconds="$(publication_remaining_seconds)"
+    [[ "$remaining_seconds" =~ ^[0-9]+$ ]]
+    if (( remaining_seconds == 0 )); then
+      printf 'shared publication deadline expired while waiting for %s\n' \
+        "$url" >&2
+      return 1
+    fi
+    sleep_seconds="$PUBLICATION_WAIT_INTERVAL_SECONDS"
+    if (( sleep_seconds > remaining_seconds )); then
+      sleep_seconds="$remaining_seconds"
+    fi
+    sleep "$sleep_seconds"
+  done
+}
+
+wait_for_publication_sha256 \
+  "$PUBLIC_OSINT_URL" "$PUBLIC_OSINT_TMP" \
+  "$REPOSITORY_OSINT_RAW_SHA256" 4194304
+PUBLIC_OSINT_RAW_SHA256="$(file_sha256 "$PUBLIC_OSINT_TMP")"
 test "$PUBLIC_OSINT_RAW_SHA256" = "$REPOSITORY_OSINT_RAW_SHA256"
 python3 -m json.tool "$PUBLIC_OSINT_TMP" >/dev/null
 PUBLIC_LEDGER_URL="https://palimpsest.info/readings/readings-ledger.jsonl?publication=$OSINT_PUBLICATION_SHA"
-PUBLIC_LEDGER_RAW_SHA256=''
-for _ in {1..80}; do
-  if curl --fail --silent --show-error --location --max-filesize 67108864 \
-      --max-time 30 --output "$PUBLIC_LEDGER_TMP" "$PUBLIC_LEDGER_URL"; then
-    PUBLIC_LEDGER_RAW_SHA256="$(file_sha256 "$PUBLIC_LEDGER_TMP")"
-    if [[ "$PUBLIC_LEDGER_RAW_SHA256" \
-        == "$REPOSITORY_LEDGER_RAW_SHA256" ]]; then
-      break
-    fi
-  fi
-  sleep 15
-done
+wait_for_publication_sha256 \
+  "$PUBLIC_LEDGER_URL" "$PUBLIC_LEDGER_TMP" \
+  "$REPOSITORY_LEDGER_RAW_SHA256" 67108864
+PUBLIC_LEDGER_RAW_SHA256="$(file_sha256 "$PUBLIC_LEDGER_TMP")"
 test "$PUBLIC_LEDGER_RAW_SHA256" = "$REPOSITORY_LEDGER_RAW_SHA256"
 test -s "$PUBLIC_LEDGER_TMP"
 
@@ -5746,18 +6017,10 @@ test "$REPOSITORY_BLEED_NORMALIZED_SHA256" \
   = "$LOCAL_BLEED_NORMALIZED_SHA256"
 
 PUBLIC_BLEED_URL="https://palimpsest.info/readings/bleedthrough-latest.json?release=$OSINT_RUN_ID"
-PUBLIC_BLEED_RAW_SHA256=''
-for _ in {1..80}; do
-  if curl --fail --silent --show-error --location --max-filesize 262144 \
-      --max-time 30 --output "$PUBLIC_BLEED_TMP" "$PUBLIC_BLEED_URL"; then
-    PUBLIC_BLEED_RAW_SHA256="$(file_sha256 "$PUBLIC_BLEED_TMP")"
-    if [[ "$PUBLIC_BLEED_RAW_SHA256" \
-        == "$REPOSITORY_BLEED_RAW_SHA256" ]]; then
-      break
-    fi
-  fi
-  sleep 15
-done
+wait_for_publication_sha256 \
+  "$PUBLIC_BLEED_URL" "$PUBLIC_BLEED_TMP" \
+  "$REPOSITORY_BLEED_RAW_SHA256" 262144
+PUBLIC_BLEED_RAW_SHA256="$(file_sha256 "$PUBLIC_BLEED_TMP")"
 test "$PUBLIC_BLEED_RAW_SHA256" = "$REPOSITORY_BLEED_RAW_SHA256"
 python3 -m json.tool "$PUBLIC_BLEED_TMP" >/dev/null
 PUBLIC_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
@@ -5895,6 +6158,8 @@ if ! declare -p \
     RECOVERY_RESTORE_PROFILE_SHA256 RECOVERY_FAILED_TARGET_SHA \
     RECOVERY_EXPECTED_ENV_SHA256 RECOVERY_COMPOSE_SCOPE_PROJECT \
     RECOVERY_COMPOSE_SCOPE_WORKING_DIR RECOVERY_COMPOSE_SCOPE_CONFIG_FILES \
+    RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256 \
+    RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256 \
     RECOVERY_BOUNDARY_PROJECTION_DIR \
     RECOVERY_PREPARED_RECEIPT_PATH RECOVERY_PREPARED_RECEIPT_SHA256 \
     RECOVERY_PREPARED_TMP \
@@ -6026,11 +6291,14 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test "$RECOVERY_FAILED_TARGET_SHA" \
     = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
   test "$RECOVERY_BACKUP_REASON" \
-    = api-readiness-retry-fresh-target-backup
+    = common-crawl-bind-alias-retry-fresh-target-backup
   test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
   [[ "$RECOVERY_HYBRID_FINGERPRINT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_RESTORE_PROFILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256" \
+    =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_BROKER_QUEUES_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
   test "$RECOVERY_EXPECTED_ENV_SHA256" \
@@ -6054,11 +6322,13 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
     | sha256sum | awk '{print $1}')"
   test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH")" \
-    = "validated API readiness retry manifest: $RECOVERY_MANIFEST_SHA256"
+    = "validated Common Crawl bind-alias retry manifest: $RECOVERY_MANIFEST_SHA256"
   test "$(sudo /usr/bin/python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH" --verify-host-continuation \
     --repository-root "$PALIMPSEST_REPO_ROOT")" \
-    = "validated API readiness retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256 prepared=e9f506a44e19f78ecb094bd13c5d7c29f62f894174a5213de67b402b42a74f66"
+    = "validated Common Crawl bind-alias retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256"\
+" prepared=$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256"\
+" original_prepared=$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256"
   for recovery_ancestor in \
       "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
       "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
@@ -6553,7 +6823,7 @@ backup_checks = (
     isinstance(backup, dict)
         and set(backup) == {"reason", "core_snapshot", "current_snapshot", "verification"},
     isinstance(backup, dict) and backup.get("reason") == backup_reason,
-    backup_reason == "api-readiness-retry-fresh-target-backup",
+    backup_reason == "common-crawl-bind-alias-retry-fresh-target-backup",
     isinstance(backup, dict) and backup.get("core_snapshot") == core_snapshot,
     isinstance(backup, dict) and backup.get("current_snapshot") == current_snapshot,
     core_snapshot == current_snapshot,
