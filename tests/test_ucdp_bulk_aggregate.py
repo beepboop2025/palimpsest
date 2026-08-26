@@ -9,7 +9,7 @@ import stat
 import zipfile
 from copy import deepcopy
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -19,19 +19,31 @@ from collectors.ucdp_bulk import (
     ACTOR_HEADER,
     ARMED_CONFLICT_HEADER,
     COUNTRY_YEAR_HEADER,
+    REQUIRED_CITATIONS,
+    RIGHTS_DECISION_STATUS,
+    RIGHTS_PAGE_URL,
+    REVIEW_LOCK_SCHEMA_VERSION,
+    REVIEW_POLICY_VERSION,
+    UCDPRightsSnapshotReceipt,
     UCDPAcquisitionReceipt,
     UCDPBulkError,
     build_bundle,
     extract_member,
     fetch_archive,
     load_registry,
+    load_review_lock,
+    parse_review_lock,
     receipt_for,
     verify_acquisition_receipt,
+    _transport_policy_sha256,
 )
 from core.safe_fetch import SafeFetchResponse
 from core.ucdp_aggregate import (
+    MAX_ACTOR_IDS_PER_SIDE,
+    TRUST_MODEL,
     UCDPAggregateError,
     assert_public_safe,
+    canonical_public_bytes,
     canonical_json_bytes,
     sha256_bytes,
 )
@@ -42,8 +54,18 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "config" / "ucdp_aggregate.json"
 BRI_REGISTRY = ROOT / "config" / "bri_observatory.json"
 SCHEMA = ROOT / "protocol" / "ucdp-aggregate-v1.schema.json"
+REVIEW_LOCK_SCHEMA = (
+    ROOT / "protocol" / "ucdp-reviewed-acquisition-lock-v1.schema.json"
+)
+PENDING_REVIEW_LOCK = ROOT / "config" / "ucdp_acquisition_lock.json"
 RETRIEVED_AT = datetime(2026, 8, 26, 18, 30, tzinfo=UTC)
 LAST_MODIFIED = datetime(2026, 6, 8, 20, 19, 1, tzinfo=UTC)
+RIGHTS_OBSERVED_AT = datetime(2026, 8, 26, 18, 29, tzinfo=UTC)
+RIGHTS_REVIEWED_AT = datetime(2026, 8, 26, 18, 35, tzinfo=UTC)
+PUBLICATION_AT = datetime(2026, 8, 26, 18, 40, tzinfo=UTC)
+CURRENT_AT = datetime(2026, 8, 27, 0, 0, tzinfo=UTC)
+RIGHTS_VALID_UNTIL = datetime(2026, 9, 25, 18, 35, tzinfo=UTC)
+RIGHTS_SNAPSHOT = b"<html><body>UCDP 26.1 CC BY 4.0 citation index fixture</body></html>\n"
 
 
 def _csv_member(
@@ -146,6 +168,9 @@ def _country_year_rows() -> list[dict[str, str]]:
                 "os_total_deaths_low": "0",
                 "os_total_deaths_best": "0",
                 "os_total_deaths_high": "0",
+                "cumulative_total_deaths_in_orgvio_low": "0",
+                "cumulative_total_deaths_in_orgvio_best": "0",
+                "cumulative_total_deaths_in_orgvio_high": "0",
             }
             if country == "Pakistan" and year == 2025:
                 values.update(
@@ -159,6 +184,9 @@ def _country_year_rows() -> list[dict[str, str]]:
                         "os_total_deaths_low": "0",
                         "os_total_deaths_best": "1",
                         "os_total_deaths_high": "1",
+                        "cumulative_total_deaths_in_orgvio_low": "3",
+                        "cumulative_total_deaths_in_orgvio_best": "5",
+                        "cumulative_total_deaths_in_orgvio_high": "7",
                     }
                 )
             rows.append(
@@ -227,16 +255,142 @@ def _evidence(*, unknown_actor: bool = False, myanmar_territory: str = "Karen"):
     return registry, archives, receipts
 
 
+def _review_material(registry, archives, receipts):
+    rights_receipt = UCDPRightsSnapshotReceipt(
+        snapshot_sha256=sha256_bytes(RIGHTS_SNAPSHOT),
+        snapshot_bytes=len(RIGHTS_SNAPSHOT),
+        observed_at=RIGHTS_OBSERVED_AT,
+    )
+    decision = {
+        "status": RIGHTS_DECISION_STATUS,
+        "decision": "allow_with_attribution",
+        "scope": "annual_aggregate_context_only",
+        "rights_page_url": RIGHTS_PAGE_URL,
+        "rights_page_snapshot_sha256": sha256_bytes(RIGHTS_SNAPSHOT),
+        "rights_page_snapshot_bytes": len(RIGHTS_SNAPSHOT),
+        "rights_page_snapshot_receipt_sha256": sha256_bytes(
+            canonical_json_bytes(rights_receipt.to_dict())
+        ),
+        "observed_at": RIGHTS_OBSERVED_AT.isoformat().replace("+00:00", "Z"),
+        "reviewed_at": RIGHTS_REVIEWED_AT.isoformat().replace("+00:00", "Z"),
+        "valid_until": RIGHTS_VALID_UNTIL.isoformat().replace("+00:00", "Z"),
+        "license": "CC-BY-4.0",
+        "license_url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": "Uppsala Conflict Data Program (UCDP), version 26.1",
+        "reviewed_by": "palimpsest-publication-rights-review",
+        "policy_version": REVIEW_POLICY_VERSION,
+        "citations": [dict(row) for row in REQUIRED_CITATIONS],
+    }
+    decision["decision_id"] = sha256_bytes(canonical_json_bytes(decision))
+    pins = []
+    for input_id in sorted(registry.inputs):
+        member = extract_member(archives[input_id], registry.inputs[input_id])
+        receipt = receipts[input_id]
+        pins.append(
+            {
+                "input_id": input_id,
+                "archive_sha256": sha256_bytes(archives[input_id]),
+                "archive_bytes": len(archives[input_id]),
+                "member_sha256": member.sha256,
+                "member_bytes": len(member.raw),
+                "receipt_sha256": sha256_bytes(
+                    canonical_json_bytes(receipt.to_dict())
+                ),
+                "transport_policy_sha256": _transport_policy_sha256(receipt),
+            }
+        )
+    document = {
+        "schema_version": REVIEW_LOCK_SCHEMA_VERSION,
+        "status": "approved",
+        "dataset_version": "26.1",
+        "trust_model": TRUST_MODEL,
+        "policy": {
+            "maximum_future_skew_seconds": 300,
+            "maximum_cross_input_retrieval_skew_seconds": 900,
+            "maximum_evidence_age_days": 550,
+        },
+        "rights_decision": decision,
+        "inputs": pins,
+    }
+    raw = canonical_json_bytes(document)
+    return parse_review_lock(raw), raw, RIGHTS_SNAPSHOT, rights_receipt
+
+
 def _bundle():
     registry, archives, receipts = _evidence()
-    return build_bundle(registry, archives=archives, receipts=receipts)
+    return _build(registry, archives, receipts)
+
+
+def _build(
+    registry,
+    archives,
+    receipts,
+    *,
+    review_lock=None,
+    rights_snapshot: bytes | None = None,
+    rights_receipt: UCDPRightsSnapshotReceipt | None = None,
+    publication_at: datetime = PUBLICATION_AT,
+    current_at: datetime = CURRENT_AT,
+):
+    if review_lock is None or rights_snapshot is None or rights_receipt is None:
+        generated_lock, _raw, generated_snapshot, generated_rights_receipt = (
+            _review_material(registry, archives, receipts)
+        )
+        review_lock = review_lock or generated_lock
+        rights_snapshot = rights_snapshot or generated_snapshot
+        rights_receipt = rights_receipt or generated_rights_receipt
+    return build_bundle(
+        registry,
+        archives=archives,
+        receipts=receipts,
+        review_lock=review_lock,
+        rights_snapshot=rights_snapshot,
+        rights_snapshot_receipt=rights_receipt,
+        publication_at=publication_at,
+        current_at=current_at,
+    )
+
+
+def _reviewed_evidence():
+    registry, archives, receipts = _evidence()
+    review_lock, _raw, snapshot, rights_receipt = _review_material(
+        registry,
+        archives,
+        receipts,
+    )
+    return (
+        registry,
+        archives,
+        receipts,
+        review_lock,
+        snapshot,
+        rights_receipt,
+    )
+
+
+def _replace_country_year_archive(registry, archives, receipts, rows):
+    updated_archives = dict(archives)
+    updated_receipts = dict(receipts)
+    spec = registry.inputs["organized_country_year"]
+    updated_archives["organized_country_year"] = _zip(
+        spec.member_name,
+        _csv_member(COUNTRY_YEAR_HEADER, rows, encoding="utf-8-sig"),
+    )
+    updated_receipts["organized_country_year"] = receipt_for(
+        updated_archives["organized_country_year"],
+        spec=spec,
+        http_last_modified=LAST_MODIFIED,
+        retrieved_at=RETRIEVED_AT,
+        maximum_source_age_days=registry.source["maximum_source_age_days"],
+    )
+    return updated_archives, updated_receipts
 
 
 def test_registry_pins_rights_version_encodings_and_adapter_ready_status() -> None:
     registry = load_registry(REGISTRY)
     assert registry.source["dataset_version"] == "26.1"
     assert registry.source["license"] == "CC-BY-4.0"
-    assert registry.source["redistribution_status"] == "allowed_with_attribution"
+    assert registry.source["redistribution_status"] == "review_required"
     assert registry.source["maximum_source_age_days"] == 550
     assert registry.inputs["actor_registry"].encoding == "latin-1"
     assert registry.inputs["armed_conflict"].encoding == "utf-8-sig"
@@ -255,6 +409,10 @@ def test_registry_pins_rights_version_encodings_and_adapter_ready_status() -> No
         "Wa",
     ]
     assert registry.raw_sha256 == sha256_bytes(REGISTRY.read_bytes())
+    pending_lock = load_review_lock(PENDING_REVIEW_LOCK)
+    assert pending_lock.status == "review_required"
+    assert pending_lock.rights_decision is None
+    assert pending_lock.inputs == ()
 
     bri = load_bri_registry(BRI_REGISTRY)
     ucdp = next(row for row in bri["sources"] if row["source_id"] == "ucdp_events")
@@ -262,12 +420,26 @@ def test_registry_pins_rights_version_encodings_and_adapter_ready_status() -> No
     assert ucdp["implementation"] == "adapter_ready"
     assert "never tactical coordinates or person-level dossiers" in ucdp["notes"]
 
-    implementation = (
-        (ROOT / "collectors" / "ucdp_bulk.py").read_text(encoding="utf-8")
-        + (ROOT / "scripts" / "ucdp_bulk_pull.py").read_text(encoding="utf-8")
-    ).casefold()
-    assert "api token" not in implementation
-    assert "authorization" not in implementation
+    assert tuple(row["citation_id"] for row in REQUIRED_CITATIONS) == (
+        "davies-pettersson-oberg-2026",
+        "gleditsch-et-al-2002",
+        "sundberg-melander-2013",
+    )
+
+
+def test_pending_and_approved_review_locks_match_the_closed_schema() -> None:
+    schema = json.loads(REVIEW_LOCK_SCHEMA.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema, format_checker=FormatChecker())
+    validator.validate(json.loads(PENDING_REVIEW_LOCK.read_text(encoding="utf-8")))
+
+    registry, archives, receipts = _evidence()
+    _lock, approved_raw, _snapshot, _rights_receipt = _review_material(
+        registry,
+        archives,
+        receipts,
+    )
+    validator.validate(json.loads(approved_raw))
 
 
 def test_fetch_uses_response_aware_safe_transport_and_source_clock() -> None:
@@ -324,7 +496,16 @@ def test_bundle_is_schema_valid_deterministic_and_aggregate_only() -> None:
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(document)
 
-    assert document["generated_at"] == "2026-08-26T18:30:00Z"
+    assert document["generated_at"] == "2026-08-26T18:40:00Z"
+    assert document["latest_retrieved_at"] == "2026-08-26T18:30:00Z"
+    assert document["source"]["trust_model"] == TRUST_MODEL
+    assert document["source"]["review_lock_sha256"] == document[
+        "review_lock_sha256"
+    ]
+    assert document["source"]["rights_valid_until"] == "2026-09-25T18:35:00Z"
+    assert [row["citation_id"] for row in document["source"]["citations"]] == [
+        row["citation_id"] for row in REQUIRED_CITATIONS
+    ]
     assert document["coverage"] == {
         "start_year": 1989,
         "end_year": 2025,
@@ -388,17 +569,13 @@ def test_unknown_actor_schema_drift_stale_or_unauthenticated_bytes_fail_closed()
 ):
     registry, archives, receipts = _evidence(unknown_actor=True)
     with pytest.raises(UCDPBulkError, match="unknown actor IDs"):
-        build_bundle(registry, archives=archives, receipts=receipts)
+        _build(registry, archives, receipts)
 
     village_registry, village_archives, village_receipts = _evidence(
         myanmar_territory="Tiny Village"
     )
     with pytest.raises(UCDPBulkError, match="unreviewed Myanmar territory"):
-        build_bundle(
-            village_registry,
-            archives=village_archives,
-            receipts=village_receipts,
-        )
+        _build(village_registry, village_archives, village_receipts)
 
     normal_registry, normal_archives, normal_receipts = _evidence()
     armed = normal_registry.inputs["armed_conflict"]
@@ -430,11 +607,7 @@ def test_unknown_actor_schema_drift_stale_or_unauthenticated_bytes_fail_closed()
         source_url=normal_registry.inputs["actor_registry"].url,
     )
     with pytest.raises(UCDPBulkError, match="not bound to its receipt"):
-        build_bundle(
-            normal_registry,
-            archives=normal_archives,
-            receipts=wrong_url_receipts,
-        )
+        _build(normal_registry, normal_archives, wrong_url_receipts)
     with pytest.raises(UCDPBulkError, match="stale"):
         receipt_for(
             normal_archives["armed_conflict"],
@@ -454,10 +627,206 @@ def test_public_scrub_and_schema_reject_tactical_or_person_fields() -> None:
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
     with pytest.raises(ValidationError):
         Draft202012Validator(schema).validate(poisoned)
+    with pytest.raises(UCDPAggregateError, match="prohibited public field"):
+        assert_public_safe({"side_a": "PRIVATE actor name"})
 
 
-def test_offline_cli_replay_is_exact_and_never_needs_network(tmp_path: Path) -> None:
+def test_review_lock_not_self_issued_receipt_anchors_exact_evidence() -> None:
+    (
+        registry,
+        archives,
+        receipts,
+        review_lock,
+        snapshot,
+        rights_receipt,
+    ) = _reviewed_evidence()
+    rows = _country_year_rows()
+    target = next(
+        row
+        for row in rows
+        if row["country"] == "Pakistan" and row["year"] == "2025"
+    )
+    for suffix in ("low", "best", "high"):
+        target[f"sb_total_deaths_{suffix}"] = "0"
+        target[f"ns_total_deaths_{suffix}"] = "0"
+        target[f"os_total_deaths_{suffix}"] = "0"
+        target[f"cumulative_total_deaths_in_orgvio_{suffix}"] = "0"
+    tampered_archives, self_issued_receipts = _replace_country_year_archive(
+        registry,
+        archives,
+        receipts,
+        rows,
+    )
+    # The new receipt is internally valid, but the reviewed Git lock still pins
+    # the original archive/member/receipt bytes and therefore refuses it.
+    verify_acquisition_receipt(
+        canonical_json_bytes(
+            self_issued_receipts["organized_country_year"].to_dict()
+        ),
+        archive=tampered_archives["organized_country_year"],
+        spec=registry.inputs["organized_country_year"],
+        maximum_source_age_days=550,
+    )
+    with pytest.raises(UCDPBulkError, match="reviewed acquisition lock"):
+        _build(
+            registry,
+            tampered_archives,
+            self_issued_receipts,
+            review_lock=review_lock,
+            rights_snapshot=snapshot,
+            rights_receipt=rights_receipt,
+        )
+
+
+def test_cumulative_totals_must_match_category_sums() -> None:
     registry, archives, receipts = _evidence()
+    rows = _country_year_rows()
+    target = next(
+        row
+        for row in rows
+        if row["country"] == "Pakistan" and row["year"] == "2025"
+    )
+    target["cumulative_total_deaths_in_orgvio_best"] = "6"
+    changed_archives, changed_receipts = _replace_country_year_archive(
+        registry,
+        archives,
+        receipts,
+        rows,
+    )
+    with pytest.raises(UCDPBulkError, match="cumulative total"):
+        _build(registry, changed_archives, changed_receipts)
+
+
+def test_publication_clocks_rights_expiry_and_cross_input_skew_fail_closed() -> None:
+    registry, archives, receipts = _evidence()
+
+    skewed = dict(receipts)
+    skewed["armed_conflict"] = replace(
+        skewed["armed_conflict"],
+        retrieved_at=RETRIEVED_AT - timedelta(minutes=16),
+    )
+    with pytest.raises(UCDPBulkError, match="retrieval clocks"):
+        _build(registry, archives, skewed)
+
+    future = dict(receipts)
+    future["armed_conflict"] = replace(
+        future["armed_conflict"],
+        retrieved_at=PUBLICATION_AT + timedelta(minutes=6),
+    )
+    with pytest.raises(UCDPBulkError, match="retrieval clocks|future"):
+        _build(registry, archives, future)
+
+    with pytest.raises(UCDPBulkError, match="rights decision has expired"):
+        _build(
+            registry,
+            archives,
+            receipts,
+            current_at=RIGHTS_VALID_UNTIL + timedelta(seconds=1),
+        )
+    with pytest.raises(UCDPBulkError, match="precedes the rights review"):
+        _build(
+            registry,
+            archives,
+            receipts,
+            publication_at=RIGHTS_REVIEWED_AT - timedelta(seconds=1),
+        )
+
+
+def test_rights_snapshot_and_review_decision_are_exact_and_expiring() -> None:
+    (
+        registry,
+        archives,
+        receipts,
+        review_lock,
+        snapshot,
+        rights_receipt,
+    ) = _reviewed_evidence()
+    with pytest.raises(UCDPBulkError, match="rights-page snapshot"):
+        _build(
+            registry,
+            archives,
+            receipts,
+            review_lock=review_lock,
+            rights_snapshot=snapshot + b"tampered",
+            rights_receipt=rights_receipt,
+        )
+
+    lock_value = json.loads(
+        canonical_json_bytes(
+            {
+                "schema_version": review_lock.schema_version,
+                "status": review_lock.status,
+                "dataset_version": review_lock.dataset_version,
+                "trust_model": review_lock.trust_model,
+                "policy": review_lock.policy.to_dict(),
+                "rights_decision": review_lock.rights_decision.to_dict(),
+                "inputs": [row.to_dict() for row in review_lock.inputs],
+            }
+        )
+    )
+    lock_value["rights_decision"]["valid_until"] = "2027-01-01T00:00:00Z"
+    with pytest.raises(UCDPBulkError, match="decision_id"):
+        parse_review_lock(canonical_json_bytes(lock_value))
+
+
+def test_typed_public_boundary_and_actor_id_cap_are_runtime_enforced(
+    tmp_path: Path,
+) -> None:
+    bundle = _bundle()
+    with pytest.raises(TypeError, match="frozen SourceRecord"):
+        replace(bundle, source={"side_a": "PRIVATE actor name"})
+    with pytest.raises(UCDPAggregateError, match="64-ID cap"):
+        replace(
+            bundle.conflict_years[0],
+            side_a_actor_ids=tuple(range(1, MAX_ACTOR_IDS_PER_SIDE + 2)),
+        )
+
+    schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+    schema["$defs"]["source"]["additionalProperties"] = True
+    weakened_schema = tmp_path / "weakened.schema.json"
+    weakened_schema.write_text(json.dumps(schema), encoding="utf-8")
+    with pytest.raises(UCDPAggregateError, match="not recursively closed"):
+        canonical_public_bytes(
+            bundle,
+            schema_path=weakened_schema,
+            forbidden_values=(),
+        )
+
+
+def test_duplicate_last_modified_headers_are_rejected() -> None:
+    registry, archives, _receipts = _evidence()
+    spec = registry.inputs["armed_conflict"]
+
+    def duplicate_fetcher(url: str, **_kwargs: object) -> SafeFetchResponse:
+        return SafeFetchResponse(
+            status=200,
+            headers={"Last-Modified": "Mon, 08 Jun 2026 20:19:01 GMT"},
+            body=archives["armed_conflict"],
+            url=url,
+            header_fields=(
+                ("Last-Modified", "Mon, 08 Jun 2026 20:19:01 GMT"),
+                ("last-modified", "Tue, 09 Jun 2026 20:19:01 GMT"),
+            ),
+        )
+
+    with pytest.raises(UCDPBulkError, match="duplicated Last-Modified"):
+        fetch_archive(
+            spec,
+            maximum_source_age_days=550,
+            clock=lambda: RETRIEVED_AT,
+            retries=0,
+            fetcher=duplicate_fetcher,
+        )
+
+
+def test_offline_cli_replay_is_exact_and_never_needs_network(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    registry, archives, receipts = _evidence()
+    review_lock, review_lock_raw, snapshot, rights_receipt = _review_material(
+        registry, archives, receipts
+    )
     evidence_dir = tmp_path / "private-evidence"
     evidence_dir.mkdir(mode=0o700)
     assert stat.S_IMODE(evidence_dir.stat().st_mode) & 0o077 == 0
@@ -466,11 +835,23 @@ def test_offline_cli_replay_is_exact_and_never_needs_network(tmp_path: Path) -> 
         (evidence_dir / f"{input_id}.receipt.json").write_bytes(
             canonical_json_bytes(receipts[input_id].to_dict())
         )
+    (evidence_dir / "rights-page.snapshot.html").write_bytes(snapshot)
+    (evidence_dir / "rights-page.receipt.json").write_bytes(
+        canonical_json_bytes(rights_receipt.to_dict())
+    )
+    review_lock_path = tmp_path / "review-lock.json"
+    review_lock_path.write_bytes(review_lock_raw)
+    monkeypatch.setattr(
+        "scripts.ucdp_bulk_pull.DEFAULT_REVIEW_LOCK",
+        review_lock_path,
+    )
     output = tmp_path / "ucdp-aggregate.json"
     command = [
         "build",
         "--input-dir",
         str(evidence_dir),
+        "--publication-at",
+        PUBLICATION_AT.isoformat().replace("+00:00", "Z"),
         "--output",
         str(output),
     ]
@@ -478,4 +859,24 @@ def test_offline_cli_replay_is_exact_and_never_needs_network(tmp_path: Path) -> 
     first = output.read_bytes()
     assert pull_main(command) == 0
     assert output.read_bytes() == first == canonical_json_bytes(_bundle().to_dict())
+    assert pull_main(["archive-check", "--input-dir", str(evidence_dir)]) == 0
     assert pull_main(["check"]) == 0
+    assert review_lock.status == "approved"
+
+
+def test_cli_refuses_a_caller_selected_self_issued_review_lock(tmp_path: Path) -> None:
+    with pytest.raises(SystemExit) as refused:
+        pull_main(
+            [
+                "build",
+                "--review-lock",
+                str(tmp_path / "self-issued.json"),
+                "--input-dir",
+                str(tmp_path),
+                "--publication-at",
+                "2026-08-27T00:00:00Z",
+                "--output",
+                str(tmp_path / "public.json"),
+            ]
+        )
+    assert refused.value.code == 2

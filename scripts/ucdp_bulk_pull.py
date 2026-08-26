@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Acquire, authenticate, or replay UCDP 26.1 annual aggregate evidence.
+"""Privately acquire or rights-gated replay UCDP 26.1 annual evidence.
 
-Network access is explicit via ``--fetch``. Offline replay requires all three
-exact ZIPs and canonical receipt sidecars in ``--input-dir``. Raw archives are
-private evidence and never receive a public default path.
+Network access is explicit and private-only. Public replay requires all three
+exact ZIPs, their canonical receipt sidecars, the captured rights page and its
+receipt, an approved repository-reviewed lock, and explicit publication/current
+clock checks. Raw acquisition evidence never receives a public default path.
 """
 
 from __future__ import annotations
@@ -18,50 +19,81 @@ from pathlib import Path
 from typing import Sequence
 
 from collectors.ucdp_bulk import (
+    DEFAULT_PUBLIC_SCHEMA,
     MAX_RECEIPT_BYTES,
+    MAX_RIGHTS_SNAPSHOT_BYTES,
     UCDPAcquisitionReceipt,
     UCDPBulkError,
+    UCDPRightsSnapshotReceipt,
     build_bundle,
     fetch_archive,
+    fetch_rights_snapshot,
     load_registry,
+    load_review_lock,
     verify_acquisition_receipt,
 )
 from core.governance import RateCeiling
-from core.ucdp_aggregate import canonical_json_bytes
+from core.ucdp_aggregate import (
+    UCDPAggregateError,
+    canonical_json_bytes,
+    canonical_public_bytes,
+    parse_timestamp,
+    sha256_bytes,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "config" / "ucdp_aggregate.json"
+DEFAULT_REVIEW_LOCK = ROOT / "config" / "ucdp_acquisition_lock.json"
 MAX_DERIVED_BYTES = 8 * 1024 * 1024
 INPUT_ORDER = ("armed_conflict", "actor_registry", "organized_country_year")
+RIGHTS_SNAPSHOT_NAME = "rights-page.snapshot.html"
+RIGHTS_SNAPSHOT_RECEIPT_NAME = "rights-page.receipt.json"
 
 
-def _add_source_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_registry_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
-    source = parser.add_mutually_exclusive_group()
-    source.add_argument(
+
+
+def _add_review_arguments(parser: argparse.ArgumentParser) -> None:
+    _add_registry_arguments(parser)
+    parser.add_argument(
         "--input-dir",
         type=Path,
         help="offline directory containing exact ZIPs and canonical receipts",
     )
-    source.add_argument(
-        "--fetch",
-        action="store_true",
-        help="explicitly fetch the three reviewed versioned UCDP archives",
-    )
     parser.add_argument(
-        "--evidence-output-dir",
-        type=Path,
-        help="private directory required with --fetch for ZIPs and receipts",
+        "--publication-at",
+        help="explicit canonical UTC as-of clock required for public evidence replay",
     )
 
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    check = commands.add_parser("check", help="validate registry or exact evidence")
-    _add_source_arguments(check)
-    build = commands.add_parser("build", help="build one deterministic review artifact")
-    _add_source_arguments(build)
+    check = commands.add_parser(
+        "check",
+        help="validate adapter state or publication-eligible reviewed evidence",
+    )
+    _add_review_arguments(check)
+    archival = commands.add_parser(
+        "archive-check",
+        help="validate internally consistent private evidence without publication authority",
+    )
+    _add_registry_arguments(archival)
+    archival.add_argument("--input-dir", type=Path, required=True)
+    acquire = commands.add_parser(
+        "acquire",
+        help="explicitly capture private evidence; never build a public artifact",
+    )
+    _add_registry_arguments(acquire)
+    acquire.add_argument(
+        "--fetch",
+        action="store_true",
+        help="required explicit network opt-in",
+    )
+    acquire.add_argument("--evidence-output-dir", type=Path, required=True)
+    build = commands.add_parser("build", help="build one rights-approved public artifact")
+    _add_review_arguments(build)
     build.add_argument("--output", type=Path, required=True)
     build.add_argument(
         "--replace-derived",
@@ -135,26 +167,36 @@ def _is_within(path: Path, parent: Path) -> bool:
 
 def _validate_arguments(args: argparse.Namespace) -> None:
     registry = _absolute_without_symlinks(args.registry, label="registry")
-    if args.fetch and args.evidence_output_dir is None:
-        raise UCDPBulkError("--fetch requires --evidence-output-dir")
-    if not args.fetch and args.evidence_output_dir is not None:
-        raise UCDPBulkError("--evidence-output-dir is accepted only with --fetch")
-    if args.command == "build" and not (args.fetch or args.input_dir is not None):
-        raise UCDPBulkError("build requires exactly one of --input-dir or --fetch")
+    if args.command == "acquire" and not args.fetch:
+        raise UCDPBulkError("acquire requires explicit --fetch")
+    if args.command == "build" and args.input_dir is None:
+        raise UCDPBulkError("public build requires --input-dir")
+    if args.command in {"build", "check"}:
+        if (args.input_dir is None) != (args.publication_at is None):
+            raise UCDPBulkError(
+                "--input-dir and --publication-at are required together"
+            )
+        _absolute_without_symlinks(DEFAULT_REVIEW_LOCK, label="review lock")
     output = getattr(args, "output", None)
     if output is not None:
         output = _absolute_without_symlinks(output, label="derived output")
         if output == registry:
             raise UCDPBulkError("derived output must not alias the registry")
         for label, directory in (
-            ("input directory", args.input_dir),
-            ("evidence output directory", args.evidence_output_dir),
+            ("input directory", getattr(args, "input_dir", None)),
+            (
+                "evidence output directory",
+                getattr(args, "evidence_output_dir", None),
+            ),
         ):
             if directory is not None and _is_within(output, directory):
                 raise UCDPBulkError(f"derived output must remain outside {label}")
     for label, directory in (
-        ("input directory", args.input_dir),
-        ("evidence output directory", args.evidence_output_dir),
+        ("input directory", getattr(args, "input_dir", None)),
+        (
+            "evidence output directory",
+            getattr(args, "evidence_output_dir", None),
+        ),
     ):
         if directory is not None:
             candidate = _absolute_without_symlinks(directory, label=label)
@@ -165,6 +207,11 @@ def _validate_arguments(args: argparse.Namespace) -> None:
 def _evidence_paths(directory: Path, input_id: str) -> tuple[Path, Path]:
     root = _absolute_without_symlinks(directory, label="evidence directory")
     return root / f"{input_id}.zip", root / f"{input_id}.receipt.json"
+
+
+def _rights_evidence_paths(directory: Path) -> tuple[Path, Path]:
+    root = _absolute_without_symlinks(directory, label="evidence directory")
+    return root / RIGHTS_SNAPSHOT_NAME, root / RIGHTS_SNAPSHOT_RECEIPT_NAME
 
 
 def _fsync_directory(path: Path) -> None:
@@ -312,7 +359,24 @@ def _offline_evidence(registry, directory: Path):
         )
         archives[input_id] = archive
         receipts[input_id] = receipt
-    return archives, receipts
+    snapshot_path, snapshot_receipt_path = _rights_evidence_paths(directory)
+    snapshot = _read_bounded(
+        snapshot_path,
+        maximum_bytes=MAX_RIGHTS_SNAPSHOT_BYTES,
+        label="rights-page snapshot",
+    )
+    raw_snapshot_receipt = _read_bounded(
+        snapshot_receipt_path,
+        maximum_bytes=MAX_RECEIPT_BYTES,
+        label="rights-page snapshot receipt",
+    )
+    snapshot_receipt = UCDPRightsSnapshotReceipt.from_bytes(raw_snapshot_receipt)
+    if (
+        snapshot_receipt.snapshot_sha256 != sha256_bytes(snapshot)
+        or snapshot_receipt.snapshot_bytes != len(snapshot)
+    ):
+        raise UCDPBulkError("rights-page snapshot is not bound to its receipt")
+    return archives, receipts, snapshot, snapshot_receipt
 
 
 def _post_response_clock() -> datetime:
@@ -333,10 +397,17 @@ def _live_evidence(registry):
         )
         archives[input_id] = fetched.archive
         receipts[input_id] = fetched.receipt
-    return archives, receipts
+    rights = fetch_rights_snapshot(clock=_post_response_clock)
+    return archives, receipts, rights.snapshot, rights.receipt
 
 
-def _persist_evidence(directory: Path, archives, receipts) -> None:
+def _persist_evidence(
+    directory: Path,
+    archives,
+    receipts,
+    rights_snapshot: bytes,
+    rights_snapshot_receipt: UCDPRightsSnapshotReceipt,
+) -> None:
     planned: list[tuple[Path, bytes, str]] = []
     for input_id in INPUT_ORDER:
         archive_path, receipt_path = _evidence_paths(directory, input_id)
@@ -350,6 +421,17 @@ def _persist_evidence(directory: Path, archives, receipts) -> None:
                 ),
             ]
         )
+    snapshot_path, snapshot_receipt_path = _rights_evidence_paths(directory)
+    planned.extend(
+        [
+            (snapshot_path, rights_snapshot, "rights-page snapshot"),
+            (
+                snapshot_receipt_path,
+                canonical_json_bytes(rights_snapshot_receipt.to_dict()),
+                "rights-page snapshot receipt",
+            ),
+        ]
+    )
     for path, payload, label in planned:
         _prepare_parent(path, private=True, label=label)
         _preflight_immutable(path, payload, label=label)
@@ -362,20 +444,67 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         _validate_arguments(args)
         registry = load_registry(args.registry)
-        if args.input_dir is None and not args.fetch:
+        if args.command == "acquire":
+            archives, receipts, rights_snapshot, rights_receipt = _live_evidence(
+                registry
+            )
+            _persist_evidence(
+                args.evidence_output_dir,
+                archives,
+                receipts,
+                rights_snapshot,
+                rights_receipt,
+            )
             print(
-                "ucdp-bulk: registry valid "
-                f"inputs={len(registry.inputs)} version={registry.source['dataset_version']}"
+                "ucdp-bulk: private acquisition captured; no public artifact built "
+                f"inputs={len(archives)} rights_snapshot={rights_receipt.snapshot_sha256}"
             )
             return 0
-        if args.fetch:
-            archives, receipts = _live_evidence(registry)
-        else:
-            archives, receipts = _offline_evidence(registry, args.input_dir)
-        bundle = build_bundle(registry, archives=archives, receipts=receipts)
-        payload = canonical_json_bytes(bundle.to_dict())
-        if args.fetch:
-            _persist_evidence(args.evidence_output_dir, archives, receipts)
+        if args.command == "archive-check":
+            archives, receipts, rights_snapshot, rights_receipt = _offline_evidence(
+                registry,
+                args.input_dir,
+            )
+            print(
+                "ucdp-bulk: private archival evidence internally consistent; "
+                "not publication-authorized "
+                f"inputs={len(archives)} rights_snapshot={rights_receipt.snapshot_sha256}"
+            )
+            return 0
+
+        # Publication authority is the repository-controlled lock only.  A
+        # caller-supplied path would turn a self-issued file into approval.
+        review_lock = load_review_lock(DEFAULT_REVIEW_LOCK)
+        if args.input_dir is None:
+            print(
+                "ucdp-bulk: adapter configuration valid "
+                f"inputs={len(registry.inputs)} version={registry.source['dataset_version']} "
+                f"review_lock={review_lock.status}"
+            )
+            return 0
+        archives, receipts, rights_snapshot, rights_receipt = _offline_evidence(
+            registry,
+            args.input_dir,
+        )
+        publication_at = parse_timestamp(
+            args.publication_at,
+            label="publication_at",
+        )
+        bundle = build_bundle(
+            registry,
+            archives=archives,
+            receipts=receipts,
+            review_lock=review_lock,
+            rights_snapshot=rights_snapshot,
+            rights_snapshot_receipt=rights_receipt,
+            publication_at=publication_at,
+            current_at=_post_response_clock(),
+        )
+        payload = canonical_public_bytes(
+            bundle,
+            schema_path=DEFAULT_PUBLIC_SCHEMA,
+            forbidden_values=(),
+        )
         if args.command == "build":
             disposition = _write_derived(
                 args.output,
@@ -390,12 +519,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         else:
             print(
-                "ucdp-bulk: evidence valid "
+                "ucdp-bulk: reviewed evidence publication-eligible "
                 f"bundle={bundle.bundle_id} conflicts={len(bundle.conflict_years)} "
                 f"country_years={len(bundle.country_years)}"
             )
         return 0
-    except (OSError, TypeError, ValueError, UCDPBulkError) as exc:
+    except (OSError, TypeError, UCDPAggregateError, UCDPBulkError) as exc:
         print(f"ucdp-bulk: refused: {exc}", file=sys.stderr)
         return 2
 

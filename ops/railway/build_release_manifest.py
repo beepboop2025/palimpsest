@@ -21,7 +21,9 @@ CRITICAL_PATHS = (
     "collectors/ucdp_bulk.py",
     "config/china_econ_source_policy.json",
     "config/pages_public_binary_allowlist.json",
+    "config/ucdp_acquisition_lock.json",
     "config/ucdp_aggregate.json",
+    "core/safe_fetch.py",
     "core/ucdp_aggregate.py",
     "docs/UCDP-AGGREGATE-CONTEXT.md",
     "index.html",
@@ -32,11 +34,13 @@ CRITICAL_PATHS = (
     "protocol/restricted-publication-endpoint-v1.schema.json",
     "protocol/restricted-publication-v1.schema.json",
     "protocol/ucdp-aggregate-v1.schema.json",
+    "protocol/ucdp-reviewed-acquisition-lock-v1.schema.json",
     "readings/belt-and-road-observatory-latest.json",
     "readings/bri-economic-observations-latest.json",
     "readings/china-publication-rights-latest.json",
     "scripts/ucdp_bulk_pull.py",
     "server.json",
+    "tests/test_safe_fetch.py",
     "tests/test_ucdp_bulk_aggregate.py",
 )
 

@@ -48,12 +48,16 @@ RIGHTS_CRITICAL_PATHS = {
 }
 UCDP_ADAPTER_CRITICAL_PATHS = {
     "collectors/ucdp_bulk.py",
+    "config/ucdp_acquisition_lock.json",
     "config/ucdp_aggregate.json",
+    "core/safe_fetch.py",
     "core/ucdp_aggregate.py",
     "docs/UCDP-AGGREGATE-CONTEXT.md",
     "protocol/ucdp-aggregate-v1.schema.json",
+    "protocol/ucdp-reviewed-acquisition-lock-v1.schema.json",
     "scripts/ucdp_bulk_pull.py",
     "tests/test_ucdp_bulk_aggregate.py",
+    "tests/test_safe_fetch.py",
 }
 
 
@@ -111,9 +115,16 @@ def test_manifest_binds_adapter_ready_ucdp_contract_without_claiming_live_data(
 
     registry = json.loads((ROOT / "config/ucdp_aggregate.json").read_text())
     assert registry["source"]["dataset_version"] == "26.1"
-    assert registry["source"]["redistribution_status"] == "allowed_with_attribution"
+    assert registry["source"]["redistribution_status"] == "review_required"
+    review_lock = json.loads(
+        (ROOT / "config/ucdp_acquisition_lock.json").read_text(encoding="utf-8")
+    )
+    assert review_lock["status"] == "review_required"
+    assert review_lock["rights_decision"] is None
+    assert review_lock["inputs"] == []
     documentation = (ROOT / "docs/UCDP-AGGREGATE-CONTEXT.md").read_text()
-    assert "`adapter_ready`, not `live`" in documentation
+    assert "remains `adapter_ready`, not `live`" in documentation
+    assert "cryptographic signature by UCDP" in documentation
 
 
 def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:

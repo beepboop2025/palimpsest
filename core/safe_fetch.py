@@ -84,6 +84,9 @@ class SafeFetchResponse:
     headers: Mapping[str, str]
     body: bytes
     url: str
+    # Preserve response-field multiplicity for callers whose evidence clocks
+    # require a singleton header. ``headers`` remains the compatibility view.
+    header_fields: tuple[tuple[str, str], ...] = ()
 
 
 class FetchError(Exception):
@@ -214,15 +217,19 @@ def _request_headers(
     return rendered
 
 
-def _response_headers(resp) -> dict[str, str]:
+def _response_header_fields(resp) -> tuple[tuple[str, str], ...]:
     getheaders = getattr(resp, "getheaders", None)
     if callable(getheaders):
-        return {str(name): str(value) for name, value in getheaders()}
+        return tuple((str(name), str(value)) for name, value in getheaders())
     headers = getattr(resp, "headers", None)
     if headers is None:
-        return {}
+        return ()
     items = getattr(headers, "items", None)
-    return {str(name): str(value) for name, value in items()} if callable(items) else {}
+    return (
+        tuple((str(name), str(value)) for name, value in items())
+        if callable(items)
+        else ()
+    )
 
 
 def _declared_content_length(resp, max_bytes: int) -> int | None:
@@ -426,11 +433,13 @@ def safe_fetch_response(
         try:
             if resp.status in _REDIRECT_STATUSES:
                 if return_redirect_response:
+                    response_fields = _response_header_fields(resp)
                     return SafeFetchResponse(
                         status=int(resp.status),
-                        headers=_response_headers(resp),
+                        headers=dict(response_fields),
                         body=_response_body(resp, max_bytes),
                         url=current,
+                        header_fields=response_fields,
                     )
                 if method != "GET":
                     raise FetchError("redirects for POST requests are not allowed")
@@ -442,11 +451,13 @@ def safe_fetch_response(
                     raise TooManyRedirects(f"exceeded {max_redirects} redirects")
                 current = urljoin(current, location)   # next loop re-validates the new host
                 continue
+            response_fields = _response_header_fields(resp)
             return SafeFetchResponse(
                 status=int(resp.status),
-                headers=_response_headers(resp),
+                headers=dict(response_fields),
                 body=_response_body(resp, max_bytes),
                 url=current,
+                header_fields=response_fields,
             )
         finally:
             conn.close()
@@ -599,11 +610,13 @@ def _fetch_via_proxy_response(
             status = int(getattr(response, "status", None) or response.getcode())
             if status in _REDIRECT_STATUSES:
                 if return_redirect_response:
+                    response_fields = _response_header_fields(response)
                     return SafeFetchResponse(
                         status=status,
-                        headers=_response_headers(response),
+                        headers=dict(response_fields),
                         body=_response_body(response, max_bytes),
                         url=current,
+                        header_fields=response_fields,
                     )
                 if method != "GET":
                     raise FetchError("redirects for POST requests are not allowed")
@@ -615,11 +628,13 @@ def _fetch_via_proxy_response(
                     raise TooManyRedirects(f"exceeded {max_redirects} redirects")
                 current = urljoin(current, location)
                 continue
+            response_fields = _response_header_fields(response)
             return SafeFetchResponse(
                 status=status,
-                headers=_response_headers(response),
+                headers=dict(response_fields),
                 body=_response_body(response, max_bytes),
                 url=current,
+                header_fields=response_fields,
             )
         finally:
             response.close()

@@ -9,10 +9,12 @@
     "schema_version",
     "bundle_id",
     "generated_at",
+    "latest_retrieved_at",
     "scope_policy",
     "movement_lanes",
     "source",
     "registry_sha256",
+    "review_lock_sha256",
     "coverage",
     "acquisition_receipts",
     "actor_registry_ids_sha256",
@@ -25,6 +27,7 @@
     "schema_version": {"const": "palimpsest.ucdp-aggregate.v1"},
     "bundle_id": {"$ref": "#/$defs/sha256"},
     "generated_at": {"$ref": "#/$defs/timestamp"},
+    "latest_retrieved_at": {"$ref": "#/$defs/timestamp"},
     "scope_policy": {
       "const": {
         "geographies": ["MMR", "PAK-BAL"],
@@ -77,6 +80,7 @@
     },
     "source": {"$ref": "#/$defs/source"},
     "registry_sha256": {"$ref": "#/$defs/sha256"},
+    "review_lock_sha256": {"$ref": "#/$defs/sha256"},
     "coverage": {"$ref": "#/$defs/coverage"},
     "acquisition_receipts": {
       "type": "array",
@@ -127,10 +131,16 @@
         "rights_evidence_url",
         "redistribution_status",
         "attribution",
-        "citation_url",
         "source_period_start_year",
         "source_period_end_year",
-        "release_cadence"
+        "release_cadence",
+        "rights_decision_id",
+        "rights_observed_at",
+        "rights_reviewed_at",
+        "rights_valid_until",
+        "review_lock_sha256",
+        "trust_model",
+        "citations"
       ],
       "properties": {
         "source_id": {"const": "ucdp_bulk_26_1"},
@@ -143,10 +153,37 @@
         "rights_evidence_url": {"const": "https://ucdp.uu.se/downloads/"},
         "redistribution_status": {"const": "allowed_with_attribution"},
         "attribution": {"const": "Uppsala Conflict Data Program (UCDP), version 26.1"},
-        "citation_url": {"const": "https://doi.org/10.1093/jopres/xjag046"},
         "source_period_start_year": {"const": 1946},
         "source_period_end_year": {"const": 2025},
-        "release_cadence": {"const": "annual"}
+        "release_cadence": {"const": "annual"},
+        "rights_decision_id": {"$ref": "#/$defs/sha256"},
+        "rights_observed_at": {"$ref": "#/$defs/timestamp"},
+        "rights_reviewed_at": {"$ref": "#/$defs/timestamp"},
+        "rights_valid_until": {"$ref": "#/$defs/timestamp"},
+        "review_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "trust_model": {"const": "palimpsest_reviewed_git_lock_for_hardened_tls_acquisition_no_upstream_signature"},
+        "citations": {
+          "const": [
+            {
+              "citation_id": "davies-pettersson-oberg-2026",
+              "title": "Organized violence 1989-2025, and violent political protests",
+              "url": "https://doi.org/10.1093/jopres/xjag046",
+              "applies_to": ["actor_registry", "armed_conflict", "organized_country_year"]
+            },
+            {
+              "citation_id": "gleditsch-et-al-2002",
+              "title": "Armed Conflict 1946-2001: A New Dataset",
+              "url": "https://doi.org/10.1177/0022343302039005007",
+              "applies_to": ["armed_conflict"]
+            },
+            {
+              "citation_id": "sundberg-melander-2013",
+              "title": "Introducing the UCDP Georeferenced Event Dataset",
+              "url": "https://doi.org/10.1177/0022343313484347",
+              "applies_to": ["organized_country_year"]
+            }
+          ]
+        }
       }
     },
     "coverage": {
