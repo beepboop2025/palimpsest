@@ -365,7 +365,6 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
             "url": urljoin(SITE, item["landing_page"]),
             "license": item["license"]["url"],
             "spatialCoverage": item["geography"],
-            "temporalResolution": item["cadence"],
             "dateModified": item["artifacts"]["observed_at"],
             "isAccessibleForFree": True,
             "distribution": distributions,
@@ -377,7 +376,12 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
         "name": config["catalog"]["name"],
         "description": config["catalog"]["description"],
         "url": config["catalog"]["homepage"],
-        "publisher": {"@type": "Organization", "name": "Palimpsest", "url": SITE},
+        "publisher": {
+            "@type": "Organization",
+            "@id": urljoin(SITE, "#org"),
+            "name": "Palimpsest",
+            "url": SITE,
+        },
         "dateModified": _iso(build_time),
         "dataset": jsonld_datasets,
     }

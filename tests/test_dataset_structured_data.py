@@ -19,11 +19,34 @@ CANONICAL_ORGANIZATION = {
     "url": f"{SITE}/",
 }
 SUPPORTED_ENTITY_TYPES = {"Organization", "Person"}
+SUPPORTED_DATASET_FIELDS = {
+    "@context",
+    "@id",
+    "@type",
+    "creator",
+    "dateModified",
+    "description",
+    "distribution",
+    "identifier",
+    "isAccessibleForFree",
+    "isPartOf",
+    "keywords",
+    "license",
+    "name",
+    "publisher",
+    "spatialCoverage",
+    "url",
+    "usageInfo",
+    "version",
+}
 REQUIRED_DATASET_PAGES = {
     Path("index.html"),
     Path("news/economy/index.html"),
     Path("readings/eval-registry.html"),
     Path("weekly-situation.html"),
+}
+REQUIRED_DATASET_SURFACES = REQUIRED_DATASET_PAGES | {
+    Path("readings/catalog.jsonld"),
 }
 
 
@@ -63,25 +86,36 @@ def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return value
 
 
-def _json_ld_documents(document: str, *, label: str) -> list[Any]:
+def _parse_json_ld(raw: str, *, label: str) -> Any:
+    try:
+        value = json.loads(raw, object_pairs_hook=_strict_object)
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise AssertionError(f"{label}: invalid JSON-LD: {exc}") from exc
+    assert isinstance(value, (dict, list)), (
+        f"{label}: JSON-LD must be an object or array"
+    )
+    return value
+
+
+def _html_json_ld_documents(document: str, *, label: str) -> list[Any]:
     parser = _JsonLdScripts()
     parser.feed(document)
     parser.close()
     assert parser._parts is None, f"{label}: unclosed JSON-LD script"
 
-    parsed = []
-    for index, raw in enumerate(parser.blocks):
-        try:
-            value = json.loads(raw, object_pairs_hook=_strict_object)
-        except (json.JSONDecodeError, ValueError) as exc:
-            raise AssertionError(
-                f"{label}: invalid JSON-LD in block {index}: {exc}"
-            ) from exc
-        assert isinstance(value, (dict, list)), (
-            f"{label}: JSON-LD block {index} must be an object or array"
-        )
-        parsed.append(value)
-    return parsed
+    return [
+        _parse_json_ld(raw, label=f"{label}: block {index}")
+        for index, raw in enumerate(parser.blocks)
+    ]
+
+
+def _published_json_ld_documents(path: Path, *, label: str) -> list[Any]:
+    document = path.read_text(encoding="utf-8")
+    if path.suffix == ".html":
+        return _html_json_ld_documents(document, label=label)
+    if path.suffix == ".jsonld":
+        return [_parse_json_ld(document, label=label)]
+    raise AssertionError(f"{label}: unsupported JSON-LD publication suffix")
 
 
 def _is_dataset_type(value: Any) -> bool:
@@ -126,27 +160,32 @@ def _validate_entity(value: Any, *, label: str) -> None:
             )
 
 
+def _validate_dataset_node(node: dict[str, Any], *, label: str) -> None:
+    unsupported_fields = set(node) - SUPPORTED_DATASET_FIELDS
+    assert not unsupported_fields, (
+        f"{label}: Dataset has unsupported fields: {sorted(unsupported_fields)}"
+    )
+    for field in ("creator", "publisher"):
+        if field in node:
+            _validate_entity(node[field], label=f"{label}: Dataset.{field}")
+
+
 def test_every_dataset_json_ld_entity_is_valid_supported_and_explicit() -> None:
     dataset_count = 0
-    dataset_pages: set[Path] = set()
+    dataset_surfaces: set[Path] = set()
 
-    for path in sorted(ROOT.rglob("*.html")):
+    paths = sorted([*ROOT.rglob("*.html"), *ROOT.rglob("*.jsonld")])
+    for path in paths:
         relative = path.relative_to(ROOT)
-        documents = _json_ld_documents(
-            path.read_text(encoding="utf-8"), label=str(relative)
-        )
+        documents = _published_json_ld_documents(path, label=str(relative))
         for document in documents:
             for node in _dataset_nodes(document):
                 dataset_count += 1
-                dataset_pages.add(relative)
-                for field in ("creator", "publisher"):
-                    if field in node:
-                        _validate_entity(
-                            node[field], label=f"{relative}: Dataset.{field}"
-                        )
+                dataset_surfaces.add(relative)
+                _validate_dataset_node(node, label=str(relative))
 
     assert dataset_count >= 16
-    assert REQUIRED_DATASET_PAGES <= dataset_pages
+    assert REQUIRED_DATASET_SURFACES <= dataset_surfaces
 
 
 @pytest.mark.parametrize(
@@ -173,7 +212,26 @@ def test_dataset_entity_validator_rejects_incomplete_or_unsupported_objects(
         _validate_entity(entity, label="fixture")
 
 
+def test_dataset_validator_rejects_an_unreviewed_predicate() -> None:
+    node = {
+        "@type": "Dataset",
+        "name": "Fixture",
+        "temporalResolution": "PT1H",
+    }
+
+    with pytest.raises(AssertionError, match="unsupported fields"):
+        _validate_dataset_node(node, label="fixture")
+
+
 def test_json_ld_parser_rejects_invalid_json() -> None:
     invalid = '<script type="application/ld+json">{"@type":"Dataset",}</script>'
     with pytest.raises(AssertionError, match="invalid JSON-LD"):
-        _json_ld_documents(invalid, label="fixture")
+        _html_json_ld_documents(invalid, label="fixture")
+
+
+def test_standalone_json_ld_parser_rejects_invalid_json(tmp_path: Path) -> None:
+    invalid = tmp_path / "invalid.jsonld"
+    invalid.write_text('{"@type":"Dataset",}', encoding="utf-8")
+
+    with pytest.raises(AssertionError, match="invalid JSON-LD"):
+        _published_json_ld_documents(invalid, label="fixture")
