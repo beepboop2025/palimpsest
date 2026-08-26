@@ -8,6 +8,22 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
+BRI_WDI_RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
+BRI_WDI_RUN_URL = (
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32984946320"
+)
+BRI_WDI_RECEIPT_URL = (
+    "https://palimpsest.info/.well-known/receipts/"
+    "bri-wdi-pages-publication-v1.json"
+)
+BRI_WDI_RECEIPT_SHA256 = (
+    "sha256:239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
+)
+BRI_WDI_RECEIPT_SCHEMA_URL = (
+    "https://palimpsest.info/protocol/bri-wdi-pages-publication-v1.schema.json"
+)
+BRI_WDI_VERIFIED_AT = "2026-08-26T15:55:34Z"
+BRI_WDI_FRESH_UNTIL = "2026-08-27T15:55:34Z"
 
 
 def test_well_known_security_policy_routes_sensitive_reports_privately():
@@ -69,7 +85,7 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     ]
 
 
-def test_product_card_exposes_bri_v2_wdi_context_without_claiming_deployment():
+def test_product_card_exposes_production_verified_bri_v2_wdi_context():
     card = _json("product-card.json")
     evidence = card["evidence"]
     access = card["access"]
@@ -95,15 +111,32 @@ def test_product_card_exposes_bri_v2_wdi_context_without_claiming_deployment():
     assert evidence["bri_wdi_series_registry"] == (
         "https://palimpsest.info/config/bri_wdi_series.json"
     )
+    assert evidence["bri_wdi_publication_receipt"] == BRI_WDI_RECEIPT_URL
+    assert evidence["bri_wdi_publication_receipt_schema"] == (
+        BRI_WDI_RECEIPT_SCHEMA_URL
+    )
 
     metadata = evidence["bri_economic_observations_metadata"]
     assert metadata == {
-        "publication_state": "repository_ready_not_deployed",
-        "access": "public-read-only-after-deployment",
+        "publication_state": "production_verified",
+        "access": "public-read-only",
         "source": "World Bank World Development Indicators",
         "attribution": "World Bank, World Development Indicators",
         "license": "CC-BY-4.0",
         "acquired_at": "2026-08-26T13:17:34.790676Z",
+        "release_a_sha": BRI_WDI_RELEASE_A_SHA,
+        "deployment_run": BRI_WDI_RUN_URL,
+        "publication_receipt": BRI_WDI_RECEIPT_URL,
+        "publication_receipt_sha256": BRI_WDI_RECEIPT_SHA256,
+        "publication_receipt_schema": BRI_WDI_RECEIPT_SCHEMA_URL,
+        "served_verified_at": BRI_WDI_VERIFIED_AT,
+        "served_verification_fresh_until": BRI_WDI_FRESH_UNTIL,
+        "availability_semantics": "verified_at_release_not_continuous_monitoring",
+        "availability_caveat": (
+            "The immutable receipt proves exact served bytes at the verification "
+            "clock. After fresh_until it remains historical release evidence, not "
+            "proof of continuous or current availability."
+        ),
         "countries": ["CHN", "MMR", "PAK"],
         "start_year": 1960,
         "end_year": 2025,
@@ -117,11 +150,12 @@ def test_product_card_exposes_bri_v2_wdi_context_without_claiming_deployment():
         "corridor_inference": "prohibited",
         "causal_inference": "prohibited",
     }
-    assert access["openapi_version"] == "2.0.0"
+    assert access["openapi_version"] == "2.0.1"
     assert access["mcp_version"] == "1.9.1"
     assert access["bri_economic_observations"] == (
         "https://palimpsest.info/readings/bri-economic-observations-latest.json"
     )
+    assert access["bri_wdi_publication_receipt"] == BRI_WDI_RECEIPT_URL
 
 
 def test_discovery_copy_separates_free_access_from_source_data_rights():
@@ -156,7 +190,10 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
     for path, operations in spec["paths"].items():
         dynamic_event_analysis = path == "/news/wire/{event_id}/analysis.json"
         dynamic_instrument_analysis = path == "/news/{slug}/analysis.json"
-        assert dynamic_event_analysis or dynamic_instrument_analysis or (
+        publication_receipt = (
+            path == "/.well-known/receipts/bri-wdi-pages-publication-v1.json"
+        )
+        assert dynamic_event_analysis or dynamic_instrument_analysis or publication_receipt or (
             path.startswith("/readings/")
             and path.endswith((".json", ".jsonld", ".jsonl", ".csv"))
         ) or path == "/datapackage.json"
@@ -177,6 +214,25 @@ def test_openapi_only_advertises_public_files_that_are_actually_published():
     }
     assert spec["components"]["schemas"]["ChinaEconomicForecast"] == {
         "$ref": "https://palimpsest.info/protocol/economic-forecast-v1.schema.json"
+    }
+
+
+def test_openapi_publishes_the_bri_wdi_pages_receipt_contract():
+    spec = _json("openapi.json")
+    assert spec["info"]["version"] == "2.0.1"
+    assert spec["components"]["schemas"]["BRIWdiPagesPublicationReceipt"] == {
+        "$ref": BRI_WDI_RECEIPT_SCHEMA_URL
+    }
+    response = spec["components"]["responses"]["BRIWdiPagesPublicationReceipt"]
+    assert response["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/BRIWdiPagesPublicationReceipt"
+    }
+    operation = spec["paths"][
+        "/.well-known/receipts/bri-wdi-pages-publication-v1.json"
+    ]["get"]
+    assert operation["operationId"] == "getBRIWdiPagesPublicationReceipt"
+    assert operation["responses"]["200"] == {
+        "$ref": "#/components/responses/BRIWdiPagesPublicationReceipt"
     }
 
 

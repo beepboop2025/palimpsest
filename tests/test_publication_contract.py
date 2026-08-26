@@ -795,6 +795,11 @@ def test_openapi_publishes_social_observations_and_china_situation_contracts():
             "/readings/bri-economic-observations-latest.json",
             "getBRIEconomicObservations",
         ),
+        "BRIWdiPagesPublicationReceipt": (
+            "bri-wdi-pages-publication-v1.schema.json",
+            "/.well-known/receipts/bri-wdi-pages-publication-v1.json",
+            "getBRIWdiPagesPublicationReceipt",
+        ),
     }
 
     for name, (schema_name, path, operation_id) in expected.items():

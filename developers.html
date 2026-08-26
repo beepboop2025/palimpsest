@@ -212,7 +212,7 @@
     <h2 class="ps-section-head">Discover the exact release boundary</h2>
     <p class="dev-copy">The <a href="/.well-known/ai-catalog.json">AI catalog</a> is the
     machine entry point for the release-bound MCP <code>1.9.1</code> service, this site’s
-    <a href="/openapi.json">independently versioned OpenAPI <code>2.0.0</code> document</a>, the China
+    <a href="/openapi.json">independently versioned OpenAPI <code>2.0.1</code> document</a>, the China
     observation ledger and manifest, the BRI v2 contract and its WDI national-context
     bundle, and the canonical
     <a href="https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence">Financial Evidence Agent Skill</a>.
@@ -221,7 +221,7 @@
     <div class="connect-grid">
       <article class="connect ps-p2 ps-reveal"><p class="ps-label">China money markets</p><h3>CFETS observations</h3><p class="dev-copy"><a href="/china/money-markets/">Read the scoped guide</a> for repo fixings, SHIBOR, CNY parity and the three evidence clocks.</p></article>
       <article class="connect ps-p2 ps-reveal"><p class="ps-label">China capital markets</p><h3>Stock Connect only</h3><p class="dev-copy"><a href="/china/capital-markets/">Read the coverage guide</a>. Palimpsest does not claim general capital-market coverage or estimate unavailable northbound flow direction.</p></article>
-      <article class="connect ps-p2 ps-reveal"><p class="ps-label">Belt and Road economics</p><h3>Global contract, corridor depth</h3><p class="dev-copy"><a href="/belt-and-road/">Inspect the BRI Observatory</a> for project lifecycle, finance, local-impact, rights and source-coverage fields, including the bounded NarcoScope corridor overlay. Its separate <a href="/readings/bri-economic-observations-latest.json">WDI bundle</a> provides 3,564 country-period context rows for China, Myanmar and Pakistan without making project or causal claims.</p></article>
+      <article class="connect ps-p2 ps-reveal"><p class="ps-label">Belt and Road economics</p><h3>Global contract, corridor depth</h3><p class="dev-copy"><a href="/belt-and-road/">Inspect the BRI Observatory</a> for project lifecycle, finance, local-impact, rights and source-coverage fields, including the bounded NarcoScope corridor overlay. Its separate <a href="/readings/bri-economic-observations-latest.json">WDI bundle</a> provides 3,564 country-period context rows for China, Myanmar and Pakistan without making project or causal claims. Verify the exact Release A deployment and served bytes through the <a href="/.well-known/receipts/bri-wdi-pages-publication-v1.json">publication receipt</a> and its <a href="/protocol/bri-wdi-pages-publication-v1.schema.json">schema</a>.</p></article>
       <article class="connect ps-p2 ps-reveal"><p class="ps-label">API workflow</p><h3>REST or MCP</h3><p class="dev-copy"><a href="/china-economy-api/">Choose the smallest sufficient surface</a> and preserve release, collection, revision and abstention state.</p></article>
     </div>
   </section>
@@ -292,7 +292,7 @@
   <section class="ps-defer">
     <h2 class="ps-section-head">Use the JSON API directly</h2>
     <p class="dev-copy">For deterministic pipelines and notebooks, import the
-    <a href="/openapi.json">OpenAPI 3.1 / Palimpsest REST 2.0.0 document</a> or fetch a reading as ordinary JSON.
+    <a href="/openapi.json">OpenAPI 3.1 / Palimpsest REST 2.0.1 document</a> or fetch a reading as ordinary JSON.
     Start with the <a href="/readings/china-index-latest.json">China Observatory index</a>
     and its <a href="/protocol/china-index-v1.schema.json">JSON Schema</a>. The economic observation <a href="/readings/china-econ-observations-latest.json">manifest</a>
     and <a href="/readings/china-econ-observations.jsonl">append-only JSONL ledger</a> are
@@ -304,7 +304,13 @@
     <a href="/readings/belt-and-road-observatory-latest.json">BRI v2 reading</a> links the
     reviewed <a href="/readings/bri-economic-observations-latest.json">WDI national-context bundle</a>;
     its 3,564 China, Myanmar and Pakistan rows may be joined only as country-period
-    context. The <a href="/readings/belt-and-road-observatory-v1.json">frozen v1 reading</a>
+    context. The immutable <a href="/.well-known/receipts/bri-wdi-pages-publication-v1.json">WDI Pages publication receipt</a>
+    binds Release A commit <code>14b06772dfed6cdc736279c9ab61b444e5846598</code>,
+    workflow run <a href="https://github.com/beepboop2025/palimpsest/actions/runs/32984946320">32984946320</a>
+    and cache-busted served bytes verified at <code>2026-08-26T15:55:34Z</code>.
+    Its <code>fresh_until</code> clock of <code>2026-08-27T15:55:34Z</code> is a
+    point-in-time availability window, not continuous monitoring or a WDI observation
+    clock. The <a href="/readings/belt-and-road-observatory-v1.json">frozen v1 reading</a>
     remains available for reproducible citations. The files are cacheable,
     versionable and easy to archive.</p>
     <div class="codebox ps-p2" style="padding:18px">

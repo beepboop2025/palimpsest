@@ -40,6 +40,21 @@ RECEIPT_SCHEMA = ROOT / "protocol" / "bri-wdi-pages-publication-v1.schema.json"
 FROZEN_V1 = ROOT / "readings" / "belt-and-road-observatory-v1.json"
 PUBLICATION_SHA = "a" * 40
 SIZE_RECEIPT_PATH = f".well-known/receipts/pages-artifact-size-{PUBLICATION_SHA}.json"
+RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
+CHECKED_RECEIPT = (
+    ROOT / ".well-known" / "receipts" / "bri-wdi-pages-publication-v1.json"
+)
+CHECKED_SIZE_RECEIPT = (
+    ROOT
+    / ".well-known"
+    / "receipts"
+    / f"pages-artifact-size-{RELEASE_A_SHA}.json"
+)
+CHECKED_RECEIPT_SHA256 = (
+    "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
+)
+CHECKED_VERIFIED_AT = "2026-08-26T15:55:34Z"
+CHECKED_FRESH_UNTIL = "2026-08-27T15:55:34Z"
 
 
 def _resource(path: str) -> dict:
@@ -249,6 +264,25 @@ def _live_registry() -> dict:
     return registry
 
 
+def _repository_ready_registry() -> dict:
+    registry = deepcopy(load_registry(BRI_REGISTRY))
+    next(
+        source
+        for source in registry["sources"]
+        if source["source_id"] == "world_bank_wdi"
+    )["implementation"] = "repository_ready"
+    return registry
+
+
+def _repository_ready_registry_path(tmp_path: Path) -> Path:
+    path = tmp_path / "repository-ready-bri-registry.json"
+    path.write_text(
+        json.dumps(_repository_ready_registry(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
 def _copy_evidence_mesh_inputs(target: Path) -> None:
     config = json.loads((ROOT / "config" / "evidence_mesh.json").read_text())
     paths = ["config/evidence_mesh.json"]
@@ -309,6 +343,62 @@ def test_fixture_receipt_is_canonical_schema_valid_and_exactly_bound(
             receipt,
             repository_path=(".well-known/receipts/bri-wdi-pages-publication-v1.json"),
         )
+
+
+def test_checked_in_release_a_receipt_promotes_the_exact_current_bundle() -> None:
+    receipt_raw = CHECKED_RECEIPT.read_bytes()
+    size_raw = CHECKED_SIZE_RECEIPT.read_bytes()
+    assert len(receipt_raw) == 4_846
+    assert sha256_bytes(receipt_raw) == CHECKED_RECEIPT_SHA256
+    assert len(size_raw) == 348
+    assert sha256_bytes(size_raw) == (
+        "16b096ee5be62da4eaa24331b5340bd8bbdc74186f3990dbbabae040d446af5b"
+    )
+
+    receipt = json.loads(receipt_raw)
+    bundle = json.loads(WDI_BUNDLE.read_bytes())
+    validated = load_pages_publication_receipt(
+        CHECKED_RECEIPT,
+        archived_size_receipt_path=CHECKED_SIZE_RECEIPT,
+        expected_dataset_id="bri-economic-context-world-bank-wdi",
+        expected_source_id="world_bank_wdi",
+        expected_collection_id=bundle["collection_id"],
+        expected_resources=_expected_resources(),
+        verification_cutoff=datetime(2026, 8, 26, 15, 55, 34, tzinfo=UTC),
+    )
+    assert validated.raw == receipt_raw == canonical_json_bytes(receipt)
+    assert receipt["workflow"]["publication_sha"] == RELEASE_A_SHA
+    assert receipt["workflow"]["run_id"] == 32_984_946_320
+    assert receipt["served_verification"]["verified_at"] == CHECKED_VERIFIED_AT
+
+    descriptor = build_wdi_observation_descriptor(
+        load_registry(BRI_REGISTRY),
+        bundle_path=WDI_BUNDLE,
+        observation_schema_path=WDI_SCHEMA,
+        series_registry_path=WDI_SERIES_REGISTRY,
+        publication_receipt_path=CHECKED_RECEIPT,
+        archived_size_receipt_path=CHECKED_SIZE_RECEIPT,
+    )
+    assert descriptor["implementation_state"] == "live"
+    assert descriptor["publication_state"] == "production_verified"
+    assert descriptor["publication_receipt"] == {
+        "schema_version": "palimpsest.bri-wdi-pages-publication-locator.v1",
+        "status": "production_verified",
+        "repository_path": (
+            ".well-known/receipts/bri-wdi-pages-publication-v1.json"
+        ),
+        "public_url": (
+            "https://palimpsest.info/.well-known/receipts/"
+            "bri-wdi-pages-publication-v1.json"
+        ),
+        "receipt_sha256": CHECKED_RECEIPT_SHA256,
+        "release_a_sha": RELEASE_A_SHA,
+        "verified_at": CHECKED_VERIFIED_AT,
+        "fresh_until": CHECKED_FRESH_UNTIL,
+        "availability_semantics": (
+            "verified_at_release_not_continuous_monitoring"
+        ),
+    }
 
 
 def test_validated_receipt_mapping_mutation_cannot_change_locator(
@@ -445,6 +535,21 @@ def test_evidence_mesh_loads_production_receipts_offline_and_expires_availabilit
         "WDI data currency is separate" in limitation
         for limitation in resource["limitations"]
     )
+    catalog_resource = next(
+        row
+        for row in mesh["resources"]
+        if row["resource_id"]
+        == "palimpsest:catalog:bri-economic-observations"
+    )
+    assert catalog_resource["public_url"] == resource["public_url"]
+    assert catalog_resource["allowed_role"] == "context"
+    assert catalog_resource["independence_eligible"] is False
+    assert catalog_resource["availability"] == resource["availability"]
+    assert catalog_resource["clocks"] == resource["clocks"]
+    assert catalog_resource["freshness"] == resource["freshness"]
+    assert catalog_resource["dependency_resource_ids"] == [
+        "palimpsest:context:bri-world-bank-wdi"
+    ]
     input_receipt = next(
         row
         for row in mesh["inputs"]
@@ -465,6 +570,15 @@ def test_evidence_mesh_loads_production_receipts_offline_and_expires_availabilit
     )
     assert stale_resource["availability"] == "stale"
     assert stale_resource["freshness"]["status"] == "stale"
+    stale_catalog_resource = next(
+        row
+        for row in stale_mesh["resources"]
+        if row["resource_id"]
+        == "palimpsest:catalog:bri-economic-observations"
+    )
+    assert stale_catalog_resource["availability"] == "stale"
+    assert stale_catalog_resource["clocks"] == stale_resource["clocks"]
+    assert stale_catalog_resource["freshness"] == stale_resource["freshness"]
     stale_input = next(
         row
         for row in stale_mesh["inputs"]
@@ -669,7 +783,7 @@ def test_state_combinations_fail_closed_and_repository_ready_stays_null(
     tmp_path: Path,
 ) -> None:
     repository_ready = build_wdi_observation_descriptor(
-        load_registry(BRI_REGISTRY),
+        _repository_ready_registry(),
         bundle_path=WDI_BUNDLE,
         observation_schema_path=WDI_SCHEMA,
         series_registry_path=WDI_SERIES_REGISTRY,
@@ -716,7 +830,7 @@ def test_missing_receipt_pair_and_noncanonical_publication_bytes_fail_closed(
 
     with pytest.raises(BriRegistryError, match="requires source implementation live"):
         build_wdi_observation_descriptor(
-            load_registry(BRI_REGISTRY),
+            _repository_ready_registry(),
             bundle_path=WDI_BUNDLE,
             observation_schema_path=WDI_SCHEMA,
             series_registry_path=WDI_SERIES_REGISTRY,
@@ -781,7 +895,7 @@ def test_no_flag_build_ignores_historical_receipt_after_source_downgrade(
     )
 
     json_bytes, _ = bri_builder.build(
-        BRI_REGISTRY,
+        _repository_ready_registry_path(tmp_path),
         wdi_bundle_path=WDI_BUNDLE,
         wdi_observation_schema_path=WDI_SCHEMA,
         wdi_series_registry_path=WDI_SERIES_REGISTRY,
@@ -792,9 +906,11 @@ def test_no_flag_build_ignores_historical_receipt_after_source_downgrade(
     assert dataset["publication_receipt"] is None
 
 
-def test_explicit_none_keeps_repository_ready_build_receipt_free() -> None:
+def test_explicit_none_keeps_repository_ready_build_receipt_free(
+    tmp_path: Path,
+) -> None:
     json_bytes, _ = build(
-        BRI_REGISTRY,
+        _repository_ready_registry_path(tmp_path),
         wdi_bundle_path=WDI_BUNDLE,
         wdi_publication_receipt_path=None,
         wdi_archived_size_receipt_path=None,

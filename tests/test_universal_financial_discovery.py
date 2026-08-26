@@ -52,6 +52,25 @@ MCP_REGISTRY_VERSION_URL = (
     "io.github.beepboop2025%2Fpalimpsest/versions/1.9.1"
 )
 MCP_REGISTRY_PUBLISHED_AT = "2026-08-25T19:33:43.311753Z"
+BRI_WDI_RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
+BRI_WDI_RUN_URL = (
+    "https://github.com/beepboop2025/palimpsest/actions/runs/32984946320"
+)
+BRI_WDI_RECEIPT_PATH = (
+    ROOT / ".well-known" / "receipts" / "bri-wdi-pages-publication-v1.json"
+)
+BRI_WDI_RECEIPT_URL = (
+    "https://palimpsest.info/.well-known/receipts/"
+    "bri-wdi-pages-publication-v1.json"
+)
+BRI_WDI_RECEIPT_SHA256 = (
+    "sha256:239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
+)
+BRI_WDI_RECEIPT_SCHEMA_URL = (
+    "https://palimpsest.info/protocol/bri-wdi-pages-publication-v1.schema.json"
+)
+BRI_WDI_VERIFIED_AT = "2026-08-26T15:55:34Z"
+BRI_WDI_FRESH_UNTIL = "2026-08-27T15:55:34Z"
 PAGES = {
     "china/money-markets/index.html": ("https://palimpsest.info/china/money-markets/"),
     "china/capital-markets/index.html": (
@@ -234,19 +253,38 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
     bri = entries["urn:air:palimpsest.info:dataset:belt-and-road-observatory"]
     wdi = entries["urn:air:palimpsest.info:dataset:bri-economic-observations"]
 
-    assert openapi["version"] == "2.0.0"
-    assert openapi["metadata"]["access"] == "public-read-only-after-deployment"
+    assert openapi["version"] == "2.0.1"
+    assert openapi["metadata"]["access"] == "public-read-only"
     assert openapi["metadata"]["deploymentBoundary"] == (
-        "repository-ready-not-deployed"
+        "current-contract-not-bound-by-wdi-receipt"
     )
+    assert "deploymentCommit" not in openapi["metadata"]
+    assert "deploymentRun" not in openapi["metadata"]
+    assert openapi["metadata"]["wdiPublicationReceipt"] == BRI_WDI_RECEIPT_URL
+    assert openapi["metadata"]["wdiPublicationReceiptSha256"] == (
+        BRI_WDI_RECEIPT_SHA256
+    )
+    assert "not this OpenAPI document" in openapi["metadata"]["deploymentNote"]
     assert "independent of the deployed MCP" in openapi["metadata"][
         "versionAuthority"
     ]
 
     assert bri["metadata"] == {
         "authentication": "none",
-        "access": "public-read-only-after-deployment",
-        "deploymentBoundary": "repository-ready-not-deployed",
+        "access": "public-read-only",
+        "deploymentBoundary": "current-surface-not-bound-by-wdi-receipt",
+        "wdiPublicationReceipt": BRI_WDI_RECEIPT_URL,
+        "wdiPublicationReceiptSha256": BRI_WDI_RECEIPT_SHA256,
+        "wdiPublicationReceiptSchema": BRI_WDI_RECEIPT_SCHEMA_URL,
+        "wdiServedVerifiedAt": BRI_WDI_VERIFIED_AT,
+        "wdiServedVerificationFreshUntil": BRI_WDI_FRESH_UNTIL,
+        "wdiAvailabilitySemantics": (
+            "verified_at_release_not_continuous_monitoring"
+        ),
+        "wdiReceiptScope": (
+            "The receipt binds only the WDI bundle, observation schema and series "
+            "registry. It does not attest this current BRI reading."
+        ),
         "schema": (
             "https://palimpsest.info/protocol/"
             "belt-and-road-observatory-v2.schema.json"
@@ -270,15 +308,25 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
             "facts."
         ),
     }
-    assert bri["updatedAt"] == "2026-08-26T13:17:34.790676Z"
+    assert bri["updatedAt"] == BRI_WDI_VERIFIED_AT
 
     assert wdi["url"] == (
         "https://palimpsest.info/readings/bri-economic-observations-latest.json"
     )
-    assert wdi["updatedAt"] == "2026-08-26T13:17:34.790676Z"
+    assert wdi["updatedAt"] == BRI_WDI_VERIFIED_AT
     metadata = wdi["metadata"]
-    assert metadata["access"] == "public-read-only-after-deployment"
-    assert metadata["deploymentBoundary"] == "repository-ready-not-deployed"
+    assert metadata["access"] == "public-read-only"
+    assert metadata["deploymentBoundary"] == "production-verified"
+    assert metadata["deploymentCommit"] == BRI_WDI_RELEASE_A_SHA
+    assert metadata["deploymentRun"] == BRI_WDI_RUN_URL
+    assert metadata["publicationReceipt"] == BRI_WDI_RECEIPT_URL
+    assert metadata["publicationReceiptSha256"] == BRI_WDI_RECEIPT_SHA256
+    assert metadata["publicationReceiptSchema"] == BRI_WDI_RECEIPT_SCHEMA_URL
+    assert metadata["servedVerifiedAt"] == BRI_WDI_VERIFIED_AT
+    assert metadata["servedVerificationFreshUntil"] == BRI_WDI_FRESH_UNTIL
+    assert metadata["availabilitySemantics"] == (
+        "verified_at_release_not_continuous_monitoring"
+    )
     assert metadata["schema"].endswith(
         "/protocol/bri-economic-observations-v1.schema.json"
     )
@@ -305,6 +353,13 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
     }
     assert "do not establish BRI causation" in wdi["description"]
 
+    receipt_raw = BRI_WDI_RECEIPT_PATH.read_bytes()
+    assert "sha256:" + hashlib.sha256(receipt_raw).hexdigest() == BRI_WDI_RECEIPT_SHA256
+    receipt = json.loads(receipt_raw)
+    assert receipt["workflow"]["publication_sha"] == BRI_WDI_RELEASE_A_SHA
+    assert receipt["workflow"]["run_url"] == BRI_WDI_RUN_URL
+    assert receipt["served_verification"]["verified_at"] == BRI_WDI_VERIFIED_AT
+
 
 def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
     catalog_url = "https://palimpsest.info/.well-known/ai-catalog.json"
@@ -326,6 +381,9 @@ def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
     urls = {node.text for node in tree.findall("s:url/s:loc", namespace)}
     assert catalog_url in urls
     assert set(PAGES.values()) <= urls
+    assert BRI_WDI_RECEIPT_URL in urls
+    assert "https://palimpsest.info/readings/bri-economic-observations-latest.json" in urls
+    assert BRI_WDI_RECEIPT_SCHEMA_URL in urls
 
 
 def test_financial_landing_pages_have_canonical_metadata_and_visible_faqs():

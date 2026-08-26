@@ -20,6 +20,9 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     assert len(ids) >= 30
     assert len(ids) == len(set(ids))
     assert built["summary"]["datasets"] == len(ids)
+    assert "Belt and Road infrastructure and economic evidence" in (
+        built["description"]
+    )
     assert set(built["summary"]["layers"]) >= {
         "network",
         "content",
@@ -221,6 +224,12 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}
 
+    bri = by_id["belt-and-road-observatory"]
+    assert bri["status"] == "live"
+    assert bri["method"] == "protocol/belt-and-road-observatory-v2.schema.json"
+    assert "production-verified national economic context" in bri["description"]
+    assert "project-finance adapters remain pending" in bri["description"]
+
     telemetry = by_id["china-econ"]
     assert telemetry["cadence"] == "PT6H"
     assert telemetry["status"] == "historical"
@@ -269,7 +278,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
         "observation",
         "passive-review-gated-aggregate",
     )
-    assert bri_wdi["status"] == "warming"
+    assert bri_wdi["status"] == "live"
     assert bri_wdi["cadence"] == "P7D"
     assert bri_wdi["freshness_budget"] == "P120D"
     assert bri_wdi["geography"] == ["CN", "PK", "MM"]
@@ -285,6 +294,14 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     ]
     assert bri_wdi["license"] == wdi["license"]
     assert "country-period context only" in bri_wdi["description"]
+    assert "P120D is the economic-data freshness budget" in (
+        bri_wdi["freshness_semantics"]
+    )
+    assert "P7D is the collection target" in bri_wdi["freshness_semantics"]
+    assert "24-hour point-in-time deployment proof" in (
+        bri_wdi["freshness_semantics"]
+    )
+    assert "not continuous monitoring" in bri_wdi["freshness_semantics"]
 
     built, _jsonld, _package = catalog.build_catalog(
         now=datetime(2026, 8, 26, 14, tzinfo=timezone.utc)
@@ -292,7 +309,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     built_bri_wdi = next(
         item for item in built["datasets"] if item["id"] == "bri-economic-observations"
     )
-    assert built_bri_wdi["artifacts"]["evidence_state"] == "warming"
+    assert built_bri_wdi["artifacts"]["evidence_state"] == "fresh"
     assert built_bri_wdi["artifacts"]["counts"] == {
         "coverage.source_rows": 3564,
         "coverage.observed_rows": 1940,

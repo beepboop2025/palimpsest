@@ -21,11 +21,23 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "config" / "bri_observatory.json"
 READING = ROOT / "readings" / "belt-and-road-observatory-latest.json"
 PAGE = ROOT / "belt-and-road" / "index.html"
+RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
+RECEIPT_SHA256 = "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
+RECEIPT_VERIFIED_AT = "2026-08-26T15:55:34Z"
+RECEIPT_FRESH_UNTIL = "2026-08-27T15:55:34Z"
 
 
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
     registry = load_registry(REGISTRY)
-    assert registry["as_of"] == "2026-08-26T13:17:34.790676Z"
+    assert registry["as_of"] == RECEIPT_VERIFIED_AT
+    backbone = next(
+        row
+        for row in registry["workstreams"]
+        if row["workstream_id"] == "global_bri_economic_backbone"
+    )
+    assert backbone["status"] == (
+        "national_context_live_project_finance_adapters_pending"
+    )
     report = coverage_report(registry)
     assert report["source_count"] >= 40
     assert {"official_china", "official_host", "multilateral", "research", "civil_society", "legal", "partner"} <= set(report["source_classes"])
@@ -119,8 +131,8 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
     Draft202012Validator(schema).validate(artifact)
     assert artifact["schema_version"] == "palimpsest.belt-and-road-observatory.v2"
     [dataset] = artifact["observation_datasets"]
-    assert dataset["implementation_state"] == "repository_ready"
-    assert dataset["publication_state"] == "repository_ready_not_deployed"
+    assert dataset["implementation_state"] == "live"
+    assert dataset["publication_state"] == "production_verified"
     assert dataset["coverage"] == {
         "start_year": 1960,
         "end_year": 2025,
@@ -131,10 +143,31 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
         "forecast_rows": 0,
         "unavailable_rows": 1624,
     }
-    assert dataset["publication_receipt"] is None
+    assert dataset["publication_receipt"] == {
+        "schema_version": "palimpsest.bri-wdi-pages-publication-locator.v1",
+        "status": "production_verified",
+        "repository_path": (
+            ".well-known/receipts/bri-wdi-pages-publication-v1.json"
+        ),
+        "public_url": (
+            "https://palimpsest.info/.well-known/receipts/"
+            "bri-wdi-pages-publication-v1.json"
+        ),
+        "receipt_sha256": RECEIPT_SHA256,
+        "release_a_sha": RELEASE_A_SHA,
+        "verified_at": RECEIPT_VERIFIED_AT,
+        "fresh_until": RECEIPT_FRESH_UNTIL,
+        "availability_semantics": (
+            "verified_at_release_not_continuous_monitoring"
+        ),
+    }
 
     page = expected_html.decode("utf-8")
-    assert "repository ready not deployed" in page
+    assert "production verified" in page
+    assert "Inspect the immutable receipt" in page
+    assert RECEIPT_VERIFIED_AT in page
+    assert RECEIPT_FRESH_UNTIL in page
+    assert "release-time proof, not continuous monitoring" in page
     assert '"license":"https://creativecommons.org/licenses/by/4.0/"' in page
     assert '"@id":"https://www.worldbank.org/#organization"' in page
     assert '"url":"https://www.worldbank.org/"' in page
@@ -167,8 +200,11 @@ def test_public_discovery_is_explicit_without_claiming_complete_ingestion() -> N
     assert "https://palimpsest.info/belt-and-road/" in sitemap
     assert 'href="/belt-and-road/"' in home
     entry = next(item for item in catalog["datasets"] if item["id"] == "belt-and-road-observatory")
-    assert entry["status"] == "warming"
+    assert entry["status"] == "live"
     assert entry["latest"] == "readings/belt-and-road-observatory-latest.json"
+    assert entry["method"] == "protocol/belt-and-road-observatory-v2.schema.json"
+    assert "does not claim every registered source has been ingested" in entry["description"]
+    assert "project-finance adapters remain pending" in entry["description"]
 
 
 def test_coverage_contract_is_context_not_independent_evidence() -> None:

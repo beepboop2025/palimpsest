@@ -24,7 +24,7 @@ linked according to those catalogued rights.
 
 The machine-readable [AI catalog](https://palimpsest.info/.well-known/ai-catalog.json)
 describes the public MCP `1.9.1` release boundary, the independently versioned
-OpenAPI `2.0.0` contract, the China economic observation ledger and manifest,
+OpenAPI `2.0.1` contract, the China economic observation ledger and manifest,
 the China Observatory index, the BRI observatory, its frozen v1 snapshot and the
 reviewed WDI national-context bundle, and the canonical Financial Evidence Agent
 Skill. The MCP release and OpenAPI document have independent version authorities;
@@ -49,7 +49,13 @@ Use the narrow landing page that matches the question:
   3,564 authenticated country-year-indicator rows for China, Myanmar and Pakistan
   across 18 WDI indicators and 1960–2025. The 1,624 source nulls remain explicitly
   unavailable, and these national aggregates cannot establish project, actor,
-  corridor or BRI-causal claims.
+  corridor or BRI-causal claims. Exact Release A publication is bound by the
+  [WDI Pages receipt](https://palimpsest.info/.well-known/receipts/bri-wdi-pages-publication-v1.json):
+  commit `14b06772dfed6cdc736279c9ab61b444e5846598`,
+  [workflow run 32984946320](https://github.com/beepboop2025/palimpsest/actions/runs/32984946320),
+  served-byte verification `2026-08-26T15:55:34Z`, and point-in-time
+  `fresh_until` `2026-08-27T15:55:34Z`. This is not continuous availability
+  monitoring and does not replace the WDI source or acquisition clocks.
 - [Financial Evidence Agent Skill](https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence):
   route Palimpsest China evidence, Seiche system and money/capital transmission,
   LiquiLens institutions, and Undertow exit liquidity without collapsing their claims.
@@ -440,6 +446,8 @@ one score or imply that temporal co-movement is corroboration.
 - [BRI WDI national-context observations](https://palimpsest.info/readings/bri-economic-observations-latest.json): 3,564 authenticated rows across 18 indicators, China/Myanmar/Pakistan and 1960–2025; context only, never project or causal attribution
 - [BRI WDI observation schema](https://palimpsest.info/protocol/bri-economic-observations-v1.schema.json): strict bundle and row contract preserving observed, forecast and unavailable states
 - [Reviewed BRI WDI series registry](https://palimpsest.info/config/bri_wdi_series.json): pinned country/indicator scope, rights evidence, transport limits and source semantics
+- [BRI WDI Pages publication receipt](https://palimpsest.info/.well-known/receipts/bri-wdi-pages-publication-v1.json): immutable Release A workflow, artifact, deployment and cache-busted served-byte proof; SHA-256 `239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06`
+- [BRI WDI publication receipt schema](https://palimpsest.info/protocol/bri-wdi-pages-publication-v1.schema.json): strict public receipt shape; the Python validator additionally enforces canonical bytes and cross-field identity, digest, URL, clock and arithmetic bindings
 - [China economic observation manifest](https://palimpsest.info/readings/china-econ-observations-latest.json): integrity, coverage and schema receipt for the aggregate append-only observation ledger
 - [China economic observations (JSONL)](https://palimpsest.info/readings/china-econ-observations.jsonl): bitemporal aggregate rows with separate release/collection clocks, revisions, source URLs and hashes; use the MCP query tool for bounded point-in-time filtering
 - [China economic observation schema](https://palimpsest.info/protocol/economic-observation-v1.schema.json): strict aggregate observation-row contract for each JSONL record

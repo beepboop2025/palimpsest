@@ -1362,7 +1362,7 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
     assert mcp.SERVER_VERSION == live_version == "1.9.1"
     # The static REST contract has its own release authority and is not
     # version-coupled to the independently deployed MCP server.
-    assert openapi["info"]["version"] == "2.0.0"
+    assert openapi["info"]["version"] == "2.0.1"
     assert openapi["info"]["version"] != live_version
     assert "/readings/china-index-latest.json" in openapi["paths"]
     assert "/readings/china-econ-forecast-latest.json" in openapi["paths"]
@@ -1371,6 +1371,10 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
     assert "/readings/belt-and-road-observatory-latest.json" in openapi["paths"]
     assert "/readings/belt-and-road-observatory-v1.json" in openapi["paths"]
     assert "/readings/bri-economic-observations-latest.json" in openapi["paths"]
+    assert (
+        "/.well-known/receipts/bri-wdi-pages-publication-v1.json"
+        in openapi["paths"]
+    )
     assert openapi["components"]["schemas"]["ChinaEconomicObservation"] == {
         "$ref": "https://palimpsest.info/protocol/economic-observation-v1.schema.json"
     }

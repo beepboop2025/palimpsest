@@ -872,6 +872,12 @@ def _rights(dataset: Mapping[str, Any]) -> dict[str, str]:
 
 
 def _catalog_role(dataset: Mapping[str, Any]) -> str:
+    if dataset["id"] == "bri-economic-observations":
+        # This catalog row and the receipt-bound WDI context node expose the
+        # same public observations through different contracts.  Keep both
+        # projections context-only so the generic catalog bridge cannot turn
+        # a national background series into independent project evidence.
+        return "context"
     if dataset["stage"] == "reporting":
         return "candidate-only"
     if dataset["stage"] in {
@@ -1128,6 +1134,7 @@ def build_evidence_mesh(
 
     resources: list[dict[str, Any]] = []
     bri_observation_inputs: list[dict[str, Any]] = []
+    bri_wdi_context_resource: dict[str, Any] | None = None
     catalog_publication = _parse_timestamp(osint["generated_at"], "osint.generated_at")
     for dataset in catalog["datasets"]:
         dataset_id = dataset["id"]
@@ -1194,6 +1201,26 @@ def build_evidence_mesh(
             )
             if fresh["status"] == "stale":
                 availability = "stale"
+        if dataset_id == "bri-economic-observations":
+            if bri_wdi_context_resource is None:
+                # Reduced/offline roots may deliberately omit the BRI reading.
+                # Without its authenticated descriptor there is no publication
+                # clock to project, so fail closed instead of falling back to
+                # the bundle's annual data-currency clock.
+                availability = "unavailable"
+                clocks = {
+                    "event_time": None,
+                    "knowledge_time": None,
+                    "publication_time": None,
+                }
+                fresh = _freshness(None, None, moment, None, availability)
+            else:
+                # The catalog row and context node expose the same public bytes.
+                # Reuse the authenticated publication clock and availability so a
+                # generic catalog projection cannot outlive the receipt proof.
+                availability = bri_wdi_context_resource["availability"]
+                clocks = dict(bri_wdi_context_resource["clocks"])
+                fresh = dict(bri_wdi_context_resource["freshness"])
         role = _catalog_role(dataset)
         evidence_class = _catalog_class(dataset)
         groups = upstream_groups(dataset_id)
@@ -1209,6 +1236,11 @@ def build_evidence_mesh(
             f"palimpsest:catalog:{item}" for item in dependencies.get(dataset_id, [])
             if item in catalog_rows
         ]
+        if (
+            dataset_id == "bri-economic-observations"
+            and bri_wdi_context_resource is not None
+        ):
+            dependency_ids.append("palimpsest:context:bri-world-bank-wdi")
         public_url = "https://palimpsest.info/" + dataset["latest"]
         limitations = [dataset["description"]]
         if dataset.get("freshness_semantics") is not None:
@@ -1417,7 +1449,7 @@ def build_evidence_mesh(
                         f"check expires at {publication_receipt['fresh_until']}."
                     )
             input_id = "palimpsest-bri-wdi-world-bank"
-            resources.append(_resource(
+            bri_wdi_context_resource = _resource(
                 resource_id="palimpsest:context:bri-world-bank-wdi",
                 project_id="palimpsest",
                 namespace="context",
@@ -1457,7 +1489,8 @@ def build_evidence_mesh(
                     "Source-marked forecasts remain forecasts and source-null values remain unavailable, never observed zeroes.",
                     *publication_limitations,
                 ],
-            ))
+            )
+            resources.append(bri_wdi_context_resource)
             bri_observation_inputs.append(_receipt(
                 input_id=input_id,
                 project_id="palimpsest",

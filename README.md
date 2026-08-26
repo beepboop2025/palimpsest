@@ -64,6 +64,28 @@ performs that routing without merging the products’ evidence boundaries. Agent
 discover Palimpsest itself through its
 [AI catalog](https://palimpsest.info/.well-known/ai-catalog.json).
 
+## Follow Belt and Road evidence without flattening it
+
+The [Belt and Road Observatory](https://palimpsest.info/belt-and-road/) publishes a
+global source, rights, project-lifecycle, finance and local-impact contract with
+priority depth for CPEC and Gwadar in Pakistan, CMEC and Kyaukpyu in Myanmar, and
+seven deliberately separate Balochistan political, civic, armed, legal, state-action,
+rights and political-economy lanes. Its NarcoScope overlay joins only aggregate
+country/time context; it cannot identify an actor or establish a political, criminal,
+corridor or causal link.
+
+The separately licensed [World Bank WDI bundle](https://palimpsest.info/readings/bri-economic-observations-latest.json)
+adds 3,564 annual country-indicator rows for China, Myanmar and Pakistan. Observed,
+forecast and unavailable values remain distinct, and national context is never treated
+as project evidence. Exact Release A publication is bound by the
+[immutable Pages receipt](https://palimpsest.info/.well-known/receipts/bri-wdi-pages-publication-v1.json)
+and [receipt schema](https://palimpsest.info/protocol/bri-wdi-pages-publication-v1.schema.json):
+commit `14b06772dfed6cdc736279c9ab61b444e5846598`, workflow run
+[`32984946320`](https://github.com/beepboop2025/palimpsest/actions/runs/32984946320),
+and cache-busted served-byte verification at `2026-08-26T15:55:34Z`. The receipt’s
+`fresh_until` clock is a 24-hour point-in-time availability statement, not continuous
+monitoring and not a new WDI observation date.
+
 ## Fund independent validation
 
 Palimpsest has already frozen and published a 145-row validation sample, its codebook and the
@@ -389,6 +411,8 @@ an upstream limitation. Runs, code, and outputs are public, and no hidden server
 | **net4people** | The qualitative companion to the anomaly signals: the community log of China blocking events and circumvention developments | Every 12 hours | [`readings/net4people-latest.json`](readings/net4people-latest.json) |
 | **Vantage fusion** | One coverage-weighted network reading from the disagreeing vantages, with an interval and an explicit CONTESTED state when in-country and remote differ | Every 6 hours | [`readings/vantage-fusion-latest.json`](readings/vantage-fusion-latest.json) |
 | **China econ benchmarks** | Official CFETS published benchmarks, the keyless macro backdrop against which information-control moves are read | Every 6 hours | [`readings/china-econ-latest.json`](readings/china-econ-latest.json) |
+| **Belt and Road Observatory v2** | Global rights-gated source and project-field contract with deep CPEC, Gwadar, CMEC, Kyaukpyu, plural Balochistan and bounded NarcoScope lanes; listed source readiness is not complete ingestion | Release-bound | [`readings/belt-and-road-observatory-latest.json`](readings/belt-and-road-observatory-latest.json) |
+| **BRI WDI national context** | 3,564 authenticated annual country-indicator rows for China, Myanmar and Pakistan; context only, with unavailable rows preserved and project/actor/corridor/causal inference prohibited | Reviewed source releases | [`readings/bri-economic-observations-latest.json`](readings/bri-economic-observations-latest.json) |
 | **Data darkness** | The withholding watch: days-late against their own rhythm for seven official Chinese publication surfaces (PBOC OMO announcements, the monetary-authority balance-sheet block, SAFE settlement data, CFETS benchmarks, the NBS energy and industrial monthlies scored against the state's own release calendar, and rail freight) — the complement to deletion-as-data | Daily | [`readings/data-darkness-latest.json`](readings/data-darkness-latest.json) |
 | **Silence Index** | Pre-emptive silence: DDTI topics loud abroad while absent from the domestic board, with a china-nexus gate and a non-bypassable corroboration guard so local disinterest never reads as blackout | Every 6 hours | [`readings/silence-index-latest.json`](readings/silence-index-latest.json) |
 | **CNY fix gap** | Two prices for one currency: the PBOC's daily USD/CNY fix against an independent same-day reference (ECB, cross-checked via Bank of Canada) — the market agreeing or pulling against the state's price | Daily | [`readings/cny-fix-gap-latest.json`](readings/cny-fix-gap-latest.json) |
@@ -507,6 +531,7 @@ The live velocity leg needs PostgreSQL, Redis, and in-country / seam egress; see
 | [docs/EVAL-ASSURANCE.md](docs/EVAL-ASSURANCE.md) | The claim-by-claim assurance ladder, GFI v2 evidence contract and promotion rules |
 | [docs/EVAL-JOURNAL.md](docs/EVAL-JOURNAL.md) | The evidence-bound article contract, feeds, receipts and publishing workflow |
 | [docs/EVAL-FINDINGS.md](docs/EVAL-FINDINGS.md) | The deterministic live-findings renderer, sentence receipts and immutable revisions |
+| [docs/BRI-WDI-OBSERVATIONS.md](docs/BRI-WDI-OBSERVATIONS.md) | The WDI national-context boundary, acquisition clocks, rights, exact Release A publication receipt and refresh procedure |
 | [docs/GRANT-CASE.md](docs/GRANT-CASE.md) | Grant-ready case, evidence, falsifiable work packages, risks and auditable outcomes |
 | [docs/METHODOLOGY.md](docs/METHODOLOGY.md) | The DDTI method, the math, and its honest scope and biases |
 | [docs/VALIDATION.md](docs/VALIDATION.md) | Retrodiction backtest, does the method catch documented events? |
