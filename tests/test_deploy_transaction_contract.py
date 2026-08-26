@@ -4080,6 +4080,12 @@ def test_common_crawl_retry_preserves_the_complete_prepared_receipt_chain() -> N
         "705aaf3b5e52cc400fcb51957f0f2cf6167869e86b4622637b01ad512641c08a"
     )
     assert mount["expected_source"] != mount["observed_source"]
+    warehouse_source = str(Path(mount["expected_source"]).parent)
+    transaction = _transaction()
+    assert transaction.count(
+        f"COMMON_CRAWL_WAREHOUSE_SOURCE='{warehouse_source}'"
+    ) == 1
+    assert "HC_Volume_REPLACE" not in DEPLOY_GUIDE.read_text(encoding="utf-8")
     assert mount["source_identity"] == {
         "device": 2064,
         "gid": 10001,

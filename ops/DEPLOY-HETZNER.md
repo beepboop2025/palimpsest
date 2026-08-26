@@ -243,7 +243,7 @@ files already seeded under `/var/lib/palimpsest/readings`.
 ```bash
 cd ~/palimpsest
 EXPECTED_DEPLOY_SHA='REPLACE_WITH_REVIEWED_40_HEX_SHA'
-COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_106588294/palimpsest/warehouse/common-crawl'
 [[ "$EXPECTED_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 git fetch --force --prune --no-tags \
   https://github.com/beepboop2025/palimpsest.git \
@@ -1075,7 +1075,7 @@ cd /home/palimpsest/palimpsest
 PALIMPSEST_REPO_ROOT="$(pwd -P)"
 C0_DEPLOY_SHA='REPLACE_WITH_REVIEWED_C0_40_HEX_SHA'
 EXPECTED_PREVIOUS_DEPLOY_SHA='REPLACE_WITH_CURRENT_40_HEX_SHA'
-COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_106588294/palimpsest/warehouse/common-crawl'
 PREPARED_C0_SHA=''
 PALIMPSEST_ALLOW_PREPARED_C0_RESUME=''
 [[ "$C0_DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
@@ -1523,7 +1523,7 @@ INTERRUPTED_PHASE1_MANIFEST_SOURCE="ops/release-recovery/${INTERRUPTED_PHASE1_IN
 INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_common_crawl_bind_alias_retry_manifest.py'
 INTERRUPTED_PHASE1_MANIFEST_SHA256='62dd4970775c4acc840649f4531c50f73dc73906ad816d7bf45c49e1f323d834'
 INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='913a6aa64e705bd5d2b2f6f022a91e07389999e0'
-COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_REPLACE/palimpsest/warehouse/common-crawl'
+COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_106588294/palimpsest/warehouse/common-crawl'
 COMMON_CRAWL_DERIVED_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE/derived"
 COMMON_CRAWL_STABLE_ROOT='/var/lib/palimpsest/common-crawl'
 COMMON_CRAWL_STABLE_DERIVED_SOURCE="$COMMON_CRAWL_STABLE_ROOT/derived"
