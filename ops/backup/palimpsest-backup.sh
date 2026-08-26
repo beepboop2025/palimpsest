@@ -286,6 +286,13 @@ log "archiving readings/, data/, evidence wire, private analysis, and witness hi
 # it can read every producer-owned mode-0600 artifact without mutating it. Its
 # fixed helper holds a shared cascade lease only while it reads analytical state.
 docker run --rm --pull never --network none --read-only --log-driver none \
+  --label "com.docker.compose.project=${compose_project}-backup-archive" \
+  --label com.docker.compose.service=archive \
+  --label com.docker.compose.version=standalone \
+  --label com.docker.compose.oneoff=True \
+  --label com.docker.compose.project.working_dir= \
+  --label com.docker.compose.project.config_files= \
+  --label io.palimpsest.runtime=backup-archive \
   --security-opt no-new-privileges:true --cap-drop ALL \
   --cap-add DAC_READ_SEARCH --user 0:0 --pids-limit 64 \
   --memory 512m --memory-swap 512m --cpus 1.0 \

@@ -103,6 +103,13 @@ printf '%s\n' \
   '  printf "16.test\n"' \
   'elif [[ "$joined" == *" run --rm --pull never --network none "* ]]; then' \
   '  [[ "$joined" == *" --log-driver none "* ]] || exit 49' \
+  '  [[ "$joined" == *" --label com.docker.compose.project=palimpsest-backup-archive "* ]] || exit 59' \
+  '  [[ "$joined" == *" --label com.docker.compose.service=archive "* ]] || exit 60' \
+  '  [[ "$joined" == *" --label com.docker.compose.version=standalone "* ]] || exit 61' \
+  '  [[ "$joined" == *" --label com.docker.compose.oneoff=True "* ]] || exit 62' \
+  '  [[ "$joined" == *" --label com.docker.compose.project.working_dir= "* ]] || exit 63' \
+  '  [[ "$joined" == *" --label com.docker.compose.project.config_files= "* ]] || exit 64' \
+  '  [[ "$joined" == *" --label io.palimpsest.runtime=backup-archive "* ]] || exit 65' \
   '  [[ "$joined" == *" --read-only "* ]] || exit 50' \
   '  [[ "$joined" == *" --cap-drop ALL "* ]] || exit 51' \
   '  [[ "$joined" == *" --cap-add DAC_READ_SEARCH "* ]] || exit 46' \
@@ -127,6 +134,7 @@ printf '%s\n' \
   '  exit 43' \
   'fi' \
   >"$fake_bin/docker"
+# shellcheck disable=SC2016
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -eu' \
@@ -145,6 +153,7 @@ chmod 0755 "$fake_bin/docker" "$fake_bin/docker-inspect" "$fake_bin/flock"
 # The backup calls both `docker compose` and `docker inspect`. Keep one fake
 # entry point while dispatching the latter to its focused fixture.
 mv "$fake_bin/docker" "$fake_bin/docker-compose-fake"
+# shellcheck disable=SC2016
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -eu' \
