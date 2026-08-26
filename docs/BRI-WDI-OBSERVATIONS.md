@@ -1,6 +1,7 @@
 # BRI WDI national-context observations
 
-Status: **repository-ready, not fetched or published**.
+Status: **reviewed repository release assembled; public deployment and served-byte
+verification pending**.
 
 This tranche provides a bounded World Bank World Development Indicators adapter
 for China (`CHN`), Myanmar (`MMR`), and Pakistan (`PAK`). It is an annual,
@@ -120,9 +121,32 @@ replacing a differing derived artifact requires `--replace-derived`. None of
 these files is published automatically. The fetched bytes must still be
 reviewed by the release operator; a successful fetch is not publication proof.
 
+## Reviewed release candidate
+
+The admitted release candidate was retrieved at
+`2026-08-26T13:17:34.790676Z` from the reviewed WDI API scope and carries source
+release upper bound `2026-07-13T23:59:59Z`. Its normalized public bundle is
+[`readings/bri-economic-observations-latest.json`](../readings/bri-economic-observations-latest.json):
+
+- 18 indicators across China, Myanmar and Pakistan;
+- 3,564 country-year-indicator rows covering 1960 through 2025;
+- 1,940 observed rows, zero forecast rows and 1,624 explicitly unavailable rows;
+- collection ID
+  `b279cf29edafa4e6e8f3a5b817239a1d9a5169a12cefb609c231067d72d65d1e`;
+- normalized-bundle SHA-256
+  `68b9f96e3cfc1e5692b4305c93b42b64dd45d065655ccade6947e086285dc099`.
+
+The exact 870,155-byte source response and its acquisition receipt remain in
+the controlled provenance store; they are not copied into the public site.
+World Bank WDI redistribution is attributed under CC BY 4.0 in the normalized
+bundle. Until the exact main deployment and served bytes are independently
+verified, discovery surfaces describe this release as repository-ready rather
+than live.
+
 ## Publication checklist
 
-Before changing `world_bank_wdi` from `adapter_ready` in the BRI source registry:
+Before changing `world_bank_wdi` from `repository_ready` to `live` in the BRI
+source registry:
 
 1. retain the exact raw response and its canonical acquisition sidecar in the
    controlled provenance store without overwriting either file;
@@ -134,4 +158,6 @@ Before changing `world_bank_wdi` from `adapter_ready` in the BRI source registry
 5. verify the served bytes and discovery/API surfaces before describing the
    source as live.
 
-No current public artifact or live-coverage claim is created by this tranche.
+The repository contains the reviewed public artifact, but that fact alone is
+not a live-coverage claim. Production status requires an exact-main Pages
+deployment receipt and a byte-for-byte fetch of the canonical public URL.

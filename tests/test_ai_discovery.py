@@ -69,6 +69,61 @@ def test_product_card_is_specific_about_fit_limits_and_access():
     ]
 
 
+def test_product_card_exposes_bri_v2_wdi_context_without_claiming_deployment():
+    card = _json("product-card.json")
+    evidence = card["evidence"]
+    access = card["access"]
+
+    assert evidence["belt_and_road_observatory_json"] == (
+        "https://palimpsest.info/readings/belt-and-road-observatory-latest.json"
+    )
+    assert evidence["belt_and_road_observatory_schema"] == (
+        "https://palimpsest.info/protocol/belt-and-road-observatory-v2.schema.json"
+    )
+    assert evidence["belt_and_road_observatory_v1_json"] == (
+        "https://palimpsest.info/readings/belt-and-road-observatory-v1.json"
+    )
+    assert evidence["belt_and_road_observatory_v1_schema"] == (
+        "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json"
+    )
+    assert evidence["bri_economic_observations_json"] == (
+        "https://palimpsest.info/readings/bri-economic-observations-latest.json"
+    )
+    assert evidence["bri_economic_observations_schema"] == (
+        "https://palimpsest.info/protocol/bri-economic-observations-v1.schema.json"
+    )
+    assert evidence["bri_wdi_series_registry"] == (
+        "https://palimpsest.info/config/bri_wdi_series.json"
+    )
+
+    metadata = evidence["bri_economic_observations_metadata"]
+    assert metadata == {
+        "publication_state": "repository_ready_not_deployed",
+        "access": "public-read-only-after-deployment",
+        "source": "World Bank World Development Indicators",
+        "attribution": "World Bank, World Development Indicators",
+        "license": "CC-BY-4.0",
+        "acquired_at": "2026-08-26T13:17:34.790676Z",
+        "countries": ["CHN", "MMR", "PAK"],
+        "start_year": 1960,
+        "end_year": 2025,
+        "source_rows": 3564,
+        "observed_rows": 1940,
+        "forecast_rows": 0,
+        "unavailable_rows": 1624,
+        "allowed_role": "national_economic_context",
+        "project_inference": "prohibited",
+        "actor_inference": "prohibited",
+        "corridor_inference": "prohibited",
+        "causal_inference": "prohibited",
+    }
+    assert access["openapi_version"] == "2.0.0"
+    assert access["mcp_version"] == "1.9.1"
+    assert access["bri_economic_observations"] == (
+        "https://palimpsest.info/readings/bri-economic-observations-latest.json"
+    )
+
+
 def test_discovery_copy_separates_free_access_from_source_data_rights():
     card = _json("product-card.json")
     product = card["product"]

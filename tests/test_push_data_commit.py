@@ -1415,6 +1415,11 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     assert "git diff --exit-code --" not in replay_gate
     assert 'git archive --format=tar "$PUBLICATION_SHA"' in workflow
     assert "Pages artifact refuses tracked symbolic links" in workflow
+    assert "Archive immutable wire analysis history in exact Pages staging" in workflow
+    assert 'archive_builder="$RUNNER_TEMP/pages-root/scripts/build_pages_wire_archive.py"' in workflow
+    assert workflow.count('--root "$RUNNER_TEMP/pages-root"') == 2
+    assert workflow.count('--publication-sha "$PUBLICATION_SHA"') == 2
+    assert "            --check" in workflow
     assert "TAR_OPTIONS: '--transform=s|^\\./well-known|./.well-known|'" in workflow
     assert (
         "actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b" in workflow
@@ -1755,6 +1760,17 @@ def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
     steps = workflow["jobs"]["pages-artifact"]["steps"]
     by_name = {step.get("name"): step for step in steps if isinstance(step, dict)}
 
+    materialize_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name") == "Materialize only exact tracked root content"
+    )
+    archive_index = next(
+        index
+        for index, step in enumerate(steps)
+        if step.get("name")
+        == "Archive immutable wire analysis history in exact Pages staging"
+    )
     upload_index = next(
         index
         for index, step in enumerate(steps)
@@ -1775,7 +1791,25 @@ def test_pages_artifact_has_a_fail_closed_size_receipt() -> None:
         for index, step in enumerate(steps)
         if step.get("name") == "Enforce the Pages artifact size ceiling"
     )
-    assert upload_index < measure_index < receipt_index < enforce_index
+    assert (
+        materialize_index
+        < archive_index
+        < upload_index
+        < measure_index
+        < receipt_index
+        < enforce_index
+    )
+
+    archive = by_name[
+        "Archive immutable wire analysis history in exact Pages staging"
+    ]
+    assert archive["env"]["PUBLICATION_SHA"] == (
+        "${{ needs.contract.outputs.revision }}"
+    )
+    assert archive["run"].count('python3 "$archive_builder"') == 2
+    assert archive["run"].count('--root "$RUNNER_TEMP/pages-root"') == 2
+    assert archive["run"].count('--publication-sha "$PUBLICATION_SHA"') == 2
+    assert archive["run"].rstrip().endswith("--check")
 
     measure = by_name["Measure the exact staged Pages artifact"]
     limit = int(measure["env"]["PAGES_ARTIFACT_LIMIT_BYTES"])

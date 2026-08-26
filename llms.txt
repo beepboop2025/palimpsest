@@ -23,10 +23,12 @@ linked according to those catalogued rights.
 ## Agent and financial-evidence discovery
 
 The machine-readable [AI catalog](https://palimpsest.info/.well-known/ai-catalog.json)
-describes the public MCP `1.9.1` release boundary, the OpenAPI contract, the China
-economic observation ledger and manifest, the China Observatory index, and the canonical
-Financial Evidence Agent Skill. The MCP release and OpenAPI document have independent
-version authorities; initialize the linked MCP remote before treating a release as deployed.
+describes the public MCP `1.9.1` release boundary, the independently versioned
+OpenAPI `2.0.0` contract, the China economic observation ledger and manifest,
+the China Observatory index, the BRI observatory, its frozen v1 snapshot and the
+reviewed WDI national-context bundle, and the canonical Financial Evidence Agent
+Skill. The MCP release and OpenAPI document have independent version authorities;
+initialize the linked MCP remote before treating an MCP release as deployed.
 
 Use the narrow landing page that matches the question:
 
@@ -40,9 +42,14 @@ Use the narrow landing page that matches the question:
   examples, point-in-time query rules, schemas, rights and current abstention semantics.
 - [Belt and Road Observatory](https://palimpsest.info/belt-and-road/): a global project,
   finance, debt, trade, infrastructure and local-impact coverage contract, with deep
-  Pakistan/CPEC/Gwadar, Myanmar/CMEC/Kyaukpyu and plural Balochistan lanes. Its current
-  repository state is a source spine and build backlog, not complete ingestion or a live
-  project-count claim.
+  Pakistan/CPEC/Gwadar, Myanmar/CMEC/Kyaukpyu and plural Balochistan lanes. Its source
+  spine distinguishes live, repository-ready, adapter-ready and unimplemented sources;
+  it is not complete ingestion or a project-count claim.
+- [BRI WDI national context](https://palimpsest.info/readings/bri-economic-observations-latest.json):
+  3,564 authenticated country-year-indicator rows for China, Myanmar and Pakistan
+  across 18 WDI indicators and 1960–2025. The 1,624 source nulls remain explicitly
+  unavailable, and these national aggregates cannot establish project, actor,
+  corridor or BRI-causal claims.
 - [Financial Evidence Agent Skill](https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence):
   route Palimpsest China evidence, Seiche system and money/capital transmission,
   LiquiLens institutions, and Undertow exit liquidity without collapsing their claims.
@@ -76,6 +83,7 @@ as the measurement.
   commitments, disbursements, construction, completion and operation remain separate.
   The Balochistan umbrella is never treated as one actor, and NarcoScope country context
   may join only by geography and time without political, armed-actor or causal inference.
+  WDI national context follows the same country-period-only rule; it is not project evidence.
 
 - **Wayback Reconstruction.** Deletions and silent redactions of public Chinese URLs,
   recovered from the Internet Archive's capture timeline. The Archive is a retroactive,
@@ -426,6 +434,12 @@ one score or imply that temporal co-movement is corroboration.
 - [China Observatory index schema](https://palimpsest.info/protocol/china-index-v1.schema.json): strict contract for the discovery index, evidence rails, source registry and release routes
 - [API + MCP quickstart](https://palimpsest.info/developers.html): connect the hosted read-only MCP, run a live tool, use the OpenAI Responses API, or import the public readings through OpenAPI
 - [OpenAPI 3.1 contract](https://palimpsest.info/openapi.json): stable public JSON readings for conventional clients and API importers
+- [Belt and Road Observatory v2](https://palimpsest.info/readings/belt-and-road-observatory-latest.json): current source, rights, lifecycle, economic, local-impact, Balochistan-lane and bounded NarcoScope coverage contract
+- [Frozen Belt and Road Observatory v1](https://palimpsest.info/readings/belt-and-road-observatory-v1.json): immutable prior contract retained for reproducible citations
+- [Belt and Road Observatory v2 schema](https://palimpsest.info/protocol/belt-and-road-observatory-v2.schema.json): current strict observatory contract; the [v1 schema](https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json) remains available for the frozen snapshot
+- [BRI WDI national-context observations](https://palimpsest.info/readings/bri-economic-observations-latest.json): 3,564 authenticated rows across 18 indicators, China/Myanmar/Pakistan and 1960–2025; context only, never project or causal attribution
+- [BRI WDI observation schema](https://palimpsest.info/protocol/bri-economic-observations-v1.schema.json): strict bundle and row contract preserving observed, forecast and unavailable states
+- [Reviewed BRI WDI series registry](https://palimpsest.info/config/bri_wdi_series.json): pinned country/indicator scope, rights evidence, transport limits and source semantics
 - [China economic observation manifest](https://palimpsest.info/readings/china-econ-observations-latest.json): integrity, coverage and schema receipt for the aggregate append-only observation ledger
 - [China economic observations (JSONL)](https://palimpsest.info/readings/china-econ-observations.jsonl): bitemporal aggregate rows with separate release/collection clocks, revisions, source URLs and hashes; use the MCP query tool for bounded point-in-time filtering
 - [China economic observation schema](https://palimpsest.info/protocol/economic-observation-v1.schema.json): strict aggregate observation-row contract for each JSONL record

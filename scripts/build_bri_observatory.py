@@ -24,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REGISTRY = ROOT / "config" / "bri_observatory.json"
 DEFAULT_JSON = ROOT / "readings" / "belt-and-road-observatory-latest.json"
 DEFAULT_HTML = ROOT / "belt-and-road" / "index.html"
+DEFAULT_WDI_BUNDLE = ROOT / WDI_ARTIFACT_PATH
 DEFAULT_WDI_SCHEMA = ROOT / WDI_OBSERVATION_SCHEMA_PATH
 DEFAULT_WDI_SERIES_REGISTRY = ROOT / WDI_SERIES_REGISTRY_PATH
 
@@ -127,7 +128,7 @@ def _render_html(artifact: dict) -> bytes:
         )
         for source in artifact["sources"]
     )
-    schema_org = json.dumps({
+    schema_org_document = {
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": "Palimpsest Belt and Road Observatory coverage contract",
@@ -140,7 +141,35 @@ def _render_html(artifact: dict) -> bytes:
             "encodingFormat": "application/json",
             "contentUrl": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
         },
-    }, ensure_ascii=False, separators=(",", ":"))
+    }
+    observation_datasets = artifact.get("observation_datasets", [])
+    if observation_datasets:
+        [dataset] = observation_datasets
+        schema_org_document["hasPart"] = {
+            "@type": "Dataset",
+            "name": "BRI-country World Development Indicators context",
+            "description": (
+                "Attributed national country-period context for China, Myanmar "
+                "and Pakistan; never project, actor, corridor or causal evidence."
+            ),
+            "license": dataset["rights"]["license_url"],
+            "creator": {
+                "@type": "Organization",
+                "@id": "https://www.worldbank.org/#organization",
+                "name": "World Bank",
+                "url": "https://www.worldbank.org/",
+            },
+            "distribution": {
+                "@type": "DataDownload",
+                "encodingFormat": dataset["artifact"]["media_type"],
+                "contentUrl": dataset["artifact"]["url"],
+            },
+        }
+    schema_org = json.dumps(
+        schema_org_document,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
     schema_path = artifact["$schema"]
     document = f"""<!doctype html>
 <html lang="en" data-tk-theme="light">
@@ -206,7 +235,7 @@ def _render_html(artifact: dict) -> bytes:
 
   <section class="bri-section" id="sources" aria-labelledby="sources-title">
     <p class="bri-eyebrow">Source and rights ledger</p><h2 id="sources-title">Open, pending, licensed and blocked routes all stay visible.</h2>
-    <p>{states.get("live", 0)} sources are live, {states.get("adapter_ready", 0)} adapters are ready, and {states.get("blocked", 0)} licensed route is blocked from public redistribution. Link-only entries are discovery, not ingestion.</p>
+    <p>{states.get("live", 0)} sources are live, {states.get("repository_ready", 0)} input is repository ready, {states.get("adapter_ready", 0)} adapters are ready, and {states.get("blocked", 0)} licensed route is blocked from public redistribution. Link-only entries are discovery, not ingestion.</p>
     <div class="bri-controls"><label>Search<input type="search" data-bri-source-search placeholder="Source, publisher, evidence field…"></label><label>Implementation<select data-bri-state><option value="all">All states</option>{''.join(f'<option value="{_esc(state)}">{_esc(state.replace("_", " "))} ({count})</option>' for state, count in states.items())}</select></label><p data-bri-source-count aria-live="polite"></p></div>
     <ul class="bri-sources" data-bri-sources>{sources}</ul>
   </section>
@@ -234,7 +263,7 @@ def _render_html(artifact: dict) -> bytes:
 def build(
     registry_path: Path = DEFAULT_REGISTRY,
     *,
-    wdi_bundle_path: Path | None = None,
+    wdi_bundle_path: Path | None = DEFAULT_WDI_BUNDLE,
     wdi_artifact_path: str = WDI_ARTIFACT_PATH,
     wdi_observation_schema_path: Path = DEFAULT_WDI_SCHEMA,
     wdi_observation_schema_repository_path: str = WDI_OBSERVATION_SCHEMA_PATH,
@@ -274,6 +303,7 @@ def main() -> int:
     parser.add_argument(
         "--wdi-bundle",
         type=Path,
+        default=DEFAULT_WDI_BUNDLE,
         help="exact normalized WDI bundle to bind into a v2 observatory build",
     )
     parser.add_argument(

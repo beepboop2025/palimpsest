@@ -917,6 +917,14 @@ def _freshness(
             "status": "unknown", "observed_at": None, "deadline": None,
             "age_hours": None, "cadence": cadence,
         }
+    # The public mesh contract serializes clocks at whole-second precision.
+    # Normalize before doing freshness arithmetic so ``age_hours`` is derived
+    # from the exact clocks a verifier will parse, including for sources such
+    # as WDI whose acquisition receipts retain microseconds.
+    observed = observed.astimezone(timezone.utc).replace(microsecond=0)
+    now = now.astimezone(timezone.utc).replace(microsecond=0)
+    if deadline is not None:
+        deadline = deadline.astimezone(timezone.utc).replace(microsecond=0)
     if observed > now:
         raise EvidenceMeshError("freshness observation cannot be after the build time")
     computed_deadline = deadline
@@ -1288,7 +1296,7 @@ def build_evidence_mesh(
                 rights={
                     "redistribution": "ATTRIBUTION_REQUIRED",
                     "reuse": "full_text",
-                    "training": "full_text",
+                    "training": "prohibited",
                 },
                 clocks={
                     "event_time": None,

@@ -257,6 +257,37 @@ Item mutations append a version receipt. Dossier corrections append a revision;
 they do not silently overwrite the prior revision. JSON Feed and RSS GUIDs use
 the stable event identity, while modification times expose new revisions.
 
+### Pages analysis-history archive
+
+The Git publication tree retains every analysis revision as an ordinary JSON
+file. The Pages edition uses a deterministic representation bridge so that the
+append-only history does not exceed the host's artifact limit:
+
+- every current `news/wire/event-*/analysis.json` remains directly readable;
+- the byte-identical revision named by that head's `analysis_id` also remains
+  directly readable under its `analysis/revisions/` path;
+- every analysis revision, including those current copies, is available by its
+  exact repository path inside
+  `/news/wire/analysis-revisions.tar.xz`; and
+- every event-dossier revision remains a direct JSON file. It is never moved
+  into this analysis-only archive.
+
+The access receipt at
+`/news/wire/analysis-revisions-archive.json` binds the exact publication commit,
+archive byte count and SHA-256, expanded entry count and bytes, deterministic
+member tree, retained-head closure, unchanged event-revision tree, and the
+`history_tree_sha256` from `/news/wire-history-integrity.json`. Its `archive.url`
+adds the archive digest as a cache-busting query. Consumers should fetch that
+URL, verify `archive.sha256`, run `xz -t`, and then read the requested exact
+member path. A non-current analysis revision returning 404 at its former direct
+Pages URL means “use the archive access map,” not “the revision was deleted.”
+
+The archive is an exact-Pages staging transformation only. It does not rewrite
+or thin repository history, and deployment fails if a current head is missing,
+ambiguous, or differs by one byte from its named revision; if an archive member
+is a link, duplicate, or non-canonical path; if xz integrity fails; or if the
+archive and public receipt disagree.
+
 ## Event dossier
 
 Each dossier contains:

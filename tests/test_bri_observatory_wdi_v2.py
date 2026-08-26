@@ -392,7 +392,7 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
 
     mesh = build_evidence_mesh(
         mesh_root,
-        now=datetime(2026, 8, 26, 12, 3, 34, tzinfo=UTC),
+        now=datetime(2026, 8, 26, 14, 0, 0, tzinfo=UTC),
     )
     resource = next(
         row
@@ -401,6 +401,11 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
     )
     assert resource["allowed_role"] == "context"
     assert resource["independence_eligible"] is False
+    assert resource["rights"] == {
+        "redistribution": "ATTRIBUTION_REQUIRED",
+        "reuse": "full_text",
+        "training": "prohibited",
+    }
     assert resource["clocks"] == {
         "event_time": None,
         "knowledge_time": "2026-08-26T10:30:00Z",

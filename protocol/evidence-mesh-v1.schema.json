@@ -391,7 +391,7 @@
       "properties": {
         "resource_id": { "$ref": "#/$defs/identifier" },
         "project_id": { "enum": ["palimpsest", "seiche", "liquilens", "scamshield", "narcoscope"] },
-        "namespace": { "enum": ["catalog", "osint", "artifact", "typology", "partner"] },
+        "namespace": { "enum": ["catalog", "osint", "artifact", "typology", "partner", "context"] },
         "source_id": { "type": "string", "minLength": 1, "maxLength": 160 },
         "title": { "type": "string", "minLength": 1, "maxLength": 512 },
         "availability": { "$ref": "#/$defs/availability" },
