@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import threading
 import urllib.error
 import urllib.request
@@ -103,14 +104,27 @@ def test_server_serves_manifest_bound_publication(tmp_path: Path) -> None:
         thread.join(timeout=5)
 
 
-def test_railway_contract_is_health_gated_and_non_root() -> None:
-    config = json.loads((RAILWAY / "railway.static.json").read_text(encoding="utf-8"))
-    assert config["build"] == {
-        "builder": "DOCKERFILE",
-        "dockerfilePath": "ops/railway/Dockerfile.static",
-    }
-    assert config["deploy"]["healthcheckPath"] == "/healthz"
-    assert config["deploy"]["numReplicas"] == 1
+def test_railway_iac_contract_preserves_local_upload_runtime() -> None:
+    config_path = ROOT / ".railway" / "railway.ts"
+    config = config_path.read_text(encoding="utf-8")
+    compact = re.sub(r"\s+", "", config)
+
+    assert 'service("palimpsest-publication",{' in compact
+    assert 'project("palimpsest",{' in compact
+    assert 'builder:"DOCKERFILE"' in compact
+    assert 'dockerfilePath:"ops/railway/Dockerfile.static"' in compact
+    assert 'healthcheckPath:"/healthz"' in compact
+    assert "healthcheckTimeout:300" in compact
+    assert "numReplicas:1" in compact
+    assert 'restartPolicyType:"ON_FAILURE"' in compact
+    assert "restartPolicyMaxRetries:5" in compact
+    assert 'domains:["palimpsest.info","www.palimpsest.info"]' in compact
+    assert "source:" not in compact
+    assert not (ROOT / "railway.json").exists()
+    assert not (RAILWAY / "railway.static.json").exists()
+
+
+def test_railway_container_is_non_root_and_bundle_stays_public_only() -> None:
 
     dockerfile = (RAILWAY / "Dockerfile.static").read_text(encoding="utf-8")
     assert "FROM python:3.12-slim@sha256:" in dockerfile
@@ -122,3 +136,6 @@ def test_railway_contract_is_health_gated_and_non_root() -> None:
     assert "refusing to overwrite" in builder
     assert "build_pages_wire_archive.py" in builder
     assert "local-git-archive" not in builder
+    assert "railway.static.json" not in builder
+    assert 'top_level_path" == .*' in builder
+    assert 'top_level_path" != ".well-known"' in builder

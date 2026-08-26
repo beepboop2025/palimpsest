@@ -45,6 +45,9 @@ data/bleedthrough_baselines/
 .scrub-strings.local
 /ops/docker/.env
 
+# Railway's TypeScript IaC evaluator is control-plane tooling, never publication data.
+/.railway/node_modules/
+
 # Persistent sidecar locks for atomically replaced public ledgers.  These must not
 # be deleted between writers (doing so can create two lock domains), and are runtime
 # coordination state rather than published evidence.

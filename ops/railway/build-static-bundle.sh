@@ -74,8 +74,6 @@ python3 "$staging_directory/scripts/build_pages_wire_archive.py" \
   --root "$staging_directory" \
   --publication-sha "$expected_sha" \
   --check
-cp "$staging_directory/ops/railway/railway.static.json" \
-  "$staging_directory/railway.json"
 
 built_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 python3 "$staging_directory/ops/railway/build_release_manifest.py" \
