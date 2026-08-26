@@ -27,6 +27,7 @@ EVIDENCE_URL = (
 )
 RAW_HASH = sha256_bytes(b"exact World Bank response")
 ROW_HASH = sha256_bytes(b"canonical source row")
+ACQUISITION_ID = sha256_bytes(b"canonical acquisition receipt")
 
 
 def _observation(**changes: object) -> BRIEconomicObservation:
@@ -38,6 +39,9 @@ def _observation(**changes: object) -> BRIEconomicObservation:
         "unit": "annual percent",
         "evidence_state": "observed",
         "unavailability_reason": None,
+        "obs_status": "",
+        "footnote": "",
+        "scale": "",
         "period_start": date(2024, 1, 1),
         "period_end": date(2024, 12, 31),
         "source_release_upper_bound": RELEASE_UPPER_BOUND,
@@ -50,6 +54,7 @@ def _observation(**changes: object) -> BRIEconomicObservation:
             evidence_url=EVIDENCE_URL,
             raw_response_sha256=RAW_HASH,
         ),
+        "acquisition_id": ACQUISITION_ID,
     }
     values.update(changes)
     return BRIEconomicObservation(**values)
@@ -67,6 +72,10 @@ def test_round_trip_preserves_strict_bitemporal_record_and_stable_id():
     assert document["context_scope"] == "national_economic_context"
     assert document["causality_boundary"] == "not_evidence_of_bri_causality"
     assert document["aggregate_level"] == "country"
+    assert document["obs_status"] == ""
+    assert document["footnote"] == ""
+    assert document["scale"] == ""
+    assert document["acquisition_id"] == ACQUISITION_ID
 
 
 def test_canonical_json_and_identity_are_order_independent_and_strict():
@@ -80,6 +89,17 @@ def test_canonical_json_and_identity_are_order_independent_and_strict():
     base = _observation()
     changed = replace(base, source_row_sha256=sha256_bytes(b"revised source row"))
     assert changed.observation_id != base.observation_id
+
+    for field, value in (
+        ("obs_status", "F"),
+        ("footnote", "Source qualification"),
+        ("scale", "millions"),
+    ):
+        changes = {field: value}
+        if field == "obs_status":
+            changes["evidence_state"] = "forecast"
+        qualified = replace(base, **changes)
+        assert qualified.observation_id != base.observation_id
 
 
 def test_null_is_an_explicit_unavailable_state_never_numeric_zero():
@@ -100,6 +120,25 @@ def test_null_is_an_explicit_unavailable_state_never_numeric_zero():
         _observation(value=None)
     with pytest.raises(BRIObservationError, match="unavailability_reason"):
         _observation(unavailability_reason="source_value_null")
+
+
+def test_forecast_is_distinct_and_source_status_fails_closed():
+    forecast = _observation(evidence_state="forecast", obs_status="F")
+    assert forecast.to_dict()["evidence_state"] == "forecast"
+    assert forecast.to_dict()["obs_status"] == "F"
+
+    with pytest.raises(BRIObservationError, match="require obs_status"):
+        _observation(evidence_state="forecast")
+    with pytest.raises(BRIObservationError, match="require obs_status"):
+        _observation(obs_status="F")
+    with pytest.raises(BRIObservationError, match="empty or F"):
+        _observation(obs_status="P")
+    with pytest.raises(BRIObservationError, match="real number"):
+        _observation(
+            value=None,
+            evidence_state="forecast",
+            obs_status="F",
+        )
 
 
 def test_release_clock_is_exactly_the_lastupdated_upper_bound():

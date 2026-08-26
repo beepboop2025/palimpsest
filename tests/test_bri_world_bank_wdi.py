@@ -17,11 +17,13 @@ from collectors.bri_world_bank_wdi import (
     BRIWDIError,
     MAX_RESPONSE_BYTES,
     WDIRegistry,
+    acquisition_receipt_for,
     build_url,
     collect,
     fetch_bytes,
     load_registry,
     parse_response,
+    verify_acquisition_receipt,
 )
 from core.bri_observation import canonical_json_bytes, sha256_bytes
 from scripts.bri_wdi_pull import main as pull_main
@@ -71,6 +73,28 @@ def _mutated_response(mutation) -> bytes:
     document = json.loads(FIXTURE.read_text(encoding="utf-8"))
     mutation(document)
     return json.dumps(document, separators=(",", ":")).encode("utf-8")
+
+
+def _receipt_bytes(
+    raw: bytes | None = None,
+    *,
+    registry: WDIRegistry | None = None,
+    retrieved_at: datetime = RETRIEVED_AT,
+) -> bytes:
+    response = FIXTURE.read_bytes() if raw is None else raw
+    scoped = _scoped_registry() if registry is None else registry
+    receipt = acquisition_receipt_for(
+        response,
+        evidence_url=build_url(scoped, start_year=2023, end_year=2024),
+        retrieved_at=retrieved_at,
+    )
+    return canonical_json_bytes(receipt.to_dict())
+
+
+def _receipt_path(tmp_path: Path, *, raw: bytes | None = None) -> Path:
+    path = tmp_path / "wdi-acquisition-receipt.json"
+    path.write_bytes(_receipt_bytes(raw))
+    return path
 
 
 def test_registry_is_reviewed_bounded_and_exactly_three_countries():
@@ -159,7 +183,8 @@ def test_parser_preserves_all_clocks_raw_receipt_and_explicit_nulls():
     receipt = parsed.request_receipt
 
     assert len(parsed.observations) == receipt.source_rows == 12
-    assert receipt.observed_rows == 8
+    assert receipt.observed_rows == 7
+    assert receipt.forecast_rows == 1
     assert receipt.unavailable_rows == 4
     assert receipt.raw_response_sha256 == hashlib.sha256(raw).hexdigest()
     assert receipt.source_release_upper_bound.isoformat() == (
@@ -175,6 +200,9 @@ def test_parser_preserves_all_clocks_raw_receipt_and_explicit_nulls():
         receipt.raw_response_sha256
     }
     assert {row.request_id for row in parsed.observations} == {receipt.request_id}
+    assert {row.acquisition_id for row in parsed.observations} == {
+        receipt.acquisition_id
+    }
     assert all(
         row.context_scope == "national_economic_context" for row in parsed.observations
     )
@@ -191,6 +219,12 @@ def test_parser_preserves_all_clocks_raw_receipt_and_explicit_nulls():
     assert all(row.unavailability_reason == "source_value_null" for row in unavailable)
     assert not any(row.value == 0 for row in unavailable)
     assert len({row.source_row_sha256 for row in parsed.observations}) == 12
+
+    forecast = [row for row in parsed.observations if row.evidence_state == "forecast"]
+    assert len(forecast) == 1
+    assert forecast[0].obs_status == "F"
+    assert forecast[0].footnote == "Source marked forecast."
+    assert forecast[0].scale == "percent"
 
 
 def test_lastupdated_is_only_an_upper_bound_when_retrieved_same_day():
@@ -217,6 +251,11 @@ def test_lastupdated_is_only_an_upper_bound_when_retrieved_same_day():
             "country descriptor changed",
         ),
         (lambda doc: doc[1][0].update(value="5.0"), "numeric or null"),
+        (lambda doc: doc[1][0].update(obs_status="P"), "unsupported nonempty"),
+        (
+            lambda doc: doc[1][0].update(obs_status="F", value=None),
+            "forecast obs_status requires a numeric value",
+        ),
         (lambda doc: doc[1].pop(), "matrix is incomplete"),
         (lambda doc: doc[1].__setitem__(-1, deepcopy(doc[1][0])), "duplicate"),
     ],
@@ -303,10 +342,25 @@ def test_bundle_is_schema_valid_deterministic_and_self_authenticating():
     assert first["context_policy"]["actor_inference"] == "prohibited"
     assert first["context_policy"]["project_attribution"] == "prohibited"
     assert first["context_policy"]["tactical_data"] == "prohibited"
+    assert first["context_policy"]["forecast_policy"] == (
+        "source_obs_status_F_remains_forecast"
+    )
+    assert first["context_policy"]["qualification_policy"] == (
+        "obs_status_footnote_scale_preserved_verbatim"
+    )
+    assert first["context_policy"]["downstream_semantics"] == {
+        "observed": "numeric_source_value_without_forecast_marker",
+        "forecast": "numeric_source_value_marked_F_not_observed",
+        "unavailable": "source_null_not_zero_or_imputed",
+        "join_boundary": (
+            "country_period_context_only_no_project_actor_or_causal_join"
+        ),
+    }
 
 
 def test_cli_checks_and_builds_offline_without_implicit_network(tmp_path, capsys):
     registry = _scoped_registry_path(tmp_path)
+    receipt = _receipt_path(tmp_path)
     output = tmp_path / "review" / "bri-wdi.json"
     shared = [
         "--registry",
@@ -317,8 +371,8 @@ def test_cli_checks_and_builds_offline_without_implicit_network(tmp_path, capsys
         "2024",
         "--input",
         str(FIXTURE),
-        "--retrieved-at",
-        "2026-08-26T10:30:00Z",
+        "--receipt-input",
+        str(receipt),
     ]
 
     assert pull_main(["check", *shared]) == 0
@@ -333,13 +387,15 @@ def test_cli_checks_and_builds_offline_without_implicit_network(tmp_path, capsys
         "countries": 3,
         "indicators": 2,
         "source_rows": 12,
-        "observed_rows": 8,
+        "observed_rows": 7,
+        "forecast_rows": 1,
         "unavailable_rows": 4,
     }
 
 
-def test_cli_requires_explicit_source_clock_and_noncolliding_output(tmp_path):
+def test_cli_requires_authenticated_receipt_and_noncolliding_output(tmp_path):
     registry = _scoped_registry_path(tmp_path)
+    receipt = _receipt_path(tmp_path)
     base = [
         "--registry",
         str(registry),
@@ -358,8 +414,8 @@ def test_cli_requires_explicit_source_clock_and_noncolliding_output(tmp_path):
                 *base,
                 "--input",
                 str(FIXTURE),
-                "--retrieved-at",
-                "2026-08-26T10:30:00Z",
+                "--receipt-input",
+                str(receipt),
                 "--output",
                 str(registry),
             ]
@@ -368,11 +424,139 @@ def test_cli_requires_explicit_source_clock_and_noncolliding_output(tmp_path):
     )
 
 
+def test_acquisition_receipt_is_canonical_and_authenticates_offline_replay():
+    raw = FIXTURE.read_bytes()
+    expected_url = build_url(_scoped_registry(), start_year=2023, end_year=2024)
+    receipt_bytes = _receipt_bytes(raw)
+    receipt = verify_acquisition_receipt(
+        receipt_bytes,
+        raw=raw,
+        expected_url=expected_url,
+    )
+    assert receipt.retrieved_at == RETRIEVED_AT
+    assert receipt.raw_response_sha256 == sha256_bytes(raw)
+    assert receipt.response_bytes == len(raw)
+    assert receipt.evidence_url == expected_url
+
+    noncanonical = json.dumps(json.loads(receipt_bytes), indent=2).encode("utf-8")
+    with pytest.raises(BRIWDIError, match="canonical JSON"):
+        verify_acquisition_receipt(
+            noncanonical,
+            raw=raw,
+            expected_url=expected_url,
+        )
+
+    changed_raw = bytes([raw[0] ^ 1]) + raw[1:]
+    with pytest.raises(BRIWDIError, match="hash does not match"):
+        verify_acquisition_receipt(
+            receipt_bytes,
+            raw=changed_raw,
+            expected_url=expected_url,
+        )
+
+    with pytest.raises(BRIWDIError, match="canonical request"):
+        verify_acquisition_receipt(
+            receipt_bytes,
+            raw=raw,
+            expected_url=expected_url.replace("2023%3A2024", "2022%3A2024"),
+        )
+
+    tampered = json.loads(receipt_bytes)
+    tampered["retrieved_at"] = "2026-08-26T10:31:00Z"
+    with pytest.raises(BRIWDIError, match="does not authenticate"):
+        verify_acquisition_receipt(
+            canonical_json_bytes(tampered),
+            raw=raw,
+            expected_url=expected_url,
+        )
+
+
+def test_derived_replacement_requires_explicit_operator_authority(tmp_path):
+    registry = _scoped_registry_path(tmp_path)
+    first_receipt = _receipt_path(tmp_path)
+    second_receipt = tmp_path / "wdi-acquisition-receipt-later.json"
+    second_receipt.write_bytes(
+        _receipt_bytes(
+            retrieved_at=datetime(2026, 8, 26, 10, 31, tzinfo=UTC),
+        )
+    )
+    output = tmp_path / "review" / "bri-wdi.json"
+    base = [
+        "build",
+        "--registry",
+        str(registry),
+        "--start-year",
+        "2023",
+        "--end-year",
+        "2024",
+        "--input",
+        str(FIXTURE),
+        "--output",
+        str(output),
+    ]
+
+    assert pull_main([*base, "--receipt-input", str(first_receipt)]) == 0
+    first_bytes = output.read_bytes()
+    assert pull_main([*base, "--receipt-input", str(second_receipt)]) == 2
+    assert output.read_bytes() == first_bytes
+    assert (
+        pull_main(
+            [
+                *base,
+                "--receipt-input",
+                str(second_receipt),
+                "--replace-derived",
+            ]
+        )
+        == 0
+    )
+    assert output.read_bytes() != first_bytes
+
+
+def test_cli_refuses_symlink_components_and_hardlink_aliases(tmp_path):
+    registry = _scoped_registry_path(tmp_path)
+    receipt = _receipt_path(tmp_path)
+    real_directory = tmp_path / "real-output"
+    real_directory.mkdir()
+    symlink_directory = tmp_path / "output-alias"
+    symlink_directory.symlink_to(real_directory, target_is_directory=True)
+    shared = [
+        "--registry",
+        str(registry),
+        "--start-year",
+        "2023",
+        "--end-year",
+        "2024",
+        "--input",
+        str(FIXTURE),
+        "--receipt-input",
+        str(receipt),
+    ]
+
+    assert (
+        pull_main(
+            ["build", *shared, "--output", str(symlink_directory / "bundle.json")]
+        )
+        == 2
+    )
+    assert not (real_directory / "bundle.json").exists()
+
+    registry_alias = tmp_path / "registry-alias.json"
+    registry_alias.symlink_to(registry)
+    assert pull_main(["check", "--registry", str(registry_alias)]) == 2
+
+    hardlink_output = tmp_path / "hardlinked-output.json"
+    hardlink_output.hardlink_to(FIXTURE)
+    assert pull_main(["build", *shared, "--output", str(hardlink_output)]) == 2
+    assert hardlink_output.read_bytes() == FIXTURE.read_bytes()
+
+
 def test_cli_live_fetch_requires_and_retains_exact_raw_bytes(
     tmp_path, monkeypatch, capsys
 ):
     registry = _scoped_registry_path(tmp_path)
     raw_output = tmp_path / "controlled" / "wdi-response.json"
+    receipt_output = tmp_path / "controlled" / "wdi-response.receipt.json"
     calls: list[str] = []
 
     def fake_fetch(url: str) -> bytes:
@@ -380,6 +564,7 @@ def test_cli_live_fetch_requires_and_retains_exact_raw_bytes(
         return FIXTURE.read_bytes()
 
     monkeypatch.setattr(bri_pull, "fetch_bytes", fake_fetch)
+    monkeypatch.setattr(bri_pull, "_post_response_clock", lambda: RETRIEVED_AT)
     base = [
         "--registry",
         str(registry),
@@ -392,22 +577,85 @@ def test_cli_live_fetch_requires_and_retains_exact_raw_bytes(
 
     assert pull_main(["check", *base]) == 2
     assert calls == []
-    assert pull_main(["check", *base, "--raw-output", str(raw_output)]) == 0
+    assert pull_main(["check", *base, "--raw-output", str(raw_output)]) == 2
+    assert calls == []
+    outputs = [
+        "--raw-output",
+        str(raw_output),
+        "--receipt-output",
+        str(receipt_output),
+    ]
+    assert pull_main(["check", *base, *outputs]) == 0
     assert len(calls) == 1
     assert raw_output.read_bytes() == FIXTURE.read_bytes()
-    assert f"raw_output={raw_output}" in capsys.readouterr().out
+    acquisition = verify_acquisition_receipt(
+        receipt_output.read_bytes(),
+        raw=raw_output.read_bytes(),
+        expected_url=build_url(load_registry(registry), start_year=2023, end_year=2024),
+    )
+    assert acquisition.retrieved_at == RETRIEVED_AT
+    live_output = capsys.readouterr().out
+    assert f"raw_output={raw_output}" in live_output
+    assert f"receipt_output={receipt_output}" in live_output
+
+    raw_before = raw_output.read_bytes()
+    receipt_before = receipt_output.read_bytes()
+    assert pull_main(["check", *base, *outputs]) == 0
+    assert len(calls) == 2
+    assert raw_output.read_bytes() == raw_before
+    assert receipt_output.read_bytes() == receipt_before
+
+    monkeypatch.setattr(
+        bri_pull,
+        "_post_response_clock",
+        lambda: datetime(2026, 8, 26, 10, 31, tzinfo=UTC),
+    )
+    assert pull_main(["check", *base, *outputs]) == 2
+    assert len(calls) == 3
+    assert raw_output.read_bytes() == raw_before
+    assert receipt_output.read_bytes() == receipt_before
 
     rejected_raw = _mutated_response(lambda document: document[0].update(extra=True))
+
+    def conflicting_fetch(url: str) -> bytes:
+        calls.append(url)
+        return rejected_raw
+
+    monkeypatch.setattr(bri_pull, "fetch_bytes", conflicting_fetch)
+    monkeypatch.setattr(bri_pull, "_post_response_clock", lambda: RETRIEVED_AT)
+    assert pull_main(["check", *base, *outputs]) == 2
+    assert len(calls) == 4
+    assert raw_output.read_bytes() == raw_before
+    assert receipt_output.read_bytes() == receipt_before
+
     rejected_output = tmp_path / "controlled" / "rejected-response.json"
+    rejected_receipt = tmp_path / "controlled" / "rejected-response.receipt.json"
 
     def invalid_fetch(url: str) -> bytes:
         calls.append(url)
         return rejected_raw
 
     monkeypatch.setattr(bri_pull, "fetch_bytes", invalid_fetch)
-    assert pull_main(["check", *base, "--raw-output", str(rejected_output)]) == 2
+    assert (
+        pull_main(
+            [
+                "check",
+                *base,
+                "--raw-output",
+                str(rejected_output),
+                "--receipt-output",
+                str(rejected_receipt),
+            ]
+        )
+        == 2
+    )
     assert rejected_output.read_bytes() == rejected_raw
-    assert len(calls) == 2
+    verify_acquisition_receipt(
+        rejected_receipt.read_bytes(),
+        raw=rejected_raw,
+        expected_url=build_url(load_registry(registry), start_year=2023, end_year=2024),
+    )
+    assert len(calls) == 5
 
     assert (
         pull_main(
@@ -416,10 +664,12 @@ def test_cli_live_fetch_requires_and_retains_exact_raw_bytes(
                 *base,
                 "--raw-output",
                 str(raw_output),
+                "--receipt-output",
+                str(receipt_output),
                 "--output",
                 str(raw_output),
             ]
         )
         == 2
     )
-    assert len(calls) == 2
+    assert len(calls) == 5

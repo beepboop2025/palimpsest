@@ -36,6 +36,7 @@ from core.safe_fetch import FetchError, safe_fetch_bytes
 
 REGISTRY_SCHEMA_VERSION = "palimpsest.bri-wdi-series.v1"
 PARSER_VERSION = "palimpsest-bri-world-bank-wdi-json.v1"
+ACQUISITION_RECEIPT_SCHEMA_VERSION = "palimpsest.bri-wdi-acquisition-receipt.v1"
 API_HOST = "api.worldbank.org"
 API_PER_PAGE = 20_000
 MAX_RESPONSE_BYTES = 12 * 1024 * 1024
@@ -45,6 +46,7 @@ MAX_SERIES_PER_REQUEST = 24
 MAX_COUNTRIES_PER_REQUEST = 3
 MAX_YEARS_PER_REQUEST = 100
 MAX_SOURCE_TEXT_BYTES = 4 * 1024
+MAX_RECEIPT_BYTES = 64 * 1024
 USER_AGENT = (
     "palimpsest.info BRI observatory (World Bank WDI national context; "
     "contact desk@palimpsest.info)"
@@ -145,12 +147,14 @@ class WDIRegistry:
 
 @dataclass(frozen=True, slots=True)
 class WDIRequestReceipt:
+    acquisition_id: str
     request_id: str
     evidence_url: str
     raw_response_sha256: str
     response_bytes: int
     source_rows: int
     observed_rows: int
+    forecast_rows: int
     unavailable_rows: int
     dataset_last_updated: date
     source_release_upper_bound: datetime
@@ -158,17 +162,132 @@ class WDIRequestReceipt:
 
     def to_dict(self) -> dict[str, object]:
         return {
+            "acquisition_id": self.acquisition_id,
             "request_id": self.request_id,
             "evidence_url": self.evidence_url,
             "raw_response_sha256": self.raw_response_sha256,
             "response_bytes": self.response_bytes,
             "source_rows": self.source_rows,
             "observed_rows": self.observed_rows,
+            "forecast_rows": self.forecast_rows,
             "unavailable_rows": self.unavailable_rows,
             "dataset_last_updated": self.dataset_last_updated.isoformat(),
             "source_release_upper_bound": _timestamp(self.source_release_upper_bound),
             "retrieved_at": _timestamp(self.retrieved_at),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class WDIAcquisitionReceipt:
+    """Canonical sidecar authenticating immutable raw acquisition bytes."""
+
+    request_id: str
+    evidence_url: str
+    raw_response_sha256: str
+    response_bytes: int
+    retrieved_at: datetime
+    schema_version: str = ACQUISITION_RECEIPT_SCHEMA_VERSION
+    request_method: str = "GET"
+    request_user_agent: str = USER_AGENT
+    redirect_policy: str = "disabled"
+    tls_verification: str = "required"
+    max_response_bytes: int = MAX_RESPONSE_BYTES
+
+    def __post_init__(self) -> None:
+        if self.schema_version != ACQUISITION_RECEIPT_SCHEMA_VERSION:
+            raise BRIWDIError("unsupported acquisition receipt schema_version")
+        _validate_fetch_url(self.evidence_url)
+        if type(self.raw_response_sha256) is not str or not _SHA256.fullmatch(
+            self.raw_response_sha256
+        ):
+            raise BRIWDIError("receipt raw_response_sha256 must be a lowercase digest")
+        if (
+            isinstance(self.response_bytes, bool)
+            or not isinstance(self.response_bytes, int)
+            or not 1 <= self.response_bytes <= MAX_RESPONSE_BYTES
+        ):
+            raise BRIWDIError("receipt response_bytes is outside the bounded response")
+        if type(self.retrieved_at) is not datetime:
+            raise TypeError("receipt retrieved_at must be a datetime")
+        if self.retrieved_at.tzinfo is None or self.retrieved_at.utcoffset() is None:
+            raise BRIWDIError("receipt retrieved_at must be timezone-aware")
+        retrieved_at = self.retrieved_at.astimezone(UTC)
+        if self.request_id != request_id_for(
+            evidence_url=self.evidence_url,
+            raw_response_sha256=self.raw_response_sha256,
+        ):
+            raise BRIWDIError("receipt request_id does not bind URL and raw bytes")
+        fixed = {
+            "request_method": (self.request_method, "GET"),
+            "request_user_agent": (self.request_user_agent, USER_AGENT),
+            "redirect_policy": (self.redirect_policy, "disabled"),
+            "tls_verification": (self.tls_verification, "required"),
+            "max_response_bytes": (self.max_response_bytes, MAX_RESPONSE_BYTES),
+        }
+        for name, (actual, expected) in fixed.items():
+            if actual != expected:
+                raise BRIWDIError(f"receipt {name} must be {expected!r}")
+        object.__setattr__(self, "retrieved_at", retrieved_at)
+
+    def _payload(self) -> dict[str, object]:
+        return {
+            "schema_version": self.schema_version,
+            "request_id": self.request_id,
+            "evidence_url": self.evidence_url,
+            "request_method": self.request_method,
+            "request_user_agent": self.request_user_agent,
+            "redirect_policy": self.redirect_policy,
+            "tls_verification": self.tls_verification,
+            "max_response_bytes": self.max_response_bytes,
+            "raw_response_sha256": self.raw_response_sha256,
+            "response_bytes": self.response_bytes,
+            "retrieved_at": _timestamp(self.retrieved_at),
+        }
+
+    @property
+    def acquisition_id(self) -> str:
+        return sha256_bytes(canonical_json_bytes(self._payload()))
+
+    def to_dict(self) -> dict[str, object]:
+        payload = self._payload()
+        payload["acquisition_id"] = self.acquisition_id
+        return payload
+
+    @classmethod
+    def from_bytes(cls, raw: bytes) -> "WDIAcquisitionReceipt":
+        value = _strict_json_loads(
+            raw,
+            label="BRI WDI acquisition receipt",
+            maximum_bytes=MAX_RECEIPT_BYTES,
+        )
+        expected_fields = {
+            "schema_version",
+            "acquisition_id",
+            "request_id",
+            "evidence_url",
+            "request_method",
+            "request_user_agent",
+            "redirect_policy",
+            "tls_verification",
+            "max_response_bytes",
+            "raw_response_sha256",
+            "response_bytes",
+            "retrieved_at",
+        }
+        if type(value) is not dict or set(value) != expected_fields:
+            raise BRIWDIError("acquisition receipt fields changed")
+        if canonical_json_bytes(value) != raw:
+            raise BRIWDIError("acquisition receipt must use canonical JSON bytes")
+        acquisition_id = value.pop("acquisition_id")
+        if type(acquisition_id) is not str or not _SHA256.fullmatch(acquisition_id):
+            raise BRIWDIError("acquisition_id must be a lowercase digest")
+        value["retrieved_at"] = _parse_timestamp(
+            value["retrieved_at"], label="receipt retrieved_at"
+        )
+        receipt = cls(**value)
+        if receipt.acquisition_id != acquisition_id:
+            raise BRIWDIError("acquisition_id does not authenticate the receipt")
+        return receipt
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,6 +313,18 @@ class WDICollection:
                 "project_attribution": "prohibited",
                 "tactical_data": "prohibited",
                 "missing_value_policy": "source_null_remains_unavailable",
+                "forecast_policy": "source_obs_status_F_remains_forecast",
+                "qualification_policy": (
+                    "obs_status_footnote_scale_preserved_verbatim"
+                ),
+                "downstream_semantics": {
+                    "observed": "numeric_source_value_without_forecast_marker",
+                    "forecast": "numeric_source_value_marked_F_not_observed",
+                    "unavailable": "source_null_not_zero_or_imputed",
+                    "join_boundary": (
+                        "country_period_context_only_no_project_actor_or_causal_join"
+                    ),
+                },
             },
             "source": {
                 "source_id": self.registry.dataset["source_id"],
@@ -213,6 +344,7 @@ class WDICollection:
                 "indicators": len(self.registry.bindings),
                 "source_rows": self.request_receipt.source_rows,
                 "observed_rows": self.request_receipt.observed_rows,
+                "forecast_rows": self.request_receipt.forecast_rows,
                 "unavailable_rows": self.request_receipt.unavailable_rows,
             },
             "request_receipts": [self.request_receipt.to_dict()],
@@ -233,6 +365,18 @@ class WDICollection:
 
 def _timestamp(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _parse_timestamp(value: object, *, label: str) -> datetime:
+    if type(value) is not str or not value.endswith("Z"):
+        raise BRIWDIError(f"{label} must be a canonical UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise BRIWDIError(f"{label} must be a canonical UTC timestamp") from exc
+    if _timestamp(parsed) != value:
+        raise BRIWDIError(f"{label} must be a canonical UTC timestamp")
+    return parsed
 
 
 def _strict_json_loads(raw: bytes, *, label: str, maximum_bytes: int) -> Any:
@@ -500,6 +644,49 @@ def _row_sha256(row: Mapping[str, Any]) -> str:
         raise BRIWDIError(f"source row cannot be canonicalized: {exc}") from exc
 
 
+def acquisition_receipt_for(
+    raw: bytes,
+    *,
+    evidence_url: str,
+    retrieved_at: datetime,
+) -> WDIAcquisitionReceipt:
+    """Build the canonical transport sidecar for exact raw response bytes."""
+
+    if type(raw) is not bytes or not raw or len(raw) > MAX_RESPONSE_BYTES:
+        raise BRIWDIError(
+            f"raw response is empty or exceeds {MAX_RESPONSE_BYTES} bytes"
+        )
+    digest = sha256_bytes(raw)
+    return WDIAcquisitionReceipt(
+        request_id=request_id_for(
+            evidence_url=evidence_url,
+            raw_response_sha256=digest,
+        ),
+        evidence_url=evidence_url,
+        raw_response_sha256=digest,
+        response_bytes=len(raw),
+        retrieved_at=retrieved_at,
+    )
+
+
+def verify_acquisition_receipt(
+    receipt_bytes: bytes,
+    *,
+    raw: bytes,
+    expected_url: str,
+) -> WDIAcquisitionReceipt:
+    """Verify canonical sidecar bytes against raw bytes and request scope."""
+
+    receipt = WDIAcquisitionReceipt.from_bytes(receipt_bytes)
+    if receipt.evidence_url != expected_url:
+        raise BRIWDIError("acquisition receipt does not match the canonical request")
+    if receipt.response_bytes != len(raw):
+        raise BRIWDIError("acquisition receipt response_bytes does not match raw input")
+    if receipt.raw_response_sha256 != sha256_bytes(raw):
+        raise BRIWDIError("acquisition receipt hash does not match raw input")
+    return receipt
+
+
 def parse_response(
     raw: bytes,
     *,
@@ -568,10 +755,16 @@ def parse_response(
         evidence_url=evidence_url,
         raw_response_sha256=raw_response_sha256,
     )
+    acquisition_receipt = acquisition_receipt_for(
+        raw,
+        evidence_url=evidence_url,
+        retrieved_at=retrieved_at,
+    )
 
     seen: set[tuple[str, str, int]] = set()
     observations: list[BRIEconomicObservation] = []
     observed_rows = 0
+    forecast_rows = 0
     unavailable_rows = 0
     for position, row in enumerate(rows, 1):
         if type(row) is not dict or (
@@ -616,19 +809,23 @@ def parse_response(
         seen.add(identity)
 
         _required_text(row["unit"], path=f"row {position} unit", allow_empty=True)
-        _required_text(
+        scale = _required_text(
             row.get("scale", ""), path=f"row {position} scale", allow_empty=True
         )
-        _required_text(
+        obs_status = _required_text(
             row["obs_status"],
             path=f"row {position} obs_status",
             allow_empty=True,
         )
-        _required_text(
+        footnote = _required_text(
             row["footnote"],
             path=f"row {position} footnote",
             allow_empty=True,
         )
+        if obs_status not in {"", "F"}:
+            raise BRIWDIError(
+                f"row {position} has unsupported nonempty obs_status {obs_status!r}"
+            )
         decimal = row["decimal"]
         if (
             isinstance(decimal, bool)
@@ -637,7 +834,19 @@ def parse_response(
         ):
             raise BRIWDIError(f"row {position} decimal is invalid")
 
-        if row["value"] is None:
+        if obs_status == "F":
+            if row["value"] is None:
+                raise BRIWDIError(
+                    f"row {position} forecast obs_status requires a numeric value"
+                )
+            normalized_value = _number(
+                row["value"],
+                identity=f"{country_code} {indicator_id} {year}",
+            )
+            evidence_state = "forecast"
+            unavailability_reason = None
+            forecast_rows += 1
+        elif row["value"] is None:
             normalized_value = None
             evidence_state = "unavailable"
             unavailability_reason = "source_value_null"
@@ -659,6 +868,9 @@ def parse_response(
                 unit=binding.unit,
                 evidence_state=evidence_state,
                 unavailability_reason=unavailability_reason,
+                obs_status=obs_status,
+                footnote=footnote,
+                scale=scale,
                 period_start=date(year, 1, 1),
                 period_end=date(year, 12, 31),
                 source_release_upper_bound=source_release_upper_bound,
@@ -668,6 +880,7 @@ def parse_response(
                 raw_response_sha256=raw_response_sha256,
                 source_row_sha256=_row_sha256(row),
                 request_id=request_id,
+                acquisition_id=acquisition_receipt.acquisition_id,
             )
         )
 
@@ -691,12 +904,14 @@ def parse_response(
         )
     )
     receipt = WDIRequestReceipt(
+        acquisition_id=acquisition_receipt.acquisition_id,
         request_id=request_id,
         evidence_url=evidence_url,
         raw_response_sha256=raw_response_sha256,
         response_bytes=len(raw),
         source_rows=len(rows),
         observed_rows=observed_rows,
+        forecast_rows=forecast_rows,
         unavailable_rows=unavailable_rows,
         dataset_last_updated=dataset_last_updated,
         source_release_upper_bound=source_release_upper_bound,
@@ -804,9 +1019,11 @@ def collect(
 
 
 __all__ = [
+    "ACQUISITION_RECEIPT_SCHEMA_VERSION",
     "API_PER_PAGE",
     "BRIWDIError",
     "CountryBinding",
+    "MAX_RECEIPT_BYTES",
     "MAX_RESPONSE_BYTES",
     "MAX_ROWS",
     "PARSER_VERSION",
@@ -815,9 +1032,12 @@ __all__ = [
     "WDICollection",
     "WDIRegistry",
     "WDIRequestReceipt",
+    "WDIAcquisitionReceipt",
+    "acquisition_receipt_for",
     "build_url",
     "collect",
     "fetch_bytes",
     "load_registry",
     "parse_response",
+    "verify_acquisition_receipt",
 ]

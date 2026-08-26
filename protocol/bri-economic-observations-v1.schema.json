@@ -95,7 +95,10 @@
         "actor_inference",
         "project_attribution",
         "tactical_data",
-        "missing_value_policy"
+        "missing_value_policy",
+        "forecast_policy",
+        "qualification_policy",
+        "downstream_semantics"
       ],
       "properties": {
         "scope": {"const": "national_economic_context"},
@@ -107,7 +110,20 @@
         "actor_inference": {"const": "prohibited"},
         "project_attribution": {"const": "prohibited"},
         "tactical_data": {"const": "prohibited"},
-        "missing_value_policy": {"const": "source_null_remains_unavailable"}
+        "missing_value_policy": {"const": "source_null_remains_unavailable"},
+        "forecast_policy": {"const": "source_obs_status_F_remains_forecast"},
+        "qualification_policy": {"const": "obs_status_footnote_scale_preserved_verbatim"},
+        "downstream_semantics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["observed", "forecast", "unavailable", "join_boundary"],
+          "properties": {
+            "observed": {"const": "numeric_source_value_without_forecast_marker"},
+            "forecast": {"const": "numeric_source_value_marked_F_not_observed"},
+            "unavailable": {"const": "source_null_not_zero_or_imputed"},
+            "join_boundary": {"const": "country_period_context_only_no_project_actor_or_causal_join"}
+          }
+        }
       }
     },
     "source": {
@@ -148,6 +164,7 @@
         "indicators",
         "source_rows",
         "observed_rows",
+        "forecast_rows",
         "unavailable_rows"
       ],
       "properties": {
@@ -157,6 +174,7 @@
         "indicators": {"type": "integer", "minimum": 1, "maximum": 24},
         "source_rows": {"type": "integer", "minimum": 1, "maximum": 12000},
         "observed_rows": {"type": "integer", "minimum": 0, "maximum": 12000},
+        "forecast_rows": {"type": "integer", "minimum": 0, "maximum": 12000},
         "unavailable_rows": {"type": "integer", "minimum": 0, "maximum": 12000}
       }
     },
@@ -164,24 +182,28 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
+        "acquisition_id",
         "request_id",
         "evidence_url",
         "raw_response_sha256",
         "response_bytes",
         "source_rows",
         "observed_rows",
+        "forecast_rows",
         "unavailable_rows",
         "dataset_last_updated",
         "source_release_upper_bound",
         "retrieved_at"
       ],
       "properties": {
+        "acquisition_id": {"$ref": "#/$defs/sha256"},
         "request_id": {"$ref": "#/$defs/sha256"},
         "evidence_url": {"$ref": "#/$defs/apiUrl"},
         "raw_response_sha256": {"$ref": "#/$defs/sha256"},
         "response_bytes": {"type": "integer", "minimum": 1, "maximum": 12582912},
         "source_rows": {"type": "integer", "minimum": 1, "maximum": 12000},
         "observed_rows": {"type": "integer", "minimum": 0, "maximum": 12000},
+        "forecast_rows": {"type": "integer", "minimum": 0, "maximum": 12000},
         "unavailable_rows": {"type": "integer", "minimum": 0, "maximum": 12000},
         "dataset_last_updated": {"$ref": "#/$defs/date"},
         "source_release_upper_bound": {"$ref": "#/$defs/timestamp"},
@@ -200,6 +222,9 @@
         "unit",
         "evidence_state",
         "unavailability_reason",
+        "obs_status",
+        "footnote",
+        "scale",
         "frequency",
         "aggregate_level",
         "period_start",
@@ -213,6 +238,7 @@
         "raw_response_sha256",
         "source_row_sha256",
         "request_id",
+        "acquisition_id",
         "context_scope",
         "causality_boundary",
         "release_time_semantics",
@@ -232,13 +258,16 @@
         "country_code": {"enum": ["CHN", "MMR", "PAK"]},
         "value": {"type": ["number", "null"]},
         "unit": {"$ref": "#/$defs/nonblank"},
-        "evidence_state": {"enum": ["observed", "unavailable"]},
+        "evidence_state": {"enum": ["observed", "forecast", "unavailable"]},
         "unavailability_reason": {
           "oneOf": [
             {"type": "null"},
             {"const": "source_value_null"}
           ]
         },
+        "obs_status": {"enum": ["", "F"]},
+        "footnote": {"type": "string", "maxLength": 4096},
+        "scale": {"type": "string", "maxLength": 4096},
         "frequency": {"const": "A"},
         "aggregate_level": {"const": "country"},
         "period_start": {"$ref": "#/$defs/date"},
@@ -252,6 +281,7 @@
         "raw_response_sha256": {"$ref": "#/$defs/sha256"},
         "source_row_sha256": {"$ref": "#/$defs/sha256"},
         "request_id": {"$ref": "#/$defs/sha256"},
+        "acquisition_id": {"$ref": "#/$defs/sha256"},
         "context_scope": {"const": "national_economic_context"},
         "causality_boundary": {"const": "not_evidence_of_bri_causality"},
         "release_time_semantics": {"const": "dataset_lastupdated_upper_bound"},
@@ -267,7 +297,21 @@
           "then": {
             "properties": {
               "value": {"type": "number"},
-              "unavailability_reason": {"type": "null"}
+              "unavailability_reason": {"type": "null"},
+              "obs_status": {"const": ""}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"evidence_state": {"const": "forecast"}},
+            "required": ["evidence_state"]
+          },
+          "then": {
+            "properties": {
+              "value": {"type": "number"},
+              "unavailability_reason": {"type": "null"},
+              "obs_status": {"const": "F"}
             }
           }
         },
@@ -279,7 +323,8 @@
           "then": {
             "properties": {
               "value": {"type": "null"},
-              "unavailability_reason": {"const": "source_value_null"}
+              "unavailability_reason": {"const": "source_value_null"},
+              "obs_status": {"const": ""}
             }
           }
         }

@@ -16,6 +16,11 @@ measure of Chinese involvement, or evidence that BRI caused a national outcome.
   It may not attribute a value to a project, actor, corridor, or policy.
 - A World Bank `null` remains an `unavailable` observation with a null value. It
   is never converted to `0`, carried forward, or silently removed.
+- A nonempty World Bank `obs_status` is accepted only when it is exactly `F`;
+  that row is emitted as `forecast`, never `observed`. Any other nonempty
+  status fails closed pending review.
+- `obs_status`, `footnote`, and `scale` are preserved verbatim in every row and
+  participate directly in the authenticated observation ID.
 - The reviewed dataset-level terms are CC BY 4.0 with attribution to World Bank,
   World Development Indicators. Dataset reuse terms do not change the authority
   or independence of an indicator's upstream producer.
@@ -38,8 +43,17 @@ Each row preserves three distinct time concepts:
 The API does not provide a per-row release timestamp, so `lastupdated` is an
 upper bound, not an invented exact publication time. Every row carries the full
 response SHA-256, a canonical source-row SHA-256, and a request ID binding the
-response hash to the exact request URL. The collection and observation IDs are
-deterministic hashes over canonical JSON.
+response hash to the exact request URL. It also carries an acquisition ID that
+binds the canonical raw-response sidecar: exact request URL, method, user agent,
+TLS and redirect policy, response length and hash, and the post-response
+retrieval clock. The collection and observation IDs are deterministic hashes
+over canonical JSON.
+
+Downstream consumers must keep the three evidence states distinct: `observed`
+is a numeric source value without a forecast marker; `forecast` is a numeric
+source value carrying `obs_status=F`; and `unavailable` is a source null, never
+zero or an imputed value. Country-period joins are context only and cannot be
+used for project, actor, corridor, or causal attribution.
 
 ## Offline review
 
@@ -49,12 +63,12 @@ Validate the reviewed registry without network access:
 PYTHONPATH=. python3 -m scripts.bri_wdi_pull check
 ```
 
-Validate exact saved response bytes with their post-response retrieval clock:
+Validate exact saved response bytes with their canonical acquisition sidecar:
 
 ```bash
 PYTHONPATH=. python3 -m scripts.bri_wdi_pull check \
   --input /path/to/exact-wdi-response.json \
-  --retrieved-at 2026-08-26T10:30:00Z \
+  --receipt-input /path/to/exact-wdi-response.receipt.json \
   --start-year 1960 \
   --end-year 2026
 ```
@@ -65,7 +79,7 @@ default:
 ```bash
 PYTHONPATH=. python3 -m scripts.bri_wdi_pull build \
   --input /path/to/exact-wdi-response.json \
-  --retrieved-at 2026-08-26T10:30:00Z \
+  --receipt-input /path/to/exact-wdi-response.receipt.json \
   --start-year 1960 \
   --end-year 2026 \
   --output /path/to/review/bri-economic-observations.json
@@ -81,22 +95,29 @@ PYTHONPATH=. python3 -m scripts.bri_wdi_pull build \
   --start-year 1960 \
   --end-year 2026 \
   --raw-output /path/to/controlled/raw/wdi-response.json \
+  --receipt-output /path/to/controlled/raw/wdi-response.receipt.json \
   --output /path/to/review/bri-economic-observations.json
 ```
 
 The transport pins the reviewed HTTPS host, verifies TLS, disables redirects,
 enforces response/row/year/series limits, and samples the retrieval clock after
-the response returns. `--raw-output` is mandatory for live acquisition, retains
-the exact bytes authenticated by the request receipt, and is never published
-automatically. The fetched bytes must still be reviewed by the release operator;
-a successful fetch is not publication proof.
+the response returns. Both `--raw-output` and `--receipt-output` are mandatory.
+They are immutable: an existing path is accepted only when its bytes are
+identical, and differing evidence is never replaced. Offline replay requires
+both files and verifies canonical receipt encoding, request scope, retrieval
+clock authentication, response length, and response hash before parsing.
+
+The generated bundle is explicitly derived. An identical rebuild is accepted;
+replacing a differing derived artifact requires `--replace-derived`. None of
+these files is published automatically. The fetched bytes must still be
+reviewed by the release operator; a successful fetch is not publication proof.
 
 ## Publication checklist
 
 Before changing `world_bank_wdi` from `adapter_ready` in the BRI source registry:
 
-1. retain the exact raw response and its SHA-256 in the controlled provenance
-   store;
+1. retain the exact raw response and its canonical acquisition sidecar in the
+   controlled provenance store without overwriting either file;
 2. review any indicator-title or response-shape drift instead of weakening the
    parser;
 3. validate the generated bundle against the protocol and confirm the request,

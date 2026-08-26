@@ -23,7 +23,7 @@ from urllib.parse import urlsplit
 OBSERVATION_SCHEMA_VERSION = "palimpsest.bri-economic-observation.v1"
 BUNDLE_SCHEMA_VERSION = "palimpsest.bri-economic-observations.v1"
 COUNTRY_CODES = frozenset({"CHN", "MMR", "PAK"})
-EVIDENCE_STATES = frozenset({"observed", "unavailable"})
+EVIDENCE_STATES = frozenset({"observed", "forecast", "unavailable"})
 CONTEXT_SCOPE = "national_economic_context"
 CAUSALITY_BOUNDARY = "not_evidence_of_bri_causality"
 RELEASE_TIME_SEMANTICS = "dataset_lastupdated_upper_bound"
@@ -65,6 +65,23 @@ def sha256_bytes(value: bytes) -> str:
 def _text(value: object, name: str, *, maximum_bytes: int = 512) -> str:
     if type(value) is not str or not value.strip():
         raise BRIObservationError(f"{name} must be non-empty text")
+    if len(value.encode("utf-8")) > maximum_bytes:
+        raise BRIObservationError(f"{name} exceeds {maximum_bytes} UTF-8 bytes")
+    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in value):
+        raise BRIObservationError(f"{name} contains control characters")
+    return value
+
+
+def _source_text(
+    value: object,
+    name: str,
+    *,
+    maximum_bytes: int = 4 * 1024,
+) -> str:
+    """Validate a verbatim, possibly-empty source qualification field."""
+
+    if type(value) is not str:
+        raise BRIObservationError(f"{name} must be text")
     if len(value.encode("utf-8")) > maximum_bytes:
         raise BRIObservationError(f"{name} exceeds {maximum_bytes} UTF-8 bytes")
     if any(ord(character) < 0x20 or ord(character) == 0x7F for character in value):
@@ -207,6 +224,9 @@ class BRIEconomicObservation:
     unit: str
     evidence_state: str
     unavailability_reason: str | None
+    obs_status: str
+    footnote: str
+    scale: str
     period_start: date
     period_end: date
     source_release_upper_bound: datetime
@@ -216,6 +236,7 @@ class BRIEconomicObservation:
     raw_response_sha256: str
     source_row_sha256: str
     request_id: str
+    acquisition_id: str
     schema_version: str = OBSERVATION_SCHEMA_VERSION
     frequency: str = FREQUENCY
     aggregate_level: str = AGGREGATE_LEVEL
@@ -239,17 +260,31 @@ class BRIEconomicObservation:
             raise BRIObservationError("country_code must be CHN, MMR, or PAK")
         _text(self.unit, "unit")
         if self.evidence_state not in EVIDENCE_STATES:
-            raise BRIObservationError("evidence_state must be observed or unavailable")
+            raise BRIObservationError(
+                "evidence_state must be observed, forecast, or unavailable"
+            )
+        obs_status = _source_text(self.obs_status, "obs_status")
+        footnote = _source_text(self.footnote, "footnote")
+        scale = _source_text(self.scale, "scale")
+        if obs_status not in {"", "F"}:
+            raise BRIObservationError("obs_status must be empty or F")
 
-        if self.evidence_state == "observed":
+        if self.evidence_state in {"observed", "forecast"}:
             if isinstance(self.value, bool) or not isinstance(self.value, Real):
-                raise BRIObservationError("observed value must be a real number")
+                raise BRIObservationError(
+                    f"{self.evidence_state} value must be a real number"
+                )
             normalized_value = float(self.value)
             if not math.isfinite(normalized_value):
-                raise BRIObservationError("observed value must be finite")
+                raise BRIObservationError(f"{self.evidence_state} value must be finite")
             if self.unavailability_reason is not None:
                 raise BRIObservationError(
-                    "observed rows cannot carry an unavailability_reason"
+                    f"{self.evidence_state} rows cannot carry an unavailability_reason"
+                )
+            expected_status = "F" if self.evidence_state == "forecast" else ""
+            if obs_status != expected_status:
+                raise BRIObservationError(
+                    f"{self.evidence_state} rows require obs_status={expected_status!r}"
                 )
         else:
             if self.value is not None:
@@ -257,6 +292,10 @@ class BRIEconomicObservation:
             if self.unavailability_reason != "source_value_null":
                 raise BRIObservationError(
                     "unavailable rows must state source_value_null"
+                )
+            if obs_status:
+                raise BRIObservationError(
+                    "unavailable rows cannot carry a forecast obs_status"
                 )
             normalized_value = None
 
@@ -291,6 +330,7 @@ class BRIEconomicObservation:
         raw_response_sha256 = _digest(self.raw_response_sha256, "raw_response_sha256")
         _digest(self.source_row_sha256, "source_row_sha256")
         request_id = _digest(self.request_id, "request_id")
+        _digest(self.acquisition_id, "acquisition_id")
         if request_id != request_id_for(
             evidence_url=evidence_url,
             raw_response_sha256=raw_response_sha256,
@@ -319,6 +359,9 @@ class BRIEconomicObservation:
         object.__setattr__(self, "retrieved_at", retrieved_at)
         object.__setattr__(self, "source_release_upper_bound", release_upper_bound)
         object.__setattr__(self, "evidence_url", evidence_url)
+        object.__setattr__(self, "obs_status", obs_status)
+        object.__setattr__(self, "footnote", footnote)
+        object.__setattr__(self, "scale", scale)
 
     @property
     def natural_key(self) -> tuple[str, str, date, date]:
@@ -339,6 +382,9 @@ class BRIEconomicObservation:
             "unit": self.unit,
             "evidence_state": self.evidence_state,
             "unavailability_reason": self.unavailability_reason,
+            "obs_status": self.obs_status,
+            "footnote": self.footnote,
+            "scale": self.scale,
             "frequency": self.frequency,
             "aggregate_level": self.aggregate_level,
             "period_start": self.period_start.isoformat(),
@@ -352,6 +398,7 @@ class BRIEconomicObservation:
             "raw_response_sha256": self.raw_response_sha256,
             "source_row_sha256": self.source_row_sha256,
             "request_id": self.request_id,
+            "acquisition_id": self.acquisition_id,
             "context_scope": self.context_scope,
             "causality_boundary": self.causality_boundary,
             "release_time_semantics": self.release_time_semantics,
@@ -380,6 +427,9 @@ class BRIEconomicObservation:
             "unit",
             "evidence_state",
             "unavailability_reason",
+            "obs_status",
+            "footnote",
+            "scale",
             "frequency",
             "aggregate_level",
             "period_start",
@@ -393,6 +443,7 @@ class BRIEconomicObservation:
             "raw_response_sha256",
             "source_row_sha256",
             "request_id",
+            "acquisition_id",
             "context_scope",
             "causality_boundary",
             "release_time_semantics",
