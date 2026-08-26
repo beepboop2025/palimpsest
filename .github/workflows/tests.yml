@@ -1202,7 +1202,7 @@ jobs:
           test ! -e "$RUNNER_TEMP/pages-root/.pytest_cache"
           test ! -e "$RUNNER_TEMP/pages-root/.ruff_cache"
 
-      - name: Archive immutable wire analysis history in exact Pages staging
+      - name: Archive or rights-suppress immutable wire analysis history in exact Pages staging
         env:
           PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
         run: |

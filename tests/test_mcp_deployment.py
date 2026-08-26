@@ -785,11 +785,17 @@ def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
     text = RUNBOOK.read_text(encoding="utf-8")
     freeze = text.index('gh workflow disable "$workflow_id"')
     deploy = text.index("gh workflow run deploy-mcp.yml")
-    publish = text.index("gh workflow run registry-publish.yml")
     complete_dispatch = text.index("-f event_type=publication_contract")
     served_bytes = text.index("pages-served")
     restore = text.index('gh workflow enable "$workflow_id"')
-    assert freeze < deploy < publish < complete_dispatch < served_bytes < restore
+    assert freeze < deploy < complete_dispatch < served_bytes < restore
+    assert "skip this Registry block" in text[deploy:complete_dispatch]
+    assert "Rights-contract receipt bridge" in text
+    assert "source/runtime commit A" in text
+    assert "receipt/discovery commit B" in text
+    assert "final receipt/discovery commit C" in text
+    assert "re-deploy exact current-main B" in text
+    assert "Do not republish the immutable Registry version from C" in text
     assert "scheduled-workflows.tsv" in text
     assert "reuse that gate's" in text
     assert "original preservation manifest" in text

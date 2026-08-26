@@ -853,12 +853,41 @@ git fetch --force --no-tags origin \
 test "$(git rev-parse origin/main)" = "$target_sha"
 ```
 
-For a rights-contract release, run the Registry transaction only after the
-final Pages/MCP rights job above succeeds, and require its ordinary non-bootstrap
-public smoke. Only after the live smoke, host receipt, deployment artifact,
-Registry receipt, official latest record, exact complete Tests run, Pages
-deployment, SHA-bound rights receipt, and served bytes all agree may the states
-captured in the manifest be restored. An
+### Rights-contract receipt bridge
+
+A rights-contract release that also changes the MCP runtime cannot stop after
+the first Pages publication. Its evidence necessarily spans three signed main
+commits because a deployment or Registry receipt cannot exist before the
+external transaction it records:
+
+1. Merge source/runtime commit A, upgrade the installed controller trust bundle,
+   and deploy A with the bootstrap-deny smoke. Download and independently verify
+   that exact run's deployment receipt.
+2. Merge receipt/discovery commit B. It may add the verified A deployment
+   receipt and update public discovery, but must leave `mcp/palimpsest_mcp.py`
+   and `server.json` byte-identical to A. Run the complete exact-main Pages
+   transaction for B and require `Verify exact Pages and native MCP rights
+   closure` to succeed.
+3. While writers remain frozen, re-deploy exact current-main B. This advances
+   the forced controller's deployed identity without changing runtime or
+   manifest blobs. Require both the workflow receipt and an ordinary
+   non-bootstrap public smoke, then publish the Registry from exact current-main
+   B using that B deployment run.
+4. Download and independently verify the B deployment receipt plus the Registry
+   receipt/snapshot. Merge final receipt/discovery commit C containing those
+   immutable bytes and catalog bindings, again with unchanged runtime/manifest
+   blobs. Run one final complete exact-main Pages transaction and served-byte
+   proof for C. Do not republish the immutable Registry version from C.
+
+This bridge keeps every external fact causally after the action it proves while
+preserving current-main and exact-blob admission at each boundary. Never invent
+receipt bytes, rewrite A/B receipts, or point discovery at a run that was not
+independently verified.
+
+Only after the live smoke, host receipt, deployment artifact, Registry receipt,
+official latest record, final exact complete Tests run, Pages deployment,
+SHA-bound rights receipt, and served bytes all agree may the states captured in
+the manifest be restored. An
 intentionally disabled workflow stays disabled. The one-time release restores
 the original 35 intentions even though the target has only 34 scheduled paths:
 re-enabling the China econ workflow exposes its reviewed manual dispatch but
