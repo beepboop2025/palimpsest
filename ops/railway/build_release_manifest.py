@@ -18,8 +18,12 @@ MANIFEST_NAME = "railway-release.json"
 CRITICAL_PATHS = (
     ".well-known/ai-catalog.json",
     "belt-and-road/index.html",
+    "collectors/ucdp_bulk.py",
     "config/china_econ_source_policy.json",
     "config/pages_public_binary_allowlist.json",
+    "config/ucdp_aggregate.json",
+    "core/ucdp_aggregate.py",
+    "docs/UCDP-AGGREGATE-CONTEXT.md",
     "index.html",
     "openapi.json",
     "protocol/bri-economic-observations-v1.schema.json",
@@ -27,10 +31,13 @@ CRITICAL_PATHS = (
     "protocol/pages-rights-release-receipt-v1.schema.json",
     "protocol/restricted-publication-endpoint-v1.schema.json",
     "protocol/restricted-publication-v1.schema.json",
+    "protocol/ucdp-aggregate-v1.schema.json",
     "readings/belt-and-road-observatory-latest.json",
     "readings/bri-economic-observations-latest.json",
     "readings/china-publication-rights-latest.json",
+    "scripts/ucdp_bulk_pull.py",
     "server.json",
+    "tests/test_ucdp_bulk_aggregate.py",
 )
 
 

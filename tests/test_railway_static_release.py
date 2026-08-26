@@ -46,6 +46,15 @@ RIGHTS_CRITICAL_PATHS = {
     "protocol/restricted-publication-v1.schema.json",
     "readings/china-publication-rights-latest.json",
 }
+UCDP_ADAPTER_CRITICAL_PATHS = {
+    "collectors/ucdp_bulk.py",
+    "config/ucdp_aggregate.json",
+    "core/ucdp_aggregate.py",
+    "docs/UCDP-AGGREGATE-CONTEXT.md",
+    "protocol/ucdp-aggregate-v1.schema.json",
+    "scripts/ucdp_bulk_pull.py",
+    "tests/test_ucdp_bulk_aggregate.py",
+}
 
 
 def _publication_root(tmp_path: Path) -> Path:
@@ -82,6 +91,29 @@ def test_manifest_binds_every_rights_critical_file(tmp_path: Path) -> None:
             "sha256": hashlib.sha256(raw).hexdigest(),
         }
     assert "pages-rights-release-receipt.json" not in manifest["critical_files"]
+
+
+def test_manifest_binds_adapter_ready_ucdp_contract_without_claiming_live_data(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    manifest = manifest_module.build_manifest(
+        root, "e" * 40, "2026-08-26T18:00:00Z"
+    )
+
+    assert UCDP_ADAPTER_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
+    assert not any("ucdp-aggregate-latest" in path for path in manifest["critical_files"])
+    for relative in UCDP_ADAPTER_CRITICAL_PATHS:
+        raw = (root / relative).read_bytes()
+        assert manifest["critical_files"][relative]["sha256"] == hashlib.sha256(
+            raw
+        ).hexdigest()
+
+    registry = json.loads((ROOT / "config/ucdp_aggregate.json").read_text())
+    assert registry["source"]["dataset_version"] == "26.1"
+    assert registry["source"]["redistribution_status"] == "allowed_with_attribution"
+    documentation = (ROOT / "docs/UCDP-AGGREGATE-CONTEXT.md").read_text()
+    assert "`adapter_ready`, not `live`" in documentation
 
 
 def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
