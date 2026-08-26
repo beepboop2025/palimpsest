@@ -1,0 +1,57 @@
+{
+  "schema_version": "palimpsest.ucdp-bulk-registry.v1",
+  "source": {
+    "source_id": "ucdp_bulk_26_1",
+    "name": "Uppsala Conflict Data Program annual bulk datasets",
+    "publisher": "Uppsala Conflict Data Program, Uppsala University",
+    "dataset_version": "26.1",
+    "catalog_url": "https://ucdp.uu.se/downloads/",
+    "license": "CC-BY-4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "rights_evidence_url": "https://ucdp.uu.se/downloads/",
+    "redistribution_status": "allowed_with_attribution",
+    "attribution": "Uppsala Conflict Data Program (UCDP), version 26.1",
+    "citation_url": "https://doi.org/10.1093/jopres/xjag046",
+    "source_period_start_year": 1946,
+    "source_period_end_year": 2025,
+    "release_cadence": "annual",
+    "maximum_source_age_days": 550
+  },
+  "scope": {
+    "geographies": ["PAK-BAL", "MMR"],
+    "pakistan_location": "Pakistan",
+    "balochistan_territory": "Balochistan",
+    "myanmar_location_token": "Myanmar (Burma)",
+    "myanmar_territory_allowlist": ["Arakan", "Common Border", "Kachin", "Karen", "Karenni", "Kokang", "Lahu", "Mon", "Nagaland", "Shan", "Wa"],
+    "country_year_bindings": [
+      {"country_code": "PAK", "source_country": "Pakistan", "source_country_id": 770},
+      {"country_code": "MMR", "source_country": "Myanmar (Burma)", "source_country_id": 775}
+    ]
+  },
+  "inputs": [
+    {
+      "input_id": "armed_conflict",
+      "url": "https://ucdp.uu.se/downloads/ucdpprio/ucdp-prio-acd-261-csv.zip",
+      "member_name": "UcdpPrioConflict_v26_1.csv",
+      "encoding": "utf-8-sig",
+      "maximum_archive_bytes": 1048576,
+      "maximum_member_bytes": 2097152
+    },
+    {
+      "input_id": "actor_registry",
+      "url": "https://ucdp.uu.se/downloads/actor/ucdp-actor-261-csv.zip",
+      "member_name": "Actor_v26_1.csv",
+      "encoding": "latin-1",
+      "maximum_archive_bytes": 1048576,
+      "maximum_member_bytes": 2097152
+    },
+    {
+      "input_id": "organized_country_year",
+      "url": "https://ucdp.uu.se/downloads/organizedviolencecy/organizedviolencecy-261-csv.zip",
+      "member_name": "OrganizedViolenceCYDataSet26_1.csv",
+      "encoding": "utf-8-sig",
+      "maximum_archive_bytes": 4194304,
+      "maximum_member_bytes": 8388608
+    }
+  ]
+}
