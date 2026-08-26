@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import io
 import json
-import shutil
-import subprocess
+import lzma
 import tarfile
 from pathlib import Path
 
@@ -159,7 +158,9 @@ def test_build_refuses_ambiguous_or_missing_current_revision(tmp_path: Path) -> 
         wire_archive.build(missing, PUBLICATION_SHA)
 
 
-def test_build_refuses_symlinks_and_xz_failure(tmp_path: Path) -> None:
+def test_build_refuses_symlinks_and_xz_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     symlink_root = tmp_path / "symlink"
     _fixture(symlink_root)
     source = symlink_root / f"news/wire/{EVENT_A}/analysis.json"
@@ -173,10 +174,12 @@ def test_build_refuses_symlinks_and_xz_failure(tmp_path: Path) -> None:
 
     failed_xz_root = tmp_path / "failed-xz"
     _fixture(failed_xz_root)
-    false_binary = shutil.which("false")
-    assert false_binary is not None
-    with pytest.raises(wire_archive.ArchiveError, match="xz failed"):
-        wire_archive.build(failed_xz_root, PUBLICATION_SHA, xz_binary=false_binary)
+    def fail_compressor(**_kwargs: object) -> None:
+        raise lzma.LZMAError("synthetic compressor failure")
+
+    monkeypatch.setattr(wire_archive.lzma, "LZMACompressor", fail_compressor)
+    with pytest.raises(wire_archive.ArchiveError, match="cannot build deterministic"):
+        wire_archive.build(failed_xz_root, PUBLICATION_SHA)
 
 
 def test_build_recomputes_the_authoritative_history_tree(tmp_path: Path) -> None:
@@ -215,7 +218,7 @@ def test_verify_refuses_archive_or_receipt_tamper(
         raw = bytearray(archive_path.read_bytes())
         raw[len(raw) // 2] ^= 1
         archive_path.write_bytes(raw)
-        expected = "xz failed|cannot inspect"
+        expected = "cannot verify|cannot inspect"
     else:
         receipt_path = root / wire_archive.RECEIPT_RELATIVE_PATH
         receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
@@ -239,20 +242,13 @@ def test_inspection_refuses_duplicate_archive_members(tmp_path: Path) -> None:
             info.mtime = 0
             archive.addfile(info, io.BytesIO(b"{}"))
     archive_path = tmp_path / "duplicate.tar.xz"
-    with archive_path.open("wb") as output:
-        completed = subprocess.run(
-            [
-                "xz",
-                "-9",
-                "--threads=1",
-                "--check=sha256",
-                "--stdout",
-                str(tar_path),
-            ],
-            check=False,
-            stdout=output,
-            stderr=subprocess.PIPE,
+    archive_path.write_bytes(
+        lzma.compress(
+            tar_path.read_bytes(),
+            format=lzma.FORMAT_XZ,
+            check=lzma.CHECK_SHA256,
+            preset=9,
         )
-    assert completed.returncode == 0, completed.stderr
+    )
     with pytest.raises(wire_archive.ArchiveError, match="duplicate member"):
-        wire_archive._inspect_archive(archive_path, xz_binary="xz")
+        wire_archive._inspect_archive(archive_path)

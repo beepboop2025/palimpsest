@@ -15,10 +15,10 @@ import json
 import lzma
 import os
 import re
-import subprocess
 import sys
 import tarfile
 import tempfile
+import zlib
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -43,6 +43,8 @@ EVENT_REVISION_PATH_RE = re.compile(
     r"news/wire/event-[0-9a-f]{24}/revisions/eventv-[0-9a-f]{24}\.json\Z"
 )
 XZ_CHECK = "SHA-256"
+XZ_MAGIC = b"\xfd7zXZ\x00"
+XZ_SHA256_FLAGS = b"\x00\x0a"
 
 
 class ArchiveError(RuntimeError):
@@ -339,41 +341,58 @@ def _build_tar(root: Path, entries: tuple[Entry, ...], destination: Path) -> Non
         raise ArchiveError(f"cannot build deterministic wire tar: {exc}") from exc
 
 
-def _run_xz(arguments: list[str], *, xz_binary: str, stdout: BinaryIO | None = None) -> str:
+def _compress_xz(source: Path, destination: Path) -> None:
+    """Write one deterministic in-process XZ stream with a SHA-256 check."""
+
+    if not lzma.is_check_supported(lzma.CHECK_SHA256):
+        raise ArchiveError("Python liblzma does not support the XZ SHA-256 check")
     try:
-        completed = subprocess.run(
-            [xz_binary, *arguments],
-            check=False,
-            stdin=subprocess.DEVNULL,
-            stdout=stdout if stdout is not None else subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=stdout is None,
-            env={"PATH": os.environ.get("PATH", "")},
+        compressor = lzma.LZMACompressor(
+            format=lzma.FORMAT_XZ,
+            check=lzma.CHECK_SHA256,
+            preset=9,
         )
-    except OSError as exc:
-        raise ArchiveError(f"cannot execute xz: {exc}") from exc
-    if completed.returncode != 0:
-        stderr = completed.stderr
-        if isinstance(stderr, bytes):
-            stderr = stderr.decode("utf-8", errors="replace")
-        raise ArchiveError(f"xz failed ({completed.returncode}): {str(stderr).strip()}")
-    return completed.stdout if isinstance(completed.stdout, str) else ""
+        with source.open("rb") as input_handle, destination.open("wb") as output:
+            for block in iter(lambda: input_handle.read(1024 * 1024), b""):
+                output.write(compressor.compress(block))
+            output.write(compressor.flush())
+    except (OSError, lzma.LZMAError) as exc:
+        raise ArchiveError(f"cannot build deterministic XZ stream: {exc}") from exc
 
 
-def _verify_xz(path: Path, *, xz_binary: str) -> None:
-    _run_xz(["--threads=1", "--test", str(path)], xz_binary=xz_binary)
-    listing = _run_xz(["--robot", "--list", str(path)], xz_binary=xz_binary)
-    totals = [line.split("\t") for line in listing.splitlines() if line.startswith("totals\t")]
-    if len(totals) != 1 or len(totals[0]) < 7 or totals[0][6] != XZ_CHECK:
-        raise ArchiveError("wire archive is not one xz stream with a SHA-256 check")
-    if totals[0][1:3] != ["1", "1"]:
-        raise ArchiveError("wire archive must contain exactly one xz stream and block")
+def _verify_xz(path: Path) -> None:
+    """Verify the SHA-256 stream header and reject truncation or extra streams."""
+
+    if not lzma.is_check_supported(lzma.CHECK_SHA256):
+        raise ArchiveError("Python liblzma does not support the XZ SHA-256 check")
+    try:
+        with path.open("rb") as handle:
+            header = handle.read(12)
+            if len(header) != 12 or header[:6] != XZ_MAGIC:
+                raise ArchiveError("wire archive has an invalid XZ stream header")
+            flags = header[6:8]
+            expected_crc = zlib.crc32(flags).to_bytes(4, "little")
+            if flags != XZ_SHA256_FLAGS or header[8:12] != expected_crc:
+                raise ArchiveError("wire archive does not declare an XZ SHA-256 check")
+            handle.seek(0)
+            decoder = lzma.LZMADecompressor(format=lzma.FORMAT_XZ)
+            while not decoder.eof:
+                block = handle.read(1024 * 1024) if decoder.needs_input else b""
+                if not block and decoder.needs_input:
+                    raise ArchiveError("wire archive contains a truncated XZ stream")
+                decoder.decompress(block, max_length=1024 * 1024)
+            if decoder.unused_data or handle.read(1):
+                raise ArchiveError("wire archive contains trailing or multiple XZ streams")
+    except ArchiveError:
+        raise
+    except (OSError, EOFError, lzma.LZMAError) as exc:
+        raise ArchiveError(f"cannot verify wire analysis XZ stream: {exc}") from exc
 
 
-def _inspect_archive(path: Path, *, xz_binary: str) -> ArchiveInspection:
+def _inspect_archive(path: Path) -> ArchiveInspection:
     if path.is_symlink() or not path.is_file():
         raise ArchiveError(f"wire analysis archive is not a regular file: {path}")
-    _verify_xz(path, xz_binary=xz_binary)
+    _verify_xz(path)
     entries: list[Entry] = []
     seen: set[str] = set()
     try:
@@ -491,7 +510,7 @@ def _validate_publication_sha(publication_sha: str) -> None:
         raise ArchiveError("publication SHA must be exactly 40 lowercase hex characters")
 
 
-def build(root: Path, publication_sha: str, *, xz_binary: str = "xz") -> dict[str, object]:
+def build(root: Path, publication_sha: str) -> dict[str, object]:
     root = root.resolve()
     _validate_publication_sha(publication_sha)
     _reject_wire_symlinks(root / "news/wire")
@@ -519,19 +538,8 @@ def build(root: Path, publication_sha: str, *, xz_binary: str = "xz") -> dict[st
         tar_path = temp_root / "analysis-revisions.tar"
         compressed_path = temp_root / "analysis-revisions.tar.xz"
         _build_tar(root, analysis_entries, tar_path)
-        with compressed_path.open("wb") as output:
-            _run_xz(
-                [
-                    "-9",
-                    "--threads=1",
-                    "--check=sha256",
-                    "--stdout",
-                    str(tar_path),
-                ],
-                xz_binary=xz_binary,
-                stdout=output,
-            )
-        inspection = _inspect_archive(compressed_path, xz_binary=xz_binary)
+        _compress_xz(tar_path, compressed_path)
+        inspection = _inspect_archive(compressed_path)
         if inspection.entries != analysis_entries:
             raise ArchiveError("wire archive members are not byte-identical to staging")
         os.replace(compressed_path, archive_path)
@@ -555,11 +563,11 @@ def build(root: Path, publication_sha: str, *, xz_binary: str = "xz") -> dict[st
         integrity=integrity,
     )
     receipt_path.write_bytes(_pretty_json(receipt))
-    verify(root, publication_sha, xz_binary=xz_binary)
+    verify(root, publication_sha)
     return receipt
 
 
-def verify(root: Path, publication_sha: str, *, xz_binary: str = "xz") -> dict[str, object]:
+def verify(root: Path, publication_sha: str) -> dict[str, object]:
     root = root.resolve()
     _validate_publication_sha(publication_sha)
     _reject_wire_symlinks(root / "news/wire")
@@ -568,7 +576,7 @@ def verify(root: Path, publication_sha: str, *, xz_binary: str = "xz") -> dict[s
     if receipt_path.is_symlink() or not receipt_path.is_file():
         raise ArchiveError(f"wire archive receipt is missing: {receipt_path}")
     receipt = _strict_json(receipt_path)
-    inspection = _inspect_archive(archive_path, xz_binary=xz_binary)
+    inspection = _inspect_archive(archive_path)
     retained_entries = _revision_entries(root)
     retained_paths, current_heads = _head_revision_paths(root, inspection.entries)
     if {entry.path for entry in retained_entries} != retained_paths:
@@ -604,7 +612,6 @@ def _parser() -> argparse.ArgumentParser:
         help="exact materialized Pages staging root",
     )
     parser.add_argument("--publication-sha", required=True)
-    parser.add_argument("--xz", default="xz", help="reviewed xz executable")
     parser.add_argument(
         "--check",
         action="store_true",
@@ -617,17 +624,9 @@ def main(argv: list[str] | None = None) -> int:
     arguments = _parser().parse_args(argv)
     try:
         if arguments.check:
-            receipt = verify(
-                arguments.root,
-                arguments.publication_sha,
-                xz_binary=arguments.xz,
-            )
+            receipt = verify(arguments.root, arguments.publication_sha)
         else:
-            receipt = build(
-                arguments.root,
-                arguments.publication_sha,
-                xz_binary=arguments.xz,
-            )
+            receipt = build(arguments.root, arguments.publication_sha)
     except ArchiveError as exc:
         print(f"wire analysis archive refused: {exc}", file=sys.stderr)
         return 1
