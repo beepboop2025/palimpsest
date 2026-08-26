@@ -316,10 +316,10 @@ def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
     wire_check = builder.index("--check", wire)
     manifest = builder.index("ops/railway/build_release_manifest.py")
     seal_files = builder.index(
-        'find "$staging_directory" -type f -exec chmod a-w -- {} +'
+        'find "$staging_directory" -type f -exec chmod a-w {} +'
     )
     seal_directories = builder.index(
-        'find "$staging_directory" -depth -type d -exec chmod a-w -- {} +'
+        'find "$staging_directory" -depth -type d -exec chmod a-w {} +'
     )
     promote = builder.index('mv "$staging_directory" "$output_parent/$output_name"')
 
@@ -342,8 +342,8 @@ def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
     assert '--receipt "$rights_receipt"' in builder
     assert "PALIMPSEST_RAILWAY_ADMISSION_EPOCH" in builder
     assert "PALIMPSEST_RAILWAY_PYTHON" in builder
-    assert 'chmod a-w -- "$final_rights_receipt"' in builder
-    assert 'chmod -R u+w -- "$staging_directory"' in builder
+    assert 'chmod a-w "$final_rights_receipt"' in builder
+    assert 'chmod -R u+w "$staging_directory"' in builder
     assert 'env PYTHONDONTWRITEBYTECODE=1 "$python_runtime"' in builder
     assert '--current-at "$rights_admission_at"' in builder
     assert "mv \"$staging_directory/.well-known\"" not in builder
