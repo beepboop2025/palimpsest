@@ -31,6 +31,33 @@ RECEIPT_FRESH_UNTIL = "2026-08-27T15:55:34Z"
 OBSERVATORY_AS_OF = "2026-08-26T19:34:49Z"
 
 
+def _relative_luminance(hex_color: str) -> float:
+    channels = [int(hex_color[index : index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [
+        channel / 12.92
+        if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast(foreground: str, background: str) -> float:
+    lighter, darker = sorted(
+        (_relative_luminance(foreground), _relative_luminance(background)),
+        reverse=True,
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def test_dark_balochistan_eyebrows_clear_normal_text_contrast() -> None:
+    css = (ROOT / "assets" / "bri.css").read_text(encoding="utf-8")
+    assert "--bri-accent-dark: #d98c70" in css
+    assert ".bri-dark .bri-eyebrow { color: var(--bri-accent-dark); }" in css
+    assert _contrast("#d98c70", "#14231f") >= 4.5
+    assert _contrast("#d98c70", "#1a2e28") >= 4.5
+
+
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
     registry = load_registry(REGISTRY)
     assert registry["as_of"] == OBSERVATORY_AS_OF

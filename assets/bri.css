@@ -4,6 +4,7 @@
   --bri-paper: #f5f7f1;
   --bri-line: #cad4cc;
   --bri-accent: #a84627;
+  --bri-accent-dark: #d98c70;
   --bri-green: #1f5b4f;
   --bri-dark: #14231f;
 }
@@ -53,6 +54,7 @@
 .bri-targets code { color: var(--bri-green); font-size: .7rem; }
 .bri-targets p { grid-column: 1 / -1; margin: 0; color: var(--bri-muted); font-size: .82rem; }
 .bri-dark { width: 100%; max-width: none; padding-right: max(20px, calc((100% - 1180px) / 2)); padding-left: max(20px, calc((100% - 1180px) / 2)); background: var(--bri-dark); color: #edf4ef; border: 0; }
+.bri-dark .bri-eyebrow { color: var(--bri-accent-dark); }
 .bri-dark > p:not(.bri-eyebrow) { color: #b9c7c0; }
 .bri-lanes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; margin-top: 38px; background: #43534c; border: 1px solid #43534c; }
 .bri-lane { padding: 26px; background: #1a2e28; }

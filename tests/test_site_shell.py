@@ -72,28 +72,26 @@ def _pages():
             yield rel, current, path
 
 
-def _tracked_marker_pages() -> set[str]:
+def _tracked_html_pages() -> set[str]:
     result = subprocess.run(
         ["git", "ls-files", "-z", "--", "*.html"],
         cwd=ROOT,
         check=True,
         stdout=subprocess.PIPE,
     )
-    pages = set()
-    for raw_relative_path in result.stdout.split(b"\0"):
-        if not raw_relative_path:
-            continue
-        relative_path = raw_relative_path.decode("utf-8")
-        text = (ROOT / relative_path).read_text(encoding="utf-8")
-        if site_nav.BEGIN in text or site_nav.END in text:
-            pages.add(relative_path)
-    return pages
+    return {
+        raw_relative_path.decode("utf-8")
+        for raw_relative_path in result.stdout.split(b"\0")
+        if raw_relative_path
+    }
 
 
-def test_nav_discovery_covers_every_tracked_marker_page():
-    expected = _tracked_marker_pages()
+def test_nav_discovery_covers_every_tracked_managed_html_page():
+    tracked = _tracked_html_pages()
+    expected = tracked - sync_nav.EXCLUDED_HTML
 
     assert len(expected) > 2_000
+    assert sync_nav.EXCLUDED_HTML <= tracked
     assert set(sync_nav.PAGES) == expected
     assert all(
         (ROOT / relative_path).read_text(encoding="utf-8").count(site_nav.BEGIN) == 1
@@ -103,6 +101,24 @@ def test_nav_discovery_covers_every_tracked_marker_page():
     assert sync_nav._served_path("index.html") == "/"
     assert sync_nav._served_path("news/wire/page/2/index.html") == "/news/wire/page/2/"
     assert sync_nav._served_path("readings/inside-view.html") == "/readings/inside-view.html"
+
+    for relative_path in sync_nav.EXCLUDED_HTML:
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert site_nav.BEGIN not in text
+        assert site_nav.END not in text
+
+
+def test_nav_discovery_does_not_forget_a_page_when_both_markers_disappear(
+    tmp_path, monkeypatch
+):
+    page = tmp_path / "managed.html"
+    page.write_text("<!doctype html><main id=\"main\"></main>", encoding="utf-8")
+    monkeypatch.setattr(sync_nav, "ROOT", tmp_path)
+
+    assert sync_nav.discover_pages() == {"managed.html": "/managed.html"}
+    changed, note = sync_nav.apply(page, "/managed.html")
+    assert changed is False
+    assert note == "INVALID MARKERS"
 
 
 def test_every_managed_page_exists():
@@ -312,6 +328,20 @@ def test_bri_regions_are_first_class_primary_navigation_destinations():
     }
     assert site_nav._within(regional, "/belt-and-road/")
     assert 'data-within=""' in site_nav.render("/belt-and-road/")
+
+
+def test_no_javascript_navigation_exposes_flyouts_on_mobile_and_desktop():
+    css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
+
+    assert "@media (max-width: 940px) and (scripting: none)" in css
+    assert "@media (min-width: 941px) and (scripting: none)" in css
+    desktop = css.split(
+        "@media (min-width: 941px) and (scripting: none)", 1
+    )[1].split("/* ============================ SURFACES", 1)[0]
+    assert "position: static" in desktop
+    assert "opacity: 1" in desktop
+    assert "visibility: visible" in desktop
+    assert ".ps-nav__chev { display: none; }" in desktop
 
 
 def test_mobile_menu_owns_focus_until_it_closes():

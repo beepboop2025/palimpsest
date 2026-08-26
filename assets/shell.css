@@ -419,6 +419,33 @@ body[data-ps-menu] { overflow: hidden; }
   .ps-nav__item .ps-flyout { display: block; }
 }
 
+/* Desktop has the same no-script obligation. Disclosure buttons cannot open
+   without shell.js, so the navigation becomes an in-flow directory and every
+   destination remains keyboard, crawler and hardened-browser reachable. */
+@media (min-width: 941px) and (scripting: none) {
+  .ps-nav {
+    position: static; height: auto; align-items: flex-start; flex-wrap: wrap;
+    padding-top: 14px; padding-bottom: 14px;
+  }
+  .ps-nav__brand { min-height: 34px; }
+  .ps-nav__spacer { display: none; }
+  .ps-nav__items {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    width: 100%; align-items: start; gap: 8px;
+  }
+  .ps-nav__link { width: 100%; justify-content: space-between; }
+  .ps-nav__chev { display: none; }
+  .ps-nav__item .ps-flyout,
+  .ps-nav__item:nth-last-child(-n+3) .ps-flyout {
+    position: static; display: block;
+    min-width: 0; max-width: none; margin-top: 4px;
+    opacity: 1; visibility: visible; transform: none;
+    box-shadow: none;
+  }
+  .ps-flyout::before { display: none; }
+  .ps-flyout--wide .ps-flyout__cols { grid-template-columns: 1fr; }
+}
+
 /* ============================ SURFACES ==================================== */
 /* The plane classes. A page composes depth out of these three and nothing else. */
 .ps-p1, .ps-p2, .ps-p3 {

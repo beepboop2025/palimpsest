@@ -6,12 +6,14 @@ the PS_NAV markers, and `--check` asserts nothing has drifted — which is what 
 runs, so a page can never quietly grow its own private copy of the navigation
 again.
 
-The managed set is discovered from HTML files carrying either PS_NAV marker.
-This makes the marker the ownership declaration and prevents a growing generated
-site from outrunning a hand-maintained path list. CI independently compares the
-set with Git's tracked inventory. Generator-owned pages remain in the set
-deliberately: between rebuilds the synchronizer updates their existing marker
-block, and the next generator run emits the same bytes.
+The managed set is every repository HTML file except a small explicit set of
+fixtures and intentionally standalone publication surfaces. This default-on
+ownership matters: if both PS_NAV markers disappear from a managed page, the
+page must remain discoverable so `--check` reports invalid markers instead of
+silently forgetting it. CI independently compares the filesystem set with
+Git's tracked inventory. Generator-owned pages remain in the set deliberately:
+between rebuilds the synchronizer updates their existing marker block, and the
+next generator run emits the same bytes.
 
   python3 scripts/sync_nav.py            # write
   python3 scripts/sync_nav.py --check    # exit 1 if any page is stale
@@ -28,6 +30,44 @@ import site_nav  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
+# HTML that deliberately does not participate in the Palimpsest shell. Most are
+# parser fixtures. The remaining entries are standalone application/report
+# surfaces whose byte identity or independent chrome is part of their public
+# contract. Every other HTML file is managed by default, including future files.
+EXCLUDED_HTML = frozenset(
+    {
+        "censorwatch/dashboard.html",
+        "censorwatch/tests/fixtures/captcha.html",
+        "censorwatch/tests/fixtures/empty.html",
+        "censorwatch/tests/fixtures/guba_deleted.html",
+        "censorwatch/tests/fixtures/guba_list.html",
+        "censorwatch/tests/fixtures/guba_live.html",
+        "censorwatch/tests/fixtures/login_wall.html",
+        "censorwatch/tests/fixtures/weibo_author_deleted.html",
+        "censorwatch/tests/fixtures/weibo_censored.html",
+        "censorwatch/tests/fixtures/weibo_deleted.html",
+        "censorwatch/tests/fixtures/weibo_privacy.html",
+        "china-economy-api/index.html",
+        "china/capital-markets/index.html",
+        "china/money-markets/index.html",
+        "funding-ledger.html",
+        "grant-brief.html",
+        "research/china-pakistan-myanmar-bri-2026/index.html",
+        "tests/fixtures/china_econ_primary/interstitial.html",
+        "tests/fixtures/china_econ_primary/mot_shape_drift.html",
+        "tests/fixtures/china_econ_primary/mot_valid.html",
+        "tests/fixtures/china_econ_primary/nbs_shape_drift.html",
+        "tests/fixtures/china_econ_primary/nbs_valid.html",
+        "tests/fixtures/china_econ_primary/nea_range_failure.html",
+        "tests/fixtures/china_econ_primary/nea_valid.html",
+        "tests/fixtures/china_econ_primary/spb_unit_drift.html",
+        "tests/fixtures/china_econ_primary/spb_valid.html",
+        "tests/fixtures/public_board_archives/freewechat-login.html",
+        "tests/fixtures/public_board_archives/freewechat-titles.html",
+        "validation/code.html",
+    }
+)
+
 BLOCK = re.compile(
     re.escape(site_nav.BEGIN) + r".*?" + re.escape(site_nav.END),
     re.DOTALL,
@@ -43,11 +83,12 @@ def _served_path(relative_path: str) -> str:
 
 
 def discover_pages() -> dict[str, str]:
-    """Return every regular HTML file that declares PS_NAV ownership.
+    """Return every regular HTML file owned by the shared shell.
 
     No command execution is needed here. The repository-wide test independently
-    compares this result with Git's tracked marker pages; an untracked marker
-    page therefore fails closed instead of being silently accepted.
+    compares this result with Git's tracked HTML inventory. Marker presence is
+    intentionally *not* a discovery predicate: losing both markers must fail
+    closed as an invalid managed page.
     """
 
     pages: dict[str, str] = {}
@@ -72,8 +113,14 @@ def discover_pages() -> dict[str, str]:
             raise RuntimeError(
                 f"HTML file is not valid UTF-8: {relative_path}"
             ) from exc
-        if site_nav.BEGIN in text or site_nav.END in text:
-            pages[relative_path] = _served_path(relative_path)
+        if relative_path in EXCLUDED_HTML:
+            if site_nav.BEGIN in text or site_nav.END in text:
+                raise RuntimeError(
+                    "excluded HTML unexpectedly declares PS_NAV ownership: "
+                    f"{relative_path}"
+                )
+            continue
+        pages[relative_path] = _served_path(relative_path)
     return pages
 
 
