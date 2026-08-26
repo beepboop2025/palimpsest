@@ -1518,11 +1518,11 @@ EXPECTED_PREVIOUS_DEPLOY_SHA="${EXPECTED_PREVIOUS_DEPLOY_SHA:-REPLACE_WITH_CURRE
 COMPATIBLE_ROLLBACK_SHA="${COMPATIBLE_ROLLBACK_SHA:-REPLACE_WITH_CURRENT_CHECKOUT_40_HEX_SHA}"
 TRANSACTION_DIRECTION="${TRANSACTION_DIRECTION:-REPLACE_WITH_forward}"
 INTERRUPTED_PHASE1_RECOVERY="${INTERRUPTED_PHASE1_RECOVERY:-0}"
-INTERRUPTED_PHASE1_INCIDENT='2026-08-25-common-crawl-bind-alias-retry'
+INTERRUPTED_PHASE1_INCIDENT='2026-08-26-interrupted-phase1-hybrid-recovery'
 INTERRUPTED_PHASE1_MANIFEST_SOURCE="ops/release-recovery/${INTERRUPTED_PHASE1_INCIDENT}.json"
-INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_common_crawl_bind_alias_retry_manifest.py'
-INTERRUPTED_PHASE1_MANIFEST_SHA256='62dd4970775c4acc840649f4531c50f73dc73906ad816d7bf45c49e1f323d834'
-INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='913a6aa64e705bd5d2b2f6f022a91e07389999e0'
+INTERRUPTED_PHASE1_VERIFIER_SOURCE='ops/release-recovery/verify_interrupted_phase1_hybrid_recovery_manifest.py'
+INTERRUPTED_PHASE1_MANIFEST_SHA256='8ebbec1471a60f6112c521a2783efd3fda1d5c5fea352c087f31f62dd9d153af'
+INTERRUPTED_PHASE1_RECOVERY_ANCESTOR='927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd'
 COMMON_CRAWL_WAREHOUSE_SOURCE='/mnt/HC_Volume_106588294/palimpsest/warehouse/common-crawl'
 COMMON_CRAWL_DERIVED_SOURCE="$COMMON_CRAWL_WAREHOUSE_SOURCE/derived"
 COMMON_CRAWL_STABLE_ROOT='/var/lib/palimpsest/common-crawl'
@@ -2967,7 +2967,7 @@ RECOVERY_COMPOSE_SCOPE_PROJECT=''
 RECOVERY_COMPOSE_SCOPE_WORKING_DIR=''
 RECOVERY_COMPOSE_SCOPE_CONFIG_FILES=''
 RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256=''
-RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256=''
+RECOVERY_API_PREPARED_RECEIPT_SHA256=''
 RECOVERY_PREPARED_RECEIPT_PATH=''
 RECOVERY_PREPARED_RECEIPT_SHA256=''
 RECOVERY_PREPARED_TMP=''
@@ -3034,7 +3034,7 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
     | sha256sum | awk '{print $1}')"
   test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH")" \
-    = "validated Common Crawl bind-alias retry manifest: $RECOVERY_MANIFEST_SHA256"
+    = "validated interrupted Phase 1 hybrid manifest: $RECOVERY_MANIFEST_SHA256"
 
   if ! recovery_authority_projection="$(python3 - \
       "$RECOVERY_MANIFEST_PATH" "$PALIMPSEST_REPO_ROOT" <<'PY'
@@ -3096,18 +3096,18 @@ PY
   RECOVERY_COMPOSE_SCOPE_WORKING_DIR="${recovery_authority[10]}"
   RECOVERY_COMPOSE_SCOPE_CONFIG_FILES="${recovery_authority[11]}"
   RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256="${recovery_authority[12]}"
-  RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256="${recovery_authority[13]}"
+  RECOVERY_API_PREPARED_RECEIPT_SHA256="${recovery_authority[13]}"
   [[ "$RECOVERY_HYBRID_FINGERPRINT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_RESTORE_PROFILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256" \
     =~ ^[0-9a-f]{64}$ ]]
-  [[ "$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_API_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   test "$(sudo /usr/bin/python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH" --verify-host-continuation \
     --repository-root "$PALIMPSEST_REPO_ROOT")" \
-    = "validated Common Crawl bind-alias retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256"\
+    = "validated interrupted Phase 1 hybrid host continuation: manifest=$RECOVERY_MANIFEST_SHA256"\
 " prepared=$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256"\
-" original_prepared=$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256"
+" predecessor_prepared=$RECOVERY_API_PREPARED_RECEIPT_SHA256"
   test "$RECOVERY_EXPECTED_ENV_SHA256" \
     = 2ce97c2f94ce93336b592e1ddee78cfdbec1e8b19d35b39faab6ac069d332c95
   test "$RELEASE_ENV_SNAPSHOT_SHA256" = "$RECOVERY_EXPECTED_ENV_SHA256"
@@ -4994,7 +4994,7 @@ for compose_service in "${V4_BACKUP_WORKER_SERVICES[@]}"; do
 done
 PRE_CHANGE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
 if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
-  RECOVERY_BACKUP_REASON='common-crawl-bind-alias-retry-fresh-target-backup'
+  RECOVERY_BACKUP_REASON='interrupted-phase1-hybrid-recovery-fresh-target-backup'
   RECOVERY_BACKUP_VERIFIED_AT="$(date -u +'%Y-%m-%dT%H:%M:%S.%NZ')"
   PRE_CHANGE_CORE_SNAPSHOT="$PRE_CHANGE_V4_SNAPSHOT"
   test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
@@ -6174,7 +6174,7 @@ if ! declare -p \
     RECOVERY_EXPECTED_ENV_SHA256 RECOVERY_COMPOSE_SCOPE_PROJECT \
     RECOVERY_COMPOSE_SCOPE_WORKING_DIR RECOVERY_COMPOSE_SCOPE_CONFIG_FILES \
     RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256 \
-    RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256 \
+    RECOVERY_API_PREPARED_RECEIPT_SHA256 \
     RECOVERY_BOUNDARY_PROJECTION_DIR \
     RECOVERY_PREPARED_RECEIPT_PATH RECOVERY_PREPARED_RECEIPT_SHA256 \
     RECOVERY_PREPARED_TMP \
@@ -6306,14 +6306,14 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
   test "$RECOVERY_FAILED_TARGET_SHA" \
     = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
   test "$RECOVERY_BACKUP_REASON" \
-    = common-crawl-bind-alias-retry-fresh-target-backup
+    = interrupted-phase1-hybrid-recovery-fresh-target-backup
   test "$PRE_CHANGE_CORE_SNAPSHOT" = "$PRE_CHANGE_SNAPSHOT"
   [[ "$RECOVERY_HYBRID_FINGERPRINT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_RESTORE_PROFILE_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256" \
     =~ ^[0-9a-f]{64}$ ]]
-  [[ "$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
+  [[ "$RECOVERY_API_PREPARED_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_BROKER_EMPTY_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
   [[ "$RECOVERY_BROKER_QUEUES_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
   test "$RECOVERY_EXPECTED_ENV_SHA256" \
@@ -6337,13 +6337,13 @@ if (( INTERRUPTED_PHASE1_RECOVERY == 1 )); then
     | sha256sum | awk '{print $1}')"
   test "$(python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH")" \
-    = "validated Common Crawl bind-alias retry manifest: $RECOVERY_MANIFEST_SHA256"
+    = "validated interrupted Phase 1 hybrid manifest: $RECOVERY_MANIFEST_SHA256"
   test "$(sudo /usr/bin/python3 "$RECOVERY_MANIFEST_VERIFIER_PATH" \
     "$RECOVERY_MANIFEST_PATH" --verify-host-continuation \
     --repository-root "$PALIMPSEST_REPO_ROOT")" \
-    = "validated Common Crawl bind-alias retry host continuation: manifest=$RECOVERY_MANIFEST_SHA256"\
+    = "validated interrupted Phase 1 hybrid host continuation: manifest=$RECOVERY_MANIFEST_SHA256"\
 " prepared=$RECOVERY_PREDECESSOR_PREPARED_RECEIPT_SHA256"\
-" original_prepared=$RECOVERY_ORIGINAL_PREPARED_RECEIPT_SHA256"
+" predecessor_prepared=$RECOVERY_API_PREPARED_RECEIPT_SHA256"
   for recovery_ancestor in \
       "$EXPECTED_PREVIOUS_CHECKOUT_SHA" \
       "$EXPECTED_PREVIOUS_DEPLOY_SHA" \
@@ -6838,7 +6838,7 @@ backup_checks = (
     isinstance(backup, dict)
         and set(backup) == {"reason", "core_snapshot", "current_snapshot", "verification"},
     isinstance(backup, dict) and backup.get("reason") == backup_reason,
-    backup_reason == "common-crawl-bind-alias-retry-fresh-target-backup",
+    backup_reason == "interrupted-phase1-hybrid-recovery-fresh-target-backup",
     isinstance(backup, dict) and backup.get("core_snapshot") == core_snapshot,
     isinstance(backup, dict) and backup.get("current_snapshot") == current_snapshot,
     core_snapshot == current_snapshot,
@@ -9027,9 +9027,20 @@ unit, verifier, and state contract used above. Independently record the exact
 deployment that is currently running; it is the repair baseline. A branch-only
 emergency commit is not a generic recovery target. In a fresh Phase 1 shell,
 run this preflight, then execute all three phases against `REPAIR_TARGET_SHA`.
+The preflight deliberately refuses to default the incident selector. For the
+active `2026-08-26-interrupted-phase1-hybrid-recovery` continuation, first run
+`export INTERRUPTED_PHASE1_RECOVERY=1` in that same shell. Use an explicit `0`
+only for a separately reviewed ordinary forward repair that does not consume an
+interrupted-Phase-1 manifest.
 
 ```bash
 set -Eeuo pipefail
+: "${INTERRUPTED_PHASE1_RECOVERY:?export INTERRUPTED_PHASE1_RECOVERY=0_or_1}"
+case "$INTERRUPTED_PHASE1_RECOVERY" in
+  0|1) ;;
+  *) printf 'INTERRUPTED_PHASE1_RECOVERY must be exactly 0 or 1\n' >&2; exit 1 ;;
+esac
+export INTERRUPTED_PHASE1_RECOVERY
 FORWARD_REPAIR_PREFLIGHT_COMPLETE=0
 forward_repair_abort() {
   local original_status="${1:-1}"

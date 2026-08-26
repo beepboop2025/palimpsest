@@ -37,6 +37,13 @@ def test_backup_archive_and_restore_preserve_numeric_producer_ownership():
     assert 'member.gname = ""' in helper
     assert "subprocess" not in helper
     assert "--log-driver none" in script
+    assert 'com.docker.compose.project=${compose_project}-backup-archive' in script
+    assert "--label com.docker.compose.service=archive" in script
+    assert "--label com.docker.compose.version=standalone" in script
+    assert "--label com.docker.compose.oneoff=True" in script
+    assert "--label com.docker.compose.project.working_dir=" in script
+    assert "--label com.docker.compose.project.config_files=" in script
+    assert "--label io.palimpsest.runtime=backup-archive" in script
     assert "format_version=4" in script
     assert "artifact_roots=readings,data,newswire,analysis,witness" in script
     assert "dst=/source/analysis,readonly" in script

@@ -1,0 +1,980 @@
+{
+  "authority": {
+    "failed_target_commit": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+    "prior_checkout_commit": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+    "prior_deployed_commit": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd"
+  },
+  "continuation": {
+    "canonical_prepared_receipt": {
+      "expected_absent": true,
+      "path": "/var/lib/palimpsest-release/recovery/2026-08-25-common-crawl-bind-alias-retry.prepared.json"
+    },
+    "predecessor_completion_receipt": {
+      "expected_absent": true,
+      "path": "/var/lib/palimpsest-release/recovery/2026-08-25-common-crawl-bind-alias-retry.complete.json"
+    },
+    "predecessor_incident_id": "2026-08-25-common-crawl-bind-alias-retry",
+    "predecessor_manifest": {
+      "path": "ops/release-recovery/2026-08-25-common-crawl-bind-alias-retry.json",
+      "sha256": "62dd4970775c4acc840649f4531c50f73dc73906ad816d7bf45c49e1f323d834"
+    },
+    "predecessor_prepared_attempts": [
+      {
+        "gid": 0,
+        "link_count": 1,
+        "mode": "0400",
+        "path": "/var/lib/palimpsest-release/recovery/2026-08-25-common-crawl-bind-alias-retry.attempt-20260826T060005Z.2e0b16ef28eb960c0d9c8b82c7d83451665f0e21.prepared.json",
+        "recovery_controller_commit": "2e0b16ef28eb960c0d9c8b82c7d83451665f0e21",
+        "schema_version": "palimpsest-interrupted-phase1-prepared.v2",
+        "sha256": "498b4b53679ae5a963752b1684b7399b27471f4958cbcbefccc5f1cd5b622d17",
+        "status": "prepared",
+        "target_commit": "2e0b16ef28eb960c0d9c8b82c7d83451665f0e21",
+        "transaction_id": "ab4c79121d12837feb67976fda8d29e0",
+        "uid": 0
+      },
+      {
+        "gid": 0,
+        "link_count": 1,
+        "mode": "0400",
+        "path": "/var/lib/palimpsest-release/recovery/2026-08-25-common-crawl-bind-alias-retry.attempt-20260826T063159Z.15edd4fe13103e68da53c651a15c7c0aa1aed4a3.prepared.json",
+        "recovery_controller_commit": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "schema_version": "palimpsest-interrupted-phase1-prepared.v2",
+        "sha256": "56f687021b54f1fe7acba2dc9cb5e98e4ce857ec0169ac0dff99257630ab8751",
+        "status": "prepared",
+        "target_commit": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "transaction_id": "6c45a54311cd2e4d125944149bb2a2b1",
+        "uid": 0
+      }
+    ],
+    "predecessor_prepared_receipt": {
+      "gid": 0,
+      "link_count": 1,
+      "mode": "0400",
+      "path": "/var/lib/palimpsest-release/recovery/2026-08-25-common-crawl-bind-alias-retry.attempt-20260826T063159Z.15edd4fe13103e68da53c651a15c7c0aa1aed4a3.prepared.json",
+      "recovery_controller_commit": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+      "schema_version": "palimpsest-interrupted-phase1-prepared.v2",
+      "sha256": "56f687021b54f1fe7acba2dc9cb5e98e4ce857ec0169ac0dff99257630ab8751",
+      "status": "prepared",
+      "target_commit": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+      "transaction_id": "6c45a54311cd2e4d125944149bb2a2b1",
+      "uid": 0
+    },
+    "predecessor_restore_profile_sha256": "705aaf3b5e52cc400fcb51957f0f2cf6167869e86b4622637b01ad512641c08a"
+  },
+  "failed_attempt": {
+    "advanced_components": {
+      "analysis_bundle": false,
+      "api": false,
+      "candidate_image": true,
+      "checkout": true,
+      "common_crawl_bundle": false,
+      "deployed_marker": true,
+      "migrate": false,
+      "network_lane_bundle": false,
+      "node_offsite_bundle": false,
+      "public_osint_bundle": true,
+      "workers": true
+    },
+    "backup_bridge_receipts": [
+      {
+        "kind": "pre_worker_start_empty",
+        "path": "/tmp/palimpsest-v4-snapshot-bridge.n17fXy/broker-empty-before-start.json",
+        "schema_version": "palimpsest-celery-broker-release-gate.v1",
+        "sha256": "c4048e40d3d29789d503af4fed030a9faa90584bb5052dc2278c577ee5c96f43",
+        "status": "empty"
+      },
+      {
+        "kind": "temporary_workers_fenced",
+        "path": "/tmp/palimpsest-v4-snapshot-bridge.n17fXy/celery-v4-backup-fenced.json",
+        "schema_version": "palimpsest-celery-release-gate.v1",
+        "sha256": "7c40f40327d690f5da795b949454f426ced403f5c80d85436d9f979a638469d6",
+        "status": "fenced"
+      },
+      {
+        "kind": "post_worker_stop_empty",
+        "path": "/tmp/palimpsest-v4-snapshot-bridge.n17fXy/broker-empty-after-stop.json",
+        "schema_version": "palimpsest-celery-broker-release-gate.v1",
+        "sha256": "31212cf76d842fcf7fc5f10299d7819aac44b66487b4b5ba99034ea413f2f4e8",
+        "status": "empty"
+      }
+    ],
+    "candidate_freshness_failure": {
+      "authoritative_bytes_equal": true,
+      "candidate_age_seconds": 7409,
+      "failure_code": "generation-stale",
+      "maximum_age_seconds": 7200
+    },
+    "candidate_image": {
+      "config_digest": "sha256:cced45c7964d656e92959b19f0dc11c2addf58fd95d2c3f3adcade92b8231b4b",
+      "index_digest": "sha256:afa1a175597ea22ea3f6482eff074386f2da9fe26d51cd4cde113bb6c645487d",
+      "platform_manifest_digest": "sha256:f3b9f942917b3143a606f83d51e17f6a0d4ffdd202434f623cec8451a232f1c5",
+      "revision": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd"
+    },
+    "failed_operation": "start_and_verify_oneshot palimpsest-public-osint-sync.service",
+    "failed_target_snapshot": {
+      "sha256sums_sha256": "1c7411b342bd97c41151e480ab279b59d85cd9194a091c869e10c3a8fc22c401",
+      "snapshot_id": "20260826T072010Z",
+      "verification_receipt_sha256": "e6497272630c9cd53990d97ee9798afe7036c3114782c749036e1f1770caf00e"
+    },
+    "failure_evidence": {
+      "journal_sha256": "cbf9c877912d5f973520592bd74791c1c10a158c4b07f86b1a9d7518cca26d0f",
+      "last_failure_sha256": "c58a98528c63215f87b89a8650c64de551f43120e12ee3984e37794aee3c75f1"
+    },
+    "last_emitted_stage": "fail-safe-armed",
+    "migration_applied": false,
+    "migration_exit_code": 0,
+    "migration_result": {
+      "applies_to_failed_target": false,
+      "container_id": "81d5b2d1470cd3c78c35f5dc9a65e3a81dcbf2dd5ea5cb95790888c3e3524003",
+      "exit_code": 0,
+      "finished_at": "2026-08-26T06:37:04.164130974Z",
+      "image_id": "sha256:823ef51dc924a98d30a734a83dcd2cde78ab80948fb1d423705640c5a12e51ec",
+      "revision": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+      "started_at": "2026-08-26T06:37:00.255604339Z",
+      "state": "exited"
+    },
+    "phase1_handoff_created": false,
+    "phase2_started": false,
+    "phase3_binding_created": false,
+    "prechange_snapshot_id": "20260826T071623Z",
+    "recovery_backup_reason": "interrupted-phase1-hybrid-recovery-fresh-target-backup",
+    "release_receipts_created": false,
+    "release_transaction_id": null,
+    "snapshot_ceiling": {
+      "latest_snapshot_id": "20260826T110720Z",
+      "new_snapshot_created": true,
+      "verification": {
+        "counts": {
+          "artifact_directories": 2513,
+          "artifact_files": 12463,
+          "artifact_members": 14976,
+          "checksum_entries": 5,
+          "snapshot_files": 6,
+          "witness_history_records": 2253
+        },
+        "digests": {
+          "MANIFEST.txt": "1a0615635a87e4cd63acbc24ff1dad19495a29c633bf0dfde367160d76e1b952",
+          "artifacts.list": "89ee6f2117f714ff4805b4aba97230f0bfaaa818916865ab295beb287722ce1f",
+          "artifacts.tar.gz": "3b09661afc9465aa9b8b03830152b506414a3b89bac3430e9db38a6d7f99dad8",
+          "postgres.dump": "d4f9ff1da534ad6a9f118fc92d02c933551882a7087829e45f4282a2bace1361",
+          "postgres.list": "9225cbae2b75c325a8d7903fd5089299be87090f9b8c64764ebd8f8c141c673b"
+        },
+        "schema": "palimpsest-node-backup-verification.v1",
+        "snapshot": "20260826T110720Z",
+        "status": "verified"
+      },
+      "verification_receipt": {
+        "path": "/tmp/palimpsest-v4-snapshot-bridge.n17fXy/v4-backup-verification.json",
+        "sha256": "c9446ca105d20e2f8310c8bcc43c87249954fa12ed047c43164f7776cf6e4be3"
+      }
+    },
+    "systemd_invocation_id": "6867901ad1c54b62b038fb14b2233391",
+    "timeline": {
+      "checkout_advanced_at": "2026-08-26T07:17:50Z",
+      "dispatched_at": "2026-08-26T07:14:45.661Z",
+      "fail_safe_completed_at": "2026-08-26T07:21:36.362Z",
+      "generation_stale_at": "2026-08-26T07:21:29.037045Z",
+      "public_osint_started_at": "2026-08-26T07:21:26.902284Z"
+    }
+  },
+  "incident_date": "2026-08-26",
+  "incident_id": "2026-08-26-interrupted-phase1-hybrid-recovery",
+  "observed_safe_boundary": {
+    "absent_compose_services": [
+      "censorwatch-render-gateway",
+      "worker-velocity"
+    ],
+    "application_containers": [
+      {
+        "container_id": "bfff6f10241a0daaac38e348737773be5e97384b6af2aabff6c9b63c1edbf406",
+        "exit_code": 0,
+        "health": "healthy",
+        "image_index_digest": "sha256:823ef51dc924a98d30a734a83dcd2cde78ab80948fb1d423705640c5a12e51ec",
+        "revision": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "service": "api",
+        "state": "running"
+      },
+      {
+        "container_id": "0229866f1aa03054427b733ac17f2cceb873411c7810b025b6a094a4e9ed7358",
+        "exit_code": 0,
+        "health": "none",
+        "image_index_digest": "sha256:c798010776a5070efbb9f54163f191e71cecc26a08f1ec3d77b99995a419ea19",
+        "revision": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+        "service": "beat",
+        "state": "exited"
+      },
+      {
+        "container_id": "81d5b2d1470cd3c78c35f5dc9a65e3a81dcbf2dd5ea5cb95790888c3e3524003",
+        "exit_code": 0,
+        "health": "none",
+        "image_index_digest": "sha256:823ef51dc924a98d30a734a83dcd2cde78ab80948fb1d423705640c5a12e51ec",
+        "revision": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "service": "migrate",
+        "state": "exited"
+      },
+      {
+        "container_id": "15da490f3da5aae9eb96a8cc9a19b17391150a7bf79d634349c569916e52be12",
+        "exit_code": 0,
+        "health": "unhealthy",
+        "image_index_digest": "sha256:afa1a175597ea22ea3f6482eff074386f2da9fe26d51cd4cde113bb6c645487d",
+        "revision": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+        "service": "worker",
+        "state": "exited"
+      },
+      {
+        "container_id": "a7a57e1606d4bd909a6bf1eed4c9ef939b1f9c303aade2ce432ec9c1433ecdcf",
+        "exit_code": 0,
+        "health": "unhealthy",
+        "image_index_digest": "sha256:afa1a175597ea22ea3f6482eff074386f2da9fe26d51cd4cde113bb6c645487d",
+        "revision": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+        "service": "worker-collectors",
+        "state": "exited"
+      },
+      {
+        "container_id": "f96ded0f69fc9d35f4a05813090aa592f56f41f627f4c4ed97ed0a5216e37373",
+        "exit_code": 0,
+        "health": "unhealthy",
+        "image_index_digest": "sha256:afa1a175597ea22ea3f6482eff074386f2da9fe26d51cd4cde113bb6c645487d",
+        "revision": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+        "service": "worker-warehouse",
+        "state": "exited"
+      }
+    ],
+    "compose_environment_sha256": "2ce97c2f94ce93336b592e1ddee78cfdbec1e8b19d35b39faab6ac069d332c95",
+    "compose_scope": {
+      "config_files": "/home/palimpsest/palimpsest/ops/docker/docker-compose.prod.yml",
+      "project": "palimpsest",
+      "working_dir": "/home/palimpsest/palimpsest/ops/docker"
+    },
+    "controlled_activators": {
+      "all_disabled": true,
+      "all_inactive": true,
+      "inventory": [
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-backup.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-backup.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-common-crawl-backup.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-common-crawl-backup.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-node-offsite-backup.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-node-offsite-backup.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-evidence-wire.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-evidence-wire.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-investigative-analysis.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-investigative-analysis.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker.socket",
+          "load_state": "loaded",
+          "unit": "palimpsest-investigative-broker.socket",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-common-crawl-import.path",
+          "load_state": "loaded",
+          "unit": "palimpsest-common-crawl-import.path",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-common-crawl-context.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-common-crawl-context.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-bleedthrough.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-bleedthrough.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-public-osint-sync.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-public-osint-sync.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-freshness-watchdog.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-freshness-watchdog.timer",
+          "unit_file_state": "disabled"
+        },
+        {
+          "active_state": "inactive",
+          "fragment_path": "/etc/systemd/system/palimpsest-witness.timer",
+          "load_state": "loaded",
+          "unit": "palimpsest-witness.timer",
+          "unit_file_state": "disabled"
+        }
+      ]
+    },
+    "dynamic_release_instances": [
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@580-4016203-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@581-4021663-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@582-4026947-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@583-4099297-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@584-4106088-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@585-4111243-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@586-4186255-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@587-4193386-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@588-4559-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@589-70881-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@590-75857-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@591-80778-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@592-143327-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@593-149774-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@594-155056-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@595-216237-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@596-221118-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@597-226125-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@598-358278-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@599-363134-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@600-368678-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@601-431584-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@602-436582-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@603-442171-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@604-3267185-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@605-3272661-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@606-3277521-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@607-3314743-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@608-3320490-10001.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-broker@.service",
+        "load_state": "loaded",
+        "sub_state": "failed",
+        "unit": "palimpsest-investigative-broker@609-3328346-10001.service"
+      }
+    ],
+    "infrastructure_containers": [
+      {
+        "container_id": "b75c70b96bdb02cd6db7470520b08dd468f0e1c64a77ca32f26a49e922addee3",
+        "health": "healthy",
+        "image_id": "sha256:e013e867e712fec275706a6c51c966f0bb0c93cfa8f51000f85a15f9865a28cb",
+        "service": "postgres",
+        "state": "running"
+      },
+      {
+        "container_id": "011a5e9d66dd481e42c574aee4475d3f4889eecce377679b988bedc492738716",
+        "health": "healthy",
+        "image_id": "sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99",
+        "service": "redis",
+        "state": "running"
+      }
+    ],
+    "installed_bundles": [
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-analysis/current",
+        "manifest_sha256": "aad5da0caa5a93bd4ea306e8926e8c2a6a6eb93778ad2a2a0a9796e36865fb37",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-analysis/15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "revision": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-network-lane/current",
+        "manifest_sha256": "fe8c81cd6874d385fd928d9cc68f2baa8152288672a30b2fa12fcc6dbc42ffa4",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-network-lane/15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "revision": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-common-crawl/current",
+        "manifest_sha256": "c32d850e2c64e4ee292fe79f121f7ff1e6463d552fafee58aec8436f09f493f8",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-common-crawl/15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "revision": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-public-osint-sync/current",
+        "manifest_sha256": "d36f1b88f1d3a98da7dba62d49951f98c989681de8af0cf2660f276ea89a11a8",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-public-osint-sync/927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+        "revision": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd"
+      },
+      {
+        "current_symlink_path": "/usr/local/libexec/palimpsest-node-offsite/current",
+        "manifest_sha256": "7e494b29c346a2d281a12968f65d8f9d2e71d6c3cf3d07409a9334055203f636",
+        "resolved_target_path": "/usr/local/libexec/palimpsest-node-offsite/15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "revision": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3"
+      }
+    ],
+    "installed_controller_boundary": {
+      "absent_paths": [],
+      "present_files": [
+        {
+          "path": "/opt/palimpsest/ops/release/observer_release_gate.py",
+          "sha256": "710e01e24ea62ec142462ca51e9591d8c6ad6906456f43dd0da3c240792c03bb",
+          "stat": "0:0:755:1"
+        },
+        {
+          "path": "/opt/palimpsest/ops/release/celery_release_gate.py",
+          "sha256": "cc847853b4a6610cd22bd55f468f1234aa214549366264a3299f65e85ce5572c",
+          "stat": "0:0:755:1"
+        },
+        {
+          "path": "/opt/palimpsest/ops/release/recover_deployment_snapshots.py",
+          "sha256": "8239c6b12ad7a9f3a11a259ae1c85219ae0bf58bd466816bc9b77fd9dbca76e9",
+          "stat": "0:0:755:1"
+        },
+        {
+          "path": "/etc/palimpsest/observer-release-policy.json",
+          "sha256": "cf48fa4dba12a847a64c174907e41347eb43bdd2c56c636b0d606e301369015b",
+          "stat": "0:0:444:1"
+        },
+        {
+          "path": "/opt/palimpsest/ops/watchdog/palimpsest_freshness_watchdog.py",
+          "sha256": "3b4c1667deb2d7f5391b99ce8bfb3961523906f19ea95a9460980563283b1f19",
+          "stat": "0:0:755:1"
+        },
+        {
+          "path": "/opt/palimpsest/ops/witness/palimpsest_witness.py",
+          "sha256": "39c21a16fd8c9bfd79c94ebf1aa91ec27dc08da7e998e20bdd3623b0b0170b86",
+          "stat": "0:0:755:1"
+        }
+      ]
+    },
+    "installed_units": [
+      {
+        "path": "/etc/systemd/system/palimpsest-backup.service",
+        "sha256": "709fe588edbebc6ce2214335e73ace7cee1556cf4d703a84c0f4e8b4e983b87d",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-backup.service.d/override.conf",
+        "sha256": "c4a014a2c29ccd4aef799d2348e629043e711da62951874b3ecb8d19be20a05d",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-backup.timer",
+        "sha256": "5db3cdf5b49f45156d738fe7eb26699fffc337cd2f010d265aab6684d9643758",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-bleedthrough.service",
+        "sha256": "d107719b4310d03d71363388814cf968f0b44464bee1b246958287fd146b308e",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-bleedthrough.timer",
+        "sha256": "87d879eefd2b4a27f41f100fca7f6f03eacaa00a4e62d7f8120ea6baf56bcd86",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-common-crawl-backup.service",
+        "sha256": "16a6382b18ef3163e80ef5ea535c8ace6a74f10c308b8744195a57298418c8f0",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-common-crawl-backup.timer",
+        "sha256": "c873d8d693f6ffa67b2141004290b106aea8e507f94808d60e605f2a945002ad",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-common-crawl-context.service",
+        "sha256": "2213d0f0fe15f76afbff2706e613641f1ffbb16b4165b6d152b5e28be12866c0",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-common-crawl-context.timer",
+        "sha256": "ab5927577a175d59515e622165c09a1a07226646747ae7bfd75fa16b8bc2b231",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-common-crawl-import.path",
+        "sha256": "3f29c42571d08ca7cc8012a54630e2b9bf1757c854a87593537e0b578090fef3",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-common-crawl-import.service",
+        "sha256": "d0956f602a088ef334f1fb810d1d980c96feb1e80aee8d54cbf73fb158d76507",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-event-analysis-live.service",
+        "sha256": "189817a7bb44fccaf6f8e90a3e9095f534e108a296fbdacbccb4dccfba27b444",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-evidence-wire.service",
+        "sha256": "26e9e5e70dfc9a8314f24acc6e1b9669c4475b01bcdb403a07701060a14f0859",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-evidence-wire.timer",
+        "sha256": "dbc55bb7581663d75aab5800db560bd3c0b49770a14931babc1b10d2973f3735",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-freshness-watchdog.service",
+        "sha256": "8b208d14518db7acf40d92f751e8a9770ebf30e7c700a1859b8288ea3742b94d",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-freshness-watchdog.timer",
+        "sha256": "fcc601fd3aa439670c1347d91b7def4545402164f7c0bb5bbba22e6626ee0ac0",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-investigative-analysis.service",
+        "sha256": "0f4c71752cb7033b896a5544317a937c318ecf1d4da3b1a65e8059409d6a4d4c",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-investigative-analysis.timer",
+        "sha256": "280cad28f54cac9c3cd3b23ffe2bad6d5e8e0d7be61d5db410a5c1fbc5dfdf54",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-investigative-broker.socket",
+        "sha256": "72f9cce445e888d1ddd72ff32f3e3e7babe975a863ecb6b8d884a132d708f645",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-node-offsite-backup.service",
+        "sha256": "0f3e48fb4670230b45ee5be234c8e59b33dc20603281f1b8d5cd34a525043f70",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-node-offsite-backup.timer",
+        "sha256": "13ba391f4cc40007850b831ca20afd613f87364b6c31d011a03db14a164714ea",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-public-osint-sync.service",
+        "sha256": "ba3e80a2cc7e1fe1cef28c05012a20da97bb5c9956a58955c5b7234460097fbb",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-public-osint-sync.timer",
+        "sha256": "355d25477bfe6a89514add3ca85037dab2611310b384be02d5d7b5fb0d554797",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-witness.service",
+        "sha256": "3cc0dcd6c9b2022f86b4ae626bab4e9a8595d685ec41808c4e2e6308ac8cb3c5",
+        "stat": "0:0:644:1"
+      },
+      {
+        "path": "/etc/systemd/system/palimpsest-witness.timer",
+        "sha256": "de97788bf7e0c2aa4520e79bea1555a2557d42913a36f19e20c42f1553f01d77",
+        "stat": "0:0:644:1"
+      }
+    ],
+    "local_application_tag": {
+      "config_digest": "sha256:cced45c7964d656e92959b19f0dc11c2addf58fd95d2c3f3adcade92b8231b4b",
+      "embedded_compose_labels": {
+        "com.docker.compose.project": "palimpsest",
+        "com.docker.compose.service": "beat",
+        "com.docker.compose.version": "5.3.0"
+      },
+      "index_digest": "sha256:afa1a175597ea22ea3f6482eff074386f2da9fe26d51cd4cde113bb6c645487d",
+      "labels_are_runtime_authority": false,
+      "name": "palimpsest/app:local",
+      "platform_manifest_digest": "sha256:f3b9f942917b3143a606f83d51e17f6a0d4ffdd202434f623cec8451a232f1c5",
+      "revision": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+      "trusted_for_recovery": false
+    },
+    "release_services": [
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-backup.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-backup.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-common-crawl-backup.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-common-crawl-backup.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-node-offsite-backup.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-node-offsite-backup.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-evidence-wire.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-evidence-wire.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-event-analysis-live.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-event-analysis-live.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-investigative-analysis.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-investigative-analysis.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-common-crawl-import.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-common-crawl-import.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-common-crawl-context.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-common-crawl-context.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-bleedthrough.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-bleedthrough.service"
+      },
+      {
+        "active_state": "inactive",
+        "fragment_path": "/etc/systemd/system/palimpsest-public-osint-sync.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-public-osint-sync.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-freshness-watchdog.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-freshness-watchdog.service"
+      },
+      {
+        "active_state": "failed",
+        "fragment_path": "/etc/systemd/system/palimpsest-witness.service",
+        "load_state": "loaded",
+        "unit": "palimpsest-witness.service"
+      }
+    ],
+    "repository": {
+      "checkout_commit": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+      "deployed_commit": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd"
+    },
+    "running_compose_services": [
+      "api",
+      "postgres",
+      "redis"
+    ],
+    "witness_inventory": [
+      {
+        "name": "erasure-ledger.witness.jsonl",
+        "sha256": "17352b040539cbb1c91eb2629cc11f9036ab22b63d276d7a2e5e4059abdfeccb",
+        "size_bytes": 245595
+      },
+      {
+        "name": "eval-registry.witness.jsonl",
+        "sha256": "8bf18d248028f17fd76fa5eb81b0dc79e362e423f690ce4405cb60caa1dba14e",
+        "size_bytes": 245378
+      },
+      {
+        "name": "public-freshness-state.json",
+        "sha256": "5e86e03c70ba368a12cd318474fd9347194745447f7f32d76c8bccedf4b63f21",
+        "size_bytes": 74
+      }
+    ]
+  },
+  "pre_failure_state": {
+    "activators": [
+      {
+        "active_state": "active",
+        "unit": "palimpsest-backup.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-common-crawl-backup.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "inactive",
+        "unit": "palimpsest-node-offsite-backup.timer",
+        "unit_file_state": "disabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-evidence-wire.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-investigative-analysis.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-investigative-broker.socket",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-common-crawl-import.path",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-common-crawl-context.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-bleedthrough.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-public-osint-sync.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-freshness-watchdog.timer",
+        "unit_file_state": "enabled"
+      },
+      {
+        "active_state": "active",
+        "unit": "palimpsest-witness.timer",
+        "unit_file_state": "enabled"
+      }
+    ],
+    "application_image": {
+      "config_digest": "sha256:956cc75357f601921ca96269982e2a235546d7a0c48b9c308340134403873779",
+      "index_digest": "sha256:c798010776a5070efbb9f54163f191e71cecc26a08f1ec3d77b99995a419ea19",
+      "platform_manifest_digest": "sha256:ad7f286c31833801ee9738aecc7fb1d53eed3131ce1a1c7135ef7c9500aeb173",
+      "revision": "7d05ecca47b20d8cf092a513a0db0390435f363f"
+    },
+    "compose_writers": [
+      {
+        "presence": "present",
+        "running": true,
+        "service": "beat"
+      },
+      {
+        "presence": "present",
+        "running": true,
+        "service": "worker"
+      },
+      {
+        "presence": "present",
+        "running": true,
+        "service": "worker-collectors"
+      },
+      {
+        "presence": "present",
+        "running": true,
+        "service": "worker-warehouse"
+      },
+      {
+        "presence": "absent",
+        "running": false,
+        "service": "worker-velocity"
+      }
+    ]
+  },
+  "recovery_target_constraints": {
+    "must_be_descendant_of": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+    "must_be_reviewed": true,
+    "must_contain_manifest_path": "ops/release-recovery/2026-08-26-interrupted-phase1-hybrid-recovery.json",
+    "must_not_normalize_observed_hybrid": true
+  },
+  "schema_version": "palimpsest-interrupted-phase1-recovery.v2"
+}

@@ -18,12 +18,20 @@ BACKUP_GUIDE = ROOT / "ops" / "backup" / "README.md"
 NODE_OFFSITE_GUIDE = ROOT / "ops" / "node-offsite" / "README.md"
 RELEASE_QUIESCE = ROOT / "ops" / "systemd" / "palimpsest-backup.release-quiesce.conf"
 INTERRUPTED_PHASE1_MANIFEST = (
-    ROOT / "ops" / "release-recovery" / "2026-08-25-common-crawl-bind-alias-retry.json"
+    ROOT
+    / "ops"
+    / "release-recovery"
+    / "2026-08-26-interrupted-phase1-hybrid-recovery.json"
 )
 INTERRUPTED_PHASE1_MANIFEST_SHA256 = (
-    "62dd4970775c4acc840649f4531c50f73dc73906ad816d7bf45c49e1f323d834"
+    "8ebbec1471a60f6112c521a2783efd3fda1d5c5fea352c087f31f62dd9d153af"
 )
-RECOVERY_BACKUP_REASON = "common-crawl-bind-alias-retry-fresh-target-backup"
+COMMON_CRAWL_BIND_ALIAS_MANIFEST = (
+    ROOT / "ops" / "release-recovery" / "2026-08-25-common-crawl-bind-alias-retry.json"
+)
+RECOVERY_BACKUP_REASON = (
+    "interrupted-phase1-hybrid-recovery-fresh-target-backup"
+)
 COMPATIBILITY_SEED = ROOT / "ops" / "osint-sync" / "deploy-compatibility-seed.sh"
 
 
@@ -1902,6 +1910,50 @@ def test_compose_inventory_allows_unrelated_shared_host_workers(
         alternate.stderr
     )
 
+    inventory.write_text(
+        "\n".join(
+            [
+                *rows,
+                (
+                    f"palimpsest-backup-archive\tarchive\t{working_dir}\t"
+                    f"{config_file}\t{93:064x}"
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    inherited_archive = subprocess.run(
+        [sys.executable, "-", str(inventory), working_dir, config_file],
+        input=validator,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert inherited_archive.returncode != 0
+    assert "Palimpsest Compose provenance exists in alternate project" in (
+        inherited_archive.stderr
+    )
+
+    inventory.write_text(
+        "\n".join(
+            [
+                *rows,
+                f"palimpsest-backup-archive\tarchive\t\t\t{94:064x}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    isolated_archive = subprocess.run(
+        [sys.executable, "-", str(inventory), working_dir, config_file],
+        input=validator,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert isolated_archive.returncode == 0, isolated_archive.stderr
+
 
 def test_release_compose_runs_with_only_reviewed_environment_inputs() -> None:
     transaction = _transaction()
@@ -3546,6 +3598,14 @@ def test_recovery_requires_a_reviewed_forward_repair_from_both_prior_shas() -> N
     assert "protected-only" in guide
     assert "Never use the raw previous receipt as the repair decision" in guide
     assert "Executing a forward repair" in guide
+    assert "`export INTERRUPTED_PHASE1_RECOVERY=1`" in guide
+    assert (
+        ': "${INTERRUPTED_PHASE1_RECOVERY:?export '
+        'INTERRUPTED_PHASE1_RECOVERY=0_or_1}"'
+        in repair
+    )
+    assert 'case "$INTERRUPTED_PHASE1_RECOVERY" in' in repair
+    assert "export INTERRUPTED_PHASE1_RECOVERY" in repair
     assert 'export EXPECTED_PREVIOUS_CHECKOUT_SHA="$CURRENT_CHECKOUT_SHA"' in guide
     assert 'export EXPECTED_PREVIOUS_DEPLOY_SHA="$CURRENT_RECEIPT_SHA"' in guide
     assert 'export COMPATIBLE_ROLLBACK_SHA="$CURRENT_CHECKOUT_SHA"' in guide
@@ -3768,6 +3828,23 @@ def test_interrupted_resume_seeds_restoration_only_from_manifest(
         )
         == 5
     )
+    application_revisions = {
+        fields[0]: fields[4]
+        for fields in (
+            line.split("\t")
+            for line in (projection_dir / "applications.tsv")
+            .read_text(encoding="utf-8")
+            .splitlines()
+        )
+    }
+    assert application_revisions == {
+        "api": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "beat": "7d05ecca47b20d8cf092a513a0db0390435f363f",
+        "migrate": "15edd4fe13103e68da53c651a15c7c0aa1aed4a3",
+        "worker": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+        "worker-collectors": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+        "worker-warehouse": "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd",
+    }
     for filename, expected_count in (
         ("installed-units.tsv", 25),
         ("installed-bundles.tsv", 5),
@@ -4007,6 +4084,9 @@ def test_interrupted_manifest_scope_environment_and_infrastructure_are_exact() -
     scope = manifest["observed_safe_boundary"]["compose_scope"]
 
     assert manifest_sha == INTERRUPTED_PHASE1_MANIFEST_SHA256
+    assert set(manifest["authority"].values()) == {
+        "927e0a8b5c82a008f3ffa08a5f5518b8efa8bffd"
+    }
     assert scope == {
         "project": "palimpsest",
         "working_dir": "/home/palimpsest/palimpsest/ops/docker",
@@ -4062,7 +4142,7 @@ def test_interrupted_manifest_scope_environment_and_infrastructure_are_exact() -
 
 
 def test_common_crawl_retry_preserves_the_complete_prepared_receipt_chain() -> None:
-    manifest = json.loads(INTERRUPTED_PHASE1_MANIFEST.read_text(encoding="utf-8"))
+    manifest = json.loads(COMMON_CRAWL_BIND_ALIAS_MANIFEST.read_text(encoding="utf-8"))
     continuation = manifest["continuation"]
     prepared = continuation["predecessor_prepared_receipt"]
     failed = manifest["failed_attempt"]
@@ -4148,15 +4228,6 @@ def test_common_crawl_retry_preserves_the_complete_prepared_receipt_chain() -> N
             "unit": item["unit"],
         }
         for item in instances
-    )
-    transaction = _transaction()
-    assert '"dynamic-instance-names.txt": (' in transaction
-    assert '"dynamic-instances.tsv": (' in transaction
-    assert transaction.count("        30,") >= 2
-    assert "capture_release_instance_inventory \\" in transaction
-    assert 'dynamic-instance-names.txt" \\' in transaction
-    assert 'done <"$RECOVERY_BOUNDARY_PROJECTION_DIR/dynamic-instances.tsv"' in (
-        transaction
     )
 
 
