@@ -165,6 +165,11 @@ image digest, no network, a read-only root, numeric archive ownership, and only
 and immutable run artifacts without any ownership, mode, or ACL mutation. A
 missing artifact root/subtree, missing service, named volume, mismatched host
 source, or unpinned image identity fails the backup before publication.
+The one-shot container overrides every Compose provenance label that can be
+inherited from the application image with a separate `<project>-backup-archive`
+one-off identity and empty working-directory/config-file origins. Runtime
+inventory therefore cannot mistake the archival reader for Beat or another
+production service while a backup is in progress.
 Before the archive stream starts, the image-bundled fixed helper opens
 `analysis/private/cascade.lock` without following symlinks and requires a
 one-link, mode-0600 regular file owned by numeric UID/GID `10001`. It takes a
