@@ -692,6 +692,51 @@ def _machine_evidence_capsule(
     return capsule
 
 
+def _machine_evidence_capsule_output(
+    capsule_path: Path,
+    archived: Mapping[str, Any],
+    *,
+    context: Mapping[str, Any],
+    archive_root: Path,
+) -> bytes:
+    """Return immutable first-published bytes or create a new capsule once.
+
+    Capsule paths address the original input bytes. Rights and attribution are
+    a snapshot taken when that input is first archived; later policy changes
+    update mutable rendered surfaces and the Pages rights gate, but cannot
+    rewrite an already published hash-addressed object.
+    """
+
+    destination = archive_root / capsule_path
+    try:
+        destination.lstat()
+    except FileNotFoundError:
+        capsule = _machine_evidence_capsule(
+            archived["evidence"],
+            raw=archived["raw"],
+            raw_document=archived["raw_document"],
+            context=context,
+        )
+        return _pretty_json(capsule)
+
+    retained_raw = _read_immutable_analysis_file(capsule_path, root=archive_root)
+    retained = _machine_evidence_capsule_bytes(
+        retained_raw,
+        expected_digest=capsule_path.stem.removeprefix("sha256-"),
+    )
+    if retained is None:
+        raise newsroom.NewsroomError(
+            f"invalid immutable machine evidence capsule: {capsule_path}"
+        )
+    for evidence in archived["evidence"]:
+        _machine_revision_capsule_binding(
+            evidence,
+            retained,
+            revision_id="current-report",
+        )
+    return retained_raw
+
+
 def _validate_machine_evidence_capsule(
     value: object, *, expected_digest: str
 ) -> Mapping[str, Any]:
@@ -5946,14 +5991,15 @@ def build_outputs(
                         revision_id="current-report",
                     )
                 continue
-            capsule = _machine_evidence_capsule(
-                archived["evidence"],
-                raw=archived["raw"],
-                raw_document=archived["raw_document"],
-                context=evidence_context,
-            )
             _retain_immutable_analysis_output(
-                outputs, capsule_path, _pretty_json(capsule)
+                outputs,
+                capsule_path,
+                _machine_evidence_capsule_output(
+                    capsule_path,
+                    archived,
+                    context=evidence_context,
+                    archive_root=archive_root,
+                ),
             )
     for story in feed["stories"]:
         analysis = instrument_analyses[story["signal_id"]]

@@ -291,6 +291,45 @@ def test_generated_manifest_discovers_machine_heads_and_revisions(publication) -
             )
 
 
+def test_existing_capsule_keeps_first_published_rights_snapshot(
+    publication,
+    tmp_path: Path,
+) -> None:
+    *_documents, machine, outputs = publication
+    evidence = next(
+        row
+        for case in machine["cases"]
+        for row in case["evidence"]
+    )
+    capsule_path = build_newsroom._machine_evidence_archive_path(evidence)
+    original = outputs[capsule_path]
+    destination = tmp_path / capsule_path
+    destination.parent.mkdir(parents=True)
+    destination.write_bytes(original)
+    raw, raw_document = build_newsroom._machine_read_cited_input(evidence)
+    context = copy.deepcopy(build_newsroom._load_machine_evidence_context())
+    context["resources"][evidence["source_id"]]["rights"] = {
+        "redistribution": "RESTRICTED",
+        "reuse": "metadata_only",
+        "training": "prohibited",
+    }
+    archived = {
+        "raw": raw,
+        "raw_document": raw_document,
+        "evidence": [evidence],
+    }
+
+    retained = build_newsroom._machine_evidence_capsule_output(
+        capsule_path,
+        archived,
+        context=context,
+        archive_root=tmp_path,
+    )
+
+    assert retained == original
+    assert destination.read_bytes() == original
+
+
 def test_inside_view_archive_excludes_raw_ip_answers_and_nested_reading(
     publication,
 ) -> None:
