@@ -30,6 +30,14 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     }
     assert jsonld["@type"] == "DataCatalog"
     assert len(jsonld["dataset"]) == len(ids)
+    assert jsonld["publisher"] == {
+        "@type": "Organization",
+        "@id": "https://palimpsest.info/#org",
+        "name": "Palimpsest",
+        "url": "https://palimpsest.info/",
+    }
+    assert all("cadence" in item for item in built["datasets"])
+    assert all("temporalResolution" not in item for item in jsonld["dataset"])
     assert package["profile"] == "data-package"
     assert package["resources"]
 
