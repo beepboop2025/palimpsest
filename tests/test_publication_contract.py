@@ -204,6 +204,11 @@ CONTRACT = {
         reason="an inventory roll-up rather than a sampled measurement: every resource "
                "is enumerated in resources, while summary publishes the complete resource "
                "count and availability-state counts over that same declared inventory."),
+    "belt-and-road-observatory": _d(
+        "as_of", ["scope", "publication_policy", "sources"],
+        reason="a source and coverage inventory rather than a sampled measurement: every "
+               "source is enumerated, and coverage counts are complete projections over "
+               "that declared registry rather than rates over an unstated population."),
     # scheduled first-party import from the fixed external prober
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -768,6 +773,11 @@ def test_openapi_publishes_social_observations_and_china_situation_contracts():
             "china-situation-v1.schema.json",
             "/readings/china-situation-latest.json",
             "getChinaSituation",
+        ),
+        "BeltAndRoadObservatory": (
+            "belt-and-road-observatory-v1.schema.json",
+            "/readings/belt-and-road-observatory-latest.json",
+            "getBeltAndRoadObservatory",
         ),
     }
 

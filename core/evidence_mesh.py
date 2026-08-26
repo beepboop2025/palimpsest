@@ -863,7 +863,7 @@ def _catalog_role(dataset: Mapping[str, Any]) -> str:
     if dataset["stage"] == "reporting":
         return "candidate-only"
     if dataset["stage"] in {
-        "synthesis", "quality", "source-metadata", "provenance", "publication",
+        "planning", "synthesis", "quality", "source-metadata", "provenance", "publication",
     }:
         return "context"
     return "evidence"
@@ -874,6 +874,8 @@ def _catalog_class(dataset: Mapping[str, Any]) -> str:
         return "INTEGRITY_PROOF"
     if dataset["stage"] in {"provenance", "publication", "reporting"}:
         return "PUBLICATION_WORKFLOW"
+    if dataset["stage"] in {"planning", "source-metadata"}:
+        return "METHOD_OR_ASSUMPTION"
     if dataset["stage"] in {"synthesis", "quality"} or dataset["collection_mode"].startswith("derived"):
         return "DERIVED_ANALYSIS"
     if dataset["id"] == "primary-documents":

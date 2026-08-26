@@ -92,11 +92,12 @@
       "displayName": "Palimpsest Public Readings OpenAPI",
       "type": "application/vnd.oai.openapi+json",
       "url": "https://palimpsest.info/openapi.json",
-      "description": "OpenAPI 3.1 contract for static public readings, including the China Observatory index, bitemporal economic-observation manifest and ledger, economic pulse, named-series forecast-status artifact, newsroom evidence and evaluation records.",
+      "description": "OpenAPI 3.1 contract for static public readings, including the China Observatory index, bitemporal economic observations, the global Belt and Road coverage contract, newsroom evidence and evaluation records.",
       "tags": [
         "OpenAPI",
         "China economy API",
         "money market data",
+        "Belt and Road evidence",
         "economic evidence",
         "public readings"
       ],
@@ -104,15 +105,17 @@
         "discover public datasets",
         "read China Observatory state",
         "download economic observation ledger",
+        "inspect BRI lifecycle, economics, local-impact and source gaps",
         "inspect source clocks and revisions",
         "read explicit abstentions"
       ],
       "representativeQueries": [
         "Give me a keyless API for current China money-market evidence.",
         "Download aggregate China observations with release and collection timestamps.",
+        "Inspect the BRI source and project-field contract for Gwadar, CPEC, CMEC and Kyaukpyu.",
         "Check whether Palimpsest has promoted any China economic forecast target."
       ],
-      "updatedAt": "2026-08-24T00:00:00Z",
+      "updatedAt": "2026-08-26T00:00:00Z",
       "metadata": {
         "authentication": "none",
         "access": "public-read-only",
@@ -186,6 +189,44 @@
         "schema": "https://palimpsest.info/protocol/china-index-v1.schema.json",
         "humanLandingPage": "https://palimpsest.info/china/",
         "freshnessAuthority": "Read the current generation and source clocks from the linked China index; this catalog does not freeze them."
+      }
+    },
+    {
+      "identifier": "urn:air:palimpsest.info:dataset:belt-and-road-observatory",
+      "displayName": "Palimpsest Belt and Road Observatory Coverage Contract",
+      "type": "application/json",
+      "url": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
+      "description": "Repository-ready global BRI source, rights, lifecycle, economic and local-impact coverage contract with priority Pakistan, Gwadar, Balochistan, Myanmar and Kyaukpyu dossiers. It is a build ledger, not complete ingestion or a deployed project-count API.",
+      "tags": [
+        "Belt and Road Initiative",
+        "CPEC",
+        "Gwadar",
+        "CMEC",
+        "Kyaukpyu",
+        "Balochistan",
+        "infrastructure finance"
+      ],
+      "capabilities": [
+        "discover rights-gated BRI sources",
+        "inspect project lifecycle semantics",
+        "map economic and local-impact evidence gaps",
+        "separate Balochistan political, civic, armed, legal and rights lanes",
+        "inspect the bounded NarcoScope country overlay contract"
+      ],
+      "representativeQueries": [
+        "Which sources can verify a Gwadar project from announcement through operation?",
+        "What evidence is available for CMEC financing, land and local livelihoods?",
+        "How does Palimpsest keep peaceful Baloch civic advocacy separate from armed organizations and legal designations?",
+        "Which BRI economic fields are build-ready and which still need rights review?"
+      ],
+      "updatedAt": "2026-08-26T12:03:34Z",
+      "metadata": {
+        "authentication": "none",
+        "access": "public-read-only-after-deployment",
+        "deploymentBoundary": "repository-ready-not-deployed",
+        "schema": "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json",
+        "humanLandingPage": "https://palimpsest.info/belt-and-road/",
+        "coverageBoundary": "Source discovery and adapter readiness are not ingestion, and unlike project lifecycle or claim states are never summed."
       }
     },
     {

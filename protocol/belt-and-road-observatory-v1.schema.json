@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json",
+  "title": "Palimpsest Belt and Road Observatory coverage contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schema_version",
+    "as_of",
+    "scope",
+    "publication_policy",
+    "coverage_report",
+    "project_fields",
+    "economic_metrics",
+    "local_impact_fields",
+    "movement_taxonomy",
+    "geographies",
+    "workstreams",
+    "watch_targets",
+    "partner_bridges",
+    "sources",
+    "prioritized_backlog",
+    "interpretation"
+  ],
+  "properties": {
+    "$schema": { "const": "/protocol/belt-and-road-observatory-v1.schema.json" },
+    "schema_version": { "const": "palimpsest.belt-and-road-observatory.v1" },
+    "as_of": { "type": "string", "format": "date-time" },
+    "scope": { "type": "string", "minLength": 20 },
+    "publication_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_total_rule",
+        "claim_join_rule",
+        "money_rule",
+        "status_rule",
+        "conflict_location_grain",
+        "conflict_publication_delay_days",
+        "person_level_dossiers",
+        "tactical_vulnerability_analysis",
+        "correction_channel",
+        "minimum_project_corroboration"
+      ],
+      "properties": {
+        "project_total_rule": { "const": "never_mix_lifecycle_states" },
+        "claim_join_rule": { "const": "same_project_identity_and_compatible_claim_semantics_only" },
+        "money_rule": { "type": "string", "minLength": 1 },
+        "status_rule": { "type": "string", "minLength": 1 },
+        "conflict_location_grain": { "const": "delayed_administrative_area_only" },
+        "conflict_publication_delay_days": { "type": "integer", "minimum": 30 },
+        "person_level_dossiers": { "const": "prohibited" },
+        "tactical_vulnerability_analysis": { "const": "prohibited" },
+        "correction_channel": { "type": "string", "minLength": 1 },
+        "minimum_project_corroboration": { "type": "string", "minLength": 1 }
+      }
+    },
+    "coverage_report": { "$ref": "#/$defs/coverageReport" },
+    "project_fields": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+    "economic_metrics": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+    "local_impact_fields": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+    "movement_taxonomy": { "$ref": "#/$defs/movementTaxonomy" },
+    "geographies": {
+      "type": "array",
+      "minItems": 7,
+      "items": { "$ref": "#/$defs/geography" }
+    },
+    "workstreams": {
+      "type": "array",
+      "minItems": 5,
+      "items": { "$ref": "#/$defs/workstream" }
+    },
+    "watch_targets": {
+      "type": "array",
+      "minItems": 10,
+      "items": { "$ref": "#/$defs/watchTarget" }
+    },
+    "partner_bridges": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/partnerBridge" }
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 30,
+      "items": { "$ref": "#/$defs/source" }
+    },
+    "prioritized_backlog": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/backlogItem" }
+    },
+    "interpretation": {
+      "type": "array",
+      "minItems": 4,
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "nonemptyUniqueStrings": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "uniqueStrings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "coverageReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_count",
+        "implementation_states",
+        "source_classes",
+        "build_ready_source_count",
+        "coverage",
+        "geographies",
+        "build_ready_gaps"
+      ],
+      "properties": {
+        "source_count": { "type": "integer", "minimum": 30 },
+        "implementation_states": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "source_classes": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "build_ready_source_count": { "type": "integer", "minimum": 1 },
+        "coverage": { "type": "object", "additionalProperties": { "$ref": "#/$defs/coverageCell" } },
+        "geographies": { "type": "object", "additionalProperties": { "$ref": "#/$defs/geographyCoverage" } },
+        "build_ready_gaps": { "$ref": "#/$defs/uniqueStrings" }
+      }
+    },
+    "coverageCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "independent_groups", "build_ready_sources", "build_ready_independent_groups", "source_ids"],
+      "properties": {
+        "sources": { "type": "integer", "minimum": 0 },
+        "independent_groups": { "type": "integer", "minimum": 0 },
+        "build_ready_sources": { "type": "integer", "minimum": 0 },
+        "build_ready_independent_groups": { "type": "integer", "minimum": 0 },
+        "source_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "geographyCoverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sources", "independent_groups", "source_ids"],
+      "properties": {
+        "sources": { "type": "integer", "minimum": 0 },
+        "independent_groups": { "type": "integer", "minimum": 0 },
+        "source_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+      }
+    },
+    "movementTaxonomy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["umbrella_term", "umbrella_term_policy", "identity_rule", "lanes"],
+      "properties": {
+        "umbrella_term": { "const": "Balochistan liberation movement" },
+        "umbrella_term_policy": { "const": "concept_only_never_single_actor" },
+        "identity_rule": { "type": "string", "minLength": 1 },
+        "lanes": { "type": "array", "minItems": 7, "items": { "$ref": "#/$defs/movementLane" } }
+      }
+    },
+    "movementLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane_id", "label", "entity_types", "claim_types", "prohibited_merges"],
+      "properties": {
+        "lane_id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "entity_types": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "claim_types": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "prohibited_merges": { "$ref": "#/$defs/nonemptyUniqueStrings" }
+      }
+    },
+    "geography": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "kind", "parent", "priority"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["global", "country", "admin1", "admin2"] },
+        "parent": { "type": ["string", "null"] },
+        "priority": { "type": "integer", "minimum": 1, "maximum": 10 }
+      }
+    },
+    "workstream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workstream_id", "label", "status", "required_coverage", "source_ids"],
+      "properties": {
+        "workstream_id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "minLength": 1 },
+        "required_coverage": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "source_ids": { "$ref": "#/$defs/nonemptyUniqueStrings" }
+      }
+    },
+    "watchTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_id", "label", "target_type", "evidence_status", "required_coverage", "source_ids"],
+      "properties": {
+        "target_id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "target_type": { "type": "string", "minLength": 1 },
+        "evidence_status": { "type": "string", "minLength": 1 },
+        "required_coverage": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "source_ids": { "$ref": "#/$defs/nonemptyUniqueStrings" }
+      }
+    },
+    "partnerBridge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["partner", "contract", "artifact_id", "status", "producer_path", "palimpsest_path", "join_policy", "actor_inference", "claim_boundary"],
+      "properties": {
+        "partner": { "const": "NarcoScope" },
+        "contract": { "const": "narcoscope.palimpsest.corridor-aggregate.v2" },
+        "artifact_id": { "const": "narcoscope.china-pakistan-myanmar.official-coverage" },
+        "status": { "enum": ["repository_ready_not_deployed", "production_verified"] },
+        "producer_path": { "type": "string", "minLength": 1 },
+        "palimpsest_path": { "type": "string", "minLength": 1 },
+        "join_policy": { "const": "geography_and_time_only" },
+        "actor_inference": { "const": "prohibited" },
+        "claim_boundary": { "type": "string", "minLength": 1 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "name", "publisher", "url", "source_class", "authority_role", "access_mode", "rights_status", "implementation", "cadence", "geographies", "coverage", "independence_group", "claim_classes", "notes"],
+      "properties": {
+        "source_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,79}$" },
+        "name": { "type": "string", "minLength": 1 },
+        "publisher": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri" },
+        "source_class": { "enum": ["official_china", "official_host", "multilateral", "research", "civil_society", "legal", "partner"] },
+        "authority_role": { "enum": ["primary_record", "administrative_position", "independent_observation", "analytical_estimate", "legal_instrument", "partner_aggregate"] },
+        "access_mode": { "enum": ["open_download", "open_keyless", "public_manual", "registration", "licensed", "restricted"] },
+        "rights_status": { "enum": ["public_domain", "attribution", "open_reuse", "official_publication_review_required", "link_only_pending_review", "licensed_no_redistribution"] },
+        "implementation": { "enum": ["live", "adapter_ready", "planned", "link_only", "blocked", "out_of_scope", "repository_ready"] },
+        "cadence": { "enum": ["event", "daily", "weekly", "monthly", "quarterly", "annual", "irregular", "snapshot"] },
+        "geographies": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "coverage": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "independence_group": { "type": "string", "minLength": 1 },
+        "claim_classes": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "notes": { "type": "string", "minLength": 1 }
+      }
+    },
+    "backlogItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "name", "priority_score", "ground_level_adjustment", "rights_status", "geographies", "coverage", "next_gate"],
+      "properties": {
+        "source_id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "priority_score": { "type": "number" },
+        "ground_level_adjustment": { "type": "number", "minimum": 0 },
+        "rights_status": { "type": "string", "minLength": 1 },
+        "geographies": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "coverage": { "$ref": "#/$defs/nonemptyUniqueStrings" },
+        "next_gate": { "enum": ["rights_review", "adapter_implementation"] }
+      }
+    }
+  }
+}
