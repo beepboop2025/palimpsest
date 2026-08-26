@@ -1,0 +1,16 @@
+FROM python:3.12-slim@sha256:7a8b475003c4fe15a2cd4e55e5cfc2f3560bdc9333d624f24cdd6d4340fd7a17
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=3000
+
+RUN groupadd --gid 10001 palimpsest \
+    && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /site --shell /usr/sbin/nologin palimpsest
+
+WORKDIR /site
+COPY --chown=palimpsest:palimpsest . .
+RUN chmod -R a-w /site
+
+USER palimpsest
+EXPOSE 3000
+CMD ["python", "-I", "/site/ops/railway/static_server.py", "--root", "/site"]
