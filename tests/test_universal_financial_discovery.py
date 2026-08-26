@@ -75,6 +75,7 @@ BRI_WDI_RECEIPT_SCHEMA_URL = (
 )
 BRI_WDI_VERIFIED_AT = "2026-08-26T15:55:34Z"
 BRI_WDI_FRESH_UNTIL = "2026-08-27T15:55:34Z"
+BRI_OBSERVATORY_AS_OF = "2026-08-26T19:34:49Z"
 PAGES = {
     "china/money-markets/index.html": ("https://palimpsest.info/china/money-markets/"),
     "china/capital-markets/index.html": (
@@ -321,15 +322,46 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
             "https://palimpsest.info/readings/"
             "bri-economic-observations-latest.json"
         ),
+        "ucdpAnnualAggregate": (
+            "https://palimpsest.info/readings/ucdp-aggregate-latest.json"
+        ),
+        "ucdpAggregateSchema": (
+            "https://palimpsest.info/protocol/ucdp-aggregate-v1.schema.json"
+        ),
+        "ucdpReleaseReceipt": (
+            "https://palimpsest.info/readings/"
+            "ucdp-aggregate-release-receipt.json"
+        ),
+        "ucdpReviewedLock": (
+            "https://palimpsest.info/config/ucdp_acquisition_lock.json"
+        ),
+        "ucdpArtifactSha256": (
+            "sha256:10152b84688bb7d258ebcd4650696946b21435c20ebdb1c6582e04dc9c7e4a84"
+        ),
+        "ucdpRightsValidUntil": "2026-09-25T19:26:50Z",
+        "deepResearchReport": (
+            "https://palimpsest.info/research/"
+            "china-pakistan-myanmar-bri-2026/"
+        ),
+        "deepResearchPdf": (
+            "https://palimpsest.info/research/"
+            "china-pakistan-myanmar-bri-2026/report.pdf"
+        ),
+        "deepResearchPublicationReceipt": (
+            "https://palimpsest.info/research/"
+            "china-pakistan-myanmar-bri-2026/publication-receipt.json"
+        ),
         "humanLandingPage": "https://palimpsest.info/belt-and-road/",
         "coverageBoundary": (
             "Source discovery and adapter readiness are not ingestion, and unlike "
             "project lifecycle or claim states are never summed. WDI national "
             "series cannot establish BRI causation or project, actor or corridor "
-            "facts."
+            "facts. UCDP is annual historical aggregate context only, and report "
+            "machine rows are withheld; neither surface supports actor, route, "
+            "project, guilt, causal, tactical or person-level inference."
         ),
     }
-    assert bri["updatedAt"] == BRI_WDI_VERIFIED_AT
+    assert bri["updatedAt"] == BRI_OBSERVATORY_AS_OF
 
     assert wdi["url"] == (
         "https://palimpsest.info/readings/bri-economic-observations-latest.json"
@@ -405,6 +437,15 @@ def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
     assert BRI_WDI_RECEIPT_URL in urls
     assert "https://palimpsest.info/readings/bri-economic-observations-latest.json" in urls
     assert BRI_WDI_RECEIPT_SCHEMA_URL in urls
+    assert "https://palimpsest.info/readings/ucdp-aggregate-latest.json" in urls
+    assert (
+        "https://palimpsest.info/readings/ucdp-aggregate-release-receipt.json"
+        in urls
+    )
+    assert (
+        "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
+        in urls
+    )
 
 
 def test_financial_landing_pages_have_canonical_metadata_and_visible_faqs():

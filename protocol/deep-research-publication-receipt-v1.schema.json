@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/deep-research-publication-receipt-v1.schema.json",
+  "title": "Palimpsest deep research report-only publication receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "package_id",
+    "receipt_id",
+    "publication_state",
+    "publication_at",
+    "scope",
+    "artifacts",
+    "withheld_artifacts",
+    "decision",
+    "bindings",
+    "trust",
+    "validation"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest.deep-research-publication-receipt.v1"},
+    "package_id": {"const": "china-pakistan-myanmar-bri-2026"},
+    "receipt_id": {"$ref": "#/$defs/sha256"},
+    "publication_state": {"const": "public_report_only"},
+    "publication_at": {"$ref": "#/$defs/timestamp"},
+    "scope": {"const": "historical_economic_policy_analysis_non_tactical"},
+    "artifacts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/artifact"}
+    },
+    "withheld_artifacts": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/withheldArtifact"}
+    },
+    "decision": {"$ref": "#/$defs/decision"},
+    "bindings": {"$ref": "#/$defs/bindings"},
+    "trust": {"$ref": "#/$defs/trust"},
+    "validation": {"$ref": "#/$defs/validation"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "url", "media_type", "bytes", "sha256"],
+      "properties": {
+        "path": {
+          "enum": [
+            "research/china-pakistan-myanmar-bri-2026/index.html",
+            "research/china-pakistan-myanmar-bri-2026/report.pdf"
+          ]
+        },
+        "url": {"type": "string", "format": "uri", "pattern": "^https://palimpsest\\.info/research/china-pakistan-myanmar-bri-2026/"},
+        "media_type": {"enum": ["text/html; charset=utf-8", "application/pdf"]},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 2097152},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "withheldArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "decision", "tracked", "served"],
+      "properties": {
+        "path": {"enum": ["claims.jsonl", "evidence.jsonl", "report.md", "run_manifest.json", "sources.jsonl"]},
+        "decision": {
+          "enum": [
+            "withheld_no_per_row_publication_decision",
+            "withheld_private_execution_metadata",
+            "withheld_working_source_not_public_transform"
+          ]
+        },
+        "tracked": {"const": false},
+        "served": {"const": false}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reviewed_by", "report_rights_scope", "machine_row_rights_scope", "quote_review", "safety_scope"],
+      "properties": {
+        "status": {"const": "allow_exact_report_html_and_pdf_only"},
+        "reviewed_by": {"const": "palimpsest-publication-rights-review"},
+        "report_rights_scope": {"const": "approved_exact_rendered_reports"},
+        "machine_row_rights_scope": {"const": "withheld_no_per_row_publication_decision"},
+        "quote_review": {"const": "persisted_excerpts_reviewed_under_16_word_ceiling"},
+        "safety_scope": {"const": "non_tactical_no_person_level_or_targeting_guidance"}
+      }
+    },
+    "fileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 256},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt_schema", "binary_allowlist"],
+      "properties": {
+        "receipt_schema": {"$ref": "#/$defs/fileBinding"},
+        "binary_allowlist": {"$ref": "#/$defs/fileBinding"}
+      }
+    },
+    "trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approval_root", "source_package_signature_status", "release_manifest_required"],
+      "properties": {
+        "approval_root": {"const": "protected_reviewed_git_revision_plus_exact_release_manifest"},
+        "source_package_signature_status": {"const": "not_claimed"},
+        "release_manifest_required": {"const": true}
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exact_artifact_hashes", "regular_files_only", "closed_public_route", "machine_rows_served"],
+      "properties": {
+        "exact_artifact_hashes": {"const": true},
+        "regular_files_only": {"const": true},
+        "closed_public_route": {"const": true},
+        "machine_rows_served": {"const": false}
+      }
+    }
+  }
+}

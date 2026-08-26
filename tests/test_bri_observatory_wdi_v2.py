@@ -407,7 +407,7 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
 
     mesh = build_evidence_mesh(
         mesh_root,
-        now=datetime(2026, 8, 26, 16, 0, 0, tzinfo=UTC),
+        now=datetime(2026, 8, 26, 20, 0, 0, tzinfo=UTC),
     )
     resource = next(
         row

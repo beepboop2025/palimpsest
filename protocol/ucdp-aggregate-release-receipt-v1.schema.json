@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/ucdp-aggregate-release-receipt-v1.schema.json",
+  "title": "Palimpsest UCDP aggregate release receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "publication_state",
+    "artifact",
+    "publication_at",
+    "publication_scope",
+    "coverage",
+    "bindings",
+    "rights",
+    "trust",
+    "private_evidence",
+    "validation"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest.ucdp-aggregate-release-receipt.v1"},
+    "receipt_id": {"$ref": "#/$defs/sha256"},
+    "publication_state": {"const": "live"},
+    "artifact": {"$ref": "#/$defs/artifact"},
+    "publication_at": {"$ref": "#/$defs/timestamp"},
+    "publication_scope": {"const": "annual_aggregate_context_only"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "bindings": {"$ref": "#/$defs/bindings"},
+    "rights": {"$ref": "#/$defs/rights"},
+    "trust": {"$ref": "#/$defs/trust"},
+    "private_evidence": {"$ref": "#/$defs/privateEvidence"},
+    "validation": {"$ref": "#/$defs/validation"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "url", "media_type", "bytes", "sha256", "bundle_id"],
+      "properties": {
+        "path": {"const": "readings/ucdp-aggregate-latest.json"},
+        "url": {"const": "https://palimpsest.info/readings/ucdp-aggregate-latest.json"},
+        "media_type": {"const": "application/json"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bundle_id": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_year", "end_year", "conflict_year_records", "country_year_records", "actor_registry_id_count"],
+      "properties": {
+        "start_year": {"type": "integer", "minimum": 1946, "maximum": 2025},
+        "end_year": {"const": 2025},
+        "conflict_year_records": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "country_year_records": {"type": "integer", "minimum": 1, "maximum": 200},
+        "actor_registry_id_count": {"type": "integer", "minimum": 1, "maximum": 100000}
+      }
+    },
+    "fileBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1, "maxLength": 256},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_lock", "registry", "aggregate_schema", "lock_schema", "receipt_schema", "verifier"],
+      "properties": {
+        "review_lock": {"$ref": "#/$defs/fileBinding"},
+        "registry": {"$ref": "#/$defs/fileBinding"},
+        "aggregate_schema": {"$ref": "#/$defs/fileBinding"},
+        "lock_schema": {"$ref": "#/$defs/fileBinding"},
+        "receipt_schema": {"$ref": "#/$defs/fileBinding"},
+        "verifier": {"$ref": "#/$defs/fileBinding"}
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_id", "valid_until", "redistribution_status", "attribution"],
+      "properties": {
+        "decision_id": {"$ref": "#/$defs/sha256"},
+        "valid_until": {"$ref": "#/$defs/timestamp"},
+        "redistribution_status": {"const": "allowed_with_attribution"},
+        "attribution": {"const": "Uppsala Conflict Data Program (UCDP), version 26.1"}
+      }
+    },
+    "trust": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "upstream_signature_status", "approval_root", "release_manifest_required"],
+      "properties": {
+        "model": {"const": "palimpsest_reviewed_git_lock_for_hardened_tls_acquisition_no_upstream_signature"},
+        "upstream_signature_status": {"const": "not_claimed"},
+        "approval_root": {"const": "protected_reviewed_git_revision_plus_exact_release_manifest"},
+        "release_manifest_required": {"const": true}
+      }
+    },
+    "privateEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_count", "tracked", "served", "publication_boundary"],
+      "properties": {
+        "file_count": {"const": 8},
+        "tracked": {"const": false},
+        "served": {"const": false},
+        "publication_boundary": {"const": "aggregate_and_release_receipt_only"}
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_bytes", "closed_schema", "semantic_ids", "recursive_scrub", "current_clock_required"],
+      "properties": {
+        "canonical_bytes": {"const": true},
+        "closed_schema": {"const": true},
+        "semantic_ids": {"const": true},
+        "recursive_scrub": {"const": true},
+        "current_clock_required": {"const": true}
+      }
+    }
+  }
+}

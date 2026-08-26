@@ -47,6 +47,23 @@
       "license": {"name": "World Bank WDI, CC BY 4.0; attribution required", "url": "https://datacatalog.worldbank.org/public-licenses"}
     },
     {
+      "id": "ucdp-annual-aggregate-context",
+      "name": "UCDP annual aggregate context for Myanmar and Balochistan",
+      "description": "Receipt-bound UCDP version 26.1 annual historical context: Balochistan and Myanmar conflict-year identifiers plus Pakistan and Myanmar country-year uncertainty bounds. Actor names, event narratives, coordinates, person records and tactical fields never cross the public boundary; Pakistan fatality totals are national rather than Balochistan-only, and the data cannot establish a NarcoScope actor, route, project or causal link.",
+      "layer": "cross-layer",
+      "stage": "observation",
+      "collection_mode": "private-acquisition-reviewed-lock-public-aggregate",
+      "status": "live",
+      "cadence": "P12M",
+      "geography": ["PK", "MM"],
+      "sources": ["Uppsala Conflict Data Program version 26.1 annual bulk datasets"],
+      "latest": "readings/ucdp-aggregate-latest.json",
+      "landing_page": "belt-and-road/",
+      "method": "docs/UCDP-AGGREGATE-CONTEXT.md",
+      "count_fields": ["coverage.conflict_year_records", "coverage.country_year_records", "coverage.actor_registry_id_count"],
+      "license": {"name": "UCDP version 26.1, CC BY 4.0; attribution and dataset citations required", "url": "https://creativecommons.org/licenses/by/4.0/"}
+    },
+    {
       "id": "ddti",
       "name": "Domestic Discourse Tightening Index",
       "description": "Ranks topics receiving censor attention in China Digital Times' curated deletion and directive feeds; it measures attention allocation, not a population deletion rate.",

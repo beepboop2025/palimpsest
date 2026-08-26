@@ -57,7 +57,7 @@ SCHEMA = ROOT / "protocol" / "ucdp-aggregate-v1.schema.json"
 REVIEW_LOCK_SCHEMA = (
     ROOT / "protocol" / "ucdp-reviewed-acquisition-lock-v1.schema.json"
 )
-PENDING_REVIEW_LOCK = ROOT / "config" / "ucdp_acquisition_lock.json"
+REVIEW_LOCK = ROOT / "config" / "ucdp_acquisition_lock.json"
 RETRIEVED_AT = datetime(2026, 8, 26, 18, 30, tzinfo=UTC)
 LAST_MODIFIED = datetime(2026, 6, 8, 20, 19, 1, tzinfo=UTC)
 RIGHTS_OBSERVED_AT = datetime(2026, 8, 26, 18, 29, tzinfo=UTC)
@@ -386,7 +386,7 @@ def _replace_country_year_archive(registry, archives, receipts, rows):
     return updated_archives, updated_receipts
 
 
-def test_registry_pins_rights_version_encodings_and_adapter_ready_status() -> None:
+def test_registry_pins_rights_version_encodings_and_approved_release_status() -> None:
     registry = load_registry(REGISTRY)
     assert registry.source["dataset_version"] == "26.1"
     assert registry.source["license"] == "CC-BY-4.0"
@@ -409,15 +409,25 @@ def test_registry_pins_rights_version_encodings_and_adapter_ready_status() -> No
         "Wa",
     ]
     assert registry.raw_sha256 == sha256_bytes(REGISTRY.read_bytes())
-    pending_lock = load_review_lock(PENDING_REVIEW_LOCK)
-    assert pending_lock.status == "review_required"
-    assert pending_lock.rights_decision is None
-    assert pending_lock.inputs == ()
+    review_lock = load_review_lock(REVIEW_LOCK)
+    assert review_lock.status == "approved"
+    assert review_lock.raw_sha256 == (
+        "aba0208f9fa020f647d95b716d09de3726cef07bdf47b0dfb8150799529f039d"
+    )
+    assert review_lock.rights_decision is not None
+    assert review_lock.rights_decision.decision_id == (
+        "e1d3e80d03ddb8b0983dabf4e9107cdc0cdbadb95b57bef41aa5d597db7ad66e"
+    )
+    assert tuple(pin.input_id for pin in review_lock.inputs) == (
+        "actor_registry",
+        "armed_conflict",
+        "organized_country_year",
+    )
 
     bri = load_bri_registry(BRI_REGISTRY)
     ucdp = next(row for row in bri["sources"] if row["source_id"] == "ucdp_events")
     assert ucdp["rights_status"] == "attribution"
-    assert ucdp["implementation"] == "adapter_ready"
+    assert ucdp["implementation"] == "live"
     assert "never tactical coordinates or person-level dossiers" in ucdp["notes"]
 
     assert tuple(row["citation_id"] for row in REQUIRED_CITATIONS) == (
@@ -431,7 +441,22 @@ def test_pending_and_approved_review_locks_match_the_closed_schema() -> None:
     schema = json.loads(REVIEW_LOCK_SCHEMA.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
-    validator.validate(json.loads(PENDING_REVIEW_LOCK.read_text(encoding="utf-8")))
+    validator.validate(
+        {
+            "schema_version": REVIEW_LOCK_SCHEMA_VERSION,
+            "status": "review_required",
+            "dataset_version": "26.1",
+            "trust_model": TRUST_MODEL,
+            "policy": {
+                "maximum_future_skew_seconds": 300,
+                "maximum_cross_input_retrieval_skew_seconds": 900,
+                "maximum_evidence_age_days": 550,
+            },
+            "rights_decision": None,
+            "inputs": [],
+        }
+    )
+    validator.validate(json.loads(REVIEW_LOCK.read_text(encoding="utf-8")))
 
     registry, archives, receipts = _evidence()
     _lock, approved_raw, _snapshot, _rights_receipt = _review_material(

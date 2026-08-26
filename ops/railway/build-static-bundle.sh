@@ -123,6 +123,14 @@ env PYTHONDONTWRITEBYTECODE=1 python3 \
   --root "$staging_directory" \
   --sentinels "$denied_sentinels"
 
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$staging_directory" \
+  python3 -m scripts.verify_ucdp_public_release check \
+  --root "$staging_directory" \
+  --current-at "$rights_admission_at"
+env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$staging_directory" \
+  python3 -m scripts.verify_deep_research_publication check \
+  --root "$staging_directory"
+
 env PYTHONDONTWRITEBYTECODE=1 python3 \
   "$staging_directory/scripts/build_pages_wire_archive.py" \
   --root "$staging_directory" \

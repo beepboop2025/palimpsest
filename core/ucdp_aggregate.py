@@ -975,8 +975,25 @@ def canonical_public_bytes(
 
     if not isinstance(bundle, UCDPAggregateBundle):
         raise TypeError("bundle must be UCDPAggregateBundle")
-    document = bundle.to_dict()
-    raw = canonical_json_bytes(document)
+    raw = canonical_json_bytes(bundle.to_dict())
+    validate_public_bytes(
+        raw,
+        schema_path=schema_path,
+        forbidden_values=forbidden_values,
+    )
+    return raw
+
+
+def validate_public_bytes(
+    raw: bytes,
+    *,
+    schema_path: str | Path,
+    forbidden_values: Sequence[str] = (),
+) -> dict[str, object]:
+    """Validate exact canonical public bytes without private acquisition inputs."""
+
+    if type(raw) is not bytes or not raw:
+        raise UCDPAggregateError("public UCDP artifact must be non-empty bytes")
     try:
         reparsed = json.loads(raw.decode("utf-8", "strict"))
         schema = json.loads(Path(schema_path).read_text(encoding="utf-8"))
@@ -997,7 +1014,7 @@ def canonical_public_bytes(
         raise UCDPAggregateError(f"public UCDP schema validation failed: {exc}") from exc
     _validate_public_semantics(reparsed)
     assert_public_safe(reparsed, forbidden_values=forbidden_values)
-    return raw
+    return reparsed
 
 
 __all__ = [
@@ -1022,4 +1039,5 @@ __all__ = [
     "canonical_json_bytes",
     "parse_timestamp",
     "sha256_bytes",
+    "validate_public_bytes",
 ]

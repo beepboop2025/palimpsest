@@ -25,11 +25,12 @@ RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
 RECEIPT_SHA256 = "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
 RECEIPT_VERIFIED_AT = "2026-08-26T15:55:34Z"
 RECEIPT_FRESH_UNTIL = "2026-08-27T15:55:34Z"
+OBSERVATORY_AS_OF = "2026-08-26T19:34:49Z"
 
 
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
     registry = load_registry(REGISTRY)
-    assert registry["as_of"] == RECEIPT_VERIFIED_AT
+    assert registry["as_of"] == OBSERVATORY_AS_OF
     backbone = next(
         row
         for row in registry["workstreams"]
@@ -91,6 +92,27 @@ def test_rights_gate_blocks_licensed_or_uncleared_inputs_from_build_ready_state(
     acled = next(source for source in registry["sources"] if source["source_id"] == "acled_events")
     assert acled["implementation"] == "blocked"
     assert acled["rights_status"] == "licensed_no_redistribution"
+
+
+def test_reviewed_ucdp_and_report_only_deep_research_are_live_but_bounded() -> None:
+    sources = {
+        source["source_id"]: source for source in load_registry(REGISTRY)["sources"]
+    }
+    ucdp = sources["ucdp_events"]
+    assert ucdp["implementation"] == "live"
+    assert ucdp["rights_status"] == "attribution"
+    assert "/readings/ucdp-aggregate-release-receipt.json" in ucdp["notes"]
+    assert "national, not Balochistan-only" in ucdp["notes"]
+    assert "no row supports NarcoScope actor" in ucdp["notes"]
+
+    report = sources["palimpsest_deep_bri_report_2026"]
+    assert report["implementation"] == "live"
+    assert report["url"] == (
+        "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
+    )
+    assert "Only the exact HTML and PDF reports" in report["notes"]
+    assert "Machine sources, evidence, claims, run manifest" in report["notes"]
+    assert "does not authorize tactical" in report["notes"]
 
 
 def test_administrative_designations_allegations_and_legal_status_stay_distinct() -> None:
@@ -198,6 +220,12 @@ def test_public_discovery_is_explicit_without_claiming_complete_ingestion() -> N
     assert "Evidence coverage contract" in page
     assert "Publication is not a claim that every registered source has been ingested" in page
     assert "https://palimpsest.info/belt-and-road/" in sitemap
+    assert "https://palimpsest.info/readings/ucdp-aggregate-latest.json" in sitemap
+    assert (
+        "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
+        in sitemap
+    )
+    assert "china-pakistan-myanmar-bri-2026" in page
     assert 'href="/belt-and-road/"' in home
     entry = next(item for item in catalog["datasets"] if item["id"] == "belt-and-road-observatory")
     assert entry["status"] == "live"

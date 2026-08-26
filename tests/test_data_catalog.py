@@ -355,6 +355,24 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     assert "P120D is the economic-data freshness budget" in (
         bri_wdi["freshness_semantics"]
     )
+
+    ucdp = by_id["ucdp-annual-aggregate-context"]
+    assert (ucdp["layer"], ucdp["stage"], ucdp["collection_mode"]) == (
+        "cross-layer",
+        "observation",
+        "private-acquisition-reviewed-lock-public-aggregate",
+    )
+    assert ucdp["status"] == "live"
+    assert ucdp["cadence"] == "P12M"
+    assert ucdp["geography"] == ["PK", "MM"]
+    assert ucdp["latest"] == "readings/ucdp-aggregate-latest.json"
+    assert ucdp["method"] == "docs/UCDP-AGGREGATE-CONTEXT.md"
+    assert ucdp["count_fields"] == [
+        "coverage.conflict_year_records",
+        "coverage.country_year_records",
+        "coverage.actor_registry_id_count",
+    ]
+    assert "cannot establish a NarcoScope actor" in ucdp["description"]
     assert "P7D is the collection target" in bri_wdi["freshness_semantics"]
     assert "24-hour point-in-time deployment proof" in (
         bri_wdi["freshness_semantics"]

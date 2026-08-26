@@ -215,6 +215,13 @@ CONTRACT = {
                "coverage separately reports observed, forecast and unavailable rows; "
                "one top-level denominator would hide source nulls or imply those "
                "evidence states are interchangeable."),
+    "ucdp-aggregate": _d(
+        "generated_at",
+        ["source", "acquisition_receipts", "review_lock_sha256", "scope_policy"],
+        reason="the reviewed aggregate contains three distinct complete populations: "
+               "conflict-years, country-years, and referential actor IDs. Coverage "
+               "reports each separately; one denominator would falsely make their "
+               "counts commensurate or imply an event-level sampling frame."),
     # scheduled first-party import from the fixed external prober
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),

@@ -1,12 +1,14 @@
 # UCDP annual aggregate context
 
-Palimpsest has an `adapter_ready` path for three registry-pinned Uppsala
-Conflict Data Program (UCDP) version 26.1 annual bulk archives. The checked-in
-acquisition lock starts at `review_required`; this repository does not claim
-that UCDP observations are live or publication-approved. The adapter is an
-aggregate historical-context surface for Balochistan and Myanmar. It is not an
-event feed, actor dossier, route monitor, early-warning system, or attribution
-engine.
+Palimpsest publishes a reviewed, receipt-bound annual aggregate derived from
+three registry-pinned Uppsala Conflict Data Program (UCDP) version 26.1 bulk
+archives. The exact public artifact is
+[`readings/ucdp-aggregate-latest.json`](../readings/ucdp-aggregate-latest.json),
+and its deterministic release decision is
+[`readings/ucdp-aggregate-release-receipt.json`](../readings/ucdp-aggregate-release-receipt.json).
+This is an aggregate historical-context surface for Balochistan and Myanmar.
+It is not an event feed, actor dossier, route monitor, early-warning system, or
+attribution engine.
 
 ## Rights and citation gate
 
@@ -20,6 +22,8 @@ The lock is closed by
 [`protocol/ucdp-reviewed-acquisition-lock-v1.schema.json`](../protocol/ucdp-reviewed-acquisition-lock-v1.schema.json)
 and independently revalidated by the strict typed parser.
 
+The approved lock SHA-256 is
+`aba0208f9fa020f647d95b716d09de3726cef07bdf47b0dfb8150799529f039d`.
 The reviewed Git lock is Palimpsest's explicit approval anchor. It is not a
 cryptographic signature by UCDP, proof that UCDP approved the acquisition, or a
 substitute for checking the captured rights page. The lock permits only annual
@@ -74,6 +78,10 @@ history, or a fresh timestamp.
 
 The public JSON schema is
 [`protocol/ucdp-aggregate-v1.schema.json`](../protocol/ucdp-aggregate-v1.schema.json).
+The checked-in version 26.1 aggregate contains 331 conflict-year records, 74
+country-year records, and referential-integrity coverage for 1,928 UCDP actor
+IDs over 1948–2025. Its exact SHA-256 is
+`10152b84688bb7d258ebcd4650696946b21435c20ebdb1c6582e04dc9c7e4a84`.
 It permits only:
 
 - Balochistan conflict-year rows where UCDP location is Pakistan and territory
@@ -158,7 +166,7 @@ artifact:
 ```bash
 python3 -m scripts.ucdp_bulk_pull check \
   --input-dir /private/evidence/ucdp-26.1 \
-  --publication-at 2026-08-27T00:00:00Z
+  --publication-at 2026-08-26T19:28:50Z
 ```
 
 With the same reviewed evidence, build the public review artifact outside the
@@ -167,7 +175,7 @@ private evidence directory:
 ```bash
 python3 -m scripts.ucdp_bulk_pull build \
   --input-dir /private/evidence/ucdp-26.1 \
-  --publication-at 2026-08-27T00:00:00Z \
+  --publication-at 2026-08-26T19:28:50Z \
   --output /review/ucdp-aggregate-v1.json
 ```
 
@@ -182,8 +190,19 @@ Publication authority comes only from the repository-controlled
 self-issued bytes approve themselves.
 
 Running `check` with no evidence only validates the adapter configuration and
-reports the lock state. The repository remains `adapter_ready`, not `live`, while
-the checked-in lock says `review_required`. Before any live promotion, reviewers
-must also record an exact release receipt, run public scrub and egress tests,
-deploy the exact revision, and verify the served bytes. This branch performs no
-acquisition, deployment, or promotion.
+reports the lock state. Public-release verification is a separate, private-data-
+free gate:
+
+```bash
+python3 -m scripts.verify_ucdp_public_release check \
+  --current-at 2026-08-26T19:34:49Z
+```
+
+That verifier requires exact canonical aggregate bytes, the closed aggregate
+and receipt schemas, the approved lock, current rights and evidence clocks, the
+registry and all semantic scrubs. The release receipt makes the external trust
+precondition explicit: approval comes from a protected reviewed Git revision
+plus its exact release manifest. The lock binds the reviewed evidence identity;
+it is not an origin signature. The eight private acquisition files are neither
+tracked nor served. This repository promotion does not itself acquire data,
+deploy Railway, or prove that any host is serving the candidate revision.

@@ -46,7 +46,7 @@ RIGHTS_CRITICAL_PATHS = {
     "protocol/restricted-publication-v1.schema.json",
     "readings/china-publication-rights-latest.json",
 }
-UCDP_ADAPTER_CRITICAL_PATHS = {
+UCDP_RELEASE_CRITICAL_PATHS = {
     "collectors/ucdp_bulk.py",
     "config/ucdp_acquisition_lock.json",
     "config/ucdp_aggregate.json",
@@ -54,10 +54,25 @@ UCDP_ADAPTER_CRITICAL_PATHS = {
     "core/ucdp_aggregate.py",
     "docs/UCDP-AGGREGATE-CONTEXT.md",
     "protocol/ucdp-aggregate-v1.schema.json",
+    "protocol/ucdp-aggregate-release-receipt-v1.schema.json",
     "protocol/ucdp-reviewed-acquisition-lock-v1.schema.json",
+    "readings/ucdp-aggregate-latest.json",
+    "readings/ucdp-aggregate-release-receipt.json",
     "scripts/ucdp_bulk_pull.py",
+    "scripts/verify_ucdp_public_release.py",
+    "tests/test_publication_contract.py",
     "tests/test_ucdp_bulk_aggregate.py",
+    "tests/test_ucdp_public_release.py",
     "tests/test_safe_fetch.py",
+}
+DEEP_REPORT_CRITICAL_PATHS = {
+    "config/pages_public_binary_allowlist.json",
+    "protocol/deep-research-publication-receipt-v1.schema.json",
+    "research/china-pakistan-myanmar-bri-2026/index.html",
+    "research/china-pakistan-myanmar-bri-2026/publication-receipt.json",
+    "research/china-pakistan-myanmar-bri-2026/report.pdf",
+    "scripts/verify_deep_research_publication.py",
+    "tests/test_deep_research_publication.py",
 }
 
 
@@ -97,7 +112,7 @@ def test_manifest_binds_every_rights_critical_file(tmp_path: Path) -> None:
     assert "pages-rights-release-receipt.json" not in manifest["critical_files"]
 
 
-def test_manifest_binds_adapter_ready_ucdp_contract_without_claiming_live_data(
+def test_manifest_binds_reviewed_live_ucdp_release_without_claiming_upstream_signature(
     tmp_path: Path,
 ) -> None:
     root = _publication_root(tmp_path)
@@ -105,9 +120,8 @@ def test_manifest_binds_adapter_ready_ucdp_contract_without_claiming_live_data(
         root, "e" * 40, "2026-08-26T18:00:00Z"
     )
 
-    assert UCDP_ADAPTER_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
-    assert not any("ucdp-aggregate-latest" in path for path in manifest["critical_files"])
-    for relative in UCDP_ADAPTER_CRITICAL_PATHS:
+    assert UCDP_RELEASE_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
+    for relative in UCDP_RELEASE_CRITICAL_PATHS:
         raw = (root / relative).read_bytes()
         assert manifest["critical_files"][relative]["sha256"] == hashlib.sha256(
             raw
@@ -119,12 +133,55 @@ def test_manifest_binds_adapter_ready_ucdp_contract_without_claiming_live_data(
     review_lock = json.loads(
         (ROOT / "config/ucdp_acquisition_lock.json").read_text(encoding="utf-8")
     )
-    assert review_lock["status"] == "review_required"
-    assert review_lock["rights_decision"] is None
-    assert review_lock["inputs"] == []
+    assert review_lock["status"] == "approved"
+    assert len(review_lock["inputs"]) == 3
+    assert review_lock["rights_decision"]["status"] == (
+        "approved_for_public_annual_aggregates"
+    )
+    receipt = json.loads(
+        (ROOT / "readings/ucdp-aggregate-release-receipt.json").read_text()
+    )
+    assert receipt["publication_state"] == "live"
+    assert receipt["artifact"]["sha256"] == (
+        "10152b84688bb7d258ebcd4650696946b21435c20ebdb1c6582e04dc9c7e4a84"
+    )
+    assert receipt["trust"]["upstream_signature_status"] == "not_claimed"
     documentation = (ROOT / "docs/UCDP-AGGREGATE-CONTEXT.md").read_text()
-    assert "remains `adapter_ready`, not `live`" in documentation
+    assert "publishes a reviewed, receipt-bound annual aggregate" in documentation
     assert "cryptographic signature by UCDP" in documentation
+
+
+def test_manifest_binds_exact_report_only_package_and_withholding_decision(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    manifest = manifest_module.build_manifest(
+        root, "f" * 40, "2026-08-26T19:34:49Z"
+    )
+
+    assert DEEP_REPORT_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
+    for relative in DEEP_REPORT_CRITICAL_PATHS:
+        raw = (root / relative).read_bytes()
+        assert manifest["critical_files"][relative] == {
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+
+    receipt = json.loads(
+        (
+            ROOT
+            / "research/china-pakistan-myanmar-bri-2026/publication-receipt.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert receipt["publication_state"] == "public_report_only"
+    assert {row["path"] for row in receipt["withheld_artifacts"]} == {
+        "claims.jsonl",
+        "evidence.jsonl",
+        "report.md",
+        "run_manifest.json",
+        "sources.jsonl",
+    }
+    assert all(not row["served"] and not row["tracked"] for row in receipt["withheld_artifacts"])
 
 
 def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
@@ -251,15 +308,28 @@ def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
         'python3 -m scripts.stage_pages_rights "${rights_args[@]}" --check'
     )
     independent_scan = builder.index('verify_rights_clean.py" verify')
+    ucdp_release = builder.index("scripts.verify_ucdp_public_release")
+    deep_report = builder.index("scripts.verify_deep_research_publication")
     wire = builder.index('scripts/build_pages_wire_archive.py"')
     wire_check = builder.index("--check", wire)
     manifest = builder.index("ops/railway/build_release_manifest.py")
 
-    assert capture < stage < stage_check < independent_scan < wire < wire_check < manifest
+    assert (
+        capture
+        < stage
+        < stage_check
+        < independent_scan
+        < ucdp_release
+        < deep_report
+        < wire
+        < wire_check
+        < manifest
+    )
     assert 'rights_receipt="$control_directory/' in builder
     assert 'final_rights_receipt="$output_parent/' in builder
     assert '--receipt "$rights_receipt"' in builder
     assert "PALIMPSEST_RAILWAY_ADMISSION_EPOCH" in builder
+    assert '--current-at "$rights_admission_at"' in builder
     assert "mv \"$staging_directory/.well-known\"" not in builder
 
 
@@ -275,8 +345,14 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
     control_root.mkdir()
     for relative in (
         "config/china_econ_source_policy.json",
+        "config/pages_public_binary_allowlist.json",
         "readings/china-econ-observations.jsonl",
         "readings/bri-economic-observations-latest.json",
+        "readings/ucdp-aggregate-latest.json",
+        "readings/ucdp-aggregate-release-receipt.json",
+        "research/china-pakistan-myanmar-bri-2026/index.html",
+        "research/china-pakistan-myanmar-bri-2026/publication-receipt.json",
+        "research/china-pakistan-myanmar-bri-2026/report.pdf",
     ):
         _copy_public_fixture(public_root, relative)
 
@@ -309,8 +385,18 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
     assert captured["ledger_rows"] > 0
     assert captured["sentinels"] > 0
 
-    bri_path = public_root / "readings/bri-economic-observations-latest.json"
-    bri_before = hashlib.sha256(bri_path.read_bytes()).hexdigest()
+    preserved_paths = (
+        "readings/bri-economic-observations-latest.json",
+        "readings/ucdp-aggregate-latest.json",
+        "readings/ucdp-aggregate-release-receipt.json",
+        "research/china-pakistan-myanmar-bri-2026/index.html",
+        "research/china-pakistan-myanmar-bri-2026/publication-receipt.json",
+        "research/china-pakistan-myanmar-bri-2026/report.pdf",
+    )
+    preserved_before = {
+        relative: hashlib.sha256((public_root / relative).read_bytes()).hexdigest()
+        for relative in preserved_paths
+    }
     clock = datetime(2026, 8, 26, 18, 0, 0, tzinfo=UTC)
     publication_sha = "d" * 40
     status = stage_pages_rights.stage_pages_tree(
@@ -335,7 +421,10 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
     )
 
     assert verified == status
-    assert hashlib.sha256(bri_path.read_bytes()).hexdigest() == bri_before
+    assert {
+        relative: hashlib.sha256((public_root / relative).read_bytes()).hexdigest()
+        for relative in preserved_paths
+    } == preserved_before
     assert rights_scan_module.verify_clean(public_root, sentinels)["files"] > 0
     assert not (public_root / receipt.name).exists()
     assert receipt.is_file()

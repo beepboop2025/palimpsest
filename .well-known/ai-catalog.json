@@ -199,7 +199,7 @@
       "displayName": "Palimpsest Belt and Road Observatory Coverage Contract",
       "type": "application/json",
       "url": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
-      "description": "Public global BRI source, rights, lifecycle, economic and local-impact coverage contract with priority Pakistan, Gwadar, Balochistan, Myanmar and Kyaukpyu dossiers. Version 2 links a separately licensed World Bank WDI national-context bundle whose exact bytes have scoped production proof; neither surface is complete source ingestion or a project-count API.",
+      "description": "Public global BRI source, rights, lifecycle, economic and local-impact coverage contract with priority Pakistan, Gwadar, Balochistan, Myanmar and Kyaukpyu dossiers. Version 2 links separately licensed World Bank WDI national context, a reviewed UCDP annual aggregate, and a report-only deep research package; none is a complete-ingestion, project-count, tactical or person-level API.",
       "tags": [
         "Belt and Road Initiative",
         "CPEC",
@@ -207,6 +207,7 @@
         "CMEC",
         "Kyaukpyu",
         "Balochistan",
+        "UCDP annual aggregates",
         "infrastructure finance"
       ],
       "capabilities": [
@@ -215,7 +216,9 @@
         "map economic and local-impact evidence gaps",
         "separate Balochistan political, civic, armed, legal and rights lanes",
         "inspect the bounded NarcoScope country overlay contract",
-        "discover national economic context without inferring BRI causation"
+        "discover national economic context without inferring BRI causation",
+        "inspect reviewed annual conflict context without tactical or actor joins",
+        "read the report-only China Pakistan Myanmar deep research package"
       ],
       "representativeQueries": [
         "Which sources can verify a Gwadar project from announcement through operation?",
@@ -223,7 +226,7 @@
         "How does Palimpsest keep peaceful Baloch civic advocacy separate from armed organizations and legal designations?",
         "Which BRI economic fields are build-ready and which still need rights review?"
       ],
-      "updatedAt": "2026-08-26T15:55:34Z",
+      "updatedAt": "2026-08-26T19:34:49Z",
       "metadata": {
         "authentication": "none",
         "access": "public-read-only",
@@ -239,8 +242,17 @@
         "v1Archive": "https://palimpsest.info/readings/belt-and-road-observatory-v1.json",
         "v1ArchiveSchema": "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json",
         "economicContext": "https://palimpsest.info/readings/bri-economic-observations-latest.json",
+        "ucdpAnnualAggregate": "https://palimpsest.info/readings/ucdp-aggregate-latest.json",
+        "ucdpAggregateSchema": "https://palimpsest.info/protocol/ucdp-aggregate-v1.schema.json",
+        "ucdpReleaseReceipt": "https://palimpsest.info/readings/ucdp-aggregate-release-receipt.json",
+        "ucdpReviewedLock": "https://palimpsest.info/config/ucdp_acquisition_lock.json",
+        "ucdpArtifactSha256": "sha256:10152b84688bb7d258ebcd4650696946b21435c20ebdb1c6582e04dc9c7e4a84",
+        "ucdpRightsValidUntil": "2026-09-25T19:26:50Z",
+        "deepResearchReport": "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/",
+        "deepResearchPdf": "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/report.pdf",
+        "deepResearchPublicationReceipt": "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/publication-receipt.json",
         "humanLandingPage": "https://palimpsest.info/belt-and-road/",
-        "coverageBoundary": "Source discovery and adapter readiness are not ingestion, and unlike project lifecycle or claim states are never summed. WDI national series cannot establish BRI causation or project, actor or corridor facts."
+        "coverageBoundary": "Source discovery and adapter readiness are not ingestion, and unlike project lifecycle or claim states are never summed. WDI national series cannot establish BRI causation or project, actor or corridor facts. UCDP is annual historical aggregate context only, and report machine rows are withheld; neither surface supports actor, route, project, guilt, causal, tactical or person-level inference."
       }
     },
     {
