@@ -118,11 +118,28 @@ def _validate_current_clocks(
     source = artifact.get("source")
     if type(source) is not dict:
         raise UCDPPublicReleaseError("aggregate source is not an object")
+    rights_observed_at = _clock(
+        source.get("rights_observed_at"),
+        label="rights_observed_at",
+    )
+    rights_reviewed_at = _clock(
+        source.get("rights_reviewed_at"),
+        label="rights_reviewed_at",
+    )
     rights_valid_until = _clock(
         source.get("rights_valid_until"),
         label="rights_valid_until",
     )
     future = timedelta(seconds=future_seconds)
+    if not (
+        rights_observed_at
+        <= rights_reviewed_at
+        <= publication
+        <= rights_valid_until
+    ):
+        raise UCDPPublicReleaseError(
+            "rights clocks must satisfy observed <= reviewed <= publication <= expiry"
+        )
     if publication > current + future:
         raise UCDPPublicReleaseError("aggregate publication clock is in the future")
     if current > rights_valid_until:
@@ -147,6 +164,11 @@ def _validate_current_clocks(
             label=f"receipt {position} http_last_modified",
         )
         retrievals.append(retrieved)
+        if not modified <= retrieved <= publication:
+            raise UCDPPublicReleaseError(
+                "aggregate receipt clocks must satisfy "
+                "modified <= retrieved <= publication"
+            )
         for label, clock in (("retrieved_at", retrieved), ("Last-Modified", modified)):
             if clock > current + future:
                 raise UCDPPublicReleaseError(
@@ -156,8 +178,155 @@ def _validate_current_clocks(
                 raise UCDPPublicReleaseError(
                     f"aggregate receipt {position} {label} is stale"
                 )
+            if publication - clock > maximum_age:
+                raise UCDPPublicReleaseError(
+                    f"aggregate receipt {position} {label} was stale at publication"
+                )
     if max(retrievals) - min(retrievals) > timedelta(seconds=cross_input_seconds):
         raise UCDPPublicReleaseError("aggregate retrieval clocks exceed policy skew")
+    latest_retrieved = _clock(
+        artifact.get("latest_retrieved_at"),
+        label="latest_retrieved_at",
+    )
+    if latest_retrieved != max(retrievals):
+        raise UCDPPublicReleaseError(
+            "latest_retrieved_at does not equal the latest acquisition receipt"
+        )
+    if latest_retrieved > rights_observed_at:
+        raise UCDPPublicReleaseError(
+            "latest acquisition receipt follows the rights observation"
+        )
+
+
+def _validate_review_bindings(
+    artifact: Mapping[str, Any],
+    *,
+    lock: Any,
+    registry: Any,
+) -> None:
+    source = artifact.get("source")
+    if type(source) is not dict:
+        raise UCDPPublicReleaseError("aggregate source is not an object")
+    decision = lock.rights_decision
+    expected_public_aggregate = lock.expected_public_aggregate
+    if decision is None or expected_public_aggregate is None:
+        raise UCDPPublicReleaseError("review lock is missing publication approvals")
+
+    decision_document = decision.to_dict()
+    expected_source = {
+        "source_id": registry.source["source_id"],
+        "name": registry.source["name"],
+        "publisher": registry.source["publisher"],
+        "dataset_version": registry.source["dataset_version"],
+        "catalog_url": registry.source["catalog_url"],
+        "rights_decision_id": decision.decision_id,
+        "rights_observed_at": decision_document["observed_at"],
+        "rights_reviewed_at": decision_document["reviewed_at"],
+        "rights_valid_until": decision_document["valid_until"],
+        "rights_evidence_url": decision.rights_page_url,
+        "license": decision.license,
+        "license_url": decision.license_url,
+        "attribution": decision.attribution,
+        "redistribution_status": "allowed_with_attribution",
+        "source_period_start_year": registry.source["source_period_start_year"],
+        "source_period_end_year": registry.source["source_period_end_year"],
+        "release_cadence": registry.source["release_cadence"],
+        "citations": decision_document["citations"],
+        "review_lock_sha256": lock.raw_sha256,
+        "trust_model": TRUST_MODEL,
+    }
+    if source != expected_source:
+        raise UCDPPublicReleaseError(
+            "aggregate source is not exactly bound to the reviewed rights decision"
+        )
+
+    receipts = artifact.get("acquisition_receipts")
+    if type(receipts) is not list or len(receipts) != 3:
+        raise UCDPPublicReleaseError("aggregate acquisition coverage changed")
+    pins = {pin.input_id: pin for pin in lock.inputs}
+    seen: set[str] = set()
+    expected_receipt_order = (
+        "armed_conflict",
+        "actor_registry",
+        "organized_country_year",
+    )
+    for position, receipt in enumerate(receipts, 1):
+        if type(receipt) is not dict:
+            raise UCDPPublicReleaseError(
+                f"aggregate acquisition receipt {position} is not an object"
+            )
+        input_id = receipt.get("input_id")
+        if input_id != expected_receipt_order[position - 1]:
+            raise UCDPPublicReleaseError("aggregate acquisition receipt order changed")
+        if type(input_id) is not str or input_id in seen or input_id not in pins:
+            raise UCDPPublicReleaseError("aggregate acquisition identity changed")
+        seen.add(input_id)
+        pin = pins[input_id]
+        spec = registry.inputs[input_id]
+        exact_receipt_sha256 = sha256_bytes(canonical_json_bytes(receipt))
+        expected_receipt_fields = {
+            "dataset_version": lock.dataset_version,
+            "source_url": spec.url,
+            "member_name": spec.member_name,
+            "maximum_archive_bytes": spec.maximum_archive_bytes,
+            "maximum_member_bytes": spec.maximum_member_bytes,
+            "maximum_source_age_days": registry.source["maximum_source_age_days"],
+            "archive_sha256": pin.archive_sha256,
+            "archive_bytes": pin.archive_bytes,
+            "member_sha256": pin.member_sha256,
+            "member_bytes": pin.member_bytes,
+        }
+        if (
+            exact_receipt_sha256 != pin.receipt_sha256
+            or any(
+                receipt.get(key) != value
+                for key, value in expected_receipt_fields.items()
+            )
+        ):
+            raise UCDPPublicReleaseError(
+                f"{input_id} public receipt does not match the reviewed lock and registry"
+            )
+        transport_policy = {
+            key: receipt.get(key)
+            for key in (
+                "input_id",
+                "dataset_version",
+                "source_url",
+                "request_method",
+                "request_user_agent",
+                "redirect_policy",
+                "tls_verification",
+                "maximum_archive_bytes",
+                "maximum_member_bytes",
+                "maximum_source_age_days",
+            )
+        }
+        if (
+            sha256_bytes(canonical_json_bytes(transport_policy))
+            != pin.transport_policy_sha256
+        ):
+            raise UCDPPublicReleaseError(
+                f"{input_id} public receipt transport policy changed"
+            )
+    if seen != set(pins):
+        raise UCDPPublicReleaseError("aggregate acquisition inputs are incomplete")
+
+    coverage = artifact.get("coverage")
+    if type(coverage) is not dict:
+        raise UCDPPublicReleaseError("aggregate coverage is not an object")
+    if (
+        coverage.get("actor_registry_id_count")
+        != expected_public_aggregate.actor_registry_id_count
+        or artifact.get("actor_registry_ids_sha256")
+        != expected_public_aggregate.actor_registry_ids_sha256
+        or artifact.get("conflict_years_sha256")
+        != expected_public_aggregate.conflict_years_sha256
+        or artifact.get("country_years_sha256")
+        != expected_public_aggregate.country_years_sha256
+    ):
+        raise UCDPPublicReleaseError(
+            "aggregate projection does not match reviewed expected hashes and counts"
+        )
 
 
 def build_receipt(root: Path, *, current_at: str) -> dict[str, Any]:
@@ -187,7 +356,11 @@ def build_receipt(root: Path, *, current_at: str) -> dict[str, Any]:
     except (UnicodeError, json.JSONDecodeError) as exc:
         raise UCDPPublicReleaseError(f"review lock is not strict JSON: {exc}") from exc
     _validate_schema(lock_document, lock_schema, label="review lock")
-    if lock.status != "approved" or lock.rights_decision is None:
+    if (
+        lock.status != "approved"
+        or lock.rights_decision is None
+        or lock.expected_public_aggregate is None
+    ):
         raise UCDPPublicReleaseError("review lock is not approved")
 
     try:
@@ -202,15 +375,12 @@ def build_receipt(root: Path, *, current_at: str) -> dict[str, Any]:
     if (
         artifact.get("review_lock_sha256") != lock.raw_sha256
         or source.get("review_lock_sha256") != lock.raw_sha256
-        or source.get("rights_decision_id") != decision.decision_id
-        or source.get("rights_valid_until")
-        != decision.valid_until.isoformat().replace("+00:00", "Z")
-        or source.get("trust_model") != TRUST_MODEL
         or artifact.get("registry_sha256") != registry.raw_sha256
     ):
         raise UCDPPublicReleaseError(
             "aggregate is not bound to the reviewed lock, rights decision, and registry"
         )
+    _validate_review_bindings(artifact, lock=lock, registry=registry)
     _validate_current_clocks(
         artifact,
         current_at=current_at,

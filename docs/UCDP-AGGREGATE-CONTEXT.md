@@ -16,14 +16,15 @@ Every acquisition captures the exact UCDP Download Center page and a canonical
 receipt containing its URL, byte count, SHA-256, observation time, and transport
 policy. An independent Palimpsest review must then bind that page snapshot, its
 receipt, a review date, an expiry date, the three input archives, their receipts,
-and all three required citations into
+the actor-registry count and digest, both exact public-array digests, and all
+three required citations into
 [`config/ucdp_acquisition_lock.json`](../config/ucdp_acquisition_lock.json).
 The lock is closed by
 [`protocol/ucdp-reviewed-acquisition-lock-v1.schema.json`](../protocol/ucdp-reviewed-acquisition-lock-v1.schema.json)
 and independently revalidated by the strict typed parser.
 
 The approved lock SHA-256 is
-`aba0208f9fa020f647d95b716d09de3726cef07bdf47b0dfb8150799529f039d`.
+`5975f2bbf1617a06a0c63b9843500082d2a3d2c866314d57ef53719332807fb2`.
 The reviewed Git lock is Palimpsest's explicit approval anchor. It is not a
 cryptographic signature by UCDP, proof that UCDP approved the acquisition, or a
 substitute for checking the captured rights page. The lock permits only annual
@@ -54,6 +55,10 @@ publication. Redirects are disabled. TLS certificate and hostname verification
 are required. The safe-fetch layer pins validated public IP addresses, while the
 ZIP layer independently enforces one flat member, CRC validity, supported
 compression, decompressed-size caps, and a compression-ratio ceiling.
+The public verifier hashes each complete public acquisition receipt and requires
+an exact match to its reviewed lock pin, then independently rechecks its URL,
+member, byte ceilings, archive/member identities, transport policy, and fixed
+receipt order against the registry and lock.
 
 Publication uses separate current, publication, retrieval, source, rights
 observation, review, and expiry clocks. The gate requires:
@@ -64,6 +69,8 @@ observation, review, and expiry clocks. The gate requires:
   validity window;
 - rights observation, review, and expiry clocks in order, with future clocks
   rejected beyond the same 300-second allowance;
+- the latest input retrieval no later than the rights-page observation, and the
+  observation no later than review and publication;
 - all three retrieval clocks within 900 seconds of one another; and
 - each input's `Last-Modified` and retrieval clock no more than 550 days old at
   both publication and build time, and not future-dated beyond 300 seconds.
@@ -81,7 +88,7 @@ The public JSON schema is
 The checked-in version 26.1 aggregate contains 331 conflict-year records, 74
 country-year records, and referential-integrity coverage for 1,928 UCDP actor
 IDs over 1948–2025. Its exact SHA-256 is
-`10152b84688bb7d258ebcd4650696946b21435c20ebdb1c6582e04dc9c7e4a84`.
+`af1965aa0c02bf58f8c7671b98531bb65338f59eddbd9f81b6c15c1f947258ae`.
 It permits only:
 
 - Balochistan conflict-year rows where UCDP location is Pakistan and territory

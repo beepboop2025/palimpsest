@@ -35,6 +35,10 @@ from collectors.ucdp_bulk import (
     parse_review_lock,
     receipt_for,
     verify_acquisition_receipt,
+    _csv_rows,
+    _parse_actor_registry,
+    _parse_conflicts,
+    _parse_country_years,
     _transport_policy_sha256,
 )
 from core.safe_fetch import SafeFetchResponse
@@ -60,7 +64,7 @@ REVIEW_LOCK_SCHEMA = (
 REVIEW_LOCK = ROOT / "config" / "ucdp_acquisition_lock.json"
 RETRIEVED_AT = datetime(2026, 8, 26, 18, 30, tzinfo=UTC)
 LAST_MODIFIED = datetime(2026, 6, 8, 20, 19, 1, tzinfo=UTC)
-RIGHTS_OBSERVED_AT = datetime(2026, 8, 26, 18, 29, tzinfo=UTC)
+RIGHTS_OBSERVED_AT = datetime(2026, 8, 26, 18, 31, tzinfo=UTC)
 RIGHTS_REVIEWED_AT = datetime(2026, 8, 26, 18, 35, tzinfo=UTC)
 PUBLICATION_AT = datetime(2026, 8, 26, 18, 40, tzinfo=UTC)
 CURRENT_AT = datetime(2026, 8, 27, 0, 0, tzinfo=UTC)
@@ -299,6 +303,27 @@ def _review_material(registry, archives, receipts):
                 "transport_policy_sha256": _transport_policy_sha256(receipt),
             }
         )
+    members = {
+        input_id: extract_member(archives[input_id], registry.inputs[input_id]).raw
+        for input_id in registry.inputs
+    }
+    rows = {
+        input_id: _csv_rows(member, spec=registry.inputs[input_id])
+        for input_id, member in members.items()
+    }
+    actor_ids, actor_ids_sha256 = _parse_actor_registry(rows["actor_registry"])
+    conflicts = _parse_conflicts(
+        rows["armed_conflict"],
+        registry=registry,
+        actor_ids=actor_ids,
+        armed_receipt=receipts["armed_conflict"],
+        actor_receipt=receipts["actor_registry"],
+    )
+    country_years = _parse_country_years(
+        rows["organized_country_year"],
+        registry=registry,
+        receipt=receipts["organized_country_year"],
+    )
     document = {
         "schema_version": REVIEW_LOCK_SCHEMA_VERSION,
         "status": "approved",
@@ -310,6 +335,16 @@ def _review_material(registry, archives, receipts):
             "maximum_evidence_age_days": 550,
         },
         "rights_decision": decision,
+        "expected_public_aggregate": {
+            "actor_registry_id_count": len(actor_ids),
+            "actor_registry_ids_sha256": actor_ids_sha256,
+            "conflict_years_sha256": sha256_bytes(
+                canonical_json_bytes([row.to_dict() for row in conflicts])
+            ),
+            "country_years_sha256": sha256_bytes(
+                canonical_json_bytes([row.to_dict() for row in country_years])
+            ),
+        },
         "inputs": pins,
     }
     raw = canonical_json_bytes(document)
@@ -412,7 +447,7 @@ def test_registry_pins_rights_version_encodings_and_approved_release_status() ->
     review_lock = load_review_lock(REVIEW_LOCK)
     assert review_lock.status == "approved"
     assert review_lock.raw_sha256 == (
-        "aba0208f9fa020f647d95b716d09de3726cef07bdf47b0dfb8150799529f039d"
+        "5975f2bbf1617a06a0c63b9843500082d2a3d2c866314d57ef53719332807fb2"
     )
     assert review_lock.rights_decision is not None
     assert review_lock.rights_decision.decision_id == (
@@ -423,6 +458,19 @@ def test_registry_pins_rights_version_encodings_and_approved_release_status() ->
         "armed_conflict",
         "organized_country_year",
     )
+    assert review_lock.expected_public_aggregate is not None
+    assert review_lock.expected_public_aggregate.to_dict() == {
+        "actor_registry_id_count": 1928,
+        "actor_registry_ids_sha256": (
+            "e818085eb8dc15595ccc391da8c53612afd3acc58118e71e2baa2373bf22947d"
+        ),
+        "conflict_years_sha256": (
+            "d69c8879343f7433e05a10af123f02462d75463a23a9cf68348a6ccd06906063"
+        ),
+        "country_years_sha256": (
+            "2305243bd886cb26eb0f565041b8e788dc607c21a1dd4ab3077e4126fbc2e9bb"
+        ),
+    }
 
     bri = load_bri_registry(BRI_REGISTRY)
     ucdp = next(row for row in bri["sources"] if row["source_id"] == "ucdp_events")
@@ -453,6 +501,7 @@ def test_pending_and_approved_review_locks_match_the_closed_schema() -> None:
                 "maximum_evidence_age_days": 550,
             },
             "rights_decision": None,
+            "expected_public_aggregate": None,
             "inputs": [],
         }
     )
@@ -738,7 +787,10 @@ def test_publication_clocks_rights_expiry_and_cross_input_skew_fail_closed() -> 
         future["armed_conflict"],
         retrieved_at=PUBLICATION_AT + timedelta(minutes=6),
     )
-    with pytest.raises(UCDPBulkError, match="retrieval clocks|future"):
+    with pytest.raises(
+        UCDPBulkError,
+        match="retrieval clocks|future|rights observation",
+    ):
         _build(registry, archives, future)
 
     with pytest.raises(UCDPBulkError, match="rights decision has expired"):
@@ -785,6 +837,9 @@ def test_rights_snapshot_and_review_decision_are_exact_and_expiring() -> None:
                 "trust_model": review_lock.trust_model,
                 "policy": review_lock.policy.to_dict(),
                 "rights_decision": review_lock.rights_decision.to_dict(),
+                "expected_public_aggregate": (
+                    review_lock.expected_public_aggregate.to_dict()
+                ),
                 "inputs": [row.to_dict() for row in review_lock.inputs],
             }
         )

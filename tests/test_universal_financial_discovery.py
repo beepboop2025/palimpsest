@@ -336,7 +336,7 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
             "https://palimpsest.info/config/ucdp_acquisition_lock.json"
         ),
         "ucdpArtifactSha256": (
-            "sha256:10152b84688bb7d258ebcd4650696946b21435c20ebdb1c6582e04dc9c7e4a84"
+            "sha256:af1965aa0c02bf58f8c7671b98531bb65338f59eddbd9f81b6c15c1f947258ae"
         ),
         "ucdpRightsValidUntil": "2026-09-25T19:26:50Z",
         "deepResearchReport": (

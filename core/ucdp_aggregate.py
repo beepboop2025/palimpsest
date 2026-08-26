@@ -663,6 +663,23 @@ def _movement_lanes() -> list[dict[str, str]]:
     ]
 
 
+def _scope_policy() -> dict[str, object]:
+    return {
+        "geographies": ["MMR", "PAK-BAL"],
+        "temporal_resolution": "annual_historical",
+        "movement_scope": "plural_lanes_no_unified_movement_entity",
+        "actor_identity": "ucdp_actor_ids_only_no_public_actor_names",
+        "event_coordinates": "prohibited",
+        "village_names": "prohibited",
+        "event_narratives": "prohibited",
+        "person_dossiers": "prohibited",
+        "live_or_tactical_fields": "prohibited",
+        "drug_actor_inference": "prohibited",
+        "join_boundary": "historical_context_only_no_operational_or_causal_join",
+        "missing_rights_stale_policy": "fail_closed_unavailable_not_zero",
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class UCDPAggregateBundle:
     """Authenticated UCDP evidence reduced to the public annual allowlist."""
@@ -700,6 +717,18 @@ class UCDPAggregateBundle:
             raise TypeError("source must be a frozen SourceRecord")
         if self.source.review_lock_sha256 != self.review_lock_sha256:
             raise UCDPAggregateError("source has the wrong reviewed lock")
+        rights_reviewed_at = parse_timestamp(
+            self.source.rights_reviewed_at,
+            label="source rights_reviewed_at",
+        )
+        rights_valid_until = parse_timestamp(
+            self.source.rights_valid_until,
+            label="source rights_valid_until",
+        )
+        if not rights_reviewed_at <= generated_at <= rights_valid_until:
+            raise UCDPAggregateError(
+                "generated_at must fall within the reviewed rights interval"
+            )
         if (
             type(self.acquisition_receipts) is not tuple
             or len(self.acquisition_receipts) != 3
@@ -708,18 +737,33 @@ class UCDPAggregateBundle:
         input_ids: set[str] = set()
         acquisition_ids: dict[str, str] = {}
         latest_retrieval: datetime | None = None
+        expected_receipt_order = (
+            "armed_conflict",
+            "actor_registry",
+            "organized_country_year",
+        )
         for position, receipt in enumerate(self.acquisition_receipts, 1):
             if not isinstance(receipt, AcquisitionReceiptRecord):
                 raise TypeError(
                     f"acquisition receipt {position} must be a frozen record"
                 )
             input_id = receipt.input_id
+            if input_id != expected_receipt_order[position - 1]:
+                raise UCDPAggregateError("acquisition receipt order changed")
             acquisition_id = receipt.acquisition_id
             if input_id in input_ids:
                 raise UCDPAggregateError("acquisition input_id is duplicated")
             input_ids.add(input_id)
             acquisition_ids[input_id] = acquisition_id
             retrieved_at = parse_timestamp(receipt.retrieved_at, label="receipt retrieved_at")
+            modified_at = parse_timestamp(
+                receipt.http_last_modified,
+                label="receipt http_last_modified",
+            )
+            if not modified_at <= retrieved_at <= generated_at:
+                raise UCDPAggregateError(
+                    "receipt clocks must satisfy modified <= retrieved <= generated"
+                )
             latest_retrieval = (
                 max(latest_retrieval, retrieved_at)
                 if latest_retrieval
@@ -734,6 +778,14 @@ class UCDPAggregateBundle:
         if latest_retrieved_at != latest_retrieval:
             raise UCDPAggregateError(
                 "latest_retrieved_at must equal the latest reviewed retrieval clock"
+            )
+        rights_observed_at = parse_timestamp(
+            self.source.rights_observed_at,
+            label="source rights_observed_at",
+        )
+        if latest_retrieved_at > rights_observed_at:
+            raise UCDPAggregateError(
+                "reviewed retrieval must not follow the rights observation"
             )
         if generated_at < latest_retrieved_at:
             raise UCDPAggregateError("generated_at must not precede reviewed evidence")
@@ -787,22 +839,7 @@ class UCDPAggregateBundle:
             "schema_version": BUNDLE_SCHEMA_VERSION,
             "generated_at": _timestamp(self.generated_at),
             "latest_retrieved_at": _timestamp(self.latest_retrieved_at),
-            "scope_policy": {
-                "geographies": ["MMR", "PAK-BAL"],
-                "temporal_resolution": "annual_historical",
-                "movement_scope": "plural_lanes_no_unified_movement_entity",
-                "actor_identity": "ucdp_actor_ids_only_no_public_actor_names",
-                "event_coordinates": "prohibited",
-                "village_names": "prohibited",
-                "event_narratives": "prohibited",
-                "person_dossiers": "prohibited",
-                "live_or_tactical_fields": "prohibited",
-                "drug_actor_inference": "prohibited",
-                "join_boundary": (
-                    "historical_context_only_no_operational_or_causal_join"
-                ),
-                "missing_rights_stale_policy": "fail_closed_unavailable_not_zero",
-            },
+            "scope_policy": _scope_policy(),
             "movement_lanes": _movement_lanes(),
             "source": self.source.to_dict(),
             "registry_sha256": self.registry_sha256,
@@ -861,7 +898,18 @@ def _record_content_id(value: Mapping[str, object], identity_key: str) -> str:
 
 
 def _validate_public_semantics(document: Mapping[str, object]) -> None:
-    _record_content_id(document, "bundle_id")
+    if document.get("scope_policy") != _scope_policy():
+        raise UCDPAggregateError("public scope policy changed")
+    if document.get("movement_lanes") != _movement_lanes():
+        raise UCDPAggregateError("public movement-lane projection changed")
+    generated_at = parse_timestamp(
+        document.get("generated_at"),
+        label="generated_at",
+    )
+    latest_retrieved_at = parse_timestamp(
+        document.get("latest_retrieved_at"),
+        label="latest_retrieved_at",
+    )
     review_lock = _digest(
         document.get("review_lock_sha256"),
         label="review_lock_sha256",
@@ -869,25 +917,76 @@ def _validate_public_semantics(document: Mapping[str, object]) -> None:
     source = document.get("source")
     if type(source) is not dict or source.get("review_lock_sha256") != review_lock:
         raise UCDPAggregateError("public source is not bound to the reviewed lock")
+    rights_observed_at = parse_timestamp(
+        source.get("rights_observed_at"),
+        label="rights_observed_at",
+    )
+    rights_reviewed_at = parse_timestamp(
+        source.get("rights_reviewed_at"),
+        label="rights_reviewed_at",
+    )
+    rights_valid_until = parse_timestamp(
+        source.get("rights_valid_until"),
+        label="rights_valid_until",
+    )
+    if not (
+        rights_observed_at
+        <= rights_reviewed_at
+        <= generated_at
+        <= rights_valid_until
+    ):
+        raise UCDPAggregateError(
+            "public rights and publication clocks are inconsistent"
+        )
 
     receipts = document.get("acquisition_receipts")
     if type(receipts) is not list or len(receipts) != 3:
         raise UCDPAggregateError("public acquisition coverage changed")
     acquisition_ids: dict[str, str] = {}
-    for receipt in receipts:
+    retrievals = []
+    expected_receipt_order = (
+        "armed_conflict",
+        "actor_registry",
+        "organized_country_year",
+    )
+    for position, receipt in enumerate(receipts):
         if type(receipt) is not dict:
             raise UCDPAggregateError("public acquisition receipt is not an object")
         acquisition_id = _record_content_id(receipt, "acquisition_id")
         input_id = receipt.get("input_id")
+        if input_id != expected_receipt_order[position]:
+            raise UCDPAggregateError("public acquisition receipt order changed")
         if type(input_id) is not str or input_id in acquisition_ids:
             raise UCDPAggregateError("public acquisition input identity changed")
         acquisition_ids[input_id] = acquisition_id
+        modified_at = parse_timestamp(
+            receipt.get("http_last_modified"),
+            label=f"{input_id} http_last_modified",
+        )
+        retrieved_at = parse_timestamp(
+            receipt.get("retrieved_at"),
+            label=f"{input_id} retrieved_at",
+        )
+        if not modified_at <= retrieved_at <= generated_at:
+            raise UCDPAggregateError(
+                "public acquisition clocks must satisfy "
+                "modified <= retrieved <= generated"
+            )
+        retrievals.append(retrieved_at)
     if set(acquisition_ids) != {
         "armed_conflict",
         "actor_registry",
         "organized_country_year",
     }:
         raise UCDPAggregateError("public acquisition inputs are incomplete")
+    if latest_retrieved_at != max(retrievals):
+        raise UCDPAggregateError(
+            "latest_retrieved_at must equal the latest acquisition receipt"
+        )
+    if latest_retrieved_at > rights_observed_at:
+        raise UCDPAggregateError(
+            "latest acquisition receipt must not follow the rights observation"
+        )
 
     conflicts = document.get("conflict_years")
     countries = document.get("country_years")
@@ -909,9 +1008,27 @@ def _validate_public_semantics(document: Mapping[str, object]) -> None:
         _record_content_id(row, "record_id")
         geography = row.get("geography_code")
         country = row.get("country_code")
+        territory = row.get("territory_name")
         expected_country = "PAK" if geography == "PAK-BAL" else "MMR"
         if geography not in GEOGRAPHIES or country != expected_country:
             raise UCDPAggregateError("conflict geography/country binding changed")
+        if geography == "PAK-BAL" and territory != "Balochistan":
+            raise UCDPAggregateError("Balochistan conflict territory changed")
+        if geography == "MMR" and territory not in {
+            None,
+            "Arakan",
+            "Common Border",
+            "Kachin",
+            "Karen",
+            "Karenni",
+            "Kokang",
+            "Lahu",
+            "Mon",
+            "Nagaland",
+            "Shan",
+            "Wa",
+        }:
+            raise UCDPAggregateError("Myanmar conflict territory changed")
         year = _integer(row.get("year"), label="conflict year", minimum=1946)
         conflict_id = _integer(row.get("conflict_id"), label="conflict_id", minimum=1)
         key = (geography, conflict_id, year)
@@ -963,6 +1080,35 @@ def _validate_public_semantics(document: Mapping[str, object]) -> None:
             "organized_country_year"
         ]:
             raise UCDPAggregateError("country-year row has the wrong acquisition")
+
+    years = [key[2] for key in conflict_keys] + [key[1] for key in country_keys]
+    expected_country_keys = {
+        (country, year)
+        for country in COUNTRY_CODES
+        for year in range(1989, 2026)
+    }
+    if country_keys != expected_country_keys:
+        raise UCDPAggregateError("country-year matrix is incomplete")
+    coverage = document.get("coverage")
+    expected_coverage = {
+        "start_year": min(years),
+        "end_year": max(years),
+        "conflict_year_records": len(conflicts),
+        "country_year_records": len(countries),
+    }
+    if type(coverage) is not dict or any(
+        coverage.get(key) != value for key, value in expected_coverage.items()
+    ):
+        raise UCDPAggregateError(
+            "public coverage counts and year bounds must derive from record arrays"
+        )
+    _integer(
+        coverage.get("actor_registry_id_count"),
+        label="coverage actor_registry_id_count",
+        minimum=1,
+        maximum=100_000,
+    )
+    _record_content_id(document, "bundle_id")
 
 
 def canonical_public_bytes(

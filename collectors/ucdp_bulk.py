@@ -696,6 +696,44 @@ class UCDPInputPin:
 
 
 @dataclass(frozen=True, slots=True)
+class UCDPExpectedPublicAggregate:
+    """Private-derived aggregate facts approved by the reviewed Git lock."""
+
+    actor_registry_id_count: int
+    actor_registry_ids_sha256: str
+    conflict_years_sha256: str
+    country_years_sha256: str
+
+    def __post_init__(self) -> None:
+        _integer(
+            self.actor_registry_id_count,
+            label="expected actor_registry_id_count",
+            minimum=1,
+            maximum=MAX_SOURCE_ROWS,
+        )
+        _digest(
+            self.actor_registry_ids_sha256,
+            label="expected actor_registry_ids_sha256",
+        )
+        _digest(
+            self.conflict_years_sha256,
+            label="expected conflict_years_sha256",
+        )
+        _digest(
+            self.country_years_sha256,
+            label="expected country_years_sha256",
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "actor_registry_id_count": self.actor_registry_id_count,
+            "actor_registry_ids_sha256": self.actor_registry_ids_sha256,
+            "conflict_years_sha256": self.conflict_years_sha256,
+            "country_years_sha256": self.country_years_sha256,
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class UCDPRightsDecision:
     decision_id: str
     status: str
@@ -802,6 +840,7 @@ class UCDPReviewLock:
     status: str
     policy: UCDPReviewPolicy
     rights_decision: UCDPRightsDecision | None
+    expected_public_aggregate: UCDPExpectedPublicAggregate | None
     inputs: tuple[UCDPInputPin, ...]
     raw_sha256: str
     schema_version: str = REVIEW_LOCK_SCHEMA_VERSION
@@ -819,13 +858,24 @@ class UCDPReviewLock:
             raise TypeError("review lock policy must be typed")
         _digest(self.raw_sha256, label="review lock raw_sha256")
         if self.status == "review_required":
-            if self.rights_decision is not None or self.inputs:
+            if (
+                self.rights_decision is not None
+                or self.expected_public_aggregate is not None
+                or self.inputs
+            ):
                 raise UCDPBulkError("pending review lock must not approve evidence")
             return
         if self.status != "approved":
             raise UCDPBulkError("review lock status changed")
         if not isinstance(self.rights_decision, UCDPRightsDecision):
             raise UCDPBulkError("approved lock requires a rights decision")
+        if not isinstance(
+            self.expected_public_aggregate,
+            UCDPExpectedPublicAggregate,
+        ):
+            raise UCDPBulkError(
+                "approved lock requires expected public aggregate facts"
+            )
         if type(self.inputs) is not tuple or len(self.inputs) != 3:
             raise UCDPBulkError("approved lock requires exactly three input pins")
         if tuple(row.input_id for row in self.inputs) != tuple(sorted(EXPECTED_HEADERS)):
@@ -859,6 +909,7 @@ def parse_review_lock(raw: bytes) -> UCDPReviewLock:
         "trust_model",
         "policy",
         "rights_decision",
+        "expected_public_aggregate",
         "inputs",
     }
     if type(value) is not dict or set(value) != expected:
@@ -874,14 +925,16 @@ def parse_review_lock(raw: bytes) -> UCDPReviewLock:
     policy = UCDPReviewPolicy(**policy_value)
 
     rights_value = value["rights_decision"]
+    expected_value = value["expected_public_aggregate"]
     input_values = value["inputs"]
     if value["status"] == "review_required":
-        if rights_value is not None or input_values != []:
+        if rights_value is not None or expected_value is not None or input_values != []:
             raise UCDPBulkError("pending review lock must not contain approvals")
         return UCDPReviewLock(
             status="review_required",
             policy=policy,
             rights_decision=None,
+            expected_public_aggregate=None,
             inputs=(),
             raw_sha256=sha256_bytes(raw),
             schema_version=value["schema_version"],
@@ -926,6 +979,16 @@ def parse_review_lock(raw: bytes) -> UCDPReviewLock:
     rights_copy["citations"] = _citation_records(rights_copy["citations"])
     decision = UCDPRightsDecision(**rights_copy)
 
+    expected_fields = {
+        "actor_registry_id_count",
+        "actor_registry_ids_sha256",
+        "conflict_years_sha256",
+        "country_years_sha256",
+    }
+    if type(expected_value) is not dict or set(expected_value) != expected_fields:
+        raise UCDPBulkError("expected public aggregate fields changed")
+    expected_public_aggregate = UCDPExpectedPublicAggregate(**expected_value)
+
     if type(input_values) is not list or len(input_values) != 3:
         raise UCDPBulkError("review lock requires three input pins")
     input_fields = {
@@ -946,6 +1009,7 @@ def parse_review_lock(raw: bytes) -> UCDPReviewLock:
         status=value["status"],
         policy=policy,
         rights_decision=decision,
+        expected_public_aggregate=expected_public_aggregate,
         inputs=tuple(pins),
         raw_sha256=sha256_bytes(raw),
         schema_version=value["schema_version"],
@@ -1822,6 +1886,10 @@ def _validate_reviewed_publication(
         raise UCDPBulkError("rights decision contains a future clock")
 
     retrievals = [receipt.retrieved_at for receipt in receipts.values()]
+    if max(retrievals) > decision.observed_at:
+        raise UCDPBulkError(
+            "UCDP retrieval must not follow the reviewed rights observation"
+        )
     if max(retrievals) - min(retrievals) > timedelta(
         seconds=review_lock.policy.maximum_cross_input_retrieval_skew_seconds
     ):
@@ -1932,6 +2000,17 @@ def build_bundle(
         for input_id, member in members.items()
     }
     actor_ids, actor_ids_sha256 = _parse_actor_registry(rows["actor_registry"])
+    expected_public_aggregate = review_lock.expected_public_aggregate
+    if not isinstance(expected_public_aggregate, UCDPExpectedPublicAggregate):
+        raise UCDPBulkError("approved lock is missing aggregate expectations")
+    if (
+        len(actor_ids) != expected_public_aggregate.actor_registry_id_count
+        or actor_ids_sha256
+        != expected_public_aggregate.actor_registry_ids_sha256
+    ):
+        raise UCDPBulkError(
+            "actor registry aggregate does not match the reviewed lock"
+        )
     conflicts = _parse_conflicts(
         rows["armed_conflict"],
         registry=registry,
@@ -1944,6 +2023,20 @@ def build_bundle(
         registry=registry,
         receipt=receipts["organized_country_year"],
     )
+    conflict_years_sha256 = sha256_bytes(
+        canonical_json_bytes([row.to_dict() for row in conflicts])
+    )
+    country_years_sha256 = sha256_bytes(
+        canonical_json_bytes([row.to_dict() for row in country_years])
+    )
+    if (
+        conflict_years_sha256 != expected_public_aggregate.conflict_years_sha256
+        or country_years_sha256
+        != expected_public_aggregate.country_years_sha256
+    ):
+        raise UCDPBulkError(
+            "public aggregate arrays do not match the reviewed lock"
+        )
     ordered_receipts = tuple(
         AcquisitionReceiptRecord.from_mapping(receipts[input_id].to_dict())
         for input_id in (
@@ -2023,6 +2116,7 @@ __all__ = [
     "UCDPInputPin",
     "UCDPRegistry",
     "UCDPReviewLock",
+    "UCDPExpectedPublicAggregate",
     "UCDPReviewPolicy",
     "UCDPRightsDecision",
     "UCDPRightsSnapshotReceipt",

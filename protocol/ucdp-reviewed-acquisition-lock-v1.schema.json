@@ -12,6 +12,7 @@
     "trust_model",
     "policy",
     "rights_decision",
+    "expected_public_aggregate",
     "inputs"
   ],
   "properties": {
@@ -26,6 +27,12 @@
         {"$ref": "#/$defs/rightsDecision"}
       ]
     },
+    "expected_public_aggregate": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/expectedPublicAggregate"}
+      ]
+    },
     "inputs": {
       "type": "array",
       "maxItems": 3,
@@ -38,6 +45,7 @@
       "then": {
         "properties": {
           "rights_decision": {"type": "null"},
+          "expected_public_aggregate": {"type": "null"},
           "inputs": {"maxItems": 0}
         }
       }
@@ -47,6 +55,7 @@
       "then": {
         "properties": {
           "rights_decision": {"$ref": "#/$defs/rightsDecision"},
+          "expected_public_aggregate": {"$ref": "#/$defs/expectedPublicAggregate"},
           "inputs": {"minItems": 3, "maxItems": 3}
         }
       }
@@ -150,6 +159,26 @@
             }
           ]
         }
+      }
+    },
+    "expectedPublicAggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actor_registry_id_count",
+        "actor_registry_ids_sha256",
+        "conflict_years_sha256",
+        "country_years_sha256"
+      ],
+      "properties": {
+        "actor_registry_id_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "actor_registry_ids_sha256": {"$ref": "#/$defs/sha256"},
+        "conflict_years_sha256": {"$ref": "#/$defs/sha256"},
+        "country_years_sha256": {"$ref": "#/$defs/sha256"}
       }
     },
     "inputPin": {

@@ -143,7 +143,7 @@ def test_manifest_binds_reviewed_live_ucdp_release_without_claiming_upstream_sig
     )
     assert receipt["publication_state"] == "live"
     assert receipt["artifact"]["sha256"] == (
-        "10152b84688bb7d258ebcd4650696946b21435c20ebdb1c6582e04dc9c7e4a84"
+        "af1965aa0c02bf58f8c7671b98531bb65338f59eddbd9f81b6c15c1f947258ae"
     )
     assert receipt["trust"]["upstream_signature_status"] == "not_claimed"
     documentation = (ROOT / "docs/UCDP-AGGREGATE-CONTEXT.md").read_text()
