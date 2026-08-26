@@ -14,12 +14,13 @@ The controller enforces all of these before replacing runtime bytes:
   pinned maintainer/GitHub committer, and verifies locally against the pinned
   GitHub `web-flow` public key;
 - `mcp/palimpsest_mcp.py` and `server.json` are exact blobs from the commit;
-- server/manifest versions match, all six tools and four prompts discover, every
-  tool is declared read-only/closed-world, and `get_newsroom` advertises
-  `interconnection`;
+- server/manifest versions match, all six tools, four prompts, and the native
+  publication-rights resource discover; every tool is declared
+  read-only/closed-world, and `get_newsroom` advertises `interconnection`;
 - after an atomic replacement and service restart, loopback MCP initialize,
-  tool/prompt discovery, `list_signals`, and
-  `get_newsroom(view="interconnection")` all pass;
+  tool/prompt/resource discovery, the publication-rights resource,
+  `list_signals`, every affected signal/newsroom closure, and the restricted
+  economic query all pass;
 - only then is `/var/lib/palimpsest-mcp-deploy/deployed-sha` advanced. A failure
   after promotion restores the previous server file and restarts it.
 
@@ -685,7 +686,8 @@ receipt on the host:
 ```bash
 python3 scripts/smoke_palimpsest_mcp.py \
   --url https://api.seiche.info/palimpsest/mcp \
-  --module mcp/palimpsest_mcp.py --manifest server.json
+  --module mcp/palimpsest_mcp.py --manifest server.json \
+  --bootstrap-deny --expected-publication-sha "$target_sha"
 sudo cat /var/lib/palimpsest-mcp-deploy/deployed-sha
 sudo cat /var/lib/palimpsest-mcp-deploy/receipts/<target-sha>.json
 ```
@@ -693,8 +695,17 @@ sudo cat /var/lib/palimpsest-mcp-deploy/receipts/<target-sha>.json
 The successful deploy run uploads a non-secret artifact named
 `palimpsest-mcp-deployment-<target-sha>-run-<run-id>-attempt-<attempt>`. It binds
 the exact SHA, run attempt, and server version to the forced-command deployment
-and public smoke. Only after the live SHA, version, discovery, calls, and
-artifact are verified should the separate Registry transaction run:
+and public bootstrap smoke. During the first rights-aware release that smoke
+must prove the complete native default-deny route matrix even when the matching
+Pages status does not exist yet. It is not final rights-status proof and does
+not authorize Registry publication.
+
+For an ordinary steady-state release, the separate Registry transaction may
+run now. For a release that introduces or changes the Pages rights contract,
+skip this Registry block until the complete Pages workflow below has also
+succeeded its `Verify exact Pages and native MCP rights closure` job. This
+explicit two-phase order avoids a deadlock: MCP first supplies the deny fallback;
+Pages then publishes the SHA-bound status; the final smoke binds both surfaces.
 
 ```bash
 registry_runs_before="$release_gate_dir/registry-runs-before.txt"
@@ -793,7 +804,8 @@ for required_job in \
   'Admit the exact tested publication' \
   'Admit exact deployed MCP release before Pages' \
   'Package exact complete Pages edition' \
-  'Deploy exact complete Pages edition'; do
+  'Deploy exact complete Pages edition' \
+  'Verify exact Pages and native MCP rights closure'; do
   jq -e --arg required_job "$required_job" '
     any(.jobs[]; .name == $required_job and .conclusion == "success")
   ' "$pages_jobs" >/dev/null
@@ -841,9 +853,12 @@ git fetch --force --no-tags origin \
 test "$(git rev-parse origin/main)" = "$target_sha"
 ```
 
-Only after the live smoke, host receipt, deployment artifact, Registry receipt,
-official latest record, exact complete Tests run, Pages deployment, and served
-bytes all agree may the states captured in the manifest be restored. An
+For a rights-contract release, run the Registry transaction only after the
+final Pages/MCP rights job above succeeds, and require its ordinary non-bootstrap
+public smoke. Only after the live smoke, host receipt, deployment artifact,
+Registry receipt, official latest record, exact complete Tests run, Pages
+deployment, SHA-bound rights receipt, and served bytes all agree may the states
+captured in the manifest be restored. An
 intentionally disabled workflow stays disabled. The one-time release restores
 the original 35 intentions even though the target has only 34 scheduled paths:
 re-enabling the China econ workflow exposes its reviewed manual dispatch but

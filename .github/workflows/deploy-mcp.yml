@@ -95,6 +95,16 @@ jobs:
           tests/test_mcp_server.py
           tests/test_mcp_deployment.py
 
+      - name: Verify live Pages rights status before production eligibility
+        env:
+          TARGET_SHA: ${{ steps.identity.outputs.target_sha }}
+        run: >-
+          python3 scripts/smoke_palimpsest_mcp.py
+          --module mcp/palimpsest_mcp.py
+          --manifest server.json
+          --rights-bootstrap-preflight
+          --expected-publication-sha "$TARGET_SHA"
+
       - name: Record reviewed candidate version
         id: contract
         run: |
@@ -202,6 +212,8 @@ jobs:
             --url "$PUBLIC_MCP_URL" \
             --module mcp/palimpsest_mcp.py \
             --manifest server.json \
+            --bootstrap-deny \
+            --expected-publication-sha '${{ needs.verify.outputs.target_sha }}' \
             --timeout 20
           printf 'public release verified: %s version %s\n' \
             '${{ needs.verify.outputs.target_sha }}' \

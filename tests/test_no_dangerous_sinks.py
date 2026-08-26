@@ -95,6 +95,9 @@ _SINKS = re.compile(
 #   to materialize a locally staged Git tree. Revisions are exact 40/64-hex
 #   object IDs before argv construction; Git config, stdin, tar environment,
 #   timeouts, and every command verb are closed. No collected byte enters argv.
+#   build_pages_binary_allowlist.py: invokes only absolute /usr/bin/git with a
+#   fixed ls-files argv to enumerate the local publication tree. Stdin is
+#   closed, replacement objects are disabled, and no evidence bytes enter argv.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
@@ -106,11 +109,54 @@ _ALLOWED = {
     ("scripts/pages_artifact_capacity.py", "subprocess."),
     ("scripts/build_china_econ_export.py", "subprocess."),
     ("scripts/build_china_econ_lineage.py", "subprocess."),
+    ("scripts/build_pages_binary_allowlist.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
     ("scripts/recover_readings_ledger.py", "subprocess."),
     ("scripts/reproduce_all.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
 }
+
+
+def test_pages_binary_allowlist_keeps_a_closed_git_boundary():
+    source = (ROOT / "scripts" / "build_pages_binary_allowlist.py").read_text(
+        encoding="utf-8"
+    )
+    tree = ast.parse(source)
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "subprocess"
+        and node.func.attr == "run"
+    ]
+    assert len(calls) == 1
+    call = calls[0]
+    assert ast.unparse(call.args[0]) == (
+        "[GIT_EXECUTABLE, '--no-replace-objects', 'ls-files', '-z', "
+        "'--cached', '--others', '--exclude-standard']"
+    )
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords}
+    assert set(keywords) == {
+        "capture_output",
+        "check",
+        "cwd",
+        "env",
+        "stdin",
+        "timeout",
+    }
+    assert ast.literal_eval(keywords["capture_output"]) is True
+    assert ast.literal_eval(keywords["check"]) is True
+    assert ast.unparse(keywords["cwd"]) == "root"
+    assert ast.literal_eval(keywords["env"]) == {
+        "PATH": "/usr/bin:/bin",
+        "LC_ALL": "C",
+    }
+    assert ast.unparse(keywords["stdin"]) == "subprocess.DEVNULL"
+    assert ast.literal_eval(keywords["timeout"]) == 120
+    assert 'GIT_EXECUTABLE = "/usr/bin/git"' in source
+    assert "shell=True" not in source
 
 
 def test_mcp_release_verifier_keeps_a_closed_gpgv_boundary():

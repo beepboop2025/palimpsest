@@ -12,11 +12,10 @@
     "datasets": 78,
     "states": {
       "disabled": 1,
-      "fresh": 19,
-      "gated": 6,
-      "historical": 1,
+      "fresh": 13,
+      "gated": 17,
       "private-node": 1,
-      "stale": 36,
+      "stale": 32,
       "warming": 14
     },
     "layers": {
@@ -30,8 +29,8 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 35112268,
-    "history_rows": 11020
+    "published_bytes": 20242189,
+    "history_rows": 8675
   },
   "datasets": [
     {
@@ -1661,11 +1660,12 @@
     {
       "id": "data-darkness",
       "name": "Official-data darkness",
-      "description": "Tracks publication freshness across official monetary, statistical, exchange, and rail surfaces while separating unreachability from missing publication.",
+      "description": "Publication is gated because the current aggregate includes CFETS-derived freshness values whose redistribution is denied. The public endpoint exposes restriction metadata only; unavailable is not zero or calm.",
       "layer": "state",
       "stage": "observation",
       "collection_mode": "passive",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT12H",
       "geography": [
         "CN"
@@ -1689,18 +1689,15 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-23T10:32:44Z",
-        "age_seconds": 270473,
-        "counts": {
-          "n_series_watched": 7,
-          "n_series_reporting": 7
-        },
-        "latest_bytes": 3882,
-        "history_bytes": 3631,
-        "history_rows": 17,
-        "latest_available": true,
-        "history_available": true
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
+        "history_available": false
       },
       "urls": {
         "latest": "https://palimpsest.info/readings/data-darkness-latest.json",
@@ -1712,11 +1709,12 @@
     {
       "id": "china-econ",
       "name": "China economic telemetry",
-      "description": "Historical bitemporal observations of official CFETS and related benchmarks, retaining publication and effective dates separately. Automated collection is stopped because written redistribution licensing has not been established.",
+      "description": "Historical collection metadata for official CFETS and related benchmarks. Value publication is gated because written redistribution licensing has not been established; the same-path public endpoints expose restriction metadata only.",
       "layer": "state",
       "stage": "observation",
       "collection_mode": "passive",
-      "status": "historical",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT6H",
       "geography": [
         "CN"
@@ -1737,17 +1735,15 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "historical",
-        "observed_at": "2026-08-23T01:47:39Z",
-        "age_seconds": 301978,
-        "counts": {
-          "history_days": 49
-        },
-        "latest_bytes": 739,
-        "history_bytes": 14547,
-        "history_rows": 49,
-        "latest_available": true,
-        "history_available": true
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
+        "history_available": false
       },
       "urls": {
         "latest": "https://palimpsest.info/readings/china-econ-latest.json",
@@ -1759,11 +1755,12 @@
     {
       "id": "china-economic-observations",
       "name": "China economic observation ledger",
-      "description": "Aggregate-only, bitemporal economic observations with separate reference-period, source-release and Palimpsest-collection clocks, revision identity and exact evidence hashes. The current public ledger is narrow and mostly CFETS-derived; it is an auditable interchange, not a complete national activity index or an estimate of true GDP.",
+      "description": "Metadata-only restricted endpoint for the former narrow, aggregate-only bitemporal ledger; it was an auditable interchange, not an estimate of true GDP. The reviewed policy denies CFETS/ChinaMoney value publication, so zero observation rows or derivatives are public; restricted is not a current economic reading.",
       "layer": "economy",
       "stage": "observation",
       "collection_mode": "passive-bitemporal-aggregate",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "P1D",
       "freshness_budget": "P10D",
       "freshness_semantics": "Event-time freshness advances only when a new or revised observation is appended. It does not claim that the scheduled collector was healthy on every poll.",
@@ -1787,19 +1784,15 @@
         "url": "https://palimpsest.info/data.html#rights"
       },
       "artifacts": {
-        "evidence_state": "fresh",
-        "observed_at": "2026-08-23T01:47:39.298387Z",
-        "age_seconds": 301977,
-        "counts": {
-          "artifact.records": 2259,
-          "coverage.series_count": 15,
-          "coverage.source_count": 1
-        },
-        "latest_bytes": 3033,
-        "history_bytes": 1983774,
-        "history_rows": 2259,
-        "latest_available": true,
-        "history_available": true
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
+        "history_available": false
       },
       "urls": {
         "latest": "https://palimpsest.info/readings/china-econ-observations-latest.json",
@@ -1863,11 +1856,12 @@
     {
       "id": "china-economic-forecast",
       "name": "China named-series forecast and backtest audit",
-      "description": "Deterministic pseudo-real-time backtests over the bitemporal observation ledger, scoring first-release and latest-revised outcomes separately. Every model, failed fold and promotion gate remains public; named-series forecasts stay null until frozen history, independence, revision and calibration gates all pass. This is not an economy-wide activity forecast.",
+      "description": "Publication-gated pseudo-real-time backtests derived from the restricted China observation ledger. Named-series forecasts stay null; no score, warming state or direction is public while denied upstream values remain in the dependency graph.",
       "layer": "economy",
       "stage": "model-evaluation",
       "collection_mode": "deterministic-pseudo-real-time",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "P1D",
       "freshness_budget": "P10D",
       "freshness_semantics": "Derived event time follows the newest checksum-validated ledger collection clock; it is not a collector-health heartbeat.",
@@ -1890,18 +1884,14 @@
         "url": "https://palimpsest.info/data.html#rights"
       },
       "artifacts": {
-        "evidence_state": "fresh",
-        "observed_at": "2026-08-23T01:47:39.298387Z",
-        "age_seconds": 301977,
-        "counts": {
-          "n_targets": 3,
-          "summary.ready_targets": 0,
-          "summary.abstaining_targets": 3
-        },
-        "latest_bytes": 385205,
-        "history_bytes": 0,
-        "history_rows": 0,
-        "latest_available": true,
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
         "history_available": false
       },
       "urls": {
@@ -1913,11 +1903,12 @@
     {
       "id": "cny-fix-gap",
       "name": "CNY fixing gap",
-      "description": "Same-day comparison between China's central parity and independent central-bank reference rates, with explicit abstention when date parity is absent.",
+      "description": "Publication-gated comparison formerly derived from CFETS central parity and independent central-bank reference rates. The current public endpoint exposes restriction metadata only and does not infer a zero gap.",
       "layer": "state",
       "stage": "corroboration",
       "collection_mode": "passive",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "P1D",
       "geography": [
         "CN",
@@ -1941,17 +1932,15 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-23T17:27:00Z",
-        "age_seconds": 245617,
-        "counts": {
-          "history_days": 11
-        },
-        "latest_bytes": 1434,
-        "history_bytes": 1381,
-        "history_rows": 11,
-        "latest_available": true,
-        "history_available": true
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
+        "history_available": false
       },
       "urls": {
         "latest": "https://palimpsest.info/readings/cny-fix-gap-latest.json",
@@ -2494,11 +2483,12 @@
     {
       "id": "china-article-stream",
       "name": "Palimpsest China Article Stream",
-      "description": "Newest-first, one-entry-per-publisher-item China and Hong Kong feed projected from the evidence wire. Every entry includes its event-bound Palimpsest position, source-independence assessment, declared collector context, known unknowns and next verification moves. Reviewed ScamShield Telegram aggregates remain a separate context-only lane and never count as corroboration.",
+      "description": "Temporarily publication-gated mixed China article stream because the current artifact embeds economic context derived from rights-denied CFETS inputs. A filtered build is required before unaffected publisher metadata can return.",
       "layer": "cross-layer",
       "stage": "publication",
       "collection_mode": "deterministic-metadata-projection",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT1H",
       "geography": [
         "CN",
@@ -2523,19 +2513,14 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "fresh",
-        "observed_at": "2026-08-26T12:34:59Z",
-        "age_seconds": 3938,
-        "counts": {
-          "n_entries": 477,
-          "coverage.registered_sources": 47,
-          "coverage.successful_sources": 47,
-          "coverage.excluded_global_feed_items": 119
-        },
-        "latest_bytes": 3588063,
-        "history_bytes": 0,
-        "history_rows": 0,
-        "latest_available": true,
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
         "history_available": false
       },
       "urls": {
@@ -2740,11 +2725,12 @@
     {
       "id": "china-situation",
       "name": "China Situation Synthesis",
-      "description": "Deterministic event dossiers that place attributed publisher reports, exact-link institutional social observations, human-reviewed source-free Telegram signals and declared Observatory measurements in one view while preserving their different evidentiary roles. Exact URL joins are used for social context; topic-level measurements never become article verification.",
+      "description": "Temporarily publication-gated deterministic event dossiers that preserve different evidentiary roles, exact URL joins, and the rule that topic-level measurements never become article verification. The current mixed artifact carries CFETS-derived Observatory context, so whole-endpoint quarantine applies until an unaffected rebuild exists.",
       "layer": "cross-layer",
       "stage": "synthesis",
       "collection_mode": "deterministic-evidence-bound-projection",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT1H",
       "geography": [
         "CN",
@@ -2771,20 +2757,14 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "fresh",
-        "observed_at": "2026-08-26T12:34:59Z",
-        "age_seconds": 3938,
-        "counts": {
-          "coverage.in_scope_events": 451,
-          "coverage.publisher_reports": 478,
-          "coverage.measurement_context_rows": 638,
-          "coverage.social_observations_linked": 0,
-          "coverage.reviewed_telegram_signals": 0
-        },
-        "latest_bytes": 7874407,
-        "history_bytes": 0,
-        "history_rows": 0,
-        "latest_available": true,
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
         "history_available": false
       },
       "urls": {
@@ -2843,11 +2823,12 @@
     {
       "id": "china-economic-pulse",
       "name": "China Economic Pulse",
-      "description": "Revision-safe synthesis of official economic releases, market prints and physical telemetry. It preserves as-of clocks, source independence, release gaps and revisions, and abstains from a composite state claim until declared coverage gates pass; it is not an estimate of true GDP.",
+      "description": "Publication-gated revision-safe synthesis whose current dependency graph includes rights-denied CFETS values. Its coverage gates formerly preserved as-of clocks and abstained from a composite rather than estimating true GDP; the public endpoint is now metadata-only and exposes no metrics, warming states, scores or direction.",
       "layer": "economy",
       "stage": "synthesis",
       "collection_mode": "deterministic-revision-safe",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT1H",
       "geography": [
         "CN",
@@ -2870,18 +2851,14 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-23T17:27:00Z",
-        "age_seconds": 245617,
-        "counts": {
-          "n_metrics": 34,
-          "coverage.registered_sources": 34,
-          "coverage.observed_source_ids": 10
-        },
-        "latest_bytes": 72213,
-        "history_bytes": 0,
-        "history_rows": 0,
-        "latest_available": true,
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
         "history_available": false
       },
       "urls": {
@@ -2940,11 +2917,12 @@
     {
       "id": "evidence-mesh",
       "name": "Palimpsest Evidence Mesh",
-      "description": "Deterministic, no-network inventory of public aggregate evidence, analytical context, provenance lineage, freshness and reuse rights. It maps eligible inputs without copying private data, identifying people, joining records into allegations or treating partner artifacts as automatically admitted evidence.",
+      "description": "Temporarily publication-gated deterministic evidence inventory. It maps partner artifacts without treating them as automatically admitted evidence, but the current mixed endpoint carries dependency material derived from a rights-denied CFETS family; a future filtered build can restore unaffected resources.",
       "layer": "cross-layer",
       "stage": "provenance",
       "collection_mode": "deterministic-pinned-inputs",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT1H",
       "geography": [
         "CN",
@@ -2968,19 +2946,14 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "fresh",
-        "observed_at": "2026-08-26T13:38:12Z",
-        "age_seconds": 145,
-        "counts": {
-          "inputs": 9,
-          "resources": 133,
-          "dependency_groups": 114,
-          "projects": 5
-        },
-        "latest_bytes": 218766,
-        "history_bytes": 0,
-        "history_rows": 0,
-        "latest_available": true,
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
         "history_available": false
       },
       "urls": {
@@ -2992,11 +2965,12 @@
     {
       "id": "machine-investigations",
       "name": "Palimpsest Machine Analysis Desk",
-      "description": "Deterministic machine-written evidence analyses with sentence-level citations, source-lineage de-duplication, explicit countercases, limitations, falsifiers, correction history and reproducibility gates. It conducts no human interviews, makes no person-level allegations and publishes an AbstentionReport when its declared evidence threshold is not met.",
+      "description": "Temporarily publication-gated deterministic machine analysis with sentence-level citations, no human interviews, explicit countercases and an AbstentionReport below threshold. The current mixed endpoint embeds an economic-readiness branch derived from rights-denied CFETS inputs, so whole-endpoint quarantine applies pending a filtered rebuild.",
       "layer": "cross-layer",
       "stage": "publication",
       "collection_mode": "deterministic-machine-analysis-gated",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT1H",
       "geography": [
         "CN",
@@ -3018,16 +2992,14 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "fresh",
-        "observed_at": "2026-08-26T13:38:12Z",
-        "age_seconds": 145,
-        "counts": {
-          "n_cases": 2
-        },
-        "latest_bytes": 39219,
-        "history_bytes": 0,
-        "history_rows": 0,
-        "latest_available": true,
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
         "history_available": false
       },
       "urls": {
@@ -3652,11 +3624,12 @@
     {
       "id": "reading-analysis",
       "name": "Reading analysis and review rank",
-      "description": "Per-instrument unusualness versus that instrument's own history, plus unlabeled editorial review ranks for live news rows. This is analysis context, not a motive sentence, not a cross-instrument censorship rate, and not automatic publication permission.",
+      "description": "Temporarily publication-gated per-instrument unusualness and editorial-review context because the current mixed artifact includes CFETS-derived values. It is not a motive sentence or cross-instrument rate; no zero, calm, rank or direction is public until a filtered rebuild separates unaffected instruments.",
       "layer": "cross-layer",
       "stage": "synthesis",
       "collection_mode": "derived",
-      "status": "live",
+      "status": "gated",
+      "publication_allowed": false,
       "cadence": "PT6H",
       "geography": [
         "CN",
@@ -3681,19 +3654,15 @@
         "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
       },
       "artifacts": {
-        "evidence_state": "stale",
-        "observed_at": "2026-08-24T10:34:36Z",
-        "age_seconds": 183961,
-        "counts": {
-          "n_instruments_scored": 26,
-          "n_instruments_warming_up": 9,
-          "n_story_ranks": 554
-        },
-        "latest_bytes": 676942,
-        "history_bytes": 2843,
-        "history_rows": 9,
-        "latest_available": true,
-        "history_available": true
+        "evidence_state": "gated",
+        "observed_at": null,
+        "age_seconds": null,
+        "counts": {},
+        "latest_bytes": null,
+        "history_bytes": null,
+        "history_rows": null,
+        "latest_available": false,
+        "history_available": false
       },
       "urls": {
         "latest": "https://palimpsest.info/readings/reading-analysis-latest.json",

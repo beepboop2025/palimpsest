@@ -153,6 +153,23 @@ def _line_count(path: Path) -> int:
 
 
 def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]:
+    # A publication-restricted dataset may have private, legacy, or review-only
+    # files at its configured paths. Their presence is not public availability
+    # and their byte/count metadata must not advertise a distribution.  The
+    # older generic ``status=gated`` also covers public aggregate products, so
+    # it is not itself a publication decision.
+    if spec.get("publication_allowed") is False:
+        return {
+            "evidence_state": "gated",
+            "observed_at": None,
+            "age_seconds": None,
+            "counts": {},
+            "latest_bytes": None,
+            "history_bytes": None,
+            "history_rows": None,
+            "latest_available": False,
+            "history_available": False,
+        }
     latest_path = _safe_repo_path(spec.get("latest"))
     history_path = _safe_repo_path(spec.get("history"))
     latest_exists = bool(latest_path and latest_path.is_file())
@@ -283,6 +300,13 @@ def _validate(config: dict[str, Any]) -> None:
             or len(item["freshness_semantics"]) > 1024
         ):
             raise ValueError(f"dataset {slug} has invalid freshness_semantics")
+        publication_allowed = item.get("publication_allowed", True)
+        if type(publication_allowed) is not bool:
+            raise ValueError(f"dataset {slug} has invalid publication_allowed")
+        if publication_allowed is False and item["status"] != "gated":
+            raise ValueError(
+                f"dataset {slug} must be gated when publication is denied"
+            )
         license_doc = item.get("license")
         if not isinstance(license_doc, dict) or not license_doc.get("name") or not license_doc.get("url"):
             raise ValueError(f"dataset {slug} needs an explicit license name and URL")
@@ -313,8 +337,10 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
         state = item["artifacts"]["evidence_state"]
         states[state] = states.get(state, 0) + 1
         layers[item["layer"]] = layers.get(item["layer"], 0) + 1
-        total_bytes += item["artifacts"]["latest_bytes"] + item["artifacts"]["history_bytes"]
-        total_rows += item["artifacts"]["history_rows"]
+        total_bytes += (item["artifacts"]["latest_bytes"] or 0) + (
+            item["artifacts"]["history_bytes"] or 0
+        )
+        total_rows += item["artifacts"]["history_rows"] or 0
 
     catalog = {
         "schema": "palimpsest-data-catalog/v1",
@@ -336,7 +362,7 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
         distributions = []
         for kind, media in (("latest", "application/json"), ("history", "application/x-ndjson")):
             path = item.get(kind)
-            if not path:
+            if not path or item.get("publication_allowed") is False:
                 continue
             local = _safe_repo_path(path)
             # Discovery metadata must describe distributions that actually
@@ -366,7 +392,7 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
             "license": item["license"]["url"],
             "spatialCoverage": item["geography"],
             "dateModified": item["artifacts"]["observed_at"],
-            "isAccessibleForFree": True,
+            "isAccessibleForFree": item.get("publication_allowed") is not False,
             "distribution": distributions,
         })
 

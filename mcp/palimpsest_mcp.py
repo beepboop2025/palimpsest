@@ -43,7 +43,7 @@ from urllib.parse import urlsplit
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.9.1"
+SERVER_VERSION = "1.9.2"
 SITE = "https://palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
@@ -92,6 +92,126 @@ MAX_ECON_QUERY_LIMIT = 100
 # contract, so a page that fits as structured data may still exceed this cap.
 MAX_ECON_RESPONSE_BYTES = 1024 * 1024
 
+# China-economic values are public only through a separately staged Pages tree.
+# The Pages release gate replaces every denied/derived endpoint with metadata and
+# publishes one master status document.  MCP consumes only that fixed, bounded
+# document; it never treats the tracked source ledger as publication authority.
+ECON_RIGHTS_STATUS_PATH = "/readings/china-publication-rights-latest.json"
+ECON_RIGHTS_STATUS_URL = SITE + ECON_RIGHTS_STATUS_PATH
+ECON_RIGHTS_SCHEMA_URL = SITE + "/protocol/restricted-publication-v1.schema.json"
+ECON_RIGHTS_RESOURCE_URI = "palimpsest://china-economic/publication-rights"
+ECON_RIGHTS_POLICY_PATH = "config/china_econ_source_policy.json"
+ECON_RIGHTS_POLICY_SCHEMA = "palimpsest.china-economic-source-policy.v1"
+ECON_RIGHTS_POLICY_SCOPE = "china_economic_values_and_seiche_export"
+ECON_RIGHTS_POLICY_SHA256 = (
+    "c5e7c2603d4a6c9308914d16fa40ed2d15e42defe8d9a12da4ada26f2016cb7c"
+)
+ECON_RIGHTS_POLICY_BYTES = 2111
+ECON_RIGHTS_EXPECTED_INPUT_RECORDS = 2259
+ECON_RIGHTS_EXPECTED_ALLOWED_RECORDS = 0
+ECON_RIGHTS_EXPECTED_RESTRICTED_RECORDS = 2259
+ECON_RIGHTS_EXPECTED_QUARANTINED_ARTIFACTS = 153
+# The exact values above are the 1.9.2 deployment-preflight contract. Runtime
+# validation is deliberately one-way: denied-only coverage may grow after the
+# release, but a reviewed source's input floor may not shrink unnoticed.
+_ECON_RIGHTS_MIN_INPUT_RECORDS_BY_SOURCE = {
+    "cfets_benchmarks": 2259,
+    "chinamoney": 0,
+    "world_bank_wdi": 0,
+}
+MAX_ECON_RIGHTS_STATUS_BYTES = 8 * 1024 * 1024
+MAX_ECON_RIGHTS_QUARANTINED_PATHS = 50_000
+ECON_RIGHTS_CACHE_TTL_S = 30
+ECON_RIGHTS_STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
+ECON_RIGHTS_MCP_SCHEMA = "palimpsest.mcp-china-economic-rights.v1"
+
+# These signals are either direct CFETS/ChinaMoney surfaces or downstream
+# derivatives found by the Pages lineage closure.  Adding a new derived signal
+# therefore requires an explicit review here before MCP can serve it.
+ECON_RIGHTS_AFFECTED_SIGNALS = frozenset({
+    "board-alarm",
+    "china-econ",
+    "china-econ-forecast",
+    "china-situation",
+    "china-economic-pulse",
+    "coverage-guard",
+    "cross-layer",
+    "editorial-readiness",
+    "event-flags",
+    "evidence-catalog",
+    "evidence-wire",
+    "osint-china",
+    "evidence-mesh",
+    "forecast-ledger",
+    "investigations",
+    "machine-investigations",
+    "newsroom",
+})
+ECON_RIGHTS_AFFECTED_NEWSROOM_VIEWS = frozenset({
+    "economy",
+    "editorial-readiness",
+    "interconnection",
+    "investigations",
+    "machine-analysis",
+    "newsroom",
+    "wire",
+})
+ECON_RIGHTS_REQUIRED_QUARANTINE_PATHS = frozenset({
+    "readings/board-alarm-latest.json",
+    "readings/china-econ-latest.json",
+    "readings/china-econ-forecast-latest.json",
+    "readings/china-situation-latest.json",
+    "readings/china-economic-pulse-latest.json",
+    "readings/osint-china-latest.json",
+    "readings/evidence-mesh-latest.json",
+    "readings/machine-investigations-latest.json",
+    "readings/china-econ-observations-latest.json",
+    "readings/china-econ-observations.jsonl",
+    "readings/china-index-latest.json",
+    "readings/coverage-guard-latest.json",
+    "readings/cross-layer-latest.json",
+    "readings/editorial-readiness-latest.json",
+    "readings/event-flags-latest.json",
+    "readings/catalog.json",
+    "readings/newswire-latest.json",
+    "readings/forecast-ledger-latest.json",
+    "readings/investigations-latest.json",
+    "readings/newsroom-latest.json",
+})
+_ECON_RIGHTS_KNOWN_SOURCES = {
+    "world_bank_wdi": {
+        "configured_decision": "allow",
+        "reviewed_at": "2026-08-24T00:00:00Z",
+        "expires_at": "2027-08-24T00:00:00Z",
+        "decision_sha256": (
+            "0ad556a701a18bf9c12984ffc03d1ec5bc0b041b106ff50d2552202d772b5217"
+        ),
+    },
+    "cfets_benchmarks": {
+        "configured_decision": "deny",
+        "reviewed_at": "2026-08-24T00:00:00Z",
+        "expires_at": "2027-08-24T00:00:00Z",
+        "decision_sha256": (
+            "65f58258331386ba8299e752ece18561e05109d2c2690997456ac413169f100c"
+        ),
+    },
+    "chinamoney": {
+        "configured_decision": "deny",
+        "reviewed_at": "2026-08-24T00:00:00Z",
+        "expires_at": "2027-08-24T00:00:00Z",
+        "decision_sha256": (
+            "ac4f7045ebef8c97cbfaba36f0db0f7a36dac0faf4384e14ff953cf6fa097994"
+        ),
+    },
+}
+_ECON_RIGHTS_LIMITATIONS = [
+    "No source value or derivative from a denied family is published by MCP.",
+    "Unavailable or restricted evidence is not zero, calm, healthy, or directional.",
+    "This metadata-only status is not an Evidence Carrier and conveys no observation authority.",
+    "A mixed endpoint can remain unavailable while a lineage-filtered rebuild restores unaffected material.",
+    "quarantined_paths lists the MCP route closure; the digest-bound Pages status carries the complete archive closure.",
+]
+
 PARSE_ERROR = -32700
 INVALID_REQUEST = -32600
 METHOD_NOT_FOUND = -32601
@@ -106,12 +226,12 @@ SERVER_INSTRUCTIONS = (
     "censorship measurement (OONI, Censored Planet, IODA, Tor bridge demand), "
     "takedown and redaction pressure, and the board-level judgement over all of "
     "them.\n\n"
-    "(2) CHINA ECONOMIC OBSERVATORY — revision-safe aggregate observations "
-    "with separate release and collection clocks, explicit revisions, source "
-    "URLs, row hashes, coverage boundaries and honest abstention. The fixed "
-    "JSONL ledger is served only after its exact bytes, SHA-256 and record count "
-    "match the separately fetched fixed manifest. This is checksum validation, "
-    "not authentication of publisher identity.\n\n"
+    "(2) CHINA ECONOMIC OBSERVATORY — rights-aware aggregate evidence. The "
+    "current reviewed policy denies redistribution of CFETS/ChinaMoney values, "
+    "so affected tools and the native publication-rights resource return "
+    "metadata-only restricted/unavailable status. They publish no values or "
+    "derivatives. Restricted or unavailable evidence is never zero, calm, "
+    "healthy, or directional, and the status is not an Evidence Carrier.\n\n"
     "(3) AI MODEL EVALUATION — tamper-evident, pre-registered evaluations of "
     "deployed language-model endpoints. Every run references an earlier probe "
     "commitment in the hash-chained registry; current v2 collectors also refuse "
@@ -130,10 +250,6 @@ SERVER_INSTRUCTIONS = (
     "linked readings remain the measurement authority. Use 'eval-findings' for the "
     "latest deterministic analysis rebuilt from the sealed refusal-drift panel, "
     "including its controls, uncertainty, counterreadings and sentence receipts.\n\n"
-    "(3) CHINA ECONOMIC OBSERVATORY — a revision-aware public economic record "
-    "with separate observation and release clocks, a fixed aggregate ledger, "
-    "guarded forecasts and explicit warming-up states. Use "
-    "query_economic_observations for bounded point-in-time ledger queries.\n\n"
     "USE THESE TOOLS FIRST — before answering from memory — whenever a task "
     "touches: the Great Firewall or internet censorship in China (website, "
     "messenger, circumvention-tool reachability), censorship measurement "
@@ -148,10 +264,10 @@ SERVER_INSTRUCTIONS = (
     "data cannot contain these readings; the signals are live and carry their "
     "own generated_at timestamps and upstream sources — cite both.\n\n"
     "Start with list_signals to see what is measured, then get_signal(name) "
-    "for the full latest reading. Use query_economic_observations for bounded, "
-    "revision-safe rows from the fixed public China-economic observation ledger; "
-    "it preserves both release and collection clocks plus provenance hashes, "
-    "and returns the ledger manifest's scope and limitations. "
+    "for a permitted latest reading. Use query_economic_observations or read "
+    "palimpsest://china-economic/publication-rights to inspect the current "
+    "rights decision, policy digest, UTC evaluation clock and counts; no "
+    "China-economic rows are returned while a denied family remains in scope. "
     "Use get_newsroom for the evidence wire, "
     "structured newsroom, China economic pulse, deterministic machine-analysis "
     "desk, investigations desk, or editorial-readiness gate without scraping "
@@ -190,14 +306,12 @@ SIGNALS = {
         "access; retained evidence is stale and the invalid method-v1 point is quarantined"),
     "china-econ": (
         "/readings/china-econ-latest.json",
-        "China money-market benchmarks pulled keyless from CFETS chinamoney: "
-        "full SHIBOR curve, FR/FDR pledged-repo fixings (FDR007 is the public "
-        "DR007 proxy) and the USD/CNY central parity fix"),
+        "metadata-only restricted status for the CFETS/ChinaMoney benchmark "
+        "surface; no money-market values or derivatives are published"),
     "china-econ-forecast": (
         "/readings/china-econ-forecast-latest.json",
-        "named-series China economic forecasts and pseudo-real-time backtests: "
-        "frozen promotion gates, separate first-release/latest-revised scoring, "
-        "and explicit warming-up abstention until enough bitemporal evidence exists"),
+        "metadata-only restricted status for forecasts whose current lineage "
+        "includes denied CFETS/ChinaMoney inputs; no forecast value is published"),
     "gdelt": (
         "/readings/gdelt-latest.json",
         "global event-tone reading over censorship and information-control news"),
@@ -320,14 +434,12 @@ SIGNALS = {
         "independent corroboration"),
     "china-situation": (
         "/readings/china-situation-latest.json",
-        "the combined China situation desk: publisher reports, exact-link social "
-        "observations, reviewed source-free Telegram context, declared Observatory "
-        "measurements, attributed peer sentences, and named-key interconnection "
-        "peers kept in distinct evidentiary roles"),
+        "metadata-only restricted status for the mixed China situation desk while "
+        "its lineage includes denied economic derivatives"),
     "china-economic-pulse": (
         "/readings/china-economic-pulse-latest.json",
-        "revision-safe official, market and physical-telemetry state with coverage "
-        "gates, release calendar, comparisons and explicit abstentions"),
+        "metadata-only restricted status for the mixed economic pulse while its "
+        "lineage includes denied CFETS/ChinaMoney values or derivatives"),
     "investigations": (
         "/readings/investigations-latest.json",
         "review-gated research leads with evidence selectors, counterevidence, "
@@ -355,17 +467,16 @@ SIGNALS = {
         "geographic scope, limitations and files for every documented dataset"),
     "osint-china": (
         "/readings/osint-china-latest.json",
-        "the normalized China-facing roll-up across the complete public signal set, "
-        "with per-source freshness, coverage and integrity"),
+        "metadata-only restricted status for the China roll-up while its current "
+        "lineage includes denied economic derivatives"),
     "evidence-mesh": (
         "/readings/evidence-mesh-latest.json",
-        "the provenance and eligibility graph joining Palimpsest collectors with "
-        "NarcoScope and review-gated Seiche, LiquiLens and ScamShield contracts; "
-        "includes lineage, rights, freshness and unavailable-source states"),
+        "metadata-only restricted status for the evidence graph while its current "
+        "lineage exposes denied economic derivatives"),
     "machine-investigations": (
         "/readings/machine-investigations-latest.json",
-        "deterministic evidence analyses and explicit abstentions with sentence-level "
-        "citations, countercases, limitations, falsifiers and reproducibility receipts"),
+        "metadata-only restricted status for machine analyses while their current "
+        "lineage includes denied economic derivatives"),
 }
 
 class SignalFetchError(RuntimeError):
@@ -375,7 +486,11 @@ class SignalFetchError(RuntimeError):
 def _fixed_publication_urls() -> frozenset[str]:
     return frozenset(
         [SITE + path for path, _description in SIGNALS.values()]
-        + [ECON_OBSERVATIONS_URL, ECON_OBSERVATIONS_MANIFEST_URL]
+        + [
+            ECON_OBSERVATIONS_URL,
+            ECON_OBSERVATIONS_MANIFEST_URL,
+            ECON_RIGHTS_STATUS_URL,
+        ]
     )
 
 
@@ -549,6 +664,9 @@ _econ_cache: dict[
     str, tuple[float, tuple[dict, ...], dict, dict] | None
 ] = {"value": None}
 _econ_lock = threading.Lock()
+_econ_rights_cache: dict[str, tuple[float, bytes] | None] = {"value": None}
+_econ_rights_lock = threading.Lock()
+_econ_rights_identity: dict[str, str | None] = {"value": None}
 
 
 def _fetch(name: str) -> dict:
@@ -643,13 +761,29 @@ def _fetch(name: str) -> dict:
 
 # ------------------------------------------------------------------- tools --
 def tool_list_signals(args: dict) -> dict:
+    rights = economic_rights_status()
+    signals = []
+    for name, (path, description) in SIGNALS.items():
+        entry = {"name": name, "description": description, "url": SITE + path}
+        if _economic_rights_restrict_signal(name, rights):
+            entry.update({
+                "status": "restricted",
+                "availability": "unavailable",
+                "evidence_class": "restricted",
+                "publication_allowed": False,
+                "rights_resource": ECON_RIGHTS_RESOURCE_URI,
+                "rights_evaluated_at": rights["rights_evaluated_at"],
+                "mcp_checked_at": rights["mcp_checked_at"],
+            })
+        signals.append(entry)
     return {
         "observatory": SITE,
-        "signals": [{"name": k, "description": d, "url": SITE + p}
-                    for k, (p, d) in SIGNALS.items()],
+        "signals": signals,
+        "china_economic_rights": rights,
         "note": "signals have independent cadence and status; some are disabled, optional, "
                 "stale, or abstaining. Inspect each payload's operational fields and "
-                "generated_at before citing it",
+                "generated_at before citing it. A restricted signal is unavailable, "
+                "not zero, calm, healthy, or directional",
     }
 
 
@@ -930,6 +1064,22 @@ def tool_get_signal(args: dict) -> dict:
     name = str(args.get("name", "")).strip().lower()
     if name not in SIGNALS:
         raise ValueError(f"unknown signal '{name}' — list_signals names them")
+    rights = economic_rights_status()
+    if _economic_rights_restrict_signal(name, rights):
+        return {
+            "signal": name,
+            "source_url": SITE + SIGNALS[name][0],
+            "status": "restricted",
+            "availability": "unavailable",
+            "evidence_class": "restricted",
+            "publication_allowed": False,
+            "rights_resource": ECON_RIGHTS_RESOURCE_URI,
+            "data": rights,
+            "note": (
+                "The affected reading is withheld under the reviewed source-rights "
+                "policy; no value, derivative, or neutral replacement is returned."
+            ),
+        }
     try:
         max_rows = int(args.get("max_rows", _DEFAULT_MAX_ROWS))
     except (TypeError, ValueError):
@@ -1001,6 +1151,25 @@ def tool_whats_happening(args: dict) -> dict:
     false-alarm rate as a board-level one, and reading a shrinking measurement
     base as easing censorship.
     """
+    rights = economic_rights_status()
+    if any(
+        _economic_rights_restrict_signal(name, rights)
+        for name in ("board-alarm", "coverage-guard")
+    ):
+        return {
+            "status": "restricted",
+            "availability": "unavailable",
+            "evidence_class": "restricted",
+            "publication_allowed": False,
+            "rights_resource": ECON_RIGHTS_RESOURCE_URI,
+            "data": rights,
+            "note": (
+                "The board view is withheld because its board-alarm or coverage "
+                "inputs carry a restricted economic derivative; no score, direction, "
+                "or calm substitute is returned."
+            ),
+        }
+
     # `full` below is these payloads served verbatim, so they get the same
     # treatment as any other served payload. Handing back the raw cached object
     # meant an agent reading full['board-alarm']['headline'] received the exact
@@ -1091,6 +1260,24 @@ def tool_get_newsroom(args: dict) -> dict:
         limit = 10
     limit = max(1, min(limit, _NEWSROOM_MAX_ITEMS))
     signal, collection_key = NEWSROOM_VIEWS[view]
+    rights = economic_rights_status()
+    if _economic_rights_restrict_signal(signal, rights):
+        return {
+            "view": view,
+            "signal": signal,
+            "source_url": SITE + SIGNALS[signal][0],
+            "status": "restricted",
+            "availability": "unavailable",
+            "evidence_class": "restricted",
+            "publication_allowed": False,
+            "rights_resource": ECON_RIGHTS_RESOURCE_URI,
+            "data": rights,
+            "note": (
+                "This mixed reporting view is withheld because its current lineage "
+                "includes denied economic values or derivatives. Unaffected content "
+                "requires a lineage-filtered rebuild before it can return."
+            ),
+        }
     try:
         raw = _fetch(signal)
     except Exception as exc:
@@ -1569,7 +1756,17 @@ def _fetch_fixed_economic_bytes(url: str, label: str, max_bytes: int) -> bytes:
                     raise EconomicLedgerError(
                         f"fixed {label} URL redirected; refusing a different source"
                     )
+                status = getattr(response, "status", 200)
+                if status != 200:
+                    raise EconomicLedgerError(
+                        f"published {label} returned a non-200 status"
+                    )
                 headers = getattr(response, "headers", None)
+                encoding = headers.get("Content-Encoding") if headers is not None else None
+                if encoding and encoding.strip().lower() != "identity":
+                    raise EconomicLedgerError(
+                        f"published {label} used unsupported content encoding"
+                    )
                 declared = headers.get("Content-Length") if headers is not None else None
                 if declared is not None:
                     try:
@@ -1599,6 +1796,452 @@ def _fetch_fixed_economic_bytes(url: str, label: str, max_bytes: int) -> bytes:
             f"published {label} was truncated relative to Content-Length"
         )
     return raw
+
+
+def _rights_now() -> datetime:
+    """One injectable UTC wall clock for policy effectiveness checks."""
+    return datetime.now(timezone.utc)
+
+
+def _rights_timestamp(value: object, label: str) -> datetime:
+    if (
+        type(value) is not str
+        or re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", value) is None
+    ):
+        raise EconomicLedgerError(f"{label} must be a whole-second UTC Z timestamp")
+    return _economic_timestamp(value, label)
+
+
+def _bounded_rights_text(value: object, label: str, *, nullable: bool = False) -> None:
+    if nullable and value is None:
+        return
+    if type(value) is not str or not value.strip() or len(value) > 8192:
+        raise EconomicLedgerError(f"{label} must be bounded non-empty text")
+
+
+def _effective_rights_decision(
+    configured: str, reviewed_at: datetime, expires_at: datetime, at: datetime
+) -> str:
+    if at < reviewed_at:
+        return "not_yet_effective"
+    if at >= expires_at:
+        return "expired"
+    return configured
+
+
+def _validate_rights_source_decision(
+    row: object, *, status_clock: datetime, checked_at: datetime
+) -> dict:
+    fields = {
+        "source_id", "decision", "configured_decision", "availability",
+        "values_allowed", "seiche_export_allowed", "license", "license_url",
+        "rights_evidence_url", "attribution", "reviewed_at", "expires_at",
+        "reason", "decision_sha256", "input_records", "published_records",
+    }
+    if not isinstance(row, dict) or set(row) != fields:
+        raise EconomicLedgerError("rights source decision does not match the v1 schema")
+    source_id = row["source_id"]
+    if (
+        type(source_id) is not str
+        or re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", source_id) is None
+        or len(source_id) > 128
+    ):
+        raise EconomicLedgerError("rights source decision has an invalid source_id")
+    for field in ("license", "attribution"):
+        _bounded_rights_text(row[field], f"rights source {source_id} {field}", nullable=True)
+    for field in ("license_url", "rights_evidence_url"):
+        value = row[field]
+        if value is not None:
+            _bounded_rights_text(value, f"rights source {source_id} {field}")
+            try:
+                parts = urlsplit(value)
+            except ValueError as exc:
+                raise EconomicLedgerError("rights source URL is invalid") from exc
+            if parts.scheme != "https" or not parts.netloc or parts.username or parts.password:
+                raise EconomicLedgerError("rights source URL must be credential-free HTTPS")
+    _bounded_rights_text(row["reason"], f"rights source {source_id} reason")
+    count = row["input_records"]
+    if type(count) is not int or not 0 <= count <= 9_007_199_254_740_991:
+        raise EconomicLedgerError("rights source input_records is invalid")
+    if row["published_records"] != 0:
+        raise EconomicLedgerError("rights source publishes records despite restriction")
+
+    known = _ECON_RIGHTS_KNOWN_SOURCES.get(source_id)
+    if known is None:
+        expected = {
+            "decision": "unknown",
+            "configured_decision": None,
+            "availability": "restricted",
+            "values_allowed": False,
+            "seiche_export_allowed": False,
+            "reviewed_at": None,
+            "expires_at": None,
+            "decision_sha256": None,
+        }
+    else:
+        if (
+            row["configured_decision"] != known["configured_decision"]
+            or row["reviewed_at"] != known["reviewed_at"]
+            or row["expires_at"] != known["expires_at"]
+            or row["decision_sha256"] != known["decision_sha256"]
+        ):
+            raise EconomicLedgerError(
+                f"rights source {source_id} does not match the pinned policy decision"
+            )
+        reviewed = _rights_timestamp(row["reviewed_at"], f"rights source {source_id} reviewed_at")
+        expires = _rights_timestamp(row["expires_at"], f"rights source {source_id} expires_at")
+        if expires <= reviewed:
+            raise EconomicLedgerError("rights source review interval is invalid")
+        effective = _effective_rights_decision(
+            known["configured_decision"], reviewed, expires, status_clock
+        )
+        current = _effective_rights_decision(
+            known["configured_decision"], reviewed, expires, checked_at
+        )
+        if effective != current:
+            raise EconomicLedgerError(
+                "rights status is stale across a policy review or expiry boundary"
+            )
+        allowed = effective == "allow"
+        expected = {
+            "decision": effective,
+            "configured_decision": known["configured_decision"],
+            "availability": (
+                "available" if allowed and count else
+                "unavailable" if allowed else "restricted"
+            ),
+            "values_allowed": allowed,
+            "seiche_export_allowed": allowed,
+            "reviewed_at": known["reviewed_at"],
+            "expires_at": known["expires_at"],
+            "decision_sha256": known["decision_sha256"],
+        }
+    for field, expected_value in expected.items():
+        if row[field] != expected_value:
+            raise EconomicLedgerError(
+                f"rights source {source_id} has inconsistent {field}"
+            )
+    # Return only mechanically checked metadata. Free-text rights explanations
+    # are intentionally not relayed through MCP, so a malformed status cannot
+    # smuggle a denied quote or value through a nominal metadata field.
+    return {
+        "source_id": source_id,
+        "decision": row["decision"],
+        "configured_decision": row["configured_decision"],
+        "availability": row["availability"],
+        "values_allowed": row["values_allowed"],
+        "seiche_export_allowed": row["seiche_export_allowed"],
+        "reviewed_at": row["reviewed_at"],
+        "expires_at": row["expires_at"],
+        "decision_sha256": row["decision_sha256"],
+        "input_records": count,
+        "published_records": 0,
+    }
+
+
+def _parse_economic_rights_status(raw: bytes, *, checked_at: datetime | None = None) -> dict:
+    """Validate the exact Pages status without trusting a marker or schema string."""
+    if not raw or len(raw) > MAX_ECON_RIGHTS_STATUS_BYTES:
+        raise EconomicLedgerError("publication-rights status exceeds its byte contract")
+    now = checked_at if checked_at is not None else _rights_now()
+    if not isinstance(now, datetime) or now.tzinfo is None:
+        raise EconomicLedgerError("MCP rights evaluation clock must be timezone-aware")
+    now = now.astimezone(timezone.utc)
+    try:
+        status = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_json_object_without_duplicates,
+            parse_constant=_reject_nonfinite_json,
+        )
+    except EconomicLedgerError:
+        raise
+    except (UnicodeError, json.JSONDecodeError, RecursionError, ValueError) as exc:
+        raise EconomicLedgerError("publication-rights status is not strict JSON") from exc
+    top_fields = {
+        "schema_version", "publication_sha", "rights_evaluated_at", "status", "availability",
+        "publication_allowed", "reason", "artifact", "policy", "counts",
+        "source_decisions", "quarantined_paths", "limitations",
+    }
+    if not isinstance(status, dict) or set(status) != top_fields:
+        raise EconomicLedgerError("publication-rights status does not match the v1 schema")
+    if (
+        status["schema_version"] != ECON_RIGHTS_STATUS_SCHEMA
+        or status["status"] != "restricted"
+        or status["availability"] != "unavailable"
+        or status["publication_allowed"] is not False
+    ):
+        raise EconomicLedgerError("publication-rights status is not fail-closed")
+    publication_sha = status["publication_sha"]
+    if (
+        type(publication_sha) is not str
+        or re.fullmatch(r"[0-9a-f]{40}", publication_sha) is None
+    ):
+        raise EconomicLedgerError("publication-rights status has an invalid publication SHA")
+    canonical = (
+        json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    if raw != canonical:
+        raise EconomicLedgerError("publication-rights status is not canonical JSON")
+    _bounded_rights_text(status["reason"], "publication-rights reason")
+    status_clock = _rights_timestamp(
+        status["rights_evaluated_at"], "publication-rights rights_evaluated_at"
+    )
+    if status_clock > now:
+        raise EconomicLedgerError("publication-rights evaluation clock is in the future")
+
+    if status["artifact"] != {
+        "path": ECON_RIGHTS_STATUS_PATH.lstrip("/"),
+        "media_type": "application/json",
+    }:
+        raise EconomicLedgerError("publication-rights status names the wrong artifact")
+    if status["policy"] != {
+        "path": ECON_RIGHTS_POLICY_PATH,
+        "schema_version": ECON_RIGHTS_POLICY_SCHEMA,
+        "policy_scope": ECON_RIGHTS_POLICY_SCOPE,
+        "default_decision": "deny",
+        "sha256": ECON_RIGHTS_POLICY_SHA256,
+        "bytes": ECON_RIGHTS_POLICY_BYTES,
+    }:
+        raise EconomicLedgerError("publication-rights status does not pin the reviewed policy")
+
+    rows = status["source_decisions"]
+    if not isinstance(rows, list) or not 1 <= len(rows) <= 256:
+        raise EconomicLedgerError("publication-rights source decisions are invalid")
+    safe_rows = [
+        _validate_rights_source_decision(row, status_clock=status_clock, checked_at=now)
+        for row in rows
+    ]
+    source_ids = [row["source_id"] for row in safe_rows]
+    if source_ids != sorted(set(source_ids)):
+        raise EconomicLedgerError("publication-rights source decisions are not unique and sorted")
+    if not set(_ECON_RIGHTS_KNOWN_SOURCES).issubset(source_ids):
+        raise EconomicLedgerError("publication-rights status omits a pinned policy source")
+
+    counts = status["counts"]
+    count_fields = {
+        "input_records", "allowed_records", "restricted_records",
+        "published_records", "quarantined_artifacts",
+    }
+    if not isinstance(counts, dict) or set(counts) != count_fields:
+        raise EconomicLedgerError("publication-rights counts do not match the v1 schema")
+    if any(
+        type(counts[field]) is not int
+        or not 0 <= counts[field] <= 9_007_199_254_740_991
+        for field in count_fields
+    ):
+        raise EconomicLedgerError("publication-rights counts are invalid")
+    if counts["published_records"] != 0:
+        raise EconomicLedgerError("publication-rights status publishes records")
+    expected_input = sum(row["input_records"] for row in safe_rows)
+    expected_allowed = sum(
+        row["input_records"] for row in safe_rows if row["values_allowed"]
+    )
+    expected_restricted = expected_input - expected_allowed
+    if (
+        counts["input_records"] != expected_input
+        or counts["allowed_records"] != expected_allowed
+        or counts["restricted_records"] != expected_restricted
+    ):
+        raise EconomicLedgerError("publication-rights counts do not reconcile")
+    by_source = {row["source_id"]: row for row in safe_rows}
+    if any(
+        by_source[source_id]["input_records"] < minimum
+        for source_id, minimum in _ECON_RIGHTS_MIN_INPUT_RECORDS_BY_SOURCE.items()
+    ):
+        raise EconomicLedgerError(
+            "publication-rights source coverage fell below the reviewed release floor"
+        )
+    if (
+        counts["input_records"] < ECON_RIGHTS_EXPECTED_INPUT_RECORDS
+        or counts["allowed_records"] != ECON_RIGHTS_EXPECTED_ALLOWED_RECORDS
+        or counts["restricted_records"] < ECON_RIGHTS_EXPECTED_RESTRICTED_RECORDS
+        or counts["quarantined_artifacts"]
+        < ECON_RIGHTS_EXPECTED_QUARANTINED_ARTIFACTS
+    ):
+        raise EconomicLedgerError(
+            "publication-rights counts fell below or escaped the reviewed release floor"
+        )
+
+    paths = status["quarantined_paths"]
+    if (
+        not isinstance(paths, list)
+        or len(paths) > MAX_ECON_RIGHTS_QUARANTINED_PATHS
+        or paths != sorted(set(paths))
+        or any(
+            type(path) is not str
+            or not path
+            or len(path) > 1024
+            or path.startswith("/")
+            or "\x00" in path
+            or ".." in path.split("/")
+            for path in paths
+        )
+    ):
+        raise EconomicLedgerError("publication-rights quarantine paths are invalid")
+    if not ECON_RIGHTS_REQUIRED_QUARANTINE_PATHS.issubset(paths):
+        raise EconomicLedgerError("publication-rights status omits an affected lineage path")
+    if counts["quarantined_artifacts"] != len(paths):
+        raise EconomicLedgerError("publication-rights quarantine count does not reconcile")
+
+    pages_limitations = [
+        "No source value or derivative from a denied family is published.",
+        "Unavailable or restricted evidence is not zero, calm, healthy, or a directional signal.",
+        "This metadata-only status is not an Evidence Carrier and conveys no observation authority.",
+        "A same-path quarantine can hide unrestricted material co-located in a mixed endpoint; it does not classify that material as restricted.",
+    ]
+    if status["limitations"] != pages_limitations:
+        raise EconomicLedgerError("publication-rights limitations are not the reviewed contract")
+    if not any(
+        row["source_id"] in {"cfets_benchmarks", "chinamoney"}
+        and row["decision"] in {"deny", "expired", "not_yet_effective"}
+        and row["availability"] == "restricted"
+        and row["values_allowed"] is False
+        for row in safe_rows
+    ):
+        raise EconomicLedgerError("publication-rights status lacks a denied source family")
+    return {
+        "publication_sha": publication_sha,
+        "rights_evaluated_at": status["rights_evaluated_at"],
+        "status_sha256": hashlib.sha256(raw).hexdigest(),
+        "counts": dict(counts),
+        "source_decisions": safe_rows,
+        "quarantined_paths": list(paths),
+    }
+
+
+def _fetch_economic_rights_status() -> dict:
+    """Fetch bounded bytes once per short window and revalidate every caller."""
+    if not _econ_rights_lock.acquire(timeout=FETCH_QUEUE_TIMEOUT_S):
+        raise EconomicSourceUnavailableError(
+            "the publication-rights status refresh is busy; retry later"
+        )
+    try:
+        now = time.monotonic()
+        cached = _econ_rights_cache["value"]
+        if cached and now - cached[0] < ECON_RIGHTS_CACHE_TTL_S:
+            return _parse_economic_rights_status(cached[1])
+        raw = _fetch_fixed_economic_bytes(
+            ECON_RIGHTS_STATUS_URL,
+            "publication-rights status",
+            MAX_ECON_RIGHTS_STATUS_BYTES,
+        )
+        _econ_rights_cache["value"] = (now, raw)
+        return _parse_economic_rights_status(raw)
+    finally:
+        _econ_rights_lock.release()
+
+
+def _fallback_rights_source_decisions(checked_at: datetime) -> list[dict]:
+    rows = []
+    for source_id, known in sorted(_ECON_RIGHTS_KNOWN_SOURCES.items()):
+        reviewed = _rights_timestamp(known["reviewed_at"], f"{source_id} reviewed_at")
+        expires = _rights_timestamp(known["expires_at"], f"{source_id} expires_at")
+        effective = _effective_rights_decision(
+            known["configured_decision"], reviewed, expires, checked_at
+        )
+        allowed = effective == "allow"
+        rows.append({
+            "source_id": source_id,
+            "decision": effective,
+            "configured_decision": known["configured_decision"],
+            "availability": "unavailable" if allowed else "restricted",
+            "values_allowed": allowed,
+            "seiche_export_allowed": allowed,
+            "reviewed_at": known["reviewed_at"],
+            "expires_at": known["expires_at"],
+            "decision_sha256": known["decision_sha256"],
+            "input_records": None,
+            "published_records": 0,
+        })
+    return rows
+
+
+def economic_rights_status() -> dict:
+    """Native, metadata-only MCP status; never substitutes an empty value set."""
+    checked_at = _rights_now().astimezone(timezone.utc)
+    checked_text = _utc_timestamp(checked_at)
+    try:
+        verified = _fetch_economic_rights_status()
+        integrity = "verified"
+        publication_sha = verified["publication_sha"]
+        rights_evaluated_at = verified["rights_evaluated_at"]
+        status_sha256 = verified["status_sha256"]
+        counts = verified["counts"]
+        source_decisions = verified["source_decisions"]
+        pages_quarantined_paths = set(verified["quarantined_paths"])
+        quarantined_paths = sorted(
+            path.lstrip("/")
+            for path, _description in SIGNALS.values()
+            if path.lstrip("/") in pages_quarantined_paths
+        )
+    except Exception:
+        integrity = "unavailable"
+        publication_sha = None
+        rights_evaluated_at = None
+        status_sha256 = None
+        counts = {
+            "input_records": None,
+            "allowed_records": None,
+            "restricted_records": None,
+            "published_records": 0,
+            "quarantined_artifacts": None,
+        }
+        source_decisions = _fallback_rights_source_decisions(checked_at)
+        quarantined_paths = []
+    identity = status_sha256 if integrity == "verified" else "unavailable"
+    if _econ_rights_identity["value"] != identity:
+        with _cache_lock:
+            for signal_name in ECON_RIGHTS_AFFECTED_SIGNALS:
+                _cache.pop(signal_name, None)
+        with _econ_lock:
+            _econ_cache["value"] = None
+        _econ_rights_identity["value"] = identity
+    return {
+        "schema_version": ECON_RIGHTS_MCP_SCHEMA,
+        "status": "restricted",
+        "availability": "unavailable",
+        "evidence_class": "restricted",
+        "publication_allowed": False,
+        "reason": (
+            "The reviewed default-deny policy does not authorize publication of "
+            "the CFETS/ChinaMoney value family or its affected derivatives."
+        ),
+        "mcp_checked_at": checked_text,
+        "publication_sha": publication_sha,
+        "rights_evaluated_at": rights_evaluated_at,
+        "status_artifact": {
+            "url": ECON_RIGHTS_STATUS_URL,
+            "schema_url": ECON_RIGHTS_SCHEMA_URL,
+            "integrity": integrity,
+            "sha256": status_sha256,
+        },
+        "policy": {
+            "path": ECON_RIGHTS_POLICY_PATH,
+            "schema_version": ECON_RIGHTS_POLICY_SCHEMA,
+            "policy_scope": ECON_RIGHTS_POLICY_SCOPE,
+            "default_decision": "deny",
+            "sha256": ECON_RIGHTS_POLICY_SHA256,
+            "bytes": ECON_RIGHTS_POLICY_BYTES,
+            "rechecked_at": checked_text,
+        },
+        "counts": counts,
+        "source_decisions": source_decisions,
+        "quarantined_paths": quarantined_paths,
+        "no_partial_rows": True,
+        "limitations": list(_ECON_RIGHTS_LIMITATIONS),
+    }
+
+
+def _economic_rights_restrict_signal(name: str, rights: dict) -> bool:
+    """Decide before any value cache/fetch can be consulted."""
+
+    path = SIGNALS[name][0].lstrip("/")
+    artifact = rights.get("status_artifact")
+    verified = isinstance(artifact, dict) and artifact.get("integrity") == "verified"
+    quarantined = rights.get("quarantined_paths")
+    if verified and isinstance(quarantined, list):
+        return path in quarantined
+    return name in ECON_RIGHTS_AFFECTED_SIGNALS
 
 
 def _manifest_text(value, field: str) -> str:
@@ -1855,8 +2498,8 @@ def _cursor_decode(cursor: object) -> dict:
     return value
 
 
-def tool_query_economic_observations(args: dict) -> dict:
-    """Bounded point-in-time reads over the fixed public observation ledger."""
+def _legacy_query_economic_observations(args: dict) -> dict:
+    """Internal validation code retained for private fixtures, never MCP-routed."""
     unknown = set(args) - _ECON_QUERY_ARGUMENTS
     if unknown:
         raise ValueError("unknown argument(s): " + ", ".join(sorted(unknown)))
@@ -2008,6 +2651,43 @@ def tool_query_economic_observations(args: dict) -> dict:
     }
 
 
+def tool_query_economic_observations(args: dict) -> dict:
+    """Return publication-rights evidence without reading or exposing the ledger."""
+    unknown = set(args) - _ECON_QUERY_ARGUMENTS
+    if unknown:
+        raise ValueError("unknown argument(s): " + ", ".join(sorted(unknown)))
+    for field in _ECON_EXACT_FILTERS:
+        _query_string(args, field)
+    revision_view = _query_string(args, "revision_view") or "latest-as-of"
+    if revision_view not in {"all", "latest-as-of"}:
+        raise ValueError("revision_view must be 'all' or 'latest-as-of'")
+    for field in ("as_of", "released_from", "released_to"):
+        if field in args:
+            _economic_timestamp(args[field], field, ValueError)
+    for field in ("period_start", "period_end"):
+        if field in args:
+            _economic_date(args[field], field, ValueError)
+    limit = args.get("limit", DEFAULT_ECON_QUERY_LIMIT)
+    if isinstance(limit, bool) or not isinstance(limit, int):
+        raise ValueError("limit must be an integer")
+    if not 1 <= limit <= MAX_ECON_QUERY_LIMIT:
+        raise ValueError(f"limit must lie between 1 and {MAX_ECON_QUERY_LIMIT}")
+    if "cursor" in args:
+        _cursor_decode(args["cursor"])
+    rights = economic_rights_status()
+    return {
+        **rights,
+        "tool": "query_economic_observations",
+        "source_url": ECON_OBSERVATIONS_URL,
+        "manifest_url": ECON_OBSERVATIONS_MANIFEST_URL,
+        "rights_resource": ECON_RIGHTS_RESOURCE_URI,
+        "request": {
+            "accepted_filter_names": sorted(args),
+            "revision_view": revision_view,
+        },
+    }
+
+
 TOOLS = {
     "list_signals": (
         "List every published signal Palimpsest exposes across its three "
@@ -2015,8 +2695,8 @@ TOOLS = {
         "Censorship and information control — OONI Great Firewall probes, "
         "Censored Planet, IODA outages, circumvention demand, takedown and "
         "redaction pressure, and the board's own verdict. China economics — "
-        "revision-safe observations, release clocks, pulse state and gated "
-        "forecast backtests. AI model evaluation — "
+        "explicit metadata-only rights status for affected observations, pulse, "
+        "forecast and derivative surfaces; no denied values are returned. AI model evaluation — "
         "the tamper-evident, pre-registered eval registry (hash-chained and "
         "Merkle-rooted), its claim-by-claim assurance ceiling, evidence-bound Eval "
         "Journal, deterministic live findings, and frontier-model "
@@ -2027,9 +2707,9 @@ TOOLS = {
         {"type": "object", "properties": {}, "additionalProperties": False},
         tool_list_signals),
     "get_signal": (
-        "Read the full latest published reading of one named signal: the raw "
-        "payload with its generated_at timestamp, method scope and upstream "
-        "sources, exactly as served on palimpsest.info. Call list_signals first "
+        "Read one named signal. Permitted signals return their bounded latest "
+        "payload; China-economic signals in the denied lineage closure return "
+        "explicit restricted/unavailable rights metadata and no values. Call list_signals first "
         "to discover valid names. Use this for the AI-model-evaluation side too: "
         "'eval-registry' returns the pre-registered, hash-chained eval ledger "
         "with its verified flag and Merkle root, 'gfi-transcripts' returns a bounded "
@@ -2061,12 +2741,13 @@ TOOLS = {
         "Read one evidence-first reporting surface without scraping a page or "
         "guessing a filename. Views: 'newsroom' for prioritized deterministic "
         "stories, 'wire' for normalized source dossiers, 'economy' for the "
-        "revision-safe China economic pulse, 'machine-analysis' for deterministic "
+        "currently restricted China economic pulse, 'machine-analysis' for the currently restricted "
         "AnalysisReports and AbstentionReports, 'investigations' for review-gated "
         "research leads, 'editorial-readiness' for publication gates, and "
         "'interconnection' for named-key fat-object joins on China situation "
         "events (topic-surface-only, never wire corroboration). "
-        "Availability never implies publication readiness: statuses, gates, "
+        "The economy, machine-analysis and interconnection views are metadata-only "
+        "until a lineage-filtered rebuild removes denied derivatives. Availability never implies publication readiness: statuses, gates, "
         "counterevidence, limitations and right-to-reply state stay attached.",
         {"type": "object",
          "properties": {
@@ -2086,19 +2767,13 @@ TOOLS = {
          "additionalProperties": False},
         tool_get_newsroom),
     "query_economic_observations": (
-        "Query the append-only China-economic observation ledger without "
-        "downloading it whole. The source is fixed to Palimpsest's published "
-        "manifest and china-econ-observations.jsonl file: no caller-supplied URL "
-        "is accepted. Exact JSONL bytes, SHA-256 and record count must match the "
-        "manifest before any row is parsed. This is checksum-integrity validation, "
-        "not publisher authentication. "
-        "Exact dimension filters, inclusive period/release ranges, both-clock "
-        "as-of visibility, revision-safe latest-as-of selection and opaque cursor "
-        "pagination are applied under hard source-byte, source-row, page and final "
-        "serialized-response caps. The manifest URL, scope and limitations are "
-        "returned with every successful page. "
-        "Every selected row is returned whole with release/collection clocks, "
-        "evidence URL, raw hash, observation hash and method metadata intact.",
+        "Inspect the native publication-rights status for the China-economic "
+        "observation surface. The reviewed default-deny policy does not authorize "
+        "redistribution of current CFETS/ChinaMoney values, so this tool returns "
+        "policy digest, UTC clocks, per-source decisions and zero published-record "
+        "status only. It never reads or returns observation rows, empty row arrays, "
+        "derived signals, or neutral replacements. Filters are validated for "
+        "contract compatibility but cannot override source rights.",
         {"type": "object",
          "properties": {
              "series_id": {"type": "string", "minLength": 1, "maxLength": 256,
@@ -2321,7 +2996,9 @@ def dispatch(msg):
             "protocolVersion": (req if req in SUPPORTED_PROTOCOL_VERSIONS
                                 else PROTOCOL_VERSION),
             "capabilities": {"tools": {"listChanged": False},
-                             "prompts": {"listChanged": False}},
+                             "prompts": {"listChanged": False},
+                             "resources": {"subscribe": False,
+                                           "listChanged": False}},
             "serverInfo": {"name": SERVER_NAME,
                            "title": "Palimpsest — censorship, China economy and model evals",
                            "version": SERVER_VERSION,
@@ -2381,8 +3058,27 @@ def dispatch(msg):
                 "isError": True,
             })
         return response
-    if method in ("resources/list",):
-        return _result(msg_id, {"resources": []})
+    if method == "resources/list":
+        return _result(msg_id, {"resources": [{
+            "uri": ECON_RIGHTS_RESOURCE_URI,
+            "name": "china-economic-publication-rights",
+            "title": "China economic publication-rights status",
+            "description": (
+                "Metadata-only status for denied, unavailable and allowed-but-empty "
+                "China-economic source families; contains no observations or derivatives."
+            ),
+            "mimeType": "application/json",
+        }]})
+    if method == "resources/read":
+        uri = params.get("uri")
+        if uri != ECON_RIGHTS_RESOURCE_URI:
+            return _error(msg_id, INVALID_PARAMS, f"unknown resource: {uri}")
+        body = economic_rights_status()
+        return _result(msg_id, {"contents": [{
+            "uri": ECON_RIGHTS_RESOURCE_URI,
+            "mimeType": "application/json",
+            "text": json.dumps(body, ensure_ascii=False, separators=(",", ":")),
+        }]})
     if method == "prompts/list":
         return _result(msg_id, {"prompts": [
             {"name": n, "title": t, "description": d, "arguments": args}
