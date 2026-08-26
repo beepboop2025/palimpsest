@@ -303,9 +303,11 @@ def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
     builder = (RAILWAY / "build-static-bundle.sh").read_text(encoding="utf-8")
 
     capture = builder.index('verify_rights_clean.py" capture')
-    stage = builder.index('python3 -m scripts.stage_pages_rights "${rights_args[@]}"')
+    stage = builder.index(
+        '"$python_runtime" -m scripts.stage_pages_rights "${rights_args[@]}"'
+    )
     stage_check = builder.index(
-        'python3 -m scripts.stage_pages_rights "${rights_args[@]}" --check'
+        '"$python_runtime" -m scripts.stage_pages_rights "${rights_args[@]}" --check'
     )
     independent_scan = builder.index('verify_rights_clean.py" verify')
     ucdp_release = builder.index("scripts.verify_ucdp_public_release")
@@ -329,6 +331,8 @@ def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
     assert 'final_rights_receipt="$output_parent/' in builder
     assert '--receipt "$rights_receipt"' in builder
     assert "PALIMPSEST_RAILWAY_ADMISSION_EPOCH" in builder
+    assert "PALIMPSEST_RAILWAY_PYTHON" in builder
+    assert 'env PYTHONDONTWRITEBYTECODE=1 "$python_runtime"' in builder
     assert '--current-at "$rights_admission_at"' in builder
     assert "mv \"$staging_directory/.well-known\"" not in builder
 

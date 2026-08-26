@@ -12,9 +12,23 @@ expected_sha="$1"
 output_directory="$2"
 script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 repo_root="$(cd "$script_directory/../.." && pwd -P)"
+python_runtime="${PALIMPSEST_RAILWAY_PYTHON:-python3}"
 
 if [[ ! "$expected_sha" =~ ^[0-9a-f]{40}$ ]]; then
   printf 'expected SHA must be exactly 40 lowercase hex characters\n' >&2
+  exit 2
+fi
+if [[ "$python_runtime" == *[[:space:]]* ]]; then
+  printf 'PALIMPSEST_RAILWAY_PYTHON must name one executable without arguments\n' >&2
+  exit 2
+fi
+if [[ "$python_runtime" == */* ]]; then
+  if [[ ! -x "$python_runtime" ]]; then
+    printf 'PALIMPSEST_RAILWAY_PYTHON is not executable: %s\n' "$python_runtime" >&2
+    exit 2
+  fi
+elif ! python_runtime="$(command -v "$python_runtime")"; then
+  printf 'PALIMPSEST_RAILWAY_PYTHON is not on PATH\n' >&2
   exit 2
 fi
 if [[ -e "$output_directory" ]]; then
@@ -79,7 +93,7 @@ git -C "$repo_root" archive --format=tar "$expected_sha" "${archive_paths[@]}" \
 
 denied_sentinels="$control_directory/cfets-denied-sentinels.txt"
 rights_receipt="$control_directory/pages-rights-release-receipt.json"
-env PYTHONDONTWRITEBYTECODE=1 python3 \
+env PYTHONDONTWRITEBYTECODE=1 "$python_runtime" \
   "$staging_directory/ops/railway/verify_rights_clean.py" capture \
   --root "$staging_directory" \
   --output "$denied_sentinels"
@@ -95,13 +109,13 @@ if (( palimpsest_admission_epoch < publication_epoch )); then
   printf 'Railway rights admission clock precedes the publication edition\n' >&2
   exit 1
 fi
-rights_edition_at="$(python3 - "$publication_epoch" <<'PY'
+rights_edition_at="$("$python_runtime" - "$publication_epoch" <<'PY'
 from datetime import UTC, datetime
 import sys
 print(datetime.fromtimestamp(int(sys.argv[1]), tz=UTC).isoformat(timespec="seconds").replace("+00:00", "Z"))
 PY
 )"
-rights_admission_at="$(python3 - "$palimpsest_admission_epoch" <<'PY'
+rights_admission_at="$("$python_runtime" - "$palimpsest_admission_epoch" <<'PY'
 from datetime import UTC, datetime
 import sys
 print(datetime.fromtimestamp(int(sys.argv[1]), tz=UTC).isoformat(timespec="seconds").replace("+00:00", "Z"))
@@ -115,33 +129,33 @@ rights_args=(
   --receipt "$rights_receipt"
 )
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$staging_directory" \
-  python3 -m scripts.stage_pages_rights "${rights_args[@]}"
+  "$python_runtime" -m scripts.stage_pages_rights "${rights_args[@]}"
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$staging_directory" \
-  python3 -m scripts.stage_pages_rights "${rights_args[@]}" --check
-env PYTHONDONTWRITEBYTECODE=1 python3 \
+  "$python_runtime" -m scripts.stage_pages_rights "${rights_args[@]}" --check
+env PYTHONDONTWRITEBYTECODE=1 "$python_runtime" \
   "$staging_directory/ops/railway/verify_rights_clean.py" verify \
   --root "$staging_directory" \
   --sentinels "$denied_sentinels"
 
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$staging_directory" \
-  python3 -m scripts.verify_ucdp_public_release check \
+  "$python_runtime" -m scripts.verify_ucdp_public_release check \
   --root "$staging_directory" \
   --current-at "$rights_admission_at"
 env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$staging_directory" \
-  python3 -m scripts.verify_deep_research_publication check \
+  "$python_runtime" -m scripts.verify_deep_research_publication check \
   --root "$staging_directory"
 
-env PYTHONDONTWRITEBYTECODE=1 python3 \
+env PYTHONDONTWRITEBYTECODE=1 "$python_runtime" \
   "$staging_directory/scripts/build_pages_wire_archive.py" \
   --root "$staging_directory" \
   --publication-sha "$expected_sha"
-env PYTHONDONTWRITEBYTECODE=1 python3 \
+env PYTHONDONTWRITEBYTECODE=1 "$python_runtime" \
   "$staging_directory/scripts/build_pages_wire_archive.py" \
   --root "$staging_directory" \
   --publication-sha "$expected_sha" \
   --check
 
-env PYTHONDONTWRITEBYTECODE=1 python3 \
+env PYTHONDONTWRITEBYTECODE=1 "$python_runtime" \
   "$staging_directory/ops/railway/build_release_manifest.py" \
   --root "$staging_directory" \
   --source-commit "$expected_sha" \
