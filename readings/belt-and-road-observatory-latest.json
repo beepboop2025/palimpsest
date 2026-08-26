@@ -21,8 +21,8 @@
       "adapter_ready": 9,
       "blocked": 1,
       "link_only": 23,
-      "planned": 8,
-      "repository_ready": 1
+      "live": 1,
+      "planned": 8
     },
     "source_classes": {
       "civil_society": 1,
@@ -995,7 +995,7 @@
     {
       "workstream_id": "narcoscope_illicit_economy_overlay",
       "label": "Official, aggregate illicit-economy context without actor inference",
-      "status": "repository_ready_not_deployed",
+      "status": "production_verified",
       "required_coverage": [
         "drug_market",
         "legal_designation"
@@ -1235,7 +1235,7 @@
       "target_id": "country_illicit_economy_context",
       "label": "China, Pakistan and Myanmar official drug-market country aggregates",
       "target_type": "partner_overlay",
-      "evidence_status": "repository_ready_not_deployed",
+      "evidence_status": "production_verified",
       "required_coverage": [
         "drug_market",
         "legal_designation"
@@ -1251,7 +1251,7 @@
       "partner": "NarcoScope",
       "contract": "narcoscope.palimpsest.corridor-aggregate.v2",
       "artifact_id": "narcoscope.china-pakistan-myanmar.official-coverage",
-      "status": "repository_ready_not_deployed",
+      "status": "production_verified",
       "producer_path": "public/data/narcoscope-palimpsest-corridors-v2.json",
       "palimpsest_path": "integrations/intelligence-commons/narcoscope-palimpsest-corridors-v2.json",
       "join_policy": "geography_and_time_only",
@@ -2442,7 +2442,7 @@
       "authority_role": "partner_aggregate",
       "access_mode": "open_download",
       "rights_status": "attribution",
-      "implementation": "repository_ready",
+      "implementation": "live",
       "cadence": "quarterly",
       "geographies": [
         "CHN",
@@ -2457,7 +2457,7 @@
       "claim_classes": [
         "partner_aggregate"
       ],
-      "notes": "Repository-ready v2 artifact, not yet proven live. Geography-and-time-only join; no movement, actor, project, route, guilt or causal inference."
+      "notes": "Production-verified v2 artifact at NarcoScope merge 5bf6a31cfd98e56dadca495f35b99ecb73c1d74f; exact artifact and schema bytes, REST, MCP 1.1.0 and MCP Registry 1.1.0 were independently checked. Geography-and-time-only join; no movement, actor, project, route, guilt or causal inference."
     }
   ],
   "prioritized_backlog": [

@@ -90,16 +90,16 @@ def test_administrative_designations_allegations_and_legal_status_stay_distinct(
     assert "not findings" in sources["ohchr_balochistan"]["notes"]
 
 
-def test_narcoscope_bridge_is_repository_ready_but_not_live_and_cannot_infer_actors() -> None:
+def test_narcoscope_bridge_is_production_verified_and_cannot_infer_actors() -> None:
     registry = load_registry(REGISTRY)
     [bridge] = registry["partner_bridges"]
     assert bridge["contract"] == "narcoscope.palimpsest.corridor-aggregate.v2"
-    assert bridge["status"] == "repository_ready_not_deployed"
+    assert bridge["status"] == "production_verified"
     assert bridge["join_policy"] == "geography_and_time_only"
     assert bridge["actor_inference"] == "prohibited"
     source = next(source for source in registry["sources"] if source["source_id"] == "narcoscope_corridors_v2")
-    assert source["implementation"] == "repository_ready"
-    assert "not yet proven live" in source["notes"]
+    assert source["implementation"] == "live"
+    assert "5bf6a31cfd98e56dadca495f35b99ecb73c1d74f" in source["notes"]
 
 
 def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
@@ -128,13 +128,13 @@ def test_ground_level_priority_is_explicit_and_cannot_change_claim_status() -> N
     assert row["next_gate"] == "rights_review"
 
 
-def test_public_discovery_is_explicit_without_claiming_deployment() -> None:
+def test_public_discovery_is_explicit_without_claiming_complete_ingestion() -> None:
     page = PAGE.read_text(encoding="utf-8")
     sitemap = (ROOT / "sitemap.xml").read_text(encoding="utf-8")
     home = (ROOT / "index.html").read_text(encoding="utf-8")
     catalog = json.loads((ROOT / "config" / "public_data_catalog.json").read_text(encoding="utf-8"))
-    assert "Repository-ready coverage contract" in page
-    assert "Not a claim that all sources are ingested or that this branch is deployed" in page
+    assert "Evidence coverage contract" in page
+    assert "Publication is not a claim that every registered source has been ingested" in page
     assert "https://palimpsest.info/belt-and-road/" in sitemap
     assert 'href="/belt-and-road/"' in home
     entry = next(item for item in catalog["datasets"] if item["id"] == "belt-and-road-observatory")

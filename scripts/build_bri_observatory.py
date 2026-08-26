@@ -139,7 +139,7 @@ def _render_html(artifact: dict) -> bytes:
     <p class="bri-eyebrow">Global BRI evidence backbone · first deep dossiers: Pakistan and Myanmar</p>
     <h1>Every project claim should show what it knows—and what it does not.</h1>
     <p class="bri-dek">{_esc(artifact["scope"])}</p>
-    <div class="bri-release"><strong>Repository-ready coverage contract</strong><span>Not a claim that all sources are ingested or that this branch is deployed.</span></div>
+    <div class="bri-release"><strong>Evidence coverage contract</strong><span>Publication is not a claim that every registered source has been ingested.</span></div>
     <div class="bri-stats" aria-label="Current registry coverage">
       <div><strong>{report["source_count"]}</strong><span>source families</span></div>
       <div><strong>{report["build_ready_source_count"]}</strong><span>build-ready inputs</span></div>
@@ -180,7 +180,7 @@ def _render_html(artifact: dict) -> bytes:
 
   <section class="bri-section" id="sources" aria-labelledby="sources-title">
     <p class="bri-eyebrow">Source and rights ledger</p><h2 id="sources-title">Open, pending, licensed and blocked routes all stay visible.</h2>
-    <p>{states.get("adapter_ready", 0)} adapters are ready, {states.get("repository_ready", 0)} partner artifact is repository-ready, and {states.get("blocked", 0)} licensed route is blocked from public redistribution. Link-only entries are discovery, not ingestion.</p>
+    <p>{states.get("live", 0)} sources are live, {states.get("adapter_ready", 0)} adapters are ready, and {states.get("blocked", 0)} licensed route is blocked from public redistribution. Link-only entries are discovery, not ingestion.</p>
     <div class="bri-controls"><label>Search<input type="search" data-bri-source-search placeholder="Source, publisher, evidence field…"></label><label>Implementation<select data-bri-state><option value="all">All states</option>{''.join(f'<option value="{_esc(state)}">{_esc(state.replace("_", " "))} ({count})</option>' for state, count in states.items())}</select></label><p data-bri-source-count aria-live="polite"></p></div>
     <ul class="bri-sources" data-bri-sources>{sources}</ul>
   </section>

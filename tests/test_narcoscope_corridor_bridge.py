@@ -1,8 +1,9 @@
-"""Fail-closed contracts for the repository-ready NarcoScope v2 pin."""
+"""Fail-closed contracts for the production-verified NarcoScope v2 pin."""
 from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,7 @@ from core.narcoscope_corridor_bridge import (
     DEFAULT_SCHEMA_PATH,
     SCHEMA_VERSION,
     NarcoScopeCorridorError,
+    admission_receipt,
     load_bundle,
     validate_artifact,
     validate_receipt,
@@ -35,13 +37,17 @@ def _bundle() -> tuple[dict, dict, dict, bytes, bytes]:
     )
 
 
-def test_checked_in_v2_bundle_is_exactly_pinned_and_repository_ready() -> None:
+def test_checked_in_v2_bundle_is_exactly_pinned_and_production_verified() -> None:
     artifact, schema, receipt, artifact_raw, schema_raw = _bundle()
     assert artifact["schemaVersion"] == SCHEMA_VERSION
     assert artifact["artifactId"] == ARTIFACT_ID
     assert schema["$id"].endswith("/narcoscope-palimpsest-corridors-v2.schema.json")
     assert receipt["source_url"] == CANONICAL_URL
-    assert receipt["status"] == "repository_ready_not_deployed"
+    assert receipt["status"] == "production_verified"
+    assert receipt["deployment"]["commit_sha"] == "5bf6a31cfd98e56dadca495f35b99ecb73c1d74f"
+    assert receipt["deployment"]["deployment_id"] == 6103284752
+    assert receipt["deployment"]["test_run_id"] == 32966260157
+    assert receipt["deployment"]["registry_run_id"] == 32966416333
     assert receipt["current"]["sha256"] == hashlib.sha256(artifact_raw).hexdigest()
     assert receipt["current"]["schema_sha256"] == hashlib.sha256(schema_raw).hexdigest()
     assert sync_narcoscope_corridors.main(["--check"]) == 0
@@ -115,9 +121,38 @@ def test_receipt_cannot_bless_changed_artifact_or_schema_bytes() -> None:
         )
 
 
+def test_production_proof_is_structured_and_new_admission_resets_it() -> None:
+    artifact, _, receipt, artifact_raw, schema_raw = _bundle()
+    changed = json.loads(json.dumps(receipt))
+    changed["deployment"]["verification_checks"] = ["github_deployment_success"]
+    with pytest.raises(NarcoScopeCorridorError, match="verification checks"):
+        validate_receipt(
+            changed,
+            artifact_raw=artifact_raw,
+            schema_raw=schema_raw,
+            artifact=artifact,
+        )
+
+    next_receipt = admission_receipt(
+        artifact,
+        artifact_raw,
+        schema_raw,
+        admitted_at=datetime(2026, 8, 27, tzinfo=timezone.utc),
+        previous=receipt,
+    )
+    assert next_receipt["status"] == "repository_ready_not_deployed"
+    assert "deployment" not in next_receipt
+    assert validate_receipt(
+        next_receipt,
+        artifact_raw=artifact_raw,
+        schema_raw=schema_raw,
+        artifact=artifact,
+    ) == next_receipt
+
+
 def test_bri_contract_points_to_the_pinned_local_v2_path() -> None:
     registry = json.loads((ROOT / "config" / "bri_observatory.json").read_text(encoding="utf-8"))
     [bridge] = registry["partner_bridges"]
     assert ROOT / bridge["palimpsest_path"] == DEFAULT_ARTIFACT_PATH
-    assert bridge["status"] == "repository_ready_not_deployed"
+    assert bridge["status"] == "production_verified"
     assert bridge["join_policy"] == "geography_and_time_only"

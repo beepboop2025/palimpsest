@@ -221,7 +221,7 @@
         "partner": { "const": "NarcoScope" },
         "contract": { "const": "narcoscope.palimpsest.corridor-aggregate.v2" },
         "artifact_id": { "const": "narcoscope.china-pakistan-myanmar.official-coverage" },
-        "status": { "const": "repository_ready_not_deployed" },
+        "status": { "enum": ["repository_ready_not_deployed", "production_verified"] },
         "producer_path": { "type": "string", "minLength": 1 },
         "palimpsest_path": { "type": "string", "minLength": 1 },
         "join_policy": { "const": "geography_and_time_only" },

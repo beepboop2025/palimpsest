@@ -208,7 +208,7 @@
     {
       "workstream_id": "narcoscope_illicit_economy_overlay",
       "label": "Official, aggregate illicit-economy context without actor inference",
-      "status": "repository_ready_not_deployed",
+      "status": "production_verified",
       "required_coverage": ["drug_market", "legal_designation"],
       "source_ids": ["narcoscope_corridors_v2", "unodc_myanmar_opium"]
     }
@@ -225,14 +225,14 @@
     {"target_id": "kyaukpyu_port_sez", "label": "Kyaukpyu deep-sea port and special economic zone", "target_type": "port_and_sez", "evidence_status": "source_discovery", "required_coverage": ["project_status", "ownership", "contract", "finance_commitment", "port_logistics", "land", "livelihood", "environment"], "source_ids": ["myanmar_port_authority", "myanmar_dica", "world_bank_myanmar_monitor", "copernicus_sentinel2"]},
     {"target_id": "china_myanmar_pipelines", "label": "China-Myanmar oil and gas pipelines", "target_type": "energy_corridor", "evidence_status": "source_discovery", "required_coverage": ["project_status", "ownership", "energy", "trade", "land", "livelihood", "environment"], "source_ids": ["myanmar_moi_cmec", "myanmar_dica", "world_bank_myanmar_monitor"]},
     {"target_id": "mandalay_muse_rail", "label": "Mandalay-Muse railway and connected logistics", "target_type": "rail_corridor", "evidence_status": "source_discovery", "required_coverage": ["project_status", "contract", "finance_commitment", "trade", "land", "environment"], "source_ids": ["myanmar_moi_cmec", "myanmar_dica", "world_bank_myanmar_monitor"]},
-    {"target_id": "country_illicit_economy_context", "label": "China, Pakistan and Myanmar official drug-market country aggregates", "target_type": "partner_overlay", "evidence_status": "repository_ready_not_deployed", "required_coverage": ["drug_market", "legal_designation"], "source_ids": ["narcoscope_corridors_v2", "unodc_myanmar_opium"]}
+    {"target_id": "country_illicit_economy_context", "label": "China, Pakistan and Myanmar official drug-market country aggregates", "target_type": "partner_overlay", "evidence_status": "production_verified", "required_coverage": ["drug_market", "legal_designation"], "source_ids": ["narcoscope_corridors_v2", "unodc_myanmar_opium"]}
   ],
   "partner_bridges": [
     {
       "partner": "NarcoScope",
       "contract": "narcoscope.palimpsest.corridor-aggregate.v2",
       "artifact_id": "narcoscope.china-pakistan-myanmar.official-coverage",
-      "status": "repository_ready_not_deployed",
+      "status": "production_verified",
       "producer_path": "public/data/narcoscope-palimpsest-corridors-v2.json",
       "palimpsest_path": "integrations/intelligence-commons/narcoscope-palimpsest-corridors-v2.json",
       "join_policy": "geography_and_time_only",
@@ -282,6 +282,6 @@
     {"source_id":"ocha_myanmar","name":"UN Myanmar humanitarian reporting","publisher":"United Nations in Myanmar and OCHA","url":"https://myanmar.un.org/en","source_class":"multilateral","authority_role":"independent_observation","access_mode":"open_keyless","rights_status":"link_only_pending_review","implementation":"link_only","cadence":"event","geographies":["MMR","MMR-RKH"],"coverage":["humanitarian","livelihood","human_rights","conflict"],"independence_group":"un_myanmar_humanitarian","claim_classes":["humanitarian_observation","reported_event"],"notes":"Humanitarian aggregates and situation reports; population denominators, access constraints and publication dates must travel with claims."},
     {"source_id":"iimm_reports","name":"Independent Investigative Mechanism for Myanmar annual reports","publisher":"United Nations Independent Investigative Mechanism for Myanmar","url":"https://iimm.un.org/en/annual-reports","source_class":"multilateral","authority_role":"independent_observation","access_mode":"open_download","rights_status":"link_only_pending_review","implementation":"link_only","cadence":"annual","geographies":["MMR","MMR-RKH"],"coverage":["human_rights","conflict","corrections"],"independence_group":"iimm","claim_classes":["reported_event","allegation"],"notes":"Mechanism reporting and evidence-preservation status; never expose protected evidence or convert investigative statements into adjudicated findings."},
     {"source_id":"copernicus_sentinel2","name":"Copernicus Sentinel-2 imagery","publisher":"European Union Copernicus Programme","url":"https://dataspace.copernicus.eu/","source_class":"multilateral","authority_role":"independent_observation","access_mode":"open_download","rights_status":"open_reuse","implementation":"adapter_ready","cadence":"daily","geographies":["GLOBAL","PAK","PAK-BAL","PAK-GWD","MMR","MMR-RKH"],"coverage":["project_status","environment","remote_sensing"],"independence_group":"copernicus_sentinel2","claim_classes":["analytical_estimate"],"notes":"Use delayed coarse project-footprint change detection only; no tactical monitoring, person tracking or vulnerability mapping."},
-    {"source_id":"narcoscope_corridors_v2","name":"NarcoScope China-Pakistan-Myanmar official aggregate","publisher":"NarcoScope","url":"https://narcoscope.com/data/narcoscope-palimpsest-corridors-v2.json","source_class":"partner","authority_role":"partner_aggregate","access_mode":"open_download","rights_status":"attribution","implementation":"repository_ready","cadence":"quarterly","geographies":["CHN","PAK","MMR"],"coverage":["drug_market","legal_designation"],"independence_group":"narcoscope_official_aggregate","claim_classes":["partner_aggregate"],"notes":"Repository-ready v2 artifact, not yet proven live. Geography-and-time-only join; no movement, actor, project, route, guilt or causal inference."}
+    {"source_id":"narcoscope_corridors_v2","name":"NarcoScope China-Pakistan-Myanmar official aggregate","publisher":"NarcoScope","url":"https://narcoscope.com/data/narcoscope-palimpsest-corridors-v2.json","source_class":"partner","authority_role":"partner_aggregate","access_mode":"open_download","rights_status":"attribution","implementation":"live","cadence":"quarterly","geographies":["CHN","PAK","MMR"],"coverage":["drug_market","legal_designation"],"independence_group":"narcoscope_official_aggregate","claim_classes":["partner_aggregate"],"notes":"Production-verified v2 artifact at NarcoScope merge 5bf6a31cfd98e56dadca495f35b99ecb73c1d74f; exact artifact and schema bytes, REST, MCP 1.1.0 and MCP Registry 1.1.0 were independently checked. Geography-and-time-only join; no movement, actor, project, route, guilt or causal inference."}
   ]
 }

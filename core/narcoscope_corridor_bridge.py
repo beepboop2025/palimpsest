@@ -24,11 +24,22 @@ CANONICAL_SCHEMA_URL = "https://narcoscope.com/data/narcoscope-palimpsest-corrid
 SCHEMA_VERSION = "narcoscope.palimpsest.corridor-aggregate.v2"
 ARTIFACT_ID = "narcoscope.china-pakistan-myanmar.official-coverage"
 RECEIPT_SCHEMA = "palimpsest-partner-pin/v2"
+REPOSITORY_READY_STATUS = "repository_ready_not_deployed"
+PRODUCTION_VERIFIED_STATUS = "production_verified"
+PRODUCTION_VERIFICATION_CHECKS = [
+    "github_deployment_success",
+    "artifact_byte_identity",
+    "schema_byte_identity",
+    "rest_contract_v2",
+    "mcp_contract_v1.1.0",
+    "mcp_registry_v1.1.0",
+]
 MAX_BYTES = 2 * 1024 * 1024
 MAX_ROWS = 20_000
 MAX_HISTORY = 128
 
 _SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+_GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _TIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 _ALLOWED_SOURCE_HOSTS = {
     "www.unodc.org", "www.incb.org", "sanctionslist.ofac.treas.gov",
@@ -358,14 +369,56 @@ def admission_receipt(
         "schema_url": CANONICAL_SCHEMA_URL,
         "contract": SCHEMA_VERSION,
         "artifact_id": ARTIFACT_ID,
-        "status": "repository_ready_not_deployed",
+        "status": REPOSITORY_READY_STATUS,
         "current": current,
         "superseded": superseded,
     }
 
 
+def _validate_deployment_proof(proof: Any, *, admitted_at: datetime) -> None:
+    expected_fields = {
+        "repository", "commit_sha", "deployment_id", "deployment_environment",
+        "deployment_url", "production_url", "test_run_id", "registry_run_id",
+        "registry_version", "verified_at", "verification_checks",
+    }
+    if type(proof) is not dict or set(proof) != expected_fields:
+        raise NarcoScopeCorridorError("deployment proof fields changed")
+    if proof["repository"] != "beepboop2025/narcoscope":
+        raise NarcoScopeCorridorError("deployment proof repository changed")
+    if type(proof["commit_sha"]) is not str or not _GIT_SHA_RE.fullmatch(proof["commit_sha"]):
+        raise NarcoScopeCorridorError("deployment proof commit is invalid")
+    for field in ("deployment_id", "test_run_id", "registry_run_id"):
+        if _count(proof[field], f"deployment.{field}") == 0:
+            raise NarcoScopeCorridorError(f"deployment.{field} must be positive")
+    if proof["deployment_environment"] != "Production":
+        raise NarcoScopeCorridorError("deployment proof is not production")
+    if proof["production_url"] != "https://narcoscope.com":
+        raise NarcoScopeCorridorError("deployment proof production URL changed")
+    deployment_url = urlsplit(proof["deployment_url"]) if type(proof["deployment_url"]) is str else None
+    if (
+        not deployment_url
+        or deployment_url.scheme != "https"
+        or not deployment_url.hostname
+        or not deployment_url.hostname.endswith(".vercel.app")
+    ):
+        raise NarcoScopeCorridorError("deployment proof URL is invalid")
+    if proof["registry_version"] != "1.1.0":
+        raise NarcoScopeCorridorError("deployment proof Registry version changed")
+    verified_at = _canonical_time(proof["verified_at"], "deployment.verified_at")
+    if verified_at < admitted_at:
+        raise NarcoScopeCorridorError("deployment verification predates admission")
+    if proof["verification_checks"] != PRODUCTION_VERIFICATION_CHECKS:
+        raise NarcoScopeCorridorError("deployment verification checks changed")
+
+
 def validate_receipt(receipt: dict[str, Any], *, artifact_raw: bytes, schema_raw: bytes, artifact: dict[str, Any]) -> dict[str, Any]:
-    expected_root = {"schema", "producer", "source_url", "schema_url", "contract", "artifact_id", "status", "current", "superseded"}
+    status = receipt.get("status")
+    expected_root = {
+        "schema", "producer", "source_url", "schema_url", "contract",
+        "artifact_id", "status", "current", "superseded",
+    }
+    if status == PRODUCTION_VERIFIED_STATUS:
+        expected_root.add("deployment")
     if set(receipt) != expected_root:
         raise NarcoScopeCorridorError("pin receipt fields changed")
     expected_identity = {
@@ -375,10 +428,11 @@ def validate_receipt(receipt: dict[str, Any], *, artifact_raw: bytes, schema_raw
         "schema_url": CANONICAL_SCHEMA_URL,
         "contract": SCHEMA_VERSION,
         "artifact_id": ARTIFACT_ID,
-        "status": "repository_ready_not_deployed",
     }
     if any(receipt.get(key) != value for key, value in expected_identity.items()):
         raise NarcoScopeCorridorError("pin receipt identity changed")
+    if status not in {REPOSITORY_READY_STATUS, PRODUCTION_VERIFIED_STATUS}:
+        raise NarcoScopeCorridorError("pin receipt status changed")
     current = receipt.get("current")
     if type(current) is not dict or set(current) != {"data_as_of", "sha256", "schema_sha256", "admitted_at"}:
         raise NarcoScopeCorridorError("pin receipt current fields changed")
@@ -388,7 +442,9 @@ def validate_receipt(receipt: dict[str, Any], *, artifact_raw: bytes, schema_raw
         raise NarcoScopeCorridorError("pin hash does not match artifact bytes")
     if current["schema_sha256"] != hashlib.sha256(schema_raw).hexdigest():
         raise NarcoScopeCorridorError("pin schema hash does not match schema bytes")
-    _canonical_time(current["admitted_at"], "receipt.current.admitted_at")
+    admitted_at = _canonical_time(current["admitted_at"], "receipt.current.admitted_at")
+    if status == PRODUCTION_VERIFIED_STATUS:
+        _validate_deployment_proof(receipt["deployment"], admitted_at=admitted_at)
     if type(receipt.get("superseded")) is not list or len(receipt["superseded"]) > MAX_HISTORY:
         raise NarcoScopeCorridorError("pin supersession history is invalid")
     return receipt
