@@ -105,6 +105,12 @@ def test_registry_is_reviewed_bounded_and_exactly_three_countries():
     assert registry.dataset["redistribution_status"] == "allowed_with_attribution"
     assert registry.dataset["context_scope"] == "national_economic_context"
     assert registry.dataset["causality_boundary"] == ("not_evidence_of_bri_causality")
+    assert "EN.GHG.CO2.PC.CE.AR5" in registry.bindings
+    assert "EN.ATM.CO2E.PC" not in registry.bindings
+    assert (
+        registry.bindings["EN.GHG.CO2.PC.CE.AR5"].source_title
+        == "Carbon dioxide (CO2) emissions excluding LULUCF per capita (t CO2e/capita)"
+    )
     assert {row.topic for row in registry.bindings.values()} >= {
         "macro",
         "trade",

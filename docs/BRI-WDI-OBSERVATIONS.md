@@ -70,7 +70,7 @@ PYTHONPATH=. python3 -m scripts.bri_wdi_pull check \
   --input /path/to/exact-wdi-response.json \
   --receipt-input /path/to/exact-wdi-response.receipt.json \
   --start-year 1960 \
-  --end-year 2026
+  --end-year 2025
 ```
 
 Build a deterministic review artifact. There is deliberately no public output
@@ -81,7 +81,7 @@ PYTHONPATH=. python3 -m scripts.bri_wdi_pull build \
   --input /path/to/exact-wdi-response.json \
   --receipt-input /path/to/exact-wdi-response.receipt.json \
   --start-year 1960 \
-  --end-year 2026 \
+  --end-year 2025 \
   --output /path/to/review/bri-economic-observations.json
 ```
 
@@ -93,7 +93,7 @@ Outbound access occurs only with `--fetch`:
 PYTHONPATH=. python3 -m scripts.bri_wdi_pull build \
   --fetch \
   --start-year 1960 \
-  --end-year 2026 \
+  --end-year 2025 \
   --raw-output /path/to/controlled/raw/wdi-response.json \
   --receipt-output /path/to/controlled/raw/wdi-response.receipt.json \
   --output /path/to/review/bri-economic-observations.json
@@ -106,6 +106,14 @@ They are immutable: an existing path is accepted only when its bytes are
 identical, and differing evidence is never replaced. Offline replay requires
 both files and verifies canonical receipt encoding, request scope, retrieval
 clock authentication, response length, and response hash before parsing.
+
+The admitted live range ends at 2025 because the official source-2 time
+dimension currently spans `YR1960` through `YR2025`. The API silently clips a
+request for 2026 instead of returning an explicit missing period, so release
+operators must confirm the source time dimension before advancing this bound.
+The current environmental series is `EN.GHG.CO2.PC.CE.AR5`; the former
+`EN.ATM.CO2E.PC` code is now available only from the WDI archive and is
+intentionally excluded from this source-2 bundle.
 
 The generated bundle is explicitly derived. An identical rebuild is accepted;
 replacing a differing derived artifact requires `--replace-derived`. None of
