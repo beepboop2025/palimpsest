@@ -279,9 +279,11 @@ commit. If its `quarantined_paths` contains any wire `analysis.json` or
 `analysis/revisions/*.json` path, rights take precedence: the builder returns
 `mode=rights-suppressed`, creates neither the archive nor its receipt, and
 verifies that neither output already exists. Directly safe wire files and the
-same-path restricted stubs remain untouched. A malformed, non-canonical, or
-different-commit rights status fails the Pages build instead of falling back to
-archiving.
+same-path restricted stubs remain untouched. Suppression still proves that each
+unrestricted current head has one regular, byte-identical named revision; it
+cannot hide unrelated missing, drifted, or ambiguous history. A malformed,
+non-canonical, or different-commit rights status fails the Pages build instead
+of falling back to archiving.
 
 The access receipt at
 `/news/wire/analysis-revisions-archive.json` binds the exact publication commit,

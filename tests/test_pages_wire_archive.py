@@ -121,7 +121,26 @@ def _rights_status(
         "reason": "Fixture source policy denies publication.",
         "rights_evaluated_at": "2026-08-26T00:00:00Z",
         "schema_version": wire_archive.RIGHTS_STATUS_SCHEMA,
-        "source_decisions": [{"source_id": "fixture_denied"}],
+        "source_decisions": [
+            {
+                "attribution": None,
+                "availability": "restricted",
+                "configured_decision": "deny",
+                "decision": "deny",
+                "decision_sha256": "9" * 64,
+                "expires_at": None,
+                "input_records": 0,
+                "license": None,
+                "license_url": None,
+                "published_records": 0,
+                "reason": "Fixture policy denies publication.",
+                "reviewed_at": "2026-08-24T00:00:00Z",
+                "rights_evidence_url": None,
+                "seiche_export_allowed": False,
+                "source_id": "fixture_denied",
+                "values_allowed": False,
+            }
+        ],
         "status": "restricted",
     }
     _write(root / wire_archive.RIGHTS_STATUS_RELATIVE_PATH, _json_bytes(status))
@@ -353,6 +372,55 @@ def test_pages_api_refuses_missing_malformed_or_mismatched_rights_status(
         wire_archive.build_for_pages(mismatch, PUBLICATION_SHA)
 
 
+@pytest.mark.parametrize(
+    "clock",
+    [
+        "2026-08-26T00:00:00.1Z",
+        "2026-08-26T00:00:00+00:00",
+        "2026-02-30T00:00:00Z",
+    ],
+)
+def test_pages_api_requires_canonical_whole_utc_rights_clock(
+    tmp_path: Path, clock: str
+) -> None:
+    root = tmp_path / clock.replace(":", "-").replace("+", "-")
+    _fixture(root)
+    status = _rights_status(root, [])
+    status["rights_evaluated_at"] = clock
+    (root / wire_archive.RIGHTS_STATUS_RELATIVE_PATH).write_bytes(
+        _json_bytes(status)
+    )
+
+    with pytest.raises(wire_archive.ArchiveError, match="rights_evaluated_at"):
+        wire_archive.build_for_pages(root, PUBLICATION_SHA)
+
+
+def test_pages_api_refuses_source_decision_schema_drift(tmp_path: Path) -> None:
+    missing_field = tmp_path / "missing-field"
+    _fixture(missing_field)
+    status = _rights_status(missing_field, [])
+    decisions = status["source_decisions"]
+    assert isinstance(decisions, list) and isinstance(decisions[0], dict)
+    decisions[0].pop("configured_decision")
+    (missing_field / wire_archive.RIGHTS_STATUS_RELATIVE_PATH).write_bytes(
+        _json_bytes(status)
+    )
+    with pytest.raises(wire_archive.ArchiveError, match="invalid shape"):
+        wire_archive.build_for_pages(missing_field, PUBLICATION_SHA)
+
+    inconsistent = tmp_path / "inconsistent"
+    _fixture(inconsistent)
+    status = _rights_status(inconsistent, [])
+    decisions = status["source_decisions"]
+    assert isinstance(decisions, list) and isinstance(decisions[0], dict)
+    decisions[0]["decision"] = "allow"
+    (inconsistent / wire_archive.RIGHTS_STATUS_RELATIVE_PATH).write_bytes(
+        _json_bytes(status)
+    )
+    with pytest.raises(wire_archive.ArchiveError, match="allow decision"):
+        wire_archive.build_for_pages(inconsistent, PUBLICATION_SHA)
+
+
 def test_pages_api_refuses_incoherent_wire_quarantine_closure(
     tmp_path: Path,
 ) -> None:
@@ -385,9 +453,59 @@ def test_pages_api_refuses_incoherent_wire_quarantine_closure(
         wire_archive.build_for_pages(noncanonical, PUBLICATION_SHA)
 
 
+@pytest.mark.parametrize(
+    ("damage", "message"),
+    [
+        ("missing", "current analysis revision is missing"),
+        ("non-regular", "archive input is not a regular file"),
+        ("byte-drift", "not byte-identical"),
+        ("duplicate-bytes", "maps byte-identically to 2"),
+    ],
+)
+def test_pages_suppression_preserves_unrestricted_current_head_closure(
+    tmp_path: Path, damage: str, message: str
+) -> None:
+    root = tmp_path / damage
+    revisions = _fixture(root)
+    restricted = [
+        f"news/wire/{EVENT_A}/analysis/revisions/{ANALYSIS_OLD}.json"
+    ]
+    status = _rights_status(root, restricted)
+    _apply_restricted_stubs(root, status, restricted)
+    current_b = (
+        root / f"news/wire/{EVENT_B}/analysis/revisions/{ANALYSIS_B}.json"
+    )
+    if damage == "missing":
+        current_b.unlink()
+    elif damage == "non-regular":
+        current_b.unlink()
+        current_b.mkdir()
+    elif damage == "byte-drift":
+        current_b.write_bytes(
+            _json_bytes({"analysis_id": ANALYSIS_B, "summary": "drifted b"})
+        )
+    else:
+        duplicate = (
+            root
+            / f"news/wire/{EVENT_B}/analysis/revisions/analysisv-{'7' * 24}.json"
+        )
+        duplicate.write_bytes(
+            revisions[
+                f"news/wire/{EVENT_B}/analysis/revisions/{ANALYSIS_B}.json"
+            ]
+        )
+
+    with pytest.raises(wire_archive.ArchiveError, match=message):
+        wire_archive.build_for_pages(root, PUBLICATION_SHA)
+
+
 def test_pages_api_refuses_invalid_quarantine_list_and_cli_reports_mode(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    help_text = wire_archive._parser().format_help()
+    assert "rights-aware Pages representation" in help_text
+    assert "deliberate absence" in help_text
+
     invalid = tmp_path / "invalid-list"
     _fixture(invalid)
     status = _rights_status(
