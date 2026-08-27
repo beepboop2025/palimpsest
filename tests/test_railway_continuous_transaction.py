@@ -545,7 +545,7 @@ exit 3
                 "FAKE_REAL_PYTHON": sys.executable,
                 "GITHUB_RUN_ID": "731994934",
                 "GITHUB_RUN_ATTEMPT": "1",
-                "GITHUB_REPOSITORY": "mrinalwadhwa/Palimpsest",
+                "GITHUB_REPOSITORY": "example-org/palimpsest",
                 "GITHUB_EVENT_PATH": str(self.event),
             }
         )
