@@ -29,9 +29,12 @@ trackers.
 
 6. **Social metadata is not public opinion or proof.** Private messages, comments, follower
    graphs, engagement counts, locations, media binaries, and consumer-account profiles stay off.
-   Public Telegram *channel preview* HTML for named, already-public channels is first-class
-   warehouse capture (full public text, hashes, outbound links). The public website whispers /
-   telegram-watch surfaces remain human-review-gated and sanitized (no raw IDs, no exact IOCs).
+   A public Telegram locator is discovery metadata, not collection permission. The collector
+   accepts only project-owned, explicitly consented, or licensed broadcast sources; sources
+   without that authority are refused before any fetch. Full observations remain limited to
+   project-owned Dragon Den channels. Public discussion groups are never bulk-collected. The public website
+   whispers / telegram-watch surfaces remain human-review-gated and sanitized (no raw IDs, no
+   exact IOCs).
    A social post never increases corroboration simply because the same publisher repeated a
    report on another platform.
 
@@ -65,8 +68,11 @@ Public extras that stay keyless under these rules:
   collector stays disabled pending authorized access.
 - **Public aggregate hot boards** (Baidu / Toutiao / Douyin JSON) when they answer
   without login. Titles and ranks only. A login wall or empty JSON abstains.
-- **Public Telegram channel previews** (`t.me/s/` HTML) for named Dragon Den channels
-  already in-tree. Full public text lives in the warehouse. Whispers stay review-gated.
+- **Authorization-gated Telegram broadcast-channel previews** (`t.me/s/` HTML) from the
+  reviewed China-Myanmar borderlands registry. The current collectable set is the three
+  project-owned Dragon Den channels. External locators remain discovery-only until explicit
+  consent or a license is reviewed. Public groups, participant fields, engagement counts,
+  locations, and media downloads remain out. Whispers stay review-gated.
 
 ## Isolation of the velocity leg
 

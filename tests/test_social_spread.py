@@ -112,13 +112,18 @@ def test_in_tree_sources_and_handles_were_not_invented():
     config = json.loads(
         (ROOT / "config" / "telegram_public_channels.json").read_text(encoding="utf-8")
     )
-    assert [row["handle"] for row in config["channels"]] == sorted(
-        ALLOWED_TELEGRAM_HANDLES
-    ) or [row["handle"] for row in config["channels"]] == [
-        "DragonDenWhispers",
-        "DragonDenCyber",
-        "DragonDenBorderlands",
-    ]
+    profiles = config["profiles"]
+    spread = {
+        row["handle"]
+        for row in config["channels"]
+        if profiles[row["profile"]]["public_spread"]
+    }
+    assert spread == ALLOWED_TELEGRAM_HANDLES
+    assert all(
+        profiles[row["profile"]]["public_projection"] != "full-observation"
+        for row in config["channels"]
+        if row["handle"] not in ALLOWED_TELEGRAM_HANDLES
+    )
     blob = json.dumps(config)
     assert "weixin" not in blob
     assert "WeChat" not in blob

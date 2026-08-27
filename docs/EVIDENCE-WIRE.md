@@ -36,7 +36,7 @@ controls, mirror article bodies, or claim to estimate a hidden “true GDP”.
                                   └───────> lexical dossiers ─────────┤
  official/market bytes ─> bitemporal observations ─> economic pulse ┤
  Palimpsest scans ──────> current instrument briefs ────────────────┤
- public Telegram allowlist ─> raw warned Telegram mirror ───────────┐
+ authorized Telegram updates ─> raw warned Telegram mirror ────────┐
                               └─> private ScamShield capsules ──────┤
  reviewed ScamShield aggregate ─> context-only Telegram watch ──────┤
  human-reviewed capsule ─> sanitized individual whisper ────────────┤
@@ -108,23 +108,25 @@ handoff. The full security and rollout design is in
 
 ## Telegram and ScamShield context
 
-Telegram is a separate monitoring lane, never an evidence shortcut. It now has
-two publication surfaces with different contracts, plus a warehouse capture
-lane that does not auto-publish.
+Telegram is a separate monitoring lane, never an evidence shortcut. It has two
+publication surfaces with different contracts plus an authorization-gated
+first-party capture lane that does not auto-publish.
 
-**Warehouse public-channel records** (`scripts/telegram_public_channels_pull.py`,
-fleet `telegram-public-channels`) poll keyless `https://t.me/s/{handle}` HTML
-for the three Dragon Den public channels already named in this repository.
-Each public post becomes a fat observation (full public text, message date,
-channel handle, `content_sha256`, first-seen, outbound public links, gazetteer)
-and joins official-first-seen / deletion ledgers / Weibo boards / Wayback when
-a URL or distinctive span already exists as a real record. A first-class
-`mainland_echo` family marks posts that quote or archive a deleted mainland
-item. The same beat drains `var/scamshield-inbox` through
-`scripts/scamshield_feed.py` so capsules land as sanitized counts. This runner
-never writes `readings/telegram-watch-latest.json` and never auto-promotes
-Dragon Whispers. Login-walled or empty previews abstain. CDT and GreatFire have
-no public `t.me` handle in-tree; those desks stay on RSS ledgers.
+**Telegram China-Myanmar Borderlands Observatory**
+(`scripts/telegram_public_channels_pull.py`, fleet
+`telegram-public-channels`) resolves the reviewed registry, but fetches only
+sources whose profile is `project-owned`, `explicit-consent`, or `licensed`.
+Public availability alone does not qualify. The current collectable set is the
+three project-owned Dragon Den channels; all external publisher, state-media,
+conflict-party, aggregator, advocacy, candidate, and quarantine entries are
+discovery-only and are rejected before network access. Authorized rows may use
+bounded `https://t.me/s/{handle}` refresh/backfill into the private, edit-aware
+SQLite warehouse. Public groups stay outside collection, and exact joins can
+label context but cannot raise corroboration. The same beat drains
+`var/scamshield-inbox` through `scripts/scamshield_feed.py` as sanitized counts
+and never writes `readings/telegram-watch-latest.json`. See
+`docs/TELEGRAM-BORDERLANDS-OBSERVATORY.md` for source classes, privacy boundary,
+warehouse schema, backfill controls, and activation proof.
 
 **Whispers from the Dragon Den on Telegram** is the raw companion. A dedicated
 bot receives new and edited posts from an explicit allowlist of public Telegram

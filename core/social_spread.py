@@ -73,7 +73,9 @@ MATCH_TARGETS = (
 OPTIONAL_CONTEXT = ("wayback",)
 ALL_INPUTS = REQUIRED_SPREADING + OPTIONAL_SPREADING + MATCH_TARGETS + OPTIONAL_CONTEXT
 
-ALLOWED_TELEGRAM_HANDLES = frozenset(channel["handle"] for channel in load_channels())
+ALLOWED_TELEGRAM_HANDLES = frozenset(
+    channel["handle"] for channel in load_channels() if channel["public_spread"]
+)
 assert ALLOWED_TELEGRAM_HANDLES == {
     "DragonDenWhispers",
     "DragonDenCyber",
