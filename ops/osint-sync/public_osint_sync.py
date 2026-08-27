@@ -22,7 +22,7 @@ import sys
 import tempfile
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -30,13 +30,22 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA = "palimpsest-public-osint-sync.v2"
+SCHEMA = "palimpsest-public-osint-sync.v3"
+LEGACY_RECEIPT_SCHEMA = "palimpsest-public-osint-sync.v2"
 FAILURE_SCHEMA = "palimpsest-public-osint-sync-failure.v1"
-RELEASE_PROOF_SCHEMA = "palimpsest-public-osint-release-proof.v1"
+RELEASE_PROOF_SCHEMA = "palimpsest-public-osint-release-proof.v2"
 OSINT_SCHEMA = "osint-china.v1"
 REPOSITORY_URL = "https://github.com/beepboop2025/palimpsest.git"
-PUBLIC_URL = "https://palimpsest.info/readings/osint-china-latest.json"
-PUBLIC_LEDGER_URL = "https://palimpsest.info/readings/readings-ledger.jsonl"
+PUBLIC_ORIGIN = "https://www.palimpsest.info"
+PUBLIC_URL = f"{PUBLIC_ORIGIN}/readings/osint-china-latest.json"
+PUBLIC_LEDGER_URL = f"{PUBLIC_ORIGIN}/readings/readings-ledger.jsonl"
+PUBLIC_RIGHTS_STATUS_URL = (
+    f"{PUBLIC_ORIGIN}/readings/china-publication-rights-latest.json"
+)
+PUBLIC_MANIFEST_URL = f"{PUBLIC_ORIGIN}/railway-release.json"
+RESTRICTED_ENDPOINT_SCHEMA = "palimpsest-restricted-publication-endpoint.v1"
+RESTRICTED_STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
+RAILWAY_MANIFEST_SCHEMA = "palimpsest.railway-static-release.v1"
 OSINT_REPOSITORY_PATH = "readings/osint-china-latest.json"
 LEDGER_REPOSITORY_PATH = "readings/readings-ledger.jsonl"
 OSINT_FILENAME = "osint-china-latest.json"
@@ -49,6 +58,8 @@ RECEIPT_FILENAME = "receipt.json"
 RELEASE_PROOF_FILENAME = "release-proof.json"
 MAX_OSINT_BYTES = 4 * 1024 * 1024
 MAX_LEDGER_BYTES = 64 * 1024 * 1024
+MAX_RIGHTS_STATUS_BYTES = 4 * 1024 * 1024
+MAX_MANIFEST_BYTES = 4 * 1024 * 1024
 MAX_LEDGER_ENTRIES = 250_000
 MAX_GIT_OUTPUT_BYTES = 4 * 1024
 MAX_GENERATION_AGE = timedelta(hours=2)
@@ -60,7 +71,14 @@ RFC3339_UTC = re.compile(
     r"(?:\.[0-9]{1,6})?(?:Z|\+00:00)"
 )
 GENESIS_PREV = "0" * 64
-RECEIPT_FIELDS = frozenset(
+PUBLIC_EVIDENCE_FIELDS = (
+    "public_release_commit",
+    "public_manifest_sha256",
+    "public_osint_stub_sha256",
+    "public_rights_status_sha256",
+    "public_ledger_sha256",
+)
+LEGACY_RECEIPT_FIELDS = frozenset(
     {
         "schema",
         "status",
@@ -79,6 +97,7 @@ RECEIPT_FIELDS = frozenset(
         "release_proof_sha256",
     }
 )
+RECEIPT_FIELDS = LEGACY_RECEIPT_FIELDS | frozenset(PUBLIC_EVIDENCE_FIELDS)
 RELEASE_PROOF_FIELDS = frozenset(
     {
         "schema",
@@ -88,6 +107,16 @@ RELEASE_PROOF_FIELDS = frozenset(
         "publication_commit",
         "artifact_sha256",
         "ledger_sha256",
+        "workflow_run_id",
+        "workflow_run_attempt",
+        "workflow_head_sha",
+        "workflow_receipt_sha256",
+        "public_release_commit",
+        "public_manifest_sha256",
+        "public_osint_stub_sha256",
+        "public_rights_status_sha256",
+        "public_ledger_sha256",
+        "railway_canary_run_id",
     }
 )
 
@@ -861,21 +890,575 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def _fetch_public(url: str, publication_commit: str) -> bytes:
+    maxima = {
+        PUBLIC_URL: MAX_OSINT_BYTES,
+        PUBLIC_LEDGER_URL: MAX_LEDGER_BYTES,
+        PUBLIC_RIGHTS_STATUS_URL: MAX_RIGHTS_STATUS_BYTES,
+        PUBLIC_MANIFEST_URL: MAX_MANIFEST_BYTES,
+    }
+    maximum = maxima.get(url)
+    if maximum is None:
+        raise SyncFailure("public-url-refused")
     separator = "&" if "?" in url else "?"
+    request_url = f"{url}{separator}publication={publication_commit}"
     request = urllib.request.Request(
-        f"{url}{separator}publication={publication_commit}",
+        request_url,
         headers={"Accept": "application/json", "Cache-Control": "no-cache"},
     )
     opener = urllib.request.build_opener(_NoRedirect())
-    maximum = MAX_LEDGER_BYTES if url == PUBLIC_LEDGER_URL else MAX_OSINT_BYTES
     try:
         with opener.open(request, timeout=30) as response:
+            if response.getcode() != 200 or response.geturl() != request_url:
+                raise SyncFailure("public-fetch-authority-mismatch")
             raw = response.read(maximum + 1)
+    except SyncFailure:
+        raise
     except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
         raise SyncFailure("public-fetch-failed") from exc
     if not raw or len(raw) > maximum:
         raise SyncFailure("public-artifact-invalid")
     return raw
+
+
+def _bounded_integer(value: object, *, minimum: int = 0) -> bool:
+    return type(value) is int and minimum <= value <= 9_007_199_254_740_991
+
+
+def _nonblank(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= 8192
+        and any(not character.isspace() for character in value)
+    )
+
+
+def _relative_path(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 1 <= len(value) <= 1024
+        and "\x00" not in value
+        and not value.startswith("/")
+        and ".." not in value.split("/")
+    )
+
+
+def _validate_policy(value: object, *, code: str) -> None:
+    fields = {
+        "path",
+        "schema_version",
+        "policy_scope",
+        "default_decision",
+        "sha256",
+        "bytes",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != fields
+        or value.get("path") != "config/china_econ_source_policy.json"
+        or value.get("schema_version") != "palimpsest.china-economic-source-policy.v1"
+        or value.get("policy_scope") != "china_economic_values_and_seiche_export"
+        or value.get("default_decision") != "deny"
+        or not isinstance(value.get("sha256"), str)
+        or HEX_64.fullmatch(value["sha256"]) is None
+        or not _bounded_integer(value.get("bytes"), minimum=1)
+    ):
+        raise SyncFailure(code)
+
+
+def _validate_artifact(
+    value: object, *, expected_path: str, expected_media_type: str, code: str
+) -> None:
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"path", "media_type"}
+        or value.get("path") != expected_path
+        or value.get("media_type") != expected_media_type
+    ):
+        raise SyncFailure(code)
+
+
+def _validate_limitations(value: object, *, code: str) -> None:
+    if (
+        not isinstance(value, list)
+        or not 3 <= len(value) <= 32
+        or any(not _nonblank(item) for item in value)
+        or len(set(value)) != len(value)
+    ):
+        raise SyncFailure(code)
+
+
+def _nullable_nonblank(value: object) -> bool:
+    return value is None or _nonblank(value)
+
+
+def _nullable_https_url(value: object) -> bool:
+    return value is None or (
+        isinstance(value, str) and value.startswith("https://") and _nonblank(value)
+    )
+
+
+def _nullable_timestamp(value: object, *, code: str) -> None:
+    if value is not None:
+        _utc_timestamp(value, code=code)
+
+
+def _validate_source_decision(value: object, *, code: str) -> None:
+    fields = {
+        "source_id",
+        "decision",
+        "configured_decision",
+        "availability",
+        "values_allowed",
+        "seiche_export_allowed",
+        "license",
+        "license_url",
+        "rights_evidence_url",
+        "attribution",
+        "reviewed_at",
+        "expires_at",
+        "reason",
+        "decision_sha256",
+        "input_records",
+        "published_records",
+    }
+    if not isinstance(value, dict) or set(value) != fields:
+        raise SyncFailure(code)
+    source_id = value.get("source_id")
+    decision = value.get("decision")
+    if (
+        not isinstance(source_id, str)
+        or len(source_id) > 128
+        or re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", source_id) is None
+        or decision not in ("allow", "deny", "expired", "not_yet_effective", "unknown")
+        or value.get("configured_decision") not in ("allow", "deny", None)
+        or value.get("availability") not in ("available", "unavailable", "restricted")
+        or type(value.get("values_allowed")) is not bool
+        or type(value.get("seiche_export_allowed")) is not bool
+        or not _nullable_nonblank(value.get("license"))
+        or not _nullable_https_url(value.get("license_url"))
+        or not _nullable_https_url(value.get("rights_evidence_url"))
+        or not _nullable_nonblank(value.get("attribution"))
+        or not _nonblank(value.get("reason"))
+        or not _bounded_integer(value.get("input_records"))
+        or type(value.get("published_records")) is not int
+        or value["published_records"] != 0
+        or (
+            value.get("decision_sha256") is not None
+            and (
+                not isinstance(value["decision_sha256"], str)
+                or HEX_64.fullmatch(value["decision_sha256"]) is None
+            )
+        )
+    ):
+        raise SyncFailure(code)
+    _nullable_timestamp(value.get("reviewed_at"), code=code)
+    _nullable_timestamp(value.get("expires_at"), code=code)
+    if decision == "deny" and (
+        value["configured_decision"] != "deny"
+        or value["availability"] != "restricted"
+        or value["values_allowed"] is not False
+        or value["seiche_export_allowed"] is not False
+    ):
+        raise SyncFailure(code)
+    if decision == "allow" and (
+        value["configured_decision"] != "allow"
+        or value["values_allowed"] is not True
+        or value["seiche_export_allowed"] is not True
+        or value["availability"]
+        != ("available" if value["input_records"] else "unavailable")
+    ):
+        raise SyncFailure(code)
+    if decision in {"expired", "not_yet_effective"} and (
+        value["availability"] != "restricted"
+        or value["values_allowed"] is not False
+        or value["seiche_export_allowed"] is not False
+    ):
+        raise SyncFailure(code)
+    if decision == "unknown":
+        if (
+            value["availability"] != "restricted"
+            or value["values_allowed"] is not False
+            or value["seiche_export_allowed"] is not False
+            or any(
+                value[field] is not None
+                for field in (
+                    "configured_decision",
+                    "license",
+                    "license_url",
+                    "rights_evidence_url",
+                    "attribution",
+                    "reviewed_at",
+                    "expires_at",
+                    "decision_sha256",
+                )
+            )
+        ):
+            raise SyncFailure(code)
+
+
+def _validate_restricted_status(
+    value: object, *, release_commit: str
+) -> dict[str, Any]:
+    code = "public-rights-status-invalid"
+    fields = {
+        "schema_version",
+        "publication_sha",
+        "rights_evaluated_at",
+        "status",
+        "availability",
+        "publication_allowed",
+        "reason",
+        "artifact",
+        "policy",
+        "counts",
+        "source_decisions",
+        "quarantined_paths",
+        "limitations",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != fields
+        or value.get("schema_version") != RESTRICTED_STATUS_SCHEMA
+        or value.get("publication_sha") != release_commit
+        or value.get("status") != "restricted"
+        or value.get("availability") != "unavailable"
+        or value.get("publication_allowed") is not False
+        or not _nonblank(value.get("reason"))
+    ):
+        raise SyncFailure(code)
+    _utc_timestamp(value.get("rights_evaluated_at"), code=code)
+    _validate_artifact(
+        value.get("artifact"),
+        expected_path="readings/china-publication-rights-latest.json",
+        expected_media_type="application/json",
+        code=code,
+    )
+    _validate_policy(value.get("policy"), code=code)
+    counts = value.get("counts")
+    count_fields = {
+        "input_records",
+        "allowed_records",
+        "restricted_records",
+        "published_records",
+        "quarantined_artifacts",
+    }
+    if (
+        not isinstance(counts, dict)
+        or set(counts) != count_fields
+        or any(
+            not _bounded_integer(counts.get(field))
+            for field in (
+                "input_records",
+                "allowed_records",
+                "restricted_records",
+                "quarantined_artifacts",
+            )
+        )
+        or type(counts.get("published_records")) is not int
+        or counts["published_records"] != 0
+        or counts["input_records"]
+        != counts["allowed_records"] + counts["restricted_records"]
+    ):
+        raise SyncFailure(code)
+    decisions = value.get("source_decisions")
+    if not isinstance(decisions, list) or not 1 <= len(decisions) <= 256:
+        raise SyncFailure(code)
+    for decision in decisions:
+        _validate_source_decision(decision, code=code)
+    source_ids = [decision["source_id"] for decision in decisions]
+    if len(set(source_ids)) != len(source_ids):
+        raise SyncFailure(code)
+    paths = value.get("quarantined_paths")
+    if (
+        not isinstance(paths, list)
+        or len(paths) > 50_000
+        or any(not _relative_path(path) for path in paths)
+        or paths != sorted(set(paths))
+        or OSINT_REPOSITORY_PATH not in paths
+        or counts["quarantined_artifacts"] != len(paths)
+    ):
+        raise SyncFailure(code)
+    expected_input = sum(decision["input_records"] for decision in decisions)
+    expected_allowed = sum(
+        decision["input_records"]
+        for decision in decisions
+        if decision["values_allowed"]
+    )
+    if (
+        counts["input_records"] != expected_input
+        or counts["allowed_records"] != expected_allowed
+        or counts["restricted_records"] != expected_input - expected_allowed
+    ):
+        raise SyncFailure(code)
+    _validate_limitations(value.get("limitations"), code=code)
+    return value
+
+
+def _validate_restricted_stub(
+    value: object,
+    *,
+    release_commit: str,
+    rights: Mapping[str, Any],
+    rights_raw: bytes,
+) -> dict[str, Any]:
+    code = "public-osint-stub-invalid"
+    fields = {
+        "schema_version",
+        "publication_sha",
+        "rights_evaluated_at",
+        "status",
+        "availability",
+        "publication_allowed",
+        "reason",
+        "artifact",
+        "policy",
+        "master_status",
+        "counts",
+        "limitations",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != fields
+        or value.get("schema_version") != RESTRICTED_ENDPOINT_SCHEMA
+        or value.get("publication_sha") != release_commit
+        or value.get("rights_evaluated_at") != rights.get("rights_evaluated_at")
+        or value.get("status") != "restricted"
+        or value.get("availability") != "unavailable"
+        or value.get("publication_allowed") is not False
+        or value.get("reason") != rights.get("reason")
+    ):
+        raise SyncFailure(code)
+    if (
+        re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+            str(value.get("rights_evaluated_at")),
+        )
+        is None
+    ):
+        raise SyncFailure(code)
+    _validate_artifact(
+        value.get("artifact"),
+        expected_path=OSINT_REPOSITORY_PATH,
+        expected_media_type="application/json",
+        code=code,
+    )
+    _validate_policy(value.get("policy"), code=code)
+    if value["policy"] != rights.get("policy"):
+        raise SyncFailure(code)
+    master = value.get("master_status")
+    if (
+        not isinstance(master, dict)
+        or set(master) != {"path", "sha256", "bytes"}
+        or master.get("path") != "/readings/china-publication-rights-latest.json"
+        or master.get("sha256") != _sha256(rights_raw)
+        or master.get("bytes") != len(rights_raw)
+    ):
+        raise SyncFailure("public-osint-master-mismatch")
+    counts = value.get("counts")
+    rights_counts = rights.get("counts")
+    if (
+        not isinstance(counts, dict)
+        or set(counts) != {"input_records", "restricted_records", "published_records"}
+        or not _bounded_integer(counts.get("input_records"))
+        or not _bounded_integer(counts.get("restricted_records"))
+        or type(counts.get("published_records")) is not int
+        or counts["published_records"] != 0
+        or not isinstance(rights_counts, Mapping)
+        or counts["input_records"] != rights_counts.get("input_records")
+        or counts["restricted_records"] != rights_counts.get("restricted_records")
+    ):
+        raise SyncFailure(code)
+    _validate_limitations(value.get("limitations"), code=code)
+    if value["limitations"] != rights.get("limitations"):
+        raise SyncFailure(code)
+    return value
+
+
+def _validate_release_manifest(value: object) -> dict[str, Any]:
+    code = "public-manifest-invalid"
+    fields = {
+        "schema_version",
+        "source_commit",
+        "built_at",
+        "deployment_source",
+        "github_required",
+        "state",
+        "file_count",
+        "total_bytes",
+        "tree_sha256",
+        "critical_files",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != fields
+        or value.get("schema_version") != RAILWAY_MANIFEST_SCHEMA
+        or not isinstance(value.get("source_commit"), str)
+        or HEX_40.fullmatch(value["source_commit"]) is None
+        or value.get("deployment_source") != "local-git-archive"
+        or value.get("github_required") is not False
+        or value.get("state") != "artifact_ready"
+        or not _bounded_integer(value.get("file_count"), minimum=1)
+        or not _bounded_integer(value.get("total_bytes"), minimum=1)
+        or not isinstance(value.get("tree_sha256"), str)
+        or HEX_64.fullmatch(value["tree_sha256"]) is None
+    ):
+        raise SyncFailure(code)
+    _utc_timestamp(value.get("built_at"), code=code)
+    critical = value.get("critical_files")
+    if not isinstance(critical, dict) or not critical:
+        raise SyncFailure(code)
+    total_critical_bytes = 0
+    for relative, row in critical.items():
+        if (
+            not _relative_path(relative)
+            or not isinstance(row, dict)
+            or set(row) != {"bytes", "sha256"}
+            or not _bounded_integer(row.get("bytes"), minimum=1)
+            or not isinstance(row.get("sha256"), str)
+            or HEX_64.fullmatch(row["sha256"]) is None
+        ):
+            raise SyncFailure(code)
+        total_critical_bytes += row["bytes"]
+    required = {
+        OSINT_REPOSITORY_PATH,
+        "readings/china-publication-rights-latest.json",
+        LEDGER_REPOSITORY_PATH,
+    }
+    if (
+        not required.issubset(critical)
+        or value["file_count"] < len(critical)
+        or value["total_bytes"] < total_critical_bytes
+    ):
+        raise SyncFailure(code)
+    return value
+
+
+def _critical_file_identity(
+    manifest: Mapping[str, Any], relative: str, raw: bytes
+) -> None:
+    critical = manifest.get("critical_files")
+    row = critical.get(relative) if isinstance(critical, Mapping) else None
+    if (
+        not isinstance(row, Mapping)
+        or set(row) != {"bytes", "sha256"}
+        or type(row.get("bytes")) is not int
+        or row["bytes"] != len(raw)
+        or row.get("sha256") != _sha256(raw)
+    ):
+        raise SyncFailure("public-critical-identity-mismatch")
+
+
+def _verify_restricted_publication(
+    *,
+    repository: Path,
+    state_directory: Path,
+    fetched_main: str,
+    publication_commit: str,
+    candidate_artifact: bytes,
+    candidate_ledger: bytes,
+    public_fetcher: Callable[[str, str], bytes],
+    pinned_publication: Mapping[str, Any] | None = None,
+) -> dict[str, str]:
+    """Bind private Git input P to the rights-suppressed Railway release R.
+
+    Git remains the byte authority for the host-local OSINT input.  The public
+    origin is expected to serve a restricted same-path stub, not those private
+    input bytes.  This proof binds that deliberate suppression, its master
+    rights decision, and the still-public append-only ledger to one exact
+    Railway release.
+    """
+
+    manifest_raw = public_fetcher(PUBLIC_MANIFEST_URL, publication_commit)
+    stub_raw = public_fetcher(PUBLIC_URL, publication_commit)
+    rights_raw = public_fetcher(PUBLIC_RIGHTS_STATUS_URL, publication_commit)
+    public_ledger = public_fetcher(PUBLIC_LEDGER_URL, publication_commit)
+    manifest = _strict_json(
+        manifest_raw, maximum=MAX_MANIFEST_BYTES, code="public-manifest-invalid"
+    )
+    stub = _strict_json(
+        stub_raw, maximum=MAX_OSINT_BYTES, code="public-osint-stub-invalid"
+    )
+    rights = _strict_json(
+        rights_raw,
+        maximum=MAX_RIGHTS_STATUS_BYTES,
+        code="public-rights-status-invalid",
+    )
+    manifest = _validate_release_manifest(manifest)
+    release_commit = manifest["source_commit"]
+    if not _git_is_ancestor(
+        repository, state_directory, publication_commit, release_commit
+    ) or not _git_is_ancestor(
+        repository, state_directory, release_commit, fetched_main
+    ):
+        raise SyncFailure("public-release-ancestry-invalid")
+    latest_osint_commit = _git_text(
+        repository,
+        state_directory,
+        ["rev-list", "-1", release_commit, "--", OSINT_REPOSITORY_PATH],
+    )
+    if latest_osint_commit != publication_commit:
+        raise SyncFailure("public-release-osint-commit-mismatch")
+    release_artifact = _git_blob(
+        repository,
+        state_directory,
+        release_commit,
+        OSINT_REPOSITORY_PATH,
+        MAX_OSINT_BYTES,
+    )
+    release_ledger = _git_blob(
+        repository,
+        state_directory,
+        release_commit,
+        LEDGER_REPOSITORY_PATH,
+        MAX_LEDGER_BYTES,
+    )
+    if release_artifact != candidate_artifact:
+        raise SyncFailure("public-release-osint-git-mismatch")
+    try:
+        _validate_ledger(candidate_ledger)
+        _validate_ledger(release_ledger)
+    except SyncFailure as exc:
+        raise SyncFailure("public-release-ledger-invalid") from exc
+    if not release_ledger.startswith(candidate_ledger):
+        raise SyncFailure("public-release-ledger-prefix-invalid")
+    try:
+        _validate_ledger(public_ledger)
+    except SyncFailure as exc:
+        raise SyncFailure("public-ledger-invalid") from exc
+    if public_ledger != release_ledger:
+        raise SyncFailure("public-release-ledger-git-mismatch")
+    if stub_raw == candidate_artifact:
+        raise SyncFailure("public-unrestricted-osint-refused")
+    rights = _validate_restricted_status(rights, release_commit=release_commit)
+    _validate_restricted_stub(
+        stub,
+        release_commit=release_commit,
+        rights=rights,
+        rights_raw=rights_raw,
+    )
+    for relative, raw in (
+        (OSINT_REPOSITORY_PATH, stub_raw),
+        ("readings/china-publication-rights-latest.json", rights_raw),
+        (LEDGER_REPOSITORY_PATH, public_ledger),
+    ):
+        _critical_file_identity(manifest, relative, raw)
+    evidence = {
+        "public_release_commit": release_commit,
+        "public_manifest_sha256": _sha256(manifest_raw),
+        "public_osint_stub_sha256": _sha256(stub_raw),
+        "public_rights_status_sha256": _sha256(rights_raw),
+        "public_ledger_sha256": _sha256(public_ledger),
+    }
+    if pinned_publication is not None:
+        pinned_release = pinned_publication.get("public_release_commit")
+        if pinned_release != evidence["public_release_commit"]:
+            raise SyncFailure("public-release-pin-mismatch")
+        if any(
+            pinned_publication.get(field) != evidence[field]
+            for field in PUBLIC_EVIDENCE_FIELDS[1:]
+        ):
+            raise SyncFailure("public-identity-pin-mismatch")
+    return evidence
 
 
 @contextmanager
@@ -916,12 +1499,14 @@ def _existing_receipt(config: Config) -> dict[str, Any] | None:
     value = _strict_json(
         snapshot.raw, maximum=64 * 1024, code="success-receipt-invalid"
     )
-    if (
-        not isinstance(value, dict)
-        or set(value) != RECEIPT_FIELDS
-        or value.get("schema") != SCHEMA
-        or value.get("status") != "installed"
-    ):
+    if not isinstance(value, dict):
+        raise SyncFailure("success-receipt-invalid")
+    legacy = (
+        value.get("schema") == LEGACY_RECEIPT_SCHEMA
+        and set(value) == LEGACY_RECEIPT_FIELDS
+    )
+    current = value.get("schema") == SCHEMA and set(value) == RECEIPT_FIELDS
+    if (not legacy and not current) or value.get("status") != "installed":
         raise SyncFailure("success-receipt-invalid")
     for field in (
         "fetched_main",
@@ -941,7 +1526,7 @@ def _existing_receipt(config: Config) -> dict[str, Any] | None:
             raise SyncFailure("success-receipt-invalid")
     if type(value["ledger_entries"]) is not int or value["ledger_entries"] <= 0:
         raise SyncFailure("success-receipt-invalid")
-    if value["sync_mode"] not in {"continuous", "release-pinned"}:
+    if value["sync_mode"] not in ("continuous", "release-pinned"):
         raise SyncFailure("success-receipt-invalid")
     release_digest = value["release_proof_sha256"]
     if release_digest is not None and (
@@ -950,6 +1535,23 @@ def _existing_receipt(config: Config) -> dict[str, Any] | None:
         raise SyncFailure("success-receipt-invalid")
     if (value["sync_mode"] == "release-pinned") != (release_digest is not None):
         raise SyncFailure("success-receipt-invalid")
+    if current:
+        public_release = value["public_release_commit"]
+        public_digests = [value[field] for field in PUBLIC_EVIDENCE_FIELDS[1:]]
+        if config.require_root:
+            if (
+                not isinstance(public_release, str)
+                or HEX_40.fullmatch(public_release) is None
+                or any(
+                    not isinstance(digest, str) or HEX_64.fullmatch(digest) is None
+                    for digest in public_digests
+                )
+            ):
+                raise SyncFailure("success-receipt-invalid")
+        elif public_release is not None or any(
+            digest is not None for digest in public_digests
+        ):
+            raise SyncFailure("success-receipt-invalid")
     _utc_timestamp(value["installed_at"], code="success-receipt-invalid")
     _utc_timestamp(value["generated_at"], code="success-receipt-invalid")
     return value
@@ -987,14 +1589,37 @@ def _release_proof(
         "expected_deploy_sha",
         "fetched_main",
         "publication_commit",
+        "workflow_head_sha",
+        "public_release_commit",
     ):
         if not isinstance(value[field], str) or HEX_40.fullmatch(value[field]) is None:
             raise SyncFailure("release-proof-invalid")
-    for field in ("artifact_sha256", "ledger_sha256"):
+    for field in (
+        "artifact_sha256",
+        "ledger_sha256",
+        "workflow_receipt_sha256",
+        "public_manifest_sha256",
+        "public_osint_stub_sha256",
+        "public_rights_status_sha256",
+        "public_ledger_sha256",
+    ):
         if not isinstance(value[field], str) or HEX_64.fullmatch(value[field]) is None:
+            raise SyncFailure("release-proof-invalid")
+    for field in (
+        "workflow_run_id",
+        "workflow_run_attempt",
+        "railway_canary_run_id",
+    ):
+        if not _bounded_integer(value[field], minimum=1):
             raise SyncFailure("release-proof-invalid")
     if value["expected_deploy_sha"] != deployed_commit:
         raise SyncFailure("release-proof-deploy-mismatch")
+    if value["workflow_head_sha"] != value["expected_deploy_sha"]:
+        raise SyncFailure("release-proof-workflow-head-mismatch")
+    if value["public_release_commit"] != value["fetched_main"]:
+        raise SyncFailure("release-proof-public-release-mismatch")
+    if value["public_osint_stub_sha256"] == value["artifact_sha256"]:
+        raise SyncFailure("release-proof-unrestricted-osint-refused")
     return value, _sha256(_canonical(value))
 
 
@@ -1213,7 +1838,13 @@ def verify_installed(config: Config) -> dict[str, Any]:
             "artifact_sha256": proof["artifact_sha256"],
             "ledger_sha256": proof["ledger_sha256"],
         }
-        if any(receipt.get(field) != value for field, value in pinned_expected.items()):
+        if config.require_root:
+            pinned_expected.update(
+                {field: proof[field] for field in PUBLIC_EVIDENCE_FIELDS}
+            )
+        if receipt.get("schema") != SCHEMA or any(
+            receipt.get(field) != value for field, value in pinned_expected.items()
+        ):
             raise SyncFailure("installed-release-proof-mismatch")
     return receipt
 
@@ -1237,10 +1868,29 @@ def verify_public_installed(
             maximum=MAX_LEDGER_BYTES,
             code="installed-ledger-invalid",
         )
-        if public_fetcher(config.public_url, publication_commit) != artifact.raw:
-            raise SyncFailure("public-installed-osint-mismatch")
-        if public_fetcher(config.public_ledger_url, publication_commit) != ledger.raw:
-            raise SyncFailure("public-installed-ledger-mismatch")
+        if config.require_root:
+            if receipt.get("schema") != SCHEMA:
+                raise SyncFailure("success-receipt-migration-required")
+            repository = _prepare_repository(config)
+            fetched_main = _fetch_main(config, repository)
+            _verify_restricted_publication(
+                repository=repository,
+                state_directory=config.state_directory,
+                fetched_main=fetched_main,
+                publication_commit=publication_commit,
+                candidate_artifact=artifact.raw,
+                candidate_ledger=ledger.raw,
+                public_fetcher=public_fetcher,
+                pinned_publication=receipt,
+            )
+        else:
+            if public_fetcher(config.public_url, publication_commit) != artifact.raw:
+                raise SyncFailure("public-installed-osint-mismatch")
+            if (
+                public_fetcher(config.public_ledger_url, publication_commit)
+                != ledger.raw
+            ):
+                raise SyncFailure("public-installed-ledger-mismatch")
         return receipt
 
 
@@ -1386,13 +2036,32 @@ def synchronize(
             or _sha256(candidate_ledger) != proof["ledger_sha256"]
         ):
             raise SyncFailure("release-proof-byte-mismatch")
-        if public_fetcher(config.public_url, publication_commit) != candidate_artifact:
-            raise SyncFailure("public-git-byte-mismatch")
-        if (
-            public_fetcher(config.public_ledger_url, publication_commit)
-            != candidate_ledger
-        ):
-            raise SyncFailure("public-ledger-git-byte-mismatch")
+        if config.require_root:
+            public_evidence: dict[str, str | None] = _verify_restricted_publication(
+                repository=repository,
+                state_directory=config.state_directory,
+                fetched_main=fetched_main,
+                publication_commit=publication_commit,
+                candidate_artifact=candidate_artifact,
+                candidate_ledger=candidate_ledger,
+                public_fetcher=public_fetcher,
+                pinned_publication=proof,
+            )
+        else:
+            # Unit-test and migration fixtures use private, non-production
+            # authorities. Production root mode above accepts only the
+            # rights-suppressed Railway contract.
+            if (
+                public_fetcher(config.public_url, publication_commit)
+                != candidate_artifact
+            ):
+                raise SyncFailure("public-git-byte-mismatch")
+            if (
+                public_fetcher(config.public_ledger_url, publication_commit)
+                != candidate_ledger
+            ):
+                raise SyncFailure("public-ledger-git-byte-mismatch")
+            public_evidence = {field: None for field in PUBLIC_EVIDENCE_FIELDS}
 
         artifact_path = config.authority_directory / OSINT_FILENAME
         ledger_path = config.authority_directory / LEDGER_FILENAME
@@ -1431,6 +2100,7 @@ def synchronize(
             "ledger_head": entries[-1]["entry_hash"],
             "sync_mode": "release-pinned" if proof is not None else "continuous",
             "release_proof_sha256": release_proof_digest,
+            **public_evidence,
         }
         if previous_receipt is not None and all(
             previous_receipt.get(field) == value
@@ -1438,9 +2108,19 @@ def synchronize(
         ):
             receipt = previous_receipt
         else:
-            installed_at = (
-                _now().replace(microsecond=0).isoformat().replace("+00:00", "Z")
-            )
+            stable_fields = set(receipt_values) - {
+                "schema",
+                *PUBLIC_EVIDENCE_FIELDS,
+            }
+            if previous_receipt is not None and all(
+                previous_receipt.get(field) == receipt_values[field]
+                for field in stable_fields
+            ):
+                installed_at = previous_receipt["installed_at"]
+            else:
+                installed_at = (
+                    _now().replace(microsecond=0).isoformat().replace("+00:00", "Z")
+                )
             receipt = {**receipt_values, "installed_at": installed_at}
         # Replacing byte-identical receipts is intentional: it converges legacy
         # ownership/mode while preserving the stable installed_at value.

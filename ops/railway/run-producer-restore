@@ -1,0 +1,3502 @@
+#!/usr/bin/env python3
+"""Restore the reviewed GitHub producer workflows one bounded stage at a time.
+
+Required environment:
+
+* EXPECTED_HOST_SHA: exact Hetzner Phase 3 deployed commit H.
+* EXPECTED_PUBLIC_RELEASE_SHA: exact Phase 2 public release commit R.
+* PHASE3_FINALIZED_RECEIPT: absolute private Phase 3 finalized receipt.
+* PHASE3_PROOF_COMPLETE_RECEIPT: private copy of Phase 3's exact prerequisite.
+* PHASE2_V2_HANDOFF_RECEIPT: private canonical Phase 2 H/P/R handoff.
+* PRODUCER_RESTORE_EVIDENCE_DIR: absolute, not-yet-existing evidence directory.
+* PRODUCER_RESTORE_RECEIPT: absolute, not-yet-existing terminal receipt path.
+
+Optional environment:
+
+* PRODUCER_RESTORE_RESUME_RECEIPT: an exact prior failed-closed receipt.  This
+  is the only way a fresh attempt may start from a producer-advanced main.
+
+The helper never opens Railway hourly publication.  It enables and proves the
+three reviewed GitHub workflow owners in their fixed order, writes one durable
+stage receipt after each proof.  Every failure disables all three owners,
+closes the Railway gate, removes only the exact acknowledgement, and writes a
+terminal failed-closed receipt that can authorize one reviewed fresh retry.
+It never cancels a run it did not create and does not cancel its own run when
+the outcome is uncertain.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import secrets
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+from typing import Any, NoReturn, Sequence
+
+
+DEFAULT_REPOSITORY = "beepboop2025/palimpsest"
+PRODUCTION_ENVIRONMENT = "palimpsest-railway-production"
+EXCLUSIVE_WRITER_ACK = "palimpsest-github-environment-v1"
+GATE_VARIABLE = "RAILWAY_PUBLICATION_ENABLED"
+ACK_VARIABLE = "RAILWAY_EXCLUSIVE_WRITER_ACK"
+
+COMMAND_TIMEOUT_SECONDS = 60
+POLL_INTERVAL_SECONDS = 2
+RUN_CREATION_SKEW_SECONDS = 120
+MAX_JSON_BYTES = 4 * 1024 * 1024
+MAX_LOG_BYTES = 16 * 1024 * 1024
+MAX_WORKFLOW_BYTES = 512 * 1024
+MAX_RECEIPT_BYTES = 4 * 1024 * 1024
+CLEANUP_QUIET_SAMPLES = 3
+CLEANUP_QUIET_INTERVAL_SECONDS = 2
+FINAL_ACTIVATION_QUIET_SAMPLES = 2
+FINAL_ACTIVATION_QUIET_INTERVAL_SECONDS = 2
+
+SHA40 = re.compile(r"[0-9a-f]{40}\Z")
+SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+NONCE32 = re.compile(r"[0-9a-f]{32}\Z")
+REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
+TRANSACTION = re.compile(r"[0-9a-f]{32}\Z")
+ACTIVE_RUN_STATES = frozenset(
+    {"queued", "in_progress", "waiting", "pending", "requested"}
+)
+
+
+@dataclass(frozen=True)
+class WorkflowSpec:
+    order: int
+    workflow_id: int
+    filename: str
+    display_name: str
+    job_name: str
+    budget_seconds: int
+    dispatch_inputs: tuple[str, ...]
+    commit_prefix: str | None
+
+
+WORKFLOWS = (
+    WorkflowSpec(
+        1,
+        332082300,
+        "newswire-refresh.yml",
+        "Refresh evidence wire",
+        "publish",
+        7200,
+        (),
+        "data: evidence wire refresh (",
+    ),
+    WorkflowSpec(
+        2,
+        341368020,
+        "osint-china-v2-refresh.yml",
+        "Refresh OSINT China roll-up v2",
+        "publish",
+        10800,
+        ("expected_deploy_sha", "release_nonce"),
+        "data: OSINT China refresh (",
+    ),
+    WorkflowSpec(
+        3,
+        333753226,
+        "collector-health-watchdog.yml",
+        "Recover stale collector publications",
+        "recover",
+        1800,
+        (),
+        None,
+    ),
+)
+
+RELEASE_ACTIVATORS = {
+    "palimpsest-backup.timer",
+    "palimpsest-bleedthrough.timer",
+    "palimpsest-common-crawl-backup.timer",
+    "palimpsest-common-crawl-context.timer",
+    "palimpsest-common-crawl-import.path",
+    "palimpsest-evidence-wire.timer",
+    "palimpsest-freshness-watchdog.timer",
+    "palimpsest-investigative-analysis.timer",
+    "palimpsest-investigative-broker.socket",
+    "palimpsest-node-offsite-backup.timer",
+    "palimpsest-public-osint-sync.timer",
+    "palimpsest-witness.timer",
+}
+COMPOSE_WRITERS = {
+    "beat",
+    "worker",
+    "worker-collectors",
+    "worker-velocity",
+    "worker-warehouse",
+}
+BROKER_QUEUES = {"celery", "censorwatch", "collectors", "warehouse"}
+
+
+class RestoreError(RuntimeError):
+    """A fail-closed producer restoration error."""
+
+
+class CommandError(RestoreError):
+    """A bounded external command failed."""
+
+    def __init__(self, label: str, returncode: int) -> None:
+        super().__init__(f"{label} failed with exit status {returncode}")
+        self.returncode = returncode
+
+
+class SignalAbort(RestoreError):
+    """A terminating signal that still requires authority cleanup."""
+
+    def __init__(self, signum: int) -> None:
+        super().__init__(f"producer restoration interrupted by signal {signum}")
+        self.signum = signum
+
+
+@dataclass
+class RunState:
+    attempt_id: str = ""
+    attempt_run_snapshots: list[dict[int, dict[str, Any]]] | None = None
+    bound_runs: dict[int, tuple[int, str]] = field(default_factory=dict)
+    current_run_id: int | None = None
+    dispatch_unbound: bool = False
+    producer_runs_unproved: bool = False
+    receipt_committed: bool = False
+    committed_status: str | None = None
+    completed_stages: list[dict[str, Any]] | None = None
+    initial_main_sha: str | None = None
+    last_proved_main_sha: str | None = None
+
+
+@dataclass(frozen=True)
+class Prerequisites:
+    host_sha: str
+    public_release_sha: str
+    publication_sha: str
+    phase3_path: Path
+    phase3_sha256: str
+    phase3_transaction: str
+    phase3_finalized_at: str
+    proof_complete_path: Path
+    proof_complete_sha256: str
+    proof_complete_generated_at: str
+    handoff_path: Path
+    handoff_sha256: str
+    resume_path: Path | None
+    resume_sha256: str | None
+    restore_base_sha: str
+
+
+@dataclass(frozen=True)
+class Deadline:
+    expires_at: float
+
+    @classmethod
+    def start(cls, budget_seconds: int) -> Deadline:
+        if budget_seconds <= 0:
+            raise RestoreError("producer restoration budget must be positive")
+        return cls(time.monotonic() + budget_seconds)
+
+    def remaining(self) -> float:
+        return max(0.0, self.expires_at - time.monotonic())
+
+    def command_timeout(self) -> float:
+        remaining = self.remaining()
+        if remaining <= 0:
+            raise RestoreError("producer restoration monotonic deadline expired")
+        return min(float(COMMAND_TIMEOUT_SECONDS), remaining)
+
+    def sleep(self) -> None:
+        remaining = self.remaining()
+        if remaining <= 0:
+            raise RestoreError("producer restoration monotonic deadline expired")
+        time.sleep(min(POLL_INTERVAL_SECONDS, remaining))
+
+
+def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_constant(value: str) -> NoReturn:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+def _canonical_json(document: object) -> bytes:
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _strict_json(raw: bytes, *, label: str, maximum: int = MAX_JSON_BYTES) -> Any:
+    if not 0 < len(raw) <= maximum:
+        raise RestoreError(f"{label} has an invalid byte size")
+    try:
+        return json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeError, ValueError) as error:
+        raise RestoreError(f"{label} is not strict JSON") from error
+
+
+def _strict_json_text(text: str, *, label: str) -> Any:
+    return _strict_json(text.encode("utf-8"), label=label)
+
+
+def _utc(value: Any, *, label: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith(("Z", "+00:00")):
+        raise RestoreError(f"{label} is not an exact UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise RestoreError(f"{label} is not an exact UTC timestamp") from error
+    if parsed.utcoffset() != timedelta(0):
+        raise RestoreError(f"{label} is not UTC")
+    return parsed
+
+
+def _now() -> str:
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _expect_keys(value: Any, keys: set[str], *, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != keys:
+        raise RestoreError(f"{label} does not have its exact closed schema")
+    return value
+
+
+def _positive_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _is_sha40(value: Any) -> bool:
+    return isinstance(value, str) and SHA40.fullmatch(value) is not None
+
+
+def _is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and SHA256.fullmatch(value) is not None
+
+
+def _read_private_canonical(
+    path: Path, *, label: str, maximum: int
+) -> tuple[bytes, Any]:
+    if not path.is_absolute():
+        raise RestoreError(f"{label} path must be absolute")
+    _private_directory(path.parent, label=f"{label} parent")
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as error:
+        raise RestoreError(f"cannot open {label} safely: {error}") from error
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or before.st_gid != os.getegid()
+            or before.st_nlink != 1
+            or stat.S_IMODE(before.st_mode) & 0o077
+            or not 0 < before.st_size <= maximum
+        ):
+            raise RestoreError(f"{label} is not an exact private regular file")
+        chunks: list[bytes] = []
+        remaining = before.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 65536))
+            if not chunk:
+                raise RestoreError(f"{label} changed while being read")
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        if os.read(descriptor, 1):
+            raise RestoreError(f"{label} changed while being read")
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        ):
+            raise RestoreError(f"{label} changed while being read")
+    finally:
+        os.close(descriptor)
+    raw = b"".join(chunks)
+    document = _strict_json(raw, label=label, maximum=maximum)
+    if raw != _canonical_json(document):
+        raise RestoreError(f"{label} is not canonical JSON")
+    return raw, document
+
+
+def _private_directory(path: Path, *, label: str) -> None:
+    if not path.is_absolute() or path != Path(os.path.realpath(path)):
+        raise RestoreError(f"{label} must be an absolute non-symlink path")
+    try:
+        details = path.stat()
+    except OSError as error:
+        raise RestoreError(f"cannot inspect {label}: {error}") from error
+    if (
+        not stat.S_ISDIR(details.st_mode)
+        or details.st_uid != os.geteuid()
+        or stat.S_IMODE(details.st_mode) & 0o077
+    ):
+        raise RestoreError(f"{label} must be a private operator-owned directory")
+
+
+def _prepare_output(path_text: str, *, label: str) -> Path:
+    path = Path(path_text)
+    if not path.is_absolute() or path != Path(os.path.realpath(path)):
+        raise RestoreError(f"{label} must be an absolute non-symlink path")
+    _private_directory(path.parent, label=f"{label} parent")
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        return path
+    except OSError as error:
+        raise RestoreError(f"cannot inspect {label}: {error}") from error
+    raise RestoreError(f"{label} already exists")
+
+
+def _prepare_evidence_directory(path_text: str) -> Path:
+    path = _prepare_output(path_text, label="producer evidence directory")
+    os.mkdir(path, 0o700)
+    descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    return path
+
+
+def _exclusive_receipt(
+    path: Path,
+    document: dict[str, Any],
+    *,
+    run_state: RunState | None = None,
+    final_receipt: bool = False,
+) -> str:
+    payload = _canonical_json(document)
+    if not 0 < len(payload) <= MAX_RECEIPT_BYTES:
+        raise RestoreError("receipt exceeds its byte ceiling")
+    temporary = path.parent / f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
+    descriptor: int | None = None
+    linked = False
+    blocked: set[signal.Signals] = {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    previous_mask: set[signal.Signals] | None = None
+    try:
+        descriptor = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+        )
+        offset = 0
+        while offset < len(payload):
+            offset += os.write(descriptor, payload[offset:])
+        os.fchmod(descriptor, stat.S_IRUSR)
+        os.fsync(descriptor)
+        os.close(descriptor)
+        descriptor = None
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, blocked)
+        try:
+            os.link(temporary, path, follow_symlinks=False)
+            linked = True
+            temporary.unlink()
+            directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+            if run_state is not None and final_receipt:
+                run_state.receipt_committed = True
+                run_state.committed_status = str(document.get("status"))
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            previous_mask = None
+    except FileExistsError as error:
+        raise RestoreError(
+            f"receipt destination appeared concurrently: {path}"
+        ) from error
+    except BaseException:
+        if linked and (run_state is None or not run_state.receipt_committed):
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+        raise
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        if previous_mask is not None:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        temporary.unlink(missing_ok=True)
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _process_group_exists(process_group_id: int) -> bool:
+    try:
+        os.killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _terminate_process_group(process: subprocess.Popen[bytes]) -> None:
+    process_group_id = process.pid
+    try:
+        os.killpg(process_group_id, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    grace_deadline = time.monotonic() + 5.0
+    while _process_group_exists(process_group_id):
+        remaining = grace_deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        if process.poll() is None:
+            try:
+                process.wait(timeout=min(0.05, remaining))
+            except subprocess.TimeoutExpired:
+                pass
+        else:
+            time.sleep(min(0.05, remaining))
+    if _process_group_exists(process_group_id):
+        try:
+            os.killpg(process_group_id, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired as error:
+        raise RestoreError("bounded command process group survived SIGKILL") from error
+
+
+def _trusted_executable(name: str) -> str:
+    candidate = shutil.which(name)
+    if candidate is None:
+        raise RestoreError(f"required operator executable is unavailable: {name}")
+    path = Path(candidate).resolve(strict=True)
+    details = path.stat()
+    parent = path.parent.stat()
+    if (
+        path.name != Path(name).name
+        or not stat.S_ISREG(details.st_mode)
+        or details.st_uid not in {0, os.geteuid()}
+        or stat.S_IMODE(details.st_mode) & 0o022
+        or parent.st_uid not in {0, os.geteuid()}
+        or stat.S_IMODE(parent.st_mode) & 0o022
+    ):
+        raise RestoreError(f"operator executable is not trusted: {name}")
+    return str(path)
+
+
+def _command_environment(executable: str) -> dict[str, str]:
+    environment: dict[str, str] = {}
+    for name in ("LANG", "LC_ALL", "LC_CTYPE"):
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    if Path(executable).name == "gh":
+        home = os.environ.get("HOME")
+        if home:
+            environment["HOME"] = home
+        for name in (
+            "GH_TOKEN",
+            "GITHUB_TOKEN",
+            "GH_ENTERPRISE_TOKEN",
+            "GITHUB_ENTERPRISE_TOKEN",
+        ):
+            value = os.environ.get(name)
+            if value:
+                environment[name] = value
+        environment.update(
+            {"GH_HOST": "github.com", "GH_PROMPT_DISABLED": "1", "NO_COLOR": "1"}
+        )
+    directories = [
+        str(Path(executable).parent),
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+    ]
+    environment["PATH"] = os.pathsep.join(dict.fromkeys(directories))
+    return environment
+
+
+def _bounded_command(
+    deadline: Deadline,
+    argv: Sequence[str],
+    *,
+    label: str,
+    maximum: int = MAX_JSON_BYTES,
+) -> str:
+    executable = _trusted_executable(argv[0])
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        try:
+            process = subprocess.Popen(
+                [executable, *argv[1:]],
+                stdin=subprocess.DEVNULL,
+                stdout=stdout,
+                stderr=stderr,
+                env=_command_environment(executable),
+                start_new_session=True,
+            )
+        except OSError as error:
+            raise RestoreError(f"cannot start {label}: {error}") from error
+        try:
+            process.wait(timeout=deadline.command_timeout())
+        except subprocess.TimeoutExpired as error:
+            _terminate_process_group(process)
+            raise RestoreError(f"{label} exceeded its bounded timeout") from error
+        except BaseException:
+            _terminate_process_group(process)
+            raise
+        if _process_group_exists(process.pid):
+            _terminate_process_group(process)
+            raise RestoreError(f"{label} left a surviving child process")
+        stdout.seek(0, os.SEEK_END)
+        stdout_size = stdout.tell()
+        stderr.seek(0, os.SEEK_END)
+        stderr_size = stderr.tell()
+        if stdout_size > maximum or stderr_size > MAX_JSON_BYTES:
+            raise RestoreError(f"{label} exceeded its output ceiling")
+        stdout.seek(0)
+        stderr.seek(0)
+        raw_stdout = stdout.read()
+        raw_stderr = stderr.read()
+    try:
+        output = raw_stdout.decode("utf-8", "strict")
+        error_output = raw_stderr.decode("utf-8", "replace").strip()
+    except UnicodeError as error:
+        raise RestoreError(f"{label} returned non-UTF-8 output") from error
+    if process.returncode != 0:
+        if error_output:
+            print(f"{label}: {error_output}", file=sys.stderr)
+        raise CommandError(label, process.returncode)
+    return output
+
+
+def _gh(
+    deadline: Deadline,
+    *arguments: str,
+    label: str | None = None,
+    maximum: int = MAX_JSON_BYTES,
+) -> str:
+    return _bounded_command(
+        deadline,
+        ("gh", *arguments),
+        label=label or f"gh {' '.join(arguments[:3])}",
+        maximum=maximum,
+    )
+
+
+def _require_gh_transport(deadline: Deadline) -> None:
+    socket_path = _gh(
+        deadline,
+        "config",
+        "get",
+        "http_unix_socket",
+        "--host",
+        "github.com",
+        label="inspect GitHub CLI socket transport",
+    )
+    if socket_path not in {"", "\n", "\r\n"}:
+        raise RestoreError("GitHub CLI http_unix_socket transport is not empty")
+
+
+def _cleanup_gh(*arguments: str) -> str:
+    return _gh(
+        Deadline.start(COMMAND_TIMEOUT_SECONDS),
+        *arguments,
+        label=f"cleanup gh {' '.join(arguments[:3])}",
+    )
+
+
+def _exact_text(value: str, *, label: str) -> str:
+    lines = value.splitlines()
+    if len(lines) != 1 or lines[0] != lines[0].strip() or not lines[0]:
+        raise RestoreError(f"{label} is not one exact non-empty line")
+    return lines[0]
+
+
+def _main_sha(deadline: Deadline, repository: str) -> str:
+    value = _exact_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/commits/main",
+            "--jq",
+            ".sha",
+            label="read current public main",
+        ),
+        label="public main SHA",
+    )
+    if not _is_sha40(value):
+        raise RestoreError("public main SHA is malformed")
+    return value
+
+
+def _hourly_gate(deadline: Deadline, repository: str) -> str:
+    return _exact_text(
+        _gh(
+            deadline,
+            "variable",
+            "get",
+            GATE_VARIABLE,
+            "--repo",
+            repository,
+            label="read Railway hourly gate",
+        ),
+        label="Railway hourly gate",
+    )
+
+
+def _exclusive_ack(deadline: Deadline, repository: str) -> str:
+    return _exact_text(
+        _gh(
+            deadline,
+            "variable",
+            "get",
+            ACK_VARIABLE,
+            "--repo",
+            repository,
+            "--env",
+            PRODUCTION_ENVIRONMENT,
+            label="read protected Railway acknowledgement",
+        ),
+        label="Railway exclusive-writer acknowledgement",
+    )
+
+
+def _require_closed_authority(deadline: Deadline, repository: str) -> None:
+    if _hourly_gate(deadline, repository) != "false":
+        raise RestoreError("RAILWAY_PUBLICATION_ENABLED is not exactly false")
+    if _exclusive_ack(deadline, repository) != EXCLUSIVE_WRITER_ACK:
+        raise RestoreError("protected Railway writer acknowledgement is not exact")
+
+
+def _ack_inventory(raw: str) -> str:
+    value = _strict_json_text(raw, label="protected environment variables")
+    if not isinstance(value, list):
+        return "unproved"
+    matches: list[Any] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"name", "value"}:
+            return "unproved"
+        if item.get("name") == ACK_VARIABLE:
+            matches.append(item.get("value"))
+    if not matches:
+        return "absent"
+    if matches == [EXCLUSIVE_WRITER_ACK]:
+        return "exact"
+    return "unexpected"
+
+
+def _ack_absent(raw: str) -> bool:
+    value = _strict_json_text(raw, label="protected environment variable names")
+    return isinstance(value, list) and all(
+        isinstance(item, dict)
+        and set(item) == {"name"}
+        and item.get("name") != ACK_VARIABLE
+        for item in value
+    )
+
+
+def _failure_cleanup(
+    repository: str, run_state: RunState
+) -> tuple[bool, dict[str, Any]]:
+    cleanup_ok = True
+    run_id = run_state.current_run_id
+    states: dict[str, str] = {}
+    for spec in WORKFLOWS:
+        try:
+            _cleanup_gh(
+                "workflow",
+                "disable",
+                str(spec.workflow_id),
+                "--repo",
+                repository,
+            )
+            state = _workflow_metadata(
+                Deadline.start(COMMAND_TIMEOUT_SECONDS), repository, spec
+            )["state"]
+            if state != "disabled_manually":
+                raise RestoreError(
+                    f"cleanup did not prove {spec.filename} disabled_manually"
+                )
+            states[spec.filename] = state
+        except RestoreError as error:
+            print(str(error), file=sys.stderr)
+            cleanup_ok = False
+            states[spec.filename] = "unproved"
+    gate = "unproved"
+    try:
+        _cleanup_gh(
+            "variable",
+            "set",
+            GATE_VARIABLE,
+            "--body",
+            "false",
+            "--repo",
+            repository,
+        )
+        gate = _exact_text(
+            _cleanup_gh("variable", "get", GATE_VARIABLE, "--repo", repository),
+            label="cleanup Railway hourly gate",
+        )
+        if gate != "false":
+            raise RestoreError("cleanup did not prove the Railway gate closed")
+    except RestoreError as error:
+        print(str(error), file=sys.stderr)
+        cleanup_ok = False
+    ack = "unproved"
+    try:
+        state = _ack_inventory(
+            _cleanup_gh(
+                "variable",
+                "list",
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+                "--json",
+                "name,value",
+            )
+        )
+        if state == "exact":
+            _cleanup_gh(
+                "variable",
+                "delete",
+                ACK_VARIABLE,
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+            )
+        elif state != "absent":
+            raise RestoreError(
+                "refusing to delete an unfamiliar Railway writer acknowledgement"
+            )
+        if not _ack_absent(
+            _cleanup_gh(
+                "variable",
+                "list",
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+                "--json",
+                "name",
+            )
+        ):
+            raise RestoreError("cleanup did not prove writer acknowledgement absent")
+        ack = "absent"
+    except RestoreError as error:
+        print(str(error), file=sys.stderr)
+        cleanup_ok = False
+    reconciled_run: dict[str, Any] | None = None
+    if run_id is not None:
+        print(
+            f"Reconcile producer run {run_id}; cleanup deliberately did not cancel it.",
+            file=sys.stderr,
+        )
+        deadline = Deadline.start(900)
+        try:
+            while True:
+                value = _strict_json_text(
+                    _gh(
+                        deadline,
+                        "api",
+                        f"repos/{repository}/actions/runs/{run_id}",
+                        label=f"reconcile producer run {run_id}",
+                    ),
+                    label=f"reconcile producer run {run_id}",
+                )
+                if not isinstance(value, dict) or value.get("id") != run_id:
+                    raise RestoreError("cleanup run reconciliation is malformed")
+                if value.get("status") == "completed":
+                    reconciled_run = {
+                        "conclusion": value.get("conclusion"),
+                        "run_attempt": value.get("run_attempt"),
+                        "run_id": run_id,
+                        "status": "completed",
+                    }
+                    break
+                if value.get("status") not in ACTIVE_RUN_STATES:
+                    raise RestoreError("cleanup run has an unsupported terminal state")
+                deadline.sleep()
+        except RestoreError as error:
+            print(str(error), file=sys.stderr)
+            cleanup_ok = False
+    if run_state.attempt_run_snapshots is not None:
+        quiet_snapshot: list[dict[int, dict[str, Any]]] | None = None
+        for sample in range(CLEANUP_QUIET_SAMPLES):
+            try:
+                current = _all_run_snapshots(
+                    Deadline.start(COMMAND_TIMEOUT_SECONDS * len(WORKFLOWS)),
+                    repository,
+                )
+                _validate_attempt_run_set(run_state, current, require_completed=True)
+                if quiet_snapshot is not None and current != quiet_snapshot:
+                    _mark_producer_runs_unproved(run_state)
+                    raise RestoreError(
+                        "cleanup producer run inventory did not remain quiet"
+                    )
+                quiet_snapshot = current
+            except RestoreError as error:
+                print(str(error), file=sys.stderr)
+                cleanup_ok = False
+            if sample + 1 < CLEANUP_QUIET_SAMPLES:
+                time.sleep(CLEANUP_QUIET_INTERVAL_SECONDS)
+    else:
+        cleanup_ok = False
+    main_sha: str | None = None
+    try:
+        main_sha = _exact_text(
+            _cleanup_gh("api", f"repos/{repository}/commits/main", "--jq", ".sha"),
+            label="cleanup public main",
+        )
+        if not _is_sha40(main_sha):
+            raise RestoreError("cleanup did not prove an exact public main SHA")
+    except RestoreError as error:
+        print(str(error), file=sys.stderr)
+        cleanup_ok = False
+    return cleanup_ok, {
+        "exclusive_writer_ack": ack,
+        "hourly_publication_enabled": gate,
+        "in_flight_run_id": None if reconciled_run is not None else run_id,
+        "reconciled_run": reconciled_run,
+        "resume_main_sha": main_sha,
+        "workflow_states": states,
+    }
+
+
+def _validate_celery(value: Any) -> None:
+    receipt = _expect_keys(
+        value,
+        {
+            "cancellations",
+            "consumer_state",
+            "drain_samples",
+            "final",
+            "generated_at",
+            "required_zero_samples",
+            "samples_observed",
+            "schema_version",
+            "status",
+            "topology",
+            "topology_sha256",
+        },
+        label="Phase 3 restored Celery receipt",
+    )
+    topology = receipt["topology"]
+    if not isinstance(topology, list) or len(topology) not in {3, 4}:
+        raise RestoreError("Phase 3 restored Celery topology is invalid")
+    nodes: dict[str, str] = {}
+    for item in topology:
+        pair = _expect_keys(item, {"node", "queue"}, label="Celery topology pair")
+        if (
+            not isinstance(pair["node"], str)
+            or not isinstance(pair["queue"], str)
+            or pair["node"] in nodes
+            or pair["queue"] in nodes.values()
+        ):
+            raise RestoreError("Phase 3 Celery topology pair is invalid")
+        nodes[pair["node"]] = pair["queue"]
+    final = _expect_keys(
+        receipt["final"],
+        {"active_queues", "broker_depth", "task_counts", "unacknowledged"},
+        label="Phase 3 restored Celery final sample",
+    )
+    if (
+        receipt["schema_version"] != "palimpsest-celery-release-gate.v1"
+        or receipt["status"] != "quiet"
+        or receipt["consumer_state"] != "consuming"
+        or receipt["required_zero_samples"] != 2
+        or not _positive_int(receipt["samples_observed"])
+        or receipt["drain_samples"] != 0
+        or receipt["cancellations"] != []
+        or not _is_sha256(receipt["topology_sha256"])
+    ):
+        raise RestoreError("Phase 3 restored Celery semantics are invalid")
+    _utc(receipt["generated_at"], label="Phase 3 Celery generated_at")
+    task_counts = final["task_counts"]
+    active_queues = final["active_queues"]
+    if not isinstance(task_counts, dict) or set(task_counts) != set(nodes):
+        raise RestoreError("Phase 3 Celery task-count inventory is invalid")
+    if not isinstance(active_queues, dict) or set(active_queues) != set(nodes):
+        raise RestoreError("Phase 3 Celery active-queue inventory is invalid")
+    for node, queue in nodes.items():
+        counts = _expect_keys(
+            task_counts[node], {"active", "reserved", "scheduled"}, label="task counts"
+        )
+        if counts != {"active": 0, "reserved": 0, "scheduled": 0}:
+            raise RestoreError("Phase 3 Celery has pending tasks")
+        if active_queues[node] != [queue]:
+            raise RestoreError("Phase 3 Celery worker is not on its exact queue")
+    broker = final["broker_depth"]
+    unacknowledged = final["unacknowledged"]
+    if (
+        not isinstance(broker, dict)
+        or set(broker) != BROKER_QUEUES
+        or any(value != 0 for value in broker.values())
+        or unacknowledged != {"hash": 0, "index": 0}
+    ):
+        raise RestoreError("Phase 3 restored broker is not exactly empty")
+
+
+def _validate_phase3(
+    value: Any, *, expected_host_sha: str
+) -> tuple[str, str, str, str, dict[str, Any] | None]:
+    base = {
+        "backup_on_success",
+        "backup_release_quiesce_present",
+        "deployed_sha",
+        "finalized_at",
+        "previous_checkout_sha",
+        "previous_deployment_receipt_sha",
+        "proof_complete_receipt",
+        "proof_complete_receipt_sha256",
+        "release_proof_present",
+        "restored_activators",
+        "restored_beat",
+        "restored_celery",
+        "restored_compose_writers",
+        "schema_version",
+        "status",
+        "transaction_id",
+        "writers_restored",
+    }
+    recovery = {
+        "interrupted_phase1_completion_receipt",
+        "interrupted_phase1_completion_required",
+        "interrupted_phase1_resume",
+    }
+    if not isinstance(value, dict) or frozenset(value) not in {
+        frozenset(base),
+        frozenset(base | recovery),
+    }:
+        raise RestoreError("Phase 3 finalized receipt does not have its exact schema")
+    finalized_at = _utc(value["finalized_at"], label="Phase 3 finalized_at")
+    if (
+        value["schema_version"] != "palimpsest-host-release-finalization.v1"
+        or value["status"] != "finalized"
+        or value["deployed_sha"] != expected_host_sha
+        or not _is_sha40(value["previous_checkout_sha"])
+        or not _is_sha40(value["previous_deployment_receipt_sha"])
+        or not isinstance(value["transaction_id"], str)
+        or TRANSACTION.fullmatch(value["transaction_id"]) is None
+        or not isinstance(value["proof_complete_receipt"], str)
+        or not Path(value["proof_complete_receipt"]).is_absolute()
+        or not _is_sha256(value["proof_complete_receipt_sha256"])
+        or value["release_proof_present"] is not False
+        or value["writers_restored"] is not True
+        or value["backup_release_quiesce_present"] is not False
+        or not isinstance(value["backup_on_success"], str)
+    ):
+        raise RestoreError("Phase 3 finalized receipt semantics are invalid")
+    activators = value["restored_activators"]
+    if not isinstance(activators, dict) or set(activators) != RELEASE_ACTIVATORS:
+        raise RestoreError("Phase 3 restored activator inventory is invalid")
+    for unit, raw in activators.items():
+        item = _expect_keys(
+            raw,
+            {"active_state", "before_enablement", "enablement", "was_active"},
+            label=f"Phase 3 activator {unit}",
+        )
+        if (
+            not isinstance(item["was_active"], bool)
+            or item["before_enablement"]
+            not in {"disabled", "enabled", "enabled-runtime", "not-found", "static"}
+            or item["enablement"]
+            not in {"disabled", "enabled", "enabled-runtime", "not-found", "static"}
+            or item["active_state"]
+            not in {"active", "failed", "inactive", "unknown", ""}
+        ):
+            raise RestoreError(f"Phase 3 activator {unit} is malformed")
+    compose = value["restored_compose_writers"]
+    if not isinstance(compose, dict) or set(compose) != COMPOSE_WRITERS:
+        raise RestoreError("Phase 3 restored Compose inventory is invalid")
+    for service, raw in compose.items():
+        item = _expect_keys(
+            raw,
+            {"container_id", "hostname", "image_id", "state", "was_running"},
+            label=f"Phase 3 Compose writer {service}",
+        )
+        if (
+            not isinstance(item["was_running"], bool)
+            or item["state"] not in {"absent", "exited", "running"}
+            or (
+                item["container_id"] is not None
+                and (
+                    not isinstance(item["container_id"], str)
+                    or SHA256.fullmatch(item["container_id"]) is None
+                )
+            )
+            or (
+                item["image_id"] is not None
+                and (
+                    not isinstance(item["image_id"], str)
+                    or re.fullmatch(r"sha256:[0-9a-f]{64}", item["image_id"]) is None
+                )
+            )
+            or (item["hostname"] is not None and not isinstance(item["hostname"], str))
+        ):
+            raise RestoreError(f"Phase 3 Compose writer {service} is malformed")
+        if item["was_running"] and item["state"] != "running":
+            raise RestoreError(f"Phase 3 Compose writer {service} was not restored")
+    if value["restored_beat"] != compose["beat"]:
+        raise RestoreError("Phase 3 restored Beat binding is invalid")
+    _validate_celery(value["restored_celery"])
+    if recovery <= set(value):
+        binding = value["interrupted_phase1_resume"]
+        binding_keys = {
+            "backup",
+            "broker_empty_receipt",
+            "broker_empty_receipt_sha256",
+            "broker_queue_sha256",
+            "compose_environment_sha256",
+            "failed_target_commit",
+            "hybrid_fingerprint_sha256",
+            "incident_id",
+            "manifest",
+            "manifest_sha256",
+            "migration_receipt",
+            "minimum_recovery_ancestor",
+            "prepared_receipt",
+            "prepared_receipt_path",
+            "prepared_receipt_sha256",
+            "recovery_controller_commit",
+            "restore_profile_sha256",
+            "schema_version",
+            "target_commit",
+            "transaction_id",
+        }
+        binding = _expect_keys(
+            binding, binding_keys, label="interrupted Phase 1 binding"
+        )
+        if (
+            value["interrupted_phase1_completion_required"] is not True
+            or not isinstance(value["interrupted_phase1_completion_receipt"], str)
+            or not Path(value["interrupted_phase1_completion_receipt"]).is_absolute()
+            or binding["schema_version"] != "palimpsest-interrupted-phase1-binding.v2"
+            or binding["transaction_id"] != value["transaction_id"]
+            or binding["target_commit"] != expected_host_sha
+            or binding["recovery_controller_commit"] != expected_host_sha
+        ):
+            raise RestoreError("interrupted Phase 1 recovery binding is invalid")
+    return (
+        value["transaction_id"],
+        finalized_at.isoformat().replace("+00:00", "Z"),
+        value["proof_complete_receipt"],
+        value["proof_complete_receipt_sha256"],
+        value.get("interrupted_phase1_resume"),
+    )
+
+
+HANDOFF_KEYS = {
+    "artifact_sha256",
+    "expected_deploy_sha",
+    "fetched_main",
+    "ledger_sha256",
+    "public_ledger_sha256",
+    "public_manifest_sha256",
+    "public_osint_stub_sha256",
+    "public_release_commit",
+    "public_rights_status_sha256",
+    "publication_commit",
+    "railway_canary_run_id",
+    "resume_token",
+    "schema",
+    "workflow_head_sha",
+    "workflow_receipt_sha256",
+    "workflow_run_attempt",
+    "workflow_run_id",
+}
+
+SYNC_KEYS = {
+    "artifact_canonical_sha256",
+    "artifact_sha256",
+    "deployed_commit",
+    "fetched_main",
+    "generated_at",
+    "input_commit",
+    "installed_at",
+    "ledger_entries",
+    "ledger_head",
+    "ledger_sha256",
+    "public_ledger_sha256",
+    "public_manifest_sha256",
+    "public_osint_stub_sha256",
+    "public_release_commit",
+    "public_rights_status_sha256",
+    "publication_commit",
+    "release_proof_sha256",
+    "schema",
+    "status",
+    "sync_mode",
+}
+
+UNIT_PATHS = {
+    "/etc/systemd/system/palimpsest-backup.service",
+    "/etc/systemd/system/palimpsest-backup.timer",
+    "/etc/systemd/system/palimpsest-backup.service.d/override.conf",
+    "/etc/systemd/system/palimpsest-evidence-wire.service",
+    "/etc/systemd/system/palimpsest-evidence-wire.timer",
+    "/etc/systemd/system/palimpsest-event-analysis-live.service",
+    "/etc/systemd/system/palimpsest-freshness-watchdog.service",
+    "/etc/systemd/system/palimpsest-freshness-watchdog.timer",
+    "/etc/systemd/system/palimpsest-witness.service",
+    "/etc/systemd/system/palimpsest-witness.timer",
+}
+
+
+def _validate_handoff(
+    value: Any, *, host_sha: str, public_release_sha: str
+) -> tuple[str, dict[str, Any]]:
+    handoff = _expect_keys(value, HANDOFF_KEYS, label="Phase 2 v2 handoff")
+    digests = {
+        "artifact_sha256",
+        "ledger_sha256",
+        "public_ledger_sha256",
+        "public_manifest_sha256",
+        "public_osint_stub_sha256",
+        "public_rights_status_sha256",
+        "workflow_receipt_sha256",
+    }
+    if (
+        handoff["schema"] != "palimpsest-public-osint-release-proof.v2"
+        or handoff["expected_deploy_sha"] != host_sha
+        or handoff["workflow_head_sha"] != host_sha
+        or handoff["fetched_main"] != public_release_sha
+        or handoff["public_release_commit"] != public_release_sha
+        or not _is_sha40(handoff["publication_commit"])
+        or not isinstance(handoff["resume_token"], str)
+        or TRANSACTION.fullmatch(handoff["resume_token"]) is None
+        or not all(_is_sha256(handoff[field]) for field in digests)
+        or handoff["public_osint_stub_sha256"] == handoff["artifact_sha256"]
+        or not all(
+            _positive_int(handoff[field])
+            for field in (
+                "railway_canary_run_id",
+                "workflow_run_attempt",
+                "workflow_run_id",
+            )
+        )
+    ):
+        raise RestoreError("Phase 2 v2 handoff semantics are invalid")
+    return handoff["publication_commit"], handoff
+
+
+def _validate_sync_receipt(
+    value: Any, *, host_sha: str, handoff: dict[str, Any], handoff_sha256: str
+) -> None:
+    receipt = _expect_keys(value, SYNC_KEYS, label="Phase 3 OSINT sync receipt")
+    if (
+        receipt["schema"] != "palimpsest-public-osint-sync.v3"
+        or receipt["status"] != "installed"
+        or receipt["sync_mode"] != "release-pinned"
+        or receipt["deployed_commit"] != host_sha
+        or receipt["fetched_main"] != handoff["fetched_main"]
+        or receipt["publication_commit"] != handoff["publication_commit"]
+        or receipt["public_release_commit"] != handoff["public_release_commit"]
+        or receipt["artifact_sha256"] != handoff["artifact_sha256"]
+        or receipt["ledger_sha256"] != handoff["ledger_sha256"]
+        or receipt["public_manifest_sha256"] != handoff["public_manifest_sha256"]
+        or receipt["public_osint_stub_sha256"] != handoff["public_osint_stub_sha256"]
+        or receipt["public_rights_status_sha256"]
+        != handoff["public_rights_status_sha256"]
+        or receipt["public_ledger_sha256"] != handoff["public_ledger_sha256"]
+        or receipt["release_proof_sha256"] != handoff_sha256
+        or not _is_sha40(receipt["input_commit"])
+        or not _is_sha256(receipt["artifact_canonical_sha256"])
+        or not _is_sha256(receipt["ledger_head"])
+        or not _positive_int(receipt["ledger_entries"])
+    ):
+        raise RestoreError("Phase 3 OSINT sync receipt semantics are invalid")
+    _utc(receipt["installed_at"], label="OSINT sync installed_at")
+    _utc(receipt["generated_at"], label="OSINT sync generated_at")
+
+
+def _validate_proof_complete(
+    value: Any,
+    *,
+    host_sha: str,
+    transaction: str,
+    handoff: dict[str, Any],
+    handoff_sha256: str,
+    recovery_binding: dict[str, Any] | None,
+) -> str:
+    base = {
+        "backup",
+        "celery",
+        "compose_before",
+        "controller_manifest_sha256",
+        "deployment",
+        "generated_at",
+        "installed_unit_sha256",
+        "observers",
+        "publication",
+        "recovery",
+        "release_proof_present",
+        "schema_version",
+        "status",
+        "transaction_id",
+        "writers_restored",
+    }
+    if recovery_binding is not None:
+        base.add("interrupted_phase1_resume")
+    proof = _expect_keys(value, base, label="Phase 3 proof-complete receipt")
+    generated_at = _utc(proof["generated_at"], label="proof-complete generated_at")
+    if (
+        proof["schema_version"] != "palimpsest-host-release.v1"
+        or proof["status"] != "proof-complete"
+        or proof["transaction_id"] != transaction
+        or handoff["resume_token"] != transaction
+        or proof["release_proof_present"] is not True
+        or proof["writers_restored"] is not False
+        or (
+            recovery_binding is not None
+            and proof["interrupted_phase1_resume"] != recovery_binding
+        )
+    ):
+        raise RestoreError("Phase 3 proof-complete authority is invalid")
+    deployment = _expect_keys(
+        proof["deployment"],
+        {
+            "candidate_image_id",
+            "candidate_render_gateway_image_id",
+            "controller_sha",
+            "controller_tree_sha256",
+            "deployed_sha",
+            "direction",
+            "previous_checkout_sha",
+            "previous_deployment_receipt_sha",
+        },
+        label="proof-complete deployment",
+    )
+    if (
+        deployment["direction"] != "forward"
+        or deployment["deployed_sha"] != host_sha
+        or not _is_sha40(deployment["previous_checkout_sha"])
+        or not _is_sha40(deployment["previous_deployment_receipt_sha"])
+        or not _is_sha40(deployment["controller_sha"])
+        or not _is_sha256(deployment["controller_tree_sha256"])
+        or not isinstance(deployment["candidate_image_id"], str)
+        or (
+            deployment["candidate_render_gateway_image_id"] is not None
+            and not isinstance(deployment["candidate_render_gateway_image_id"], str)
+        )
+    ):
+        raise RestoreError("proof-complete deployment semantics are invalid")
+    publication = _expect_keys(
+        proof["publication"],
+        {
+            "bleedthrough_normalized_sha256",
+            "handoff",
+            "ledger_sha256",
+            "osint_sha256",
+            "sync_receipt",
+        },
+        label="proof-complete publication",
+    )
+    if (
+        publication["handoff"] != handoff
+        or publication["osint_sha256"] != handoff["artifact_sha256"]
+        or publication["ledger_sha256"] != handoff["ledger_sha256"]
+        or not _is_sha256(publication["bleedthrough_normalized_sha256"])
+    ):
+        raise RestoreError("proof-complete publication linkage is invalid")
+    _validate_sync_receipt(
+        publication["sync_receipt"],
+        host_sha=host_sha,
+        handoff=handoff,
+        handoff_sha256=handoff_sha256,
+    )
+    backup = _expect_keys(
+        proof["backup"],
+        {
+            "core_snapshot",
+            "legacy_witness_status",
+            "pre_change_v4_snapshot",
+            "verification",
+        },
+        label="proof-complete backup",
+    )
+    legacy = _expect_keys(
+        backup["legacy_witness_status"],
+        {"path", "preserved", "sha256"},
+        label="legacy witness status",
+    )
+    if (
+        not isinstance(backup["core_snapshot"], str)
+        or not isinstance(backup["pre_change_v4_snapshot"], str)
+        or not isinstance(backup["verification"], dict)
+        or not isinstance(legacy["preserved"], bool)
+        or (
+            legacy["preserved"]
+            and (
+                not isinstance(legacy["path"], str) or not _is_sha256(legacy["sha256"])
+            )
+        )
+        or (
+            not legacy["preserved"]
+            and (legacy["path"] is not None or legacy["sha256"] is not None)
+        )
+    ):
+        raise RestoreError("proof-complete backup semantics are invalid")
+    observers = _expect_keys(
+        proof["observers"], {"policy_sha256", "watchdog", "witness"}, label="observers"
+    )
+    if not _is_sha256(observers["policy_sha256"]):
+        raise RestoreError("proof-complete observer policy digest is invalid")
+    for name in ("watchdog", "witness"):
+        observer = _expect_keys(
+            observers[name], {"baseline_token_sha256", "exit_pair", "proof"}, label=name
+        )
+        if (
+            not _is_sha256(observer["baseline_token_sha256"])
+            or not isinstance(observer["exit_pair"], str)
+            or not isinstance(observer["proof"], dict)
+        ):
+            raise RestoreError(f"proof-complete {name} evidence is invalid")
+    celery = _expect_keys(
+        proof["celery"],
+        {"candidate_consuming", "candidate_fenced", "pre_change", "v4_backup_fenced"},
+        label="proof-complete Celery",
+    )
+    if any(not isinstance(celery[name], dict) for name in celery):
+        raise RestoreError("proof-complete Celery evidence is invalid")
+    compose = proof["compose_before"]
+    if not isinstance(compose, dict) or set(compose) != COMPOSE_WRITERS:
+        raise RestoreError("proof-complete Compose inventory is invalid")
+    for service, raw in compose.items():
+        item = _expect_keys(
+            raw, {"container_id", "image_id", "was_running"}, label=service
+        )
+        if not isinstance(item["was_running"], bool):
+            raise RestoreError("proof-complete Compose state is invalid")
+    units = proof["installed_unit_sha256"]
+    if (
+        not isinstance(units, dict)
+        or set(units) != UNIT_PATHS
+        or not all(_is_sha256(digest) for digest in units.values())
+        or not _is_sha256(proof["controller_manifest_sha256"])
+        or not isinstance(proof["recovery"], dict)
+    ):
+        raise RestoreError("proof-complete installed evidence is invalid")
+    return generated_at.isoformat().replace("+00:00", "Z")
+
+
+def _validate_resume_receipt(
+    raw: bytes,
+    value: Any,
+    *,
+    repository: str,
+    host_sha: str,
+    publication_sha: str,
+    public_release_sha: str,
+    phase3_sha256: str,
+    proof_sha256: str,
+    handoff_sha256: str,
+) -> str:
+    receipt = _expect_keys(
+        value,
+        {
+            "attempt_id",
+            "authority",
+            "completed_stages",
+            "evidence_directory",
+            "failure",
+            "final_main_sha",
+            "initial_main_sha",
+            "repository",
+            "resume",
+            "schema_version",
+            "source_graph",
+            "status",
+            "terminal_at",
+        },
+        label="producer restore resume receipt",
+    )
+    graph = _expect_keys(
+        receipt["source_graph"],
+        {
+            "host_sha",
+            "phase2_handoff",
+            "phase3",
+            "proof_complete",
+            "publication_sha",
+            "public_release_sha",
+        },
+        label="resume source graph",
+    )
+    phase3 = _expect_keys(
+        graph["phase3"],
+        {"finalized_at", "receipt", "receipt_sha256", "transaction_id"},
+        label="resume Phase 3 reference",
+    )
+    proof = _expect_keys(
+        graph["proof_complete"],
+        {"generated_at", "receipt", "receipt_sha256"},
+        label="resume proof-complete reference",
+    )
+    handoff = _expect_keys(
+        graph["phase2_handoff"],
+        {"receipt", "receipt_sha256"},
+        label="resume handoff reference",
+    )
+    failure = _expect_keys(
+        receipt["failure"],
+        {"error_class", "error_message", "exit_code", "resume_main_sha", "run_id"},
+        label="resume failure evidence",
+    )
+    resume = _expect_keys(
+        receipt["resume"], {"receipt", "receipt_sha256"}, label="resume ancestry"
+    )
+    authority = _expect_keys(
+        receipt["authority"],
+        {
+            "exclusive_writer_ack",
+            "hourly_publication_enabled",
+            "in_flight_run_id",
+            "reconciled_run",
+            "resume_main_sha",
+            "workflow_states",
+        },
+        label="resume cleanup authority",
+    )
+    if (
+        receipt["schema_version"] != "palimpsest.github-producer-restore.v2"
+        or receipt["status"] != "failed-closed"
+        or receipt["repository"] != repository
+        or authority
+        != {
+            "exclusive_writer_ack": "absent",
+            "hourly_publication_enabled": "false",
+            "in_flight_run_id": None,
+            "reconciled_run": authority["reconciled_run"],
+            "resume_main_sha": receipt["final_main_sha"],
+            "workflow_states": {
+                spec.filename: "disabled_manually" for spec in WORKFLOWS
+            },
+        }
+        or graph["host_sha"] != host_sha
+        or graph["publication_sha"] != publication_sha
+        or graph["public_release_sha"] != public_release_sha
+        or phase3["receipt_sha256"] != phase3_sha256
+        or proof["receipt_sha256"] != proof_sha256
+        or handoff["receipt_sha256"] != handoff_sha256
+        or not _is_sha40(receipt["final_main_sha"])
+        or receipt["final_main_sha"] != failure["resume_main_sha"]
+        or not isinstance(receipt["attempt_id"], str)
+        or NONCE32.fullmatch(receipt["attempt_id"]) is None
+        or not isinstance(receipt["evidence_directory"], str)
+        or not Path(receipt["evidence_directory"]).is_absolute()
+        or not isinstance(failure["exit_code"], int)
+        or failure["exit_code"] == 0
+        or not isinstance(failure["error_class"], str)
+        or not isinstance(failure["error_message"], str)
+        or (failure["run_id"] is not None and not _positive_int(failure["run_id"]))
+        or resume["receipt"] is not None
+        and not isinstance(resume["receipt"], str)
+        or resume["receipt_sha256"] is not None
+        and not _is_sha256(resume["receipt_sha256"])
+    ):
+        raise RestoreError(
+            "producer restore resume receipt is not exact failed-closed authority"
+        )
+    if authority["reconciled_run"] is not None:
+        reconciled = _expect_keys(
+            authority["reconciled_run"],
+            {"conclusion", "run_attempt", "run_id", "status"},
+            label="reconciled producer run",
+        )
+        if (
+            reconciled["status"] != "completed"
+            or not _positive_int(reconciled["run_id"])
+            or not _positive_int(reconciled["run_attempt"])
+            or not isinstance(reconciled["conclusion"], str)
+        ):
+            raise RestoreError("resume reconciled run evidence is invalid")
+    stages = receipt["completed_stages"]
+    if not isinstance(stages, list) or len(stages) > len(WORKFLOWS):
+        raise RestoreError("resume completed stage inventory is invalid")
+    for index, reference in enumerate(stages):
+        item = _expect_keys(
+            reference,
+            {
+                "file",
+                "id",
+                "main_after",
+                "main_before",
+                "order",
+                "outcome",
+                "receipt",
+                "receipt_sha256",
+                "run_id",
+            },
+            label="resume stage reference",
+        )
+        spec = WORKFLOWS[index]
+        stage_path = Path(item["receipt"] if isinstance(item["receipt"], str) else "")
+        if (
+            item["file"] != spec.filename
+            or item["id"] != spec.workflow_id
+            or item["order"] != spec.order
+            or not _is_sha40(item["main_before"])
+            or not _is_sha40(item["main_after"])
+            or not _is_sha256(item["receipt_sha256"])
+            or not _positive_int(item["run_id"])
+            or not stage_path.is_absolute()
+        ):
+            raise RestoreError("resume stage reference semantics are invalid")
+        stage_raw, stage_document = _read_private_canonical(
+            stage_path, label="prior producer stage receipt", maximum=MAX_RECEIPT_BYTES
+        )
+        if (
+            hashlib.sha256(stage_raw).hexdigest() != item["receipt_sha256"]
+            or stage_document.get("schema_version")
+            != "palimpsest.github-producer-stage.v1"
+            or stage_document.get("status") != "verified"
+            or stage_document.get("main_before") != item["main_before"]
+            or stage_document.get("main_after") != item["main_after"]
+        ):
+            raise RestoreError("resume stage receipt linkage is invalid")
+    _utc(receipt["terminal_at"], label="resume receipt terminal_at")
+    if (
+        hashlib.sha256(raw).hexdigest()
+        != hashlib.sha256(_canonical_json(receipt)).hexdigest()
+    ):
+        raise RestoreError("producer restore resume receipt bytes are not canonical")
+    return receipt["final_main_sha"]
+
+
+def _load_prerequisites(
+    *,
+    expected_host_sha: str,
+    expected_public_release_sha: str,
+    phase3_path: Path,
+    proof_complete_path: Path,
+    handoff_path: Path,
+    resume_path: Path | None,
+    repository: str,
+) -> Prerequisites:
+    phase3_raw, phase3 = _read_private_canonical(
+        phase3_path, label="Phase 3 finalized receipt", maximum=MAX_RECEIPT_BYTES
+    )
+    transaction, finalized_at, host_proof_path, expected_proof_sha, recovery = (
+        _validate_phase3(phase3, expected_host_sha=expected_host_sha)
+    )
+    proof_raw, proof = _read_private_canonical(
+        proof_complete_path,
+        label="Phase 3 proof-complete receipt",
+        maximum=MAX_RECEIPT_BYTES,
+    )
+    proof_sha = hashlib.sha256(proof_raw).hexdigest()
+    if (
+        proof_sha != expected_proof_sha
+        or proof_complete_path.name != Path(host_proof_path).name
+    ):
+        raise RestoreError(
+            "Phase 3 proof-complete copy does not match finalized authority"
+        )
+    handoff_raw, handoff = _read_private_canonical(
+        handoff_path, label="Phase 2 v2 handoff receipt", maximum=64 * 1024
+    )
+    publication_sha, handoff = _validate_handoff(
+        handoff,
+        host_sha=expected_host_sha,
+        public_release_sha=expected_public_release_sha,
+    )
+    handoff_sha = hashlib.sha256(handoff_raw).hexdigest()
+    proof_generated_at = _validate_proof_complete(
+        proof,
+        host_sha=expected_host_sha,
+        transaction=transaction,
+        handoff=handoff,
+        handoff_sha256=handoff_sha,
+        recovery_binding=recovery,
+    )
+    if handoff_raw != _canonical_json(proof["publication"]["handoff"]):
+        raise RestoreError(
+            "Phase 2 handoff bytes do not equal proof-complete embedded handoff"
+        )
+    if _utc(proof_generated_at, label="proof-complete generated_at") > _utc(
+        finalized_at, label="Phase 3 finalized_at"
+    ):
+        raise RestoreError("proof-complete receipt post-dates Phase 3 finalization")
+    restore_base_sha = expected_public_release_sha
+    resume_sha: str | None = None
+    if resume_path is not None:
+        resume_raw, resume = _read_private_canonical(
+            resume_path,
+            label="producer restore resume receipt",
+            maximum=MAX_RECEIPT_BYTES,
+        )
+        restore_base_sha = _validate_resume_receipt(
+            resume_raw,
+            resume,
+            repository=repository,
+            host_sha=expected_host_sha,
+            publication_sha=publication_sha,
+            public_release_sha=expected_public_release_sha,
+            phase3_sha256=hashlib.sha256(phase3_raw).hexdigest(),
+            proof_sha256=proof_sha,
+            handoff_sha256=handoff_sha,
+        )
+        resume_sha = hashlib.sha256(resume_raw).hexdigest()
+    return Prerequisites(
+        host_sha=expected_host_sha,
+        public_release_sha=expected_public_release_sha,
+        publication_sha=publication_sha,
+        phase3_path=phase3_path,
+        phase3_sha256=hashlib.sha256(phase3_raw).hexdigest(),
+        phase3_transaction=transaction,
+        phase3_finalized_at=finalized_at,
+        proof_complete_path=proof_complete_path,
+        proof_complete_sha256=proof_sha,
+        proof_complete_generated_at=proof_generated_at,
+        handoff_path=handoff_path,
+        handoff_sha256=handoff_sha,
+        resume_path=resume_path,
+        resume_sha256=resume_sha,
+        restore_base_sha=restore_base_sha,
+    )
+
+
+def _workflow_metadata(
+    deadline: Deadline, repository: str, spec: WorkflowSpec
+) -> dict[str, Any]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/workflows/{spec.workflow_id}",
+            label=f"inspect {spec.filename}",
+        ),
+        label=f"{spec.filename} metadata",
+    )
+    if not isinstance(value, dict):
+        raise RestoreError(f"{spec.filename} metadata is not an object")
+    selected = {key: value.get(key) for key in ("id", "name", "path", "state")}
+    if selected != {
+        "id": spec.workflow_id,
+        "name": spec.display_name,
+        "path": f".github/workflows/{spec.filename}",
+        "state": selected["state"],
+    } or selected["state"] not in {"active", "disabled_manually"}:
+        raise RestoreError(f"{spec.filename} workflow identity is not exact")
+    return selected
+
+
+def _workflow_states(deadline: Deadline, repository: str) -> list[str]:
+    return [
+        _workflow_metadata(deadline, repository, spec)["state"] for spec in WORKFLOWS
+    ]
+
+
+def _require_stage_states(
+    deadline: Deadline, repository: str, *, active_index: int | None
+) -> list[str]:
+    states = _workflow_states(deadline, repository)
+    expected = [
+        "active" if index == active_index else "disabled_manually" for index in range(3)
+    ]
+    if states != expected:
+        raise RestoreError(
+            f"producer workflow states are not exact: expected {expected}, received {states}"
+        )
+    return states
+
+
+def _require_activation_prefix(
+    deadline: Deadline, repository: str, *, active_count: int
+) -> list[str]:
+    states = _workflow_states(deadline, repository)
+    expected = [
+        "active" if index < active_count else "disabled_manually" for index in range(3)
+    ]
+    if states != expected:
+        raise RestoreError(
+            "producer activation boundary states are not exact: "
+            f"expected {expected}, received {states}"
+        )
+    return states
+
+
+def _parse_dispatch_inputs(raw: str, *, filename: str) -> tuple[str, ...]:
+    if "\t" in raw or "\r" in raw:
+        raise RestoreError(f"{filename} YAML uses unsupported framing")
+    lines = raw.splitlines()
+    try:
+        on_index = next(index for index, line in enumerate(lines) if line == "on:")
+    except StopIteration as error:
+        raise RestoreError(f"{filename} has no exact top-level on block") from error
+    dispatch_index: int | None = None
+    inline = ""
+    for index in range(on_index + 1, len(lines)):
+        line = lines[index]
+        if line and not line.startswith(" ") and not line.lstrip().startswith("#"):
+            break
+        match = re.fullmatch(r"  workflow_dispatch:\s*(.*)", line)
+        if match:
+            if dispatch_index is not None:
+                raise RestoreError(f"{filename} repeats workflow_dispatch")
+            dispatch_index = index
+            inline = match.group(1)
+    if dispatch_index is None:
+        raise RestoreError(f"{filename} does not support workflow_dispatch")
+    if inline:
+        if inline != "{}":
+            raise RestoreError(f"{filename} has unsupported inline dispatch syntax")
+        return ()
+    inputs_index: int | None = None
+    for index in range(dispatch_index + 1, len(lines)):
+        line = lines[index]
+        if (
+            line
+            and len(line) - len(line.lstrip(" ")) <= 2
+            and not line.lstrip().startswith("#")
+        ):
+            break
+        if line == "    inputs:":
+            inputs_index = index
+            break
+    if inputs_index is None:
+        return ()
+    names: list[str] = []
+    index = inputs_index + 1
+    while index < len(lines):
+        line = lines[index]
+        if (
+            line
+            and len(line) - len(line.lstrip(" ")) <= 4
+            and not line.lstrip().startswith("#")
+        ):
+            break
+        match = re.fullmatch(r"      ([a-z][a-z0-9_]*):", line)
+        if not match:
+            index += 1
+            continue
+        name = match.group(1)
+        if name in names:
+            raise RestoreError(f"{filename} repeats dispatch input {name}")
+        fields: dict[str, str] = {}
+        index += 1
+        while index < len(lines):
+            child = lines[index]
+            if re.fullmatch(r"      [a-z][a-z0-9_]*:", child):
+                break
+            if (
+                child
+                and len(child) - len(child.lstrip(" ")) <= 4
+                and not child.lstrip().startswith("#")
+            ):
+                break
+            field = re.fullmatch(r"        (required|type):\s*(\S+)\s*", child)
+            if field:
+                fields[field.group(1)] = field.group(2)
+            index += 1
+        if fields != {"required": "true", "type": "string"}:
+            raise RestoreError(
+                f"{filename} dispatch input {name} is not required string"
+            )
+        names.append(name)
+    return tuple(names)
+
+
+def _workflow_contract(
+    deadline: Deadline, repository: str, spec: WorkflowSpec, source_sha: str
+) -> str:
+    raw = _gh(
+        deadline,
+        "api",
+        "-H",
+        "Accept: application/vnd.github.raw+json",
+        f"repos/{repository}/contents/.github/workflows/{spec.filename}?ref={source_sha}",
+        label=f"read {spec.filename} YAML",
+        maximum=MAX_WORKFLOW_BYTES,
+    )
+    inputs = _parse_dispatch_inputs(raw, filename=spec.filename)
+    if inputs != spec.dispatch_inputs:
+        raise RestoreError(
+            f"{spec.filename} dispatch inputs changed: expected {spec.dispatch_inputs}, got {inputs}"
+        )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _run_snapshot(
+    deadline: Deadline, repository: str, spec: WorkflowSpec
+) -> dict[int, dict[str, Any]]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/workflows/{spec.workflow_id}/runs?per_page=100",
+            label=f"snapshot {spec.filename} runs",
+        ),
+        label=f"{spec.filename} run inventory",
+    )
+    if not isinstance(value, dict) or not isinstance(value.get("workflow_runs"), list):
+        raise RestoreError(f"{spec.filename} run inventory is malformed")
+    result: dict[int, dict[str, Any]] = {}
+    for raw in value["workflow_runs"]:
+        if not isinstance(raw, dict):
+            raise RestoreError(
+                f"{spec.filename} run inventory contains a malformed run"
+            )
+        selected = {
+            key: raw.get(key)
+            for key in (
+                "id",
+                "event",
+                "head_sha",
+                "head_branch",
+                "run_attempt",
+                "status",
+                "conclusion",
+                "created_at",
+                "name",
+                "path",
+            )
+        }
+        run_id = selected["id"]
+        if not _positive_int(run_id) or run_id in result:
+            raise RestoreError(
+                f"{spec.filename} run inventory has duplicate/invalid IDs"
+            )
+        result[run_id] = selected
+    return result
+
+
+def _all_run_snapshots(
+    deadline: Deadline, repository: str
+) -> list[dict[int, dict[str, Any]]]:
+    return [_run_snapshot(deadline, repository, spec) for spec in WORKFLOWS]
+
+
+def _mark_producer_runs_unproved(run_state: RunState) -> None:
+    previous_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    )
+    try:
+        run_state.producer_runs_unproved = True
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+
+
+def _validate_attempt_run_set(
+    run_state: RunState,
+    snapshots: list[dict[int, dict[str, Any]]],
+    *,
+    require_completed: bool,
+) -> list[list[int]]:
+    baseline = run_state.attempt_run_snapshots
+    if baseline is None or len(baseline) != len(WORKFLOWS):
+        _mark_producer_runs_unproved(run_state)
+        raise RestoreError("producer attempt run baseline is unavailable")
+    additions: list[list[int]] = []
+    for index, spec in enumerate(WORKFLOWS):
+        current = snapshots[index]
+        new_ids = sorted(set(current) - set(baseline[index]))
+        expected = sorted(
+            run_id
+            for run_id, (bound_index, _head_sha) in run_state.bound_runs.items()
+            if bound_index == index
+        )
+        expected_ids = set(baseline[index]) | set(expected)
+        baseline_changed = any(
+            current.get(run_id) != snapshot
+            for run_id, snapshot in baseline[index].items()
+        )
+        if set(current) != expected_ids or new_ids != expected or baseline_changed:
+            _mark_producer_runs_unproved(run_state)
+            raise RestoreError(
+                f"post-attempt {spec.filename} run set is not exact: "
+                f"expected {expected}, received {new_ids}"
+            )
+        for run_id in new_ids:
+            run = current[run_id]
+            _bound_index, expected_sha = run_state.bound_runs[run_id]
+            if (
+                run.get("id") != run_id
+                or run.get("event") != "workflow_dispatch"
+                or run.get("head_sha") != expected_sha
+                or run.get("head_branch") != "main"
+                or run.get("run_attempt") != 1
+                or run.get("name") != spec.display_name
+                or run.get("path") != f".github/workflows/{spec.filename}"
+                or run.get("status")
+                not in (
+                    {"completed"}
+                    if require_completed
+                    else ACTIVE_RUN_STATES | {"completed"}
+                )
+                or (
+                    run.get("status") == "completed"
+                    and not isinstance(run.get("conclusion"), str)
+                )
+            ):
+                _mark_producer_runs_unproved(run_state)
+                raise RestoreError(
+                    f"post-attempt run {run_id} is not the exact bound producer run"
+                )
+        additions.append(new_ids)
+    return additions
+
+
+def _require_initial_run_quiet(
+    run_state: RunState, snapshots: list[dict[int, dict[str, Any]]]
+) -> None:
+    for index, spec in enumerate(WORKFLOWS):
+        active = sorted(
+            run_id
+            for run_id, run in snapshots[index].items()
+            if run.get("status") in ACTIVE_RUN_STATES
+        )
+        if active:
+            _mark_producer_runs_unproved(run_state)
+            raise RestoreError(f"{spec.filename} has active pre-attempt runs: {active}")
+
+
+def _validate_bound_run(
+    run: dict[str, Any],
+    *,
+    spec: WorkflowSpec,
+    run_id: int,
+    expected_sha: str,
+    not_before: datetime,
+) -> None:
+    created_at = _utc(run.get("created_at"), label=f"run {run_id} created_at")
+    now = datetime.now(UTC)
+    if (
+        run.get("id") != run_id
+        or run.get("event") != "workflow_dispatch"
+        or run.get("head_sha") != expected_sha
+        or run.get("head_branch") != "main"
+        or run.get("run_attempt") != 1
+        or run.get("name") != spec.display_name
+        or run.get("path") != f".github/workflows/{spec.filename}"
+        or created_at < not_before - timedelta(seconds=RUN_CREATION_SKEW_SECONDS)
+        or created_at > now + timedelta(seconds=RUN_CREATION_SKEW_SECONDS)
+    ):
+        raise RestoreError(
+            f"new {spec.filename} run is not the exact manual transaction"
+        )
+
+
+def _poll_new_manual_run(
+    deadline: Deadline,
+    *,
+    repository: str,
+    spec: WorkflowSpec,
+    before: dict[int, dict[str, Any]],
+    expected_sha: str,
+    not_before: datetime,
+) -> tuple[int, dict[str, Any]]:
+    while True:
+        current = _run_snapshot(deadline, repository, spec)
+        new_ids = sorted(set(current) - set(before))
+        if len(new_ids) > 1:
+            raise RestoreError(
+                f"{spec.filename} gained multiple runs; schedule/dispatch race rejected"
+            )
+        if new_ids:
+            run_id = new_ids[0]
+            _validate_bound_run(
+                current[run_id],
+                spec=spec,
+                run_id=run_id,
+                expected_sha=expected_sha,
+                not_before=not_before,
+            )
+            return run_id, current[run_id]
+        deadline.sleep()
+
+
+def _run_view(
+    deadline: Deadline, repository: str, spec: WorkflowSpec, run_id: int
+) -> dict[str, Any]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}",
+            label=f"inspect run {run_id}",
+        ),
+        label=f"run {run_id}",
+    )
+    if not isinstance(value, dict):
+        raise RestoreError(f"run {run_id} metadata is malformed")
+    selected = {
+        key: value.get(key)
+        for key in (
+            "id",
+            "event",
+            "head_sha",
+            "head_branch",
+            "run_attempt",
+            "status",
+            "conclusion",
+            "created_at",
+            "updated_at",
+            "name",
+            "path",
+        )
+    }
+    _validate_bound_run(
+        selected,
+        spec=spec,
+        run_id=run_id,
+        expected_sha=selected.get("head_sha", ""),
+        not_before=_utc(selected.get("created_at"), label=f"run {run_id} created_at"),
+    )
+    return selected
+
+
+def _wait_success(
+    deadline: Deadline,
+    *,
+    repository: str,
+    spec: WorkflowSpec,
+    run_id: int,
+    expected_sha: str,
+    not_before: datetime,
+) -> dict[str, Any]:
+    while True:
+        run = _run_view(deadline, repository, spec, run_id)
+        _validate_bound_run(
+            run,
+            spec=spec,
+            run_id=run_id,
+            expected_sha=expected_sha,
+            not_before=not_before,
+        )
+        if run["status"] == "completed":
+            if run["conclusion"] != "success":
+                raise RestoreError(f"run {run_id} did not conclude successfully")
+            _utc(run["updated_at"], label=f"run {run_id} updated_at")
+            return run
+        if run["status"] not in ACTIVE_RUN_STATES:
+            raise RestoreError(f"run {run_id} has unsupported status {run['status']!r}")
+        deadline.sleep()
+
+
+def _validate_jobs(
+    deadline: Deadline, repository: str, spec: WorkflowSpec, run_id: int
+) -> list[dict[str, Any]]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}/jobs?filter=latest&per_page=100",
+            label=f"inspect run {run_id} jobs",
+        ),
+        label=f"run {run_id} jobs",
+    )
+    if (
+        not isinstance(value, dict)
+        or value.get("total_count") != 1
+        or not isinstance(value.get("jobs"), list)
+        or len(value["jobs"]) != 1
+    ):
+        raise RestoreError(f"run {run_id} does not have its one exact meaningful job")
+    raw = value["jobs"][0]
+    if not isinstance(raw, dict) or raw.get("name") != spec.job_name:
+        raise RestoreError(f"run {run_id} job identity is invalid")
+    steps = raw.get("steps")
+    if not isinstance(steps, list) or not steps:
+        raise RestoreError(f"run {run_id} has no meaningful step evidence")
+    selected_steps: list[dict[str, Any]] = []
+    success_count = 0
+    for step in steps:
+        if not isinstance(step, dict):
+            raise RestoreError(f"run {run_id} contains a malformed step")
+        selected = {
+            "conclusion": step.get("conclusion"),
+            "name": step.get("name"),
+            "number": step.get("number"),
+            "status": step.get("status"),
+        }
+        if (
+            not isinstance(selected["name"], str)
+            or not _positive_int(selected["number"])
+            or selected["status"] != "completed"
+            or selected["conclusion"] not in {"success", "skipped"}
+        ):
+            raise RestoreError(f"run {run_id} has an incomplete or failed step")
+        success_count += selected["conclusion"] == "success"
+        selected_steps.append(selected)
+    if not success_count:
+        raise RestoreError(f"run {run_id} has no successful meaningful step")
+    if (
+        raw.get("status") != "completed"
+        or raw.get("conclusion") != "success"
+        or raw.get("run_attempt") != 1
+    ):
+        raise RestoreError(f"run {run_id} job did not succeed on attempt one")
+    return [
+        {
+            "conclusion": "success",
+            "name": spec.job_name,
+            "run_attempt": 1,
+            "steps": selected_steps,
+        }
+    ]
+
+
+def _post_run_race_check(
+    deadline: Deadline,
+    *,
+    repository: str,
+    before: list[dict[int, dict[str, Any]]],
+    current_index: int,
+    bound_run_id: int,
+    run_state: RunState,
+) -> list[list[int]]:
+    after = _all_run_snapshots(deadline, repository)
+    new_ids: list[list[int]] = []
+    for index in range(3):
+        additions = sorted(set(after[index]) - set(before[index]))
+        expected = [bound_run_id] if index == current_index else []
+        if additions != expected:
+            _mark_producer_runs_unproved(run_state)
+            raise RestoreError(
+                f"producer run race detected for {WORKFLOWS[index].filename}: {additions}"
+            )
+        new_ids.append(additions)
+    return new_ids
+
+
+def _commit_lineage(
+    deadline: Deadline,
+    *,
+    repository: str,
+    before: str,
+    after: str,
+    prefix: str,
+) -> dict[str, Any]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/compare/{before}...{after}",
+            label="verify producer commit lineage",
+        ),
+        label="producer commit comparison",
+    )
+    if not isinstance(value, dict) or not isinstance(value.get("commits"), list):
+        raise RestoreError("producer commit comparison is malformed")
+    commits = value["commits"]
+    if (
+        value.get("status") != "ahead"
+        or value.get("ahead_by") != 1
+        or value.get("behind_by") != 0
+        or value.get("total_commits") != 1
+        or len(commits) != 1
+    ):
+        raise RestoreError("producer main advance is not exactly one commit")
+    commit = commits[0]
+    parents = commit.get("parents") if isinstance(commit, dict) else None
+    message = (
+        commit.get("commit", {}).get("message")
+        if isinstance(commit, dict) and isinstance(commit.get("commit"), dict)
+        else None
+    )
+    if (
+        commit.get("sha") != after
+        or not isinstance(parents, list)
+        or [item.get("sha") for item in parents if isinstance(item, dict)] != [before]
+        or not isinstance(message, str)
+        or not message.startswith(prefix)
+    ):
+        raise RestoreError("producer commit identity is not exact")
+    return {"message": message, "parent": before, "sha": after}
+
+
+def _require_ancestry(
+    deadline: Deadline, *, repository: str, ancestor: str, descendant: str, label: str
+) -> str:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/compare/{ancestor}...{descendant}",
+            label=label,
+        ),
+        label=label,
+    )
+    if (
+        not isinstance(value, dict)
+        or value.get("status") not in {"ahead", "identical"}
+        or not isinstance(value.get("ahead_by"), int)
+        or value.get("behind_by") != 0
+        or (
+            ancestor == descendant
+            and (value.get("status"), value.get("ahead_by")) != ("identical", 0)
+        )
+        or (
+            ancestor != descendant
+            and (value.get("status") != "ahead" or value.get("ahead_by", 0) < 1)
+        )
+    ):
+        raise RestoreError(f"{label} did not prove descendant-or-identical lineage")
+    return value["status"]
+
+
+def _artifact_inventory(
+    deadline: Deadline, repository: str, run_id: int
+) -> list[dict[str, Any]]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
+            label=f"inspect run {run_id} artifacts",
+        ),
+        label=f"run {run_id} artifacts",
+    )
+    if not isinstance(value, dict) or not isinstance(value.get("artifacts"), list):
+        raise RestoreError(f"run {run_id} artifact inventory is malformed")
+    result: list[dict[str, Any]] = []
+    for item in value["artifacts"]:
+        if not isinstance(item, dict):
+            raise RestoreError(f"run {run_id} artifact inventory is malformed")
+        result.append(item)
+    return result
+
+
+def _download_exact_artifact(
+    deadline: Deadline,
+    *,
+    repository: str,
+    run_id: int,
+    artifact_name: str,
+    expected_filename: str,
+    temporary_directory: Path,
+) -> tuple[bytes, dict[str, Any]]:
+    matches = [
+        item
+        for item in _artifact_inventory(deadline, repository, run_id)
+        if item.get("name") == artifact_name
+    ]
+    if len(matches) != 1:
+        raise RestoreError(f"run {run_id} lacks its one exact {artifact_name} artifact")
+    item = matches[0]
+    workflow_run = item.get("workflow_run")
+    if (
+        not _positive_int(item.get("id"))
+        or item.get("expired") is not False
+        or not _positive_int(item.get("size_in_bytes"))
+        or not isinstance(workflow_run, dict)
+        or workflow_run.get("id") != run_id
+    ):
+        raise RestoreError(f"run {run_id} artifact metadata is not exact")
+    destination = temporary_directory / f"artifact-{run_id}"
+    destination.mkdir(mode=0o700)
+    _gh(
+        deadline,
+        "run",
+        "download",
+        str(run_id),
+        "--repo",
+        repository,
+        "--name",
+        artifact_name,
+        "--dir",
+        str(destination),
+        label=f"download {artifact_name}",
+    )
+    entries = list(destination.iterdir())
+    if len(entries) != 1 or entries[0].name != expected_filename:
+        raise RestoreError(f"{artifact_name} contents are not exact")
+    path = entries[0]
+    details = path.lstat()
+    if not stat.S_ISREG(details.st_mode) or details.st_nlink != 1:
+        raise RestoreError(f"{artifact_name} contains an unsafe receipt")
+    raw = path.read_bytes()
+    return raw, {
+        "artifact_id": item["id"],
+        "file": expected_filename,
+        "name": artifact_name,
+        "receipt_sha256": hashlib.sha256(raw).hexdigest(),
+        "size_in_bytes": len(raw),
+    }
+
+
+def _validate_osint_artifact(
+    raw: bytes,
+    *,
+    run_id: int,
+    head_sha: str,
+    nonce: str,
+    main_after: str,
+    repository: str,
+) -> tuple[str, dict[str, Any]]:
+    value = _strict_json(raw, label="OSINT manual outcome", maximum=MAX_JSON_BYTES)
+    if raw != _canonical_json(value):
+        raise RestoreError("OSINT manual outcome is not canonical")
+    receipt = _expect_keys(
+        value,
+        {
+            "acquisition_base_sha",
+            "base_sha",
+            "candidate_changed",
+            "candidate_sha",
+            "current_main_sha",
+            "event",
+            "expected_deploy_sha",
+            "head_sha",
+            "output_parents",
+            "output_sha",
+            "publication_commit",
+            "push_exit_code",
+            "push_outcome",
+            "recorded_at",
+            "release_nonce",
+            "repository",
+            "result",
+            "retry_candidate_changed",
+            "retry_candidate_sha",
+            "retry_exit_code",
+            "retry_outcome",
+            "run_attempt",
+            "run_id",
+            "schema_version",
+            "synchronized_candidate_changed",
+            "workflow",
+            "workflow_name",
+        },
+        label="OSINT manual outcome",
+    )
+    _utc(receipt["recorded_at"], label="OSINT manual outcome recorded_at")
+    if not (
+        _positive_int(receipt["run_id"])
+        and _positive_int(receipt["run_attempt"])
+        and _is_sha40(receipt["candidate_sha"])
+        and (
+            receipt["retry_candidate_sha"] is None
+            or _is_sha40(receipt["retry_candidate_sha"])
+        )
+        and (
+            receipt["synchronized_candidate_changed"] is None
+            or isinstance(receipt["synchronized_candidate_changed"], bool)
+        )
+        and (
+            receipt["retry_candidate_changed"] is None
+            or isinstance(receipt["retry_candidate_changed"], bool)
+        )
+        and (
+            receipt["push_exit_code"] is None
+            or (
+                isinstance(receipt["push_exit_code"], int)
+                and not isinstance(receipt["push_exit_code"], bool)
+            )
+        )
+        and (
+            receipt["retry_exit_code"] is None
+            or (
+                isinstance(receipt["retry_exit_code"], int)
+                and not isinstance(receipt["retry_exit_code"], bool)
+            )
+        )
+        and receipt["push_outcome"] in {"success", "failure", "skipped"}
+        and receipt["retry_outcome"] in {"success", "failure", "skipped"}
+        and receipt["schema_version"] == "palimpsest.osint-manual-outcome.v1"
+        and receipt["repository"] == repository
+        and receipt["workflow"] == ".github/workflows/osint-china-v2-refresh.yml"
+        and receipt["workflow_name"] == "Refresh OSINT China roll-up v2"
+        and receipt["event"] == "workflow_dispatch"
+        and receipt["run_id"] == run_id
+        and receipt["run_attempt"] == 1
+        and receipt["head_sha"] == head_sha
+        and receipt["expected_deploy_sha"] == head_sha
+        and receipt["acquisition_base_sha"] == head_sha
+        and receipt["base_sha"] == head_sha
+        and receipt["release_nonce"] == nonce
+        and receipt["current_main_sha"] == main_after
+        and receipt["publication_commit"] == main_after
+        and receipt["result"] in {"committed", "no_change"}
+    ):
+        raise RestoreError("OSINT manual outcome authority is invalid")
+    if receipt["result"] == "no_change":
+        if not (
+            receipt["candidate_changed"] is False
+            and receipt["candidate_sha"] == head_sha
+            and receipt["output_sha"] == head_sha == main_after
+            and receipt["output_parents"] == []
+            and receipt["synchronized_candidate_changed"] is None
+            and receipt["retry_candidate_changed"] is None
+            and receipt["retry_candidate_sha"] is None
+            and receipt["push_exit_code"] is None
+            and receipt["retry_exit_code"] is None
+            and receipt["push_outcome"] == "skipped"
+            and receipt["retry_outcome"] == "skipped"
+        ):
+            raise RestoreError("OSINT no-change outcome is not exact")
+        return "no_change", receipt
+    if not (
+        receipt["candidate_changed"] is True
+        and receipt["output_sha"] == main_after
+        and receipt["output_parents"] == [head_sha]
+        and (
+            (
+                receipt["candidate_sha"] == main_after
+                and (
+                    receipt["synchronized_candidate_changed"] is None
+                    or receipt["synchronized_candidate_changed"] is True
+                )
+                and receipt["retry_candidate_changed"] is None
+                and receipt["retry_candidate_sha"] is None
+                and (
+                    (
+                        receipt["push_exit_code"] == 0
+                        and receipt["push_outcome"] == "success"
+                    )
+                    or (
+                        receipt["push_exit_code"] == 76
+                        and receipt["push_outcome"] == "failure"
+                    )
+                )
+                and receipt["retry_exit_code"] is None
+                and receipt["retry_outcome"] == "skipped"
+            )
+            or (
+                receipt["push_exit_code"] == 75
+                and receipt["push_outcome"] == "failure"
+                and receipt["retry_candidate_changed"] is True
+                and receipt["retry_candidate_sha"] == main_after
+                and (
+                    (
+                        receipt["retry_exit_code"] == 0
+                        and receipt["retry_outcome"] == "success"
+                    )
+                    or (
+                        receipt["retry_exit_code"] == 76
+                        and receipt["retry_outcome"] == "failure"
+                    )
+                )
+            )
+        )
+    ):
+        raise RestoreError("OSINT committed outcome is not exact-child authority")
+    return "published", receipt
+
+
+def _validate_newswire_artifact(
+    raw: bytes,
+    *,
+    run_id: int,
+    head_sha: str,
+    main_after: str,
+    repository: str,
+) -> tuple[str, dict[str, Any]]:
+    value = _strict_json(raw, label="Newswire manual outcome", maximum=MAX_JSON_BYTES)
+    if raw != _canonical_json(value):
+        raise RestoreError("Newswire manual outcome is not canonical")
+    receipt = _expect_keys(
+        value,
+        {
+            "acquisition_base_sha",
+            "base_sha",
+            "candidate_changed",
+            "candidate_sha",
+            "current_main_sha",
+            "event",
+            "head_sha",
+            "output_parents",
+            "output_sha",
+            "push_outcome",
+            "recorded_at",
+            "repository",
+            "result",
+            "retry_candidate_changed",
+            "retry_candidate_sha",
+            "retry_outcome",
+            "run_attempt",
+            "run_id",
+            "schema_version",
+            "synchronized_candidate_changed",
+            "workflow",
+            "workflow_name",
+        },
+        label="Newswire manual outcome",
+    )
+    _utc(receipt["recorded_at"], label="Newswire manual outcome recorded_at")
+    common = (
+        _positive_int(receipt["run_id"])
+        and _positive_int(receipt["run_attempt"])
+        and _is_sha40(receipt["candidate_sha"])
+        and (
+            receipt["retry_candidate_sha"] is None
+            or _is_sha40(receipt["retry_candidate_sha"])
+        )
+        and (
+            receipt["synchronized_candidate_changed"] is None
+            or isinstance(receipt["synchronized_candidate_changed"], bool)
+        )
+        and (
+            receipt["retry_candidate_changed"] is None
+            or isinstance(receipt["retry_candidate_changed"], bool)
+        )
+        and receipt["schema_version"] == "palimpsest.newswire-manual-outcome.v1"
+        and receipt["repository"] == repository
+        and receipt["workflow"] == ".github/workflows/newswire-refresh.yml"
+        and receipt["workflow_name"] == "Refresh evidence wire"
+        and receipt["event"] == "workflow_dispatch"
+        and receipt["run_id"] == run_id
+        and receipt["run_attempt"] == 1
+        and receipt["head_sha"] == head_sha
+        and receipt["acquisition_base_sha"] == head_sha
+        and receipt["base_sha"] == head_sha
+        and receipt["current_main_sha"] == main_after
+        and receipt["result"] in {"committed", "no_change"}
+        and receipt["push_outcome"] in {"success", "failure", "skipped"}
+        and receipt["retry_outcome"] in {"success", "failure", "skipped"}
+    )
+    if not common:
+        raise RestoreError("Newswire manual outcome authority is invalid")
+    if receipt["result"] == "no_change":
+        if not (
+            receipt["candidate_changed"] is False
+            and receipt["candidate_sha"] == head_sha
+            and receipt["output_sha"] == head_sha == main_after
+            and receipt["output_parents"] == []
+            and receipt["synchronized_candidate_changed"] is None
+            and receipt["retry_candidate_changed"] is None
+            and receipt["retry_candidate_sha"] is None
+            and receipt["push_outcome"] == "skipped"
+            and receipt["retry_outcome"] == "skipped"
+        ):
+            raise RestoreError("Newswire no-change outcome is not exact")
+        return "no_change", receipt
+    if not (
+        receipt["candidate_changed"] is True
+        and receipt["output_sha"] == main_after
+        and receipt["output_parents"] == [head_sha]
+        and (
+            (
+                receipt["candidate_sha"] == main_after
+                and (
+                    receipt["synchronized_candidate_changed"] is None
+                    or receipt["synchronized_candidate_changed"] is True
+                )
+                and receipt["retry_candidate_changed"] is None
+                and receipt["retry_candidate_sha"] is None
+                and receipt["push_outcome"] == "success"
+                and receipt["retry_outcome"] == "skipped"
+            )
+            or (
+                receipt["push_outcome"] == "failure"
+                and receipt["retry_outcome"] == "success"
+                and receipt["retry_candidate_changed"] is True
+                and receipt["retry_candidate_sha"] == main_after
+            )
+        )
+    ):
+        raise RestoreError("Newswire committed outcome is not exact-child authority")
+    return "published", receipt
+
+
+def _validate_watchdog_artifact(
+    raw: bytes,
+    *,
+    run_id: int,
+    head_sha: str,
+    repository: str,
+) -> tuple[str, dict[str, Any]]:
+    value = _strict_json(
+        raw, label="watchdog recovery artifact", maximum=MAX_JSON_BYTES
+    )
+    if raw != _canonical_json(value):
+        raise RestoreError("watchdog recovery artifact is not canonical")
+    keys = {
+        "actor",
+        "checkout_sha",
+        "dispatch_step_outcome",
+        "dispatches",
+        "event",
+        "event_sha",
+        "final_main_sha",
+        "observed_at",
+        "observed_main_sha",
+        "plan",
+        "plan_sha256",
+        "repository",
+        "run_attempt",
+        "run_id",
+        "schema_version",
+        "status",
+        "workflow",
+        "workflow_name",
+    }
+    receipt = _expect_keys(value, keys, label="watchdog recovery artifact")
+    plan = _expect_keys(
+        receipt["plan"],
+        {
+            "bundle_generated_at",
+            "bundle_stale",
+            "dispatch",
+            "escalations",
+            "generated_at",
+            "problems",
+            "schema_version",
+        },
+        label="watchdog recovery plan",
+    )
+    _utc(receipt["observed_at"], label="watchdog receipt observed_at")
+    _utc(plan["generated_at"], label="watchdog plan generated_at")
+    if plan["bundle_generated_at"] is not None:
+        _utc(plan["bundle_generated_at"], label="watchdog bundle generated_at")
+    if (
+        receipt["schema_version"] != "palimpsest.collector-health-watchdog-receipt.v1"
+        or receipt["run_id"] != run_id
+        or receipt["run_attempt"] != 1
+        or receipt["checkout_sha"] != head_sha
+        or receipt["event_sha"] != head_sha
+        or receipt["observed_main_sha"] != head_sha
+        or receipt["final_main_sha"] != head_sha
+        or receipt["event"] != "workflow_dispatch"
+        or receipt["repository"] != repository
+        or receipt["workflow"] != ".github/workflows/collector-health-watchdog.yml"
+        or receipt["workflow_name"] != "Recover stale collector publications"
+        or receipt["status"] != "success"
+        or receipt["dispatch_step_outcome"] != "success"
+        or not isinstance(receipt["actor"], str)
+        or not 1 <= len(receipt["actor"]) <= 100
+        or plan["schema_version"] != "collector-watchdog-plan.v2"
+        or plan["generated_at"] != receipt["observed_at"]
+        or not isinstance(plan["bundle_stale"], bool)
+        or plan["dispatch"] != []
+        or plan["escalations"] != []
+        or plan["problems"] != []
+        or receipt["dispatches"] != []
+        or receipt["plan_sha256"] != hashlib.sha256(_canonical_json(plan)).hexdigest()
+    ):
+        raise RestoreError("watchdog recovery artifact is not an exact abstention")
+    return "abstained", receipt
+
+
+def _stage_outcome(
+    deadline: Deadline,
+    *,
+    repository: str,
+    spec: WorkflowSpec,
+    run_id: int,
+    main_before: str,
+    main_after: str,
+    dispatch_inputs: dict[str, str],
+    temporary_directory: Path,
+) -> tuple[str, dict[str, Any]]:
+    if spec.order == 1:
+        artifact_name = f"newswire-manual-outcome-{run_id}-1"
+        raw, artifact = _download_exact_artifact(
+            deadline,
+            repository=repository,
+            run_id=run_id,
+            artifact_name=artifact_name,
+            expected_filename="newswire-manual-outcome.json",
+            temporary_directory=temporary_directory,
+        )
+        outcome, receipt = _validate_newswire_artifact(
+            raw,
+            run_id=run_id,
+            head_sha=main_before,
+            main_after=main_after,
+            repository=repository,
+        )
+        evidence: dict[str, Any] = {
+            "artifact": artifact,
+            "kind": "artifact",
+            "result": receipt["result"],
+        }
+        if outcome == "published":
+            assert spec.commit_prefix is not None
+            evidence["commit"] = _commit_lineage(
+                deadline,
+                repository=repository,
+                before=main_before,
+                after=main_after,
+                prefix=spec.commit_prefix,
+            )
+        elif main_after != main_before:
+            raise RestoreError("Newswire no-change artifact disagrees with public main")
+        return outcome, evidence
+    if spec.order == 2:
+        artifact_name = f"osint-manual-outcome-{run_id}-1"
+        raw, artifact = _download_exact_artifact(
+            deadline,
+            repository=repository,
+            run_id=run_id,
+            artifact_name=artifact_name,
+            expected_filename="osint-manual-outcome.json",
+            temporary_directory=temporary_directory,
+        )
+        outcome, receipt = _validate_osint_artifact(
+            raw,
+            run_id=run_id,
+            head_sha=main_before,
+            nonce=dispatch_inputs["release_nonce"],
+            main_after=main_after,
+            repository=repository,
+        )
+        evidence = {
+            "artifact": artifact,
+            "kind": "artifact",
+            "result": receipt["result"],
+        }
+        if outcome == "published":
+            assert spec.commit_prefix is not None
+            evidence["commit"] = _commit_lineage(
+                deadline,
+                repository=repository,
+                before=main_before,
+                after=main_after,
+                prefix=spec.commit_prefix,
+            )
+        elif main_after != main_before:
+            raise RestoreError("OSINT no-change artifact disagrees with public main")
+        return outcome, evidence
+    if main_after != main_before:
+        raise RestoreError(
+            "watchdog changed main despite read-only contents permission"
+        )
+    artifact_name = f"collector-health-watchdog-receipt-{run_id}-1"
+    raw, artifact = _download_exact_artifact(
+        deadline,
+        repository=repository,
+        run_id=run_id,
+        artifact_name=artifact_name,
+        expected_filename="collector-health-watchdog-receipt.json",
+        temporary_directory=temporary_directory,
+    )
+    outcome, receipt = _validate_watchdog_artifact(
+        raw,
+        run_id=run_id,
+        head_sha=main_before,
+        repository=repository,
+    )
+    return outcome, {
+        "artifact": artifact,
+        "kind": "artifact",
+        "plan_sha256": hashlib.sha256(_canonical_json(receipt["plan"])).hexdigest(),
+    }
+
+
+def _dispatch_arguments(
+    spec: WorkflowSpec, *, main_sha: str
+) -> tuple[list[str], dict[str, str]]:
+    inputs: dict[str, str] = {}
+    if spec.order == 2:
+        inputs = {
+            "expected_deploy_sha": main_sha,
+            "release_nonce": secrets.token_hex(16),
+        }
+    arguments = [
+        "workflow",
+        "run",
+        str(spec.workflow_id),
+        "--repo",
+        "__REPOSITORY__",
+        "--ref",
+        "main",
+    ]
+    for name in spec.dispatch_inputs:
+        arguments.extend(("-f", f"{name}={inputs[name]}"))
+    return arguments, inputs
+
+
+def _run_stage(
+    *,
+    repository: str,
+    spec: WorkflowSpec,
+    current_index: int,
+    main_before: str,
+    workflow_sha256: str,
+    evidence_directory: Path,
+    temporary_directory: Path,
+    run_state: RunState,
+) -> tuple[dict[str, Any], str, str]:
+    deadline = Deadline.start(spec.budget_seconds)
+    _require_closed_authority(deadline, repository)
+    _require_stage_states(deadline, repository, active_index=None)
+    if _main_sha(deadline, repository) != main_before:
+        raise RestoreError("public main changed before producer stage snapshot")
+    if _workflow_contract(deadline, repository, spec, main_before) != workflow_sha256:
+        raise RestoreError(f"{spec.filename} YAML changed between producer stages")
+    before = _all_run_snapshots(deadline, repository)
+    _validate_attempt_run_set(run_state, before, require_completed=True)
+    stage_started_at = _now()
+    _gh(
+        deadline,
+        "workflow",
+        "enable",
+        str(spec.workflow_id),
+        "--repo",
+        repository,
+        label=f"enable {spec.filename}",
+    )
+    _require_stage_states(deadline, repository, active_index=current_index)
+    _require_closed_authority(deadline, repository)
+    if _main_sha(deadline, repository) != main_before:
+        raise RestoreError("public main changed while enabling producer stage")
+    arguments, dispatch_inputs = _dispatch_arguments(spec, main_sha=main_before)
+    arguments[arguments.index("__REPOSITORY__")] = repository
+    dispatch_started = datetime.now(UTC)
+    previous_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    )
+    try:
+        run_state.dispatch_unbound = True
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    _gh(deadline, *arguments, label=f"dispatch {spec.filename}")
+    _require_closed_authority(deadline, repository)
+    run_id, _listed = _poll_new_manual_run(
+        deadline,
+        repository=repository,
+        spec=spec,
+        before=before[current_index],
+        expected_sha=main_before,
+        not_before=dispatch_started,
+    )
+    previous_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    )
+    try:
+        run_state.current_run_id = run_id
+        run_state.bound_runs[run_id] = (current_index, main_before)
+        run_state.dispatch_unbound = False
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    run = _wait_success(
+        deadline,
+        repository=repository,
+        spec=spec,
+        run_id=run_id,
+        expected_sha=main_before,
+        not_before=dispatch_started,
+    )
+    jobs = _validate_jobs(deadline, repository, spec, run_id)
+    _require_closed_authority(deadline, repository)
+    _require_stage_states(deadline, repository, active_index=current_index)
+    main_after = _main_sha(deadline, repository)
+    additions = _post_run_race_check(
+        deadline,
+        repository=repository,
+        before=before,
+        current_index=current_index,
+        bound_run_id=run_id,
+        run_state=run_state,
+    )
+    outcome, evidence = _stage_outcome(
+        deadline,
+        repository=repository,
+        spec=spec,
+        run_id=run_id,
+        main_before=main_before,
+        main_after=main_after,
+        dispatch_inputs=dispatch_inputs,
+        temporary_directory=temporary_directory,
+    )
+    _require_closed_authority(deadline, repository)
+    _require_stage_states(deadline, repository, active_index=current_index)
+    if _main_sha(deadline, repository) != main_after:
+        raise RestoreError("public main changed during producer outcome proof")
+    _validate_attempt_run_set(
+        run_state,
+        _all_run_snapshots(deadline, repository),
+        require_completed=True,
+    )
+    _gh(
+        deadline,
+        "workflow",
+        "disable",
+        str(spec.workflow_id),
+        "--repo",
+        repository,
+        label=f"refreeze {spec.filename} after manual proof",
+    )
+    _require_stage_states(deadline, repository, active_index=None)
+    _require_closed_authority(deadline, repository)
+    if _main_sha(deadline, repository) != main_after:
+        raise RestoreError("public main changed while refreezing producer stage")
+    _validate_attempt_run_set(
+        run_state,
+        _all_run_snapshots(deadline, repository),
+        require_completed=True,
+    )
+    stage = {
+        "authority": {
+            "exclusive_writer_ack": EXCLUSIVE_WRITER_ACK,
+            "hourly_publication_enabled": False,
+        },
+        "dispatch_inputs": dispatch_inputs,
+        "main_after": main_after,
+        "main_before": main_before,
+        "outcome": outcome,
+        "outcome_evidence": evidence,
+        "repository": repository,
+        "run": {
+            "conclusion": run["conclusion"],
+            "created_at": run["created_at"],
+            "event": run["event"],
+            "head_sha": run["head_sha"],
+            "jobs": jobs,
+            "run_attempt": run["run_attempt"],
+            "run_id": run_id,
+            "updated_at": run["updated_at"],
+        },
+        "run_additions": {
+            WORKFLOWS[index].filename: value for index, value in enumerate(additions)
+        },
+        "schema_version": "palimpsest.github-producer-stage.v1",
+        "stage_started_at": stage_started_at,
+        "status": "verified",
+        "verified_at": _now(),
+        "workflow": {
+            "dispatch_inputs": list(spec.dispatch_inputs),
+            "file": spec.filename,
+            "id": spec.workflow_id,
+            "name": spec.display_name,
+            "order": spec.order,
+            "state_after": "disabled_manually",
+            "state_before": "disabled_manually",
+            "yaml_sha256": workflow_sha256,
+        },
+    }
+    stage_path = evidence_directory / f"{spec.order:02d}-{spec.filename[:-4]}.json"
+    digest = _exclusive_receipt(stage_path, stage, run_state=run_state)
+    reference = {
+        "file": spec.filename,
+        "id": spec.workflow_id,
+        "main_after": stage["main_after"],
+        "main_before": stage["main_before"],
+        "order": spec.order,
+        "outcome": stage["outcome"],
+        "receipt": str(stage_path),
+        "receipt_sha256": digest,
+        "run_id": stage["run"]["run_id"],
+    }
+    previous_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    )
+    try:
+        assert run_state.completed_stages is not None
+        run_state.completed_stages.append(reference)
+        run_state.last_proved_main_sha = stage["main_after"]
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    run_state.current_run_id = None
+    return stage, str(stage_path), digest
+
+
+def _execute(
+    *,
+    repository: str,
+    prerequisites: Prerequisites,
+    phase3_path: Path,
+    proof_complete_path: Path,
+    handoff_path: Path,
+    resume_path: Path | None,
+    evidence_directory: Path,
+    temporary_directory: Path,
+    run_state: RunState,
+) -> dict[str, Any]:
+    preflight = Deadline.start(600)
+    _gh(
+        preflight,
+        "auth",
+        "status",
+        "--hostname",
+        "github.com",
+        label="GitHub authentication",
+    )
+    _require_gh_transport(preflight)
+    _require_closed_authority(preflight, repository)
+    if _main_sha(preflight, repository) != prerequisites.restore_base_sha:
+        raise RestoreError("public main is not the exact restoration source SHA")
+    _require_stage_states(preflight, repository, active_index=None)
+    run_state.initial_main_sha = prerequisites.restore_base_sha
+    run_state.last_proved_main_sha = prerequisites.restore_base_sha
+    _require_ancestry(
+        preflight,
+        repository=repository,
+        ancestor=prerequisites.host_sha,
+        descendant=prerequisites.publication_sha,
+        label="verify host-to-publication lineage",
+    )
+    _require_ancestry(
+        preflight,
+        repository=repository,
+        ancestor=prerequisites.publication_sha,
+        descendant=prerequisites.public_release_sha,
+        label="verify publication-to-release lineage",
+    )
+    workflow_sha256 = [
+        _workflow_contract(preflight, repository, spec, prerequisites.restore_base_sha)
+        for spec in WORKFLOWS
+    ]
+    if (
+        _load_prerequisites(
+            expected_host_sha=prerequisites.host_sha,
+            expected_public_release_sha=prerequisites.public_release_sha,
+            phase3_path=phase3_path,
+            proof_complete_path=proof_complete_path,
+            handoff_path=handoff_path,
+            resume_path=resume_path,
+            repository=repository,
+        )
+        != prerequisites
+    ):
+        raise RestoreError("prerequisite receipts changed during preflight")
+    main_sha = prerequisites.restore_base_sha
+    baseline = _all_run_snapshots(preflight, repository)
+    _require_initial_run_quiet(run_state, baseline)
+    previous_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    )
+    try:
+        run_state.attempt_run_snapshots = baseline
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    stages: list[dict[str, Any]] = []
+    for index, spec in enumerate(WORKFLOWS):
+        if (
+            _load_prerequisites(
+                expected_host_sha=prerequisites.host_sha,
+                expected_public_release_sha=prerequisites.public_release_sha,
+                phase3_path=phase3_path,
+                proof_complete_path=proof_complete_path,
+                handoff_path=handoff_path,
+                resume_path=resume_path,
+                repository=repository,
+            )
+            != prerequisites
+        ):
+            raise RestoreError("prerequisite receipts changed between producer stages")
+        stage, _path, _digest = _run_stage(
+            repository=repository,
+            spec=spec,
+            current_index=index,
+            main_before=main_sha,
+            workflow_sha256=workflow_sha256[index],
+            evidence_directory=evidence_directory,
+            temporary_directory=temporary_directory,
+            run_state=run_state,
+        )
+        assert run_state.completed_stages is not None
+        stages = list(run_state.completed_stages)
+        main_sha = stage["main_after"]
+    final_deadline = Deadline.start(600)
+    _require_closed_authority(final_deadline, repository)
+    _require_stage_states(final_deadline, repository, active_index=None)
+    if _main_sha(final_deadline, repository) != main_sha:
+        raise RestoreError("public main changed before final producer receipt")
+    _validate_attempt_run_set(
+        run_state,
+        _all_run_snapshots(final_deadline, repository),
+        require_completed=True,
+    )
+    if (
+        _load_prerequisites(
+            expected_host_sha=prerequisites.host_sha,
+            expected_public_release_sha=prerequisites.public_release_sha,
+            phase3_path=phase3_path,
+            proof_complete_path=proof_complete_path,
+            handoff_path=handoff_path,
+            resume_path=resume_path,
+            repository=repository,
+        )
+        != prerequisites
+    ):
+        raise RestoreError("prerequisite receipts changed before final receipt")
+    for index, spec in enumerate(WORKFLOWS):
+        _gh(
+            final_deadline,
+            "workflow",
+            "enable",
+            str(spec.workflow_id),
+            "--repo",
+            repository,
+            label=f"activate proved {spec.filename}",
+        )
+        _require_activation_prefix(final_deadline, repository, active_count=index + 1)
+        _require_closed_authority(final_deadline, repository)
+        if _main_sha(final_deadline, repository) != main_sha:
+            raise RestoreError("public main changed during final producer activation")
+        _validate_attempt_run_set(
+            run_state,
+            _all_run_snapshots(final_deadline, repository),
+            require_completed=True,
+        )
+    quiet_snapshot: list[dict[int, dict[str, Any]]] | None = None
+    for sample in range(FINAL_ACTIVATION_QUIET_SAMPLES):
+        current = _all_run_snapshots(final_deadline, repository)
+        _validate_attempt_run_set(run_state, current, require_completed=True)
+        if quiet_snapshot is not None and current != quiet_snapshot:
+            _mark_producer_runs_unproved(run_state)
+            raise RestoreError("producer run inventory changed at activation boundary")
+        quiet_snapshot = current
+        if sample + 1 < FINAL_ACTIVATION_QUIET_SAMPLES:
+            remaining = final_deadline.remaining()
+            if remaining <= FINAL_ACTIVATION_QUIET_INTERVAL_SECONDS:
+                raise RestoreError("final producer activation quiet proof timed out")
+            time.sleep(FINAL_ACTIVATION_QUIET_INTERVAL_SECONDS)
+    _require_activation_prefix(final_deadline, repository, active_count=3)
+    _require_closed_authority(final_deadline, repository)
+    if _main_sha(final_deadline, repository) != main_sha:
+        raise RestoreError("public main changed after final producer activation")
+    return {
+        "attempt_id": run_state.attempt_id,
+        "authority": {
+            "exclusive_writer_ack": EXCLUSIVE_WRITER_ACK,
+            "hourly_publication_enabled": False,
+            "protected_environment": PRODUCTION_ENVIRONMENT,
+        },
+        "completed_stages": stages,
+        "evidence_directory": str(evidence_directory),
+        "final_main_sha": main_sha,
+        "initial_main_sha": prerequisites.restore_base_sha,
+        "repository": repository,
+        "resume": {
+            "receipt": str(prerequisites.resume_path)
+            if prerequisites.resume_path is not None
+            else None,
+            "receipt_sha256": prerequisites.resume_sha256,
+        },
+        "schema_version": "palimpsest.github-producer-restore.v2",
+        "source_graph": _source_graph(prerequisites),
+        "status": "verified",
+        "terminal_at": _now(),
+    }
+
+
+def _source_graph(prerequisites: Prerequisites) -> dict[str, Any]:
+    return {
+        "host_sha": prerequisites.host_sha,
+        "phase2_handoff": {
+            "receipt": str(prerequisites.handoff_path),
+            "receipt_sha256": prerequisites.handoff_sha256,
+        },
+        "phase3": {
+            "finalized_at": prerequisites.phase3_finalized_at,
+            "receipt": str(prerequisites.phase3_path),
+            "receipt_sha256": prerequisites.phase3_sha256,
+            "transaction_id": prerequisites.phase3_transaction,
+        },
+        "proof_complete": {
+            "generated_at": prerequisites.proof_complete_generated_at,
+            "receipt": str(prerequisites.proof_complete_path),
+            "receipt_sha256": prerequisites.proof_complete_sha256,
+        },
+        "publication_sha": prerequisites.publication_sha,
+        "public_release_sha": prerequisites.public_release_sha,
+    }
+
+
+def _failed_receipt(
+    *,
+    repository: str,
+    prerequisites: Prerequisites | None,
+    expected_host_sha: str,
+    expected_public_release_sha: str,
+    evidence_directory: Path | None,
+    run_state: RunState,
+    authority: dict[str, Any],
+    cleanup_ok: bool,
+    error: BaseException,
+    exit_code: int,
+) -> dict[str, Any]:
+    resume_main_sha = authority.get("resume_main_sha")
+    failed_closed = (
+        cleanup_ok
+        and _is_sha40(resume_main_sha)
+        and resume_main_sha == run_state.last_proved_main_sha
+        and not run_state.dispatch_unbound
+        and not run_state.producer_runs_unproved
+        and run_state.attempt_run_snapshots is not None
+        and authority.get("in_flight_run_id") is None
+        and authority.get("hourly_publication_enabled") == "false"
+        and authority.get("exclusive_writer_ack") == "absent"
+        and authority.get("workflow_states")
+        == {spec.filename: "disabled_manually" for spec in WORKFLOWS}
+        and prerequisites is not None
+        and run_state.initial_main_sha is not None
+    )
+    graph: dict[str, Any]
+    if prerequisites is not None:
+        graph = _source_graph(prerequisites)
+    else:
+        graph = {
+            "host_sha": expected_host_sha,
+            "phase2_handoff": None,
+            "phase3": None,
+            "proof_complete": None,
+            "publication_sha": None,
+            "public_release_sha": expected_public_release_sha,
+        }
+    completed = list(run_state.completed_stages or [])
+    initial_main = run_state.initial_main_sha
+    if initial_main is None and prerequisites is not None:
+        initial_main = prerequisites.restore_base_sha
+    if initial_main is None:
+        initial_main = expected_public_release_sha
+    final_main = (
+        resume_main_sha
+        if _is_sha40(resume_main_sha)
+        else (run_state.last_proved_main_sha or initial_main)
+    )
+    return {
+        "attempt_id": run_state.attempt_id,
+        "authority": {
+            "exclusive_writer_ack": authority.get("exclusive_writer_ack", "unproved"),
+            "hourly_publication_enabled": authority.get(
+                "hourly_publication_enabled", "unproved"
+            ),
+            "in_flight_run_id": authority.get("in_flight_run_id"),
+            "reconciled_run": authority.get("reconciled_run"),
+            "resume_main_sha": authority.get("resume_main_sha"),
+            "workflow_states": authority.get("workflow_states", {}),
+        },
+        "completed_stages": completed,
+        "evidence_directory": str(evidence_directory)
+        if evidence_directory is not None
+        else None,
+        "failure": {
+            "error_class": type(error).__name__,
+            "error_message": str(error)[:1000],
+            "exit_code": exit_code,
+            "resume_main_sha": final_main if failed_closed else None,
+            "run_id": run_state.current_run_id,
+        },
+        "final_main_sha": final_main,
+        "initial_main_sha": initial_main,
+        "repository": repository,
+        "resume": {
+            "receipt": str(prerequisites.resume_path)
+            if prerequisites is not None and prerequisites.resume_path is not None
+            else None,
+            "receipt_sha256": prerequisites.resume_sha256
+            if prerequisites is not None
+            else None,
+        },
+        "schema_version": "palimpsest.github-producer-restore.v2",
+        "source_graph": graph,
+        "status": "failed-closed" if failed_closed else "cleanup-unproved",
+        "terminal_at": _now(),
+    }
+
+
+def _report_terminal_warning_only(path: Path, digest: str, status: str) -> None:
+    message = json.dumps(
+        {"receipt": str(path), "receipt_sha256": digest, "status": status},
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    try:
+        sys.stdout.write(message + "\n")
+        sys.stdout.flush()
+    except (BrokenPipeError, OSError, ValueError) as error:
+        try:
+            print(
+                f"producer restoration terminal receipt committed; stdout failed: {error}",
+                file=sys.stderr,
+            )
+        except (BrokenPipeError, OSError, ValueError):
+            pass
+
+
+def main() -> int:
+    if len(sys.argv) != 1:
+        print("run-producer-restore accepts environment inputs only", file=sys.stderr)
+        return 2
+    expected_host_sha = os.environ.get("EXPECTED_HOST_SHA", "")
+    expected_public_release_sha = os.environ.get("EXPECTED_PUBLIC_RELEASE_SHA", "")
+    repository = os.environ.get("PALIMPSEST_REPOSITORY", DEFAULT_REPOSITORY)
+    if SHA40.fullmatch(expected_host_sha) is None:
+        print("EXPECTED_HOST_SHA must be exactly 40 lowercase hex", file=sys.stderr)
+        return 2
+    if SHA40.fullmatch(expected_public_release_sha) is None:
+        print(
+            "EXPECTED_PUBLIC_RELEASE_SHA must be exactly 40 lowercase hex",
+            file=sys.stderr,
+        )
+        return 2
+    if REPOSITORY.fullmatch(repository) is None:
+        print("PALIMPSEST_REPOSITORY is not an exact repository slug", file=sys.stderr)
+        return 2
+    run_state = RunState(attempt_id=secrets.token_hex(16), completed_stages=[])
+    status = 1
+    original_error: BaseException | None = None
+    receipt_path: Path | None = None
+    evidence_directory: Path | None = None
+    temporary_directory: Path | None = None
+    prerequisites: Prerequisites | None = None
+    receipt_digest = ""
+    temporary_removed = False
+
+    def abort(signum: int, _frame: Any) -> NoReturn:
+        raise SignalAbort(signum)
+
+    previous = {
+        item: signal.getsignal(item)
+        for item in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
+    }
+    for item in previous:
+        signal.signal(item, abort)
+    try:
+        phase3_path = Path(os.environ.get("PHASE3_FINALIZED_RECEIPT", ""))
+        proof_complete_path = Path(os.environ.get("PHASE3_PROOF_COMPLETE_RECEIPT", ""))
+        handoff_path = Path(os.environ.get("PHASE2_V2_HANDOFF_RECEIPT", ""))
+        resume_text = os.environ.get("PRODUCER_RESTORE_RESUME_RECEIPT", "")
+        resume_path = Path(resume_text) if resume_text else None
+        receipt_path = _prepare_output(
+            os.environ.get("PRODUCER_RESTORE_RECEIPT", ""),
+            label="producer restore receipt",
+        )
+        prerequisites = _load_prerequisites(
+            expected_host_sha=expected_host_sha,
+            expected_public_release_sha=expected_public_release_sha,
+            phase3_path=phase3_path,
+            proof_complete_path=proof_complete_path,
+            handoff_path=handoff_path,
+            resume_path=resume_path,
+            repository=repository,
+        )
+        evidence_directory = _prepare_evidence_directory(
+            os.environ.get("PRODUCER_RESTORE_EVIDENCE_DIR", "")
+        )
+        temporary_directory = Path(
+            tempfile.mkdtemp(prefix="palimpsest-producer-restore-")
+        )
+        temporary_directory.chmod(0o700)
+        receipt = _execute(
+            repository=repository,
+            prerequisites=prerequisites,
+            phase3_path=phase3_path,
+            proof_complete_path=proof_complete_path,
+            handoff_path=handoff_path,
+            resume_path=resume_path,
+            evidence_directory=evidence_directory,
+            temporary_directory=temporary_directory,
+            run_state=run_state,
+        )
+        shutil.rmtree(temporary_directory)
+        temporary_removed = True
+        receipt_digest = _exclusive_receipt(
+            receipt_path,
+            receipt,
+            run_state=run_state,
+            final_receipt=True,
+        )
+        status = 0
+    except SignalAbort as error:
+        print(str(error), file=sys.stderr)
+        status = 128 + error.signum
+        original_error = error
+    except KeyboardInterrupt:
+        original_error = RestoreError("producer restoration interrupted")
+        print(str(original_error), file=sys.stderr)
+        status = 130
+    except CommandError as error:
+        print(str(error), file=sys.stderr)
+        status = error.returncode if 1 <= error.returncode <= 125 else 1
+        original_error = error
+    except (KeyError, OSError, RestoreError, TypeError, ValueError) as error:
+        print(str(error), file=sys.stderr)
+        status = 1
+        original_error = error
+    finally:
+        previous_mask = signal.pthread_sigmask(
+            signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+        )
+        cleanup_error = False
+        cleanup_authority: dict[str, Any] = {
+            "exclusive_writer_ack": "unproved",
+            "hourly_publication_enabled": "unproved",
+            "in_flight_run_id": run_state.current_run_id,
+            "reconciled_run": None,
+            "resume_main_sha": None,
+            "workflow_states": {},
+        }
+        if status != 0 and not run_state.receipt_committed:
+            cleanup_ok, cleanup_authority = _failure_cleanup(repository, run_state)
+            cleanup_error = not cleanup_ok
+        if temporary_directory is not None and not temporary_removed:
+            try:
+                shutil.rmtree(temporary_directory)
+            except OSError as error:
+                print(
+                    f"failed to remove private producer temporary directory: {error}",
+                    file=sys.stderr,
+                )
+                cleanup_error = True
+        if (
+            status != 0
+            and not run_state.receipt_committed
+            and receipt_path is not None
+            and original_error is not None
+        ):
+            try:
+                failed = _failed_receipt(
+                    repository=repository,
+                    prerequisites=prerequisites,
+                    expected_host_sha=expected_host_sha,
+                    expected_public_release_sha=expected_public_release_sha,
+                    evidence_directory=evidence_directory,
+                    run_state=run_state,
+                    authority=cleanup_authority,
+                    cleanup_ok=not cleanup_error,
+                    error=original_error,
+                    exit_code=status,
+                )
+                receipt_digest = _exclusive_receipt(
+                    receipt_path,
+                    failed,
+                    run_state=run_state,
+                    final_receipt=True,
+                )
+            except (KeyError, OSError, RestoreError, TypeError, ValueError) as error:
+                print(
+                    f"failed to commit terminal failure receipt: {error}",
+                    file=sys.stderr,
+                )
+        for item, handler in previous.items():
+            signal.signal(item, handler)
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        if run_state.committed_status == "verified":
+            status = 0
+    if run_state.receipt_committed:
+        assert receipt_path is not None
+        assert run_state.committed_status is not None
+        _report_terminal_warning_only(
+            receipt_path, receipt_digest, run_state.committed_status
+        )
+    return status
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -23,7 +23,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-REQUEST_SCHEMA = "palimpsest.railway-publication-request.v1"
+REQUEST_SCHEMA = "palimpsest.railway-publication-request.v2"
 REQUEST_FILENAME = "railway-publication-request.json"
 ARTIFACT_NAME_PREFIX = "railway-publication-request"
 DEFAULT_WORKFLOW_PATH = ".github/workflows/railway-publication-controller.yml"
@@ -45,6 +45,7 @@ REQUEST_KEYS = frozenset(
         "controller_run_attempt",
         "controller_run_id",
         "controller_workflow_path",
+        "activation_canary",
         "deploy_railway",
         "requested_at",
         "schema_version",
@@ -54,6 +55,7 @@ REQUEST_KEYS = frozenset(
 )
 TRANSPORTED_REQUEST_KEYS = frozenset(
     {
+        "activation_canary",
         "controller_run_attempt",
         "controller_run_id",
         "deploy_railway",
@@ -174,6 +176,8 @@ def _validate_request_document(
     )
     _integer(request["controller_run_id"], label="controller run ID")
     _integer(request["controller_run_attempt"], label="controller run attempt")
+    if type(request["activation_canary"]) is not bool:
+        raise ControllerRequestError("request activation canary must be a boolean")
     if request["deploy_railway"] is not True or request["scope"] != "complete":
         raise ControllerRequestError("request is not an exact complete Railway release")
     if (
@@ -232,8 +236,13 @@ def _validate_run(
             "controller run attempt does not match the request"
         )
     _exact_string(run.get("path"), expected=workflow_path, label="controller run path")
-    if run.get("event") not in {"schedule", "workflow_dispatch"}:
+    run_event = run.get("event")
+    if run_event not in {"schedule", "workflow_dispatch"}:
         raise ControllerRequestError("controller run has an unauthorized trigger")
+    if request["activation_canary"] is True and run_event != "workflow_dispatch":
+        raise ControllerRequestError(
+            "activation canary authority requires a manual controller run"
+        )
     _exact_string(
         run.get("head_branch"), expected="main", label="controller head branch"
     )
@@ -458,6 +467,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--artifact-zip", type=Path, required=True)
     parser.add_argument("--repository", required=True)
     parser.add_argument("--workflow-path", default=DEFAULT_WORKFLOW_PATH)
+    parser.add_argument("--github-output", type=Path)
     return parser
 
 
@@ -477,6 +487,19 @@ def main(argv: list[str] | None = None) -> int:
             f"Railway controller request verification failed: {error}", file=sys.stderr
         )
         return 1
+    if args.github_output is not None:
+        try:
+            with args.github_output.open("a", encoding="utf-8") as output:
+                output.write(
+                    f"activation_canary={str(request['activation_canary']).lower()}\n"
+                )
+        except OSError as error:
+            print(
+                "Railway controller request verification failed: "
+                f"could not write authenticated output: {error}",
+                file=sys.stderr,
+            )
+            return 1
     print(
         "Verified Railway controller request "
         f"{request['controller_run_id']}/{request['controller_run_attempt']} "

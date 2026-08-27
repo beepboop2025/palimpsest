@@ -35,47 +35,710 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
-          ref: main
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
-      - name: Plan recoveries from evidence deadlines
+      - name: Plan recoveries from the exact event revision
+        id: plan
         run: |
+          set -euo pipefail
+          umask 077
           watchdog_now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          printf '%s\n' "$watchdog_now" > "$RUNNER_TEMP/watchdog-now.txt"
-          python -m scripts.collector_health_watchdog --now "$watchdog_now" --format workflows > "$RUNNER_TEMP/recoveries.txt"
-          python -m scripts.collector_health_watchdog --now "$watchdog_now" --format summary >> "$GITHUB_STEP_SUMMARY"
-          python -m scripts.collector_health_watchdog --now "$watchdog_now" --format escalations > "$RUNNER_TEMP/escalations.txt"
+          checkout_sha=$(git rev-parse HEAD)
+          [[ "$checkout_sha" =~ ^[0-9a-f]{40}$ ]]
+          test "$checkout_sha" = "$GITHUB_SHA"
+          observed_main_sha=$(gh api \
+            "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          [[ "$observed_main_sha" =~ ^[0-9a-f]{40}$ ]]
+          # A run whose event revision has already fallen behind main must not
+          # recover from stale inputs. The next level-triggered run retries.
+          test "$observed_main_sha" = "$checkout_sha"
 
-      - name: Dispatch idle producer workflows
+          raw_plan="$RUNNER_TEMP/watchdog-plan.raw.json"
+          plan="$RUNNER_TEMP/watchdog-plan.json"
+          recoveries="$RUNNER_TEMP/recoveries.txt"
+          escalations="$RUNNER_TEMP/escalations.txt"
+          metadata="$RUNNER_TEMP/watchdog-run-metadata.json"
+          python -m scripts.collector_health_watchdog \
+            --now "$watchdog_now" --format json >"$raw_plan"
+          python3 - "$raw_plan" "$plan" "$recoveries" "$escalations" \
+            "$metadata" "$watchdog_now" "$checkout_sha" \
+            "$observed_main_sha" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+
+          def reject_duplicates(pairs):
+              value = {}
+              for key, item in pairs:
+                  if key in value:
+                      raise ValueError(f"duplicate JSON key: {key}")
+                  value[key] = item
+              return value
+
+
+          def reject_constant(value):
+              raise ValueError(f"non-finite JSON number: {value}")
+
+
+          (
+              raw_path,
+              plan_path,
+              recoveries_path,
+              escalations_path,
+              metadata_path,
+              observed_at,
+              checkout_sha,
+              observed_main_sha,
+          ) = sys.argv[1:]
+          plan = json.loads(
+              Path(raw_path).read_text(encoding="utf-8"),
+              object_pairs_hook=reject_duplicates,
+              parse_constant=reject_constant,
+          )
+          allowed = {
+              "app-storefront-refresh.yml",
+              "apple-censorship-refresh.yml",
+              "believability-refresh.yml",
+              "blocklist-refresh.yml",
+              "board-alarm-refresh.yml",
+              "censored-planet-refresh.yml",
+              "china-econ-refresh.yml",
+              "circumvention-demand-refresh.yml",
+              "cny-fix-gap-refresh.yml",
+              "data-darkness-refresh.yml",
+              "ddti-refresh.yml",
+              "erasure-refresh.yml",
+              "event-flags-refresh.yml",
+              "gdelt-refresh.yml",
+              "gfi-refresh.yml",
+              "github-refuge-refresh.yml",
+              "in-path-interference-refresh.yml",
+              "inside-view-refresh.yml",
+              "ioda-outages-refresh.yml",
+              "net4people-refresh.yml",
+              "newswire-refresh.yml",
+              "ooni-gfw-refresh.yml",
+              "osint-china-v2-refresh.yml",
+              "silence-index-refresh.yml",
+              "stock-connect-refresh.yml",
+              "vantage-fusion-refresh.yml",
+              "wayback-refresh.yml",
+              "weibo-hotsearch-refresh.yml",
+          }
+          expected_fields = {
+              "schema_version",
+              "generated_at",
+              "bundle_generated_at",
+              "bundle_stale",
+              "dispatch",
+              "problems",
+              "escalations",
+          }
+          if not isinstance(plan, dict) or set(plan) != expected_fields:
+              raise SystemExit("watchdog plan fields are not exact")
+          if (
+              plan.get("schema_version") != "collector-watchdog-plan.v2"
+              or plan.get("generated_at") != observed_at
+              or type(plan.get("bundle_stale")) is not bool
+          ):
+              raise SystemExit("watchdog plan identity is invalid")
+          timestamp = re.compile(
+              r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:"
+              r"[0-9]{2}:[0-9]{2}Z"
+          )
+          if timestamp.fullmatch(observed_at) is None:
+              raise SystemExit("watchdog plan clock is invalid")
+          bundle_at = plan.get("bundle_generated_at")
+          if bundle_at is not None and (
+              not isinstance(bundle_at, str)
+              or timestamp.fullmatch(bundle_at) is None
+          ):
+              raise SystemExit("watchdog bundle clock is invalid")
+          dispatch = plan.get("dispatch")
+          if (
+              not isinstance(dispatch, list)
+              or not 0 <= len(dispatch) <= 4
+              or len(dispatch) != len(set(dispatch))
+              or any(item not in allowed for item in dispatch)
+          ):
+              raise SystemExit("watchdog dispatch plan is not allowlisted")
+          problems = plan.get("problems")
+          if not isinstance(problems, list):
+              raise SystemExit("watchdog problem inventory is invalid")
+          base_problem_fields = {
+              "signal_id", "status", "optional", "workflow", "action"
+          }
+          for problem in problems:
+              if (
+                  not isinstance(problem, dict)
+                  or set(problem) not in (
+                      base_problem_fields,
+                      base_problem_fields | {"escalate"},
+                  )
+                  or not isinstance(problem.get("signal_id"), str)
+                  or not problem["signal_id"]
+                  or not isinstance(problem.get("status"), str)
+                  or not problem["status"]
+                  or type(problem.get("optional")) is not bool
+                  or not isinstance(problem.get("action"), str)
+                  or not problem["action"]
+                  or problem.get("workflow") not in allowed | {None}
+                  or (
+                      "escalate" in problem
+                      and type(problem.get("escalate")) is not bool
+                  )
+              ):
+                  raise SystemExit("watchdog problem is not exact")
+          escalations = plan.get("escalations")
+          escalation_allowlist = {
+              "publication/newswire",
+              "publication/china-situation",
+          }
+          if (
+              not isinstance(escalations, list)
+              or len(escalations) != len(set(escalations))
+              or any(item not in escalation_allowlist for item in escalations)
+          ):
+              raise SystemExit("watchdog escalation plan is invalid")
+          canonical = (
+              json.dumps(
+                  plan,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              )
+              + "\n"
+          )
+          Path(plan_path).write_text(canonical, encoding="ascii")
+          Path(recoveries_path).write_text(
+              "".join(f"{item}\n" for item in dispatch), encoding="ascii"
+          )
+          Path(escalations_path).write_text(
+              "".join(f"{item}\n" for item in escalations), encoding="ascii"
+          )
+          metadata = {
+              "checkout_sha": checkout_sha,
+              "observed_at": observed_at,
+              "observed_main_sha": observed_main_sha,
+          }
+          Path(metadata_path).write_text(
+              json.dumps(
+                  metadata,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              )
+              + "\n",
+              encoding="ascii",
+          )
+          PY
+          python -m scripts.collector_health_watchdog \
+            --now "$watchdog_now" --format summary >>"$GITHUB_STEP_SUMMARY"
+
+      - name: Dispatch exact idle producer recoveries
+        id: dispatch
+        continue-on-error: true
         run: |
+          set -uo pipefail
+          umask 077
+          recoveries="$RUNNER_TEMP/recoveries.txt"
+          results="$RUNNER_TEMP/watchdog-dispatch-results.jsonl"
+          : >"$results"
+          chmod 0600 "$results"
+          transaction_failed=0
+
+          read_main_sha() {
+            local value
+            value=$(gh api \
+              "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha) || return 1
+            [[ "$value" =~ ^[0-9a-f]{40}$ ]] || return 1
+            printf '%s\n' "$value"
+          }
+
+          append_result() {
+            python3 - "$results" "$@" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          (
+              path,
+              workflow,
+              state,
+              active_runs,
+              outcome,
+              observed_at,
+              before_sha,
+              after_sha,
+              dispatch_arguments,
+          ) = sys.argv[1:]
+          value = {
+              "active_runs": None if active_runs == "" else int(active_runs),
+              "dispatch_args": (
+                  None if dispatch_arguments == "" else json.loads(dispatch_arguments)
+              ),
+              "main_sha_after_dispatch": after_sha or None,
+              "main_sha_before_dispatch": before_sha or None,
+              "observed_at": observed_at,
+              "outcome": outcome,
+              "workflow": workflow,
+              "workflow_state": state or None,
+          }
+          sha = re.compile(r"[0-9a-f]{40}")
+          for field in ("main_sha_before_dispatch", "main_sha_after_dispatch"):
+              if value[field] is not None and sha.fullmatch(value[field]) is None:
+                  raise SystemExit(f"invalid dispatch result {field}")
+          encoded = (
+              json.dumps(
+                  value,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              )
+              + "\n"
+          ).encode("ascii")
+          descriptor = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW)
+          try:
+              written = 0
+              while written < len(encoded):
+                  written += os.write(descriptor, encoded[written:])
+              os.fsync(descriptor)
+          finally:
+              os.close(descriptor)
+          PY
+          }
+
           while IFS= read -r workflow; do
             [ -n "$workflow" ] || continue
-            if [ "$WATCHDOG_TRIGGER" = "workflow_run" ] && [ "$workflow" != "newswire-refresh.yml" ]; then
-              echo "$workflow is left to the hourly collector pass after a producer completion"
+            observed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            case "$workflow" in
+              app-storefront-refresh.yml|apple-censorship-refresh.yml|\
+              believability-refresh.yml|blocklist-refresh.yml|\
+              board-alarm-refresh.yml|censored-planet-refresh.yml|\
+              china-econ-refresh.yml|circumvention-demand-refresh.yml|\
+              cny-fix-gap-refresh.yml|data-darkness-refresh.yml|\
+              ddti-refresh.yml|erasure-refresh.yml|event-flags-refresh.yml|\
+              gdelt-refresh.yml|gfi-refresh.yml|github-refuge-refresh.yml|\
+              in-path-interference-refresh.yml|inside-view-refresh.yml|\
+              ioda-outages-refresh.yml|net4people-refresh.yml|\
+              newswire-refresh.yml|ooni-gfw-refresh.yml|\
+              osint-china-v2-refresh.yml|silence-index-refresh.yml|\
+              stock-connect-refresh.yml|vantage-fusion-refresh.yml|\
+              wayback-refresh.yml|weibo-hotsearch-refresh.yml) ;;
+              *)
+                append_result "$workflow" "" "" "failed_allowlist" \
+                  "$observed_at" "" "" ""
+                transaction_failed=1
+                continue
+                ;;
+            esac
+            if (( transaction_failed != 0 )); then
+              append_result "$workflow" "" "" "skipped_prior_failure" \
+                "$observed_at" "" "" ""
               continue
             fi
-            active=$(gh run list \
-              --workflow "$workflow" \
-              --limit 20 \
-              --json status \
-              --jq '[.[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending" or .status == "requested")] | length')
+            if ! before_sha=$(read_main_sha); then
+              append_result "$workflow" "" "" "failed_main_query" \
+                "$observed_at" "" "" ""
+              transaction_failed=1
+              continue
+            fi
+            if ! workflow_state=$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow" \
+              --jq '.state'); then
+              append_result "$workflow" "" "" "failed_state_query" \
+                "$observed_at" "$before_sha" "$before_sha" ""
+              transaction_failed=1
+              continue
+            fi
+            if [ "$workflow_state" != "active" ]; then
+              echo "$workflow is $workflow_state; respecting its operator-controlled freeze"
+              append_result "$workflow" "$workflow_state" "" \
+                "skipped_disabled" "$observed_at" "$before_sha" \
+                "$before_sha" ""
+              continue
+            fi
+            if ! active=$(gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow "$workflow" --limit 20 --json status \
+              --jq '[.[] | select(.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending" or .status == "requested")] | length'); then
+              append_result "$workflow" "$workflow_state" "" \
+                "failed_active_query" "$observed_at" "$before_sha" \
+                "$before_sha" ""
+              transaction_failed=1
+              continue
+            fi
+            [[ "$active" =~ ^[0-9]+$ ]] || {
+              append_result "$workflow" "$workflow_state" "" \
+                "failed_active_query" "$observed_at" "$before_sha" \
+                "$before_sha" ""
+              transaction_failed=1
+              continue
+            }
             if [ "$active" -gt 0 ]; then
               echo "$workflow already has $active active run(s); leaving its concurrency lane alone"
+              append_result "$workflow" "$workflow_state" "$active" \
+                "skipped_active" "$observed_at" "$before_sha" \
+                "$before_sha" ""
               continue
             fi
-            echo "dispatching recovery: $workflow"
-            gh workflow run "$workflow" --ref main
-          done < "$RUNNER_TEMP/recoveries.txt"
 
-      - name: Escalate persistent publication freshness failures
-        if: always()
+            # Re-read main immediately before creating the dispatch. For the
+            # OSINT release, the required expected SHA is this exact value and
+            # the target workflow independently refuses any subsequent drift.
+            if ! dispatch_sha=$(read_main_sha); then
+              append_result "$workflow" "$workflow_state" "$active" \
+                "failed_main_query" "$observed_at" "$before_sha" "" ""
+              transaction_failed=1
+              continue
+            fi
+            if [ "$dispatch_sha" != "$before_sha" ]; then
+              append_result "$workflow" "$workflow_state" "$active" \
+                "failed_ref_drift" "$observed_at" "$before_sha" \
+                "$dispatch_sha" ""
+              transaction_failed=1
+              continue
+            fi
+
+            dispatch_args='{"inputs":{},"ref":"main"}'
+            dispatch_status=0
+            echo "dispatching recovery: $workflow"
+            if [ "$workflow" = "osint-china-v2-refresh.yml" ]; then
+              release_nonce=$(python3 -c \
+                'import secrets; print(secrets.token_hex(16))')
+              [[ "$release_nonce" =~ ^[0-9a-f]{32}$ ]] || exit 1
+              dispatch_args=$(python3 - "$dispatch_sha" "$release_nonce" <<'PY'
+          import json
+          import sys
+
+          print(json.dumps(
+              {
+                  "inputs": {
+                      "expected_deploy_sha": sys.argv[1],
+                      "release_nonce": sys.argv[2],
+                  },
+                  "ref": "main",
+              },
+              separators=(",", ":"),
+              sort_keys=True,
+          ))
+          PY
+              )
+              gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" \
+                --ref main \
+                -f expected_deploy_sha="$dispatch_sha" \
+                -f release_nonce="$release_nonce" >/dev/null \
+                || dispatch_status=$?
+              unset release_nonce
+            else
+              gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY" \
+                --ref main >/dev/null || dispatch_status=$?
+            fi
+            if ! after_sha=$(read_main_sha); then
+              append_result "$workflow" "$workflow_state" "$active" \
+                "failed_main_query" "$observed_at" "$dispatch_sha" "" \
+                "$dispatch_args"
+              transaction_failed=1
+              continue
+            fi
+            if (( dispatch_status != 0 )); then
+              append_result "$workflow" "$workflow_state" "$active" \
+                "failed_dispatch" "$observed_at" "$dispatch_sha" \
+                "$after_sha" "$dispatch_args"
+              transaction_failed=1
+              continue
+            fi
+            if [ "$after_sha" != "$dispatch_sha" ]; then
+              append_result "$workflow" "$workflow_state" "$active" \
+                "failed_ref_drift" "$observed_at" "$dispatch_sha" \
+                "$after_sha" "$dispatch_args"
+              transaction_failed=1
+              continue
+            fi
+            append_result "$workflow" "$workflow_state" "$active" \
+              "dispatched" "$observed_at" "$dispatch_sha" "$after_sha" \
+              "$dispatch_args"
+          done <"$recoveries"
+          exit "$transaction_failed"
+
+      - name: Create the canonical watchdog transaction receipt
+        id: receipt
+        if: ${{ always() && steps.plan.outcome == 'success' }}
+        env:
+          DISPATCH_STEP_OUTCOME: ${{ steps.dispatch.outcome }}
         run: |
-          [ -f "$RUNNER_TEMP/escalations.txt" ] || exit 0
-          [ -s "$RUNNER_TEMP/escalations.txt" ] || exit 0
-          while IFS= read -r signal_id; do
-            case "$signal_id" in
-              publication/newswire|publication/china-situation) ;;
-              *) echo "invalid escalation identifier"; exit 1 ;;
-            esac
-            echo "::error title=Persistent publication freshness failure::$signal_id remains outside its publication contract after recovery planning"
-          done < "$RUNNER_TEMP/escalations.txt"
-          exit 1
+          set -euo pipefail
+          umask 077
+          final_main_sha=$(gh api \
+            "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          [[ "$final_main_sha" =~ ^[0-9a-f]{40}$ ]]
+          python3 - "$RUNNER_TEMP/watchdog-plan.json" \
+            "$RUNNER_TEMP/watchdog-run-metadata.json" \
+            "$RUNNER_TEMP/watchdog-dispatch-results.jsonl" \
+            "$RUNNER_TEMP/collector-health-watchdog-receipt.json" \
+            "$final_main_sha" <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+
+          def reject_duplicates(pairs):
+              value = {}
+              for key, item in pairs:
+                  if key in value:
+                      raise ValueError(f"duplicate JSON key: {key}")
+                  value[key] = item
+              return value
+
+
+          def load(path):
+              raw = Path(path).read_bytes()
+              if not raw or len(raw) > 1024 * 1024:
+                  raise ValueError(f"invalid watchdog evidence size: {path}")
+              return raw, json.loads(
+                  raw.decode("ascii", "strict"),
+                  object_pairs_hook=reject_duplicates,
+                  parse_constant=lambda item: (_ for _ in ()).throw(
+                      ValueError(f"non-finite JSON number: {item}")
+                  ),
+              )
+
+
+          (
+              plan_path,
+              metadata_path,
+              results_path,
+              receipt_path,
+              final_main_sha,
+          ) = sys.argv[1:]
+          plan_raw, plan = load(plan_path)
+          _, metadata = load(metadata_path)
+          results = []
+          for line in Path(results_path).read_text(encoding="ascii").splitlines():
+              results.append(
+                  json.loads(
+                      line,
+                      object_pairs_hook=reject_duplicates,
+                      parse_constant=lambda item: (_ for _ in ()).throw(
+                          ValueError(f"non-finite JSON number: {item}")
+                      ),
+                  )
+              )
+          expected_result_fields = {
+              "active_runs",
+              "dispatch_args",
+              "main_sha_after_dispatch",
+              "main_sha_before_dispatch",
+              "observed_at",
+              "outcome",
+              "workflow",
+              "workflow_state",
+          }
+          allowed_outcomes = {
+              "dispatched",
+              "failed_active_query",
+              "failed_allowlist",
+              "failed_dispatch",
+              "failed_main_query",
+              "failed_ref_drift",
+              "failed_state_query",
+              "skipped_active",
+              "skipped_disabled",
+              "skipped_prior_failure",
+          }
+          sha = re.compile(r"[0-9a-f]{40}")
+          nonce = re.compile(r"[0-9a-f]{32}")
+          if [item.get("workflow") for item in results] != plan.get("dispatch"):
+              raise SystemExit("watchdog result set does not equal the exact plan")
+          for item in results:
+              if (
+                  not isinstance(item, dict)
+                  or set(item) != expected_result_fields
+                  or item.get("outcome") not in allowed_outcomes
+              ):
+                  raise SystemExit("watchdog dispatch result is invalid")
+              arguments = item.get("dispatch_args")
+              if arguments is not None:
+                  if (
+                      not isinstance(arguments, dict)
+                      or set(arguments) != {"inputs", "ref"}
+                      or arguments.get("ref") != "main"
+                      or not isinstance(arguments.get("inputs"), dict)
+                  ):
+                      raise SystemExit("watchdog dispatch arguments are invalid")
+                  inputs = arguments["inputs"]
+                  if item["workflow"] == "osint-china-v2-refresh.yml":
+                      if (
+                          set(inputs) != {"expected_deploy_sha", "release_nonce"}
+                          or inputs.get("expected_deploy_sha")
+                          != item.get("main_sha_before_dispatch")
+                          or sha.fullmatch(inputs.get("expected_deploy_sha", ""))
+                          is None
+                          or nonce.fullmatch(inputs.get("release_nonce", ""))
+                          is None
+                      ):
+                          raise SystemExit("OSINT recovery arguments are not exact")
+                  elif inputs:
+                      raise SystemExit("non-OSINT recovery unexpectedly has inputs")
+          dispatch_outcome = os.environ["DISPATCH_STEP_OUTCOME"]
+          if dispatch_outcome not in {"success", "failure"}:
+              raise SystemExit("watchdog dispatch step outcome is invalid")
+          status = (
+              "success"
+              if dispatch_outcome == "success" and not plan.get("escalations")
+              else "failed"
+          )
+          receipt = {
+              "actor": os.environ["GITHUB_ACTOR"],
+              "checkout_sha": metadata["checkout_sha"],
+              "dispatch_step_outcome": dispatch_outcome,
+              "dispatches": results,
+              "event": os.environ["GITHUB_EVENT_NAME"],
+              "event_sha": os.environ["GITHUB_SHA"],
+              "final_main_sha": final_main_sha,
+              "observed_at": metadata["observed_at"],
+              "observed_main_sha": metadata["observed_main_sha"],
+              "plan": plan,
+              "plan_sha256": hashlib.sha256(plan_raw).hexdigest(),
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "schema_version": (
+                  "palimpsest.collector-health-watchdog-receipt.v1"
+              ),
+              "status": status,
+              "workflow": (
+                  ".github/workflows/collector-health-watchdog.yml"
+              ),
+              "workflow_name": "Recover stale collector publications",
+          }
+          if not (
+              receipt["checkout_sha"] == receipt["event_sha"]
+              == receipt["observed_main_sha"] == receipt["final_main_sha"]
+              and sha.fullmatch(receipt["checkout_sha"]) is not None
+              and receipt["plan_sha256"]
+              == hashlib.sha256(
+                  (
+                      json.dumps(
+                          plan,
+                          allow_nan=False,
+                          ensure_ascii=True,
+                          separators=(",", ":"),
+                          sort_keys=True,
+                      )
+                      + "\n"
+                  ).encode("ascii")
+              ).hexdigest()
+          ):
+              raise SystemExit("watchdog receipt revision binding is invalid")
+          forbidden = re.compile(
+              r"(?:authorization|credential|password|secret|token)", re.I
+          )
+
+          def reject_secret_fields(value):
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      if forbidden.search(key):
+                          raise SystemExit("watchdog receipt contains a secret field")
+                      reject_secret_fields(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      reject_secret_fields(child)
+
+          reject_secret_fields(receipt)
+          payload = (
+              json.dumps(
+                  receipt,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              )
+              + "\n"
+          ).encode("ascii")
+          if len(payload) > 2 * 1024 * 1024:
+              raise SystemExit("watchdog receipt exceeds its byte ceiling")
+          output = Path(receipt_path)
+          flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+          flags |= getattr(os, "O_NOFOLLOW", 0)
+          descriptor = -1
+          created = False
+          try:
+              descriptor = os.open(output, flags, 0o600)
+              created = True
+              with os.fdopen(descriptor, "wb", closefd=True) as handle:
+                  descriptor = -1
+                  handle.write(payload)
+                  handle.flush()
+                  os.fsync(handle.fileno())
+              directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+              directory_descriptor = os.open(output.parent, directory_flags)
+              try:
+                  os.fsync(directory_descriptor)
+              finally:
+                  os.close(directory_descriptor)
+          except BaseException:
+              if descriptor >= 0:
+                  os.close(descriptor)
+              if created:
+                  try:
+                      output.unlink()
+                  except FileNotFoundError:
+                      pass
+              raise
+          PY
+
+      - name: Upload the immutable watchdog transaction receipt
+        id: receipt_artifact
+        if: ${{ always() && steps.receipt.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: collector-health-watchdog-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/collector-health-watchdog-receipt.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Enforce the exact recovery outcome
+        if: always()
+        env:
+          PLAN_OUTCOME: ${{ steps.plan.outcome }}
+          DISPATCH_OUTCOME: ${{ steps.dispatch.outcome }}
+          RECEIPT_OUTCOME: ${{ steps.receipt.outcome }}
+          ARTIFACT_OUTCOME: ${{ steps.receipt_artifact.outcome }}
+        run: |
+          set -euo pipefail
+          test "$PLAN_OUTCOME" = success
+          test "$DISPATCH_OUTCOME" = success
+          test "$RECEIPT_OUTCOME" = success
+          test "$ARTIFACT_OUTCOME" = success
+          python3 - "$RUNNER_TEMP/collector-health-watchdog-receipt.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="ascii") as handle:
+              receipt = json.load(handle)
+          if receipt.get("status") != "success":
+              raise SystemExit("watchdog receipt records a failed transaction")
+          for signal_id in receipt.get("plan", {}).get("escalations", []):
+              if signal_id not in {
+                  "publication/newswire",
+                  "publication/china-situation",
+              }:
+                  raise SystemExit("invalid escalation identifier")
+              print(
+                  "::error title=Persistent publication freshness failure::"
+                  f"{signal_id} remains outside its publication contract "
+                  "after recovery planning"
+              )
+              raise SystemExit(1)
+          PY

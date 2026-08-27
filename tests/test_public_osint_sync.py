@@ -9,6 +9,7 @@ import sys
 from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -145,6 +146,480 @@ def _candidate_fetch(fixture: dict):
         return fixture["second_artifact"]
 
     return fetch
+
+
+def _json_bytes(value: dict) -> bytes:
+    return (
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode()
+
+
+def _restricted_publication_bundle(
+    fixture: dict, *, release_commit: str | None = None, ledger_raw: bytes | None = None
+) -> dict:
+    release_commit = release_commit or fixture["main_commit"]
+    ledger_raw = ledger_raw or fixture["second_ledger"]
+    policy = {
+        "path": "config/china_econ_source_policy.json",
+        "schema_version": "palimpsest.china-economic-source-policy.v1",
+        "policy_scope": "china_economic_values_and_seiche_export",
+        "default_decision": "deny",
+        "sha256": "1" * 64,
+        "bytes": 123,
+    }
+    limitations = [
+        "No denied source value or derivative is published.",
+        "Unavailable evidence is not a directional signal.",
+        "This metadata-only status is not an Evidence Carrier.",
+    ]
+    rights = {
+        "schema_version": sync.RESTRICTED_STATUS_SCHEMA,
+        "publication_sha": release_commit,
+        "rights_evaluated_at": "2026-08-14T01:05:00Z",
+        "status": "restricted",
+        "availability": "unavailable",
+        "publication_allowed": False,
+        "reason": "Fixture source policy denies publication of these values.",
+        "artifact": {
+            "path": "readings/china-publication-rights-latest.json",
+            "media_type": "application/json",
+        },
+        "policy": policy,
+        "counts": {
+            "input_records": 2,
+            "allowed_records": 0,
+            "restricted_records": 2,
+            "published_records": 0,
+            "quarantined_artifacts": 1,
+        },
+        "source_decisions": [
+            {
+                "source_id": "fixture_source",
+                "decision": "deny",
+                "configured_decision": "deny",
+                "availability": "restricted",
+                "values_allowed": False,
+                "seiche_export_allowed": False,
+                "license": None,
+                "license_url": None,
+                "rights_evidence_url": None,
+                "attribution": None,
+                "reviewed_at": None,
+                "expires_at": None,
+                "reason": "Fixture rights policy denies these values.",
+                "decision_sha256": "2" * 64,
+                "input_records": 2,
+                "published_records": 0,
+            }
+        ],
+        "quarantined_paths": [sync.OSINT_REPOSITORY_PATH],
+        "limitations": limitations,
+    }
+    rights_raw = _json_bytes(rights)
+    stub = {
+        "schema_version": sync.RESTRICTED_ENDPOINT_SCHEMA,
+        "publication_sha": release_commit,
+        "rights_evaluated_at": rights["rights_evaluated_at"],
+        "status": "restricted",
+        "availability": "unavailable",
+        "publication_allowed": False,
+        "reason": rights["reason"],
+        "artifact": {
+            "path": sync.OSINT_REPOSITORY_PATH,
+            "media_type": "application/json",
+        },
+        "policy": policy,
+        "master_status": {
+            "path": "/readings/china-publication-rights-latest.json",
+            "sha256": sync._sha256(rights_raw),
+            "bytes": len(rights_raw),
+        },
+        "counts": {
+            "input_records": 2,
+            "restricted_records": 2,
+            "published_records": 0,
+        },
+        "limitations": limitations,
+    }
+    stub_raw = _json_bytes(stub)
+    critical = {}
+    for relative, raw in (
+        (sync.OSINT_REPOSITORY_PATH, stub_raw),
+        ("readings/china-publication-rights-latest.json", rights_raw),
+        (sync.LEDGER_REPOSITORY_PATH, ledger_raw),
+    ):
+        critical[relative] = {"bytes": len(raw), "sha256": sync._sha256(raw)}
+    manifest = {
+        "schema_version": sync.RAILWAY_MANIFEST_SCHEMA,
+        "source_commit": release_commit,
+        "built_at": "2026-08-14T01:10:00Z",
+        "deployment_source": "local-git-archive",
+        "github_required": False,
+        "state": "artifact_ready",
+        "file_count": len(critical),
+        "total_bytes": sum(row["bytes"] for row in critical.values()),
+        "tree_sha256": "3" * 64,
+        "critical_files": critical,
+    }
+    manifest_raw = _json_bytes(manifest)
+    payloads = {
+        sync.PUBLIC_MANIFEST_URL: manifest_raw,
+        sync.PUBLIC_URL: stub_raw,
+        sync.PUBLIC_RIGHTS_STATUS_URL: rights_raw,
+        sync.PUBLIC_LEDGER_URL: ledger_raw,
+    }
+
+    def fetch(url: str, _commit: str) -> bytes:
+        return payloads[url]
+
+    return {
+        "fetch": fetch,
+        "payloads": payloads,
+        "manifest": manifest,
+        "stub": stub,
+        "rights": rights,
+    }
+
+
+def _phase2_release_proof(
+    fixture: dict,
+    bundle: dict,
+    *,
+    resume_token: str = "a" * 32,
+    artifact_sha256: str | None = None,
+) -> dict:
+    payloads = bundle["payloads"]
+    deployed = fixture["config"].deployed_receipt.read_text().strip()
+    return {
+        "schema": sync.RELEASE_PROOF_SCHEMA,
+        "resume_token": resume_token,
+        "expected_deploy_sha": deployed,
+        "fetched_main": fixture["main_commit"],
+        "publication_commit": fixture["second_commit"],
+        "artifact_sha256": artifact_sha256 or sync._sha256(fixture["second_artifact"]),
+        "ledger_sha256": sync._sha256(fixture["second_ledger"]),
+        "workflow_run_id": 731_994_934,
+        "workflow_run_attempt": 1,
+        "workflow_head_sha": deployed,
+        "workflow_receipt_sha256": "4" * 64,
+        "public_release_commit": fixture["main_commit"],
+        "public_manifest_sha256": sync._sha256(payloads[sync.PUBLIC_MANIFEST_URL]),
+        "public_osint_stub_sha256": sync._sha256(payloads[sync.PUBLIC_URL]),
+        "public_rights_status_sha256": sync._sha256(
+            payloads[sync.PUBLIC_RIGHTS_STATUS_URL]
+        ),
+        "public_ledger_sha256": sync._sha256(payloads[sync.PUBLIC_LEDGER_URL]),
+        "railway_canary_run_id": 731_994_935,
+    }
+
+
+def _production_config(fixture: dict, monkeypatch) -> sync.Config:
+    """Exercise the production branch without changing workstation ownership."""
+
+    config = replace(
+        fixture["config"],
+        repository_url=sync.REPOSITORY_URL,
+        public_url=sync.PUBLIC_URL,
+        public_ledger_url=sync.PUBLIC_LEDGER_URL,
+        require_root=True,
+    )
+    uid, gid = os.geteuid(), os.getegid()
+    original_real_directory = sync._real_directory
+
+    def production_directory(path: Path, *, code: str):
+        metadata = original_real_directory(path, code=code)
+        if path == config.state_directory:
+            return SimpleNamespace(st_uid=0, st_mode=metadata.st_mode)
+        return metadata
+
+    def workstation_atomic_document(
+        path: Path, document: dict, *, mode: int = 0o600
+    ) -> None:
+        raw = sync._canonical(document) + b"\n"
+        current = sync._read_optional_regular(
+            path, maximum=64 * 1024, code="unsafe-state-receipt"
+        )
+        sync._atomic_replace(
+            path,
+            raw,
+            mode=mode,
+            uid=uid,
+            gid=gid,
+            expected=current,
+        )
+
+    monkeypatch.setattr(sync.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(sync, "_managed_identity", lambda _config: (uid, gid))
+    monkeypatch.setattr(sync, "_real_directory", production_directory)
+    monkeypatch.setattr(sync, "_atomic_state_document", workstation_atomic_document)
+    monkeypatch.setattr(
+        sync, "_prepare_repository", lambda _config: fixture["source"] / ".git"
+    )
+    monkeypatch.setattr(
+        sync, "_fetch_main", lambda _config, _repository: fixture["main_commit"]
+    )
+    return config
+
+
+def test_restricted_publication_binds_private_git_input_to_exact_public_release(
+    tmp_path,
+):
+    fixture = _fixture(tmp_path)
+    bundle = _restricted_publication_bundle(fixture)
+
+    evidence = sync._verify_restricted_publication(
+        repository=fixture["source"] / ".git",
+        state_directory=fixture["config"].state_directory,
+        fetched_main=fixture["main_commit"],
+        publication_commit=fixture["second_commit"],
+        candidate_artifact=fixture["second_artifact"],
+        candidate_ledger=fixture["second_ledger"],
+        public_fetcher=bundle["fetch"],
+    )
+
+    assert evidence == {
+        "public_release_commit": fixture["main_commit"],
+        "public_manifest_sha256": sync._sha256(
+            bundle["payloads"][sync.PUBLIC_MANIFEST_URL]
+        ),
+        "public_osint_stub_sha256": sync._sha256(bundle["payloads"][sync.PUBLIC_URL]),
+        "public_rights_status_sha256": sync._sha256(
+            bundle["payloads"][sync.PUBLIC_RIGHTS_STATUS_URL]
+        ),
+        "public_ledger_sha256": sync._sha256(fixture["second_ledger"]),
+    }
+
+
+@pytest.mark.parametrize(
+    ("mutation", "error"),
+    [
+        ("raw-public-osint", "public-unrestricted-osint-refused"),
+        ("stub-release", "public-osint-stub-invalid"),
+        ("missing-quarantine", "public-rights-status-invalid"),
+        ("critical-digest", "public-critical-identity-mismatch"),
+        ("master-digest", "public-osint-master-mismatch"),
+    ],
+)
+def test_restricted_publication_rejects_incoherent_or_unrestricted_surfaces(
+    tmp_path, mutation, error
+):
+    fixture = _fixture(tmp_path)
+    bundle = _restricted_publication_bundle(fixture)
+    payloads = dict(bundle["payloads"])
+    manifest = json.loads(payloads[sync.PUBLIC_MANIFEST_URL])
+    stub = json.loads(payloads[sync.PUBLIC_URL])
+    rights = json.loads(payloads[sync.PUBLIC_RIGHTS_STATUS_URL])
+    if mutation == "raw-public-osint":
+        payloads[sync.PUBLIC_URL] = fixture["second_artifact"]
+        manifest["critical_files"][sync.OSINT_REPOSITORY_PATH] = {
+            "bytes": len(fixture["second_artifact"]),
+            "sha256": sync._sha256(fixture["second_artifact"]),
+        }
+    elif mutation == "stub-release":
+        stub["publication_sha"] = "0" * 40
+        payloads[sync.PUBLIC_URL] = _json_bytes(stub)
+    elif mutation == "missing-quarantine":
+        rights["quarantined_paths"] = []
+        payloads[sync.PUBLIC_RIGHTS_STATUS_URL] = _json_bytes(rights)
+    elif mutation == "critical-digest":
+        manifest["critical_files"][sync.OSINT_REPOSITORY_PATH]["sha256"] = "0" * 64
+    elif mutation == "master-digest":
+        stub["master_status"]["sha256"] = "0" * 64
+        payloads[sync.PUBLIC_URL] = _json_bytes(stub)
+    payloads[sync.PUBLIC_MANIFEST_URL] = _json_bytes(manifest)
+
+    def fetch(url: str, _commit: str) -> bytes:
+        return payloads[url]
+
+    with pytest.raises(sync.SyncFailure, match=error):
+        sync._verify_restricted_publication(
+            repository=fixture["source"] / ".git",
+            state_directory=fixture["config"].state_directory,
+            fetched_main=fixture["main_commit"],
+            publication_commit=fixture["second_commit"],
+            candidate_artifact=fixture["second_artifact"],
+            candidate_ledger=fixture["second_ledger"],
+            public_fetcher=fetch,
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "error"),
+    [
+        ("manifest-extra", "public-manifest-invalid"),
+        ("manifest-row-extra", "public-manifest-invalid"),
+        ("stub-extra", "public-osint-stub-invalid"),
+        ("stub-artifact-extra", "public-osint-stub-invalid"),
+        ("master-extra", "public-rights-status-invalid"),
+        ("master-decision-extra", "public-rights-status-invalid"),
+    ],
+)
+def test_restricted_publication_rejects_extra_payloads_at_every_schema_object(
+    tmp_path, mutation, error
+):
+    fixture = _fixture(tmp_path)
+    bundle = _restricted_publication_bundle(fixture)
+    payloads = dict(bundle["payloads"])
+    manifest = json.loads(payloads[sync.PUBLIC_MANIFEST_URL])
+    stub = json.loads(payloads[sync.PUBLIC_URL])
+    rights = json.loads(payloads[sync.PUBLIC_RIGHTS_STATUS_URL])
+    if mutation == "manifest-extra":
+        manifest["private_values"] = [1]
+    elif mutation == "manifest-row-extra":
+        manifest["critical_files"][sync.OSINT_REPOSITORY_PATH]["private_values"] = [1]
+    elif mutation == "stub-extra":
+        stub["private_values"] = [1]
+    elif mutation == "stub-artifact-extra":
+        stub["artifact"]["private_values"] = [1]
+    elif mutation == "master-extra":
+        rights["private_values"] = [1]
+    elif mutation == "master-decision-extra":
+        rights["source_decisions"][0]["private_values"] = [1]
+    payloads[sync.PUBLIC_MANIFEST_URL] = _json_bytes(manifest)
+    payloads[sync.PUBLIC_URL] = _json_bytes(stub)
+    payloads[sync.PUBLIC_RIGHTS_STATUS_URL] = _json_bytes(rights)
+
+    def fetch(url: str, _commit: str) -> bytes:
+        return payloads[url]
+
+    with pytest.raises(sync.SyncFailure, match=error):
+        sync._verify_restricted_publication(
+            repository=fixture["source"] / ".git",
+            state_directory=fixture["config"].state_directory,
+            fetched_main=fixture["main_commit"],
+            publication_commit=fixture["second_commit"],
+            candidate_artifact=fixture["second_artifact"],
+            candidate_ledger=fixture["second_ledger"],
+            public_fetcher=fetch,
+        )
+
+
+def test_restricted_publication_rejects_release_older_than_phase2_pin(tmp_path):
+    fixture = _fixture(tmp_path)
+    pinned_bundle = _restricted_publication_bundle(fixture)
+    proof = _phase2_release_proof(fixture, pinned_bundle)
+    older_bundle = _restricted_publication_bundle(
+        fixture, release_commit=fixture["second_commit"]
+    )
+
+    with pytest.raises(sync.SyncFailure, match="public-release-pin-mismatch"):
+        sync._verify_restricted_publication(
+            repository=fixture["source"] / ".git",
+            state_directory=fixture["config"].state_directory,
+            fetched_main=fixture["main_commit"],
+            publication_commit=fixture["second_commit"],
+            candidate_artifact=fixture["second_artifact"],
+            candidate_ledger=fixture["second_ledger"],
+            public_fetcher=older_bundle["fetch"],
+            pinned_publication=proof,
+        )
+
+
+def test_restricted_publication_rejects_phase2_public_digest_mismatch(tmp_path):
+    fixture = _fixture(tmp_path)
+    bundle = _restricted_publication_bundle(fixture)
+    proof = _phase2_release_proof(fixture, bundle)
+    proof["public_manifest_sha256"] = "0" * 64
+
+    with pytest.raises(sync.SyncFailure, match="public-identity-pin-mismatch"):
+        sync._verify_restricted_publication(
+            repository=fixture["source"] / ".git",
+            state_directory=fixture["config"].state_directory,
+            fetched_main=fixture["main_commit"],
+            publication_commit=fixture["second_commit"],
+            candidate_artifact=fixture["second_artifact"],
+            candidate_ledger=fixture["second_ledger"],
+            public_fetcher=bundle["fetch"],
+            pinned_publication=proof,
+        )
+
+
+def test_restricted_publication_validates_malformed_appended_ledger_suffix(
+    tmp_path,
+):
+    fixture = _fixture(tmp_path)
+    malformed_release_ledger = fixture["second_ledger"] + b"{}\n"
+    ledger_path = fixture["source"] / "readings" / sync.LEDGER_FILENAME
+    ledger_path.write_bytes(malformed_release_ledger)
+    _git(
+        fixture["source"], "add", ledger_path.relative_to(fixture["source"]).as_posix()
+    )
+    _git(fixture["source"], "commit", "-m", "malformed ledger suffix")
+    fixture["main_commit"] = _git(fixture["source"], "rev-parse", "HEAD")
+    bundle = _restricted_publication_bundle(
+        fixture, ledger_raw=malformed_release_ledger
+    )
+
+    with pytest.raises(sync.SyncFailure, match="public-release-ledger-invalid"):
+        sync._verify_restricted_publication(
+            repository=fixture["source"] / ".git",
+            state_directory=fixture["config"].state_directory,
+            fetched_main=fixture["main_commit"],
+            publication_commit=fixture["second_commit"],
+            candidate_artifact=fixture["second_artifact"],
+            candidate_ledger=fixture["second_ledger"],
+            public_fetcher=bundle["fetch"],
+        )
+
+
+def test_production_receipt_persists_and_rechecks_public_evidence(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path)
+    bundle = _restricted_publication_bundle(fixture)
+    config = _production_config(fixture, monkeypatch)
+
+    receipt = sync.synchronize(config, public_fetcher=bundle["fetch"])
+
+    assert receipt["schema"] == sync.SCHEMA
+    assert {field: receipt[field] for field in sync.PUBLIC_EVIDENCE_FIELDS} == {
+        "public_release_commit": fixture["main_commit"],
+        "public_manifest_sha256": sync._sha256(
+            bundle["payloads"][sync.PUBLIC_MANIFEST_URL]
+        ),
+        "public_osint_stub_sha256": sync._sha256(bundle["payloads"][sync.PUBLIC_URL]),
+        "public_rights_status_sha256": sync._sha256(
+            bundle["payloads"][sync.PUBLIC_RIGHTS_STATUS_URL]
+        ),
+        "public_ledger_sha256": sync._sha256(
+            bundle["payloads"][sync.PUBLIC_LEDGER_URL]
+        ),
+    }
+    assert (
+        sync.verify_public_installed(config, public_fetcher=bundle["fetch"]) == receipt
+    )
+
+    changed_manifest = json.loads(bundle["payloads"][sync.PUBLIC_MANIFEST_URL])
+    changed_manifest["built_at"] = "2026-08-14T01:11:00Z"
+    bundle["payloads"][sync.PUBLIC_MANIFEST_URL] = _json_bytes(changed_manifest)
+    with pytest.raises(sync.SyncFailure, match="public-identity-pin-mismatch"):
+        sync.verify_public_installed(config, public_fetcher=bundle["fetch"])
+
+
+def test_production_sync_migrates_legacy_v2_receipt_without_reinstalling_bytes(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path)
+    bundle = _restricted_publication_bundle(fixture)
+    config = _production_config(fixture, monkeypatch)
+    current = sync.synchronize(config, public_fetcher=bundle["fetch"])
+    legacy = {
+        field: current[field]
+        for field in sync.LEGACY_RECEIPT_FIELDS
+        if field != "schema"
+    }
+    legacy["schema"] = sync.LEGACY_RECEIPT_SCHEMA
+    legacy["installed_at"] = "2026-08-14T00:10:00Z"
+    config.receipt_path.chmod(0o644)
+    config.receipt_path.write_bytes(sync._canonical(legacy) + b"\n")
+    config.receipt_path.chmod(0o444)
+
+    migrated = sync.synchronize(config, public_fetcher=bundle["fetch"])
+
+    assert migrated["schema"] == sync.SCHEMA
+    assert migrated["installed_at"] == legacy["installed_at"]
+    assert all(migrated[field] is not None for field in sync.PUBLIC_EVIDENCE_FIELDS)
+    assert sync.verify_installed(config) == migrated
 
 
 def test_sync_pins_publication_commit_and_installs_ledger_before_artifact(
@@ -575,17 +1050,68 @@ def test_byte_identical_authority_converges_metadata_and_ignores_shared_shadow(
     assert sync.verify_installed(fixture["config"]) == receipt
 
 
+def test_phase2_v2_release_proof_is_accepted_unchanged_and_persisted(
+    tmp_path, monkeypatch
+):
+    fixture = _fixture(tmp_path)
+    bundle = _restricted_publication_bundle(fixture)
+    proof = _phase2_release_proof(fixture, bundle)
+    proof_path = fixture["config"].release_proof_path
+    proof_path.write_bytes(sync._canonical(proof) + b"\n")
+    proof_path.chmod(0o600)
+    config = _production_config(fixture, monkeypatch)
+
+    receipt = sync.synchronize(config, public_fetcher=bundle["fetch"])
+
+    assert receipt["schema"] == sync.SCHEMA
+    assert receipt["sync_mode"] == "release-pinned"
+    assert receipt["release_proof_sha256"] == sync._sha256(sync._canonical(proof))
+    assert all(receipt[field] == proof[field] for field in sync.PUBLIC_EVIDENCE_FIELDS)
+    assert (
+        sync.verify_public_installed(config, public_fetcher=bundle["fetch"]) == receipt
+    )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "error"),
+    [
+        ("workflow-id", "release-proof-invalid"),
+        ("workflow-digest", "release-proof-invalid"),
+        ("workflow-head", "release-proof-workflow-head-mismatch"),
+        ("public-release", "release-proof-public-release-mismatch"),
+        ("unrestricted", "release-proof-unrestricted-osint-refused"),
+        ("extra-field", "release-proof-invalid"),
+    ],
+)
+def test_phase2_v2_release_proof_validates_exact_workflow_and_public_identity(
+    tmp_path, mutation, error
+):
+    fixture = _fixture(tmp_path)
+    proof = _phase2_release_proof(fixture, _restricted_publication_bundle(fixture))
+    if mutation == "workflow-id":
+        proof["workflow_run_id"] = 0
+    elif mutation == "workflow-digest":
+        proof["workflow_receipt_sha256"] = "bad"
+    elif mutation == "workflow-head":
+        proof["workflow_head_sha"] = fixture["main_commit"]
+    elif mutation == "public-release":
+        proof["public_release_commit"] = fixture["second_commit"]
+    elif mutation == "unrestricted":
+        proof["public_osint_stub_sha256"] = proof["artifact_sha256"]
+    elif mutation == "extra-field":
+        proof["private_values"] = [1]
+    proof_path = fixture["config"].release_proof_path
+    proof_path.write_bytes(sync._canonical(proof) + b"\n")
+    proof_path.chmod(0o600)
+    deployed = fixture["config"].deployed_receipt.read_text().strip()
+
+    with pytest.raises(sync.SyncFailure, match=error):
+        sync._release_proof(fixture["config"], deployed)
+
+
 def test_release_proof_pins_repeated_starts_to_exact_publication(tmp_path):
     fixture = _fixture(tmp_path)
-    proof = {
-        "schema": sync.RELEASE_PROOF_SCHEMA,
-        "resume_token": "a" * 32,
-        "expected_deploy_sha": fixture["config"].deployed_receipt.read_text().strip(),
-        "fetched_main": fixture["main_commit"],
-        "publication_commit": fixture["second_commit"],
-        "artifact_sha256": sync._sha256(fixture["second_artifact"]),
-        "ledger_sha256": sync._sha256(fixture["second_ledger"]),
-    }
+    proof = _phase2_release_proof(fixture, _restricted_publication_bundle(fixture))
     proof_path = fixture["config"].release_proof_path
     proof_path.write_bytes(sync._canonical(proof) + b"\n")
     proof_path.chmod(0o600)
@@ -613,15 +1139,12 @@ def test_release_proof_pins_repeated_starts_to_exact_publication(tmp_path):
 
 def test_release_proof_refuses_wrong_candidate_hash_without_advancing(tmp_path):
     fixture = _fixture(tmp_path)
-    proof = {
-        "schema": sync.RELEASE_PROOF_SCHEMA,
-        "resume_token": "b" * 32,
-        "expected_deploy_sha": fixture["config"].deployed_receipt.read_text().strip(),
-        "fetched_main": fixture["main_commit"],
-        "publication_commit": fixture["second_commit"],
-        "artifact_sha256": "0" * 64,
-        "ledger_sha256": sync._sha256(fixture["second_ledger"]),
-    }
+    proof = _phase2_release_proof(
+        fixture,
+        _restricted_publication_bundle(fixture),
+        resume_token="b" * 32,
+        artifact_sha256="0" * 64,
+    )
     fixture["config"].release_proof_path.write_bytes(sync._canonical(proof) + b"\n")
     fixture["config"].release_proof_path.chmod(0o600)
 

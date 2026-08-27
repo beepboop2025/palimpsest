@@ -2,22 +2,57 @@
 
 This host timer is independent of Celery Beat. Every five minutes it reads the
 dynamic loopback node-status endpoint, evaluates the local `osint-china.v1`
-evidence deadlines against its own UTC clock, and independently checks the two
-public publication heads:
+evidence deadlines against its own UTC clock, and independently checks five
+documents at the canonical public authority:
 
-- `https://palimpsest.info/readings/newswire-latest.json`
-- `https://palimpsest.info/readings/china-situation-latest.json`
+- `https://www.palimpsest.info/readings/newswire-latest.json`
+- `https://www.palimpsest.info/readings/china-situation-latest.json`
+- `https://www.palimpsest.info/readings/publication-freshness-attestation-latest.json`
+- `https://www.palimpsest.info/readings/china-publication-rights-latest.json`
+- `https://www.palimpsest.info/railway-release.json`
 
 Those HTTPS authorities are fixed in code and cannot be replaced by an
 environment value or CLI flag. Redirects are refused; requests ask for JSON and
 cache revalidation, time out after ten seconds, and stop at 12 MiB per artifact.
-Both requests share one internally generated five-minute cache-busting token so
-an edge cache cannot mix two independently cached publication generations.
-Both heads have a two-hour freshness deadline. The situation check also proves
-that its embedded newswire clock and SHA-256 match the independently fetched
-newswire, using the publisher's canonical sorted compact JSON plus one trailing
-newline. A freshly rebuilt situation over an old or different wire therefore
-still fails as `publication/china-situation`.
+All five requests share one internally generated five-minute cache-busting token
+so an edge cache cannot mix publication generations. They run concurrently,
+which bounds the public-outage path to one ten-second request window and leaves
+time to persist fail-closed state and deliver an alert before systemd's deadline.
+
+The watchdog accepts exactly two publication modes:
+
+- In **full** mode, both endpoint documents must retain their original
+  `palimpsest-newswire.v1` and `palimpsest-china-situation.v1` schemas. Their
+  `generated_at` values have a two-hour deadline, and the situation's embedded
+  Newswire clock and canonical SHA-256 must reproduce the independently fetched
+  Newswire.
+- In **rights-suppressed** mode, both endpoint documents must be exact
+  unavailable/restricted stubs. Their publication SHA, policy identity, rights
+  evaluation clock, and master-status identity must agree. The independently
+  fetched master must reproduce that identity. The compact freshness
+  attestation must bind the original schemas, clocks, canonical document
+  digests, and Situation-to-Newswire lineage. Finally, `railway-release.json`
+  must name that exact publication SHA and reproduce the served byte identity of
+  both stubs, the attestation, and the rights master in `critical_files`.
+
+The reusable evaluator retains full mode for offline compatibility checks. The
+production systemd unit sets `--required-publication-mode rights-suppressed`, so
+a raw or legacy full-mode origin cannot report healthy after the Railway
+cutover.
+
+An original endpoint beside a restricted stub is a corrupt mixed generation,
+not partial availability. Missing support documents, malformed metadata,
+endpoint-path drift, lineage drift, policy/master drift, release-SHA drift, or
+critical-file drift fail both existing `publication/*` conditions closed.
+
+Only the original Newswire and China Situation `generated_at` values establish
+evidence freshness. `attested_at`, `rights_evaluated_at`, manifest `built_at`,
+HTTP response clocks, and deployment time are control/build clocks and never
+refresh stale evidence. A fresh rights pass or Railway build over an old source
+pair therefore remains stale. The bounded status document reports the validated
+publication `mode`, exact `publication_sha` in restricted mode, original source
+clocks, attestation identity, and release-manifest identity; it contains no
+quarantined observations or per-record identifiers.
 
 An unavailable API or publication is itself a condition and does not prevent
 the other independent checks.

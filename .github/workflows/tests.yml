@@ -107,6 +107,7 @@ jobs:
       actions: read
       contents: read
     outputs:
+      activation_canary: ${{ steps.controller_request.outputs.activation_canary }}
       revision: ${{ steps.identity.outputs.revision }}
       scope: ${{ steps.identity.outputs.scope }}
     env:
@@ -173,6 +174,7 @@ jobs:
               raise SystemExit("publication dispatch has no object payload")
           ordinary_keys = {"sha", "scope"}
           railway_keys = ordinary_keys | {
+              "activation_canary",
               "controller_artifact_digest",
               "controller_artifact_id",
               "controller_request_sha256",
@@ -189,6 +191,8 @@ jobs:
                   raise SystemExit("Railway publication dispatch changed its closed schema")
               if payload["deploy_railway"] is not True or payload.get("scope") != "complete":
                   raise SystemExit("Railway publication dispatch is not an exact complete release")
+              if type(payload.get("activation_canary")) is not bool:
+                  raise SystemExit("Railway publication activation_canary is invalid")
               for field in ("controller_run_id", "controller_run_attempt"):
                   value = payload.get(field)
                   if type(value) is not int or value < 1:
@@ -239,6 +243,7 @@ jobs:
           fi
 
       - name: Authenticate the exact Railway controller request
+        id: controller_request
         if: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.deploy_railway == true }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -309,7 +314,8 @@ jobs:
             --artifact-json "$artifact_json" \
             --artifact-zip "$artifact_zip" \
             --repository "$GITHUB_REPOSITORY" \
-            --workflow-path "$CONTROLLER_WORKFLOW_PATH"
+            --workflow-path "$CONTROLLER_WORKFLOW_PATH" \
+            --github-output "$GITHUB_OUTPUT"
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -1492,7 +1498,8 @@ jobs:
       needs.contract.outputs.scope == 'complete' &&
       github.event_name == 'repository_dispatch' &&
       github.event.client_payload.deploy_railway == true &&
-      vars.RAILWAY_PUBLICATION_ENABLED == 'true'
+      (vars.RAILWAY_PUBLICATION_ENABLED == 'true' ||
+       needs.contract.outputs.activation_canary == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 55
     concurrency:
@@ -1593,7 +1600,8 @@ jobs:
       needs.contract.outputs.scope == 'complete' &&
       github.event_name == 'repository_dispatch' &&
       (github.event.client_payload.deploy_railway != true ||
-       vars.RAILWAY_PUBLICATION_ENABLED != 'true')
+       (vars.RAILWAY_PUBLICATION_ENABLED != 'true' &&
+        needs.contract.outputs.activation_canary != 'true'))
     runs-on: ubuntu-latest
     permissions:
       contents: read

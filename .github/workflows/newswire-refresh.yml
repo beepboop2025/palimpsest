@@ -200,6 +200,7 @@ jobs:
             git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip pytest]"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+          echo "candidate-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Synchronize candidate with the exact public ledger
         if: steps.candidate.outputs.changed == 'true'
@@ -307,6 +308,7 @@ jobs:
 
       - name: Replace the candidate with revalidated bytes
         if: steps.prepublish_sync.outputs.rebuild == 'true'
+        id: synchronized_candidate
         run: |
           git add \
             readings/newswire-latest.json \
@@ -344,12 +346,15 @@ jobs:
           python -B scripts/pages_artifact_capacity.py candidate --staged
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet origin/main; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
               echo "no change after synchronization"
             else
               git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip pytest]"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
             fi
           else
             git commit --amend --no-edit
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Preflight publication contract dispatch
@@ -365,6 +370,8 @@ jobs:
         env:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
+          echo "candidate-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "candidate-parent-sha=$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
           basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
           git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
             push origin HEAD:main
@@ -468,6 +475,7 @@ jobs:
 
       - name: Commit the race-safe rebuilt bytes
         if: steps.push_attempt.outcome == 'failure'
+        id: race_candidate
         run: |
           git add \
             readings/newswire-latest.json \
@@ -505,28 +513,394 @@ jobs:
           python -B scripts/pages_artifact_capacity.py candidate --staged
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
               echo "no change after push race"
             else
               git commit -m "data: evidence wire refresh ($(date -u +%FT%TZ)) [skip pytest]"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
             fi
           else
             git commit --amend --no-edit
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Push the race-safe rebuilt commit
         if: steps.push_attempt.outcome == 'failure'
         id: retry_push
+        continue-on-error: true
         env:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
+          echo "candidate-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "candidate-parent-sha=$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
           basic=$(printf 'x-access-token:%s' "$GITHUB_PUSH_TOKEN" | base64 | tr -d '\n')
           git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $basic" \
             push origin HEAD:main
 
+      - name: Seal the immutable manual publication outcome
+        if: >-
+          ${{ always() && github.event_name == 'workflow_dispatch' &&
+          steps.candidate.outcome == 'success' }}
+        id: manual_outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEWSWIRE_HEAD_SHA: ${{ github.sha }}
+          ACQUISITION_BASE_SHA: ${{ steps.acquisition.outputs.base-sha }}
+          ORIGINAL_CANDIDATE_SHA: ${{ steps.candidate.outputs.candidate-sha }}
+          CANDIDATE_CHANGED: ${{ steps.candidate.outputs.changed }}
+          SYNCHRONIZED_CANDIDATE_CHANGED: ${{ steps.synchronized_candidate.outputs.changed }}
+          INITIAL_PUSH_OUTCOME: ${{ steps.push_attempt.outcome }}
+          INITIAL_CANDIDATE_SHA: ${{ steps.push_attempt.outputs.candidate-sha }}
+          INITIAL_CANDIDATE_PARENT_SHA: ${{ steps.push_attempt.outputs.candidate-parent-sha }}
+          RACE_CANDIDATE_CHANGED: ${{ steps.race_candidate.outputs.changed }}
+          RETRY_PUSH_OUTCOME: ${{ steps.retry_push.outcome }}
+          RETRY_CANDIDATE_SHA: ${{ steps.retry_push.outputs.candidate-sha }}
+          RETRY_CANDIDATE_PARENT_SHA: ${{ steps.retry_push.outputs.candidate-parent-sha }}
+        run: |
+          set -euo pipefail
+          current_main_sha=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/commits/main" --jq '.sha')
+          export CURRENT_MAIN_SHA="$current_main_sha"
+          receipt_path="$RUNNER_TEMP/newswire-manual-outcome.json"
+          python - "$receipt_path" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+
+          SHA_RE = re.compile(r"[0-9a-f]{40}\Z")
+          TIME_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
+          SECRET_KEY_RE = re.compile(
+              r"(?:authorization|credential|password|secret|token)", re.IGNORECASE
+          )
+          OUTCOMES = {"success", "failure", "skipped"}
+          RESULTS = {"committed", "no_change", "concurrent_main_advance"}
+          ROOT_KEYS = {
+              "acquisition_base_sha",
+              "base_sha",
+              "candidate_changed",
+              "candidate_sha",
+              "current_main_sha",
+              "event",
+              "head_sha",
+              "output_parents",
+              "output_sha",
+              "push_outcome",
+              "recorded_at",
+              "repository",
+              "result",
+              "retry_candidate_changed",
+              "retry_candidate_sha",
+              "retry_outcome",
+              "run_attempt",
+              "run_id",
+              "schema_version",
+              "synchronized_candidate_changed",
+              "workflow",
+              "workflow_name",
+          }
+
+
+          def fail(message: str) -> None:
+              raise SystemExit(message)
+
+
+          def required_env(name: str) -> str:
+              value = os.environ.get(name, "")
+              if not value:
+                  fail(f"missing {name}")
+              return value
+
+
+          def required_sha(name: str) -> str:
+              value = required_env(name)
+              if not SHA_RE.fullmatch(value):
+                  fail(f"invalid {name}")
+              return value
+
+
+          def optional_sha(name: str) -> str | None:
+              value = os.environ.get(name, "")
+              if not value:
+                  return None
+              if not SHA_RE.fullmatch(value):
+                  fail(f"invalid {name}")
+              return value
+
+
+          def optional_bool(name: str) -> bool | None:
+              value = os.environ.get(name, "")
+              if not value:
+                  return None
+              if value not in {"true", "false"}:
+                  fail(f"invalid {name}")
+              return value == "true"
+
+
+          def step_outcome(name: str) -> str:
+              value = os.environ.get(name, "") or "skipped"
+              if value not in OUTCOMES:
+                  fail(f"invalid {name}")
+              return value
+
+
+          def positive_int(name: str) -> int:
+              value = required_env(name)
+              if not value.isascii() or not value.isdigit() or int(value) < 1:
+                  fail(f"invalid {name}")
+              return int(value)
+
+
+          def reject_secret_fields(value: object) -> None:
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      if SECRET_KEY_RE.search(str(key)):
+                          fail(f"secret-like receipt field: {key}")
+                      reject_secret_fields(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      reject_secret_fields(child)
+
+
+          head_sha = required_sha("NEWSWIRE_HEAD_SHA")
+          acquisition_base_sha = required_sha("ACQUISITION_BASE_SHA")
+          original_candidate_sha = required_sha("ORIGINAL_CANDIDATE_SHA")
+          current_main_sha = required_sha("CURRENT_MAIN_SHA")
+          candidate_changed = optional_bool("CANDIDATE_CHANGED")
+          if candidate_changed is None:
+              fail("missing CANDIDATE_CHANGED")
+          synchronized_changed = optional_bool("SYNCHRONIZED_CANDIDATE_CHANGED")
+          retry_candidate_changed = optional_bool("RACE_CANDIDATE_CHANGED")
+          push_outcome = step_outcome("INITIAL_PUSH_OUTCOME")
+          retry_outcome = step_outcome("RETRY_PUSH_OUTCOME")
+          initial_candidate_sha = optional_sha("INITIAL_CANDIDATE_SHA")
+          initial_parent_sha = optional_sha("INITIAL_CANDIDATE_PARENT_SHA")
+          retry_candidate_sha = optional_sha("RETRY_CANDIDATE_SHA")
+          retry_parent_sha = optional_sha("RETRY_CANDIDATE_PARENT_SHA")
+
+          candidate_sha = initial_candidate_sha or original_candidate_sha
+          base_sha = acquisition_base_sha
+          output_sha = None
+          output_parents: list[str] = []
+
+          if not candidate_changed:
+              if push_outcome != "skipped" or retry_outcome != "skipped":
+                  fail("no-change candidate unexpectedly attempted a push")
+              if (
+                  head_sha == acquisition_base_sha
+                  and candidate_sha == acquisition_base_sha
+                  and current_main_sha == acquisition_base_sha
+              ):
+                  result = "no_change"
+                  output_sha = current_main_sha
+              else:
+                  result = "concurrent_main_advance"
+          elif push_outcome == "success":
+              if initial_candidate_sha is None or initial_parent_sha is None:
+                  fail("successful initial push lacks exact candidate lineage")
+              base_sha = initial_parent_sha
+              output_sha = initial_candidate_sha
+              output_parents = [initial_parent_sha]
+              materialized = synchronized_changed is not False
+              result = (
+                  "committed"
+                  if materialized and output_sha == current_main_sha
+                  else "concurrent_main_advance"
+              )
+          elif retry_outcome == "success":
+              if retry_candidate_sha is None or retry_parent_sha is None:
+                  fail("successful retry lacks exact candidate lineage")
+              base_sha = retry_parent_sha
+              output_sha = retry_candidate_sha
+              output_parents = [retry_parent_sha]
+              result = (
+                  "committed"
+                  if retry_candidate_changed is True and output_sha == current_main_sha
+                  else "concurrent_main_advance"
+              )
+          elif current_main_sha != acquisition_base_sha:
+              base_sha = initial_parent_sha or acquisition_base_sha
+              result = "concurrent_main_advance"
+          else:
+              fail("ambiguous failed publication while main is unchanged")
+
+          recorded_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+          recorded_at = recorded_at.replace("+00:00", "Z")
+          receipt = {
+              "acquisition_base_sha": acquisition_base_sha,
+              "base_sha": base_sha,
+              "candidate_changed": candidate_changed,
+              "candidate_sha": candidate_sha,
+              "current_main_sha": current_main_sha,
+              "event": required_env("GITHUB_EVENT_NAME"),
+              "head_sha": head_sha,
+              "output_parents": output_parents,
+              "output_sha": output_sha,
+              "push_outcome": push_outcome,
+              "recorded_at": recorded_at,
+              "repository": required_env("GITHUB_REPOSITORY"),
+              "result": result,
+              "retry_candidate_changed": retry_candidate_changed,
+              "retry_candidate_sha": retry_candidate_sha,
+              "retry_outcome": retry_outcome,
+              "run_attempt": positive_int("GITHUB_RUN_ATTEMPT"),
+              "run_id": positive_int("GITHUB_RUN_ID"),
+              "schema_version": "palimpsest.newswire-manual-outcome.v1",
+              "synchronized_candidate_changed": synchronized_changed,
+              "workflow": ".github/workflows/newswire-refresh.yml",
+              "workflow_name": "Refresh evidence wire",
+          }
+
+          if set(receipt) != ROOT_KEYS:
+              fail("receipt root fields are not closed")
+          if receipt["event"] != "workflow_dispatch":
+              fail("manual receipt has the wrong event")
+          if not re.fullmatch(r"[^/\s]+/[^/\s]+", receipt["repository"]):
+              fail("invalid repository")
+          if result not in RESULTS or not TIME_RE.fullmatch(recorded_at):
+              fail("invalid terminal result metadata")
+          for field in ("base_sha", "candidate_sha", "current_main_sha", "head_sha"):
+              if not SHA_RE.fullmatch(receipt[field]):
+                  fail(f"invalid receipt {field}")
+          if output_sha is not None and not SHA_RE.fullmatch(output_sha):
+              fail("invalid receipt output_sha")
+          if retry_candidate_sha is not None and not SHA_RE.fullmatch(retry_candidate_sha):
+              fail("invalid receipt retry_candidate_sha")
+
+          if result == "no_change":
+              if not (
+                  candidate_changed is False
+                  and head_sha
+                  == acquisition_base_sha
+                  == base_sha
+                  == candidate_sha
+                  == output_sha
+                  == current_main_sha
+                  and output_parents == []
+                  and push_outcome == retry_outcome == "skipped"
+              ):
+                  fail("invalid no_change invariant")
+          elif result == "committed":
+              if not (
+                  candidate_changed is True
+                  and output_sha == current_main_sha
+                  and output_parents == [base_sha]
+                  and (
+                      (push_outcome == "success" and retry_outcome == "skipped")
+                      or (push_outcome == "failure" and retry_outcome == "success")
+                  )
+              ):
+                  fail("invalid committed invariant")
+          elif (
+              current_main_sha == acquisition_base_sha
+              and output_sha is None
+              and push_outcome != "success"
+              and retry_outcome != "success"
+          ):
+              fail("concurrent result lacks observable main advance")
+
+          reject_secret_fields(receipt)
+          encoded = (
+              json.dumps(
+                  receipt,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  sort_keys=True,
+                  separators=(",", ":"),
+              )
+              + "\n"
+          ).encode("utf-8")
+          receipt_path = Path(sys.argv[1])
+          flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+          flags |= getattr(os, "O_NOFOLLOW", 0)
+          fd = -1
+          created = False
+          try:
+              fd = os.open(receipt_path, flags, 0o600)
+              created = True
+              with os.fdopen(fd, "wb", closefd=True) as handle:
+                  fd = -1
+                  handle.write(encoded)
+                  handle.flush()
+                  os.fsync(handle.fileno())
+              directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+              directory_fd = os.open(receipt_path.parent, directory_flags)
+              try:
+                  os.fsync(directory_fd)
+              finally:
+                  os.close(directory_fd)
+          except BaseException:
+              if fd >= 0:
+                  os.close(fd)
+              if created:
+                  try:
+                      receipt_path.unlink()
+                  except FileNotFoundError:
+                      pass
+              raise
+          PY
+          receipt_result=$(python -c \
+            'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["result"])' \
+            "$receipt_path")
+          echo "path=$receipt_path" >> "$GITHUB_OUTPUT"
+          echo "result=$receipt_result" >> "$GITHUB_OUTPUT"
+
+      - name: Preserve the immutable manual publication outcome
+        if: ${{ always() && steps.manual_outcome.outcome == 'success' }}
+        id: manual_outcome_artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: newswire-manual-outcome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.manual_outcome.outputs.path }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
       - name: Dispatch the exact publication contract
         if: >-
           ${{ always() && (steps.push_attempt.outcome == 'success' ||
-          steps.retry_push.outcome == 'success') }}
+          steps.retry_push.outcome == 'success') &&
+          (github.event_name != 'workflow_dispatch' ||
+          (steps.manual_outcome.outputs.result == 'committed' &&
+          steps.manual_outcome_artifact.outcome == 'success')) }}
         env:
           PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
         run: python scripts/dispatch_publication_contract.py --scope complete "$(git rev-parse HEAD)"
+
+      - name: Enforce a successful publication push
+        if: ${{ always() && steps.candidate.outputs.changed == 'true' }}
+        env:
+          INITIAL_PUSH_OUTCOME: ${{ steps.push_attempt.outcome }}
+          RETRY_PUSH_OUTCOME: ${{ steps.retry_push.outcome }}
+        run: |
+          if [ "$INITIAL_PUSH_OUTCOME" != "success" ] && [ "$RETRY_PUSH_OUTCOME" != "success" ]; then
+            echo "::error::neither the initial nor retry publication push succeeded"
+            exit 1
+          fi
+
+      - name: Enforce an unambiguous manual publication outcome
+        if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+        env:
+          OUTCOME_ARTIFACT_STEP: ${{ steps.manual_outcome_artifact.outcome }}
+          OUTCOME_STEP: ${{ steps.manual_outcome.outcome }}
+          OUTCOME_RESULT: ${{ steps.manual_outcome.outputs.result }}
+        run: |
+          if [ "$OUTCOME_STEP" != "success" ]; then
+            echo "::error::immutable manual publication outcome was not sealed"
+            exit 1
+          fi
+          if [ "$OUTCOME_ARTIFACT_STEP" != "success" ]; then
+            echo "::error::immutable manual publication outcome was not preserved"
+            exit 1
+          fi
+          case "$OUTCOME_RESULT" in
+            committed|no_change) ;;
+            *)
+              echo "::error::manual publication outcome is not activation-safe: $OUTCOME_RESULT"
+              exit 1
+              ;;
+          esac

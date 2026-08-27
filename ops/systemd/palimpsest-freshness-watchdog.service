@@ -20,7 +20,8 @@ ExecStart=/usr/bin/python3 /opt/palimpsest/ops/watchdog/palimpsest_freshness_wat
   --osint-path /var/lib/palimpsest/readings/osint-china-latest.json \
   --output /var/lib/palimpsest-watchdog/status.json \
   --state /var/lib/palimpsest-watchdog/alert-state.json \
-  --bundle-max-age-seconds 21600
+  --bundle-max-age-seconds 21600 \
+  --required-publication-mode rights-suppressed
 TimeoutStartSec=45s
 UMask=0077
 Nice=5

@@ -15,6 +15,7 @@ COMPATIBILITY_DROPIN = (
     OPS / "systemd" / "palimpsest-public-osint-sync.compatibility.conf"
 )
 RELEASE_MODE = OPS / "osint-sync" / "release-mode"
+README = OPS / "osint-sync" / "README.md"
 
 
 def _text(path: Path) -> str:
@@ -242,7 +243,7 @@ def test_installer_uses_an_isolated_no_replace_git_view():
     assert "Git replacement refs are forbidden" in installer
     assert "packed Git replacement refs are forbidden" in installer
     assert "source Git object alternates are forbidden" in installer
-    assert "/usr/bin/git --no-replace-objects --git-dir=\"$audit_git\"" in installer
+    assert '/usr/bin/git --no-replace-objects --git-dir="$audit_git"' in installer
     assert "-c core.fsmonitor=false" in installer
     assert "-c core.hooksPath=/dev/null" in installer
     assert "-c core.attributesFile=/dev/null" in installer
@@ -253,10 +254,34 @@ def test_runtime_authorities_are_fixed_on_the_service_cli():
     assert (
         'REPOSITORY_URL = "https://github.com/beepboop2025/palimpsest.git"' in runtime
     )
-    assert (
-        'PUBLIC_URL = "https://palimpsest.info/readings/osint-china-latest.json"'
-        in runtime
-    )
+    assert 'PUBLIC_ORIGIN = "https://www.palimpsest.info"' in runtime
+    assert 'PUBLIC_URL = f"{PUBLIC_ORIGIN}/readings/osint-china-latest.json"' in runtime
+    assert "PUBLIC_RIGHTS_STATUS_URL = (" in runtime
+    assert 'f"{PUBLIC_ORIGIN}/readings/china-publication-rights-latest.json"' in runtime
+    assert 'PUBLIC_MANIFEST_URL = f"{PUBLIC_ORIGIN}/railway-release.json"' in runtime
+    assert "https://palimpsest.info/" not in runtime
     start = _unit_values(SERVICE, "ExecStart")[0]
     assert "--repository" not in start
     assert "--public-url" not in start
+
+
+def test_runtime_receipt_and_phase2_handoff_pin_all_public_identities():
+    runtime = _text(RUNTIME)
+    readme = _text(README)
+
+    assert 'SCHEMA = "palimpsest-public-osint-sync.v3"' in runtime
+    assert 'LEGACY_RECEIPT_SCHEMA = "palimpsest-public-osint-sync.v2"' in runtime
+    assert (
+        'RELEASE_PROOF_SCHEMA = "palimpsest-public-osint-release-proof.v2"' in runtime
+    )
+    for field in (
+        "public_release_commit",
+        "public_manifest_sha256",
+        "public_osint_stub_sha256",
+        "public_rights_status_sha256",
+        "public_ledger_sha256",
+    ):
+        assert f'"{field}"' in runtime
+    assert "unchanged root-owned `0600`" in readme
+    assert "existing exact v2 receipt is accepted only as migration" in readme
+    assert "retaining `installed_at`" in readme

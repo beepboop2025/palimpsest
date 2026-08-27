@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import stat
 import subprocess
 import sys
@@ -13,6 +14,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPLOY_GUIDE = ROOT / "ops" / "DEPLOY-HETZNER.md"
+CONTINUOUS_PUBLICATION_GUIDE = (
+    ROOT / "docs" / "HETZNER-RAILWAY-CONTINUOUS-PUBLICATION.md"
+)
 OSINT_WORKFLOW = ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
 BACKUP_GUIDE = ROOT / "ops" / "backup" / "README.md"
 NODE_OFFSITE_GUIDE = ROOT / "ops" / "node-offsite" / "README.md"
@@ -29,9 +33,7 @@ INTERRUPTED_PHASE1_MANIFEST_SHA256 = (
 COMMON_CRAWL_BIND_ALIAS_MANIFEST = (
     ROOT / "ops" / "release-recovery" / "2026-08-25-common-crawl-bind-alias-retry.json"
 )
-RECOVERY_BACKUP_REASON = (
-    "interrupted-phase1-hybrid-recovery-fresh-target-backup"
-)
+RECOVERY_BACKUP_REASON = "interrupted-phase1-hybrid-recovery-fresh-target-backup"
 COMPATIBILITY_SEED = ROOT / "ops" / "osint-sync" / "deploy-compatibility-seed.sh"
 
 
@@ -124,6 +126,10 @@ def _bash_function_source(block: str, name: str) -> str:
     start = block.index(f"{name}() {{")
     end = block.index("\n}\n", start) + len("\n}\n")
     return block[start:end]
+
+
+def _python_heredocs(block: str) -> list[str]:
+    return re.findall(r"<<'PY'[^\n]*\n(.*?)\nPY(?=\n|\))", block, flags=re.DOTALL)
 
 
 def test_release_is_forward_only_and_binds_both_previous_host_identities() -> None:
@@ -222,6 +228,12 @@ def test_operational_release_blocks_are_parseable_with_complete_preambles() -> N
         ),
         "phase three": _fenced_bash_block_after("### Phase 3: host finalization"),
         "forward repair": _fenced_bash_block_after("### Executing a forward repair"),
+        "phase-three authority handoff": _fenced_bash_block_after(
+            "### Copy Phase 3 authority and restore the scheduled producers"
+        ),
+        "hourly-only retry": _fenced_bash_block_after(
+            "For that hourly-only retry from a fresh shell"
+        ),
     }
     for name, block in blocks.items():
         result = subprocess.run(
@@ -232,6 +244,25 @@ def test_operational_release_blocks_are_parseable_with_complete_preambles() -> N
             check=False,
         )
         assert result.returncode == 0, f"{name}: {result.stderr}"
+
+
+def test_activation_handoff_blocks_embed_parseable_python() -> None:
+    blocks = {
+        "phase-three authority handoff": _fenced_bash_block_after(
+            "### Copy Phase 3 authority and restore the scheduled producers"
+        ),
+        "hourly-only retry": _fenced_bash_block_after(
+            "For that hourly-only retry from a fresh shell"
+        ),
+    }
+    sources = [
+        (name, index, source)
+        for name, block in blocks.items()
+        for index, source in enumerate(_python_heredocs(block), start=1)
+    ]
+    assert len(sources) == 6
+    for name, index, source in sources:
+        compile(source, f"{name}-heredoc-{index}", "exec")
 
 
 def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard() -> (
@@ -320,12 +351,10 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
     assert 'docker rm --force "$container_id"' in quiescer_block
     assert "created|running|restarting|paused" in quiescer_block
     assert "emergency release quiescence is incomplete" in quiescer_block
-    assert "PHASE1_STAGE='fail-safe-armed'" in transaction[
-        quiescer:phase_one_fail_safe
-    ]
-    assert '"${PHASE1_STAGE:-unknown}"' in transaction[
-        phase_one_fail_safe:phase_one_abort
-    ]
+    assert "PHASE1_STAGE='fail-safe-armed'" in transaction[quiescer:phase_one_fail_safe]
+    assert (
+        '"${PHASE1_STAGE:-unknown}"' in transaction[phase_one_fail_safe:phase_one_abort]
+    )
     assert preflight_abort < preflight_err < first_preflight < direction_gate
     for abort_block in (
         transaction[phase_one_abort:phase_one_err],
@@ -1010,6 +1039,12 @@ def test_phase_two_abort_is_immediate_and_second_cleanup_preserves_failure(
     assert "MUTATION_REACHED" not in early.stdout
 
     cleanup_phase2 = _bash_function_source(phase_two, "cleanup_phase2")
+    private_directory = _bash_function_source(
+        phase_two, "private_directory_is_owned_0700"
+    )
+    clear_writer_authority = _bash_function_source(
+        phase_two, "clear_railway_writer_authority_on_failure"
+    )
     cleanup_publication = _bash_function_source(phase_two, "cleanup_publication_files")
     phase_two_dir = tmp_path / "phase-two"
     phase_two_dir.mkdir(mode=0o700)
@@ -1019,14 +1054,16 @@ def test_phase_two_abort_is_immediate_and_second_cleanup_preserves_failure(
         "public-bleed",
         "repository-osint",
         "repository-ledger",
+        "release-osint",
+        "release-ledger",
+        "public-manifest",
         "public-osint",
+        "public-rights",
         "public-ledger",
     )
     temp_paths = [phase_two_dir / name for name in temp_names]
     for path in temp_paths:
         path.write_text("temporary", encoding="utf-8")
-    uid = os.getuid()
-    gid = os.getgid()
     late_script = f"""\
 set -Eeuo pipefail
 {abort}
@@ -1035,18 +1072,50 @@ trap 'phase2_abort 129' HUP
 trap 'phase2_abort 130' INT
 trap 'phase2_abort 143' TERM
 restore_osint_workflow_freeze() {{ return 0; }}
+railway_bounded_gh() {{ shift; gh "$@"; }}
+{private_directory}
+{clear_writer_authority}
 {cleanup_phase2}
 {cleanup_publication}
 PHASE2_TMP_DIR={phase_two_dir}
+PALIMPSEST_REPOSITORY=beepboop2025/palimpsest
+RAILWAY_PRODUCTION_ENVIRONMENT=palimpsest-railway-production
+RAILWAY_RELEASE_RUN_ID=33000000000
 OSINT_WORKFLOW_RESTORE_DISABLED=0
+ACK_PRESENT=1
+GH_LOG={phase_two_dir.parent / "gh.log"}
+gh() {{
+  printf '%s\n' "$*" >>"$GH_LOG"
+  case "$1:$2:${{3:-}}" in
+    variable:set:RAILWAY_PUBLICATION_ENABLED) return 0 ;;
+    variable:get:RAILWAY_PUBLICATION_ENABLED) printf 'false\n' ;;
+    variable:get:RAILWAY_EXCLUSIVE_WRITER_ACK)
+      (( ACK_PRESENT == 1 )) || return 1
+      printf 'palimpsest-github-environment-v1\n'
+      ;;
+    variable:delete:RAILWAY_EXCLUSIVE_WRITER_ACK) ACK_PRESENT=0 ;;
+    variable:list:*)
+      case "$*" in
+        *"--json name,value"*)
+          if (( ACK_PRESENT == 1 )); then printf 'exact\n'; else printf 'absent\n'; fi
+          ;;
+        *) printf '%s\n' "$ACK_PRESENT" ;;
+      esac
+      ;;
+    *) return 64 ;;
+  esac
+}}
 LIVE_BLEED_TMP={temp_paths[0]}
 REPOSITORY_BLEED_TMP={temp_paths[1]}
 PUBLIC_BLEED_TMP={temp_paths[2]}
 REPOSITORY_OSINT_TMP={temp_paths[3]}
 REPOSITORY_LEDGER_TMP={temp_paths[4]}
-PUBLIC_OSINT_TMP={temp_paths[5]}
-PUBLIC_LEDGER_TMP={temp_paths[6]}
-stat() {{ printf '{uid}:{gid}:700\\n'; }}
+RELEASE_OSINT_TMP={temp_paths[5]}
+RELEASE_LEDGER_TMP={temp_paths[6]}
+PUBLIC_MANIFEST_TMP={temp_paths[7]}
+PUBLIC_OSINT_TMP={temp_paths[8]}
+PUBLIC_RIGHTS_TMP={temp_paths[9]}
+PUBLIC_LEDGER_TMP={temp_paths[10]}
 trap cleanup_publication_files EXIT
 (exit 37)
 printf 'MUTATION_REACHED\\n'
@@ -1061,6 +1130,127 @@ printf 'MUTATION_REACHED\\n'
     assert late.returncode == 37
     assert "MUTATION_REACHED" not in late.stdout
     assert not phase_two_dir.exists()
+    gh_log = (phase_two_dir.parent / "gh.log").read_text(encoding="utf-8")
+    assert "variable set RAILWAY_PUBLICATION_ENABLED --body false" in gh_log
+    assert "variable delete RAILWAY_EXCLUSIVE_WRITER_ACK" in gh_log
+    assert "variable list --repo beepboop2025/palimpsest" in gh_log
+    assert "Reconcile downstream Railway release run 33000000000" in late.stderr
+
+
+def test_phase_two_failure_cleanup_refuses_an_unfamiliar_writer_acknowledgement(
+    tmp_path: Path,
+) -> None:
+    phase_two = _fenced_bash_block_after("### Phase 2: external OSINT publication")
+    clear_writer_authority = _bash_function_source(
+        phase_two, "clear_railway_writer_authority_on_failure"
+    )
+    gh_log = tmp_path / "gh.log"
+    script = f"""\
+set -u
+railway_bounded_gh() {{ shift; gh "$@"; }}
+{clear_writer_authority}
+PALIMPSEST_REPOSITORY=beepboop2025/palimpsest
+RAILWAY_PRODUCTION_ENVIRONMENT=palimpsest-railway-production
+RAILWAY_RELEASE_RUN_ID=33000000001
+GH_LOG={gh_log}
+gh() {{
+  printf '%s\n' "$*" >>"$GH_LOG"
+  case "$1:$2:${{3:-}}" in
+    variable:set:RAILWAY_PUBLICATION_ENABLED) return 0 ;;
+    variable:get:RAILWAY_PUBLICATION_ENABLED) printf 'false\n' ;;
+    variable:list:*)
+      case "$*" in
+        *"--json name,value"*) printf 'unexpected\n' ;;
+        *) printf '1\n' ;;
+      esac
+      ;;
+    *) return 64 ;;
+  esac
+}}
+clear_railway_writer_authority_on_failure 41
+"""
+    result = subprocess.run(
+        ["/bin/bash", "--noprofile", "--norc"],
+        input=script,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "refusing to delete an unfamiliar" in result.stderr
+    assert "absence was not proved" in result.stderr
+    assert "variable delete RAILWAY_EXCLUSIVE_WRITER_ACK" not in gh_log.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_phase_two_cleanup_revokes_authority_on_cleanup_failure_but_not_success(
+    tmp_path: Path,
+) -> None:
+    phase_two = _fenced_bash_block_after("### Phase 2: external OSINT publication")
+    clear_writer_authority = _bash_function_source(
+        phase_two, "clear_railway_writer_authority_on_failure"
+    )
+    cleanup_phase2 = _bash_function_source(phase_two, "cleanup_phase2")
+    private_directory = _bash_function_source(
+        phase_two, "private_directory_is_owned_0700"
+    )
+
+    def run_cleanup(
+        inherited_status: int, label: str
+    ) -> subprocess.CompletedProcess[str]:
+        cleanup_dir = tmp_path / label
+        cleanup_dir.mkdir(mode=0o700)
+        gh_log = tmp_path / f"{label}.log"
+        script = f"""\
+set -u
+restore_osint_workflow_freeze() {{ return 0; }}
+railway_bounded_gh() {{ shift; gh "$@"; }}
+{private_directory}
+{clear_writer_authority}
+{cleanup_phase2}
+PALIMPSEST_REPOSITORY=beepboop2025/palimpsest
+RAILWAY_PRODUCTION_ENVIRONMENT=palimpsest-railway-production
+PHASE2_TMP_DIR={cleanup_dir}
+ACK_PRESENT=1
+GH_LOG={gh_log}
+gh() {{
+  printf '%s\n' "$*" >>"$GH_LOG"
+  case "$1:$2:${{3:-}}" in
+    variable:set:RAILWAY_PUBLICATION_ENABLED) return 0 ;;
+    variable:get:RAILWAY_PUBLICATION_ENABLED) printf 'false\n' ;;
+    variable:delete:RAILWAY_EXCLUSIVE_WRITER_ACK) ACK_PRESENT=0 ;;
+    variable:list:*)
+      case "$*" in
+        *"--json name,value"*)
+          if (( ACK_PRESENT == 1 )); then printf 'exact\n'; else printf 'absent\n'; fi
+          ;;
+        *) printf '%s\n' "$ACK_PRESENT" ;;
+      esac
+      ;;
+    *) return 64 ;;
+  esac
+}}
+cleanup_phase2 0 {inherited_status}
+"""
+        return subprocess.run(
+            ["/bin/bash", "--noprofile", "--norc"],
+            input=script,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    failed = run_cleanup(23, "failed")
+    assert failed.returncode == 1
+    failed_log = (tmp_path / "failed.log").read_text(encoding="utf-8")
+    assert "variable set RAILWAY_PUBLICATION_ENABLED --body false" in failed_log
+    assert "variable delete RAILWAY_EXCLUSIVE_WRITER_ACK" in failed_log
+
+    succeeded = run_cleanup(0, "succeeded")
+    assert succeeded.returncode == 0
+    succeeded_log = tmp_path / "succeeded.log"
+    assert not succeeded_log.exists() or not succeeded_log.read_text(encoding="utf-8")
 
 
 def test_fail_safe_abort_exits_interactive_shell_without_fallthrough() -> None:
@@ -1239,10 +1429,7 @@ def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() ->
 
     assert "ps -q worker-collectors" in proof
     assert 'eq .Destination "/app/common-crawl-derived"' in proof
-    assert (
-        '{{printf "%s\\t%s\\t%t\\t%s\\n" '
-        ".Type .Source .RW .Propagation}}"
-    ) in proof
+    assert ('{{printf "%s\\t%s\\t%t\\t%s\\n" .Type .Source .RW .Propagation}}') in proof
     assert 'test "$COLLECTOR_COMMON_CRAWL_TYPE" = bind' in proof
     assert 'test "$COLLECTOR_COMMON_CRAWL_RW" = false' in proof
     assert 'test "$COLLECTOR_COMMON_CRAWL_PROPAGATION" = rprivate' in proof
@@ -1275,7 +1462,7 @@ def test_collector_gets_only_the_atomic_archive_feature_directory_read_only() ->
         mount_helper
     )
     assert 'elif mountpoint.startswith(f"{path}/")' in mount_helper
-    assert 'if descendant_mounts:' in mount_helper
+    assert "if descendant_mounts:" in mount_helper
     assert "collector Common Crawl mount has descendant mounts" in mount_helper
     assert 'print(f"{value.st_dev}:{value.st_ino}")' in mount_helper
     assert '"$mounted_identity"' in mount_helper
@@ -2831,7 +3018,7 @@ def test_masked_units_abort_before_any_release_mutation() -> None:
     assert "systemctl mask" not in restoration
 
 
-def test_public_osint_advances_before_consumers_and_final_observers() -> None:
+def test_rights_suppressed_osint_proof_precedes_consumers_and_observers() -> None:
     transaction = _transaction()
 
     disable_loop = transaction.index(
@@ -2839,8 +3026,8 @@ def test_public_osint_advances_before_consumers_and_final_observers() -> None:
         '  temporarily_disable_activator "$unit"'
     )
     sync_install = transaction.index("sudo bash ops/osint-sync/install-host-bundle.sh")
-    static_osint = transaction.index(
-        'test "$PUBLIC_OSINT_RAW_SHA256" = "$REPOSITORY_OSINT_RAW_SHA256"'
+    restricted_osint = transaction.index(
+        'test "$PUBLIC_OSINT_STUB_SHA256" != "$REPOSITORY_OSINT_RAW_SHA256"'
     )
     sync_start = transaction.index(
         "run_final_observer palimpsest-public-osint-sync.service"
@@ -2874,7 +3061,7 @@ def test_public_osint_advances_before_consumers_and_final_observers() -> None:
     assert (
         disable_loop
         < sync_install
-        < static_osint
+        < restricted_osint
         < sync_start
         < offline_verify
         < artifact_advance
@@ -2915,6 +3102,9 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
 
     for marker in (
         "OSINT_WORKFLOW='osint-china-v2-refresh.yml'",
+        "RAILWAY_CONTROLLER_WORKFLOW='railway-publication-controller.yml'",
+        "RAILWAY_RELEASE_WORKFLOW='tests.yml'",
+        "RAILWAY_PRODUCTION_ENVIRONMENT='palimpsest-railway-production'",
         "OSINT_WORKFLOW_RESTORE_DISABLED=0",
         "osint_workflow_state() {",
         "restore_osint_workflow_freeze() {",
@@ -2944,20 +3134,55 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         "OSINT_FETCHED_MAIN",
         "OSINT_PUBLICATION_SHA",
         "contents/readings/osint-china-latest.json?ref=$OSINT_PUBLICATION_SHA",
-        'test "$PUBLIC_OSINT_RAW_SHA256" = "$REPOSITORY_OSINT_RAW_SHA256"',
-        "https://palimpsest.info/readings/bleedthrough-latest.json",
-        "https://palimpsest.info/readings/osint-china-latest.json",
-        "https://palimpsest.info/readings/readings-ledger.jsonl",
+        "gh variable get RAILWAY_PUBLICATION_ENABLED",
+        "-f activation_canary=true -f force=false",
+        '--workflow "$RAILWAY_RELEASE_WORKFLOW" --event repository_dispatch',
+        "more than one downstream Railway release matches this SHA",
+        "= Tests",
+        "pending_deployments",
+        'pending[0].get("current_user_can_approve") is not True',
+        "RAILWAY_APPROVAL_WAIT_BUDGET_SECONDS=5400",
+        "RAILWAY_APPROVAL_GH_MAX_SECONDS=60",
+        "RAILWAY_APPROVAL_WAIT_DEADLINE_MONOTONIC_NS",
+        "railway_approval_bounded_gh() {",
+        "read_railway_pending_state() {",
+        "variable get \\\n        RAILWAY_EXCLUSIVE_WRITER_ACK",
+        "clear_railway_writer_authority_on_failure() {",
+        "cleanup did not cancel it",
+        "Type the exact canary SHA to approve protected release",
+        'state: "approved"',
+        'gh run watch "$RAILWAY_RELEASE_RUN_ID"',
+        '"Deploy and prove exact Railway publication": "success"',
+        '"Verify exact Pages and native MCP rights closure": "skipped"',
+        '"railway-continuous-release-${RAILWAY_CANARY_HEAD_SHA}-run-${RAILWAY_RELEASE_RUN_ID}-attempt-${RAILWAY_RELEASE_RUN_ATTEMPT}"',
+        'transaction.get("phase") == "complete"',
+        'transaction.get("verification", {}).get("mcp_rights_smoke") == "verified"',
+        'verification.get("live", {}).get("public_origin_verified") is True',
+        "RAILWAY_RELEASE_SHA",
+        "CANARY_CONTAINS_PUBLICATION",
+        "RELEASE_CONTAINS_PUBLICATION",
+        'test "$LATEST_RELEASE_OSINT_COMMIT" = "$OSINT_PUBLICATION_SHA"',
+        "https://www.palimpsest.info",
+        "PUBLIC_RIGHTS_URL",
+        "raw OSINT publication is forbidden on the public endpoint",
+        'test "$PUBLIC_OSINT_STUB_SHA256" != "$REPOSITORY_OSINT_RAW_SHA256"',
+        'test "$PUBLIC_LEDGER_RAW_SHA256" = "$RELEASE_LEDGER_RAW_SHA256"',
+        "Git release R does not extend candidate P's ledger",
+        "critical identity mismatch",
         'test "$(file_sha256 "$LIVE_BLEED_TMP")" = "$LOCAL_BLEED_SHA256"',
         'test "$PUBLIC_BLEED_RAW_SHA256" = "$REPOSITORY_BLEED_RAW_SHA256"',
         'test "$LIVE_BLEED_NORMALIZED_SHA256" = "$LOCAL_BLEED_NORMALIZED_SHA256"',
         'test "$PUBLIC_BLEED_NORMALIZED_SHA256" \\\n'
         '  = "$REPOSITORY_BLEED_NORMALIZED_SHA256"',
-        "Workflow success alone is insufficient",
         'RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"',
         "read -r -p 'Run Phase 2 elsewhere, then paste its one-line handoff: '",
         "RELEASE_HANDOFF_B64",
-        '"schema": "palimpsest-public-osint-release-proof.v1"',
+        '"schema": "palimpsest-public-osint-release-proof.v2"',
+        '"public_release_commit": fetched',
+        '"public_manifest_sha256": public_manifest',
+        '"public_osint_stub_sha256": public_stub',
+        '"public_rights_status_sha256": public_rights',
+        '"public_ledger_sha256": public_ledger',
         'RELEASE_HANDOFF_B64="$(printf',
         "base64.b64decode(encoded, validate=True)",
         "RELEASE_PROOF_PATH='/var/lib/palimpsest-public-osint-sync/release-proof.json'",
@@ -3000,6 +3225,79 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         < discover
     )
 
+    release_snapshot = transaction.index('RAILWAY_RELEASE_RUNS_BEFORE_TMP="', phase_two)
+    controller_dispatch = transaction.index(
+        'gh workflow run "$RAILWAY_CONTROLLER_WORKFLOW"', release_snapshot
+    )
+    controller_watch = transaction.index(
+        'gh run watch "$RAILWAY_CANARY_RUN_ID"', controller_dispatch
+    )
+    release_select = transaction.index("RAILWAY_RELEASE_RUN_ID=''", controller_watch)
+    pending_validation = transaction.index(
+        "read_railway_pending_state() {", release_select
+    )
+    initial_pending_read = transaction.index(
+        'RAILWAY_PENDING_STATE="$(read_railway_pending_state)"',
+        pending_validation,
+    )
+    exclusive_ack = transaction.index(
+        "RAILWAY_EXCLUSIVE_WRITER_ACK", initial_pending_read
+    )
+    typed_sha = transaction.index(
+        "Type the exact canary SHA to approve protected release", exclusive_ack
+    )
+    revalidated_pending = transaction.index(
+        'test "$(read_railway_pending_state)" = ready', typed_sha
+    )
+    revalidated_flag = transaction.index(
+        "RAILWAY_PUBLICATION_ENABLED", revalidated_pending
+    )
+    revalidated_ack = transaction.index(
+        "RAILWAY_EXCLUSIVE_WRITER_ACK", revalidated_flag
+    )
+    revalidated_status = transaction.index(
+        '--json status --jq .status)" != completed', revalidated_ack
+    )
+    approval = transaction.index(
+        "api --method POST \\",
+        revalidated_status,
+    )
+    release_watch = transaction.index(
+        'gh run watch "$RAILWAY_RELEASE_RUN_ID"', approval
+    )
+    job_proof = transaction.index(
+        '"Deploy and prove exact Railway publication": "success"', release_watch
+    )
+    evidence_download = transaction.index(
+        '"railway-continuous-release-${RAILWAY_CANARY_HEAD_SHA}', job_proof
+    )
+    receipt_proof = transaction.index(
+        'transaction.get("phase") == "complete"', evidence_download
+    )
+    public_polling = transaction.index(
+        "PUBLIC_ORIGIN='https://www.palimpsest.info'", receipt_proof
+    )
+    assert (
+        release_snapshot
+        < controller_dispatch
+        < controller_watch
+        < release_select
+        < pending_validation
+        < initial_pending_read
+        < exclusive_ack
+        < typed_sha
+        < revalidated_pending
+        < revalidated_flag
+        < revalidated_ack
+        < revalidated_status
+        < approval
+        < release_watch
+        < job_proof
+        < evidence_download
+        < receipt_proof
+        < public_polling
+    )
+
     public_match = transaction.index(
         'test "$PUBLIC_BLEED_NORMALIZED_SHA256" \\\n'
         '  = "$BLEED_ARTIFACT_NORMALIZED_SHA256"'
@@ -3009,6 +3307,274 @@ def test_external_publication_is_exact_and_fails_closed_before_finalization() ->
         transaction.index("restore_activator_enablement() {"),
     )
     assert public_match < first_restore
+
+    raw_refusal = transaction.index(
+        "raw OSINT publication is forbidden on the public endpoint"
+    )
+    phase3_recheck = transaction.index(
+        "Phase 3 public OSINT is not the restricted same-path stub"
+    )
+    sync_start = transaction.index(
+        "run_final_observer palimpsest-public-osint-sync.service",
+        phase3_recheck,
+    )
+    final_public_verify = transaction.index("--verify-public-installed", sync_start)
+    final_identity_recheck = transaction.index(
+        "Close the mutable-public-state interval", final_public_verify
+    )
+    assert (
+        raw_refusal
+        < phase3_recheck
+        < sync_start
+        < final_public_verify
+        < final_identity_recheck
+        < first_restore
+    )
+
+
+def test_phase_two_downstream_release_selector_is_causally_exact(
+    tmp_path: Path,
+) -> None:
+    source = _python_heredoc_after('RAILWAY_RELEASE_RUN_ID="$(python3')
+    before_path = tmp_path / "before.json"
+    after_path = tmp_path / "after.json"
+    sha = "a" * 40
+    before = [
+        {
+            "databaseId": 10,
+            "event": "repository_dispatch",
+            "headSha": sha,
+            "workflowName": "Tests",
+        }
+    ]
+    _write_canonical_json(before_path, before)
+
+    valid = [
+        *before,
+        {
+            "databaseId": 11,
+            "event": "repository_dispatch",
+            "headSha": sha,
+            "workflowName": "Tests",
+        },
+        {
+            "databaseId": 12,
+            "event": "push",
+            "headSha": sha,
+            "workflowName": "Tests",
+        },
+        {
+            "databaseId": 13,
+            "event": "repository_dispatch",
+            "headSha": "b" * 40,
+            "workflowName": "Tests",
+        },
+    ]
+    _write_canonical_json(after_path, valid)
+    selected = _run_embedded_python(source, before_path, after_path, sha)
+    assert selected.returncode == 0, selected.stderr
+    assert selected.stdout.strip() == "11"
+
+    valid.append(
+        {
+            "databaseId": 14,
+            "event": "repository_dispatch",
+            "headSha": sha,
+            "workflowName": "Tests",
+        }
+    )
+    _write_canonical_json(after_path, valid)
+    duplicate = _run_embedded_python(source, before_path, after_path, sha)
+    assert duplicate.returncode != 0
+    assert "more than one downstream Railway release" in duplicate.stderr
+
+
+def test_phase_two_pending_deployment_parser_is_fail_closed(tmp_path: Path) -> None:
+    source = _python_heredoc_after("read_railway_pending_state() {")
+    pending_path = tmp_path / "pending.json"
+    environment_id = 20705508397
+    environment_name = "palimpsest-railway-production"
+
+    fixtures = (
+        ([], 0, "wait"),
+        (
+            [
+                {
+                    "environment": {
+                        "id": environment_id,
+                        "name": environment_name,
+                    },
+                    "current_user_can_approve": True,
+                }
+            ],
+            0,
+            "ready",
+        ),
+        (
+            [
+                {
+                    "environment": {
+                        "id": environment_id + 1,
+                        "name": environment_name,
+                    },
+                    "current_user_can_approve": True,
+                }
+            ],
+            1,
+            "",
+        ),
+        (
+            [
+                {
+                    "environment": {
+                        "id": environment_id,
+                        "name": environment_name,
+                    },
+                    "current_user_can_approve": False,
+                }
+            ],
+            1,
+            "",
+        ),
+        ([{}, {}], 1, ""),
+        ({"environment": environment_name}, 1, ""),
+    )
+    for document, expected_returncode, expected_stdout in fixtures:
+        _write_canonical_json(pending_path, document)
+        result = _run_embedded_python(
+            source,
+            pending_path,
+            environment_id,
+            environment_name,
+        )
+        assert result.returncode == expected_returncode, result.stderr
+        assert result.stdout.strip() == expected_stdout
+
+
+def test_phase_two_approval_wait_is_monotonic_bounded_and_not_attempt_limited() -> None:
+    transaction = _transaction()
+    remaining = _bash_function_source(transaction, "railway_approval_remaining_seconds")
+    command_timeout = _bash_function_source(
+        transaction, "railway_approval_command_timeout"
+    )
+    bounded_gh = _bash_function_source(transaction, "railway_approval_bounded_gh")
+    portable_bounded_gh = _bash_function_source(transaction, "railway_bounded_gh")
+    pending = _bash_function_source(transaction, "read_railway_pending_state")
+
+    assert "RAILWAY_APPROVAL_WAIT_BUDGET_SECONDS=5400" in transaction
+    assert "time.monotonic_ns() + budget_seconds * 1_000_000_000" in transaction
+    assert "int(sys.argv[1], 10) - time.monotonic_ns()" in remaining
+    assert "command_timeout_seconds > remaining_seconds" in command_timeout
+    assert "railway_bounded_gh" in bounded_gh
+    assert "subprocess.Popen(" in portable_bounded_gh
+    assert "start_new_session=True" in portable_bounded_gh
+    assert "process.wait(timeout=timeout_seconds)" in portable_bounded_gh
+    assert "except subprocess.TimeoutExpired" in portable_bounded_gh
+    assert "os.killpg(process.pid, signal.SIGTERM)" in portable_bounded_gh
+    assert "os.killpg(process.pid, signal.SIGKILL)" in portable_bounded_gh
+    assert "SystemExit(124)" in portable_bounded_gh
+    assert 'IFS= read -r -t "$RAILWAY_APPROVAL_REMAINING_SECONDS"' in transaction
+    assert "railway_approval_bounded_gh" in pending
+    assert (
+        "while true; do"
+        in transaction[transaction.index("RAILWAY_RELEASE_APPROVED=0") :]
+    )
+    assert "for _ in {1..900}; do" not in transaction
+
+
+def test_phase_two_portable_github_timeout_returns_124(tmp_path: Path) -> None:
+    transaction = _transaction()
+    bounded_gh = _bash_function_source(transaction, "railway_bounded_gh")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_gh = fake_bin / "gh"
+    fake_gh.write_text("#!/bin/sh\nsleep 5\n", encoding="utf-8")
+    fake_gh.chmod(0o700)
+
+    result = subprocess.run(
+        ["/bin/bash", "--noprofile", "--norc"],
+        input=(
+            f"{bounded_gh}\n"
+            f"PATH={fake_bin}:$PATH\n"
+            "railway_bounded_gh 1 api repos/example/project\n"
+        ),
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=4,
+    )
+    assert result.returncode == 124
+    assert "bounded GitHub command timed out" in result.stderr
+
+
+def test_phase_two_release_receipts_bind_the_exact_downstream_run(
+    tmp_path: Path,
+) -> None:
+    source = _python_heredoc_after('python3 - "$RAILWAY_TRANSACTION_RECEIPT"')
+    transaction_path = tmp_path / "railway-continuous-transaction.json"
+    verification_path = tmp_path / "railway-continuous-verification.json"
+    repository = "beepboop2025/palimpsest"
+    run_id = "33000000000"
+    run_attempt = "1"
+    sha = "c" * 40
+    verification = {
+        "schema_version": "palimpsest.railway-continuous-release-receipt.v1",
+        "status": "verified",
+        "release": {"source_commit": sha},
+        "deployment": {"status": "SUCCESS"},
+        "live": {
+            "public_origin_verified": True,
+            "manifest_byte_identical": True,
+            "critical_inventory_byte_identical": True,
+        },
+    }
+    _write_canonical_json(verification_path, verification)
+    transaction = {
+        "schema_version": "palimpsest.railway-continuous-transaction.v1",
+        "status": "deployed",
+        "phase": "complete",
+        "failure_reason": None,
+        "repository": repository,
+        "run_id": run_id,
+        "run_attempt": run_attempt,
+        "publication_sha": sha,
+        "railway": {"exclusive_writer_ack": "palimpsest-github-environment-v1"},
+        "verification": {
+            "mcp_rights_smoke": "verified",
+            "receipt_sha256": hashlib.sha256(
+                verification_path.read_bytes()
+            ).hexdigest(),
+        },
+    }
+    _write_canonical_json(transaction_path, transaction)
+    valid = _run_embedded_python(
+        source,
+        transaction_path,
+        verification_path,
+        repository,
+        run_id,
+        run_attempt,
+        sha,
+    )
+    assert valid.returncode == 0, valid.stderr
+
+    verification["live"]["manifest_byte_identical"] = False
+    _write_canonical_json(verification_path, verification)
+    transaction["verification"]["receipt_sha256"] = hashlib.sha256(
+        verification_path.read_bytes()
+    ).hexdigest()
+    _write_canonical_json(transaction_path, transaction)
+    drifted = _run_embedded_python(
+        source,
+        transaction_path,
+        verification_path,
+        repository,
+        run_id,
+        run_attempt,
+        sha,
+    )
+    assert drifted.returncode != 0
+    assert "downstream Railway release evidence is invalid" in drifted.stderr
 
 
 def test_manual_publication_workflow_is_causally_bound_to_the_release() -> None:
@@ -3067,7 +3633,7 @@ def test_public_release_proof_is_fsynced_before_use_and_after_deletion() -> None
     proof_path = transaction.index("RELEASE_PROOF_PATH=", phase_three)
     proof_install = transaction.index(
         "sudo install -o root -g root -m 0600 \\\n"
-        '  "$SYNC_RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"',
+        '  "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"',
         proof_path,
     )
     proof_fsync = transaction.index(
@@ -3088,6 +3654,60 @@ def test_public_release_proof_is_fsynced_before_use_and_after_deletion() -> None
         < proof_delete
         < delete_dir_fsync
         < worker_restore
+    )
+
+
+def test_phase_three_installs_the_exact_canonical_v2_handoff() -> None:
+    phase_three = _fenced_bash_block_after("### Phase 3: host finalization")
+
+    canonical_emit = phase_three.index(
+        'print(json.dumps(value, sort_keys=True, separators=(",", ":")))'
+    )
+    v2_validation = phase_three.index(
+        'value.get("schema") != "palimpsest-public-osint-release-proof.v2"'
+    )
+    proof_path = phase_three.index(
+        "RELEASE_PROOF_PATH='/var/lib/palimpsest-public-osint-sync/release-proof.json'"
+    )
+    proof_install = phase_three.index(
+        "sudo install -o root -g root -m 0600 \\\n"
+        '  "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"',
+        proof_path,
+    )
+    exact_readback = phase_three.index(
+        'sudo cmp -s "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"',
+        proof_install,
+    )
+    proof_fsync = phase_three.index(
+        'fsync_installed_paths "$RELEASE_PROOF_PATH"', exact_readback
+    )
+    provider_run = phase_three.index(
+        "run_final_observer palimpsest-public-osint-sync.service", proof_fsync
+    )
+
+    assert "palimpsest-public-osint-release-proof.v1" not in phase_three
+    assert "SYNC_RELEASE_PROOF_TMP" not in phase_three
+    for persisted_field in (
+        '"public_release_commit"',
+        '"public_manifest_sha256"',
+        '"public_osint_stub_sha256"',
+        '"public_rights_status_sha256"',
+        '"public_ledger_sha256"',
+    ):
+        assert persisted_field in phase_three[:proof_install]
+        assert (
+            f"receipt.get({persisted_field}) == proof.get({persisted_field})"
+            in phase_three.replace("\n        ", " ")
+        )
+    assert 'receipt.get("schema") == "palimpsest-public-osint-sync.v3"' in phase_three
+    assert (
+        v2_validation
+        < canonical_emit
+        < proof_path
+        < proof_install
+        < exact_readback
+        < proof_fsync
+        < provider_run
     )
 
 
@@ -3524,7 +4144,9 @@ def test_final_observers_reject_stored_and_gate_named_exit_two_statuses() -> Non
         assert marker in observer
     assert "SuccessExitStatus=2" not in observer
     assert (
-        transaction.index("https://palimpsest.info/readings/bleedthrough-latest.json")
+        transaction.index(
+            "https://www.palimpsest.info/readings/bleedthrough-latest.json"
+        )
         < transaction.index("run_final_observer palimpsest-freshness-watchdog.service")
         < transaction.index("run_final_observer palimpsest-witness.service")
     )
@@ -3540,13 +4162,77 @@ def test_phase_one_requires_fresh_lineage_linked_publications_before_mutation() 
         "fresh, lineage-linked Newswire and China situation are required",
         publication_gate,
     )
-    first_stop = transaction.index('stop_loaded_unit "$unit"', refusal)
-
-    assert "readings/newswire-latest.json" in DEPLOY_GUIDE.read_text(encoding="utf-8")
-    assert "readings/china-situation-latest.json" in DEPLOY_GUIDE.read_text(
-        encoding="utf-8"
+    mode_gate = transaction.index(
+        'publication.get("mode") != "rights-suppressed"', refusal
     )
-    assert baseline < publication_gate < refusal < first_stop
+    sha_gate = transaction.index(
+        'publication.get("publication_sha") != sys.argv[3]', mode_gate
+    )
+    manifest_gate = transaction.index(
+        'release_manifest.get("source_commit") != sys.argv[3]', sha_gate
+    )
+    identity_refusal = transaction.index(
+        "watchdog rights-suppressed publication is not the deployment SHA",
+        manifest_gate,
+    )
+    first_stop = transaction.index('stop_loaded_unit "$unit"', identity_refusal)
+
+    assert (
+        baseline
+        < publication_gate
+        < refusal
+        < mode_gate
+        < sha_gate
+        < manifest_gate
+        < identity_refusal
+        < first_stop
+    )
+
+
+def test_activation_keeps_schedule_closed_until_both_canaries_and_host_phases() -> None:
+    guide = CONTINUOUS_PUBLICATION_GUIDE.read_text(encoding="utf-8")
+    sequence = guide[guide.index("The fixed cross-plane sequence is:") :]
+
+    schedule_closed = sequence.index(
+        "keep `RAILWAY_PUBLICATION_ENABLED=false` and every schedule frozen"
+    )
+    newswire = sequence.index("run one production Newswire refresh", schedule_closed)
+    first_canary = sequence.index(
+        "run the first controlled `activation_canary=true` Railway publication",
+        newswire,
+    )
+    phase_one = sequence.index("complete host Phase 1", first_canary)
+    publication_p = sequence.index("let Phase 2 publish OSINT commit `P`", phase_one)
+    second_canary = sequence.index(
+        "run the second controlled canary so public release `R` contains `P`",
+        publication_p,
+    )
+    phase_three = sequence.index("complete host Phase 3", second_canary)
+    producers = sequence.index(
+        "prove scheduled producer ownership one workflow at a time", phase_three
+    )
+    final_boundary = sequence.index(
+        "re-enable all three at one short boundary", producers
+    )
+    schedule_open = sequence.index(
+        "only then let the hourly helper set `RAILWAY_PUBLICATION_ENABLED=true`",
+        final_boundary,
+    )
+
+    assert (
+        schedule_closed
+        < newswire
+        < first_canary
+        < phase_one
+        < publication_p
+        < second_canary
+        < phase_three
+        < producers
+        < final_boundary
+        < schedule_open
+    )
+    assert "Public raw OSINT is a refusal condition" in guide
+    assert "Never print, copy to Hetzner" in guide
 
 
 def test_backup_and_node_offsite_guides_repeat_the_release_safety_boundary() -> None:
@@ -3601,8 +4287,7 @@ def test_recovery_requires_a_reviewed_forward_repair_from_both_prior_shas() -> N
     assert "`export INTERRUPTED_PHASE1_RECOVERY=1`" in guide
     assert (
         ': "${INTERRUPTED_PHASE1_RECOVERY:?export '
-        'INTERRUPTED_PHASE1_RECOVERY=0_or_1}"'
-        in repair
+        'INTERRUPTED_PHASE1_RECOVERY=0_or_1}"' in repair
     )
     assert 'case "$INTERRUPTED_PHASE1_RECOVERY" in' in repair
     assert "export INTERRUPTED_PHASE1_RECOVERY" in repair
@@ -4190,9 +4875,7 @@ def test_common_crawl_retry_preserves_the_complete_prepared_receipt_chain() -> N
     assert mount["expected_source"] != mount["observed_source"]
     warehouse_source = str(Path(mount["expected_source"]).parent)
     transaction = _transaction()
-    assert transaction.count(
-        f"COMMON_CRAWL_WAREHOUSE_SOURCE='{warehouse_source}'"
-    ) == 1
+    assert transaction.count(f"COMMON_CRAWL_WAREHOUSE_SOURCE='{warehouse_source}'") == 1
     assert "HC_Volume_REPLACE" not in DEPLOY_GUIDE.read_text(encoding="utf-8")
     assert mount["source_identity"] == {
         "device": 2064,
@@ -4231,7 +4914,7 @@ def test_common_crawl_retry_preserves_the_complete_prepared_receipt_chain() -> N
     )
 
 
-def test_external_publication_wait_covers_a_full_pages_deployment() -> None:
+def test_external_publication_wait_covers_a_full_railway_deployment() -> None:
     transaction = _transaction()
 
     assert "PUBLICATION_WAIT_BUDGET_SECONDS=2700" in transaction
@@ -4242,14 +4925,22 @@ def test_external_publication_wait_covers_a_full_pages_deployment() -> None:
     assert "int(sys.argv[1], 10) - time.monotonic_ns()" in transaction
     assert "publication_remaining_seconds()" in transaction
     wait_helper = _bash_function_source(transaction, "wait_for_publication_sha256")
+    fetch_helper = _bash_function_source(transaction, "canonical_public_fetch")
     assert 'request_timeout_seconds="$PUBLICATION_CURL_MAX_SECONDS"' in wait_helper
     assert "request_timeout_seconds > remaining_seconds" in wait_helper
-    assert '--max-time "$request_timeout_seconds"' in wait_helper
-    assert wait_helper.count('remaining_seconds="$(publication_remaining_seconds)"') == 2
+    assert 'PUBLICATION_CURL_MAX_SECONDS="$request_timeout_seconds"' in wait_helper
+    assert '--max-time "$PUBLICATION_CURL_MAX_SECONDS"' in fetch_helper
+    assert '"$PUBLIC_ORIGIN"/*' in fetch_helper
+    assert "--location" not in fetch_helper
+    assert "--write-out '%{http_code}'" in fetch_helper
+    assert 'test "$response_code" = 200' in fetch_helper
+    assert (
+        wait_helper.count('remaining_seconds="$(publication_remaining_seconds)"') == 2
+    )
     assert 'sleep_seconds="$PUBLICATION_WAIT_INTERVAL_SECONDS"' in wait_helper
     assert "sleep_seconds > remaining_seconds" in wait_helper
     assert 'sleep "$sleep_seconds"' in wait_helper
-    assert transaction.count("wait_for_publication_sha256 \\") == 3
+    assert transaction.count("wait_for_publication_sha256 \\") == 1
     assert "PUBLICATION_WAIT_ATTEMPTS" not in transaction
     assert "publication_attempt" not in transaction
     assert "{1..80}" not in transaction

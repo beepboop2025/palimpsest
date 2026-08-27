@@ -9,6 +9,11 @@ on:
     - cron: "13 * * * *"
   workflow_dispatch:
     inputs:
+      activation_canary:
+        description: Run one protected pre-activation canary while the hourly gate remains closed
+        required: false
+        type: boolean
+        default: false
       force:
         description: Re-prove and redeploy the current main tip even when it is live
         required: false
@@ -16,6 +21,7 @@ on:
         default: false
 
 permissions:
+  actions: read
   contents: write
 
 concurrency:
@@ -24,7 +30,10 @@ concurrency:
 
 jobs:
   dispatch:
-    if: ${{ vars.RAILWAY_PUBLICATION_ENABLED == 'true' }}
+    # A one-shot activation canary must not require opening the hourly schedule
+    # gate.  Keeping those authorities separate prevents a delayed scheduled
+    # event from racing the operator's exact canary transaction.
+    if: ${{ vars.RAILWAY_PUBLICATION_ENABLED == 'true' || (github.event_name == 'workflow_dispatch' && inputs.activation_canary == true) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -150,6 +159,7 @@ jobs:
         id: request
         if: ${{ steps.plan.outputs.dispatch_required == 'true' }}
         env:
+          ACTIVATION_CANARY: ${{ github.event_name == 'workflow_dispatch' && inputs.activation_canary == true }}
           PUBLICATION_SHA: ${{ steps.plan.outputs.main_sha }}
           CONTROLLER_WORKFLOW_PATH: .github/workflows/railway-publication-controller.yml
         run: |
@@ -167,17 +177,24 @@ jobs:
           run_attempt = int(os.environ["GITHUB_RUN_ATTEMPT"])
           if run_id < 1 or run_attempt < 1:
               raise SystemExit("controller run identity is invalid")
+          activation_canary_text = os.environ["ACTIVATION_CANARY"]
+          if activation_canary_text not in {"true", "false"}:
+              raise SystemExit("activation canary input is not an exact boolean")
+          activation_canary = activation_canary_text == "true"
+          if activation_canary and os.environ["GITHUB_EVENT_NAME"] != "workflow_dispatch":
+              raise SystemExit("activation canary requires a manual controller run")
           requested_at = datetime.now(UTC).replace(microsecond=0).strftime(
               "%Y-%m-%dT%H:%M:%SZ"
           )
           request = {
+              "activation_canary": activation_canary,
               "controller_repository": os.environ["GITHUB_REPOSITORY"],
               "controller_run_attempt": run_attempt,
               "controller_run_id": run_id,
               "controller_workflow_path": os.environ["CONTROLLER_WORKFLOW_PATH"],
               "deploy_railway": True,
               "requested_at": requested_at,
-              "schema_version": "palimpsest.railway-publication-request.v1",
+              "schema_version": "palimpsest.railway-publication-request.v2",
               "scope": "complete",
               "sha": os.environ["PUBLICATION_SHA"],
           }
@@ -195,6 +212,9 @@ jobs:
           path.write_bytes(raw)
           path.chmod(0o600)
           with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(
+                  f"activation_canary={str(activation_canary).lower()}\n"
+              )
               output.write(f"requested_at={requested_at}\n")
               output.write(f"request_sha256={hashlib.sha256(raw).hexdigest()}\n")
           PY
@@ -214,9 +234,11 @@ jobs:
           archive: true
 
       - name: Dispatch one exact complete publication transaction
+        id: publication_dispatch
         if: ${{ steps.plan.outputs.dispatch_required == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
+          ACTIVATION_CANARY: ${{ steps.request.outputs.activation_canary }}
           PUBLICATION_SHA: ${{ steps.plan.outputs.main_sha }}
           REQUESTED_AT: ${{ steps.request.outputs.requested_at }}
           REQUEST_SHA256: ${{ steps.request.outputs.request_sha256 }}
@@ -233,6 +255,7 @@ jobs:
           [[ "$REQUEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
           jq -n \
             --arg event_type publication_contract \
+            --argjson activation_canary "$ACTIVATION_CANARY" \
             --arg sha "$PUBLICATION_SHA" \
             --argjson controller_run_id "$GITHUB_RUN_ID" \
             --argjson controller_run_attempt "$GITHUB_RUN_ATTEMPT" \
@@ -243,6 +266,7 @@ jobs:
               {
                 event_type: $event_type,
                 client_payload: {
+                  activation_canary: $activation_canary,
                   sha: $sha,
                   scope: "complete",
                   deploy_railway: true,
@@ -259,3 +283,417 @@ jobs:
               --input -
           printf 'Queued exact Railway publication %s.\n' "$PUBLICATION_SHA" \
             >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Seal the canonical controller outcome
+        id: outcome
+        if: >-
+          ${{ always() && steps.plan.outcome == 'success' &&
+          ((steps.plan.outputs.dispatch_required == 'false' &&
+          steps.request.outcome == 'skipped' &&
+          steps.request_artifact.outcome == 'skipped' &&
+          steps.publication_dispatch.outcome == 'skipped') ||
+          (steps.plan.outputs.dispatch_required == 'true' &&
+          steps.request.outcome == 'success' &&
+          steps.request_artifact.outcome == 'success' &&
+          steps.publication_dispatch.outcome == 'success')) }}
+        env:
+          ACTIVATION_CANARY: ${{ github.event_name == 'workflow_dispatch' && inputs.activation_canary == true }}
+          FORCE_RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.force == true }}
+          GATE_ENABLED: ${{ vars.RAILWAY_PUBLICATION_ENABLED == 'true' }}
+          PLAN_DISPATCH_REQUIRED: ${{ steps.plan.outputs.dispatch_required }}
+          PLAN_LIVE_SHA: ${{ steps.plan.outputs.live_sha }}
+          PLAN_MAIN_SHA: ${{ steps.plan.outputs.main_sha }}
+          REQUEST_ARTIFACT_DIGEST: ${{ steps.request_artifact.outputs.artifact-digest }}
+          REQUEST_ARTIFACT_ID: ${{ steps.request_artifact.outputs.artifact-id }}
+          REQUEST_ARTIFACT_STEP_OUTCOME: ${{ steps.request_artifact.outcome }}
+          REQUESTED_AT: ${{ steps.request.outputs.requested_at }}
+          REQUEST_SHA256: ${{ steps.request.outputs.request_sha256 }}
+          REQUEST_STEP_OUTCOME: ${{ steps.request.outcome }}
+          PUBLICATION_DISPATCH_STEP_OUTCOME: ${{ steps.publication_dispatch.outcome }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          umask 077
+          request_path="$RUNNER_TEMP/railway-publication-request.json"
+          metadata_path="$RUNNER_TEMP/railway-publication-request-artifact.json"
+          outcome_path="$RUNNER_TEMP/railway-publication-controller-outcome.json"
+          rm -f -- "$metadata_path"
+
+          if [ "$PLAN_DISPATCH_REQUIRED" = true ]; then
+            [[ "$REQUEST_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+            artifact_found=false
+            for _attempt in $(seq 1 3); do
+              if timeout --signal=TERM --kill-after=5s 30s gh api \
+                "repos/$GITHUB_REPOSITORY/actions/artifacts/$REQUEST_ARTIFACT_ID" \
+                >"${metadata_path}.partial"; then
+                mv -- "${metadata_path}.partial" "$metadata_path"
+                artifact_found=true
+                break
+              fi
+              rm -f -- "${metadata_path}.partial"
+              sleep 2
+            done
+            test "$artifact_found" = true
+          fi
+
+          python3 - "$metadata_path" "$request_path" "$outcome_path" <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import stat
+          import sys
+          from datetime import UTC, datetime
+
+
+          SHA40 = re.compile(r"[0-9a-f]{40}\Z")
+          SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+          TIME = re.compile(
+              r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\Z"
+          )
+          SECRET_KEY = re.compile(
+              r"(?:^|_)(?:secret|token|password|credential|private_key)(?:_|$)",
+              re.IGNORECASE,
+          )
+          REQUEST_KEYS = {
+              "activation_canary",
+              "controller_repository",
+              "controller_run_attempt",
+              "controller_run_id",
+              "controller_workflow_path",
+              "deploy_railway",
+              "requested_at",
+              "schema_version",
+              "scope",
+              "sha",
+          }
+          ROOT_KEYS = {
+              "activation_canary",
+              "controller_run_attempt",
+              "controller_run_id",
+              "event",
+              "force",
+              "gate_enabled",
+              "head_sha",
+              "live_sha",
+              "main_sha",
+              "recorded_at",
+              "repository",
+              "request_artifact_digest",
+              "request_artifact_id",
+              "request_artifact_name",
+              "request_artifact_size",
+              "request_sha256",
+              "requested_at",
+              "result",
+              "schema_version",
+              "workflow",
+              "workflow_name",
+          }
+
+
+          def fail(message):
+              raise SystemExit(message)
+
+
+          def strict_object(pairs):
+              value = {}
+              for key, item in pairs:
+                  if key in value:
+                      fail(f"duplicate JSON key: {key}")
+                  value[key] = item
+              return value
+
+
+          def reject_constant(value):
+              fail(f"non-finite JSON number: {value}")
+
+
+          def load_json(path, *, label, maximum):
+              raw = path.read_bytes()
+              if not 1 <= len(raw) <= maximum:
+                  fail(f"{label} has an invalid byte size")
+              try:
+                  value = json.loads(
+                      raw.decode("utf-8", "strict"),
+                      object_pairs_hook=strict_object,
+                      parse_constant=reject_constant,
+                  )
+              except (UnicodeError, ValueError) as error:
+                  fail(f"{label} is not strict JSON: {error}")
+              return raw, value
+
+
+          def exact_bool(name):
+              value = os.environ.get(name, "")
+              if value not in {"true", "false"}:
+                  fail(f"invalid {name}")
+              return value == "true"
+
+
+          def positive_int(name):
+              value = os.environ.get(name, "")
+              if not value.isascii() or not value.isdigit() or int(value) < 1:
+                  fail(f"invalid {name}")
+              return int(value)
+
+
+          def reject_secret_fields(value):
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      if SECRET_KEY.search(str(key)):
+                          fail(f"secret-like controller outcome field: {key}")
+                      reject_secret_fields(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      reject_secret_fields(child)
+
+
+          metadata_path = Path(sys.argv[1])
+          request_path = Path(sys.argv[2])
+          outcome_path = Path(sys.argv[3])
+          repository = os.environ.get("GITHUB_REPOSITORY", "")
+          event = os.environ.get("GITHUB_EVENT_NAME", "")
+          head_sha = os.environ.get("GITHUB_SHA", "")
+          main_sha = os.environ.get("PLAN_MAIN_SHA", "")
+          live_sha = os.environ.get("PLAN_LIVE_SHA", "")
+          dispatch_required = exact_bool("PLAN_DISPATCH_REQUIRED")
+          activation_canary = exact_bool("ACTIVATION_CANARY")
+          force = exact_bool("FORCE_RELEASE")
+          gate_enabled = exact_bool("GATE_ENABLED")
+          run_id = positive_int("GITHUB_RUN_ID")
+          run_attempt = positive_int("GITHUB_RUN_ATTEMPT")
+          workflow = ".github/workflows/railway-publication-controller.yml"
+          workflow_name = "Queue exact Railway publication"
+
+          if not re.fullmatch(r"[^/\s]+/[^/\s]+", repository):
+              fail("invalid controller repository")
+          if event not in {"schedule", "workflow_dispatch"}:
+              fail("unsupported controller event")
+          if not all(SHA40.fullmatch(value) for value in (head_sha, main_sha, live_sha)):
+              fail("controller outcome SHA is invalid")
+          if head_sha != main_sha:
+              fail("controller outcome is not bound to exact main")
+          if event == "schedule" and (activation_canary or force or not gate_enabled):
+              fail("scheduled controller authority is invalid")
+          if event == "workflow_dispatch" and not (gate_enabled or activation_canary):
+              fail("manual controller lacks gate or activation authority")
+
+          request_artifact_id = None
+          request_artifact_name = None
+          request_artifact_digest = None
+          request_artifact_size = None
+          request_sha256 = None
+          requested_at = None
+          if dispatch_required:
+              if os.environ.get("REQUEST_STEP_OUTCOME") != "success":
+                  fail("controller request step did not succeed")
+              if os.environ.get("REQUEST_ARTIFACT_STEP_OUTCOME") != "success":
+                  fail("controller request artifact did not succeed")
+              if os.environ.get("PUBLICATION_DISPATCH_STEP_OUTCOME") != "success":
+                  fail("controller publication dispatch did not succeed")
+              request_artifact_id = positive_int("REQUEST_ARTIFACT_ID")
+              request_artifact_name = (
+                  f"railway-publication-request-{run_id}-{run_attempt}"
+              )
+              request_artifact_digest = os.environ.get("REQUEST_ARTIFACT_DIGEST", "")
+              request_sha256 = os.environ.get("REQUEST_SHA256", "")
+              requested_at = os.environ.get("REQUESTED_AT", "")
+              if (
+                  SHA256.fullmatch(request_artifact_digest) is None
+                  or SHA256.fullmatch(request_sha256) is None
+                  or TIME.fullmatch(requested_at) is None
+              ):
+                  fail("controller request evidence is malformed")
+
+              metadata_raw, metadata = load_json(
+                  metadata_path,
+                  label="controller request artifact metadata",
+                  maximum=64 * 1024,
+              )
+              del metadata_raw
+              workflow_run = metadata.get("workflow_run") if isinstance(metadata, dict) else None
+              request_artifact_size = (
+                  metadata.get("size_in_bytes") if isinstance(metadata, dict) else None
+              )
+              if (
+                  not isinstance(metadata, dict)
+                  or metadata.get("id") != request_artifact_id
+                  or metadata.get("name") != request_artifact_name
+                  or metadata.get("expired") is not False
+                  or type(request_artifact_size) is not int
+                  or not 1 <= request_artifact_size <= 16 * 1024 * 1024
+                  or metadata.get("digest") != f"sha256:{request_artifact_digest}"
+                  or not isinstance(workflow_run, dict)
+                  or workflow_run.get("id") != run_id
+                  or workflow_run.get("head_branch") != "main"
+                  or workflow_run.get("head_sha") != head_sha
+              ):
+                  fail("controller request artifact metadata is invalid")
+
+              request_raw, request = load_json(
+                  request_path,
+                  label="controller request",
+                  maximum=16 * 1024,
+              )
+              canonical_request = (
+                  json.dumps(
+                      request,
+                      allow_nan=False,
+                      ensure_ascii=True,
+                      separators=(",", ":"),
+                      sort_keys=True,
+                  ).encode("ascii")
+                  + b"\n"
+              )
+              if request_raw != canonical_request:
+                  fail("controller request is not canonical")
+              if not isinstance(request, dict) or set(request) != REQUEST_KEYS:
+                  fail("controller request fields are not closed")
+              if request != {
+                  "activation_canary": activation_canary,
+                  "controller_repository": repository,
+                  "controller_run_attempt": run_attempt,
+                  "controller_run_id": run_id,
+                  "controller_workflow_path": workflow,
+                  "deploy_railway": True,
+                  "requested_at": requested_at,
+                  "schema_version": "palimpsest.railway-publication-request.v2",
+                  "scope": "complete",
+                  "sha": main_sha,
+              }:
+                  fail("controller request does not match its outcome")
+              if hashlib.sha256(request_raw).hexdigest() != request_sha256:
+                  fail("controller request digest changed")
+              result = "dispatched"
+          else:
+              if force or live_sha != main_sha:
+                  fail("controller no-change outcome is not exact")
+              if any(
+                  os.environ.get(name, "") not in {"", "skipped"}
+                  for name in (
+                      "REQUEST_STEP_OUTCOME",
+                      "REQUEST_ARTIFACT_STEP_OUTCOME",
+                      "PUBLICATION_DISPATCH_STEP_OUTCOME",
+                  )
+              ):
+                  fail("controller no-change unexpectedly created a request")
+              if any(
+                  os.environ.get(name, "")
+                  for name in (
+                      "REQUEST_ARTIFACT_DIGEST",
+                      "REQUEST_ARTIFACT_ID",
+                      "REQUESTED_AT",
+                      "REQUEST_SHA256",
+                  )
+              ):
+                  fail("controller no-change carries request evidence")
+              if metadata_path.exists() or request_path.exists():
+                  fail("controller no-change left request files")
+              result = "no_change"
+
+          recorded_at = datetime.now(UTC).replace(microsecond=0).strftime(
+              "%Y-%m-%dT%H:%M:%SZ"
+          )
+          outcome = {
+              "activation_canary": activation_canary,
+              "controller_run_attempt": run_attempt,
+              "controller_run_id": run_id,
+              "event": event,
+              "force": force,
+              "gate_enabled": gate_enabled,
+              "head_sha": head_sha,
+              "live_sha": live_sha,
+              "main_sha": main_sha,
+              "recorded_at": recorded_at,
+              "repository": repository,
+              "request_artifact_digest": request_artifact_digest,
+              "request_artifact_id": request_artifact_id,
+              "request_artifact_name": request_artifact_name,
+              "request_artifact_size": request_artifact_size,
+              "request_sha256": request_sha256,
+              "requested_at": requested_at,
+              "result": result,
+              "schema_version": "palimpsest.railway-publication-controller-outcome.v1",
+              "workflow": workflow,
+              "workflow_name": workflow_name,
+          }
+          if set(outcome) != ROOT_KEYS:
+              fail("controller outcome fields are not closed")
+          reject_secret_fields(outcome)
+          payload = (
+              json.dumps(
+                  outcome,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              ).encode("ascii")
+              + b"\n"
+          )
+          if not 1 <= len(payload) <= 64 * 1024:
+              fail("controller outcome is too large")
+          flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+          if hasattr(os, "O_NOFOLLOW"):
+              flags |= os.O_NOFOLLOW
+          descriptor = None
+          created_identity = None
+          try:
+              descriptor = os.open(outcome_path, flags, 0o600)
+              created = os.fstat(descriptor)
+              created_identity = (created.st_dev, created.st_ino)
+              offset = 0
+              while offset < len(payload):
+                  written = os.write(descriptor, payload[offset:])
+                  if written <= 0:
+                      fail("short controller outcome write")
+                  offset += written
+              os.fsync(descriptor)
+              os.close(descriptor)
+              descriptor = None
+              directory = os.open(outcome_path.parent, os.O_RDONLY | os.O_DIRECTORY)
+              try:
+                  os.fsync(directory)
+              finally:
+                  os.close(directory)
+          except BaseException:
+              if descriptor is not None:
+                  os.close(descriptor)
+              if created_identity is not None:
+                  try:
+                      observed = outcome_path.lstat()
+                      if (
+                          stat.S_ISREG(observed.st_mode)
+                          and (observed.st_dev, observed.st_ino) == created_identity
+                      ):
+                          outcome_path.unlink()
+                  except FileNotFoundError:
+                      pass
+              raise
+          PY
+
+      - name: Upload the immutable controller outcome
+        if: ${{ always() && steps.outcome.outcome == 'success' }}
+        id: outcome_artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: railway-publication-controller-outcome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/railway-publication-controller-outcome.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          archive: true
+
+      - name: Enforce one immutable controller outcome
+        if: ${{ always() }}
+        env:
+          OUTCOME_ARTIFACT_STEP: ${{ steps.outcome_artifact.outcome }}
+          OUTCOME_STEP: ${{ steps.outcome.outcome }}
+          PLAN_STEP: ${{ steps.plan.outcome }}
+        run: |
+          test "$PLAN_STEP" = success
+          test "$OUTCOME_STEP" = success
+          test "$OUTCOME_ARTIFACT_STEP" = success

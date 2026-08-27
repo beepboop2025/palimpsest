@@ -6,18 +6,72 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
+import secrets
 
-import yaml
+from jsonschema import Draft202012Validator, ValidationError
 import pytest
+import yaml
 
 from scripts import collector_health_watchdog as watchdog
 
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "collector-health-watchdog.yml"
+RECEIPT_SCHEMA = ROOT / "protocol" / "collector-health-watchdog-receipt-v1.schema.json"
 NOW = datetime(2026, 8, 13, 12, 0, tzinfo=timezone.utc)
 STRICT_NEWSWIRE_VALIDATOR = watchdog._validate_newswire_contract
 STRICT_SITUATION_VALIDATOR = watchdog._validate_situation_contract
+
+
+def _canonical_bytes(value: dict) -> bytes:
+    return (
+        json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("ascii")
+
+
+def _receipt_schema() -> dict:
+    return json.loads(RECEIPT_SCHEMA.read_text(encoding="utf-8"))
+
+
+def _zero_action_receipt() -> dict:
+    sha = "a" * 40
+    plan = {
+        "bundle_generated_at": "2026-08-13T11:30:00Z",
+        "bundle_stale": False,
+        "dispatch": [],
+        "escalations": [],
+        "generated_at": "2026-08-13T12:00:00Z",
+        "problems": [],
+        "schema_version": "collector-watchdog-plan.v2",
+    }
+    return {
+        "actor": "beepboop2025",
+        "checkout_sha": sha,
+        "dispatch_step_outcome": "success",
+        "dispatches": [],
+        "event": "workflow_dispatch",
+        "event_sha": sha,
+        "final_main_sha": sha,
+        "observed_at": "2026-08-13T12:00:00Z",
+        "observed_main_sha": sha,
+        "plan": plan,
+        "plan_sha256": hashlib.sha256(_canonical_bytes(plan)).hexdigest(),
+        "repository": "beepboop2025/palimpsest",
+        "run_attempt": 1,
+        "run_id": 123,
+        "schema_version": "palimpsest.collector-health-watchdog-receipt.v1",
+        "status": "success",
+        "workflow": ".github/workflows/collector-health-watchdog.yml",
+        "workflow_name": "Recover stale collector publications",
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -392,20 +446,43 @@ def test_watchdog_workflow_has_only_narrow_read_and_dispatch_permissions() -> No
     )
     source = WORKFLOW.read_text(encoding="utf-8")
     assert "gh workflow run" in source
-    assert "ref: main" in source
+    assert "ref: ${{ github.sha }}" in source
+    assert "persist-credentials: false" in source
     assert "watchdog_now=" in source
-    assert source.count('--now "$watchdog_now"') == 3
-    assert "--format escalations" in source
+    assert source.count('--now "$watchdog_now"') == 2
+    assert "--format json" in source
+    assert "--format summary" in source
     assert "WATCHDOG_TRIGGER: ${{ github.event_name }}" in source
-    assert '[ "$workflow" != "newswire-refresh.yml" ]' in source
     assert "if: always()" in source
-    assert source.index("gh workflow run") < source.index(
-        "Persistent publication freshness failure"
+    assert (
+        "collector-health-watchdog-receipt-${{ github.run_id }}-${{ github.run_attempt }}"
+        in source
     )
+    assert "retention-days: 90" in source
+    assert "compression-level: 0" in source
     assert "Refresh evidence wire" not in source
     assert "git push" not in source
     assert "issues: write" not in source
     assert "cancel-in-progress: true" not in source
+
+
+def test_watchdog_respects_live_workflow_activation_authority() -> None:
+    source = WORKFLOW.read_text(encoding="utf-8")
+    state_query = '"repos/$GITHUB_REPOSITORY/actions/workflows/$workflow"'
+    failed_query = "if ! workflow_state=$(gh api"
+    exact_active_gate = 'if [ "$workflow_state" != "active" ]; then'
+    active_run_query = "active=$(gh run list"
+    dispatch = 'gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY"'
+
+    assert state_query in source
+    assert "--jq '.state'" in source
+    assert failed_query in source
+    assert exact_active_gate in source
+    assert source.index(failed_query) < source.index(exact_active_gate)
+    assert source.index(exact_active_gate) < source.index(active_run_query)
+    assert source.index(active_run_query) < source.index(dispatch)
+    assert "respecting its operator-controlled freeze" in source
+    assert '"failed_state_query"' in source
 
 
 def test_cli_emits_only_allowlisted_workflow_names(tmp_path: Path, capsys) -> None:
@@ -470,3 +547,199 @@ def test_cli_escalation_output_is_bounded_and_still_returns_zero(
         == 0
     )
     assert capsys.readouterr().out == "publication/china-situation\n"
+
+
+def test_watchdog_dispatches_osint_with_its_required_exact_inputs() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    dispatch_script = next(
+        step["run"]
+        for step in workflow["jobs"]["recover"]["steps"]
+        if step.get("id") == "dispatch"
+    )
+    osint = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml").read_text(
+            encoding="utf-8"
+        )
+    )
+    required = {
+        name
+        for name, value in osint[True]["workflow_dispatch"]["inputs"].items()
+        if value.get("required") is True
+    }
+
+    assert required == {"expected_deploy_sha", "release_nonce"}
+    assert 'if [ "$workflow" = "osint-china-v2-refresh.yml" ]; then' in dispatch_script
+    assert '-f expected_deploy_sha="$dispatch_sha"' in dispatch_script
+    assert '-f release_nonce="$release_nonce"' in dispatch_script
+    assert dispatch_script.count("gh workflow run") == 2
+    non_osint_branch = dispatch_script.split("else\n", 1)[1]
+    assert 'gh workflow run "$workflow" --repo "$GITHUB_REPOSITORY"' in non_osint_branch
+    assert " -f " not in non_osint_branch.split("fi\n", 1)[0]
+
+
+def test_watchdog_osint_sha_drift_is_fail_closed_on_both_sides() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    dispatch_script = next(
+        step["run"]
+        for step in workflow["jobs"]["recover"]["steps"]
+        if step.get("id") == "dispatch"
+    )
+
+    pre_read = "if ! dispatch_sha=$(read_main_sha); then"
+    pre_drift = 'if [ "$dispatch_sha" != "$before_sha" ]; then'
+    osint_branch = 'if [ "$workflow" = "osint-china-v2-refresh.yml" ]; then'
+    post_read = "if ! after_sha=$(read_main_sha); then"
+    post_drift = 'if [ "$after_sha" != "$dispatch_sha" ]; then'
+    assert dispatch_script.index(pre_read) < dispatch_script.index(pre_drift)
+    assert dispatch_script.index(pre_drift) < dispatch_script.index(osint_branch)
+    assert dispatch_script.index(osint_branch) < dispatch_script.index(post_read)
+    assert dispatch_script.index(post_read) < dispatch_script.index(post_drift)
+    assert dispatch_script.count('"failed_ref_drift"') == 2
+    assert 'test "$observed_main_sha" = "$checkout_sha"' in next(
+        step["run"]
+        for step in workflow["jobs"]["recover"]["steps"]
+        if step.get("id") == "plan"
+    )
+
+
+def test_watchdog_release_nonces_are_lowercase_exact_and_unique() -> None:
+    source = WORKFLOW.read_text(encoding="utf-8")
+    assert "secrets.token_hex(16)" in source
+    assert '[[ "$release_nonce" =~ ^[0-9a-f]{32}$ ]]' in source
+
+    generated = {secrets.token_hex(16) for _ in range(128)}
+    assert len(generated) == 128
+    assert all(re.fullmatch(r"[0-9a-f]{32}", item) for item in generated)
+
+
+def test_watchdog_receipt_allowlist_matches_the_planner_exactly() -> None:
+    schema = _receipt_schema()
+    schema_allowlist = set(schema["$defs"]["workflow"]["enum"])
+    planner_allowlist = set(watchdog.RECOVERY_WORKFLOWS.values()) | {
+        "newswire-refresh.yml"
+    }
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    plan_script = next(
+        step["run"]
+        for step in workflow["jobs"]["recover"]["steps"]
+        if step.get("id") == "plan"
+    )
+    inline_allowlist = set(
+        re.findall(r'^\s+"([a-z0-9-]+\.yml)",$', plan_script, re.MULTILINE)
+    )
+    dispatch_script = next(
+        step["run"]
+        for step in workflow["jobs"]["recover"]["steps"]
+        if step.get("id") == "dispatch"
+    )
+
+    assert schema_allowlist == planner_allowlist
+    assert inline_allowlist == planner_allowlist
+    assert all(name in dispatch_script for name in planner_allowlist)
+
+
+def test_watchdog_receipt_schema_is_closed_and_accepts_canonical_zero_action() -> None:
+    schema = _receipt_schema()
+    Draft202012Validator.check_schema(schema)
+    validator = Draft202012Validator(schema)
+    receipt = _zero_action_receipt()
+    validator.validate(receipt)
+    payload = _canonical_bytes(receipt)
+
+    assert payload.endswith(b"\n")
+    assert json.loads(payload) == receipt
+    assert _canonical_bytes(json.loads(payload)) == payload
+    assert receipt["plan"]["dispatch"] == []
+    assert receipt["dispatches"] == []
+    assert receipt["status"] == "success"
+    assert (
+        receipt["plan_sha256"]
+        == hashlib.sha256(_canonical_bytes(receipt["plan"])).hexdigest()
+    )
+
+    poisoned = {**receipt, "credential": "must-not-exist"}
+    with pytest.raises(ValidationError):
+        validator.validate(poisoned)
+
+
+def test_watchdog_receipt_accepts_only_exact_osint_arguments() -> None:
+    schema = _receipt_schema()
+    validator = Draft202012Validator(schema)
+    receipt = _zero_action_receipt()
+    sha = receipt["checkout_sha"]
+    receipt["plan"]["dispatch"] = ["osint-china-v2-refresh.yml"]
+    receipt["plan_sha256"] = hashlib.sha256(
+        _canonical_bytes(receipt["plan"])
+    ).hexdigest()
+    receipt["dispatches"] = [
+        {
+            "active_runs": 0,
+            "dispatch_args": {
+                "inputs": {
+                    "expected_deploy_sha": sha,
+                    "release_nonce": "b" * 32,
+                },
+                "ref": "main",
+            },
+            "main_sha_after_dispatch": sha,
+            "main_sha_before_dispatch": sha,
+            "observed_at": receipt["observed_at"],
+            "outcome": "dispatched",
+            "workflow": "osint-china-v2-refresh.yml",
+            "workflow_state": "active",
+        }
+    ]
+    validator.validate(receipt)
+
+    bad_nonce = json.loads(json.dumps(receipt))
+    bad_nonce["dispatches"][0]["dispatch_args"]["inputs"]["release_nonce"] = "B" * 32
+    with pytest.raises(ValidationError):
+        validator.validate(bad_nonce)
+
+    missing_sha = json.loads(json.dumps(receipt))
+    del missing_sha["dispatches"][0]["dispatch_args"]["inputs"]["expected_deploy_sha"]
+    with pytest.raises(ValidationError):
+        validator.validate(missing_sha)
+
+
+def test_watchdog_receipt_artifact_is_exact_and_secret_free() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    assert workflow[True]["workflow_dispatch"] == {}
+    upload = next(
+        step
+        for step in workflow["jobs"]["recover"]["steps"]
+        if step.get("id") == "receipt_artifact"
+    )
+    assert upload["with"] == {
+        "name": "collector-health-watchdog-receipt-${{ github.run_id }}-${{ github.run_attempt }}",
+        "path": "${{ runner.temp }}/collector-health-watchdog-receipt.json",
+        "if-no-files-found": "error",
+        "retention-days": 90,
+        "compression-level": 0,
+    }
+
+    forbidden = re.compile(r"(?:authorization|credential|password|secret|token)", re.I)
+
+    def keys(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                yield key
+                yield from keys(child)
+        elif isinstance(value, list):
+            for child in value:
+                yield from keys(child)
+
+    assert not [key for key in keys(_zero_action_receipt()) if forbidden.search(key)]
+    receipt_script = next(
+        step["run"]
+        for step in workflow["jobs"]["recover"]["steps"]
+        if step.get("id") == "receipt"
+    )
+    assert "watchdog receipt contains a secret field" in receipt_script
+    assert "allow_nan=False" in receipt_script
+    assert 'separators=(",", ":")' in receipt_script
+    assert "sort_keys=True" in receipt_script
+    assert "os.O_EXCL" in receipt_script
+    assert "O_NOFOLLOW" in receipt_script
+    assert receipt_script.count("os.fsync(") == 2
+    assert "output.write_bytes" not in receipt_script

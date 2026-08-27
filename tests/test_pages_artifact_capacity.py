@@ -111,6 +111,14 @@ def _repository(tmp_path: Path, *, denied_wire: bool = False) -> Path:
         repo / pages_rights.POLICY_RELATIVE_PATH,
         (capacity.ROOT / pages_rights.POLICY_RELATIVE_PATH).read_bytes(),
     )
+    for relative_path in (
+        pages_rights.NEWSWIRE_RELATIVE_PATH,
+        pages_rights.CHINA_SITUATION_RELATIVE_PATH,
+    ):
+        _write(
+            repo / relative_path,
+            (capacity.ROOT / relative_path).read_bytes(),
+        )
     _wire_fixture(repo, denied=denied_wire)
     _git(repo, "add", ".")
     _git(repo, "commit", "-qm", "initial")
@@ -181,7 +189,7 @@ def test_staged_tree_wins_over_head_unstaged_and_untracked_bytes(tmp_path: Path)
     transforms = receipt["staging_transforms"]
     assert transforms["pages_rights"] == {
         "publication_sha": archive_receipt["publication_sha"],
-        "quarantined_path_count": 0,
+        "quarantined_path_count": 2,
         "rights_evaluated_at": rights_status["rights_evaluated_at"],
         "schema_version": pages_rights.STATUS_SCHEMA,
     }

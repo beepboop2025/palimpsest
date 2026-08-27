@@ -351,11 +351,31 @@ is a hard activation freeze. The pre-implementation audit found such unfinished
 state, so re-audit the live host and close or formally reconcile it; do not
 unfreeze producers merely because the bridge code merged.
 
-- [ ] With scheduled publishers still disabled, execute the host runbook's
-      explicit manual Newswire prerequisite. Require Pages to serve fresh,
-      digest-bound `newswire-latest.json` and `china-situation-latest.json`
-      within the two-hour Phase 1 window, then pin that resulting current
-      `main` SHA as the forward-repair target.
+- [ ] Set and keep the repository variable
+      `RAILWAY_PUBLICATION_ENABLED=false`; leave scheduled publishers disabled.
+- [ ] Execute exactly one reviewed production Newswire refresh. Its accepted
+      commit must carry fresh, digest-bound Newswire and China-situation source
+      clocks within the two-hour Phase 1 window. Do not require their public
+      same-path endpoints to equal the raw Git artifacts: rights quarantine
+      deliberately replaces both with restricted stubs. Use
+      [`ops/railway/run-newswire-prerequisite.sh`](../ops/railway/run-newswire-prerequisite.sh)
+      from the bounded first-activation block in
+      [`ops/DEPLOY-HETZNER.md`](../ops/DEPLOY-HETZNER.md#first-newswire-prerequisite-and-railway-activation-canary)
+      and preserve its canonical receipt.
+- [ ] Dispatch the Railway controller once with `activation_canary=true` and
+      `force=false` while the schedule flag remains false, using
+      [`ops/railway/run-activation-canary`](../ops/railway/run-activation-canary)
+      with that prerequisite receipt. Require complete controller-to-downstream
+      selection, typed-SHA environment approval, immutable artifact evidence,
+      byte-identical provider/custom-domain manifests, and an exact
+      rights-suppressed freshness attestation bound to both raw input clocks and
+      canonical digests; controller success by itself is not deployment
+      success. Then pin the canonical
+      `https://www.palimpsest.info/railway-release.json` source commit as the
+      exact Phase 1 forward-repair target.
+- [ ] Run host Phase 1. Before its first mutation, its watchdog must report no
+      publication problem, `publication.mode=rights-suppressed`, and
+      `publication.publication_sha` equal to the pinned deployment SHA.
 - [ ] Complete or formally reconcile every open prepared recovery transaction
       using [`ops/DEPLOY-HETZNER.md`](../ops/DEPLOY-HETZNER.md).
 - [ ] Prove `/etc/palimpsest/deployed-commit`, the detached checkout, certified
@@ -367,59 +387,171 @@ unfreeze producers merely because the bridge code merged.
 - [ ] Restore only the host services and activators selected and proved by the
       exact Hetzner release transaction. This document does not authorize
       independently enabling stopped systemd timers or all collector profiles.
-- [ ] Let Phase 2 perform its bounded enable-dispatch-disable OSINT v2 proof;
-      do not substitute a permanently enabled schedule for that transaction.
+- [ ] Let Phase 2 perform its bounded enable-dispatch-disable OSINT v2
+      publication `P`; do not substitute a permanently enabled producer.
+- [ ] Still with `RAILWAY_PUBLICATION_ENABLED=false`, let Phase 2 dispatch a
+      second controlled `activation_canary=true` run. Its manifest source
+      release `R` must contain `P`. Require the canonical www origin to serve
+      the exact restricted OSINT same-path stub and digest-bound master rights
+      status, while its public ledger equals Git `R` and has the candidate `P`
+      ledger as a prefix. Public raw OSINT is a refusal condition.
+- [ ] Run Phase 3 in the original paused Phase 1 shell. It must recheck the
+      exact `R` public identities from the Phase 2 handoff, persist the exact
+      canonical `palimpsest-public-osint-release-proof.v2` bytes unchanged at
+      the root-only provider proof path, and let the root-mode provider
+      independently repeat the `P -> R`, latest-OSINT and ledger proof before
+      any producer ownership is restored. A v2-to-v1 projection is forbidden
+      because it would discard the public release and digest evidence.
 - [ ] Leave unrelated disabled GitHub collectors frozen. Restore only the
       minimum public-write workflow chain, one owner at a time:
       `newswire-refresh.yml`, then `osint-china-v2-refresh.yml`, then
       `collector-health-watchdog.yml`.
-- [ ] After each enablement, require one exact successful run, an accepted
-      descendant commit where bytes changed, and truthful freshness/abstention
-      output before enabling the next owner.
+- [ ] After each enablement, require one exact successful run and a closed
+      outcome before refreezing that owner: `published` requires changed bytes
+      and an accepted descendant main, while `no_change` requires unchanged
+      main and truthful freshness/abstention evidence.
 
 The three YAML names above are GitHub public-publication owners, not Hetzner
-systemd units. The minimum cross-plane sequence is: publish the runbook's
-manual Newswire prerequisite while schedules remain disabled; complete and
-prove all three host phases, including Phase 2's one-shot OSINT v2 proof; then
-restore scheduled ownership one workflow at a time—Newswire, OSINT v2 and the
-watchdog. Do not translate that sequence into ad hoc `systemctl enable`
-commands; the Hetzner runbook owns the host unit set and activator restoration.
+systemd units. The fixed cross-plane sequence is:
+
+1. keep `RAILWAY_PUBLICATION_ENABLED=false` and every schedule frozen;
+2. run one production Newswire refresh;
+3. run the first controlled `activation_canary=true` Railway publication;
+4. complete host Phase 1;
+5. let Phase 2 publish OSINT commit `P`;
+6. run the second controlled canary so public release `R` contains `P`;
+7. complete host Phase 3 and its independent restricted-publication proof;
+8. prove scheduled producer ownership one workflow at a time—Newswire, OSINT
+   v2, then the watchdog—refreezing each owner after its exact manual outcome;
+9. re-enable all three at one short boundary and prove a quiet all-owner state;
+   and
+10. only then let the hourly helper set `RAILWAY_PUBLICATION_ENABLED=true`
+    inside the acquired UTC `:09:00-:10:30` arming window, after freezing all
+    three producers and before binding exactly one `:13` scheduled controller
+    run and disabling that controller; and
+11. prove the controller result while all four schedules remain disabled, then
+    reactivate all four only in the next UTC `:20-:30` admission window, prove
+    quiet authority by `:40`, and seal live-byte evidence and the receipt before
+    the hard `:50` cutoff.
+
+Do not translate that sequence into ad hoc `systemctl enable` commands; the
+Hetzner runbook owns the host unit set and activator restoration.
+
+The executable handoff after Phase 3 is:
+
+1. copy the exact root-only finalized and proof-complete receipts to a private
+   workstation evidence directory and compare both SHA-256 values;
+2. extract the canonical `palimpsest-public-osint-release-proof.v2` object from
+   `proof_complete.publication.handoff` without changing its bytes;
+3. run [`ops/railway/run-producer-restore`](../ops/railway/run-producer-restore)
+   with distinct `EXPECTED_HOST_SHA=H` and
+   `EXPECTED_PUBLIC_RELEASE_SHA=R`, the three private receipt paths, a new
+   evidence directory and a new terminal receipt path; and
+4. after its `palimpsest.github-producer-restore.v2` receipt is `verified`, run
+   [`ops/railway/enable-hourly-publication`](../ops/railway/enable-hourly-publication)
+   with that receipt and a new `HOURLY_ACTIVATION_RECEIPT` path.
+
+Use the complete copy and invocation block in
+[`ops/DEPLOY-HETZNER.md`](../ops/DEPLOY-HETZNER.md#copy-phase-3-authority-and-restore-the-scheduled-producers).
+The restore helper proves `H -> P -> R`, never collapses host and public release
+identity, and accepts a producer-advanced retry only through the exact prior
+`failed-closed` receipt. The hourly helper keeps the gate false until a quiet
+UTC `:09:00-:10:30` arming window after the watchdog's `:05` tick, requires the
+typed exact final main SHA, freezes Newswire, OSINT and the watchdog, and proves
+unchanged producer, controller and Tests inventories before opening the gate.
+It binds exactly one real `:13` scheduled controller and then disables that
+controller, so all four schedules remain disabled throughout release proof.
+`dispatched` binds the request, exact attempt-1 Tests child, protected approval
+and release artifacts; `no_change` proves no Tests child and exact already-live
+main bytes. Both branches require both live origins to agree. A variable write
+by itself is not an activation receipt.
+
+After either branch closes, the helper waits for the next UTC `:20-:30`
+admission window, which deliberately misses Newswire's `:17` tick and leaves
+margin before OSINT's `:58` tick. It re-enables the three producers and the
+controller together, double-proves unchanged run inventories and authority by
+`:40`, and bounds the final provider/www fetch and receipt commit by `:50`.
 
 ### Canary and steady state
 
-1. With producer workflows still frozen and the exclusive-writer audit freshly
-   proved, set protected-environment
-   `RAILWAY_EXCLUSIVE_WRITER_ACK=palimpsest-github-environment-v1`, set
-   repository variable `RAILWAY_PUBLICATION_ENABLED=true`, and manually
-   dispatch one controller canary. Leave `force=false` when the live source SHA
-   differs from `main`.
-   Set `force=true` only when the SHAs already match and another newly admitted,
-   normally billable upload is intentionally authorized.
-2. Require the protected-environment approval, provider-origin proof,
-   custom-domain proof, critical-file proof, MCP rights smoke test and
-   schema-valid receipt. Record whether the transaction reports `deployed` or
-   the stricter exact-triple recovery result `recovered_existing`; do not infer
-   the latter from equal source/tree values alone.
-3. If the canary fails, set `RAILWAY_PUBLICATION_ENABLED=false` and remove the
-   protected exclusive-writer acknowledgement before any producer is unfrozen;
-   then follow the failure table above.
-4. If it succeeds, restore the minimum producer chain in the order above. The
-   hourly controller will coalesce their accepted commits.
-5. Leave all other collectors disabled until their ownership, source rights,
-   output path, freshness budget and recovery behavior receive the same review.
+The two activation canaries are explicitly authorized manual dispatches while
+`RAILWAY_PUBLICATION_ENABLED=false`; the controller accepts them only when
+`activation_canary=true`. Use `force=false`. A `force=true` upload is outside
+this host activation transaction and requires a separate billable-release
+decision.
+
+For a `dispatched` canary, require protected-environment approval,
+provider-origin proof, custom-domain proof at the exact canonical www origin,
+critical-file proof, MCP rights smoke and a schema-valid receipt. Record whether
+the transaction reports `deployed` or the stricter exact-triple
+`recovered_existing` result; do not infer the latter from equal source/tree
+values alone. A canary may instead close as exact `no_change` only when the
+controller emits no request or Tests child and both origins already prove the
+expected main manifest and freshness bytes.
+
+After Phase 3 succeeds, prove the minimum producer chain in the fixed order
+above. Each owner is enabled for one exact manual proof, accepts its closed
+workflow-specific `published`, `no_change` or watchdog `abstained` outcome, and
+is refrozen before the next owner. The helper then re-enables all three together
+and seals a quiet all-owner receipt. Only that receipt may let
+`enable-hourly-publication` set
+`RAILWAY_PUBLICATION_ENABLED=true`.
+
+The hourly success receipt always names the exact scheduled controller
+run/attempt, outcome artifact, served source SHA, manifest digest and
+freshness-attestation digest. It also records that producers were disabled
+before the gate, the controller was disabled after binding, the terminal
+reactivation clock and the `:20/:30/:40/:50` boundaries. Its `dispatched` branch
+additionally names the request artifact, Tests run/attempt and
+transaction/verification digests; those fields are canonically null for exact
+`no_change`, which instead proves no Tests addition and already-current live
+bytes. Leave all other collectors disabled until their ownership, source
+rights, output path, freshness budget and recovery behavior receive the same
+review.
+
+At any failure, reset `RAILWAY_PUBLICATION_ENABLED=false`, remove the protected
+exclusive-writer acknowledgement, and restore all three producers plus the
+controller to `active`. A `failed-closed` hourly receipt additionally requires
+the acknowledgement to be proved absent, no active run across the three
+producer, controller and Tests workflow inventories, and every bound
+controller/Tests run to be terminal (or proves that no such run exists);
+otherwise the result is `cleanup-unproved`. Preserve the secret-free receipts
+and exact deployment identities, and follow the failure table. Never print, copy to Hetzner, or add a Railway token to a handoff or diagnostic artifact.
+
+Only a producer `failed-closed` receipt may authorize a fresh producer retry;
+`cleanup-unproved` requires manual run/authority reconciliation first. An
+hourly-only retry retains the same verified producer receipt, uses a fresh
+hourly receipt path, reconciles any producer/controller/Tests run or workflow-
+state uncertainty, re-audits and recreates the exact acknowledgement, and
+reruns only the hourly helper.
 
 ## Operations and evidence to retain
 
-For every changed Railway edition, retain these artifacts together:
+For every activation proof, retain the branch-applicable artifacts together.
+An exact `no_change` binds an already-live edition rather than creating a
+changed one:
 
-- controller run ID/attempt, requested exact source SHA, canonical request,
-  request digest, artifact ID and artifact digest;
-- complete publication-contract run ID/attempt;
+- controller run ID/attempt and canonical controller-outcome artifact; for
+  `dispatched`, also the requested exact source SHA, canonical request, request
+  digest, artifact ID and artifact digest;
+- complete publication-contract run ID/attempt for `dispatched`, or exact proof
+  of no Tests addition for `no_change`;
 - Pages rights receipt and its SHA-256;
 - local `railway-release.json` and its SHA-256;
 - exact Railway deployment ID, image digest and allowlisted topology evidence;
 - continuous-release receipt and its SHA-256;
 - MCP rights smoke receipt;
+- canonical Phase 2 `palimpsest-public-osint-release-proof.v2` handoff digest,
+  plus proof that Phase 3 installed those exact bytes unchanged while the
+  provider ran and retained all five public identities in its
+  `palimpsest-public-osint-sync.v3` receipt and the proof-complete receipt;
+- canonical producer-restoration terminal receipt, its three per-stage receipt
+  digests and, when applicable, the exact prior failed-closed resume receipt;
+- canonical hourly-activation receipt with the exact scheduled controller,
+  closed result, workflow freeze/reactivation boundaries, live manifest digest
+  and freshness-attestation digest; retain Tests run IDs/attempts, controller
+  request digest and transaction/verification receipt digests only for
+  `dispatched` (the canonical receipt records nulls for `no_change`);
 - transaction receipt with submission state, exact candidate ID/message,
   rollback target and verified restored deployment ID/digest/reason if rollback
   occurred.

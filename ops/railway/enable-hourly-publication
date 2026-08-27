@@ -1,0 +1,3388 @@
+#!/usr/bin/env python3
+"""Open Palimpsest hourly publication after exact producer restoration.
+
+Required environment:
+
+* PRODUCER_RESTORE_RECEIPT: absolute private committed restoration receipt.
+* HOURLY_ACTIVATION_RECEIPT: absolute, not-yet-existing output receipt.
+
+The operator must type the receipt's exact final main SHA within 90 seconds.
+Every authority, workflow, run and SHA check is repeated after that prompt.  A
+single exact variable write is the only path that can open the hourly gate.
+Success additionally requires the imminent :13 schedule controller, its exact
+repository_dispatch Tests child, immutable release receipts, and byte-identical
+provider/www live proof.  The canonical receipt is the terminal boundary.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import secrets
+import select
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+from typing import Any, NoReturn, Sequence
+
+
+DEFAULT_REPOSITORY = "beepboop2025/palimpsest"
+PRODUCTION_ENVIRONMENT = "palimpsest-railway-production"
+EXCLUSIVE_WRITER_ACK = "palimpsest-github-environment-v1"
+GATE_VARIABLE = "RAILWAY_PUBLICATION_ENABLED"
+ACK_VARIABLE = "RAILWAY_EXCLUSIVE_WRITER_ACK"
+COMMAND_TIMEOUT_SECONDS = 60
+QUIET_WAIT_BUDGET_SECONDS = 9000
+RELEASE_PROOF_BUDGET_SECONDS = 9000
+PROMPT_TIMEOUT_SECONDS = 90
+POLL_INTERVAL_SECONDS = 2
+MAX_JSON_BYTES = 4 * 1024 * 1024
+MAX_RECEIPT_BYTES = 4 * 1024 * 1024
+
+SHA40 = re.compile(r"[0-9a-f]{40}\Z")
+SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
+NONCE32 = re.compile(r"[0-9a-f]{32}\Z")
+ACTIVE_RUN_STATES = ("in_progress", "pending", "queued", "requested", "waiting")
+CONTROLLER_WORKFLOW_ID = 343876046
+CONTROLLER_WORKFLOW = "railway-publication-controller.yml"
+CONTROLLER_NAME = "Queue exact Railway publication"
+RELEASE_WORKFLOW_ID = 323903518
+RELEASE_WORKFLOW = "tests.yml"
+RELEASE_NAME = "Tests"
+PROVIDER_ORIGIN = "https://palimpsest-publication-production.up.railway.app"
+PUBLIC_ORIGIN = "https://www.palimpsest.info"
+FRESHNESS_PATH = "readings/publication-freshness-attestation-latest.json"
+EXPECTED_RELEASE_JOBS = {
+    "Deploy and prove exact Railway publication": "success",
+    "Deploy exact complete Pages edition": "success",
+    "Package exact complete Pages edition": "success",
+    "Verify exact Pages and native MCP rights closure": "skipped",
+    "contract": "success",
+}
+
+
+@dataclass(frozen=True)
+class WorkflowSpec:
+    order: int
+    workflow_id: int
+    filename: str
+    display_name: str
+    job_name: str
+    dispatch_inputs: tuple[str, ...]
+
+
+WORKFLOWS = (
+    WorkflowSpec(
+        1, 332082300, "newswire-refresh.yml", "Refresh evidence wire", "publish", ()
+    ),
+    WorkflowSpec(
+        2,
+        341368020,
+        "osint-china-v2-refresh.yml",
+        "Refresh OSINT China roll-up v2",
+        "publish",
+        ("expected_deploy_sha", "release_nonce"),
+    ),
+    WorkflowSpec(
+        3,
+        333753226,
+        "collector-health-watchdog.yml",
+        "Recover stale collector publications",
+        "recover",
+        (),
+    ),
+)
+
+
+class ActivationError(RuntimeError):
+    """A fail-closed steady-state activation error."""
+
+
+class QuietWindowBusy(ActivationError):
+    """The reviewed producer/controller set has not settled for this hour."""
+
+
+class CommandError(ActivationError):
+    def __init__(self, label: str, returncode: int) -> None:
+        super().__init__(f"{label} failed with exit status {returncode}")
+        self.returncode = returncode
+
+
+class SignalAbort(ActivationError):
+    def __init__(self, signum: int) -> None:
+        super().__init__(f"hourly activation interrupted by signal {signum}")
+        self.signum = signum
+
+
+@dataclass
+class RunState:
+    gate_mutated: bool = False
+    workflows_mutated: bool = False
+    receipt_committed: bool = False
+    controller_run_id: int | None = None
+    release_run_id: int | None = None
+    receipt_status: str | None = None
+    controller_unbound: bool = False
+    release_unbound: bool = False
+    approval_uncertain: bool = False
+    source_sha: str | None = None
+    activated_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class RestoreAuthority:
+    raw: bytes
+    digest: str
+    path: Path
+    repository: str
+    initial_sha: str
+    final_sha: str
+    terminal_at: str
+    source_graph: dict[str, Any]
+    stages: tuple[dict[str, Any], ...]
+
+
+@dataclass(frozen=True)
+class Deadline:
+    expires_at: float
+
+    @classmethod
+    def start(cls, seconds: int) -> Deadline:
+        if seconds <= 0:
+            raise ActivationError("activation deadline must be positive")
+        return cls(time.monotonic() + seconds)
+
+    def remaining(self) -> float:
+        return max(0.0, self.expires_at - time.monotonic())
+
+    def require(self) -> float:
+        remaining = self.remaining()
+        if remaining <= 0:
+            raise ActivationError("hourly activation monotonic deadline expired")
+        return remaining
+
+    def command_timeout(self, ceiling: int = COMMAND_TIMEOUT_SECONDS) -> float:
+        return max(0.1, min(float(ceiling), self.require()))
+
+    def sleep(self, maximum: float = POLL_INTERVAL_SECONDS) -> None:
+        remaining = self.remaining()
+        if remaining <= 0:
+            raise ActivationError("hourly activation monotonic deadline expired")
+        time.sleep(min(maximum, remaining))
+
+
+def _bind_controller_run(state: RunState, run_id: int) -> None:
+    previous_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    )
+    try:
+        state.controller_run_id = run_id
+        state.release_unbound = True
+        state.controller_unbound = False
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+
+
+def _bind_release_run(state: RunState, run_id: int) -> None:
+    previous_mask = signal.pthread_sigmask(
+        signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+    )
+    try:
+        state.release_run_id = run_id
+        state.release_unbound = False
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+
+
+def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_constant(value: str) -> NoReturn:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+def _canonical(document: object) -> bytes:
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _strict_json(raw: bytes, *, label: str) -> Any:
+    if not 0 < len(raw) <= MAX_JSON_BYTES:
+        raise ActivationError(f"{label} has an invalid byte size")
+    try:
+        return json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeError, ValueError) as error:
+        raise ActivationError(f"{label} is not strict JSON") from error
+
+
+def _strict_json_text(raw: str, *, label: str) -> Any:
+    return _strict_json(raw.encode("utf-8"), label=label)
+
+
+def _expect_keys(value: Any, keys: set[str], *, label: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != keys:
+        raise ActivationError(f"{label} does not have its exact closed schema")
+    return value
+
+
+def _positive_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _utc(value: Any, *, label: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith(("Z", "+00:00")):
+        raise ActivationError(f"{label} is not an exact UTC timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ActivationError(f"{label} is not an exact UTC timestamp") from error
+    if parsed.utcoffset() != timedelta(0):
+        raise ActivationError(f"{label} is not UTC")
+    return parsed
+
+
+def _is_sha40(value: Any) -> bool:
+    return isinstance(value, str) and SHA40.fullmatch(value) is not None
+
+
+def _is_sha256(value: Any) -> bool:
+    return isinstance(value, str) and SHA256.fullmatch(value) is not None
+
+
+def _read_private_canonical(path: Path, *, label: str) -> tuple[bytes, Any]:
+    if not path.is_absolute():
+        raise ActivationError(f"{label} path must be absolute")
+    _private_directory(path.parent, label=f"{label} parent")
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as error:
+        raise ActivationError(f"cannot open {label} safely: {error}") from error
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or before.st_gid != os.getegid()
+            or before.st_nlink != 1
+            or stat.S_IMODE(before.st_mode) & 0o077
+            or not 0 < before.st_size <= MAX_RECEIPT_BYTES
+        ):
+            raise ActivationError(f"{label} is not an exact private regular file")
+        raw = b""
+        while len(raw) < before.st_size:
+            chunk = os.read(descriptor, min(65536, before.st_size - len(raw)))
+            if not chunk:
+                raise ActivationError(f"{label} changed while being read")
+            raw += chunk
+        if os.read(descriptor, 1):
+            raise ActivationError(f"{label} changed while being read")
+        after = os.fstat(descriptor)
+        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+        ):
+            raise ActivationError(f"{label} changed while being read")
+    finally:
+        os.close(descriptor)
+    value = _strict_json(raw, label=label)
+    if raw != _canonical(value):
+        raise ActivationError(f"{label} is not canonical JSON")
+    return raw, value
+
+
+def _private_directory(path: Path, *, label: str) -> None:
+    if not path.is_absolute() or path != Path(os.path.realpath(path)):
+        raise ActivationError(f"{label} must be an absolute non-symlink path")
+    details = path.stat()
+    if (
+        not stat.S_ISDIR(details.st_mode)
+        or details.st_uid != os.geteuid()
+        or stat.S_IMODE(details.st_mode) & 0o077
+    ):
+        raise ActivationError(f"{label} must be a private operator-owned directory")
+
+
+def _prepare_output(path_text: str) -> Path:
+    path = Path(path_text)
+    if not path.is_absolute() or path != Path(os.path.realpath(path)):
+        raise ActivationError(
+            "hourly activation receipt must be an absolute non-symlink path"
+        )
+    _private_directory(path.parent, label="hourly activation receipt parent")
+    try:
+        os.lstat(path)
+    except FileNotFoundError:
+        return path
+    raise ActivationError("hourly activation receipt already exists")
+
+
+def _write_final_receipt(
+    path: Path,
+    document: dict[str, Any],
+    state: RunState,
+    *,
+    not_after: datetime | None = None,
+) -> str:
+    payload = _canonical(document)
+    if len(payload) > MAX_RECEIPT_BYTES:
+        raise ActivationError("hourly activation receipt exceeds its byte ceiling")
+    temporary = path.parent / f".{path.name}.{os.getpid()}.{secrets.token_hex(8)}.tmp"
+    descriptor: int | None = None
+    linked = False
+    previous_mask: set[signal.Signals] | None = None
+    try:
+        descriptor = os.open(
+            temporary,
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+            0o600,
+        )
+        offset = 0
+        while offset < len(payload):
+            offset += os.write(descriptor, payload[offset:])
+        os.fchmod(descriptor, stat.S_IRUSR)
+        os.fsync(descriptor)
+        os.close(descriptor)
+        descriptor = None
+        previous_mask = signal.pthread_sigmask(
+            signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+        )
+        try:
+            if not_after is not None and _utc_now() >= not_after:
+                raise ActivationError("terminal receipt crossed the :50 cutoff")
+            os.link(temporary, path, follow_symlinks=False)
+            linked = True
+            temporary.unlink()
+            directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                os.fsync(directory)
+            finally:
+                os.close(directory)
+            if not_after is not None and _utc_now() >= not_after:
+                raise ActivationError("terminal receipt commit crossed the :50 cutoff")
+            state.receipt_committed = True
+            state.receipt_status = str(document.get("status"))
+        finally:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            previous_mask = None
+    except FileExistsError as error:
+        raise ActivationError(
+            "hourly activation receipt appeared concurrently"
+        ) from error
+    except BaseException:
+        if linked and not state.receipt_committed:
+            try:
+                path.unlink()
+                directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(directory)
+                finally:
+                    os.close(directory)
+            except FileNotFoundError:
+                pass
+        raise
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        if previous_mask is not None:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        temporary.unlink(missing_ok=True)
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _validate_jobs(value: Any, spec: WorkflowSpec, *, run_id: int) -> None:
+    if not isinstance(value, list) or len(value) != 1:
+        raise ActivationError(f"stage {spec.order} job evidence is not exact")
+    job = _expect_keys(
+        value[0],
+        {"conclusion", "name", "run_attempt", "steps"},
+        label=f"stage {spec.order} job",
+    )
+    if (
+        job["conclusion"] != "success"
+        or job["name"] != spec.job_name
+        or job["run_attempt"] != 1
+        or not isinstance(job["steps"], list)
+        or not job["steps"]
+    ):
+        raise ActivationError(f"stage {spec.order} job evidence is invalid")
+    successes = 0
+    for raw in job["steps"]:
+        step = _expect_keys(
+            raw,
+            {"conclusion", "name", "number", "status"},
+            label=f"stage {spec.order} job step",
+        )
+        if (
+            not isinstance(step["name"], str)
+            or not _positive_int(step["number"])
+            or step["status"] != "completed"
+            or step["conclusion"] not in {"skipped", "success"}
+        ):
+            raise ActivationError(
+                f"stage {spec.order} has failed/incomplete step evidence"
+            )
+        successes += step["conclusion"] == "success"
+    if not successes or not _positive_int(run_id):
+        raise ActivationError(f"stage {spec.order} has no meaningful successful step")
+
+
+def _validate_artifact(value: Any, *, label: str) -> dict[str, Any]:
+    artifact = _expect_keys(
+        value,
+        {"artifact_id", "file", "name", "receipt_sha256", "size_in_bytes"},
+        label=label,
+    )
+    if (
+        not _positive_int(artifact["artifact_id"])
+        or not isinstance(artifact["file"], str)
+        or not isinstance(artifact["name"], str)
+        or not _is_sha256(artifact["receipt_sha256"])
+        or not _positive_int(artifact["size_in_bytes"])
+    ):
+        raise ActivationError(f"{label} is malformed")
+    return artifact
+
+
+def _validate_stage(
+    path: Path,
+    *,
+    expected_digest: str,
+    spec: WorkflowSpec,
+    repository: str,
+    main_before: str,
+) -> tuple[dict[str, Any], str]:
+    raw, value = _read_private_canonical(
+        path, label=f"producer stage {spec.order} receipt"
+    )
+    if hashlib.sha256(raw).hexdigest() != expected_digest:
+        raise ActivationError(f"producer stage {spec.order} receipt digest changed")
+    stage = _expect_keys(
+        value,
+        {
+            "authority",
+            "dispatch_inputs",
+            "main_after",
+            "main_before",
+            "outcome",
+            "outcome_evidence",
+            "repository",
+            "run",
+            "run_additions",
+            "schema_version",
+            "stage_started_at",
+            "status",
+            "verified_at",
+            "workflow",
+        },
+        label=f"producer stage {spec.order} receipt",
+    )
+    authority = _expect_keys(
+        stage["authority"],
+        {"exclusive_writer_ack", "hourly_publication_enabled"},
+        label=f"stage {spec.order} authority",
+    )
+    workflow = _expect_keys(
+        stage["workflow"],
+        {
+            "dispatch_inputs",
+            "file",
+            "id",
+            "name",
+            "order",
+            "state_after",
+            "state_before",
+            "yaml_sha256",
+        },
+        label=f"stage {spec.order} workflow",
+    )
+    run = _expect_keys(
+        stage["run"],
+        {
+            "conclusion",
+            "created_at",
+            "event",
+            "head_sha",
+            "jobs",
+            "run_attempt",
+            "run_id",
+            "updated_at",
+        },
+        label=f"stage {spec.order} run",
+    )
+    additions = stage["run_additions"]
+    expected_additions = {
+        item.filename: ([run["run_id"]] if item.order == spec.order else [])
+        for item in WORKFLOWS
+    }
+    if (
+        stage["schema_version"] != "palimpsest.github-producer-stage.v1"
+        or stage["status"] != "verified"
+        or stage["repository"] != repository
+        or stage["main_before"] != main_before
+        or not _is_sha40(stage["main_after"])
+        or authority
+        != {
+            "exclusive_writer_ack": EXCLUSIVE_WRITER_ACK,
+            "hourly_publication_enabled": False,
+        }
+        or workflow
+        != {
+            "dispatch_inputs": list(spec.dispatch_inputs),
+            "file": spec.filename,
+            "id": spec.workflow_id,
+            "name": spec.display_name,
+            "order": spec.order,
+            "state_after": "disabled_manually",
+            "state_before": "disabled_manually",
+            "yaml_sha256": workflow["yaml_sha256"],
+        }
+        or not _is_sha256(workflow["yaml_sha256"])
+        or run["conclusion"] != "success"
+        or run["event"] != "workflow_dispatch"
+        or run["head_sha"] != main_before
+        or run["run_attempt"] != 1
+        or not _positive_int(run["run_id"])
+        or additions != expected_additions
+    ):
+        raise ActivationError(f"producer stage {spec.order} semantics are invalid")
+    _utc(stage["stage_started_at"], label=f"stage {spec.order} started_at")
+    _utc(stage["verified_at"], label=f"stage {spec.order} verified_at")
+    _utc(run["created_at"], label=f"stage {spec.order} run created_at")
+    _utc(run["updated_at"], label=f"stage {spec.order} run updated_at")
+    _validate_jobs(run["jobs"], spec, run_id=run["run_id"])
+    dispatch = stage["dispatch_inputs"]
+    if spec.order == 2:
+        if (
+            not isinstance(dispatch, dict)
+            or set(dispatch) != set(spec.dispatch_inputs)
+            or dispatch.get("expected_deploy_sha") != main_before
+            or NONCE32.fullmatch(dispatch.get("release_nonce", "")) is None
+        ):
+            raise ActivationError("OSINT stage dispatch inputs are not exact")
+    elif dispatch != {}:
+        raise ActivationError(f"stage {spec.order} used unsupported dispatch inputs")
+    evidence = stage["outcome_evidence"]
+    if spec.order == 1:
+        expected_keys = {"artifact", "kind", "result"}
+        if stage["outcome"] == "published":
+            expected_keys.add("commit")
+        evidence = _expect_keys(evidence, expected_keys, label="Newswire outcome")
+        artifact = _validate_artifact(evidence["artifact"], label="Newswire artifact")
+        if (
+            stage["outcome"] not in {"no_change", "published"}
+            or evidence["kind"] != "artifact"
+            or evidence["result"]
+            != ("committed" if stage["outcome"] == "published" else "no_change")
+            or artifact["name"] != f"newswire-manual-outcome-{run['run_id']}-1"
+            or artifact["file"] != "newswire-manual-outcome.json"
+            or (stage["outcome"] == "no_change" and stage["main_after"] != main_before)
+        ):
+            raise ActivationError("Newswire outcome evidence is invalid")
+        if stage["outcome"] == "published":
+            commit = _expect_keys(
+                evidence["commit"],
+                {"message", "parent", "sha"},
+                label="Newswire commit",
+            )
+            if (
+                commit["parent"] != main_before
+                or commit["sha"] != stage["main_after"]
+                or not isinstance(commit["message"], str)
+                or not commit["message"].startswith("data: evidence wire refresh (")
+            ):
+                raise ActivationError("Newswire commit evidence is invalid")
+    elif spec.order == 2:
+        expected_keys = {"artifact", "kind", "result"}
+        if stage["outcome"] == "published":
+            expected_keys.add("commit")
+        evidence = _expect_keys(evidence, expected_keys, label="OSINT outcome")
+        artifact = _validate_artifact(evidence["artifact"], label="OSINT artifact")
+        if (
+            stage["outcome"] not in {"no_change", "published"}
+            or evidence["kind"] != "artifact"
+            or evidence["result"]
+            != ("committed" if stage["outcome"] == "published" else "no_change")
+            or artifact["name"] != f"osint-manual-outcome-{run['run_id']}-1"
+            or artifact["file"] != "osint-manual-outcome.json"
+            or (stage["outcome"] == "no_change" and stage["main_after"] != main_before)
+        ):
+            raise ActivationError("OSINT outcome evidence is invalid")
+        if stage["outcome"] == "published":
+            commit = _expect_keys(
+                evidence["commit"], {"message", "parent", "sha"}, label="OSINT commit"
+            )
+            if (
+                commit["parent"] != main_before
+                or commit["sha"] != stage["main_after"]
+                or not commit["message"].startswith("data: OSINT China refresh (")
+            ):
+                raise ActivationError("OSINT commit evidence is invalid")
+    else:
+        evidence = _expect_keys(
+            evidence, {"artifact", "kind", "plan_sha256"}, label="watchdog outcome"
+        )
+        artifact = _validate_artifact(evidence["artifact"], label="watchdog artifact")
+        if (
+            stage["outcome"] != "abstained"
+            or stage["main_after"] != main_before
+            or evidence["kind"] != "artifact"
+            or not _is_sha256(evidence["plan_sha256"])
+            or artifact["name"]
+            != f"collector-health-watchdog-receipt-{run['run_id']}-1"
+            or artifact["file"] != "collector-health-watchdog-receipt.json"
+        ):
+            raise ActivationError("watchdog abstention evidence is invalid")
+    return stage, stage["main_after"]
+
+
+def _load_restore(path: Path, *, repository: str) -> RestoreAuthority:
+    raw, value = _read_private_canonical(path, label="producer restore receipt")
+    receipt = _expect_keys(
+        value,
+        {
+            "attempt_id",
+            "authority",
+            "completed_stages",
+            "evidence_directory",
+            "final_main_sha",
+            "initial_main_sha",
+            "repository",
+            "resume",
+            "schema_version",
+            "source_graph",
+            "status",
+            "terminal_at",
+        },
+        label="producer restore receipt",
+    )
+    graph = _expect_keys(
+        receipt["source_graph"],
+        {
+            "host_sha",
+            "phase2_handoff",
+            "phase3",
+            "proof_complete",
+            "publication_sha",
+            "public_release_sha",
+        },
+        label="producer restore source graph",
+    )
+    phase3 = _expect_keys(
+        graph["phase3"],
+        {"finalized_at", "receipt", "receipt_sha256", "transaction_id"},
+        label="producer restore Phase 3 binding",
+    )
+    proof = _expect_keys(
+        graph["proof_complete"],
+        {"generated_at", "receipt", "receipt_sha256"},
+        label="producer restore proof-complete binding",
+    )
+    handoff = _expect_keys(
+        graph["phase2_handoff"],
+        {"receipt", "receipt_sha256"},
+        label="producer restore handoff binding",
+    )
+    resume = _expect_keys(
+        receipt["resume"], {"receipt", "receipt_sha256"}, label="restore resume binding"
+    )
+    authority = _expect_keys(
+        receipt["authority"],
+        {
+            "exclusive_writer_ack",
+            "hourly_publication_enabled",
+            "protected_environment",
+        },
+        label="producer restore authority",
+    )
+    if (
+        receipt["schema_version"] != "palimpsest.github-producer-restore.v2"
+        or receipt["status"] != "verified"
+        or receipt["repository"] != repository
+        or not isinstance(receipt["attempt_id"], str)
+        or NONCE32.fullmatch(receipt["attempt_id"]) is None
+        or not _is_sha40(receipt["initial_main_sha"])
+        or not _is_sha40(receipt["final_main_sha"])
+        or not _is_sha40(graph["host_sha"])
+        or not _is_sha40(graph["publication_sha"])
+        or not _is_sha40(graph["public_release_sha"])
+        or not _is_sha256(phase3["receipt_sha256"])
+        or not _is_sha256(proof["receipt_sha256"])
+        or not _is_sha256(handoff["receipt_sha256"])
+        or not isinstance(phase3["transaction_id"], str)
+        or re.fullmatch(r"[0-9a-f]{32}", phase3["transaction_id"]) is None
+        or authority
+        != {
+            "exclusive_writer_ack": EXCLUSIVE_WRITER_ACK,
+            "hourly_publication_enabled": False,
+            "protected_environment": PRODUCTION_ENVIRONMENT,
+        }
+        or not isinstance(receipt["evidence_directory"], str)
+    ):
+        raise ActivationError("producer restore receipt semantics are invalid")
+    terminal_at = _utc(receipt["terminal_at"], label="producer restore terminal_at")
+    _utc(phase3["finalized_at"], label="Phase 3 finalized_at")
+    _utc(proof["generated_at"], label="proof-complete generated_at")
+    for label, reference in (
+        ("Phase 3", phase3),
+        ("proof-complete", proof),
+        ("Phase 2 handoff", handoff),
+    ):
+        reference_path = Path(
+            reference["receipt"] if isinstance(reference["receipt"], str) else ""
+        )
+        if not reference_path.is_absolute():
+            raise ActivationError(f"{label} receipt path is not absolute")
+        reference_raw, _reference = _read_private_canonical(
+            reference_path, label=f"{label} prerequisite receipt"
+        )
+        if hashlib.sha256(reference_raw).hexdigest() != reference["receipt_sha256"]:
+            raise ActivationError(f"{label} prerequisite receipt digest changed")
+    if (resume["receipt"] is None) != (resume["receipt_sha256"] is None):
+        raise ActivationError("producer restore resume reference is incomplete")
+    if resume["receipt"] is not None:
+        resume_path = Path(
+            resume["receipt"] if isinstance(resume["receipt"], str) else ""
+        )
+        if not resume_path.is_absolute() or not _is_sha256(resume["receipt_sha256"]):
+            raise ActivationError("producer restore resume reference is invalid")
+        resume_raw, resume_receipt = _read_private_canonical(
+            resume_path, label="prior failed-closed producer receipt"
+        )
+        if (
+            hashlib.sha256(resume_raw).hexdigest() != resume["receipt_sha256"]
+            or resume_receipt.get("status") != "failed-closed"
+        ):
+            raise ActivationError("producer restore resume authority changed")
+    producer_namespace = runpy.run_path(
+        str(Path(__file__).with_name("run-producer-restore"))
+    )
+    try:
+        prerequisites = producer_namespace["_load_prerequisites"](
+            expected_host_sha=graph["host_sha"],
+            expected_public_release_sha=graph["public_release_sha"],
+            phase3_path=Path(phase3["receipt"]),
+            proof_complete_path=Path(proof["receipt"]),
+            handoff_path=Path(handoff["receipt"]),
+            resume_path=(Path(resume["receipt"]) if resume["receipt"] else None),
+            repository=repository,
+        )
+    except Exception as error:
+        raise ActivationError(
+            f"producer restore H/P/R prerequisite validation failed: {error}"
+        ) from error
+    if (
+        prerequisites.host_sha != graph["host_sha"]
+        or prerequisites.publication_sha != graph["publication_sha"]
+        or prerequisites.public_release_sha != graph["public_release_sha"]
+        or prerequisites.restore_base_sha != receipt["initial_main_sha"]
+        or prerequisites.phase3_sha256 != phase3["receipt_sha256"]
+        or prerequisites.phase3_transaction != phase3["transaction_id"]
+        or prerequisites.phase3_finalized_at != phase3["finalized_at"]
+        or prerequisites.proof_complete_sha256 != proof["receipt_sha256"]
+        or prerequisites.proof_complete_generated_at != proof["generated_at"]
+        or prerequisites.handoff_sha256 != handoff["receipt_sha256"]
+        or prerequisites.resume_sha256 != resume["receipt_sha256"]
+    ):
+        raise ActivationError("producer restore H/P/R graph is not exact")
+    evidence_directory = Path(receipt["evidence_directory"])
+    if not evidence_directory.is_absolute():
+        raise ActivationError("producer evidence directory is not absolute")
+    references = receipt["completed_stages"]
+    if not isinstance(references, list) or len(references) != len(WORKFLOWS):
+        raise ActivationError("producer restore stage inventory is incomplete")
+    main = receipt["initial_main_sha"]
+    stages: list[dict[str, Any]] = []
+    for spec, raw_reference in zip(WORKFLOWS, references, strict=True):
+        reference = _expect_keys(
+            raw_reference,
+            {
+                "file",
+                "id",
+                "main_after",
+                "main_before",
+                "order",
+                "outcome",
+                "receipt",
+                "receipt_sha256",
+                "run_id",
+            },
+            label=f"producer stage {spec.order} reference",
+        )
+        stage_path = Path(
+            reference["receipt"] if isinstance(reference["receipt"], str) else ""
+        )
+        if (
+            reference["file"] != spec.filename
+            or reference["id"] != spec.workflow_id
+            or reference["order"] != spec.order
+            or reference["main_before"] != main
+            or not _is_sha40(reference["main_after"])
+            or not _is_sha256(reference["receipt_sha256"])
+            or not _positive_int(reference["run_id"])
+            or not stage_path.is_absolute()
+            or stage_path.parent != evidence_directory
+        ):
+            raise ActivationError(f"producer stage {spec.order} reference is invalid")
+        stage, main_after = _validate_stage(
+            stage_path,
+            expected_digest=reference["receipt_sha256"],
+            spec=spec,
+            repository=repository,
+            main_before=main,
+        )
+        if (
+            reference["main_after"] != main_after
+            or reference["outcome"] != stage["outcome"]
+            or reference["run_id"] != stage["run"]["run_id"]
+        ):
+            raise ActivationError(f"producer stage {spec.order} reference changed")
+        stages.append(stage)
+        main = main_after
+    if main != receipt["final_main_sha"]:
+        raise ActivationError("producer stage chain does not reach final main")
+    return RestoreAuthority(
+        raw=raw,
+        digest=hashlib.sha256(raw).hexdigest(),
+        path=path,
+        repository=repository,
+        initial_sha=receipt["initial_main_sha"],
+        final_sha=receipt["final_main_sha"],
+        terminal_at=terminal_at.isoformat().replace("+00:00", "Z"),
+        source_graph=dict(graph),
+        stages=tuple(stages),
+    )
+
+
+def _process_group_exists(process_group_id: int) -> bool:
+    try:
+        os.killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _terminate_group(process: subprocess.Popen[bytes]) -> None:
+    process_group_id = process.pid
+    try:
+        os.killpg(process_group_id, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    grace_deadline = time.monotonic() + 5.0
+    while _process_group_exists(process_group_id):
+        remaining = grace_deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        if process.poll() is None:
+            try:
+                process.wait(timeout=min(0.05, remaining))
+            except subprocess.TimeoutExpired:
+                pass
+        else:
+            time.sleep(min(0.05, remaining))
+    if _process_group_exists(process_group_id):
+        try:
+            os.killpg(process_group_id, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired as error:
+        raise ActivationError(
+            "bounded command process group survived SIGKILL"
+        ) from error
+
+
+def _trusted_executable(name: str) -> str:
+    candidate = shutil.which(name)
+    if candidate is None:
+        raise ActivationError(f"required operator executable is unavailable: {name}")
+    path = Path(candidate).resolve(strict=True)
+    details = path.stat()
+    parent = path.parent.stat()
+    if (
+        path.name != Path(name).name
+        or not stat.S_ISREG(details.st_mode)
+        or details.st_uid not in {0, os.geteuid()}
+        or stat.S_IMODE(details.st_mode) & 0o022
+        or parent.st_uid not in {0, os.geteuid()}
+        or stat.S_IMODE(parent.st_mode) & 0o022
+    ):
+        raise ActivationError(f"operator executable is not trusted: {name}")
+    return str(path)
+
+
+def _command_environment(executable: str) -> dict[str, str]:
+    environment: dict[str, str] = {}
+    for name in ("LANG", "LC_ALL", "LC_CTYPE"):
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    if Path(executable).name == "gh":
+        home = os.environ.get("HOME")
+        if home:
+            environment["HOME"] = home
+        for name in (
+            "GH_TOKEN",
+            "GITHUB_TOKEN",
+            "GH_ENTERPRISE_TOKEN",
+            "GITHUB_ENTERPRISE_TOKEN",
+        ):
+            value = os.environ.get(name)
+            if value:
+                environment[name] = value
+        environment.update(
+            {
+                "GH_HOST": "github.com",
+                "GH_PROMPT_DISABLED": "1",
+                "NO_COLOR": "1",
+            }
+        )
+    directories = [
+        str(Path(executable).parent),
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+    ]
+    environment["PATH"] = os.pathsep.join(dict.fromkeys(directories))
+    return environment
+
+
+def _bounded_command(
+    deadline: Deadline,
+    argv: Sequence[str],
+    *,
+    label: str,
+    maximum: int = MAX_JSON_BYTES,
+) -> str:
+    executable = _trusted_executable(argv[0])
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        process = subprocess.Popen(
+            [executable, *argv[1:]],
+            stdin=subprocess.DEVNULL,
+            stdout=stdout,
+            stderr=stderr,
+            env=_command_environment(executable),
+            start_new_session=True,
+        )
+        try:
+            process.wait(timeout=deadline.command_timeout())
+        except subprocess.TimeoutExpired as error:
+            _terminate_group(process)
+            raise ActivationError(f"{label} exceeded its bounded timeout") from error
+        except BaseException:
+            _terminate_group(process)
+            raise
+        if _process_group_exists(process.pid):
+            _terminate_group(process)
+            raise ActivationError(f"{label} left a surviving child process")
+        stdout.seek(0, os.SEEK_END)
+        stdout_size = stdout.tell()
+        stderr.seek(0, os.SEEK_END)
+        stderr_size = stderr.tell()
+        if stdout_size > maximum or stderr_size > MAX_JSON_BYTES:
+            raise ActivationError(f"{label} exceeded its output ceiling")
+        stdout.seek(0)
+        stderr.seek(0)
+        raw_stdout = stdout.read()
+        raw_stderr = stderr.read()
+    try:
+        output = raw_stdout.decode("utf-8", "strict")
+    except UnicodeError as error:
+        raise ActivationError(f"{label} returned non-UTF-8 output") from error
+    if process.returncode != 0:
+        error_output = raw_stderr.decode("utf-8", "replace").strip()
+        if error_output:
+            print(f"{label}: {error_output}", file=sys.stderr)
+        raise CommandError(label, process.returncode)
+    return output
+
+
+def _gh(deadline: Deadline, *arguments: str, label: str | None = None) -> str:
+    return _bounded_command(
+        deadline,
+        ("gh", *arguments),
+        label=label or f"gh {' '.join(arguments[:3])}",
+    )
+
+
+def _cleanup_gh(*arguments: str) -> str:
+    return _gh(
+        Deadline.start(COMMAND_TIMEOUT_SECONDS),
+        *arguments,
+        label=f"cleanup gh {' '.join(arguments[:3])}",
+    )
+
+
+def _require_gh_transport(deadline: Deadline) -> None:
+    socket_path = _gh(
+        deadline,
+        "config",
+        "get",
+        "http_unix_socket",
+        "--host",
+        "github.com",
+        label="inspect GitHub CLI socket transport",
+    )
+    if socket_path not in {"", "\n", "\r\n"}:
+        raise ActivationError("GitHub CLI http_unix_socket transport is not empty")
+
+
+def _exact_text(value: str, *, label: str) -> str:
+    lines = value.splitlines()
+    if len(lines) != 1 or lines[0] != lines[0].strip() or not lines[0]:
+        raise ActivationError(f"{label} is not one exact non-empty line")
+    return lines[0]
+
+
+def _main_sha(deadline: Deadline, repository: str) -> str:
+    value = _exact_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/commits/main",
+            "--jq",
+            ".sha",
+            label="read current public main",
+        ),
+        label="public main SHA",
+    )
+    if not _is_sha40(value):
+        raise ActivationError("public main SHA is malformed")
+    return value
+
+
+def _gate(deadline: Deadline, repository: str) -> str:
+    return _exact_text(
+        _gh(
+            deadline,
+            "variable",
+            "get",
+            GATE_VARIABLE,
+            "--repo",
+            repository,
+            label="read Railway hourly gate",
+        ),
+        label="Railway hourly gate",
+    )
+
+
+def _ack(deadline: Deadline, repository: str) -> str:
+    return _exact_text(
+        _gh(
+            deadline,
+            "variable",
+            "get",
+            ACK_VARIABLE,
+            "--repo",
+            repository,
+            "--env",
+            PRODUCTION_ENVIRONMENT,
+            label="read protected Railway acknowledgement",
+        ),
+        label="Railway exclusive-writer acknowledgement",
+    )
+
+
+def _exact_workflow_state(
+    deadline: Deadline,
+    repository: str,
+    *,
+    workflow_id: int,
+    filename: str,
+    display_name: str,
+    expected_state: str,
+) -> str:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/workflows/{workflow_id}",
+            label=f"inspect {filename}",
+        ),
+        label=f"{filename} metadata",
+    )
+    if not isinstance(value, dict):
+        raise ActivationError(f"{filename} metadata is malformed")
+    selected = {key: value.get(key) for key in ("id", "name", "path", "state")}
+    expected = {
+        "id": workflow_id,
+        "name": display_name,
+        "path": f".github/workflows/{filename}",
+        "state": expected_state,
+    }
+    if selected != expected:
+        raise ActivationError(f"{filename} is not the exact {expected_state} workflow")
+    return expected_state
+
+
+def _workflow_state(
+    deadline: Deadline,
+    repository: str,
+    spec: WorkflowSpec,
+    *,
+    expected_state: str = "active",
+) -> str:
+    return _exact_workflow_state(
+        deadline,
+        repository,
+        workflow_id=spec.workflow_id,
+        filename=spec.filename,
+        display_name=spec.display_name,
+        expected_state=expected_state,
+    )
+
+
+def _controller_workflow_state(
+    deadline: Deadline, repository: str, *, expected_state: str = "active"
+) -> str:
+    return _exact_workflow_state(
+        deadline,
+        repository,
+        workflow_id=CONTROLLER_WORKFLOW_ID,
+        filename=CONTROLLER_WORKFLOW,
+        display_name=CONTROLLER_NAME,
+        expected_state=expected_state,
+    )
+
+
+def _set_workflow_state(
+    deadline: Deadline,
+    repository: str,
+    *,
+    workflow_id: int,
+    filename: str,
+    display_name: str,
+    state: str,
+) -> None:
+    if state not in {"active", "disabled_manually"}:
+        raise ActivationError("unsupported workflow state transition")
+    action = "enable" if state == "active" else "disable"
+    _gh(
+        deadline,
+        "workflow",
+        action,
+        str(workflow_id),
+        "--repo",
+        repository,
+        label=f"{action} {filename}",
+    )
+    _exact_workflow_state(
+        deadline,
+        repository,
+        workflow_id=workflow_id,
+        filename=filename,
+        display_name=display_name,
+        expected_state=state,
+    )
+
+
+def _require_no_active_runs(
+    deadline: Deadline, repository: str, *, quiet_retry: bool = False
+) -> dict[str, int]:
+    result: dict[str, int] = {}
+    for spec in WORKFLOWS:
+        total = 0
+        for status in ACTIVE_RUN_STATES:
+            value = _exact_text(
+                _gh(
+                    deadline,
+                    "api",
+                    f"repos/{repository}/actions/workflows/{spec.workflow_id}/runs?status={status}&per_page=100",
+                    "--jq",
+                    ".total_count",
+                    label=f"inspect {spec.filename} {status} runs",
+                ),
+                label=f"{spec.filename} {status} run count",
+            )
+            if not value.isdecimal():
+                raise ActivationError(f"{spec.filename} active-run count is malformed")
+            count = int(value)
+            total += count
+        if total:
+            error = QuietWindowBusy if quiet_retry else ActivationError
+            raise error(f"{spec.filename} has {total} conflicting active run(s)")
+        result[spec.filename] = 0
+    return result
+
+
+def _live_snapshot(
+    deadline: Deadline,
+    *,
+    repository: str,
+    expected_sha: str,
+    expected_gate: str,
+    expected_producer_state: str = "active",
+    expected_controller_state: str = "active",
+) -> dict[str, Any]:
+    if _main_sha(deadline, repository) != expected_sha:
+        raise ActivationError("public main is not the exact restored final SHA")
+    if _gate(deadline, repository) != expected_gate:
+        raise ActivationError(f"Railway hourly gate is not exactly {expected_gate}")
+    if _ack(deadline, repository) != EXCLUSIVE_WRITER_ACK:
+        raise ActivationError("protected Railway writer acknowledgement is not exact")
+    workflows = [
+        {
+            "file": spec.filename,
+            "id": spec.workflow_id,
+            "name": spec.display_name,
+            "state": _workflow_state(
+                deadline,
+                repository,
+                spec,
+                expected_state=expected_producer_state,
+            ),
+        }
+        for spec in WORKFLOWS
+    ]
+    workflows.append(
+        {
+            "file": CONTROLLER_WORKFLOW,
+            "id": CONTROLLER_WORKFLOW_ID,
+            "name": CONTROLLER_NAME,
+            "state": _controller_workflow_state(
+                deadline, repository, expected_state=expected_controller_state
+            ),
+        }
+    )
+    active_runs = _require_no_active_runs(deadline, repository)
+    return {"active_runs": active_runs, "workflows": workflows}
+
+
+def _workflow_active_count(
+    deadline: Deadline, repository: str, workflow_id: int, label: str
+) -> int:
+    total = 0
+    for status in ACTIVE_RUN_STATES:
+        value = _exact_text(
+            _gh(
+                deadline,
+                "api",
+                f"repos/{repository}/actions/workflows/{workflow_id}/runs?status={status}&per_page=100",
+                "--jq",
+                ".total_count",
+                label=f"inspect {label} {status} runs",
+            ),
+            label=f"{label} {status} count",
+        )
+        if not value.isdecimal():
+            raise ActivationError(f"{label} active-run count is malformed")
+        total += int(value)
+    return total
+
+
+def _quiet_snapshot(deadline: Deadline, authority: RestoreAuthority) -> dict[str, Any]:
+    repository = authority.repository
+    if _gate(deadline, repository) != "false":
+        raise ActivationError("Railway hourly gate is not exactly false")
+    if _ack(deadline, repository) != EXCLUSIVE_WRITER_ACK:
+        raise ActivationError("protected Railway writer acknowledgement is not exact")
+    workflows = [
+        {
+            "file": spec.filename,
+            "id": spec.workflow_id,
+            "name": spec.display_name,
+            "state": _workflow_state(deadline, repository, spec),
+        }
+        for spec in WORKFLOWS
+    ]
+    controller_state = _controller_workflow_state(deadline, repository)
+    active = _require_no_active_runs(deadline, repository, quiet_retry=True)
+    controller_active = _workflow_active_count(
+        deadline, repository, CONTROLLER_WORKFLOW_ID, "Railway controller"
+    )
+    release_active = _workflow_active_count(
+        deadline, repository, RELEASE_WORKFLOW_ID, "Tests release"
+    )
+    if controller_active or release_active:
+        raise QuietWindowBusy("controller or downstream release is still active")
+    return {
+        "active_runs": active,
+        "controller_active_runs": 0,
+        "controller_workflow_state": controller_state,
+        "main_sha": _main_sha(deadline, repository),
+        "release_active_runs": 0,
+        "workflows": workflows,
+    }
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _next_arming_window(now: datetime) -> tuple[datetime, datetime]:
+    now = now.astimezone(UTC)
+    # The :05 watchdog must first settle.  Starting at :09 leaves a real
+    # 90-second operator prompt plus two production-sized authority snapshots,
+    # while :10:30 is still far enough from the :13 controller tick to avoid a
+    # nominal prompt budget that cannot be honored in practice.
+    target = now.replace(minute=9, second=0, microsecond=0)
+    end = now.replace(minute=10, second=30, microsecond=0)
+    if now >= end:
+        target += timedelta(hours=1)
+        end += timedelta(hours=1)
+    return target, end
+
+
+def _wait_for_quiet_arming_window(
+    deadline: Deadline, authority: RestoreAuthority
+) -> dict[str, Any]:
+    while True:
+        target, end = _next_arming_window(_utc_now())
+        while _utc_now() < target:
+            deadline.sleep(min(15.0, (target - _utc_now()).total_seconds()))
+        if _utc_now() >= end:
+            continue
+        try:
+            snapshot = _quiet_snapshot(deadline, authority)
+        except QuietWindowBusy:
+            while _utc_now() < end:
+                deadline.sleep(min(5.0, (end - _utc_now()).total_seconds()))
+                try:
+                    snapshot = _quiet_snapshot(deadline, authority)
+                    break
+                except QuietWindowBusy:
+                    continue
+            else:
+                continue
+        snapshot["arming_window_started_at"] = target.isoformat().replace("+00:00", "Z")
+        snapshot["scheduled_tick"] = (
+            target.replace(minute=13).isoformat().replace("+00:00", "Z")
+        )
+        return snapshot
+
+
+def _producer_run_inventories(
+    deadline: Deadline, repository: str
+) -> dict[str, dict[int, dict[str, Any]]]:
+    return {
+        spec.filename: _run_inventory(
+            deadline, repository, spec.workflow_id, spec.display_name
+        )
+        for spec in WORKFLOWS
+    }
+
+
+def _freeze_producers(
+    deadline: Deadline,
+    *,
+    authority: RestoreAuthority,
+    state: RunState,
+    expected_sha: str,
+    expected_inventories: dict[str, dict[int, dict[str, Any]]],
+) -> None:
+    state.workflows_mutated = True
+    for spec in WORKFLOWS:
+        _set_workflow_state(
+            deadline,
+            authority.repository,
+            workflow_id=spec.workflow_id,
+            filename=spec.filename,
+            display_name=spec.display_name,
+            state="disabled_manually",
+        )
+    _live_snapshot(
+        deadline,
+        repository=authority.repository,
+        expected_sha=expected_sha,
+        expected_gate="false",
+        expected_producer_state="disabled_manually",
+        expected_controller_state="active",
+    )
+    if (
+        _producer_run_inventories(deadline, authority.repository)
+        != expected_inventories
+    ):
+        raise ActivationError("producer run inventory changed while freezing schedules")
+    if _workflow_active_count(
+        deadline,
+        authority.repository,
+        CONTROLLER_WORKFLOW_ID,
+        "Railway controller",
+    ) or _workflow_active_count(
+        deadline,
+        authority.repository,
+        RELEASE_WORKFLOW_ID,
+        "Tests release",
+    ):
+        raise ActivationError("controller or downstream release raced producer freeze")
+
+
+def _next_terminal_reactivation_window(now: datetime) -> tuple[datetime, datetime]:
+    now = now.astimezone(UTC)
+    # Newswire's :17 tick is deliberately missed while schedules are frozen.
+    # Starting at :20 leaves a wide proof interval before OSINT's :58 tick.
+    target = now.replace(minute=20, second=0, microsecond=0)
+    end = now.replace(minute=30, second=0, microsecond=0)
+    if now >= end:
+        target += timedelta(hours=1)
+        end += timedelta(hours=1)
+    return target, end
+
+
+def _wait_terminal_reactivation_window(deadline: Deadline) -> tuple[datetime, datetime]:
+    while True:
+        target, end = _next_terminal_reactivation_window(_utc_now())
+        while _utc_now() < target:
+            deadline.sleep(min(15.0, (target - _utc_now()).total_seconds()))
+        if _utc_now() < end:
+            return target, end
+
+
+def _wall_bounded_deadline(deadline: Deadline, cutoff: datetime) -> Deadline:
+    wall_remaining = (cutoff - _utc_now()).total_seconds()
+    if wall_remaining <= 0:
+        raise ActivationError("terminal no-cron wall deadline expired")
+    return Deadline(time.monotonic() + min(deadline.remaining(), wall_remaining))
+
+
+def _exact_run_inventories(
+    deadline: Deadline,
+    *,
+    repository: str,
+    producer_inventories: dict[str, dict[int, dict[str, Any]]],
+    controller_inventory: dict[int, dict[str, Any]],
+    release_inventory: dict[int, dict[str, Any]],
+) -> None:
+    if _producer_run_inventories(deadline, repository) != producer_inventories:
+        raise ActivationError("producer run inventory changed during hourly proof")
+    if (
+        _run_inventory(
+            deadline,
+            repository,
+            CONTROLLER_WORKFLOW_ID,
+            "Railway controller",
+        )
+        != controller_inventory
+    ):
+        raise ActivationError("controller run inventory changed during hourly proof")
+    if (
+        _run_inventory(deadline, repository, RELEASE_WORKFLOW_ID, "Tests release")
+        != release_inventory
+    ):
+        raise ActivationError("downstream run inventory changed during hourly proof")
+
+
+def _reactivate_workflows(
+    deadline: Deadline,
+    *,
+    authority: RestoreAuthority,
+    state: RunState,
+    expected_sha: str,
+    producer_inventories: dict[str, dict[int, dict[str, Any]]],
+    controller_inventory: dict[int, dict[str, Any]],
+    release_inventory: dict[int, dict[str, Any]],
+) -> tuple[dict[str, Any], str, datetime]:
+    window_start, admission_end = _wait_terminal_reactivation_window(deadline)
+    window_end = window_start.replace(minute=40)
+    admission_deadline = _wall_bounded_deadline(deadline, admission_end)
+    if _load_restore(authority.path, repository=authority.repository) != authority:
+        raise ActivationError("producer restore receipt changed before reactivation")
+    _live_snapshot(
+        admission_deadline,
+        repository=authority.repository,
+        expected_sha=expected_sha,
+        expected_gate="true",
+        expected_producer_state="disabled_manually",
+        expected_controller_state="disabled_manually",
+    )
+    _exact_run_inventories(
+        admission_deadline,
+        repository=authority.repository,
+        producer_inventories=producer_inventories,
+        controller_inventory=controller_inventory,
+        release_inventory=release_inventory,
+    )
+    if _utc_now() >= admission_end:
+        raise ActivationError("terminal workflow reactivation admission was missed")
+    for spec in WORKFLOWS:
+        _set_workflow_state(
+            admission_deadline,
+            authority.repository,
+            workflow_id=spec.workflow_id,
+            filename=spec.filename,
+            display_name=spec.display_name,
+            state="active",
+        )
+    _set_workflow_state(
+        admission_deadline,
+        authority.repository,
+        workflow_id=CONTROLLER_WORKFLOW_ID,
+        filename=CONTROLLER_WORKFLOW,
+        display_name=CONTROLLER_NAME,
+        state="active",
+    )
+    if _utc_now() >= admission_end:
+        raise ActivationError("terminal workflow reactivation crossed admission end")
+    reactivation_deadline = _wall_bounded_deadline(deadline, window_end)
+    first = _live_snapshot(
+        reactivation_deadline,
+        repository=authority.repository,
+        expected_sha=expected_sha,
+        expected_gate="true",
+    )
+    _exact_run_inventories(
+        reactivation_deadline,
+        repository=authority.repository,
+        producer_inventories=producer_inventories,
+        controller_inventory=controller_inventory,
+        release_inventory=release_inventory,
+    )
+    reactivation_deadline.sleep()
+    if _utc_now() >= window_end:
+        raise ActivationError("terminal workflow proof crossed its no-cron window")
+    second = _live_snapshot(
+        reactivation_deadline,
+        repository=authority.repository,
+        expected_sha=expected_sha,
+        expected_gate="true",
+    )
+    _exact_run_inventories(
+        reactivation_deadline,
+        repository=authority.repository,
+        producer_inventories=producer_inventories,
+        controller_inventory=controller_inventory,
+        release_inventory=release_inventory,
+    )
+    if second != first:
+        raise ActivationError("terminal workflow authority was not quiet twice")
+    if _utc_now() >= window_end:
+        raise ActivationError("terminal workflow proof crossed its no-cron window")
+    reactivated_at = (
+        _utc_now().replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
+    cutoff = window_start.replace(minute=50)
+    return second, reactivated_at, cutoff
+
+
+def _require_descendant(
+    deadline: Deadline, repository: str, ancestor: str, descendant: str
+) -> str:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/compare/{ancestor}...{descendant}",
+            label="verify restored-to-activation main lineage",
+        ),
+        label="restored-to-activation main lineage",
+    )
+    if (
+        not isinstance(value, dict)
+        or value.get("status") not in {"ahead", "identical"}
+        or value.get("behind_by") != 0
+        or not isinstance(value.get("ahead_by"), int)
+        or (
+            ancestor == descendant
+            and (value.get("status"), value.get("ahead_by")) != ("identical", 0)
+        )
+        or (
+            ancestor != descendant
+            and (value.get("status") != "ahead" or value.get("ahead_by", 0) < 1)
+        )
+    ):
+        raise ActivationError("activation main is not a descendant of restored main")
+    return value["status"]
+
+
+def _run_inventory(
+    deadline: Deadline, repository: str, workflow_id: int, label: str
+) -> dict[int, dict[str, Any]]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/workflows/{workflow_id}/runs?per_page=100",
+            label=f"snapshot {label} runs",
+        ),
+        label=f"{label} run inventory",
+    )
+    if not isinstance(value, dict) or not isinstance(value.get("workflow_runs"), list):
+        raise ActivationError(f"{label} run inventory is malformed")
+    result: dict[int, dict[str, Any]] = {}
+    for raw in value["workflow_runs"]:
+        if not isinstance(raw, dict):
+            raise ActivationError(f"{label} run inventory contains malformed data")
+        selected = {
+            key: raw.get(key)
+            for key in (
+                "conclusion",
+                "created_at",
+                "event",
+                "head_branch",
+                "head_sha",
+                "id",
+                "name",
+                "path",
+                "run_attempt",
+                "status",
+                "updated_at",
+            )
+        }
+        run_id = selected["id"]
+        if not _positive_int(run_id) or run_id in result:
+            raise ActivationError(f"{label} run inventory has invalid IDs")
+        result[run_id] = selected
+    return result
+
+
+def _require_exact_run_additions(
+    deadline: Deadline,
+    *,
+    repository: str,
+    workflow_id: int,
+    label: str,
+    before: dict[int, dict[str, Any]],
+    additions: set[int],
+) -> dict[int, dict[str, Any]]:
+    current = _run_inventory(deadline, repository, workflow_id, label)
+    if set(current) != set(before) | additions:
+        raise ActivationError(f"{label} run set changed at approval boundary")
+    for run_id, baseline in before.items():
+        if current[run_id] != baseline:
+            raise ActivationError(f"{label} baseline run changed at approval boundary")
+    return current
+
+
+def _validate_scheduled_run(
+    run: dict[str, Any], *, run_id: int, expected_sha: str, not_before: datetime
+) -> None:
+    created_at = _utc(run.get("created_at"), label="scheduled controller created_at")
+    if (
+        run.get("id") != run_id
+        or run.get("event") != "schedule"
+        or run.get("head_branch") != "main"
+        or run.get("head_sha") != expected_sha
+        or run.get("run_attempt") != 1
+        or run.get("name") != CONTROLLER_NAME
+        or run.get("path") != f".github/workflows/{CONTROLLER_WORKFLOW}"
+        or created_at < not_before - timedelta(seconds=120)
+        or created_at > _utc_now() + timedelta(seconds=120)
+    ):
+        raise ActivationError("new controller run is not the exact scheduled authority")
+
+
+def _validate_release_run(
+    run: dict[str, Any], *, run_id: int, expected_sha: str, not_before: datetime
+) -> None:
+    created_at = _utc(run.get("created_at"), label="downstream release created_at")
+    if (
+        run.get("id") != run_id
+        or run.get("event") != "repository_dispatch"
+        or run.get("head_branch") != "main"
+        or run.get("head_sha") != expected_sha
+        or run.get("run_attempt") != 1
+        or run.get("name") != RELEASE_NAME
+        or run.get("path") != f".github/workflows/{RELEASE_WORKFLOW}"
+        or created_at < not_before - timedelta(seconds=120)
+        or created_at > _utc_now() + timedelta(seconds=120)
+    ):
+        raise ActivationError("new downstream run is not the exact release child")
+
+
+def _poll_one_new_run(
+    deadline: Deadline,
+    *,
+    repository: str,
+    workflow_id: int,
+    label: str,
+    before: dict[int, dict[str, Any]],
+    validator: Any,
+    expected_sha: str,
+    not_before: datetime,
+) -> tuple[int, dict[str, Any]]:
+    while True:
+        current = _run_inventory(deadline, repository, workflow_id, label)
+        additions = sorted(set(current) - set(before))
+        if len(additions) > 1:
+            raise ActivationError(f"{label} gained duplicate/racing runs")
+        if additions:
+            run_id = additions[0]
+            validator(
+                current[run_id],
+                run_id=run_id,
+                expected_sha=expected_sha,
+                not_before=not_before,
+            )
+            return run_id, current[run_id]
+        deadline.sleep()
+
+
+def _run_view(deadline: Deadline, repository: str, run_id: int) -> dict[str, Any]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}",
+            label=f"inspect run {run_id}",
+        ),
+        label=f"run {run_id}",
+    )
+    if not isinstance(value, dict):
+        raise ActivationError(f"run {run_id} is malformed")
+    return {
+        key: value.get(key)
+        for key in (
+            "conclusion",
+            "created_at",
+            "event",
+            "head_branch",
+            "head_sha",
+            "id",
+            "name",
+            "path",
+            "run_attempt",
+            "status",
+            "updated_at",
+        )
+    }
+
+
+def _wait_success(
+    deadline: Deadline,
+    *,
+    repository: str,
+    run_id: int,
+    validator: Any,
+    expected_sha: str,
+    not_before: datetime,
+) -> dict[str, Any]:
+    while True:
+        run = _run_view(deadline, repository, run_id)
+        validator(
+            run,
+            run_id=run_id,
+            expected_sha=expected_sha,
+            not_before=not_before,
+        )
+        if run["status"] == "completed":
+            if run["conclusion"] != "success":
+                raise ActivationError(f"run {run_id} did not succeed")
+            _utc(run["updated_at"], label=f"run {run_id} updated_at")
+            return run
+        if run["status"] not in ACTIVE_RUN_STATES:
+            raise ActivationError(f"run {run_id} has an unsupported state")
+        deadline.sleep()
+
+
+def _validate_controller_jobs(
+    deadline: Deadline, repository: str, run_id: int
+) -> dict[str, str]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}/jobs?filter=latest&per_page=100",
+            label="inspect scheduled controller jobs",
+        ),
+        label="scheduled controller jobs",
+    )
+    if (
+        not isinstance(value, dict)
+        or value.get("total_count") != 1
+        or not isinstance(value.get("jobs"), list)
+        or len(value["jobs"]) != 1
+    ):
+        raise ActivationError("scheduled controller does not have one exact job")
+    job = value["jobs"][0]
+    if (
+        not isinstance(job, dict)
+        or job.get("name") != "dispatch"
+        or job.get("status") != "completed"
+        or job.get("conclusion") != "success"
+        or job.get("run_attempt") != 1
+        or not isinstance(job.get("steps"), list)
+        or not job["steps"]
+    ):
+        raise ActivationError("scheduled controller job did not succeed exactly")
+    if any(
+        not isinstance(step, dict)
+        or step.get("status") != "completed"
+        or step.get("conclusion") not in {"success", "skipped"}
+        for step in job["steps"]
+    ):
+        raise ActivationError("scheduled controller has failed/incomplete steps")
+    if not any(step.get("conclusion") == "success" for step in job["steps"]):
+        raise ActivationError("scheduled controller has no meaningful successful step")
+    return {"dispatch": "success"}
+
+
+def _validate_release_jobs(
+    deadline: Deadline, repository: str, run_id: int
+) -> dict[str, str]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "run",
+            "view",
+            str(run_id),
+            "--repo",
+            repository,
+            "--json",
+            "jobs",
+            label="inspect downstream release jobs",
+        ),
+        label="downstream release jobs",
+    )
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"jobs"}
+        or not isinstance(value["jobs"], list)
+    ):
+        raise ActivationError("downstream release jobs are malformed")
+    observed: dict[str, str] = {}
+    for job in value["jobs"]:
+        if not isinstance(job, dict):
+            raise ActivationError("downstream release job is malformed")
+        name = job.get("name")
+        conclusion = job.get("conclusion")
+        if (
+            not isinstance(name, str)
+            or not isinstance(conclusion, str)
+            or name in observed
+        ):
+            raise ActivationError("downstream release job identity is invalid")
+        observed[name] = conclusion
+    for name, conclusion in EXPECTED_RELEASE_JOBS.items():
+        if observed.get(name) != conclusion:
+            raise ActivationError(f"downstream release job is not exact: {name}")
+    if any(
+        conclusion not in {"success", "skipped"} for conclusion in observed.values()
+    ):
+        raise ActivationError("downstream release has a failed or incomplete extra job")
+    return dict(observed)
+
+
+def _pending_deployment(deadline: Deadline, repository: str, run_id: int) -> int | None:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}/pending_deployments",
+            label="inspect pending protected release",
+        ),
+        label="pending protected release",
+    )
+    if not isinstance(value, list):
+        raise ActivationError("pending protected release is malformed")
+    if not value:
+        return None
+    if len(value) != 1 or not isinstance(value[0], dict):
+        raise ActivationError("pending protected release set is not exact")
+    environment = value[0].get("environment")
+    if (
+        not isinstance(environment, dict)
+        or not _positive_int(environment.get("id"))
+        or environment.get("name") != PRODUCTION_ENVIRONMENT
+        or value[0].get("current_user_can_approve") is not True
+    ):
+        raise ActivationError("pending protected release cannot be approved exactly")
+    return int(environment["id"])
+
+
+def _wait_release_with_approval(
+    deadline: Deadline,
+    *,
+    authority: RestoreAuthority,
+    state: RunState,
+    run_id: int,
+    controller_run_id: int,
+    controller_before: dict[int, dict[str, Any]],
+    release_before: dict[int, dict[str, Any]],
+    expected_sha: str,
+    not_before: datetime,
+    temporary_directory: Path,
+) -> tuple[dict[str, Any], bool, int | None, dict[str, Any]]:
+    approved = False
+    environment_id: int | None = None
+    environment_contract: dict[str, Any] | None = None
+    while True:
+        run = _run_view(deadline, authority.repository, run_id)
+        _validate_release_run(
+            run,
+            run_id=run_id,
+            expected_sha=expected_sha,
+            not_before=not_before,
+        )
+        if run["status"] == "completed":
+            if run["conclusion"] != "success":
+                raise ActivationError("downstream release did not succeed")
+            if not approved or environment_id is None or environment_contract is None:
+                raise ActivationError(
+                    "downstream release completed without this exact approval"
+                )
+            return run, approved, environment_id, environment_contract
+        if run["status"] not in ACTIVE_RUN_STATES:
+            raise ActivationError("downstream release has an unsupported state")
+        pending = _pending_deployment(deadline, authority.repository, run_id)
+        if pending is not None:
+            if approved:
+                raise ActivationError(
+                    "protected release remained pending after approval"
+                )
+            _live_snapshot(
+                deadline,
+                repository=authority.repository,
+                expected_sha=expected_sha,
+                expected_gate="true",
+                expected_producer_state="disabled_manually",
+                expected_controller_state="disabled_manually",
+            )
+            if (
+                _load_restore(authority.path, repository=authority.repository)
+                != authority
+            ):
+                raise ActivationError(
+                    "producer restore receipt changed before approval"
+                )
+            if _pending_deployment(deadline, authority.repository, run_id) != pending:
+                raise ActivationError(
+                    "pending protected release changed before approval"
+                )
+            approval_run = _run_view(deadline, authority.repository, run_id)
+            _validate_release_run(
+                approval_run,
+                run_id=run_id,
+                expected_sha=expected_sha,
+                not_before=not_before,
+            )
+            if approval_run["status"] == "completed":
+                raise ActivationError(
+                    "downstream release completed before protected approval"
+                )
+            environment_contract = _validate_environment_contract(
+                deadline, authority.repository
+            )
+            if pending != environment_contract["environment_id"]:
+                raise ActivationError(
+                    "pending deployment environment is not the exact contract"
+                )
+            approval_path = temporary_directory / "approval.json"
+            approval_path.write_bytes(
+                _canonical(
+                    {
+                        "comment": (
+                            "Approve exact scheduled Palimpsest Railway release "
+                            f"run={run_id} sha={expected_sha}"
+                        ),
+                        "environment_ids": [pending],
+                        "state": "approved",
+                    }
+                )
+            )
+            approval_path.chmod(0o600)
+            previous_mask = signal.pthread_sigmask(
+                signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+            )
+            try:
+                if (
+                    _pending_deployment(deadline, authority.repository, run_id)
+                    != pending
+                ):
+                    raise ActivationError(
+                        "pending protected release changed at approval boundary"
+                    )
+                controller_runs = _require_exact_run_additions(
+                    deadline,
+                    repository=authority.repository,
+                    workflow_id=CONTROLLER_WORKFLOW_ID,
+                    label="Railway controller",
+                    before=controller_before,
+                    additions={controller_run_id},
+                )
+                release_runs = _require_exact_run_additions(
+                    deadline,
+                    repository=authority.repository,
+                    workflow_id=RELEASE_WORKFLOW_ID,
+                    label="Tests release",
+                    before=release_before,
+                    additions={run_id},
+                )
+                approval_controller = controller_runs[controller_run_id]
+                _validate_scheduled_run(
+                    approval_controller,
+                    run_id=controller_run_id,
+                    expected_sha=expected_sha,
+                    not_before=not_before,
+                )
+                if (
+                    approval_controller["status"] != "completed"
+                    or approval_controller["conclusion"] != "success"
+                ):
+                    raise ActivationError(
+                        "bound controller is not exact completed attempt 1"
+                    )
+                approval_release = release_runs[run_id]
+                _validate_release_run(
+                    approval_release,
+                    run_id=run_id,
+                    expected_sha=expected_sha,
+                    not_before=not_before,
+                )
+                if approval_release["status"] not in ACTIVE_RUN_STATES:
+                    raise ActivationError(
+                        "bound release is not exact nonterminal attempt 1"
+                    )
+                boundary_run = _run_view(deadline, authority.repository, run_id)
+                _validate_release_run(
+                    boundary_run,
+                    run_id=run_id,
+                    expected_sha=expected_sha,
+                    not_before=not_before,
+                )
+                if boundary_run["status"] == "completed":
+                    raise ActivationError(
+                        "downstream release completed at approval boundary"
+                    )
+                if (
+                    _load_restore(authority.path, repository=authority.repository)
+                    != authority
+                ):
+                    raise ActivationError(
+                        "producer restore receipt changed at approval boundary"
+                    )
+                _live_snapshot(
+                    deadline,
+                    repository=authority.repository,
+                    expected_sha=expected_sha,
+                    expected_gate="true",
+                    expected_producer_state="disabled_manually",
+                    expected_controller_state="disabled_manually",
+                )
+                if (
+                    _validate_environment_contract(deadline, authority.repository)
+                    != environment_contract
+                ):
+                    raise ActivationError(
+                        "protected environment changed at approval boundary"
+                    )
+                # Make the exact controller/Tests run set the final external
+                # observation before the approval POST.  The earlier pass
+                # validates the bound identities; this pass closes races that
+                # appeared while main, restore, and environment were reread.
+                final_controller_runs = _require_exact_run_additions(
+                    deadline,
+                    repository=authority.repository,
+                    workflow_id=CONTROLLER_WORKFLOW_ID,
+                    label="Railway controller",
+                    before=controller_before,
+                    additions={controller_run_id},
+                )
+                final_release_runs = _require_exact_run_additions(
+                    deadline,
+                    repository=authority.repository,
+                    workflow_id=RELEASE_WORKFLOW_ID,
+                    label="Tests release",
+                    before=release_before,
+                    additions={run_id},
+                )
+                if (
+                    final_controller_runs != controller_runs
+                    or final_release_runs != release_runs
+                ):
+                    raise ActivationError(
+                        "bound run identity changed during final approval revalidation"
+                    )
+                state.approval_uncertain = True
+                _gh(
+                    deadline,
+                    "api",
+                    "--method",
+                    "POST",
+                    f"repos/{authority.repository}/actions/runs/{run_id}/pending_deployments",
+                    "--input",
+                    str(approval_path),
+                    label="approve exact scheduled protected release",
+                )
+                state.approval_uncertain = False
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            approved = True
+            environment_id = pending
+            _live_snapshot(
+                deadline,
+                repository=authority.repository,
+                expected_sha=expected_sha,
+                expected_gate="true",
+                expected_producer_state="disabled_manually",
+                expected_controller_state="disabled_manually",
+            )
+        deadline.sleep()
+
+
+def _artifact_inventory(
+    deadline: Deadline, repository: str, run_id: int
+) -> list[dict[str, Any]]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
+            label=f"inspect run {run_id} artifacts",
+        ),
+        label=f"run {run_id} artifacts",
+    )
+    if not isinstance(value, dict) or not isinstance(value.get("artifacts"), list):
+        raise ActivationError(f"run {run_id} artifact inventory is malformed")
+    return value["artifacts"]
+
+
+def _activation_helper_namespace() -> dict[str, Any]:
+    return runpy.run_path(str(Path(__file__).with_name("run-activation-canary")))
+
+
+def _download_artifact(
+    deadline: Deadline,
+    *,
+    repository: str,
+    run_id: int,
+    name: str,
+    destination: Path,
+    expected_id: int | None = None,
+    expected_digest: str | None = None,
+    expected_size: int | None = None,
+) -> dict[str, Any]:
+    try:
+        return _activation_helper_namespace()["_download_verified_artifact"](
+            deadline,
+            repository=repository,
+            run_id=run_id,
+            name=name,
+            destination=destination,
+            expected_id=expected_id,
+            expected_digest=expected_digest,
+            expected_size=expected_size,
+        )
+    except Exception as error:
+        raise ActivationError(f"verified {name} download failed: {error}") from error
+
+
+def _validate_controller_outcome(
+    raw: bytes,
+    *,
+    repository: str,
+    controller_run_id: int,
+    expected_sha: str,
+) -> dict[str, Any]:
+    try:
+        return _activation_helper_namespace()["_validate_controller_outcome"](
+            raw,
+            repository=repository,
+            run_id=controller_run_id,
+            run_attempt=1,
+            event="schedule",
+            expected_sha=expected_sha,
+            activation_canary=False,
+            gate_enabled=True,
+        )
+    except Exception as error:
+        raise ActivationError(
+            f"scheduled controller outcome failed: {error}"
+        ) from error
+
+
+def _validate_controller_request(
+    raw: bytes,
+    *,
+    repository: str,
+    controller_run_id: int,
+    expected_sha: str,
+) -> dict[str, Any]:
+    value = _strict_json(raw, label="scheduled controller request")
+    requested_at = value.get("requested_at") if isinstance(value, dict) else None
+    try:
+        return _activation_helper_namespace()["_validate_controller_request"](
+            raw,
+            repository=repository,
+            controller_run_id=controller_run_id,
+            controller_run_attempt=1,
+            expected_sha=expected_sha,
+            activation_canary=False,
+            expected_requested_at=requested_at,
+        )
+    except Exception as error:
+        raise ActivationError(
+            f"scheduled controller request failed: {error}"
+        ) from error
+
+
+def _validate_release_artifact(
+    directory: Path,
+    *,
+    repository: str,
+    run_id: int,
+    expected_sha: str,
+    controller_dispatch: dict[str, Any],
+) -> tuple[str, str, str]:
+    namespace = _activation_helper_namespace()
+    validator = namespace["_validate_artifact_receipts"]
+    try:
+        return validator(
+            artifact_directory=directory,
+            repository=repository,
+            run_id=run_id,
+            run_attempt=1,
+            expected_sha=expected_sha,
+            controller_dispatch=controller_dispatch,
+        )
+    except Exception as error:
+        raise ActivationError(
+            f"scheduled Railway artifact proof failed: {error}"
+        ) from error
+
+
+def _validate_environment_contract(
+    deadline: Deadline, repository: str
+) -> dict[str, Any]:
+    try:
+        return _activation_helper_namespace()[
+            "_validate_protected_environment_contract"
+        ](deadline, repository)
+    except Exception as error:
+        raise ActivationError(
+            f"protected environment contract failed: {error}"
+        ) from error
+
+
+def _fetch_live(
+    deadline: Deadline, *, origin: str, path: str, destination: Path, nonce: str
+) -> bytes:
+    if origin not in {PROVIDER_ORIGIN, PUBLIC_ORIGIN} or path not in {
+        "railway-release.json",
+        FRESHNESS_PATH,
+    }:
+        raise ActivationError("refusing an unrecognized live proof target")
+    error: ActivationError | None = None
+    for attempt in range(3):
+        destination.unlink(missing_ok=True)
+        try:
+            status = _exact_text(
+                _bounded_command(
+                    deadline,
+                    (
+                        "curl",
+                        "--disable",
+                        "--fail",
+                        "--silent",
+                        "--show-error",
+                        "--proto",
+                        "=https",
+                        "--tlsv1.2",
+                        "--connect-timeout",
+                        "10",
+                        "--max-time",
+                        "30",
+                        "--max-filesize",
+                        str(MAX_JSON_BYTES),
+                        "--header",
+                        "Accept: application/json",
+                        "--header",
+                        "Accept-Encoding: identity",
+                        "--header",
+                        "Cache-Control: no-cache",
+                        "--output",
+                        str(destination),
+                        "--write-out",
+                        "%{http_code}",
+                        f"{origin}/{path}?steady_state={nonce}",
+                    ),
+                    label=f"fetch {origin} {path}",
+                ),
+                label="live proof HTTP status",
+            )
+            if status != "200":
+                raise ActivationError("live proof did not return HTTP 200")
+            metadata = destination.lstat()
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_nlink != 1
+                or not 0 < metadata.st_size <= MAX_JSON_BYTES
+            ):
+                raise ActivationError(
+                    "live proof response is not a bounded regular file"
+                )
+            return destination.read_bytes()
+        except (ActivationError, OSError) as caught:
+            error = ActivationError(str(caught))
+            if attempt < 2:
+                deadline.sleep(min(5.0, deadline.remaining()))
+    assert error is not None
+    raise error
+
+
+def _validate_live_proof(
+    deadline: Deadline,
+    *,
+    temporary_directory: Path,
+    expected_sha: str,
+    expected_manifest_sha256: str,
+    nonce: str,
+) -> tuple[str, str, dict[str, Any]]:
+    payloads: dict[tuple[str, str], bytes] = {}
+    for origin_name, origin in (("provider", PROVIDER_ORIGIN), ("www", PUBLIC_ORIGIN)):
+        for file_name, path in (
+            ("manifest", "railway-release.json"),
+            ("freshness", FRESHNESS_PATH),
+        ):
+            payloads[(origin_name, file_name)] = _fetch_live(
+                deadline,
+                origin=origin,
+                path=path,
+                destination=temporary_directory / f"{origin_name}-{file_name}.json",
+                nonce=nonce,
+            )
+    if payloads[("provider", "manifest")] != payloads[("www", "manifest")]:
+        raise ActivationError("provider and www release manifests differ")
+    if payloads[("provider", "freshness")] != payloads[("www", "freshness")]:
+        raise ActivationError("provider and www freshness attestations differ")
+    manifest_raw = payloads[("provider", "manifest")]
+    manifest = _strict_json(manifest_raw, label="live Railway manifest")
+    manifest = _expect_keys(
+        manifest,
+        {
+            "built_at",
+            "critical_files",
+            "deployment_source",
+            "github_required",
+            "schema_version",
+            "source_commit",
+            "state",
+            "tree_sha256",
+        },
+        label="live Railway manifest",
+    )
+    manifest_sha = hashlib.sha256(manifest_raw).hexdigest()
+    if (
+        manifest_sha != expected_manifest_sha256
+        or manifest["schema_version"] != "palimpsest.railway-static-release.v1"
+        or manifest["source_commit"] != expected_sha
+        or manifest["deployment_source"] != "local-git-archive"
+        or manifest["github_required"] is not False
+        or manifest["state"] != "artifact_ready"
+        or not _is_sha256(manifest["tree_sha256"])
+        or not isinstance(manifest["critical_files"], dict)
+    ):
+        raise ActivationError("live Railway manifest authority is invalid")
+    _utc(manifest["built_at"], label="live manifest built_at")
+    freshness_raw = payloads[("provider", "freshness")]
+    critical = manifest["critical_files"].get(FRESHNESS_PATH)
+    if (
+        not isinstance(critical, dict)
+        or set(critical) != {"bytes", "sha256"}
+        or critical["bytes"] != len(freshness_raw)
+        or critical["sha256"] != hashlib.sha256(freshness_raw).hexdigest()
+    ):
+        raise ActivationError("live manifest does not bind the freshness bytes")
+    freshness = _expect_keys(
+        _strict_json(freshness_raw, label="live freshness attestation"),
+        {
+            "artifacts",
+            "attested_at",
+            "limitations",
+            "mode",
+            "publication_allowed",
+            "publication_sha",
+            "rights_status",
+            "schema_version",
+        },
+        label="live freshness attestation",
+    )
+    artifacts = _expect_keys(
+        freshness["artifacts"],
+        {"china_situation", "newswire"},
+        label="freshness artifacts",
+    )
+    newswire = _expect_keys(
+        artifacts["newswire"],
+        {"canonical_sha256", "generated_at", "path", "schema_version"},
+        label="freshness Newswire",
+    )
+    situation = _expect_keys(
+        artifacts["china_situation"],
+        {"canonical_sha256", "generated_at", "inputs", "path", "schema_version"},
+        label="freshness situation",
+    )
+    inputs = _expect_keys(
+        situation["inputs"],
+        {"newswire_canonical_sha256", "newswire_generated_at"},
+        label="freshness situation inputs",
+    )
+    rights = _expect_keys(
+        freshness["rights_status"],
+        {"bytes", "path", "sha256"},
+        label="freshness rights",
+    )
+    now = _utc_now()
+    clocks = [
+        _utc(freshness["attested_at"], label="freshness attested_at"),
+        _utc(newswire["generated_at"], label="freshness Newswire generated_at"),
+        _utc(situation["generated_at"], label="freshness situation generated_at"),
+    ]
+    if any(
+        (now - clock).total_seconds() > 7200 or (clock - now).total_seconds() > 300
+        for clock in clocks
+    ):
+        raise ActivationError("live freshness attestation is stale or future-dated")
+    if not (clocks[1] <= clocks[2] <= clocks[0]):
+        raise ActivationError("live freshness attestation clocks are not causal")
+    if (
+        freshness["schema_version"] != "palimpsest.publication-freshness-attestation.v1"
+        or freshness["mode"] != "rights-suppressed"
+        or freshness["publication_allowed"] is not False
+        or freshness["publication_sha"] != expected_sha
+        or not _is_sha256(newswire["canonical_sha256"])
+        or newswire["path"] != "readings/newswire-latest.json"
+        or newswire["schema_version"] != "palimpsest-newswire.v1"
+        or not _is_sha256(situation["canonical_sha256"])
+        or situation["path"] != "readings/china-situation-latest.json"
+        or situation["schema_version"] != "palimpsest-china-situation.v1"
+        or inputs
+        != {
+            "newswire_canonical_sha256": newswire["canonical_sha256"],
+            "newswire_generated_at": newswire["generated_at"],
+        }
+        or not _positive_int(rights["bytes"])
+        or rights["path"] != "readings/china-publication-rights-latest.json"
+        or not _is_sha256(rights["sha256"])
+        or not isinstance(freshness["limitations"], list)
+        or len(freshness["limitations"]) != 4
+        or any(not isinstance(item, str) for item in freshness["limitations"])
+    ):
+        raise ActivationError("live freshness attestation semantics are invalid")
+    return manifest_sha, hashlib.sha256(freshness_raw).hexdigest(), manifest
+
+
+def _typed_sha_prompt(deadline: Deadline, expected_sha: str) -> None:
+    remaining = min(float(PROMPT_TIMEOUT_SECONDS), deadline.remaining())
+    if remaining <= 0:
+        raise ActivationError("typed-SHA prompt deadline expired")
+    print(
+        f"Type the exact final main SHA to open hourly publication:\n{expected_sha}",
+        file=sys.stderr,
+        flush=True,
+    )
+    expires = time.monotonic() + remaining
+    collected = bytearray()
+    while b"\n" not in collected:
+        wait = expires - time.monotonic()
+        if wait <= 0:
+            raise ActivationError("typed-SHA prompt expired")
+        ready, _, _ = select.select([sys.stdin.fileno()], [], [], wait)
+        if not ready:
+            raise ActivationError("typed-SHA prompt expired")
+        chunk = os.read(sys.stdin.fileno(), 129 - len(collected))
+        if not chunk:
+            break
+        collected.extend(chunk)
+        if len(collected) > 128:
+            raise ActivationError("typed-SHA confirmation exceeded its byte ceiling")
+    raw = bytes(collected)
+    if b"\n" in raw:
+        line, remainder = raw.split(b"\n", 1)
+        if remainder:
+            raise ActivationError("typed-SHA confirmation contained extra input")
+    else:
+        line = raw
+    try:
+        value = line.decode("ascii", "strict")
+    except UnicodeError as error:
+        raise ActivationError("typed-SHA confirmation is not ASCII") from error
+    if value != expected_sha:
+        raise ActivationError("typed-SHA confirmation did not match final main")
+
+
+def _probe_live_manifest_digest(
+    deadline: Deadline,
+    *,
+    temporary_directory: Path,
+    expected_sha: str,
+    nonce: str,
+) -> str:
+    provider = _fetch_live(
+        deadline,
+        origin=PROVIDER_ORIGIN,
+        path="railway-release.json",
+        destination=temporary_directory / "provider-no-change-probe.json",
+        nonce=nonce,
+    )
+    public = _fetch_live(
+        deadline,
+        origin=PUBLIC_ORIGIN,
+        path="railway-release.json",
+        destination=temporary_directory / "public-no-change-probe.json",
+        nonce=nonce,
+    )
+    if provider != public:
+        raise ActivationError("no-change provider and www manifests differ")
+    manifest = _strict_json(provider, label="no-change live Railway manifest")
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or manifest.get("source_commit") != expected_sha
+        or manifest.get("deployment_source") != "local-git-archive"
+        or manifest.get("github_required") is not False
+        or manifest.get("state") != "artifact_ready"
+        or not _is_sha256(manifest.get("tree_sha256"))
+    ):
+        raise ActivationError("no-change live manifest authority is invalid")
+    return hashlib.sha256(provider).hexdigest()
+
+
+def _ack_inventory(raw: str) -> str:
+    value = _strict_json_text(raw, label="protected environment variables")
+    if not isinstance(value, list):
+        return "unproved"
+    matches: list[Any] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"name", "value"}:
+            return "unproved"
+        if item.get("name") == ACK_VARIABLE:
+            matches.append(item.get("value"))
+    if not matches:
+        return "absent"
+    if matches == [EXCLUSIVE_WRITER_ACK]:
+        return "exact"
+    return "unexpected"
+
+
+def _ack_absent(raw: str) -> bool:
+    value = _strict_json_text(raw, label="protected environment variable names")
+    return isinstance(value, list) and all(
+        isinstance(item, dict)
+        and set(item) == {"name"}
+        and item.get("name") != ACK_VARIABLE
+        for item in value
+    )
+
+
+def _cleanup_workflow_authority(repository: str, state: RunState | None) -> str:
+    try:
+        if state is not None and state.workflows_mutated:
+            for spec in WORKFLOWS:
+                _cleanup_gh(
+                    "workflow",
+                    "enable",
+                    str(spec.workflow_id),
+                    "--repo",
+                    repository,
+                )
+            _cleanup_gh(
+                "workflow",
+                "enable",
+                str(CONTROLLER_WORKFLOW_ID),
+                "--repo",
+                repository,
+            )
+        deadline = Deadline.start(COMMAND_TIMEOUT_SECONDS * 8)
+        for spec in WORKFLOWS:
+            _workflow_state(deadline, repository, spec)
+        _controller_workflow_state(deadline, repository)
+        _require_no_active_runs(deadline, repository)
+        if _workflow_active_count(
+            deadline, repository, CONTROLLER_WORKFLOW_ID, "Railway controller"
+        ) or _workflow_active_count(
+            deadline, repository, RELEASE_WORKFLOW_ID, "Tests release"
+        ):
+            raise ActivationError(
+                "cleanup found an active controller or downstream release"
+            )
+    except (ActivationError, CommandError) as error:
+        print(str(error), file=sys.stderr)
+        return "unproved"
+    return "active"
+
+
+def _cleanup_run_authority(repository: str, state: RunState | None) -> str:
+    if state is None:
+        return "none"
+    if state.controller_unbound or state.release_unbound or state.approval_uncertain:
+        return "unproved"
+    if state.controller_run_id is None and state.release_run_id is None:
+        return "none"
+    if state.source_sha is None or state.activated_at is None:
+        return "unproved"
+    try:
+        deadline = Deadline.start(COMMAND_TIMEOUT_SECONDS * 4)
+        if state.controller_run_id is not None:
+            controller = _run_view(deadline, repository, state.controller_run_id)
+            _validate_scheduled_run(
+                controller,
+                run_id=state.controller_run_id,
+                expected_sha=state.source_sha,
+                not_before=state.activated_at,
+            )
+            if controller["status"] != "completed":
+                return "unproved"
+        if state.release_run_id is not None:
+            release = _run_view(deadline, repository, state.release_run_id)
+            _validate_release_run(
+                release,
+                run_id=state.release_run_id,
+                expected_sha=state.source_sha,
+                not_before=state.activated_at,
+            )
+            if release["status"] != "completed":
+                return "unproved"
+    except (ActivationError, CommandError):
+        return "unproved"
+    return "terminal"
+
+
+def _failure_cleanup(repository: str, state: RunState | None = None) -> dict[str, Any]:
+    gate_state = "unproved"
+    acknowledgement_state = "unproved"
+    try:
+        _cleanup_gh(
+            "variable",
+            "set",
+            GATE_VARIABLE,
+            "--body",
+            "false",
+            "--repo",
+            repository,
+        )
+        if (
+            _exact_text(
+                _cleanup_gh("variable", "get", GATE_VARIABLE, "--repo", repository),
+                label="cleanup Railway hourly gate",
+            )
+            != "false"
+        ):
+            raise ActivationError("cleanup did not prove hourly publication closed")
+        gate_state = "false"
+    except ActivationError as error:
+        print(str(error), file=sys.stderr)
+    try:
+        ack_state = _ack_inventory(
+            _cleanup_gh(
+                "variable",
+                "list",
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+                "--json",
+                "name,value",
+            )
+        )
+        if ack_state == "exact":
+            _cleanup_gh(
+                "variable",
+                "delete",
+                ACK_VARIABLE,
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+            )
+        elif ack_state != "absent":
+            raise ActivationError(
+                "refusing to delete an unfamiliar Railway writer acknowledgement"
+            )
+        if not _ack_absent(
+            _cleanup_gh(
+                "variable",
+                "list",
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+                "--json",
+                "name",
+            )
+        ):
+            raise ActivationError("cleanup did not prove writer acknowledgement absent")
+        acknowledgement_state = "absent"
+    except ActivationError as error:
+        print(str(error), file=sys.stderr)
+        if "unfamiliar" in str(error):
+            acknowledgement_state = "unexpected"
+    workflow_state = _cleanup_workflow_authority(repository, state)
+    run_state = _cleanup_run_authority(repository, state)
+    if state is not None:
+        for label, run_id in (
+            ("scheduled controller", state.controller_run_id),
+            ("downstream release", state.release_run_id),
+        ):
+            if run_id is not None:
+                print(
+                    f"Reconcile {label} run {run_id}; cleanup deliberately did not cancel it.",
+                    file=sys.stderr,
+                )
+    return {
+        "acknowledgement": acknowledgement_state,
+        "gate": gate_state,
+        "proved": (
+            gate_state == "false"
+            and acknowledgement_state == "absent"
+            and workflow_state == "active"
+            and run_state in {"none", "terminal"}
+        ),
+        "runs": run_state,
+        "workflows": workflow_state,
+    }
+
+
+def _failure_receipt(
+    *,
+    repository: str,
+    authority: RestoreAuthority | None,
+    state: RunState,
+    cleanup: dict[str, Any],
+    error: BaseException,
+    exit_status: int,
+) -> dict[str, Any]:
+    status = "failed-closed" if cleanup.get("proved") is True else "cleanup-unproved"
+    return {
+        "authority_cleanup": cleanup,
+        "controller_run_id": state.controller_run_id,
+        "error": {
+            "exit_status": exit_status,
+            "message": str(error)[:2048],
+            "type": type(error).__name__,
+        },
+        "failed_at": _utc_now()
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "gate_mutated": state.gate_mutated,
+        "workflows_mutated": state.workflows_mutated,
+        "producer_restore": (
+            None
+            if authority is None
+            else {
+                "final_main_sha": authority.final_sha,
+                "receipt": str(authority.path),
+                "receipt_sha256": authority.digest,
+            }
+        ),
+        "release_run_id": state.release_run_id,
+        "repository": repository,
+        "schema_version": "palimpsest.railway-hourly-publication-failure.v1",
+        "status": status,
+    }
+
+
+def _execute(
+    *,
+    authority: RestoreAuthority,
+    receipt_path: Path,
+    state: RunState,
+) -> tuple[dict[str, Any], str]:
+    quiet_deadline = Deadline.start(QUIET_WAIT_BUDGET_SECONDS)
+    _gh(
+        quiet_deadline,
+        "auth",
+        "status",
+        "--hostname",
+        "github.com",
+        label="GitHub authentication",
+    )
+    _require_gh_transport(quiet_deadline)
+    if _load_restore(authority.path, repository=authority.repository) != authority:
+        raise ActivationError("producer restore receipt changed before quiet wait")
+    before = _wait_for_quiet_arming_window(quiet_deadline, authority)
+    source_sha = before["main_sha"]
+    lineage = _require_descendant(
+        quiet_deadline, authority.repository, authority.final_sha, source_sha
+    )
+    scheduled_tick = _utc(before["scheduled_tick"], label="scheduled :13 tick")
+    if _utc_now() >= scheduled_tick:
+        raise ActivationError("the imminent :13 controller window was missed")
+    _typed_sha_prompt(quiet_deadline, source_sha)
+    if _load_restore(authority.path, repository=authority.repository) != authority:
+        raise ActivationError("producer restore receipt changed during confirmation")
+    if _utc_now() >= scheduled_tick:
+        raise ActivationError("typed confirmation crossed the :13 schedule tick")
+    comparable = dict(before)
+    comparable.pop("arming_window_started_at")
+    comparable.pop("scheduled_tick")
+    if _quiet_snapshot(quiet_deadline, authority) != comparable:
+        raise ActivationError("live producer authority changed during confirmation")
+    controller_before = _run_inventory(
+        quiet_deadline,
+        authority.repository,
+        CONTROLLER_WORKFLOW_ID,
+        "Railway controller",
+    )
+    release_before = _run_inventory(
+        quiet_deadline,
+        authority.repository,
+        RELEASE_WORKFLOW_ID,
+        "Tests release",
+    )
+    initial_environment_contract = _validate_environment_contract(
+        quiet_deadline, authority.repository
+    )
+    producer_before = _producer_run_inventories(quiet_deadline, authority.repository)
+    if _quiet_snapshot(quiet_deadline, authority) != comparable:
+        raise ActivationError("authority changed at the final gate boundary")
+    if _utc_now() >= scheduled_tick:
+        raise ActivationError("final authority proof crossed the :13 schedule tick")
+    _freeze_producers(
+        quiet_deadline,
+        authority=authority,
+        state=state,
+        expected_sha=source_sha,
+        expected_inventories=producer_before,
+    )
+    if _utc_now() >= scheduled_tick:
+        raise ActivationError("producer freeze crossed the :13 schedule tick")
+    state.gate_mutated = True
+    state.controller_unbound = True
+    state.source_sha = source_sha
+    _gh(
+        quiet_deadline,
+        "variable",
+        "set",
+        GATE_VARIABLE,
+        "--body",
+        "true",
+        "--repo",
+        authority.repository,
+        label="open Railway hourly publication gate",
+    )
+    activated_at = _utc_now().replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    state.activated_at = _utc(activated_at, label="gate activated_at")
+    if _gate(quiet_deadline, authority.repository) != "true":
+        raise ActivationError("Railway hourly gate did not open exactly once")
+
+    deadline = Deadline.start(RELEASE_PROOF_BUDGET_SECONDS)
+    controller_run_id, _controller_initial = _poll_one_new_run(
+        deadline,
+        repository=authority.repository,
+        workflow_id=CONTROLLER_WORKFLOW_ID,
+        label="Railway controller",
+        before=controller_before,
+        validator=_validate_scheduled_run,
+        expected_sha=source_sha,
+        not_before=_utc(activated_at, label="gate activated_at"),
+    )
+    _bind_controller_run(state, controller_run_id)
+    _set_workflow_state(
+        deadline,
+        authority.repository,
+        workflow_id=CONTROLLER_WORKFLOW_ID,
+        filename=CONTROLLER_WORKFLOW,
+        display_name=CONTROLLER_NAME,
+        state="disabled_manually",
+    )
+    controller = _wait_success(
+        deadline,
+        repository=authority.repository,
+        run_id=controller_run_id,
+        validator=_validate_scheduled_run,
+        expected_sha=source_sha,
+        not_before=_utc(activated_at, label="gate activated_at"),
+    )
+    controller_jobs = _validate_controller_jobs(
+        deadline, authority.repository, controller_run_id
+    )
+    temporary_directory = Path(tempfile.mkdtemp(prefix="palimpsest-hourly-activation-"))
+    temporary_directory.chmod(0o700)
+    temporary_removed = False
+    try:
+        outcome_directory = temporary_directory / "controller-outcome"
+        outcome_artifact = _download_artifact(
+            deadline,
+            repository=authority.repository,
+            run_id=controller_run_id,
+            name=f"railway-publication-controller-outcome-{controller_run_id}-1",
+            destination=outcome_directory,
+        )
+        outcome_entries = list(outcome_directory.iterdir())
+        if (
+            len(outcome_entries) != 1
+            or outcome_entries[0].name != "railway-publication-controller-outcome.json"
+        ):
+            raise ActivationError("scheduled controller outcome contents are not exact")
+        controller_outcome = _validate_controller_outcome(
+            outcome_entries[0].read_bytes(),
+            repository=authority.repository,
+            controller_run_id=controller_run_id,
+            expected_sha=source_sha,
+        )
+
+        request_artifact: dict[str, Any] | None = None
+        controller_request: dict[str, Any] | None = None
+        release: dict[str, Any] | None = None
+        release_jobs: dict[str, str] | None = None
+        release_artifact: dict[str, Any] | None = None
+        transaction_sha: str | None = None
+        verification_sha: str | None = None
+        environment_id: int | None = None
+        environment_contract = initial_environment_contract
+        approved = False
+        if controller_outcome["result"] == "dispatched":
+            request_directory = temporary_directory / "controller-request"
+            request_artifact = _download_artifact(
+                deadline,
+                repository=authority.repository,
+                run_id=controller_run_id,
+                name=controller_outcome["request_artifact_name"],
+                destination=request_directory,
+                expected_id=controller_outcome["request_artifact_id"],
+                expected_digest=controller_outcome["request_artifact_digest"],
+                expected_size=controller_outcome["request_artifact_size"],
+            )
+            request_entries = list(request_directory.iterdir())
+            if (
+                len(request_entries) != 1
+                or request_entries[0].name != "railway-publication-request.json"
+            ):
+                raise ActivationError(
+                    "scheduled controller request contents are not exact"
+                )
+            request_raw = request_entries[0].read_bytes()
+            if (
+                hashlib.sha256(request_raw).hexdigest()
+                != controller_outcome["request_sha256"]
+            ):
+                raise ActivationError("scheduled request digest is not outcome-bound")
+            controller_request = _validate_controller_request(
+                request_raw,
+                repository=authority.repository,
+                controller_run_id=controller_run_id,
+                expected_sha=source_sha,
+            )
+            if controller_request["requested_at"] != controller_outcome["requested_at"]:
+                raise ActivationError("scheduled request clock is not outcome-bound")
+            controller_dispatch = {
+                "activation_canary": False,
+                "controller_artifact_digest": controller_outcome[
+                    "request_artifact_digest"
+                ],
+                "controller_artifact_id": controller_outcome["request_artifact_id"],
+                "controller_request_sha256": controller_outcome["request_sha256"],
+                "controller_run_attempt": 1,
+                "controller_run_id": controller_run_id,
+                "deploy_railway": True,
+                "requested_at": controller_outcome["requested_at"],
+                "scope": "complete",
+                "sha": source_sha,
+            }
+            release_run_id, _release_initial = _poll_one_new_run(
+                deadline,
+                repository=authority.repository,
+                workflow_id=RELEASE_WORKFLOW_ID,
+                label="Tests release",
+                before=release_before,
+                validator=_validate_release_run,
+                expected_sha=source_sha,
+                not_before=_utc(
+                    controller["created_at"], label="controller created_at"
+                ),
+            )
+            _bind_release_run(state, release_run_id)
+            release, approved, environment_id, environment_contract = (
+                _wait_release_with_approval(
+                    deadline,
+                    authority=authority,
+                    state=state,
+                    run_id=release_run_id,
+                    controller_run_id=controller_run_id,
+                    controller_before=controller_before,
+                    release_before=release_before,
+                    expected_sha=source_sha,
+                    not_before=_utc(
+                        controller["created_at"], label="controller created_at"
+                    ),
+                    temporary_directory=temporary_directory,
+                )
+            )
+            release_jobs = _validate_release_jobs(
+                deadline, authority.repository, release_run_id
+            )
+            release_directory = temporary_directory / "release-artifact"
+            release_artifact = _download_artifact(
+                deadline,
+                repository=authority.repository,
+                run_id=release_run_id,
+                name=(
+                    f"railway-continuous-release-{source_sha}-run-"
+                    f"{release_run_id}-attempt-1"
+                ),
+                destination=release_directory,
+            )
+            transaction_sha, verification_sha, artifact_manifest_sha = (
+                _validate_release_artifact(
+                    release_directory,
+                    repository=authority.repository,
+                    run_id=release_run_id,
+                    expected_sha=source_sha,
+                    controller_dispatch=controller_dispatch,
+                )
+            )
+        else:
+            release_run_id = None
+            if (
+                _run_inventory(
+                    deadline,
+                    authority.repository,
+                    RELEASE_WORKFLOW_ID,
+                    "Tests release",
+                )
+                != release_before
+            ):
+                raise ActivationError("scheduled no-change created a downstream run")
+            artifact_manifest_sha = _probe_live_manifest_digest(
+                deadline,
+                temporary_directory=temporary_directory,
+                expected_sha=source_sha,
+                nonce=f"{controller_run_id}-no-change-probe",
+            )
+            state.release_unbound = False
+
+        controller_after = _run_inventory(
+            deadline,
+            authority.repository,
+            CONTROLLER_WORKFLOW_ID,
+            "Railway controller",
+        )
+        release_after = _run_inventory(
+            deadline,
+            authority.repository,
+            RELEASE_WORKFLOW_ID,
+            "Tests release",
+        )
+        if sorted(set(controller_after) - set(controller_before)) != [
+            controller_run_id
+        ]:
+            raise ActivationError(
+                "controller run inventory raced after schedule binding"
+            )
+        expected_release_additions = [] if release_run_id is None else [release_run_id]
+        if (
+            sorted(set(release_after) - set(release_before))
+            != expected_release_additions
+        ):
+            raise ActivationError(
+                "downstream run inventory raced after release binding"
+            )
+        if _load_restore(authority.path, repository=authority.repository) != authority:
+            raise ActivationError(
+                "producer restore receipt changed during release proof"
+            )
+        final_authority = _live_snapshot(
+            deadline,
+            repository=authority.repository,
+            expected_sha=source_sha,
+            expected_gate="true",
+            expected_producer_state="disabled_manually",
+            expected_controller_state="disabled_manually",
+        )
+        _exact_run_inventories(
+            deadline,
+            repository=authority.repository,
+            producer_inventories=producer_before,
+            controller_inventory=controller_after,
+            release_inventory=release_after,
+        )
+        if (
+            _validate_environment_contract(deadline, authority.repository)
+            != environment_contract
+        ):
+            raise ActivationError(
+                "protected environment changed before final live proof"
+            )
+        final_authority, reactivated_at, terminal_cutoff = _reactivate_workflows(
+            deadline,
+            authority=authority,
+            state=state,
+            expected_sha=source_sha,
+            producer_inventories=producer_before,
+            controller_inventory=controller_after,
+            release_inventory=release_after,
+        )
+        final_deadline = _wall_bounded_deadline(deadline, terminal_cutoff)
+        if (
+            _validate_environment_contract(final_deadline, authority.repository)
+            != environment_contract
+        ):
+            raise ActivationError(
+                "protected environment changed during terminal reactivation"
+            )
+        if _utc_now() >= terminal_cutoff:
+            raise ActivationError("terminal live proof crossed the :50 cutoff")
+        # These provider/www bytes are the final external observation before
+        # local cleanup, receipt construction, and the terminal atomic commit.
+        manifest_sha, freshness_sha, live_manifest = _validate_live_proof(
+            final_deadline,
+            temporary_directory=temporary_directory,
+            expected_sha=source_sha,
+            expected_manifest_sha256=artifact_manifest_sha,
+            nonce=f"{controller_run_id}-{release_run_id or 0}-final",
+        )
+        if manifest_sha != artifact_manifest_sha:
+            raise ActivationError("live manifest does not equal proved release bytes")
+        if _utc_now() >= terminal_cutoff:
+            raise ActivationError("terminal live proof crossed the :50 cutoff")
+        shutil.rmtree(temporary_directory)
+        temporary_removed = True
+    except BaseException:
+        if not temporary_removed:
+            try:
+                shutil.rmtree(temporary_directory)
+            except OSError as cleanup_error:
+                try:
+                    print(
+                        f"failed to remove private hourly temporary directory: {cleanup_error}",
+                        file=sys.stderr,
+                    )
+                except (BrokenPipeError, OSError, ValueError):
+                    pass
+        raise
+
+    receipt = {
+        "activated_at": activated_at,
+        "artifact_evidence": {
+            "controller_outcome_artifact": outcome_artifact,
+            "controller_request_artifact": request_artifact,
+            "release_artifact": release_artifact,
+            "transaction_receipt_sha256": transaction_sha,
+            "verification_receipt_sha256": verification_sha,
+        },
+        "authority": {
+            "exclusive_writer_ack": EXCLUSIVE_WRITER_ACK,
+            "hourly_publication_enabled": True,
+            "protected_environment": PRODUCTION_ENVIRONMENT,
+            "protected_environment_contract": environment_contract,
+        },
+        "controller": {
+            "event": "schedule",
+            "jobs": controller_jobs,
+            "requested_at": controller_outcome["requested_at"],
+            "result": controller_outcome["result"],
+            "run_attempt": 1,
+            "run_id": controller_run_id,
+        },
+        "live": {
+            "freshness_attestation_sha256": freshness_sha,
+            "manifest_sha256": manifest_sha,
+            "provider_origin": PROVIDER_ORIGIN,
+            "public_origin": PUBLIC_ORIGIN,
+            "source_commit": source_sha,
+            "tree_sha256": live_manifest["tree_sha256"],
+        },
+        "no_conflicting_active_runs": True,
+        "operator_confirmation": {
+            "method": "typed-exact-final-main-sha",
+            "source_commit": source_sha,
+            "timeout_seconds": PROMPT_TIMEOUT_SECONDS,
+        },
+        "producer_restore": {
+            "final_main_sha": authority.final_sha,
+            "initial_main_sha": authority.initial_sha,
+            "receipt": str(authority.path),
+            "receipt_sha256": authority.digest,
+            "terminal_at": authority.terminal_at,
+        },
+        "release": (
+            None
+            if release_run_id is None
+            else {
+                "environment_approved": approved,
+                "environment_id": environment_id,
+                "jobs": release_jobs,
+                "run_attempt": 1,
+                "run_id": release_run_id,
+            }
+        ),
+        "repository": authority.repository,
+        "schedule": {
+            "arming_window_started_at": before["arming_window_started_at"],
+            "lineage_from_restore": lineage,
+            "scheduled_tick": before["scheduled_tick"],
+        },
+        "schema_version": "palimpsest.railway-hourly-publication-steady-state.v1",
+        "source_commit": source_sha,
+        "status": "verified",
+        "verified_at": _utc_now()
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "workflow_freeze": {
+            "controller_disabled_after_binding": True,
+            "producers_disabled_before_gate": True,
+            "reactivated_at": reactivated_at,
+            "terminal_receipt_cutoff": terminal_cutoff.isoformat().replace(
+                "+00:00", "Z"
+            ),
+            "terminal_window_utc_minute_offsets": {
+                "admission_end": 30,
+                "admission_start": 20,
+                "proof_end": 40,
+                "receipt_cutoff": 50,
+            },
+        },
+        "workflows": final_authority["workflows"],
+    }
+    if _utc_now() >= terminal_cutoff:
+        raise ActivationError("terminal receipt crossed the :50 cutoff")
+    digest = _write_final_receipt(
+        receipt_path, receipt, state, not_after=terminal_cutoff
+    )
+    state.receipt_status = "verified"
+    return receipt, digest
+
+
+def _report_warning_only(path: Path, digest: str, status: str) -> None:
+    summary = json.dumps(
+        {"receipt": str(path), "receipt_sha256": digest, "status": status},
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    try:
+        sys.stdout.write(summary + "\n")
+        sys.stdout.flush()
+    except (BrokenPipeError, OSError, ValueError) as error:
+        try:
+            print(
+                f"hourly activation receipt committed; stdout failed: {error}",
+                file=sys.stderr,
+            )
+        except (BrokenPipeError, OSError, ValueError):
+            pass
+
+
+def main() -> int:
+    if len(sys.argv) != 1:
+        print(
+            "enable-hourly-publication accepts environment inputs only", file=sys.stderr
+        )
+        return 2
+    repository = os.environ.get("PALIMPSEST_REPOSITORY", DEFAULT_REPOSITORY)
+    if REPOSITORY.fullmatch(repository) is None:
+        print("PALIMPSEST_REPOSITORY is not an exact repository slug", file=sys.stderr)
+        return 2
+    state = RunState()
+    status = 1
+    receipt_path: Path | None = None
+    digest = ""
+    authority: RestoreAuthority | None = None
+    failure_error: BaseException | None = None
+
+    def abort(signum: int, _frame: Any) -> NoReturn:
+        raise SignalAbort(signum)
+
+    previous = {
+        item: signal.getsignal(item)
+        for item in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
+    }
+    for item in previous:
+        signal.signal(item, abort)
+    try:
+        restore_path = Path(os.environ.get("PRODUCER_RESTORE_RECEIPT", ""))
+        receipt_path = _prepare_output(os.environ.get("HOURLY_ACTIVATION_RECEIPT", ""))
+        authority = _load_restore(restore_path, repository=repository)
+        _, digest = _execute(
+            authority=authority, receipt_path=receipt_path, state=state
+        )
+        status = 0
+    except SignalAbort as error:
+        print(str(error), file=sys.stderr)
+        status = 128 + error.signum
+        failure_error = error
+    except KeyboardInterrupt:
+        print("hourly activation interrupted", file=sys.stderr)
+        status = 130
+        failure_error = KeyboardInterrupt("hourly activation interrupted")
+    except CommandError as error:
+        print(str(error), file=sys.stderr)
+        status = error.returncode if 1 <= error.returncode <= 125 else 1
+        failure_error = error
+    except (ActivationError, KeyError, OSError, TypeError, ValueError) as error:
+        print(str(error), file=sys.stderr)
+        status = 1
+        failure_error = error
+    finally:
+        previous_mask = signal.pthread_sigmask(
+            signal.SIG_BLOCK, {signal.SIGHUP, signal.SIGINT, signal.SIGTERM}
+        )
+        if status != 0 and not state.receipt_committed:
+            try:
+                cleanup = _failure_cleanup(repository, state)
+            except BaseException as cleanup_error:
+                cleanup = {
+                    "acknowledgement": "unproved",
+                    "gate": "unproved",
+                    "proved": False,
+                    "runs": "unproved",
+                    "workflows": "unproved",
+                }
+                try:
+                    print(
+                        f"hourly failure cleanup could not complete: {cleanup_error}",
+                        file=sys.stderr,
+                    )
+                except (BrokenPipeError, OSError, ValueError):
+                    pass
+            if receipt_path is not None:
+                try:
+                    failure_document = _failure_receipt(
+                        repository=repository,
+                        authority=authority,
+                        state=state,
+                        cleanup=cleanup,
+                        error=failure_error or ActivationError("unknown failure"),
+                        exit_status=status,
+                    )
+                    digest = _write_final_receipt(receipt_path, failure_document, state)
+                except BaseException as receipt_error:
+                    try:
+                        print(
+                            f"hourly failure receipt could not be committed: {receipt_error}",
+                            file=sys.stderr,
+                        )
+                    except (BrokenPipeError, OSError, ValueError):
+                        pass
+        for item, handler in previous.items():
+            signal.signal(item, handler)
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        if state.receipt_status == "verified":
+            status = 0
+        elif status == 0:
+            status = 1
+    if state.receipt_committed:
+        assert receipt_path is not None
+        _report_warning_only(receipt_path, digest, state.receipt_status or "unknown")
+    return status
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
