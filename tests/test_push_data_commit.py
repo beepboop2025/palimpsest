@@ -205,9 +205,7 @@ def test_china_refresh_extracts_registry_from_latest_receipt_change(
     (repo / "readings").mkdir()
     prior = '{"schema_version":"prior-registry"}\n'
     current = '{"schema_version":"expanded-registry"}\n'
-    (repo / "config" / "china_econ_wdi_series.json").write_text(
-        prior, encoding="utf-8"
-    )
+    (repo / "config" / "china_econ_wdi_series.json").write_text(prior, encoding="utf-8")
     (repo / "readings" / "china-econ-wdi-latest.json").write_text(
         '{"receipt":"reviewed"}\n', encoding="utf-8"
     )
@@ -260,9 +258,7 @@ def test_china_registry_candidate_is_data_only_and_based_on_exact_main(
     registry_ref = "refs/heads/review/china-econ-registry-expansion"
     _git(publisher, "checkout", "-q", "-b", "registry-expansion")
     publisher_registry = publisher / "config" / "china_econ_wdi_series.json"
-    publisher_registry.write_text(
-        '{"series":["old","new"]}\n', encoding="utf-8"
-    )
+    publisher_registry.write_text('{"series":["old","new"]}\n', encoding="utf-8")
     _git(publisher, "add", "config/china_econ_wdi_series.json")
     if include_unreviewed_path:
         (publisher / "unexpected.txt").write_text("not data only\n", encoding="utf-8")
@@ -1270,9 +1266,14 @@ def test_workflows_never_swallow_a_source_commit_rebase_failure() -> None:
     assert "current main contains a non-atomic registry-only transition" in china_econ
     assert 'transition["state"] != "append_only_addition"' in china_econ
     assert 'not transition["added_source_indicators"]' in china_econ
-    assert "registry expansion requires a nonempty append-only indicator addition" in china_econ
+    assert (
+        "registry expansion requires a nonempty append-only indicator addition"
+        in china_econ
+    )
     assert china_econ.count("args+=(--require-registry-addition)") == 2
-    assert "registry expansion produced no compatible ledger/receipt update" in china_econ
+    assert (
+        "registry expansion produced no compatible ledger/receipt update" in china_econ
+    )
     assert (
         'bash scripts/extract_china_econ_prior_registry.sh "$candidate_sha"'
         in china_econ
@@ -1386,6 +1387,8 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     mcp_admission = workflow.index("  mcp-deployment-admission:")
     pages_artifact = workflow.index("  pages-artifact:")
     deploy_pages = workflow.index("  deploy-pages:")
+    deploy_railway = workflow.index("  deploy-and-verify-railway:")
+    verify_live = workflow.index("  verify-live-rights-closure:")
 
     assert (
         source_gate
@@ -1395,14 +1398,17 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
         < admission
         < mcp_admission
         < pages_artifact
+        < deploy_pages
+        < deploy_railway
+        < verify_live
     )
     assert workflow.count("steps.identity.outputs.scope == 'complete'") == 3
     # MCP admission, Pages artifact/deploy, the non-Pages China review bundle,
-    # and the final live Pages/MCP rights-closure proof.
-    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 5
+    # the protected Railway transaction, and the fallback live rights proof.
+    assert workflow.count("needs.contract.outputs.scope == 'complete'") == 6
     assert (
         workflow[mcp_admission:].count("github.event_name == 'repository_dispatch'")
-        == 4
+        == 5
     )
     assert (
         "python -m scripts.build_data_catalog --check"
@@ -1426,7 +1432,10 @@ def test_source_contract_is_scoped_and_only_complete_contracts_deploy_pages() ->
     rights_stage = workflow.index("python3 -m scripts.stage_pages_rights")
     upload_pages = workflow.index("Upload the exact Pages artifact")
     assert rights_stage < archive_or_suppress < upload_pages
-    assert 'archive_builder="$RUNNER_TEMP/pages-root/scripts/build_pages_wire_archive.py"' in workflow
+    assert (
+        'archive_builder="$RUNNER_TEMP/pages-root/scripts/build_pages_wire_archive.py"'
+        in workflow
+    )
     # Rights staging plus both archive-or-suppression passes operate on the
     # same exact temporary Pages root.
     assert workflow.count('--root "$RUNNER_TEMP/pages-root"') == 3

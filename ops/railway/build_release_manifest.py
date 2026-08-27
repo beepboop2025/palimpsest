@@ -11,7 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 SCHEMA_VERSION = "palimpsest.railway-static-release.v1"
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 MANIFEST_NAME = "railway-release.json"
@@ -29,13 +28,17 @@ CRITICAL_PATHS = (
     "core/ucdp_aggregate.py",
     "datapackage.json",
     "docs/UCDP-AGGREGATE-CONTEXT.md",
+    "docs/HETZNER-RAILWAY-CONTINUOUS-PUBLICATION.md",
     "index.html",
     "llms.txt",
     "openapi.json",
+    "ops/railway/deploy-continuous-release.sh",
+    "ops/railway/verify_continuous_release.py",
     "protocol/bri-economic-observations-v1.schema.json",
     "protocol/bri-wdi-pages-publication-v1.schema.json",
     "protocol/deep-research-publication-receipt-v1.schema.json",
     "protocol/pages-rights-release-receipt-v1.schema.json",
+    "protocol/railway-continuous-release-receipt-v1.schema.json",
     "protocol/restricted-publication-endpoint-v1.schema.json",
     "protocol/restricted-publication-v1.schema.json",
     "protocol/ucdp-aggregate-v1.schema.json",
@@ -52,12 +55,16 @@ CRITICAL_PATHS = (
     "research/china-pakistan-myanmar-bri-2026/publication-receipt.json",
     "research/china-pakistan-myanmar-bri-2026/report.pdf",
     "scripts/verify_deep_research_publication.py",
+    "scripts/verify_railway_controller_request.py",
     "scripts/verify_ucdp_public_release.py",
     "scripts/ucdp_bulk_pull.py",
     "server.json",
     "sitemap.xml",
     "tests/test_deep_research_publication.py",
     "tests/test_publication_contract.py",
+    "tests/test_railway_continuous_publication.py",
+    "tests/test_railway_continuous_release_verifier.py",
+    "tests/test_railway_controller_authority.py",
     "tests/test_safe_fetch.py",
     "tests/test_ucdp_bulk_aggregate.py",
     "tests/test_ucdp_public_release.py",
@@ -101,9 +108,9 @@ def build_manifest(root: Path, source_commit: str, built_at: str) -> dict[str, A
             raise ManifestError(
                 f"publication bundle contains symbolic link: {path.relative_to(root)}"
             )
-        if not path.is_file() or path.name == MANIFEST_NAME:
-            continue
         relative = path.relative_to(root).as_posix()
+        if not path.is_file() or relative == MANIFEST_NAME:
+            continue
         digest, size = _sha256_file(path)
         file_rows.append((relative, size, digest))
 

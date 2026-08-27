@@ -20,7 +20,6 @@ import pytest
 import mcp.palimpsest_mcp as server
 from scripts import smoke_palimpsest_mcp as smoke
 
-
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "ops/mcp-deploy/palimpsest-mcp-deploy-wrapper.sh"
 VERIFIER_PATH = ROOT / "ops/mcp-deploy/verify_release.py"
@@ -290,19 +289,28 @@ def _verified_rights_payload() -> dict[str, object]:
         },
         "source_decisions": [
             {
-                "source_id": "cfets_benchmarks", "decision": "deny",
-                "availability": "restricted", "values_allowed": False,
-                "seiche_export_allowed": False, "published_records": 0,
+                "source_id": "cfets_benchmarks",
+                "decision": "deny",
+                "availability": "restricted",
+                "values_allowed": False,
+                "seiche_export_allowed": False,
+                "published_records": 0,
             },
             {
-                "source_id": "chinamoney", "decision": "deny",
-                "availability": "restricted", "values_allowed": False,
-                "seiche_export_allowed": False, "published_records": 0,
+                "source_id": "chinamoney",
+                "decision": "deny",
+                "availability": "restricted",
+                "values_allowed": False,
+                "seiche_export_allowed": False,
+                "published_records": 0,
             },
             {
-                "source_id": "world_bank_wdi", "decision": "allow",
-                "availability": "unavailable", "values_allowed": True,
-                "seiche_export_allowed": True, "input_records": 0,
+                "source_id": "world_bank_wdi",
+                "decision": "allow",
+                "availability": "unavailable",
+                "values_allowed": True,
+                "seiche_export_allowed": True,
+                "input_records": 0,
                 "published_records": 0,
             },
         ],
@@ -375,16 +383,16 @@ def test_live_smoke_accepts_only_monotonic_denied_coverage_growth() -> None:
         "restricted_records": server.ECON_RIGHTS_EXPECTED_RESTRICTED_RECORDS + 7,
         "quarantined_artifacts": 24_541,
     }
-    payload["quarantined_paths"] = sorted({
-        *payload["quarantined_paths"],
-        *(
-            f"news/wire/repository-scale-{index:05d}.json"
-            for index in range(24_541)
-        ),
-    })
-    payload["counts"]["quarantined_artifacts"] = len(
-        payload["quarantined_paths"]
+    payload["quarantined_paths"] = sorted(
+        {
+            *payload["quarantined_paths"],
+            *(
+                f"news/wire/repository-scale-{index:05d}.json"
+                for index in range(24_541)
+            ),
+        }
     )
+    payload["counts"]["quarantined_artifacts"] = len(payload["quarantined_paths"])
 
     smoke._validate_rights_payload(payload, contract, require_verified=True)
 
@@ -556,8 +564,7 @@ def test_host_wrapper_bounded_provenance_reader(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     timeout_shim.chmod(0o755)
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         set -Eeuo pipefail
         PATH="$1:$PATH"
         shift
@@ -565,8 +572,7 @@ def test_host_wrapper_bounded_provenance_reader(tmp_path: Path) -> None:
         fail() {{ printf '%s\n' "$*" >&2; exit 1; }}
         {function_source}
         receive_github_provenance "$1"
-        """
-    )
+        """)
 
     valid_output = tmp_path / "valid.json"
     valid = subprocess.run(
@@ -641,9 +647,7 @@ def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
     assert "--rights-bootstrap-preflight" in text
     assert "--bootstrap-deny" in text
     assert "--expected-publication-sha" in text
-    smoke_text = (ROOT / "scripts/smoke_palimpsest_mcp.py").read_text(
-        encoding="utf-8"
-    )
+    smoke_text = (ROOT / "scripts/smoke_palimpsest_mcp.py").read_text(encoding="utf-8")
     assert "_EXPECTED_AFFECTED_SIGNALS" in smoke_text
     assert "_EXPECTED_AFFECTED_VIEWS" in smoke_text
     assert "resources/read" in smoke_text
@@ -850,9 +854,10 @@ def test_release_runbook_pins_china_schedule_transition() -> None:
         if "\n  schedule:" in path.read_text(encoding="utf-8")
     )
 
-    assert len(scheduled_paths) == 34
+    assert len(scheduled_paths) == 35
     assert ".github/workflows/china-econ-refresh.yml" not in scheduled_paths
     assert ".github/workflows/codeql.yml" in scheduled_paths
+    assert ".github/workflows/railway-publication-controller.yml" in scheduled_paths
     assert 'premerge_schedule_paths="$release_gate_dir/' in text
     assert 'postmerge_schedule_paths="$release_gate_dir/' in text
     assert 'scheduled_paths_at "$frozen_main"' in text
@@ -860,6 +865,8 @@ def test_release_runbook_pins_china_schedule_transition() -> None:
     assert 'build_schedule_manifest "$premerge_schedule_paths"' in text
     assert "35:34" in text
     assert "34:34" in text
+    assert "34:35" in text
+    assert "35:35" in text
     assert "LC_ALL=C comm -23" in text
     assert "LC_ALL=C comm -13" in text
     assert ".github/workflows/*.yml|.github/workflows/*.yaml" in text
@@ -871,7 +878,8 @@ def test_release_runbook_pins_china_schedule_transition() -> None:
     assert "manual dispatch" in text
     assert "cannot recreate the" in text
     assert "removed schedule" in text
-    assert "34-to-34" in text
+    assert "34-to-35" in text
+    assert "35-to-35" in text
     assert 'workflow_replacements="$release_gate_dir/' in text
     assert "replacement_live_runs=$(gh api --paginate" in text
     assert 'test -z "$replacement_live_runs"' in text
@@ -963,6 +971,34 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
         ["git", "rev-parse", "HEAD"], cwd=repository, text=True
     ).strip()
 
+    railway_controller = workflows / "railway-publication-controller.yml"
+    railway_controller.write_text(
+        "name: Railway controller\non:\n  schedule:\n    - cron: '13 * * * *'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", ".github/workflows/railway-publication-controller.yml"],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Palimpsest Test",
+            "-c",
+            "user.email=test@palimpsest.info",
+            "commit",
+            "-qm",
+            "add continuous Railway controller",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    railway_tree = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repository, text=True
+    ).strip()
+
     (repository / "README.md").write_text("steady state\n", encoding="utf-8")
     subprocess.run(["git", "add", "README.md"], cwd=repository, check=True)
     subprocess.run(
@@ -1018,7 +1054,13 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
     assert (
         validate_transition(premerge_tree, transition_tree, "one-time").returncode == 0
     )
-    assert validate_transition(transition_tree, steady_tree, "steady").returncode == 0
+    assert (
+        validate_transition(
+            transition_tree, railway_tree, "railway-addition"
+        ).returncode
+        == 0
+    )
+    assert validate_transition(railway_tree, steady_tree, "steady").returncode == 0
     premerge_paths = (
         (tmp_path / "one-time-pre.txt").read_text(encoding="utf-8").splitlines()
     )

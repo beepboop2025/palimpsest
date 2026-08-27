@@ -405,9 +405,11 @@ has 35 scheduled workflow paths, including China econ and scheduled CodeQL,
 while the reviewed post-merge tree has 34. Both exact counts and the one-path difference are drift
 alarms. A release that also crosses the reviewed OSINT workflow rename records
 the one allowed old-path-to-new-path translation explicitly; it does not infer
-workflow identity from a similar name. Later steady-state releases require an
-exact 34-to-34 path-set match. Do not use a shell variable named `path` in zsh;
-it aliases the executable search path.
+workflow identity from a similar name. The later continuous Railway release
+adds exactly `railway-publication-controller.yml`, producing a reviewed
+34-to-35 transition; its steady state requires an exact 35-to-35 path-set
+match. Historical 34-to-34 releases remain admissible. Do not use a shell
+variable named `path` in zsh; it aliases the executable search path.
 
 If this release continues an already-open publication gate, reuse that gate's
 original preservation manifest. Never recapture state after workflows have been
@@ -481,6 +483,7 @@ validate_schedule_transition() {
   china_workflow=.github/workflows/china-econ-refresh.yml
   old_osint_workflow=.github/workflows/osint-china-refresh.yml
   new_osint_workflow=.github/workflows/osint-china-v2-refresh.yml
+  railway_controller=.github/workflows/railway-publication-controller.yml
 
   scheduled_paths_at "$premerge_tree" >"$verified_premerge_paths"
   cmp -s "$verified_premerge_paths" "$premerge_paths_file"
@@ -510,6 +513,15 @@ validate_schedule_transition() {
         "$postmerge_paths_file")"
       ;;
     34:34)
+      cmp -s "$normalized_premerge_paths" "$postmerge_paths_file"
+      ;;
+    34:35)
+      test -z "$(LC_ALL=C comm -23 "$normalized_premerge_paths" \
+        "$postmerge_paths_file")"
+      test "$(LC_ALL=C comm -13 "$normalized_premerge_paths" \
+        "$postmerge_paths_file")" = "$railway_controller"
+      ;;
+    35:35)
       cmp -s "$normalized_premerge_paths" "$postmerge_paths_file"
       ;;
     *)
@@ -571,8 +583,13 @@ premerge_schedule_count=$(wc -l <"$premerge_schedule_paths" | \
 case "$premerge_schedule_count" in
   34) ;;
   35)
-    grep -Fx '.github/workflows/china-econ-refresh.yml' \
-      "$premerge_schedule_paths"
+    if ! grep -Fxq '.github/workflows/china-econ-refresh.yml' \
+      "$premerge_schedule_paths" &&
+       ! grep -Fxq '.github/workflows/railway-publication-controller.yml' \
+      "$premerge_schedule_paths"; then
+      printf '35-workflow tree has neither reviewed transition owner\n' >&2
+      exit 1
+    fi
     ;;
   *)
     printf 'unexpected pre-merge scheduled workflow count: %s\n' \
@@ -888,13 +905,16 @@ Only after the live smoke, host receipt, deployment artifact, Registry receipt,
 official latest record, final exact complete Tests run, Pages deployment,
 SHA-bound rights receipt, and served bytes all agree may the states captured in
 the manifest be restored. An
-intentionally disabled workflow stays disabled. The one-time release restores
-the original 35 intentions even though the target has only 34 scheduled paths:
-re-enabling the China econ workflow exposes its reviewed manual dispatch but
-cannot recreate the removed schedule. If the original manifest names the
-deleted OSINT workflow, resolve only the explicitly recorded replacement path,
-require its new API identity to stay disabled, and refuse every restoration
-while a queued or running job still exists on the deleted workflow ID.
+intentionally disabled workflow stays disabled. The historical China transition
+restores the original 35 intentions even though that target has only 34
+scheduled paths: re-enabling China econ exposes its reviewed manual dispatch
+but cannot recreate the removed schedule. A later 34-to-35 controller
+addition restores only the 34 pre-existing intentions; the new Railway
+controller remains gated by `RAILWAY_PUBLICATION_ENABLED`. If the original
+manifest names the deleted OSINT workflow, resolve only the explicitly recorded
+replacement path, require its new API identity to stay disabled, and refuse
+every restoration while a queued or running job still exists on the deleted
+workflow ID.
 
 ```bash
 restore_inventory="$release_gate_dir/workflows-before-restore.json"

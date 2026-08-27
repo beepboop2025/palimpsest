@@ -41,8 +41,11 @@ concurrency:
   # distinct publication. Duplicate delivery for the same payload SHA remains
   # self-cancelling.
   group: >-
-    tests-${{ github.event_name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.ref }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope || 'push' }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope == 'source' && 'contract-only' || 'full' }}
-  cancel-in-progress: true
+    tests-${{ github.event_name }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.sha || github.ref }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope || 'push' }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.scope == 'source' && 'contract-only' || 'full' }}-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.deploy_railway == true && 'railway-release' || 'validation' }}
+  # Never terminate a release controller while Railway may be uploading or
+  # switching traffic. Duplicate production requests queue and re-check main;
+  # ordinary validation runs retain the existing self-cancelling behavior.
+  cancel-in-progress: ${{ !(github.event_name == 'repository_dispatch' && github.event.client_payload.deploy_railway == true) }}
 
 jobs:
   pytest:
@@ -99,6 +102,10 @@ jobs:
     # workflow — the one guarantee the project asks readers to check for themselves should
     # not depend on which cron fired.
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      actions: read
+      contents: read
     outputs:
       revision: ${{ steps.identity.outputs.revision }}
       scope: ${{ steps.identity.outputs.scope }}
@@ -139,11 +146,78 @@ jobs:
             echo "source scope is accepted only through exact repository dispatch" >&2
             exit 1
           fi
+          if [ "$GITHUB_EVENT_NAME" = "repository_dispatch" ]; then
+            python3 -I -S - <<'PY'
+          import json
+          import os
+          import re
+          from datetime import datetime
+          from pathlib import Path
+
+
+          def strict_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise SystemExit(f"duplicate dispatch key: {key}")
+                  result[key] = value
+              return result
+
+
+          event = json.loads(
+              Path(os.environ["GITHUB_EVENT_PATH"]).read_bytes(),
+              object_pairs_hook=strict_object,
+          )
+          payload = event.get("client_payload")
+          if not isinstance(payload, dict):
+              raise SystemExit("publication dispatch has no object payload")
+          ordinary_keys = {"sha", "scope"}
+          railway_keys = ordinary_keys | {
+              "controller_artifact_digest",
+              "controller_artifact_id",
+              "controller_request_sha256",
+              "deploy_railway",
+              "controller_run_id",
+              "controller_run_attempt",
+              "requested_at",
+          }
+          if "deploy_railway" not in payload:
+              if set(payload) != ordinary_keys:
+                  raise SystemExit("ordinary publication dispatch changed its closed schema")
+          else:
+              if set(payload) != railway_keys:
+                  raise SystemExit("Railway publication dispatch changed its closed schema")
+              if payload["deploy_railway"] is not True or payload.get("scope") != "complete":
+                  raise SystemExit("Railway publication dispatch is not an exact complete release")
+              for field in ("controller_run_id", "controller_run_attempt"):
+                  value = payload.get(field)
+                  if type(value) is not int or value < 1:
+                      raise SystemExit(f"Railway publication {field} is invalid")
+              artifact_id = payload.get("controller_artifact_id")
+              if type(artifact_id) is not int or artifact_id < 1:
+                  raise SystemExit("Railway publication controller_artifact_id is invalid")
+              for field in ("controller_artifact_digest", "controller_request_sha256"):
+                  value = payload.get(field)
+                  if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+                      raise SystemExit(f"Railway publication {field} is invalid")
+              requested_at = payload.get("requested_at")
+              if not isinstance(requested_at, str) or re.fullmatch(
+                  r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+                  requested_at,
+              ) is None:
+                  raise SystemExit("Railway publication request clock is invalid")
+              try:
+                  datetime.fromisoformat(requested_at.replace("Z", "+00:00"))
+              except ValueError as error:
+                  raise SystemExit("Railway publication request clock is invalid") from error
+          PY
+          fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
         with:
           ref: ${{ steps.identity.outputs.revision }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Prove the dispatched commit is published on main
         if: ${{ github.event_name == 'repository_dispatch' }}
@@ -163,6 +237,79 @@ jobs:
             echo "complete publication is not the current main tip" >&2
             exit 1
           fi
+
+      - name: Authenticate the exact Railway controller request
+        if: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.deploy_railway == true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CONTROLLER_RUN_ID: ${{ github.event.client_payload.controller_run_id }}
+          CONTROLLER_RUN_ATTEMPT: ${{ github.event.client_payload.controller_run_attempt }}
+          CONTROLLER_ARTIFACT_ID: ${{ github.event.client_payload.controller_artifact_id }}
+          CONTROLLER_WORKFLOW_PATH: .github/workflows/railway-publication-controller.yml
+        run: |
+          set -euo pipefail
+          [[ "$CONTROLLER_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$CONTROLLER_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          [[ "$CONTROLLER_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          run_json="$RUNNER_TEMP/railway-controller-run.json"
+          artifact_json="$RUNNER_TEMP/railway-controller-artifact.json"
+          artifact_zip="$RUNNER_TEMP/railway-controller-request.zip"
+          api_headers=(
+            -H "Accept: application/vnd.github+json"
+            -H "X-GitHub-Api-Version: 2022-11-28"
+          )
+
+          run_completed=false
+          for _ in $(seq 1 36); do
+            if timeout --signal=TERM --kill-after=5s 20s \
+              gh api "${api_headers[@]}" \
+              "repos/$GITHUB_REPOSITORY/actions/runs/$CONTROLLER_RUN_ID/attempts/$CONTROLLER_RUN_ATTEMPT" \
+              > "$run_json"; then
+              run_status=$(jq -er '.status | select(type == "string")' "$run_json")
+              if [ "$run_status" = completed ]; then
+                run_completed=true
+                break
+              fi
+            fi
+            sleep 5
+          done
+          if [ "$run_completed" != true ]; then
+            echo "exact Railway controller run did not complete in time" >&2
+            exit 1
+          fi
+
+          artifact_found=false
+          for _ in $(seq 1 12); do
+            if timeout --signal=TERM --kill-after=5s 20s \
+              gh api "${api_headers[@]}" \
+              "repos/$GITHUB_REPOSITORY/actions/artifacts/$CONTROLLER_ARTIFACT_ID" \
+              > "$artifact_json"; then
+              artifact_found=true
+              break
+            fi
+            sleep 5
+          done
+          if [ "$artifact_found" != true ]; then
+            echo "exact Railway controller artifact was not available" >&2
+            exit 1
+          fi
+          artifact_size=$(jq -er '
+            .size_in_bytes
+            | select(type == "number" and . >= 1 and . <= 262144)
+          ' "$artifact_json")
+          timeout --signal=TERM --kill-after=5s 30s \
+            gh api "${api_headers[@]}" \
+            "repos/$GITHUB_REPOSITORY/actions/artifacts/$CONTROLLER_ARTIFACT_ID/zip" \
+            > "$artifact_zip"
+          test "$(wc -c < "$artifact_zip" | tr -d ' ')" = "$artifact_size"
+
+          python3 scripts/verify_railway_controller_request.py \
+            --event "$GITHUB_EVENT_PATH" \
+            --run-json "$run_json" \
+            --artifact-json "$artifact_json" \
+            --artifact-zip "$artifact_zip" \
+            --repository "$GITHUB_REPOSITORY" \
+            --workflow-path "$CONTROLLER_WORKFLOW_PATH"
 
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
@@ -1079,14 +1226,21 @@ jobs:
             --repository "$GITHUB_REPOSITORY"
 
       - name: Re-probe the deployed public MCP release
+        env:
+          DEPLOY_RAILWAY: ${{ github.event.client_payload.deploy_railway || false }}
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
         run: |
           set -euo pipefail
+          publication_args=()
+          if [ "$DEPLOY_RAILWAY" != true ]; then
+            publication_args=(--expected-publication-sha "$PUBLICATION_SHA")
+          fi
           python3 "$RUNNER_TEMP/deployed-mcp-contract/smoke_palimpsest_mcp.py" \
             --url https://api.seiche.info/palimpsest/mcp \
             --module "$RUNNER_TEMP/deployed-mcp-contract/palimpsest_mcp.py" \
             --manifest "$RUNNER_TEMP/deployed-mcp-contract/server.json" \
             --bootstrap-deny \
-            --expected-publication-sha '${{ needs.contract.outputs.revision }}' \
+            "${publication_args[@]}" \
             --timeout 20
 
   pages-artifact:
@@ -1102,6 +1256,9 @@ jobs:
       needs.contract.outputs.scope == 'complete' &&
       github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
+    outputs:
+      rights_admission_epoch: ${{ steps.materialize.outputs.rights_admission_epoch }}
+      pages_rights_receipt_sha256: ${{ steps.materialize.outputs.pages_rights_receipt_sha256 }}
     permissions:
       contents: read
       pages: write
@@ -1116,7 +1273,10 @@ jobs:
           enablement: false
 
       - name: Materialize only exact tracked root content
+        id: materialize
         env:
+          CONTROLLER_REQUESTED_AT: ${{ github.event.client_payload.requested_at }}
+          DEPLOY_RAILWAY: ${{ github.event.client_payload.deploy_railway || false }}
           PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
         run: |
           set -euo pipefail
@@ -1164,7 +1324,13 @@ jobs:
           # the exact staged tree contains no CFETS value leakage.
           publication_epoch=$(git show -s --format=%ct "$PUBLICATION_SHA")
           rights_edition_at=$(date -u -d "@$publication_epoch" +%Y-%m-%dT%H:%M:%SZ)
-          rights_admission_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          if [ "$DEPLOY_RAILWAY" = true ]; then
+            # A replay of one authenticated controller artifact must produce
+            # the same rights receipt bytes and sealed Railway bundle.
+            rights_admission_at=$CONTROLLER_REQUESTED_AT
+          else
+            rights_admission_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          fi
           rights_receipt="$RUNNER_TEMP/pages-rights-release-receipt.json"
           rights_args=(
             --root "$RUNNER_TEMP/pages-root"
@@ -1175,6 +1341,12 @@ jobs:
           )
           python3 -m scripts.stage_pages_rights "${rights_args[@]}"
           python3 -m scripts.stage_pages_rights "${rights_args[@]}" --check
+          rights_admission_epoch=$(date -u -d "$rights_admission_at" +%s)
+          pages_rights_receipt_sha256=$(sha256sum "$rights_receipt" | awk '{print $1}')
+          {
+            echo "rights_admission_epoch=$rights_admission_epoch"
+            echo "pages_rights_receipt_sha256=$pages_rights_receipt_sha256"
+          } >> "$GITHUB_OUTPUT"
           # Scan the entire exact archive independently of the Python gate's
           # suffix/candidate selection. No original CFETS row identity/hash or
           # direct/mapping-key numeric value may remain in any served file.
@@ -1307,6 +1479,109 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e  # v4
 
+  deploy-and-verify-railway:
+    name: Deploy and prove exact Railway publication
+    needs:
+      - contract
+      - pages-artifact
+      - deploy-pages
+    if: >-
+      needs.contract.result == 'success' &&
+      needs.pages-artifact.result == 'success' &&
+      needs.deploy-pages.result == 'success' &&
+      needs.contract.outputs.scope == 'complete' &&
+      github.event_name == 'repository_dispatch' &&
+      github.event.client_payload.deploy_railway == true &&
+      vars.RAILWAY_PUBLICATION_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    concurrency:
+      group: palimpsest-railway-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    environment:
+      name: palimpsest-railway-production
+      url: https://www.palimpsest.info
+    env:
+      RAILWAY_PROJECT_ID: f7c86128-53a7-458a-a931-6628c6e61fb2
+      RAILWAY_ENVIRONMENT_ID: 1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2
+      RAILWAY_SERVICE_ID: 86a6f49c-b9dc-4be8-acd1-dd180c693230
+      RAILWAY_PROVIDER_ORIGIN: https://palimpsest-publication-production.up.railway.app
+      RAILWAY_PUBLIC_ORIGIN: https://www.palimpsest.info
+      RAILWAY_EXCLUSIVE_WRITER_ACK: ${{ vars.RAILWAY_EXCLUSIVE_WRITER_ACK }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          ref: ${{ needs.contract.outputs.revision }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require the protected project-scoped Railway credential
+        id: railway_credential
+        env:
+          RAILWAY_TOKEN: ${{ secrets.PALIMPSEST_RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$RAILWAY_TOKEN" ] || [[ "$RAILWAY_TOKEN" == *$'\n'* ]]; then
+            echo "PALIMPSEST_RAILWAY_TOKEN is missing or malformed" >&2
+            exit 1
+          fi
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install the checksum-pinned Railway CLI
+        env:
+          RAILWAY_CLI_VERSION: "5.44.1"
+          RAILWAY_CLI_SHA256: d3197e0868576e90fc1926795014c398fdfd8a8b006be07eb3e8e5215ee0a3ca
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/railway-cli.tar.gz"
+          binary_directory="$RUNNER_TEMP/railway-cli-bin"
+          install -d -m 0700 "$binary_directory"
+          curl --fail --silent --show-error --location \
+            --proto '=https' \
+            --tlsv1.2 \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --max-time 300 \
+            --max-filesize 8388608 \
+            "https://github.com/railwayapp/cli/releases/download/v${RAILWAY_CLI_VERSION}/railway-v${RAILWAY_CLI_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+            --output "$archive"
+          printf '%s  %s\n' "$RAILWAY_CLI_SHA256" "$archive" \
+            | sha256sum --check --strict
+          test "$(tar -tzf "$archive")" = railway
+          tar -xzf "$archive" -C "$binary_directory" railway
+          chmod 0500 "$binary_directory/railway"
+          echo "$binary_directory" >> "$GITHUB_PATH"
+          test "$($binary_directory/railway --version)" = \
+            "railway ${RAILWAY_CLI_VERSION}"
+
+      - name: Execute the serialized sealed-release transaction
+        id: railway_transaction
+        env:
+          PUBLICATION_SHA: ${{ needs.contract.outputs.revision }}
+          RIGHTS_ADMISSION_EPOCH: ${{ needs.pages-artifact.outputs.rights_admission_epoch }}
+          PAGES_RIGHTS_RECEIPT_SHA256: ${{ needs.pages-artifact.outputs.pages_rights_receipt_sha256 }}
+          RAILWAY_TOKEN: ${{ secrets.PALIMPSEST_RAILWAY_TOKEN }}
+          RAILWAY_RELEASE_ROOT: ${{ runner.temp }}/palimpsest-railway-bundle
+          RAILWAY_CONTROL_DIRECTORY: ${{ runner.temp }}/palimpsest-railway-control
+          RAILWAY_EVIDENCE_DIRECTORY: ${{ runner.temp }}/palimpsest-railway-evidence
+        run: bash ops/railway/deploy-continuous-release.sh
+
+      - name: Upload immutable Railway transaction evidence
+        if: ${{ always() && steps.railway_credential.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: railway-continuous-release-${{ needs.contract.outputs.revision }}-run-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/palimpsest-railway-evidence/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
   verify-live-rights-closure:
     name: Verify exact Pages and native MCP rights closure
     needs:
@@ -1316,7 +1591,9 @@ jobs:
       needs.contract.result == 'success' &&
       needs.deploy-pages.result == 'success' &&
       needs.contract.outputs.scope == 'complete' &&
-      github.event_name == 'repository_dispatch'
+      github.event_name == 'repository_dispatch' &&
+      (github.event.client_payload.deploy_railway != true ||
+       vars.RAILWAY_PUBLICATION_ENABLED != 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: read

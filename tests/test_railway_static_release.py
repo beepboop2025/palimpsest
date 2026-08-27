@@ -17,7 +17,6 @@ import pytest
 from scripts import build_pages_wire_archive as wire_archive
 from scripts import stage_pages_rights
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RAILWAY = ROOT / "ops" / "railway"
 
@@ -74,6 +73,16 @@ DEEP_REPORT_CRITICAL_PATHS = {
     "scripts/verify_deep_research_publication.py",
     "tests/test_deep_research_publication.py",
 }
+CONTINUOUS_RELEASE_CRITICAL_PATHS = {
+    "docs/HETZNER-RAILWAY-CONTINUOUS-PUBLICATION.md",
+    "ops/railway/deploy-continuous-release.sh",
+    "ops/railway/verify_continuous_release.py",
+    "protocol/railway-continuous-release-receipt-v1.schema.json",
+    "scripts/verify_railway_controller_request.py",
+    "tests/test_railway_continuous_publication.py",
+    "tests/test_railway_continuous_release_verifier.py",
+    "tests/test_railway_controller_authority.py",
+}
 
 
 def _publication_root(tmp_path: Path) -> Path:
@@ -98,9 +107,7 @@ def test_manifest_is_canonical_local_release_evidence(tmp_path: Path) -> None:
 
 def test_manifest_binds_every_rights_critical_file(tmp_path: Path) -> None:
     root = _publication_root(tmp_path)
-    manifest = manifest_module.build_manifest(
-        root, "c" * 40, "2026-08-26T18:00:00Z"
-    )
+    manifest = manifest_module.build_manifest(root, "c" * 40, "2026-08-26T18:00:00Z")
 
     assert RIGHTS_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
     for relative in RIGHTS_CRITICAL_PATHS:
@@ -116,16 +123,15 @@ def test_manifest_binds_reviewed_live_ucdp_release_without_claiming_upstream_sig
     tmp_path: Path,
 ) -> None:
     root = _publication_root(tmp_path)
-    manifest = manifest_module.build_manifest(
-        root, "e" * 40, "2026-08-26T18:00:00Z"
-    )
+    manifest = manifest_module.build_manifest(root, "e" * 40, "2026-08-26T18:00:00Z")
 
     assert UCDP_RELEASE_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
     for relative in UCDP_RELEASE_CRITICAL_PATHS:
         raw = (root / relative).read_bytes()
-        assert manifest["critical_files"][relative]["sha256"] == hashlib.sha256(
-            raw
-        ).hexdigest()
+        assert (
+            manifest["critical_files"][relative]["sha256"]
+            == hashlib.sha256(raw).hexdigest()
+        )
 
     registry = json.loads((ROOT / "config/ucdp_aggregate.json").read_text())
     assert registry["source"]["dataset_version"] == "26.1"
@@ -155,9 +161,7 @@ def test_manifest_binds_exact_report_only_package_and_withholding_decision(
     tmp_path: Path,
 ) -> None:
     root = _publication_root(tmp_path)
-    manifest = manifest_module.build_manifest(
-        root, "f" * 40, "2026-08-26T19:34:49Z"
-    )
+    manifest = manifest_module.build_manifest(root, "f" * 40, "2026-08-26T19:34:49Z")
 
     assert DEEP_REPORT_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
     for relative in DEEP_REPORT_CRITICAL_PATHS:
@@ -169,8 +173,7 @@ def test_manifest_binds_exact_report_only_package_and_withholding_decision(
 
     receipt = json.loads(
         (
-            ROOT
-            / "research/china-pakistan-myanmar-bri-2026/publication-receipt.json"
+            ROOT / "research/china-pakistan-myanmar-bri-2026/publication-receipt.json"
         ).read_text(encoding="utf-8")
     )
     assert receipt["publication_state"] == "public_report_only"
@@ -181,7 +184,25 @@ def test_manifest_binds_exact_report_only_package_and_withholding_decision(
         "run_manifest.json",
         "sources.jsonl",
     }
-    assert all(not row["served"] and not row["tracked"] for row in receipt["withheld_artifacts"])
+    assert all(
+        not row["served"] and not row["tracked"]
+        for row in receipt["withheld_artifacts"]
+    )
+
+
+def test_manifest_binds_continuous_release_authority_and_receipt_contract(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    manifest = manifest_module.build_manifest(root, "9" * 40, "2026-08-27T10:00:00Z")
+
+    assert CONTINUOUS_RELEASE_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
+    for relative in CONTINUOUS_RELEASE_CRITICAL_PATHS:
+        raw = (root / relative).read_bytes()
+        assert manifest["critical_files"][relative] == {
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
 
 
 def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
@@ -315,9 +336,7 @@ def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
     wire = builder.index('scripts/build_pages_wire_archive.py"')
     wire_check = builder.index("--check", wire)
     manifest = builder.index("ops/railway/build_release_manifest.py")
-    seal_files = builder.index(
-        'find "$staging_directory" -type f -exec chmod a-w {} +'
-    )
+    seal_files = builder.index('find "$staging_directory" -type f -exec chmod a-w {} +')
     seal_directories = builder.index(
         'find "$staging_directory" -depth -type d -exec chmod a-w {} +'
     )
@@ -346,7 +365,7 @@ def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
     assert 'chmod -R u+w "$staging_directory"' in builder
     assert 'env PYTHONDONTWRITEBYTECODE=1 "$python_runtime"' in builder
     assert '--current-at "$rights_admission_at"' in builder
-    assert "mv \"$staging_directory/.well-known\"" not in builder
+    assert 'mv "$staging_directory/.well-known"' not in builder
 
 
 def _copy_public_fixture(root: Path, relative: str) -> None:
@@ -388,8 +407,7 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
     ).encode()
     head = public_root / f"news/wire/{event_id}/analysis.json"
     revision = (
-        public_root
-        / f"news/wire/{event_id}/analysis/revisions/{analysis_id}.json"
+        public_root / f"news/wire/{event_id}/analysis/revisions/{analysis_id}.json"
     )
     for path in (head, revision):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -466,8 +484,7 @@ def test_static_mcp_topology_preserves_the_canonical_external_remote() -> None:
     entry = next(
         row
         for row in catalog["entries"]
-        if row["identifier"]
-        == "urn:air:palimpsest.info:mcp:evidence-observatory"
+        if row["identifier"] == "urn:air:palimpsest.info:mcp:evidence-observatory"
     )
 
     assert entry["data"]["remotes"] == [
