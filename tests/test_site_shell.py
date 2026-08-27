@@ -28,8 +28,11 @@ looks live is worse than a board that is visibly down.
 
 Standard library only, like the rest of tests/.
 """
+import html
 import pathlib
 import re
+import shutil
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -38,15 +41,16 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import site_nav  # noqa: E402
 import sync_nav  # noqa: E402
 
-# Pages a Python generator writes wholesale. They import site_nav directly rather
-# than being stamped by sync_nav, so they are checked for the shell but not for a
-# byte-identical stamped block — their nav is rendered at build time.
+# Pages a Python generator writes wholesale. Discovery also stamps their managed
+# marker blocks, while this list separately verifies that future generator runs
+# keep importing the canonical source instead of restoring private nav markup.
 GENERATED = {
     "china-brief.html",
     "weekly-situation.html",
     "news/china/situation/index.html",
     "news/china/rumour/index.html",
     "readings/generative-firewall-index.html",
+    "belt-and-road/index.html",
 } | {
     str(path.relative_to(ROOT))
     for path in (ROOT / "journal").glob("**/index.html")
@@ -67,6 +71,55 @@ def _pages():
         path = ROOT / rel
         if path.exists():
             yield rel, current, path
+
+
+def _tracked_html_pages() -> set[str]:
+    result = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.html"],
+        cwd=ROOT,
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    return {
+        raw_relative_path.decode("utf-8")
+        for raw_relative_path in result.stdout.split(b"\0")
+        if raw_relative_path
+    }
+
+
+def test_nav_discovery_covers_every_tracked_managed_html_page():
+    tracked = _tracked_html_pages()
+    expected = tracked - sync_nav.EXCLUDED_HTML
+
+    assert len(expected) > 2_000
+    assert sync_nav.EXCLUDED_HTML <= tracked
+    assert set(sync_nav.PAGES) == expected
+    assert all(
+        (ROOT / relative_path).read_text(encoding="utf-8").count(site_nav.BEGIN) == 1
+        and (ROOT / relative_path).read_text(encoding="utf-8").count(site_nav.END) == 1
+        for relative_path in expected
+    )
+    assert sync_nav._served_path("index.html") == "/"
+    assert sync_nav._served_path("news/wire/page/2/index.html") == "/news/wire/page/2/"
+    assert sync_nav._served_path("readings/inside-view.html") == "/readings/inside-view.html"
+
+    for relative_path in sync_nav.EXCLUDED_HTML:
+        text = (ROOT / relative_path).read_text(encoding="utf-8")
+        assert site_nav.BEGIN not in text
+        assert site_nav.END not in text
+
+
+def test_nav_discovery_does_not_forget_a_page_when_both_markers_disappear(
+    tmp_path, monkeypatch
+):
+    page = tmp_path / "managed.html"
+    page.write_text("<!doctype html><main id=\"main\"></main>", encoding="utf-8")
+    monkeypatch.setattr(sync_nav, "ROOT", tmp_path)
+
+    assert sync_nav.discover_pages() == {"managed.html": "/managed.html"}
+    changed, note = sync_nav.apply(page, "/managed.html")
+    assert changed is False
+    assert note == "INVALID MARKERS"
 
 
 def test_every_managed_page_exists():
@@ -164,6 +217,8 @@ def test_nav_targets_resolve():
         for col in item.get("columns", []):
             for entry in col["links"]:
                 check(entry[0])
+    for href, _label in site_nav.REGIONAL_EVIDENCE:
+        check(href)
 
     assert not dangling, f"nav links to files that do not exist: {dangling}"
     assert not missing_anchor, (
@@ -192,6 +247,7 @@ def test_generated_pages_use_the_shared_nav():
     """The generators must import site_nav rather than keeping their own copy,
     or the next cron run reverts the site to the old navigation."""
     for script, page in (
+        ("scripts/build_bri_observatory.py", "belt-and-road/index.html"),
         ("scripts/build_china_brief.py", "china-brief.html"),
         ("scripts/build_china_situation.py", "news/china/situation/index.html"),
         ("scripts/generative_firewall_reading.py",
@@ -259,6 +315,61 @@ def test_observatory_flyout_is_active_for_generated_china_routes():
     )
 
 
+def test_bri_regions_are_an_always_visible_semantic_link_rail():
+    assert site_nav.REGIONAL_EVIDENCE == (
+        ("/belt-and-road/#bri-corridors", "BRI & Corridors"),
+        ("/belt-and-road/#balochistan", "Balochistan"),
+        ("/belt-and-road/#pakistan-gwadar", "Pakistan & Gwadar"),
+        ("/belt-and-road/#myanmar", "Myanmar"),
+    )
+
+    rendered = site_nav.render("/")
+    rail = rendered.split('<div class="ps-region-rail">', 1)[1].split(
+        "</div>", 1
+    )[0]
+    assert '<ul class="ps-region-rail__list" aria-label="Regional evidence">' in rail
+    assert 'role="tablist"' not in rail
+    assert 'role="tab"' not in rail
+    for href, label in site_nav.REGIONAL_EVIDENCE:
+        assert rendered.count(f'href="{href}"') == 1
+        assert f'>{html.escape(label)}</a>' in rail
+    assert "BRI regions" not in rendered
+
+
+def test_regional_rail_is_one_row_on_desktop_and_two_by_two_on_small_screens():
+    css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
+
+    assert "--ps-nav-bar-h: 52px" in css
+    assert "--ps-region-rail-h: 44px" in css
+    assert "--ps-nav-h: calc(var(--ps-nav-bar-h) + var(--ps-region-rail-h))" in css
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css
+    assert "height: 100%; min-height: 44px" in css
+    nav_items = css.split(".ps-nav__items {", 1)[1].split("}", 1)[0]
+    assert "min-height: var(--ps-nav-bar-h)" in nav_items
+    assert not re.search(r"(?m)^\s*height:", nav_items)
+
+    mobile = css.split("@media (max-width: 620px)", 1)[1].split(
+        "/* ---- no JavaScript", 1
+    )[0]
+    assert "--ps-region-rail-h: 88px" in mobile
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in mobile
+    assert "grid-template-rows: repeat(2, 44px)" in mobile
+
+
+def test_no_javascript_navigation_exposes_flyouts_on_mobile_and_desktop():
+    css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
+
+    assert "@media (max-width: 940px) and (scripting: none)" in css
+    assert "@media (min-width: 941px) and (scripting: none)" in css
+    desktop = css.split(
+        "@media (min-width: 941px) and (scripting: none)", 1
+    )[1].split("/* ============================ SURFACES", 1)[0]
+    assert "position: static" in desktop
+    assert "opacity: 1" in desktop
+    assert "visibility: visible" in desktop
+    assert ".ps-nav__chev { display: none; }" in desktop
+
+
 def test_mobile_menu_owns_focus_until_it_closes():
     """Pin the focus-entry, Tab containment and focus-return modal contract."""
     script = (ROOT / "assets/shell.js").read_text(encoding="utf-8")
@@ -269,6 +380,146 @@ def test_mobile_menu_owns_focus_until_it_closes():
     assert "last.focus();" in script
     assert "first.focus();" in script
     assert "burger.focus();" in script
+
+
+def test_mobile_internal_navigation_closes_sheet_without_preventing_activation():
+    node = shutil.which("node")
+    assert node is not None, "Node.js is required for the shell interaction contract"
+    harness = r'''
+const fs = require("fs");
+const vm = require("vm");
+
+class Element {
+  constructor(tag) {
+    this.tag = tag;
+    this.attrs = {};
+    this.listeners = {};
+    this.parent = null;
+    this.children = [];
+    this.classList = { add() {} };
+  }
+  setAttribute(name, value) { this.attrs[name] = String(value); }
+  removeAttribute(name) { delete this.attrs[name]; }
+  hasAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attrs, name); }
+  getAttribute(name) { return this.hasAttribute(name) ? this.attrs[name] : null; }
+  addEventListener(kind, callback) { (this.listeners[kind] ||= []).push(callback); }
+  emit(kind, event) { (this.listeners[kind] || []).forEach((callback) => callback(event)); }
+  appendChild(child) { child.parent = this; this.children.push(child); }
+  contains(node) {
+    for (let current = node; current; current = current.parent) {
+      if (current === this) return true;
+    }
+    return false;
+  }
+  closest(selector) {
+    if (selector === "a[href]") {
+      for (let current = this; current; current = current.parent) {
+        if (current.tag === "a" && current.hasAttribute("href")) return current;
+      }
+    }
+    return null;
+  }
+  focus() { document.activeElement = this; }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
+}
+
+const body = new Element("body");
+const nav = new Element("nav");
+const menu = new Element("div");
+const burger = new Element("button");
+const scrim = new Element("div");
+const link = new Element("a");
+const nested = new Element("b");
+link.setAttribute("href", "/belt-and-road/#myanmar");
+link.appendChild(nested);
+menu.appendChild(link);
+nav.appendChild(menu);
+nav.appendChild(burger);
+nav.appendChild(scrim);
+nav.querySelectorAll = () => [];
+nav.querySelector = (selector) => ({
+  ".ps-nav__burger": burger,
+  ".ps-nav__items": menu,
+  ".ps-nav__scrim": scrim
+}[selector] || null);
+menu.querySelectorAll = () => [link];
+menu.querySelector = () => link;
+
+global.document = {
+  readyState: "complete",
+  body,
+  activeElement: null,
+  hidden: false,
+  title: "Shell interaction",
+  documentElement: { classList: { add() {} } },
+  head: { appendChild() {} },
+  querySelector(selector) {
+    if (selector === ".ps-nav") return nav;
+    if (selector === "script[data-cf-beacon]") return new Element("script");
+    return null;
+  },
+  querySelectorAll() { return []; },
+  addEventListener() {},
+  createElement(tag) { return new Element(tag); }
+};
+global.window = global;
+window.location = {
+  href: "https://palimpsest.info/current/",
+  origin: "https://palimpsest.info",
+  pathname: "/current/",
+  reload() {}
+};
+global.location = window.location;
+global.CSS = { supports() { return false; } };
+global.matchMedia = (query) => ({
+  matches: query.includes("max-width"),
+  addEventListener() {},
+  addListener() {}
+});
+global.requestAnimationFrame = (callback) => { callback(0); return 1; };
+global.addEventListener = () => {};
+global.scrollY = 0;
+global.setInterval = () => 1;
+
+vm.runInThisContext(fs.readFileSync("assets/shell.js", "utf8"), {
+  filename: "assets/shell.js"
+});
+
+function activate(target) {
+  let prevented = false;
+  menu.emit("click", {
+    target,
+    preventDefault() { prevented = true; },
+    stopPropagation() {}
+  });
+  return prevented;
+}
+
+burger.emit("click", { target: burger });
+if (!body.hasAttribute("data-ps-menu")) throw new Error("menu did not open");
+if (burger.getAttribute("aria-expanded") !== "true") throw new Error("burger not expanded");
+if (activate(nested)) throw new Error("internal navigation was prevented");
+if (body.hasAttribute("data-ps-menu")) throw new Error("internal link did not unlock body");
+if (burger.getAttribute("aria-expanded") !== "false") throw new Error("burger stayed expanded");
+
+burger.emit("click", { target: burger });
+link.setAttribute("href", "https://example.org/out");
+activate(nested);
+if (!body.hasAttribute("data-ps-menu")) throw new Error("external link closed menu");
+
+link.setAttribute("href", "#main");
+activate(nested);
+if (body.hasAttribute("data-ps-menu")) throw new Error("fragment link did not unlock body");
+'''
+    result = subprocess.run(
+        [node, "-e", harness],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_mobile_menu_resets_when_the_viewport_becomes_desktop():

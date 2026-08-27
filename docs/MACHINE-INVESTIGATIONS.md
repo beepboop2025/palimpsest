@@ -202,11 +202,15 @@ class, independence and upstream groups, integrity and freshness state, and an
 interpretation limit. Countercases, hypotheses, and falsifiers cite through
 that same case-local evidence table.
 
-Evidence URLs are immutable, hash-addressed snapshots under
-`/news/analysis/evidence/sha256-<digest>.json`. The newsroom copies the exact
-verified input bytes to that route and rejects a digest or URL mismatch. Mutable
-`readings/*-latest.json` endpoints remain useful for discovery but are not the
-citation target of a published revision.
+Evidence URLs are immutable, hash-addressed redacted capsules under
+`/news/analysis/evidence/sha256-<digest>.json`, where the digest addresses the
+exact verified original input bytes. The capsule records aggregate citations
+plus the rights and attribution context at first publication; it does not copy
+the raw input. A later policy change updates mutable rendered pages and the
+exact-edition Pages rights gate, but never rewrites that first-published capsule.
+The builder revalidates the retained capsule against every current or historical
+citation before reusing it. Mutable `readings/*-latest.json` endpoints remain
+useful for discovery but are not the citation target of a published revision.
 
 ## Evaluation and correction receipts
 

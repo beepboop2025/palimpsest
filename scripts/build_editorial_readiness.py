@@ -91,7 +91,7 @@ def render_standards_page(document: Mapping[str, Any]) -> bytes:
         for row in document["publication_profiles"]
     )
     body = f"""<body class="ps newsroom-page newsroom-page--investigations">
-{site_nav.render('/news/')}
+{site_nav.render('/news/standards/')}
 <main id="main" class="nw-shell">
   <header class="nw-article__header"><p class="nw-article__kicker">Newsroom quality gate · {_h(document['generated_at'])}</p><h1>Evidence can nominate a story. Only reporting can finish it.</h1><p class="nw-article__dek">{_h(document['scope'])}</p></header>
   <section class="nw-investigations-feature"><div><p class="nw-section__label">Current release state</p><h2>{_h(summary['wire_eligible'])}/{_h(summary['wire_events'])} wire dossiers satisfy the wire floor</h2><p>{_h(summary['explainers_publishable'])}/{_h(summary['explainers'])} explainers and {_h(summary['investigations_publishable'])}/{_h(summary['investigations'])} investigations satisfy their deeper reporting gates. Passing never publishes automatically.</p></div></section>

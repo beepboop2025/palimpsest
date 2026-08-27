@@ -1,7 +1,10 @@
 """Offline contracts for the Belt and Road evidence backbone."""
 from __future__ import annotations
 
+import copy
+import html as html_lib
 import json
+from collections import Counter
 from pathlib import Path
 
 from jsonschema import Draft202012Validator
@@ -14,18 +17,58 @@ from processors.bri_observatory import (
     ground_level_priority_adjustment,
     load_registry,
 )
-from scripts.build_bri_observatory import build
+from scripts.build_bri_observatory import _render_region_section, build
 
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "config" / "bri_observatory.json"
 READING = ROOT / "readings" / "belt-and-road-observatory-latest.json"
 PAGE = ROOT / "belt-and-road" / "index.html"
+RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
+RECEIPT_SHA256 = "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
+RECEIPT_VERIFIED_AT = "2026-08-26T15:55:34Z"
+RECEIPT_FRESH_UNTIL = "2026-08-27T15:55:34Z"
+OBSERVATORY_AS_OF = "2026-08-26T19:34:49Z"
+
+
+def _relative_luminance(hex_color: str) -> float:
+    channels = [int(hex_color[index : index + 2], 16) / 255 for index in (1, 3, 5)]
+    linear = [
+        channel / 12.92
+        if channel <= 0.04045
+        else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    ]
+    return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def _contrast(foreground: str, background: str) -> float:
+    lighter, darker = sorted(
+        (_relative_luminance(foreground), _relative_luminance(background)),
+        reverse=True,
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def test_dark_balochistan_eyebrows_clear_normal_text_contrast() -> None:
+    css = (ROOT / "assets" / "bri.css").read_text(encoding="utf-8")
+    assert "--bri-accent-dark: #d98c70" in css
+    assert ".bri-dark .bri-eyebrow { color: var(--bri-accent-dark); }" in css
+    assert _contrast("#d98c70", "#14231f") >= 4.5
+    assert _contrast("#d98c70", "#1a2e28") >= 4.5
 
 
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
     registry = load_registry(REGISTRY)
-    assert registry["as_of"] == "2026-08-26T13:17:34.790676Z"
+    assert registry["as_of"] == OBSERVATORY_AS_OF
+    backbone = next(
+        row
+        for row in registry["workstreams"]
+        if row["workstream_id"] == "global_bri_economic_backbone"
+    )
+    assert backbone["status"] == (
+        "national_context_live_project_finance_adapters_pending"
+    )
     report = coverage_report(registry)
     assert report["source_count"] >= 40
     assert {"official_china", "official_host", "multilateral", "research", "civil_society", "legal", "partner"} <= set(report["source_classes"])
@@ -81,6 +124,27 @@ def test_rights_gate_blocks_licensed_or_uncleared_inputs_from_build_ready_state(
     assert acled["rights_status"] == "licensed_no_redistribution"
 
 
+def test_reviewed_ucdp_and_report_only_deep_research_are_live_but_bounded() -> None:
+    sources = {
+        source["source_id"]: source for source in load_registry(REGISTRY)["sources"]
+    }
+    ucdp = sources["ucdp_events"]
+    assert ucdp["implementation"] == "live"
+    assert ucdp["rights_status"] == "attribution"
+    assert "/readings/ucdp-aggregate-release-receipt.json" in ucdp["notes"]
+    assert "national, not Balochistan-only" in ucdp["notes"]
+    assert "no row supports NarcoScope actor" in ucdp["notes"]
+
+    report = sources["palimpsest_deep_bri_report_2026"]
+    assert report["implementation"] == "live"
+    assert report["url"] == (
+        "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
+    )
+    assert "Only the exact HTML and PDF reports" in report["notes"]
+    assert "Machine sources, evidence, claims, run manifest" in report["notes"]
+    assert "does not authorize tactical" in report["notes"]
+
+
 def test_administrative_designations_allegations_and_legal_status_stay_distinct() -> None:
     sources = {source["source_id"]: source for source in load_registry(REGISTRY)["sources"]}
     assert sources["nacta_proscribed"]["claim_classes"] == ["administrative_action"]
@@ -119,8 +183,8 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
     Draft202012Validator(schema).validate(artifact)
     assert artifact["schema_version"] == "palimpsest.belt-and-road-observatory.v2"
     [dataset] = artifact["observation_datasets"]
-    assert dataset["implementation_state"] == "repository_ready"
-    assert dataset["publication_state"] == "repository_ready_not_deployed"
+    assert dataset["implementation_state"] == "live"
+    assert dataset["publication_state"] == "production_verified"
     assert dataset["coverage"] == {
         "start_year": 1960,
         "end_year": 2025,
@@ -131,14 +195,156 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
         "forecast_rows": 0,
         "unavailable_rows": 1624,
     }
-    assert dataset["publication_receipt"] is None
+    assert dataset["publication_receipt"] == {
+        "schema_version": "palimpsest.bri-wdi-pages-publication-locator.v1",
+        "status": "production_verified",
+        "repository_path": (
+            ".well-known/receipts/bri-wdi-pages-publication-v1.json"
+        ),
+        "public_url": (
+            "https://palimpsest.info/.well-known/receipts/"
+            "bri-wdi-pages-publication-v1.json"
+        ),
+        "receipt_sha256": RECEIPT_SHA256,
+        "release_a_sha": RELEASE_A_SHA,
+        "verified_at": RECEIPT_VERIFIED_AT,
+        "fresh_until": RECEIPT_FRESH_UNTIL,
+        "availability_semantics": (
+            "verified_at_release_not_continuous_monitoring"
+        ),
+    }
 
     page = expected_html.decode("utf-8")
-    assert "repository ready not deployed" in page
+    assert "production verified" in page
+    assert "Inspect the immutable receipt" in page
+    assert RECEIPT_VERIFIED_AT in page
+    assert RECEIPT_FRESH_UNTIL in page
+    assert "release-time proof, not continuous monitoring" in page
     assert '"license":"https://creativecommons.org/licenses/by/4.0/"' in page
     assert '"@id":"https://www.worldbank.org/#organization"' in page
     assert '"url":"https://www.worldbank.org/"' in page
     assert "never project, actor, corridor or causal evidence" in page
+
+
+def test_generated_page_has_durable_region_anchors_and_artifact_bound_readiness() -> None:
+    artifact = json.loads(READING.read_text(encoding="utf-8"))
+    page = PAGE.read_text(encoding="utf-8")
+    targets = {row["target_id"]: row for row in artifact["watch_targets"]}
+    sources = {row["source_id"]: row for row in artifact["sources"]}
+
+    for anchor in ("bri-corridors", "balochistan", "pakistan-gwadar", "myanmar"):
+        assert page.count(f'id="{anchor}"') == 1
+
+    region_targets = {
+        "balochistan": (
+            "balochistan_resources_revenue",
+            "balochistan_movement_history",
+        ),
+        "pakistan-gwadar": (
+            "cpec_portfolio",
+            "gwadar_port_free_zone",
+            "gwadar_connectivity",
+            "gwadar_public_services",
+            "balochistan_resources_revenue",
+        ),
+        "myanmar": (
+            "cmec_portfolio",
+            "kyaukpyu_port_sez",
+            "china_myanmar_pipelines",
+            "mandalay_muse_rail",
+        ),
+    }
+    for anchor, target_ids in region_targets.items():
+        section = page.split(f'id="{anchor}"', 1)[1].split("</section>", 1)[0]
+        source_ids = {
+            source_id
+            for target_id in target_ids
+            for source_id in targets[target_id]["source_ids"]
+        }
+        build_ready = sum(
+            sources[source_id]["implementation"] in PUBLIC_BUILD_STATES
+            for source_id in source_ids
+        )
+        assert f"{build_ready} of {len(source_ids)} named routes" in section
+        assert "discovery, not ingestion" in section
+        assert "not a verified project record" in section
+        for target_id in target_ids:
+            assert f'data-bri-region-target="{target_id}"' in section
+            assert targets[target_id]["label"] in section
+
+
+def test_balochistan_target_cards_preserve_exact_sources_rights_and_boundaries() -> None:
+    artifact = json.loads(READING.read_text(encoding="utf-8"))
+    page = PAGE.read_text(encoding="utf-8")
+    section = page.split('id="balochistan"', 1)[1].split("</section>", 1)[0]
+    targets = {row["target_id"]: row for row in artifact["watch_targets"]}
+    sources = {row["source_id"]: row for row in artifact["sources"]}
+
+    for target_id in (
+        "balochistan_resources_revenue",
+        "balochistan_movement_history",
+    ):
+        target = targets[target_id]
+        card = section.split(
+            f'data-bri-region-target="{target_id}"', 1
+        )[1].split("</article>", 1)[0]
+        target_sources = [sources[source_id] for source_id in target["source_ids"]]
+        implementation_counts = Counter(
+            source["implementation"] for source in target_sources
+        )
+        rights_counts = Counter(source["rights_status"] for source in target_sources)
+
+        for state, count in implementation_counts.items():
+            assert f'{count} {state.replace("_", " ")}' in card
+        for rights_state, count in rights_counts.items():
+            assert f'{count} {rights_state.replace("_", " ")}' in card
+        for field in target["required_coverage"]:
+            assert f"<code>{html_lib.escape(field)}</code>" in card
+        for source in target_sources:
+            assert f'href="{html_lib.escape(source["url"], quote=True)}"' in card
+            assert f'>{html_lib.escape(source["name"])}</a>' in card
+
+    assert "not classifications of a person, community or political position" in section
+    assert "resources/revenue target cannot infer affiliation" in section
+    assert "plural movement-history target cannot merge electoral politics" in section
+    assert artifact["movement_taxonomy"]["identity_rule"] in section
+
+
+def test_region_renderer_escapes_all_artifact_and_editorial_surfaces() -> None:
+    artifact = copy.deepcopy(build_public_artifact(load_registry(REGISTRY)))
+    target = next(
+        row for row in artifact["watch_targets"] if row["target_id"] == "cpec_portfolio"
+    )
+    source = next(
+        row for row in artifact["sources"] if row["source_id"] == target["source_ids"][0]
+    )
+    attack = '\"><img src=x onerror=alert(1)>'
+    script_attack = '<script>alert("region")</script>'
+    malicious_url = 'https://example.test/?q=\"><script>alert(2)</script>'
+    target["label"] = script_attack
+    target["evidence_status"] = attack
+    target["required_coverage"] = [attack, script_attack]
+    target["source_ids"] = [source["source_id"]]
+    source["name"] = script_attack
+    source["url"] = malicious_url
+    source["implementation"] = attack
+    source["rights_status"] = script_attack
+
+    rendered = _render_region_section(
+        artifact,
+        anchor=attack,
+        eyebrow=script_attack,
+        title=attack,
+        introduction=script_attack,
+        geography_codes=("PAK",),
+        target_ids=("cpec_portfolio",),
+    )
+
+    assert "<script>" not in rendered
+    assert "<img " not in rendered
+    for value in (attack, script_attack, malicious_url):
+        assert value not in rendered
+        assert html_lib.escape(value, quote=True) in rendered
 
 
 def test_schema_allows_a_future_fully_covered_registry() -> None:
@@ -165,10 +371,19 @@ def test_public_discovery_is_explicit_without_claiming_complete_ingestion() -> N
     assert "Evidence coverage contract" in page
     assert "Publication is not a claim that every registered source has been ingested" in page
     assert "https://palimpsest.info/belt-and-road/" in sitemap
+    assert "https://palimpsest.info/readings/ucdp-aggregate-latest.json" in sitemap
+    assert (
+        "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
+        in sitemap
+    )
+    assert "china-pakistan-myanmar-bri-2026" in page
     assert 'href="/belt-and-road/"' in home
     entry = next(item for item in catalog["datasets"] if item["id"] == "belt-and-road-observatory")
-    assert entry["status"] == "warming"
+    assert entry["status"] == "live"
     assert entry["latest"] == "readings/belt-and-road-observatory-latest.json"
+    assert entry["method"] == "protocol/belt-and-road-observatory-v2.schema.json"
+    assert "does not claim every registered source has been ingested" in entry["description"]
+    assert "project-finance adapters remain pending" in entry["description"]
 
 
 def test_coverage_contract_is_context_not_independent_evidence() -> None:

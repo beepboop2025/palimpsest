@@ -47,9 +47,9 @@ readonly VERIFY_USER="palimpsest-mcp-verify"
 readonly GITHUB_PROVENANCE_MAX_BYTES=262144
 readonly LEGACY_SOURCE_SHA="2a80981815680006f3daf7caf503a125d6299c3c"
 readonly EXPECTED_LEGACY_RUNTIME_SHA256="47d419e81ff048771acab14895a9b1e27868d7bbe14874e5cd8c1c94acfc4ed4"
-readonly EXPECTED_VERIFY_SHA256="ccf5afac696bee77134a2a7a10c46dbd81643f9e624b1b1d314f4878a01b96f6"
+readonly EXPECTED_VERIFY_SHA256="1f9cbbcdb7feb4a10957fa5c6b95078cba3bb9ebe51cf01db444d9a96c22b3df"
 readonly EXPECTED_GITHUB_SIGNING_KEY_SHA256="c135dfc1e3add3eb84e6119af7095dec97e0e92730a468d234f925a72bacaf74" # gitleaks:allow -- public trust-root digest
-readonly EXPECTED_SMOKE_SHA256="5cdce48b2de782a5d36877e7e208efcedb7a38dd9e813962ff21368658b25d9a"
+readonly EXPECTED_SMOKE_SHA256="93e90af9c65db29371bb66bf968d4446e8428cb32d8f6801bd2221d4686b5500"
 readonly EXPECTED_UNIT_SHA256="dbdabb3b736d39d1e2d3c3ed0d1b49609b1481f2f0697ebe550f32825a79443a"
 
 stage_dir=""
@@ -550,7 +550,8 @@ PY
   [[ "$(sha256sum "$receipt_backup_file" | awk '{print $1}')" = \
     "$receipt_previous_digest" ]] || fail "immutable host receipt backup drifted"
   run_as_verify_user "$SMOKE" --url "$LOCAL_ENDPOINT" --allow-http-loopback \
-    --module "$TARGET_FILE" --manifest "${stage_dir}/server.json"
+    --module "$TARGET_FILE" --manifest "${stage_dir}/server.json" \
+    --bootstrap-deny --expected-publication-sha "$target_sha"
   printf 'already deployed and live: %s version %s\n' "$target_sha" "$version"
   committed=1
   exit 0
@@ -587,7 +588,8 @@ for _attempt in $(seq 1 12); do
   if systemctl is-active --quiet "$SERVICE" && \
     run_as_verify_user "$SMOKE" --url "$LOCAL_ENDPOINT" \
       --allow-http-loopback --timeout 10 \
-      --module "$TARGET_FILE" --manifest "${stage_dir}/server.json"; then
+      --module "$TARGET_FILE" --manifest "${stage_dir}/server.json" \
+      --bootstrap-deny --expected-publication-sha "$target_sha"; then
     break
   fi
   if [[ "$_attempt" = "12" ]]; then

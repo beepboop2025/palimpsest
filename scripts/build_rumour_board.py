@@ -280,7 +280,7 @@ def render_page(
         f"{tap_count} taps · {document['n_entries']} rumour rows"
     )
     body = f"""<body class="ps newsroom-page rumour-board-page">
-{site_nav.render("/news/")}
+{site_nav.render("/news/china/rumour/")}
 <main id="main">
   <header class="rb-hero">
     <p class="rb-kicker">Palimpsest / Public vantages</p>

@@ -1,0 +1,277 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/restricted-publication-v1.schema.json",
+  "title": "Palimpsest restricted public artifact status v1",
+  "description": "Metadata-only fail-closed status for an endpoint whose upstream value rights do not permit publication. This is not an Evidence Carrier.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "publication_sha",
+    "rights_evaluated_at",
+    "status",
+    "availability",
+    "publication_allowed",
+    "reason",
+    "artifact",
+    "policy",
+    "counts",
+    "source_decisions",
+    "quarantined_paths",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest-restricted-publication.v1"},
+    "publication_sha": {"$ref": "#/$defs/commitSha"},
+    "rights_evaluated_at": {"$ref": "#/$defs/timestamp"},
+    "status": {"const": "restricted"},
+    "availability": {"const": "unavailable"},
+    "publication_allowed": {"const": false},
+    "reason": {"$ref": "#/$defs/nonblank"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "media_type"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relativePath"},
+        "media_type": {
+          "enum": ["application/json", "application/x-ndjson", "text/html", "text/plain"]
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "schema_version",
+        "policy_scope",
+        "default_decision",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "path": {"const": "config/china_econ_source_policy.json"},
+        "schema_version": {"const": "palimpsest.china-economic-source-policy.v1"},
+        "policy_scope": {"const": "china_economic_values_and_seiche_export"},
+        "default_decision": {"const": "deny"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"$ref": "#/$defs/positiveInteger"}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_records",
+        "allowed_records",
+        "restricted_records",
+        "published_records",
+        "quarantined_artifacts"
+      ],
+      "properties": {
+        "input_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "allowed_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "restricted_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "published_records": {"const": 0},
+        "quarantined_artifacts": {"$ref": "#/$defs/nonnegativeInteger"}
+      }
+    },
+    "source_decisions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/sourceDecision"}
+    },
+    "quarantined_paths": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 50000,
+      "items": {"$ref": "#/$defs/relativePath"}
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonblank"}
+    }
+  },
+  "$defs": {
+    "nonblank": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 8192,
+      "pattern": ".*\\S.*"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000]+$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commitSha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "nonnegativeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nullableUrl": {
+      "oneOf": [
+        {"type": "string", "format": "uri", "pattern": "^https://"},
+        {"type": "null"}
+      ]
+    },
+    "nullableText": {
+      "oneOf": [{"$ref": "#/$defs/nonblank"}, {"type": "null"}]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?(?:Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "nullableTimestamp": {
+      "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+    },
+    "nullableSha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "sourceDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "decision",
+        "configured_decision",
+        "availability",
+        "values_allowed",
+        "seiche_export_allowed",
+        "license",
+        "license_url",
+        "rights_evidence_url",
+        "attribution",
+        "reviewed_at",
+        "expires_at",
+        "reason",
+        "decision_sha256",
+        "input_records",
+        "published_records"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$",
+          "maxLength": 128
+        },
+        "decision": {
+          "enum": ["allow", "deny", "expired", "not_yet_effective", "unknown"]
+        },
+        "configured_decision": {
+          "oneOf": [
+            {"enum": ["allow", "deny"]},
+            {"type": "null"}
+          ]
+        },
+        "availability": {"enum": ["available", "unavailable", "restricted"]},
+        "values_allowed": {"type": "boolean"},
+        "seiche_export_allowed": {"type": "boolean"},
+        "license": {"$ref": "#/$defs/nullableText"},
+        "license_url": {"$ref": "#/$defs/nullableUrl"},
+        "rights_evidence_url": {"$ref": "#/$defs/nullableUrl"},
+        "attribution": {"$ref": "#/$defs/nullableText"},
+        "reviewed_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "expires_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "reason": {"$ref": "#/$defs/nonblank"},
+        "decision_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "input_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "published_records": {"const": 0}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"decision": {"const": "deny"}}},
+          "then": {
+            "properties": {
+              "configured_decision": {"const": "deny"},
+              "availability": {"const": "restricted"},
+              "values_allowed": {"const": false},
+              "seiche_export_allowed": {"const": false}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {"const": "allow"},
+              "input_records": {"const": 0}
+            },
+            "required": ["decision", "input_records"]
+          },
+          "then": {
+            "properties": {
+              "configured_decision": {"const": "allow"},
+              "availability": {"const": "unavailable"},
+              "values_allowed": {"const": true},
+              "seiche_export_allowed": {"const": true}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {"const": "allow"},
+              "input_records": {"minimum": 1}
+            },
+            "required": ["decision", "input_records"]
+          },
+          "then": {
+            "properties": {
+              "configured_decision": {"const": "allow"},
+              "availability": {"const": "available"},
+              "values_allowed": {"const": true},
+              "seiche_export_allowed": {"const": true}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decision": {"enum": ["expired", "not_yet_effective"]}
+            },
+            "required": ["decision"]
+          },
+          "then": {
+            "properties": {
+              "availability": {"const": "restricted"},
+              "values_allowed": {"const": false},
+              "seiche_export_allowed": {"const": false}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"decision": {"const": "unknown"}}},
+          "then": {
+            "properties": {
+              "availability": {"const": "restricted"},
+              "configured_decision": {"type": "null"},
+              "values_allowed": {"const": false},
+              "seiche_export_allowed": {"const": false},
+              "license": {"type": "null"},
+              "license_url": {"type": "null"},
+              "rights_evidence_url": {"type": "null"},
+              "attribution": {"type": "null"},
+              "reviewed_at": {"type": "null"},
+              "expires_at": {"type": "null"},
+              "decision_sha256": {"type": "null"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

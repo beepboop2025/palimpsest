@@ -24,6 +24,16 @@ from core.bri_observation import (
     canonical_json_bytes,
     sha256_bytes,
 )
+from core.pages_publication_receipt import (
+    MAX_SERVED_VERIFICATION_AGE,
+    PAGES_PUBLICATION_LOCATOR_SCHEMA_VERSION,
+    PRODUCTION_STATUS,
+    PagesPublicationReceiptError,
+    ValidatedPagesPublicationReceipt,
+    build_pages_publication_locator,
+    load_pages_publication_receipt,
+    validate_pages_publication_receipt,
+)
 
 
 class BriRegistryError(ValueError):
@@ -35,6 +45,8 @@ WDI_ARTIFACT_PATH = "readings/bri-economic-observations-latest.json"
 WDI_OBSERVATION_SCHEMA_PATH = "protocol/bri-economic-observations-v1.schema.json"
 WDI_SERIES_REGISTRY_PATH = "config/bri_wdi_series.json"
 WDI_PUBLICATION_STATE = "repository_ready_not_deployed"
+WDI_PRODUCTION_PUBLICATION_STATE = PRODUCTION_STATUS
+WDI_PUBLICATION_RECEIPT_PATH = ".well-known/receipts/bri-wdi-pages-publication-v1.json"
 WDI_MAX_BUNDLE_BYTES = 128 * 1024 * 1024
 WDI_CONTEXT_BOUNDARY = {
     "allowed_role": "context",
@@ -77,6 +89,11 @@ _WDI_CLOCK_FIELDS = {
 _WDI_RIGHTS_FIELDS = {
     "license", "license_url", "attribution", "redistribution_status",
     "rights_evidence_url",
+}
+_WDI_RECEIPT_LOCATOR_FIELDS = {
+    "schema_version", "status", "repository_path", "public_url",
+    "receipt_sha256", "release_a_sha", "verified_at", "fresh_until",
+    "availability_semantics",
 }
 
 
@@ -615,8 +632,10 @@ def build_wdi_observation_descriptor(
     observation_schema_repository_path: str = WDI_OBSERVATION_SCHEMA_PATH,
     series_registry_path: str | Path,
     series_registry_repository_path: str = WDI_SERIES_REGISTRY_PATH,
+    publication_receipt_path: str | Path | None = None,
+    archived_size_receipt_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Build a pre-publication descriptor bound to exact normalized bytes."""
+    """Build a repository-ready or production-proved exact-byte descriptor."""
 
     validate_registry(registry)
     artifact_repository_path = _safe_repository_path(artifact_path, "WDI artifact.path")
@@ -650,8 +669,10 @@ def build_wdi_observation_descriptor(
     if source is None:
         raise BriRegistryError("BRI registry does not contain world_bank_wdi")
     implementation = source["implementation"]
-    if implementation not in {"adapter_ready", "repository_ready"}:
-        raise BriRegistryError("pre-proof WDI source must be adapter_ready or repository_ready")
+    if implementation not in {"adapter_ready", "repository_ready", "live"}:
+        raise BriRegistryError(
+            "WDI source must be adapter_ready, repository_ready, or live"
+        )
     registry_as_of = _canonical_utc(registry["as_of"], "BRI registry.as_of")
     generated_at = _canonical_utc(bundle["generated_at"], "WDI bundle.generated_at")
     if registry_as_of < generated_at:
@@ -661,11 +682,60 @@ def build_wdi_observation_descriptor(
     rights = {
         key: bundle["source"][key] for key in sorted(_WDI_RIGHTS_FIELDS)
     }
+    publication_state = WDI_PUBLICATION_STATE
+    publication_receipt = None
+    publication_receipt_validation = None
+    if (publication_receipt_path is None) != (archived_size_receipt_path is None):
+        raise BriRegistryError(
+            "WDI production proof requires both publication and archived size receipts"
+        )
+    if publication_receipt_path is None and implementation == "live":
+        raise BriRegistryError(
+            "live WDI source requires a complete production_verified publication receipt"
+        )
+    if publication_receipt_path is not None:
+        if implementation != "live":
+            raise BriRegistryError(
+                "WDI production publication receipt requires source implementation live"
+            )
+        expected_resources = {
+            artifact_repository_path: {
+                "bytes": len(bundle_raw),
+                "sha256": sha256_bytes(bundle_raw),
+            },
+            observation_schema_repository_path: {
+                "bytes": len(observation_schema_raw),
+                "sha256": sha256_bytes(observation_schema_raw),
+            },
+            series_registry_repository_path: {
+                "bytes": len(series_registry_raw),
+                "sha256": sha256_bytes(series_registry_raw),
+            },
+        }
+        try:
+            publication_receipt_validation = load_pages_publication_receipt(
+                publication_receipt_path,
+                archived_size_receipt_path=archived_size_receipt_path,
+                expected_dataset_id=WDI_DATASET_ID,
+                expected_source_id="world_bank_wdi",
+                expected_collection_id=bundle["collection_id"],
+                expected_resources=expected_resources,
+                verification_cutoff=registry_as_of,
+            )
+            publication_receipt = build_pages_publication_locator(
+                publication_receipt_validation,
+                repository_path=WDI_PUBLICATION_RECEIPT_PATH,
+            )
+        except PagesPublicationReceiptError as exc:
+            raise BriRegistryError(
+                f"invalid WDI Pages publication proof: {exc}"
+            ) from exc
+        publication_state = WDI_PRODUCTION_PUBLICATION_STATE
     descriptor = {
         "dataset_id": WDI_DATASET_ID,
         "source_id": "world_bank_wdi",
         "implementation_state": implementation,
-        "publication_state": WDI_PUBLICATION_STATE,
+        "publication_state": publication_state,
         "artifact": {
             "path": artifact_repository_path,
             "url": _public_url_for(artifact_repository_path),
@@ -693,7 +763,7 @@ def build_wdi_observation_descriptor(
         },
         "rights": rights,
         "context_boundary": dict(WDI_CONTEXT_BOUNDARY),
-        "publication_receipt": None,
+        "publication_receipt": publication_receipt,
     }
     validate_observation_dataset_descriptor(
         descriptor,
@@ -703,6 +773,7 @@ def build_wdi_observation_descriptor(
         observation_schema_raw=observation_schema_raw,
         series_registry_raw=series_registry_raw,
         series_registry_path=series_registry_path,
+        publication_receipt_validation=publication_receipt_validation,
     )
     return descriptor
 
@@ -716,6 +787,7 @@ def validate_observation_dataset_descriptor(
     observation_schema_raw: bytes,
     series_registry_raw: bytes,
     series_registry_path: str | Path,
+    publication_receipt_validation: ValidatedPagesPublicationReceipt | None = None,
 ) -> dict[str, Any]:
     """Validate a v2 observation descriptor against all bytes it advertises."""
 
@@ -761,6 +833,57 @@ def validate_observation_dataset_descriptor(
     expected_rights = {key: bundle["source"][key] for key in sorted(_WDI_RIGHTS_FIELDS)}
     if row["rights"] != expected_rights:
         raise BriRegistryError("WDI descriptor rights mismatch the bundle")
+
+    if row["publication_state"] == WDI_PUBLICATION_STATE:
+        if publication_receipt_validation is not None:
+            raise BriRegistryError(
+                "repository-ready WDI descriptor must not receive production receipt evidence"
+            )
+    else:
+        if type(publication_receipt_validation) is not ValidatedPagesPublicationReceipt:
+            raise BriRegistryError(
+                "production-verified WDI descriptor requires complete receipt evidence"
+            )
+        expected_resources = {
+            row["artifact"]["path"]: {
+                "bytes": len(artifact_raw),
+                "sha256": sha256_bytes(artifact_raw),
+            },
+            row["observation_schema"]["path"]: {
+                "bytes": len(observation_schema_raw),
+                "sha256": sha256_bytes(observation_schema_raw),
+            },
+            row["series_registry"]["path"]: {
+                "bytes": len(series_registry_raw),
+                "sha256": sha256_bytes(series_registry_raw),
+            },
+        }
+        registry_as_of = _canonical_utc(registry["as_of"], "BRI registry.as_of")
+        try:
+            validated_receipt = validate_pages_publication_receipt(
+                publication_receipt_validation.document,
+                raw=publication_receipt_validation.raw,
+                archived_size_receipt_raw=(
+                    publication_receipt_validation.archived_size_receipt_raw
+                ),
+                expected_dataset_id=WDI_DATASET_ID,
+                expected_source_id="world_bank_wdi",
+                expected_collection_id=bundle["collection_id"],
+                expected_resources=expected_resources,
+                verification_cutoff=registry_as_of,
+            )
+            expected_locator = build_pages_publication_locator(
+                validated_receipt,
+                repository_path=WDI_PUBLICATION_RECEIPT_PATH,
+            )
+        except PagesPublicationReceiptError as exc:
+            raise BriRegistryError(
+                f"invalid WDI Pages publication proof: {exc}"
+            ) from exc
+        if row["publication_receipt"] != expected_locator:
+            raise BriRegistryError(
+                "WDI publication receipt locator differs from authenticated receipt bytes"
+            )
     return row
 
 
@@ -781,12 +904,73 @@ def validate_observation_dataset_descriptor_shape(
     )
     if source is None or row["implementation_state"] != source["implementation"]:
         raise BriRegistryError("WDI descriptor implementation state mismatches the source registry")
-    if row["implementation_state"] not in {"adapter_ready", "repository_ready"}:
-        raise BriRegistryError("pre-proof WDI implementation state is invalid")
-    if row["publication_receipt"] is not None:
-        raise BriRegistryError("pre-proof WDI publication_receipt must be null")
-    if row["publication_state"] != WDI_PUBLICATION_STATE:
-        raise BriRegistryError("null WDI publication receipt requires repository_ready_not_deployed")
+    if row["implementation_state"] not in {"adapter_ready", "repository_ready", "live"}:
+        raise BriRegistryError("WDI implementation state is invalid")
+    publication_receipt = row["publication_receipt"]
+    if publication_receipt is None:
+        if row["publication_state"] != WDI_PUBLICATION_STATE:
+            raise BriRegistryError(
+                "null WDI publication receipt requires repository_ready_not_deployed"
+            )
+        if row["implementation_state"] == "live":
+            raise BriRegistryError(
+                "live WDI implementation requires production_verified receipt locator"
+            )
+    else:
+        if row["publication_state"] != WDI_PRODUCTION_PUBLICATION_STATE:
+            raise BriRegistryError(
+                "repository-ready WDI publication_receipt must be null; non-null WDI "
+                "publication receipt requires production_verified"
+            )
+        if row["implementation_state"] != "live":
+            raise BriRegistryError(
+                "production_verified WDI publication is only valid for implementation live"
+            )
+        locator = _exact_mapping(
+            publication_receipt,
+            _WDI_RECEIPT_LOCATOR_FIELDS,
+            "WDI descriptor.publication_receipt",
+        )
+        if locator["schema_version"] != PAGES_PUBLICATION_LOCATOR_SCHEMA_VERSION:
+            raise BriRegistryError("WDI publication receipt locator schema changed")
+        if locator["status"] != WDI_PRODUCTION_PUBLICATION_STATE:
+            raise BriRegistryError("WDI publication receipt locator is not production_verified")
+        receipt_path = _safe_repository_path(
+            locator["repository_path"],
+            "WDI descriptor.publication_receipt.repository_path",
+        )
+        if receipt_path != WDI_PUBLICATION_RECEIPT_PATH:
+            raise BriRegistryError("WDI publication receipt path changed")
+        if locator["public_url"] != _public_url_for(receipt_path):
+            raise BriRegistryError("WDI publication receipt URL does not match its path")
+        _sha256(
+            locator["receipt_sha256"],
+            "WDI descriptor.publication_receipt.receipt_sha256",
+        )
+        if type(locator["release_a_sha"]) is not str or not re.fullmatch(
+            r"[0-9a-f]{40}", locator["release_a_sha"]
+        ):
+            raise BriRegistryError(
+                "WDI descriptor.publication_receipt.release_a_sha must be a 40-hex commit"
+            )
+        verified_at = _canonical_utc(
+            locator["verified_at"],
+            "WDI descriptor.publication_receipt.verified_at",
+        )
+        fresh_until = _canonical_utc(
+            locator["fresh_until"],
+            "WDI descriptor.publication_receipt.fresh_until",
+        )
+        if fresh_until != verified_at + MAX_SERVED_VERIFICATION_AGE:
+            raise BriRegistryError(
+                "WDI publication receipt freshness window changed"
+            )
+        if locator["availability_semantics"] != (
+            "verified_at_release_not_continuous_monitoring"
+        ):
+            raise BriRegistryError(
+                "WDI publication receipt availability semantics changed"
+            )
 
     artifact = _exact_mapping(row["artifact"], _WDI_ARTIFACT_FIELDS, "WDI descriptor.artifact")
     artifact_path = _safe_repository_path(artifact["path"], "WDI descriptor.artifact.path")

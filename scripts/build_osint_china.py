@@ -728,7 +728,9 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # title-union dump of the already-counted hot-search board; and the remaining files are generic
 # model evaluation surfaces. The Belt and Road observatory is a planning/source-coverage
 # contract rather than a live China signal; its normalized WDI bundle is national economic
-# context and is likewise excluded so it cannot be promoted into an event signal. Research-
+# context and is likewise excluded so it cannot be promoted into an event signal. The UCDP
+# aggregate is a separately licensed, delayed historical conflict publication for the
+# Balochistan lane; shared repository placement cannot turn it into a China signal. Research-
 # corpus metadata is a first-party China-adjacent input and is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset(
     {
@@ -755,6 +757,7 @@ EXCLUDED_LATEST_FILES = frozenset(
         "gfi-transcripts-latest.json",
         "investigations-latest.json",
         "machine-investigations-latest.json",
+        "ucdp-aggregate-latest.json",
         "network-rounds-latest.json",
         "newswire-latest.json",
         "newsroom-latest.json",

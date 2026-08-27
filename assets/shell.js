@@ -135,6 +135,24 @@
       burger.addEventListener("click", function () {
         setMobileMenu(!document.body.hasAttribute("data-ps-menu"));
       });
+      if (menu) {
+        menu.addEventListener("click", function (e) {
+          if (!document.body.hasAttribute("data-ps-menu") || !e.target.closest) return;
+          var link = e.target.closest("a[href]");
+          if (!link || !menu.contains(link)) return;
+          var href = link.getAttribute("href");
+          if (!href) return;
+          var internal = href.charAt(0) === "#";
+          if (!internal) {
+            try {
+              internal = new URL(href, window.location.href).origin === window.location.origin;
+            } catch (err) {
+              internal = false;
+            }
+          }
+          if (internal) setMobileMenu(false, false);
+        });
+      }
       var scrim = nav.querySelector(".ps-nav__scrim");
       if (scrim) scrim.addEventListener("click", function () { setMobileMenu(false); });
       var resetMobileSheet = function () {

@@ -70,7 +70,9 @@
   --ps-t-slow: .62s;
   --ps-t-reveal: .78s;
 
-  --ps-nav-h: 52px;
+  --ps-nav-bar-h: 52px;
+  --ps-region-rail-h: 44px;
+  --ps-nav-h: calc(var(--ps-nav-bar-h) + var(--ps-region-rail-h));
   --ps-measure: 68ch;   /* the line length prose is allowed to reach */
 }
 
@@ -164,13 +166,14 @@ body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z
 .ps-wrap--wide { max-width: 1240px; }
 
 /* ============================ NAVIGATION ================================== */
-/* Plane 4. Frosted, condenses on scroll, and groups 20-odd signals into five
-   flyouts because a flat link list stopped being navigable ten signals ago. */
+/* Plane 4. Frosted, condenses on scroll, and keeps the regional evidence line
+   permanently visible beneath a compact set of focused flyouts. */
 .ps-nav {
   position: sticky; top: 0;
   z-index: var(--ps-z-nav);
   height: var(--ps-nav-h);
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; align-content: flex-start;
+  flex-wrap: wrap; column-gap: 14px; row-gap: 0;
   padding: 0 clamp(12px, 3.4vw, 26px);
   background: var(--ps-plane-4);
   border-bottom: 1px solid transparent;
@@ -204,6 +207,7 @@ body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z
 
 .ps-nav__brand {
   display: flex; align-items: center; gap: 9px;
+  height: var(--ps-nav-bar-h);
   color: var(--tk-text-0, #fff); font-weight: 700; font-size: 12px;
   letter-spacing: .2em; text-decoration: none; white-space: nowrap;
   transition: opacity var(--ps-t-fast) var(--ps-ease);
@@ -211,9 +215,12 @@ body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z
 .ps-nav__brand:hover { opacity: .78; }
 .ps-nav__brand img { display: block; }
 
-.ps-nav__spacer { flex: 1; }
+.ps-nav__spacer { flex: 1; height: var(--ps-nav-bar-h); }
 
-.ps-nav__items { display: flex; align-items: center; gap: 1px; }
+.ps-nav__items {
+  display: flex; align-items: center; gap: 1px;
+  min-height: var(--ps-nav-bar-h);
+}
 
 /* A nav entry: either a plain link or a flyout trigger. */
 .ps-nav__item { position: relative; }
@@ -329,6 +336,67 @@ body.ps > *:not(.ps-nav):not(.ps-skip) { position: relative; z-index: var(--ps-z
 }
 .ps-tag--soon { background: rgba(100,116,139,.16); color: var(--tk-stale,#8593a8); border-color: rgba(100,116,139,.38); }
 
+/* ---- regional evidence rail --------------------------------------------
+   It borrows the language of archive-file tabs: one continuous rule, four
+   named ledgers, and a cyan registration mark only when a link is engaged.
+   These remain ordinary anchors in a labelled list, never ARIA tabs: each
+   destination moves the document rather than swapping an in-page panel. */
+.ps-region-rail {
+  order: 1;
+  flex: 0 0 100%;
+  height: var(--ps-region-rail-h);
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: stretch;
+  border-top: 1px solid var(--ps-edge-1);
+  font-family: var(--tk-font-mono), ui-monospace, monospace;
+}
+.ps-region-rail__label {
+  display: flex; align-items: center;
+  margin: 0; padding: 0 16px 0 2px;
+  border-right: 1px solid var(--ps-edge-1);
+  color: var(--tk-text-4, #6f8098);
+  font-size: 9px; font-weight: 700; line-height: 1.2;
+  letter-spacing: .14em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.ps-region-rail__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  height: 100%;
+  margin: 0; padding: 0;
+  list-style: none;
+}
+.ps-region-rail__list li { min-width: 0; }
+.ps-region-rail__link {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; min-height: 44px;
+  padding: 0 10px;
+  border-right: 1px solid var(--ps-edge-1);
+  color: var(--tk-text-2, #94a3b8);
+  font-size: 11px; font-weight: 650; line-height: 1.2;
+  letter-spacing: .025em; text-align: center; text-decoration: none;
+  transition: color var(--ps-t-fast) var(--ps-ease),
+              background var(--ps-t-fast) var(--ps-ease);
+}
+.ps-region-rail__list li:last-child .ps-region-rail__link { border-right: 0; }
+.ps-region-rail__link::before {
+  content: "";
+  position: absolute; top: -1px; left: 14px; right: 14px;
+  height: 2px;
+  background: var(--tk-live, #06d6e0);
+  opacity: 0;
+  transition: opacity var(--ps-t-fast) var(--ps-ease);
+}
+.ps-region-rail__link:hover,
+.ps-region-rail__link:focus-visible {
+  color: var(--tk-text-0, #fff);
+  background: rgba(255,255,255,.055);
+}
+.ps-region-rail__link:hover::before,
+.ps-region-rail__link:focus-visible::before { opacity: 1; }
+
 /* ---- mobile: the bar collapses to a sheet ---- */
 .ps-nav__burger { display: none; }
 .ps-nav__scrim {
@@ -398,6 +466,25 @@ body[data-ps-menu] { overflow: hidden; }
   .ps-flyout__lede { display: none; }
 }
 
+@media (max-width: 620px) {
+  :root { --ps-region-rail-h: 88px; }
+  .ps-region-rail { grid-template-columns: 72px minmax(0, 1fr); }
+  .ps-region-rail__label {
+    padding: 0 10px 0 2px;
+    font-size: 8.5px; line-height: 1.4;
+    white-space: normal;
+  }
+  .ps-region-rail__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, 44px);
+  }
+  .ps-region-rail__link { padding: 0 6px; font-size: 10.5px; }
+  .ps-region-rail__list li:nth-child(even) .ps-region-rail__link { border-right: 0; }
+  .ps-region-rail__list li:nth-child(-n+2) .ps-region-rail__link {
+    border-bottom: 1px solid var(--ps-edge-1);
+  }
+}
+
 /* ---- no JavaScript: the nav must still be a nav --------------------------
    The sheet above is opened by shell.js setting body[data-ps-menu]. With
    scripting off the burger does nothing and every link is unreachable on a
@@ -410,6 +497,7 @@ body[data-ps-menu] { overflow: hidden; }
   .ps-nav { position: static; height: auto; flex-wrap: wrap; padding-bottom: 10px; }
   .ps-nav__burger { display: none; }
   .ps-nav__items {
+    order: 2;
     position: static; max-height: none; width: 100%;
     transform: none; opacity: 1; visibility: visible;
     box-shadow: none; border-bottom: 0; background: transparent;
@@ -417,6 +505,34 @@ body[data-ps-menu] { overflow: hidden; }
     padding: 4px 0 0;
   }
   .ps-nav__item .ps-flyout { display: block; }
+}
+
+/* Desktop has the same no-script obligation. Disclosure buttons cannot open
+   without shell.js, so the navigation becomes an in-flow directory and every
+   destination remains keyboard, crawler and hardened-browser reachable. */
+@media (min-width: 941px) and (scripting: none) {
+  .ps-nav {
+    position: static; height: auto; align-items: flex-start; flex-wrap: wrap;
+    padding-top: 14px; padding-bottom: 14px;
+  }
+  .ps-nav__brand { min-height: 34px; }
+  .ps-nav__spacer { display: none; }
+  .ps-nav__items {
+    order: 2;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    width: 100%; align-items: start; gap: 8px;
+  }
+  .ps-nav__link { width: 100%; justify-content: space-between; }
+  .ps-nav__chev { display: none; }
+  .ps-nav__item .ps-flyout,
+  .ps-nav__item:nth-last-child(-n+3) .ps-flyout {
+    position: static; display: block;
+    min-width: 0; max-width: none; margin-top: 4px;
+    opacity: 1; visibility: visible; transform: none;
+    box-shadow: none;
+  }
+  .ps-flyout::before { display: none; }
+  .ps-flyout--wide .ps-flyout__cols { grid-template-columns: 1fr; }
 }
 
 /* ============================ SURFACES ==================================== */

@@ -147,6 +147,7 @@ jobs:
             tests/test_seal_readings.py \
             tests/test_publication_contract.py \
             tests/test_public_surface_scrub.py \
+            tests/test_pages_artifact_capacity.py \
             tests/test_site_shell.py
           node --check assets/shell.js
 
@@ -191,6 +192,7 @@ jobs:
             echo "unstaged after git add:"
             git status --porcelain=v1 --untracked-files=all | head -80
           fi
+          python -B scripts/pages_artifact_capacity.py candidate --staged
           if git diff --cached --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "no change"
@@ -293,6 +295,7 @@ jobs:
             tests/test_seal_readings.py \
             tests/test_publication_contract.py \
             tests/test_public_surface_scrub.py \
+            tests/test_pages_artifact_capacity.py \
             tests/test_site_shell.py
           node --check assets/shell.js
 
@@ -338,6 +341,7 @@ jobs:
             echo "unstaged after git add:"
             git status --porcelain=v1 --untracked-files=all | head -80
           fi
+          python -B scripts/pages_artifact_capacity.py candidate --staged
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet origin/main; then
               echo "no change after synchronization"
@@ -452,6 +456,7 @@ jobs:
             tests/test_seal_readings.py \
             tests/test_publication_contract.py \
             tests/test_public_surface_scrub.py \
+            tests/test_pages_artifact_capacity.py \
             tests/test_site_shell.py
           node --check assets/shell.js
 
@@ -497,6 +502,7 @@ jobs:
             echo "unstaged after git add:"
             git status --porcelain=v1 --untracked-files=all | head -80
           fi
+          python -B scripts/pages_artifact_capacity.py candidate --staged
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet; then
               echo "no change after push race"

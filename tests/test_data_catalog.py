@@ -20,6 +20,9 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     assert len(ids) >= 30
     assert len(ids) == len(set(ids))
     assert built["summary"]["datasets"] == len(ids)
+    assert "Belt and Road infrastructure and economic evidence" in (
+        built["description"]
+    )
     assert set(built["summary"]["layers"]) >= {
         "network",
         "content",
@@ -30,8 +33,64 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     }
     assert jsonld["@type"] == "DataCatalog"
     assert len(jsonld["dataset"]) == len(ids)
+    assert jsonld["publisher"] == {
+        "@type": "Organization",
+        "@id": "https://palimpsest.info/#org",
+        "name": "Palimpsest",
+        "url": "https://palimpsest.info/",
+    }
+    assert all("cadence" in item for item in built["datasets"])
+    assert all("temporalResolution" not in item for item in jsonld["dataset"])
     assert package["profile"] == "data-package"
     assert package["resources"]
+
+
+def test_publication_denied_datasets_do_not_advertise_legacy_distributions():
+    built, jsonld, package = catalog.build_catalog(
+        now=datetime(2026, 8, 26, tzinfo=timezone.utc)
+    )
+    restricted_ids = {
+        item["id"]
+        for item in built["datasets"]
+        if item.get("publication_allowed") is False
+    }
+    assert {
+        "china-economic-observations",
+        "china-economic-pulse",
+        "cny-fix-gap",
+        "data-darkness",
+        "evidence-mesh",
+        "machine-investigations",
+    } <= restricted_ids
+    for item in built["datasets"]:
+        if item["id"] not in restricted_ids:
+            continue
+        assert item["artifacts"] == {
+            "evidence_state": "gated",
+            "observed_at": None,
+            "age_seconds": None,
+            "counts": {},
+            "latest_bytes": None,
+            "history_bytes": None,
+            "history_rows": None,
+            "latest_available": False,
+            "history_available": False,
+        }
+    by_id = {item["identifier"]: item for item in jsonld["dataset"]}
+    assert all(by_id[item_id]["distribution"] == [] for item_id in restricted_ids)
+    assert all(
+        by_id[item_id]["isAccessibleForFree"] is False
+        for item_id in restricted_ids
+    )
+    resource_names = {resource["name"] for resource in package["resources"]}
+    assert all(
+        not any(name.startswith(f"{item_id}-") for name in resource_names)
+        for item_id in restricted_ids
+    )
+    inside_view = next(item for item in built["datasets"] if item["id"] == "inside-view")
+    assert inside_view["status"] == "gated"
+    assert inside_view["artifacts"]["latest_available"] is True
+    assert inside_view["artifacts"]["history_available"] is True
 
 
 def test_catalog_keeps_collection_mode_rights_and_caveats_explicit():
@@ -137,6 +196,7 @@ def test_evidence_wire_and_economic_pulse_keep_collection_semantics_separate():
         "deterministic-revision-safe",
     )
     assert pulse["latest"] == "readings/china-economic-pulse-latest.json"
+    assert pulse["status"] == "gated"
     assert pulse["landing_page"] == "news/economy/"
     assert "true GDP" in pulse["description"]
     assert "coverage gates" in pulse["description"]
@@ -181,7 +241,7 @@ def test_china_situation_catalog_exposes_layer_specific_coverage_and_public_surf
         "synthesis",
         "deterministic-evidence-bound-projection",
     )
-    assert entry["status"] == "live"
+    assert entry["status"] == "gated"
     assert entry["cadence"] == "PT1H"
     assert entry["latest"] == "readings/china-situation-latest.json"
     assert entry["landing_page"] == "news/china/situation/"
@@ -221,9 +281,15 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}
 
+    bri = by_id["belt-and-road-observatory"]
+    assert bri["status"] == "live"
+    assert bri["method"] == "protocol/belt-and-road-observatory-v2.schema.json"
+    assert "production-verified national economic context" in bri["description"]
+    assert "project-finance adapters remain pending" in bri["description"]
+
     telemetry = by_id["china-econ"]
     assert telemetry["cadence"] == "PT6H"
-    assert telemetry["status"] == "historical"
+    assert telemetry["status"] == "gated"
 
     ledger = by_id["china-economic-observations"]
     assert (ledger["layer"], ledger["stage"], ledger["collection_mode"]) == (
@@ -235,6 +301,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     assert ledger["history"] == "readings/china-econ-observations.jsonl"
     assert ledger["landing_page"] == "china/"
     assert ledger["cadence"] == "P1D"
+    assert ledger["status"] == "gated"
     assert ledger["freshness_budget"] == "P10D"
     assert "collector" in ledger["freshness_semantics"]
     assert ledger["sources"] == ["CFETS/ChinaMoney"]
@@ -269,7 +336,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
         "observation",
         "passive-review-gated-aggregate",
     )
-    assert bri_wdi["status"] == "warming"
+    assert bri_wdi["status"] == "live"
     assert bri_wdi["cadence"] == "P7D"
     assert bri_wdi["freshness_budget"] == "P120D"
     assert bri_wdi["geography"] == ["CN", "PK", "MM"]
@@ -285,6 +352,32 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     ]
     assert bri_wdi["license"] == wdi["license"]
     assert "country-period context only" in bri_wdi["description"]
+    assert "P120D is the economic-data freshness budget" in (
+        bri_wdi["freshness_semantics"]
+    )
+
+    ucdp = by_id["ucdp-annual-aggregate-context"]
+    assert (ucdp["layer"], ucdp["stage"], ucdp["collection_mode"]) == (
+        "cross-layer",
+        "observation",
+        "private-acquisition-reviewed-lock-public-aggregate",
+    )
+    assert ucdp["status"] == "live"
+    assert ucdp["cadence"] == "P12M"
+    assert ucdp["geography"] == ["PK", "MM"]
+    assert ucdp["latest"] == "readings/ucdp-aggregate-latest.json"
+    assert ucdp["method"] == "docs/UCDP-AGGREGATE-CONTEXT.md"
+    assert ucdp["count_fields"] == [
+        "coverage.conflict_year_records",
+        "coverage.country_year_records",
+        "coverage.actor_registry_id_count",
+    ]
+    assert "cannot establish a NarcoScope actor" in ucdp["description"]
+    assert "P7D is the collection target" in bri_wdi["freshness_semantics"]
+    assert "24-hour point-in-time deployment proof" in (
+        bri_wdi["freshness_semantics"]
+    )
+    assert "not continuous monitoring" in bri_wdi["freshness_semantics"]
 
     built, _jsonld, _package = catalog.build_catalog(
         now=datetime(2026, 8, 26, 14, tzinfo=timezone.utc)
@@ -292,7 +385,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     built_bri_wdi = next(
         item for item in built["datasets"] if item["id"] == "bri-economic-observations"
     )
-    assert built_bri_wdi["artifacts"]["evidence_state"] == "warming"
+    assert built_bri_wdi["artifacts"]["evidence_state"] == "fresh"
     assert built_bri_wdi["artifacts"]["counts"] == {
         "coverage.source_rows": 3564,
         "coverage.observed_rows": 1940,
@@ -378,6 +471,7 @@ def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
         "PT1H",
     )
     assert mesh["latest"] == "readings/evidence-mesh-latest.json"
+    assert mesh["status"] == "gated"
     assert "partner artifacts" in mesh["description"]
     assert "automatically admitted" in mesh["description"]
 
@@ -388,6 +482,7 @@ def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
         "PT1H",
     )
     assert machine["latest"] == "readings/machine-investigations-latest.json"
+    assert machine["status"] == "gated"
     assert machine["landing_page"] == "news/analysis/"
     assert machine["count_fields"] == ["n_cases"]
     description = machine["description"].lower()
@@ -618,7 +713,9 @@ def test_jsonld_advertises_only_downloads_that_exist():
 def test_catalog_page_and_assets_exist():
     assert (ROOT / "data.html").is_file()
     assert (ROOT / "assets" / "data-catalog.css").is_file()
-    assert (ROOT / "assets" / "data-catalog.js").is_file()
+    script = (ROOT / "assets" / "data-catalog.js").read_text(encoding="utf-8")
+    assert 'item.artifacts.history_available' in script
+    assert ': "Unavailable"' in script
 
 
 def test_hourly_rollup_rebuilds_and_commits_catalog_views():

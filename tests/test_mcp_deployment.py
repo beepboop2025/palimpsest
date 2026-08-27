@@ -20,7 +20,6 @@ import pytest
 import mcp.palimpsest_mcp as server
 from scripts import smoke_palimpsest_mcp as smoke
 
-
 ROOT = Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "ops/mcp-deploy/palimpsest-mcp-deploy-wrapper.sh"
 VERIFIER_PATH = ROOT / "ops/mcp-deploy/verify_release.py"
@@ -115,7 +114,7 @@ def test_current_candidate_satisfies_release_contract() -> None:
         ROOT / "server.json",
     )
     assert contract == {
-        "version": "1.9.1",
+        "version": "1.9.2",
         "server_name": "palimpsest",
         "tools": [
             "get_newsroom",
@@ -131,12 +130,13 @@ def test_current_candidate_satisfies_release_contract() -> None:
             "gfw_status_check",
             "signal_deep_dive",
         ],
+        "resources": ["palimpsest://china-economic/publication-rights"],
     }
 
 
 def test_verifier_rejects_manifest_version_drift(tmp_path: Path) -> None:
     manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
-    manifest["version"] = "1.9.2"
+    manifest["version"] = "1.9.3"
     path = tmp_path / "server.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(verifier.VerificationError, match="SERVER_VERSION"):
@@ -254,17 +254,81 @@ class _DispatchHandler(BaseHTTPRequestHandler):
         return
 
 
-def test_live_smoke_covers_initialize_discovery_and_interconnection(
+def _verified_rights_payload() -> dict[str, object]:
+    return {
+        "schema_version": server.ECON_RIGHTS_MCP_SCHEMA,
+        "status": "restricted",
+        "availability": "unavailable",
+        "evidence_class": "restricted",
+        "publication_allowed": False,
+        "reason": "Reviewed policy denies this value family.",
+        "mcp_checked_at": "2026-08-26T00:00:01Z",
+        "publication_sha": "2" * 40,
+        "rights_evaluated_at": "2026-08-26T00:00:00Z",
+        "status_artifact": {
+            "url": server.ECON_RIGHTS_STATUS_URL,
+            "schema_url": server.ECON_RIGHTS_SCHEMA_URL,
+            "integrity": "verified",
+            "sha256": "a" * 64,
+        },
+        "policy": {
+            "path": server.ECON_RIGHTS_POLICY_PATH,
+            "schema_version": server.ECON_RIGHTS_POLICY_SCHEMA,
+            "policy_scope": server.ECON_RIGHTS_POLICY_SCOPE,
+            "default_decision": "deny",
+            "sha256": server.ECON_RIGHTS_POLICY_SHA256,
+            "bytes": server.ECON_RIGHTS_POLICY_BYTES,
+            "rechecked_at": "2026-08-26T00:00:01Z",
+        },
+        "counts": {
+            "input_records": server.ECON_RIGHTS_EXPECTED_INPUT_RECORDS,
+            "allowed_records": server.ECON_RIGHTS_EXPECTED_ALLOWED_RECORDS,
+            "restricted_records": server.ECON_RIGHTS_EXPECTED_RESTRICTED_RECORDS,
+            "published_records": 0,
+            "quarantined_artifacts": server.ECON_RIGHTS_EXPECTED_QUARANTINED_ARTIFACTS,
+        },
+        "source_decisions": [
+            {
+                "source_id": "cfets_benchmarks",
+                "decision": "deny",
+                "availability": "restricted",
+                "values_allowed": False,
+                "seiche_export_allowed": False,
+                "published_records": 0,
+            },
+            {
+                "source_id": "chinamoney",
+                "decision": "deny",
+                "availability": "restricted",
+                "values_allowed": False,
+                "seiche_export_allowed": False,
+                "published_records": 0,
+            },
+            {
+                "source_id": "world_bank_wdi",
+                "decision": "allow",
+                "availability": "unavailable",
+                "values_allowed": True,
+                "seiche_export_allowed": True,
+                "input_records": 0,
+                "published_records": 0,
+            },
+        ],
+        "quarantined_paths": sorted(
+            server.SIGNALS[name][0].lstrip("/")
+            for name in server.ECON_RIGHTS_AFFECTED_SIGNALS
+        ),
+        "no_partial_rows": True,
+        "limitations": list(server._ECON_RIGHTS_LIMITATIONS),
+    }
+
+
+def test_live_smoke_covers_native_rights_closure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(server, "economic_rights_status", _verified_rights_payload)
     monkeypatch.setattr(
-        server,
-        "_fetch",
-        lambda name: (
-            {"situations": [{"event_id": "fixture"}]}
-            if name == "china-situation"
-            else {}
-        ),
+        server, "_fetch", lambda name: (_ for _ in ()).throw(AssertionError(name))
     )
     contract = smoke.load_contract(
         ROOT / "mcp/palimpsest_mcp.py",
@@ -290,7 +354,51 @@ def test_live_smoke_covers_initialize_discovery_and_interconnection(
     assert result["version"] == contract["version"]
     assert result["tool_count"] == 6
     assert result["prompt_count"] == 4
-    assert result["calls"] == ["list_signals", "get_newsroom:interconnection"]
+    assert result["resource_count"] == 1
+    assert result["calls"] == [
+        "resources/read:china-economic-publication-rights",
+        "list_signals",
+        "query_economic_observations:rights-status",
+        *[
+            f"get_signal:{name}:restricted"
+            for name in sorted(server.ECON_RIGHTS_AFFECTED_SIGNALS)
+        ],
+        *[
+            f"get_newsroom:{view}:restricted"
+            for view in sorted(server.ECON_RIGHTS_AFFECTED_NEWSROOM_VIEWS)
+        ],
+        "whats_happening:rights-restricted",
+    ]
+
+
+def test_live_smoke_accepts_only_monotonic_denied_coverage_growth() -> None:
+    contract = smoke.load_contract(
+        ROOT / "mcp/palimpsest_mcp.py",
+        ROOT / "server.json",
+    )
+    payload = _verified_rights_payload()
+    payload["counts"] = {
+        **payload["counts"],
+        "input_records": server.ECON_RIGHTS_EXPECTED_INPUT_RECORDS + 7,
+        "restricted_records": server.ECON_RIGHTS_EXPECTED_RESTRICTED_RECORDS + 7,
+        "quarantined_artifacts": 24_541,
+    }
+    payload["quarantined_paths"] = sorted(
+        {
+            *payload["quarantined_paths"],
+            *(
+                f"news/wire/repository-scale-{index:05d}.json"
+                for index in range(24_541)
+            ),
+        }
+    )
+    payload["counts"]["quarantined_artifacts"] = len(payload["quarantined_paths"])
+
+    smoke._validate_rights_payload(payload, contract, require_verified=True)
+
+    payload["counts"]["allowed_records"] = 1
+    with pytest.raises(smoke.SmokeError, match="reviewed release"):
+        smoke._validate_rights_payload(payload, contract, require_verified=True)
 
 
 @pytest.mark.parametrize(
@@ -456,8 +564,7 @@ def test_host_wrapper_bounded_provenance_reader(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     timeout_shim.chmod(0o755)
-    script = textwrap.dedent(
-        f"""
+    script = textwrap.dedent(f"""
         set -Eeuo pipefail
         PATH="$1:$PATH"
         shift
@@ -465,8 +572,7 @@ def test_host_wrapper_bounded_provenance_reader(tmp_path: Path) -> None:
         fail() {{ printf '%s\n' "$*" >&2; exit 1; }}
         {function_source}
         receive_github_provenance "$1"
-        """
-    )
+        """)
 
     valid_output = tmp_path / "valid.json"
     valid = subprocess.run(
@@ -538,9 +644,13 @@ def test_workflow_has_separate_verify_gate_and_public_smoke() -> None:
     assert "trap cleanup_ssh EXIT" in text
     assert "https://api.seiche.info/palimpsest/mcp" in text
     assert "scripts/smoke_palimpsest_mcp.py" in text
-    assert '"view": "interconnection"' in (
-        ROOT / "scripts/smoke_palimpsest_mcp.py"
-    ).read_text(encoding="utf-8")
+    assert "--rights-bootstrap-preflight" in text
+    assert "--bootstrap-deny" in text
+    assert "--expected-publication-sha" in text
+    smoke_text = (ROOT / "scripts/smoke_palimpsest_mcp.py").read_text(encoding="utf-8")
+    assert "_EXPECTED_AFFECTED_SIGNALS" in smoke_text
+    assert "_EXPECTED_AFFECTED_VIEWS" in smoke_text
+    assert "resources/read" in smoke_text
     assert "mcp-publisher publish" not in text
     assert "id-token: write" not in text
     assert "cancel-in-progress: false" in text
@@ -679,11 +789,17 @@ def test_release_runbook_freezes_writers_through_exact_pages_publish() -> None:
     text = RUNBOOK.read_text(encoding="utf-8")
     freeze = text.index('gh workflow disable "$workflow_id"')
     deploy = text.index("gh workflow run deploy-mcp.yml")
-    publish = text.index("gh workflow run registry-publish.yml")
     complete_dispatch = text.index("-f event_type=publication_contract")
     served_bytes = text.index("pages-served")
     restore = text.index('gh workflow enable "$workflow_id"')
-    assert freeze < deploy < publish < complete_dispatch < served_bytes < restore
+    assert freeze < deploy < complete_dispatch < served_bytes < restore
+    assert "skip this Registry block" in text[deploy:complete_dispatch]
+    assert "Rights-contract receipt bridge" in text
+    assert "source/runtime commit A" in text
+    assert "receipt/discovery commit B" in text
+    assert "final receipt/discovery commit C" in text
+    assert "re-deploy exact current-main B" in text
+    assert "Do not republish the immutable Registry version from C" in text
     assert "scheduled-workflows.tsv" in text
     assert "reuse that gate's" in text
     assert "original preservation manifest" in text
@@ -738,9 +854,10 @@ def test_release_runbook_pins_china_schedule_transition() -> None:
         if "\n  schedule:" in path.read_text(encoding="utf-8")
     )
 
-    assert len(scheduled_paths) == 34
+    assert len(scheduled_paths) == 35
     assert ".github/workflows/china-econ-refresh.yml" not in scheduled_paths
     assert ".github/workflows/codeql.yml" in scheduled_paths
+    assert ".github/workflows/railway-publication-controller.yml" in scheduled_paths
     assert 'premerge_schedule_paths="$release_gate_dir/' in text
     assert 'postmerge_schedule_paths="$release_gate_dir/' in text
     assert 'scheduled_paths_at "$frozen_main"' in text
@@ -748,6 +865,8 @@ def test_release_runbook_pins_china_schedule_transition() -> None:
     assert 'build_schedule_manifest "$premerge_schedule_paths"' in text
     assert "35:34" in text
     assert "34:34" in text
+    assert "34:35" in text
+    assert "35:35" in text
     assert "LC_ALL=C comm -23" in text
     assert "LC_ALL=C comm -13" in text
     assert ".github/workflows/*.yml|.github/workflows/*.yaml" in text
@@ -759,7 +878,8 @@ def test_release_runbook_pins_china_schedule_transition() -> None:
     assert "manual dispatch" in text
     assert "cannot recreate the" in text
     assert "removed schedule" in text
-    assert "34-to-34" in text
+    assert "34-to-35" in text
+    assert "35-to-35" in text
     assert 'workflow_replacements="$release_gate_dir/' in text
     assert "replacement_live_runs=$(gh api --paginate" in text
     assert 'test -z "$replacement_live_runs"' in text
@@ -851,6 +971,34 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
         ["git", "rev-parse", "HEAD"], cwd=repository, text=True
     ).strip()
 
+    railway_controller = workflows / "railway-publication-controller.yml"
+    railway_controller.write_text(
+        "name: Railway controller\non:\n  schedule:\n    - cron: '13 * * * *'\n",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["git", "add", ".github/workflows/railway-publication-controller.yml"],
+        cwd=repository,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=Palimpsest Test",
+            "-c",
+            "user.email=test@palimpsest.info",
+            "commit",
+            "-qm",
+            "add continuous Railway controller",
+        ],
+        cwd=repository,
+        check=True,
+    )
+    railway_tree = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repository, text=True
+    ).strip()
+
     (repository / "README.md").write_text("steady state\n", encoding="utf-8")
     subprocess.run(["git", "add", "README.md"], cwd=repository, check=True)
     subprocess.run(
@@ -906,7 +1054,13 @@ def test_release_runbook_executes_exact_tree_schedule_transitions(
     assert (
         validate_transition(premerge_tree, transition_tree, "one-time").returncode == 0
     )
-    assert validate_transition(transition_tree, steady_tree, "steady").returncode == 0
+    assert (
+        validate_transition(
+            transition_tree, railway_tree, "railway-addition"
+        ).returncode
+        == 0
+    )
+    assert validate_transition(railway_tree, steady_tree, "steady").returncode == 0
     premerge_paths = (
         (tmp_path / "one-time-pre.txt").read_text(encoding="utf-8").splitlines()
     )

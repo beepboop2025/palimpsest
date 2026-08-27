@@ -215,6 +215,13 @@ CONTRACT = {
                "coverage separately reports observed, forecast and unavailable rows; "
                "one top-level denominator would hide source nulls or imply those "
                "evidence states are interchangeable."),
+    "ucdp-aggregate": _d(
+        "generated_at",
+        ["source", "acquisition_receipts", "review_lock_sha256", "scope_policy"],
+        reason="the reviewed aggregate contains three distinct complete populations: "
+               "conflict-years, country-years, and referential actor IDs. Coverage "
+               "reports each separately; one denominator would falsely make their "
+               "counts commensurate or imply an event-level sampling frame."),
     # scheduled first-party import from the fixed external prober
     "bleedthrough":         _d("generated_at", ["method", "scope", "provenance"],
                                "vantages_probed"),
@@ -596,7 +603,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v19"' in worker
+    assert 'const CACHE = "palimpsest-v20"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert '"/readings/gfi-transcripts-latest.json"' in worker
     for endpoint in (
@@ -634,6 +641,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
     assert '"/readings/china-econ-observations.jsonl"' in worker
     assert '"/readings/china-econ-forecast-latest.json"' in worker
     assert '"/readings/china-index-latest.json"' in worker
+    assert '"/readings/china-publication-rights-latest.json"' in worker
     assert '"/readings/china-situation-latest.json"' in worker
     assert '"/readings/social-observations-latest.json"' in worker
     assert '"/readings/social-observations-versions.jsonl"' in worker
@@ -794,6 +802,11 @@ def test_openapi_publishes_social_observations_and_china_situation_contracts():
             "bri-economic-observations-v1.schema.json",
             "/readings/bri-economic-observations-latest.json",
             "getBRIEconomicObservations",
+        ),
+        "BRIWdiPagesPublicationReceipt": (
+            "bri-wdi-pages-publication-v1.schema.json",
+            "/.well-known/receipts/bri-wdi-pages-publication-v1.json",
+            "getBRIWdiPagesPublicationReceipt",
         ),
     }
 

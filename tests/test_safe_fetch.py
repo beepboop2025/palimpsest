@@ -426,6 +426,26 @@ def test_response_seam_preserves_bounded_non_success_status(monkeypatch):
         safe_fetch_bytes(PUBLIC_LITERAL, timeout=1.0)
 
 
+def test_response_seam_preserves_duplicate_header_field_multiplicity(monkeypatch):
+    response = _FakeBodyResponse(
+        b"evidence",
+        headers={"Last-Modified": "Mon, 08 Jun 2026 20:19:01 GMT"},
+    )
+    response.getheaders = lambda: [
+        ("Last-Modified", "Mon, 08 Jun 2026 20:19:01 GMT"),
+        ("Last-Modified", "Tue, 09 Jun 2026 20:19:01 GMT"),
+    ]
+    monkeypatch.setattr(sf, "_connect", lambda *_a, **_k: _FakeConn(response))
+
+    result = safe_fetch_response(PUBLIC_LITERAL, timeout=1.0)
+
+    assert result.header_fields == (
+        ("Last-Modified", "Mon, 08 Jun 2026 20:19:01 GMT"),
+        ("Last-Modified", "Tue, 09 Jun 2026 20:19:01 GMT"),
+    )
+    assert result.headers["Last-Modified"] == "Tue, 09 Jun 2026 20:19:01 GMT"
+
+
 @pytest.mark.parametrize("url", [
     "https://user:secret@example.com/path",
     "https://example.com%2f.evil.test/path",

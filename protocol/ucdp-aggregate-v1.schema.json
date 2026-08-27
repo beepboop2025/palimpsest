@@ -1,0 +1,360 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/ucdp-aggregate-v1.schema.json",
+  "title": "Palimpsest UCDP aggregate historical context v1",
+  "description": "Rights-gated annual UCDP context for Balochistan and Myanmar. Event coordinates, village names, narratives, person dossiers, live tactical fields, and drug-actor inference are prohibited.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "generated_at",
+    "latest_retrieved_at",
+    "scope_policy",
+    "movement_lanes",
+    "source",
+    "registry_sha256",
+    "review_lock_sha256",
+    "coverage",
+    "acquisition_receipts",
+    "actor_registry_ids_sha256",
+    "conflict_years_sha256",
+    "country_years_sha256",
+    "conflict_years",
+    "country_years"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest.ucdp-aggregate.v1"},
+    "bundle_id": {"$ref": "#/$defs/sha256"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "latest_retrieved_at": {"$ref": "#/$defs/timestamp"},
+    "scope_policy": {
+      "const": {
+        "geographies": ["MMR", "PAK-BAL"],
+        "temporal_resolution": "annual_historical",
+        "movement_scope": "plural_lanes_no_unified_movement_entity",
+        "actor_identity": "ucdp_actor_ids_only_no_public_actor_names",
+        "event_coordinates": "prohibited",
+        "village_names": "prohibited",
+        "event_narratives": "prohibited",
+        "person_dossiers": "prohibited",
+        "live_or_tactical_fields": "prohibited",
+        "drug_actor_inference": "prohibited",
+        "join_boundary": "historical_context_only_no_operational_or_causal_join",
+        "missing_rights_stale_policy": "fail_closed_unavailable_not_zero"
+      }
+    },
+    "movement_lanes": {
+      "const": [
+        {
+          "lane_id": "civic_society",
+          "evidence_state": "unavailable",
+          "ucdp_mapping": "none",
+          "boundary": "UCDP armed-conflict data does not represent civic participation"
+        },
+        {
+          "lane_id": "electoral_political",
+          "evidence_state": "unavailable",
+          "ucdp_mapping": "none",
+          "boundary": "political parties and electoral positions require separate evidence"
+        },
+        {
+          "lane_id": "armed_conflict_organizations",
+          "evidence_state": "observed",
+          "ucdp_mapping": "distinct_side_b_actor_ids_by_conflict_year",
+          "boundary": "actor IDs remain separate and are not one unified movement"
+        },
+        {
+          "lane_id": "state_authorities",
+          "evidence_state": "observed",
+          "ucdp_mapping": "distinct_side_a_actor_ids_by_conflict_year",
+          "boundary": "source-side coding is not a finding about every attributed act"
+        },
+        {
+          "lane_id": "human_rights_documentation",
+          "evidence_state": "unavailable",
+          "ucdp_mapping": "none",
+          "boundary": "human-rights allegations and findings require separate evidence"
+        }
+      ]
+    },
+    "source": {"$ref": "#/$defs/source"},
+    "registry_sha256": {"$ref": "#/$defs/sha256"},
+    "review_lock_sha256": {"$ref": "#/$defs/sha256"},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "acquisition_receipts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/acquisitionReceipt"}
+    },
+    "actor_registry_ids_sha256": {"$ref": "#/$defs/sha256"},
+    "conflict_years_sha256": {"$ref": "#/$defs/sha256"},
+    "country_years_sha256": {"$ref": "#/$defs/sha256"},
+    "conflict_years": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 2000,
+      "items": {"$ref": "#/$defs/conflictYear"}
+    },
+    "country_years": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 200,
+      "items": {"$ref": "#/$defs/countryYear"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "httpsUrl": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 16384,
+      "pattern": "^https://"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "name",
+        "publisher",
+        "dataset_version",
+        "catalog_url",
+        "license",
+        "license_url",
+        "rights_evidence_url",
+        "redistribution_status",
+        "attribution",
+        "source_period_start_year",
+        "source_period_end_year",
+        "release_cadence",
+        "rights_decision_id",
+        "rights_observed_at",
+        "rights_reviewed_at",
+        "rights_valid_until",
+        "review_lock_sha256",
+        "trust_model",
+        "citations"
+      ],
+      "properties": {
+        "source_id": {"const": "ucdp_bulk_26_1"},
+        "name": {"const": "Uppsala Conflict Data Program annual bulk datasets"},
+        "publisher": {"const": "Uppsala Conflict Data Program, Uppsala University"},
+        "dataset_version": {"const": "26.1"},
+        "catalog_url": {"const": "https://ucdp.uu.se/downloads/"},
+        "license": {"const": "CC-BY-4.0"},
+        "license_url": {"const": "https://creativecommons.org/licenses/by/4.0/"},
+        "rights_evidence_url": {"const": "https://ucdp.uu.se/downloads/"},
+        "redistribution_status": {"const": "allowed_with_attribution"},
+        "attribution": {"const": "Uppsala Conflict Data Program (UCDP), version 26.1"},
+        "source_period_start_year": {"const": 1946},
+        "source_period_end_year": {"const": 2025},
+        "release_cadence": {"const": "annual"},
+        "rights_decision_id": {"$ref": "#/$defs/sha256"},
+        "rights_observed_at": {"$ref": "#/$defs/timestamp"},
+        "rights_reviewed_at": {"$ref": "#/$defs/timestamp"},
+        "rights_valid_until": {"$ref": "#/$defs/timestamp"},
+        "review_lock_sha256": {"$ref": "#/$defs/sha256"},
+        "trust_model": {"const": "palimpsest_reviewed_git_lock_for_hardened_tls_acquisition_no_upstream_signature"},
+        "citations": {
+          "const": [
+            {
+              "citation_id": "davies-pettersson-oberg-2026",
+              "title": "Organized violence 1989-2025, and violent political protests",
+              "url": "https://doi.org/10.1093/jopres/xjag046",
+              "applies_to": ["actor_registry", "armed_conflict", "organized_country_year"]
+            },
+            {
+              "citation_id": "gleditsch-et-al-2002",
+              "title": "Armed Conflict 1946-2001: A New Dataset",
+              "url": "https://doi.org/10.1177/0022343302039005007",
+              "applies_to": ["armed_conflict"]
+            },
+            {
+              "citation_id": "sundberg-melander-2013",
+              "title": "Introducing the UCDP Georeferenced Event Dataset",
+              "url": "https://doi.org/10.1177/0022343313484347",
+              "applies_to": ["organized_country_year"]
+            }
+          ]
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_year",
+        "end_year",
+        "conflict_year_records",
+        "country_year_records",
+        "actor_registry_id_count"
+      ],
+      "properties": {
+        "start_year": {"type": "integer", "minimum": 1946, "maximum": 2025},
+        "end_year": {"type": "integer", "minimum": 1989, "maximum": 2025},
+        "conflict_year_records": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "country_year_records": {"type": "integer", "minimum": 1, "maximum": 200},
+        "actor_registry_id_count": {"type": "integer", "minimum": 1, "maximum": 100000}
+      }
+    },
+    "acquisitionReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "acquisition_id",
+        "input_id",
+        "dataset_version",
+        "source_url",
+        "request_method",
+        "request_user_agent",
+        "redirect_policy",
+        "tls_verification",
+        "maximum_archive_bytes",
+        "maximum_member_bytes",
+        "maximum_source_age_days",
+        "archive_sha256",
+        "archive_bytes",
+        "member_name",
+        "member_sha256",
+        "member_bytes",
+        "http_last_modified",
+        "retrieved_at"
+      ],
+      "properties": {
+        "schema_version": {"const": "palimpsest.ucdp-bulk-acquisition-receipt.v1"},
+        "acquisition_id": {"$ref": "#/$defs/sha256"},
+        "input_id": {"enum": ["armed_conflict", "actor_registry", "organized_country_year"]},
+        "dataset_version": {"const": "26.1"},
+        "source_url": {
+          "enum": [
+            "https://ucdp.uu.se/downloads/ucdpprio/ucdp-prio-acd-261-csv.zip",
+            "https://ucdp.uu.se/downloads/actor/ucdp-actor-261-csv.zip",
+            "https://ucdp.uu.se/downloads/organizedviolencecy/organizedviolencecy-261-csv.zip"
+          ]
+        },
+        "request_method": {"const": "GET"},
+        "request_user_agent": {"const": "palimpsest.info UCDP annual aggregate collector (historical non-tactical research; contact desk@palimpsest.info)"},
+        "redirect_policy": {"const": "disabled"},
+        "tls_verification": {"const": "required"},
+        "maximum_archive_bytes": {"enum": [1048576, 4194304]},
+        "maximum_member_bytes": {"enum": [2097152, 8388608]},
+        "maximum_source_age_days": {"const": 550},
+        "archive_sha256": {"$ref": "#/$defs/sha256"},
+        "archive_bytes": {"type": "integer", "minimum": 1, "maximum": 4194304},
+        "member_name": {
+          "enum": [
+            "UcdpPrioConflict_v26_1.csv",
+            "Actor_v26_1.csv",
+            "OrganizedViolenceCYDataSet26_1.csv"
+          ]
+        },
+        "member_sha256": {"$ref": "#/$defs/sha256"},
+        "member_bytes": {"type": "integer", "minimum": 1, "maximum": 8388608},
+        "http_last_modified": {"$ref": "#/$defs/timestamp"},
+        "retrieved_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "actorIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"type": "integer", "minimum": 1, "maximum": 2147483647}
+    },
+    "conflictYear": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_id",
+        "geography_code",
+        "country_code",
+        "territory_name",
+        "year",
+        "conflict_id",
+        "side_a_actor_ids",
+        "side_b_actor_ids",
+        "dataset_version",
+        "evidence_state",
+        "source_row_sha256",
+        "armed_conflict_acquisition_id",
+        "actor_registry_acquisition_id"
+      ],
+      "properties": {
+        "schema_version": {"const": "palimpsest.ucdp-conflict-year.v1"},
+        "record_id": {"$ref": "#/$defs/sha256"},
+        "geography_code": {"enum": ["PAK-BAL", "MMR"]},
+        "country_code": {"enum": ["PAK", "MMR"]},
+        "territory_name": {
+          "anyOf": [
+            {"type": "null"},
+            {"enum": ["Balochistan", "Arakan", "Common Border", "Kachin", "Karen", "Karenni", "Kokang", "Lahu", "Mon", "Nagaland", "Shan", "Wa"]}
+          ]
+        },
+        "year": {"type": "integer", "minimum": 1946, "maximum": 2025},
+        "conflict_id": {"type": "integer", "minimum": 1, "maximum": 2147483647},
+        "side_a_actor_ids": {"$ref": "#/$defs/actorIds"},
+        "side_b_actor_ids": {"$ref": "#/$defs/actorIds"},
+        "dataset_version": {"const": "26.1"},
+        "evidence_state": {"const": "observed"},
+        "source_row_sha256": {"$ref": "#/$defs/sha256"},
+        "armed_conflict_acquisition_id": {"$ref": "#/$defs/sha256"},
+        "actor_registry_acquisition_id": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["low", "best", "high"],
+      "properties": {
+        "low": {"type": "integer", "minimum": 0},
+        "best": {"type": "integer", "minimum": 0},
+        "high": {"type": "integer", "minimum": 0}
+      }
+    },
+    "countryYear": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_id",
+        "country_code",
+        "year",
+        "unit",
+        "evidence_state",
+        "state_based",
+        "non_state",
+        "one_sided",
+        "total",
+        "total_derivation",
+        "dataset_version",
+        "source_row_sha256",
+        "country_year_acquisition_id"
+      ],
+      "properties": {
+        "schema_version": {"const": "palimpsest.ucdp-country-year.v1"},
+        "record_id": {"$ref": "#/$defs/sha256"},
+        "country_code": {"enum": ["PAK", "MMR"]},
+        "year": {"type": "integer", "minimum": 1989, "maximum": 2025},
+        "unit": {"const": "deaths"},
+        "evidence_state": {"const": "observed"},
+        "state_based": {"$ref": "#/$defs/bounds"},
+        "non_state": {"$ref": "#/$defs/bounds"},
+        "one_sided": {"$ref": "#/$defs/bounds"},
+        "total": {"$ref": "#/$defs/bounds"},
+        "total_derivation": {"const": "sum_of_ucdp_category_bounds"},
+        "dataset_version": {"const": "26.1"},
+        "source_row_sha256": {"$ref": "#/$defs/sha256"},
+        "country_year_acquisition_id": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

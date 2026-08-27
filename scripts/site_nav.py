@@ -25,6 +25,17 @@ import html as _html
 BEGIN = "<!--PS_NAV-->"
 END = "<!--/PS_NAV-->"
 
+# The four regional ledgers stay visible beneath the primary navigation.  Keep
+# this as a separate, compact tuple rather than a flyout entry: a visitor should
+# not need JavaScript, a menu disclosure, or prior knowledge of the BRI page to
+# reach the regional evidence boundaries.
+REGIONAL_EVIDENCE = (
+    ("/belt-and-road/#bri-corridors", "BRI & Corridors"),
+    ("/belt-and-road/#balochistan", "Balochistan"),
+    ("/belt-and-road/#pakistan-gwadar", "Pakistan & Gwadar"),
+    ("/belt-and-road/#myanmar", "Myanmar"),
+)
+
 # `new` marks a signal that shipped recently enough to be worth pointing at.
 # It is a hand-maintained editorial claim, not a timestamp — clear it when it
 # stops being true rather than letting it rot into furniture.
@@ -240,6 +251,20 @@ def render(current: str = "") -> str:
         '  <button class="ps-nav__burger" type="button" aria-expanded="false" aria-label="Menu">'
         "<i></i><i></i><i></i></button>",
         '  <div class="ps-nav__scrim" aria-hidden="true"></div>',
+    ]
+    out += [
+        '  <div class="ps-region-rail">',
+        '    <p class="ps-region-rail__label" aria-hidden="true">Regional evidence</p>',
+        '    <ul class="ps-region-rail__list" aria-label="Regional evidence">',
+    ]
+    for href, label in REGIONAL_EVIDENCE:
+        out.append(
+            '      <li><a class="ps-region-rail__link" '
+            f'href="{_esc(href)}">{_esc(label)}</a></li>'
+        )
+    out += [
+        "    </ul>",
+        "  </div>",
         "</nav>",
         f"{END}",
     ]

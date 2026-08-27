@@ -2,9 +2,9 @@
   "profile": "data-package",
   "name": "palimpsest-evidence-atlas",
   "title": "Palimpsest Evidence Atlas",
-  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, and model-evaluation datasets.",
+  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, and model-evaluation datasets.",
   "homepage": "https://palimpsest.info/data.html",
-  "created": "2026-08-26T13:40:37Z",
+  "created": "2026-08-26T19:34:49Z",
   "contributors": [
     {
       "title": "Palimpsest",
@@ -18,7 +18,7 @@
       "path": "readings/belt-and-road-observatory-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 92374
+      "bytes": 95999
     },
     {
       "name": "bri-economic-observations-latest",
@@ -26,6 +26,13 @@
       "format": "json",
       "mediatype": "application/json",
       "bytes": 6915160
+    },
+    {
+      "name": "ucdp-annual-aggregate-context-latest",
+      "path": "readings/ucdp-aggregate-latest.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 260077
     },
     {
       "name": "ddti-latest",
@@ -357,48 +364,6 @@
       "bytes": 1006
     },
     {
-      "name": "data-darkness-latest",
-      "path": "readings/data-darkness-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 3882
-    },
-    {
-      "name": "data-darkness-history",
-      "path": "readings/data-darkness-history.jsonl",
-      "format": "jsonl",
-      "mediatype": "application/x-ndjson",
-      "bytes": 3631
-    },
-    {
-      "name": "china-econ-latest",
-      "path": "readings/china-econ-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 739
-    },
-    {
-      "name": "china-econ-history",
-      "path": "readings/china-econ-history.jsonl",
-      "format": "jsonl",
-      "mediatype": "application/x-ndjson",
-      "bytes": 14547
-    },
-    {
-      "name": "china-economic-observations-latest",
-      "path": "readings/china-econ-observations-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 3033
-    },
-    {
-      "name": "china-economic-observations-history",
-      "path": "readings/china-econ-observations.jsonl",
-      "format": "jsonl",
-      "mediatype": "application/x-ndjson",
-      "bytes": 1983774
-    },
-    {
       "name": "china-economic-wdi-history-latest",
       "path": "readings/china-econ-wdi-latest.json",
       "format": "json",
@@ -411,27 +376,6 @@
       "format": "jsonl",
       "mediatype": "application/x-ndjson",
       "bytes": 3877351
-    },
-    {
-      "name": "china-economic-forecast-latest",
-      "path": "readings/china-econ-forecast-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 385205
-    },
-    {
-      "name": "cny-fix-gap-latest",
-      "path": "readings/cny-fix-gap-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 1434
-    },
-    {
-      "name": "cny-fix-gap-history",
-      "path": "readings/cny-fix-gap-history.jsonl",
-      "format": "jsonl",
-      "mediatype": "application/x-ndjson",
-      "bytes": 1381
     },
     {
       "name": "believability-latest",
@@ -581,13 +525,6 @@
       "bytes": 1108639
     },
     {
-      "name": "china-article-stream-latest",
-      "path": "readings/china-article-stream-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 3588063
-    },
-    {
       "name": "social-observations-latest",
       "path": "readings/social-observations-latest.json",
       "format": "json",
@@ -623,13 +560,6 @@
       "bytes": 1084
     },
     {
-      "name": "china-situation-latest",
-      "path": "readings/china-situation-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 7874407
-    },
-    {
       "name": "china-censorship-analysis-latest",
       "path": "readings/china-censorship-analysis-latest.json",
       "format": "json",
@@ -637,32 +567,11 @@
       "bytes": 23766
     },
     {
-      "name": "china-economic-pulse-latest",
-      "path": "readings/china-economic-pulse-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 72213
-    },
-    {
       "name": "investigations-latest",
       "path": "readings/investigations-latest.json",
       "format": "json",
       "mediatype": "application/json",
       "bytes": 34375
-    },
-    {
-      "name": "evidence-mesh-latest",
-      "path": "readings/evidence-mesh-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 218766
-    },
-    {
-      "name": "machine-investigations-latest",
-      "path": "readings/machine-investigations-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 39219
     },
     {
       "name": "primary-documents-latest",
@@ -768,20 +677,6 @@
       "format": "json",
       "mediatype": "application/json",
       "bytes": 61592
-    },
-    {
-      "name": "reading-analysis-latest",
-      "path": "readings/reading-analysis-latest.json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 676942
-    },
-    {
-      "name": "reading-analysis-history",
-      "path": "readings/reading-analysis-history.jsonl",
-      "format": "jsonl",
-      "mediatype": "application/x-ndjson",
-      "bytes": 2843
     },
     {
       "name": "weekly-situation-latest",

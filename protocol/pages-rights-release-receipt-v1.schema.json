@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/pages-rights-release-receipt-v1.schema.json",
+  "title": "Palimpsest Pages rights release receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "publication_sha",
+    "edition_clock",
+    "admission_clock",
+    "status",
+    "policy",
+    "effective_decisions_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "palimpsest.pages-rights-release-receipt.v1"
+    },
+    "publication_sha": {
+      "$ref": "#/$defs/commitSha"
+    },
+    "edition_clock": {
+      "$ref": "#/$defs/utcSecond"
+    },
+    "admission_clock": {
+      "$ref": "#/$defs/utcSecond"
+    },
+    "status": {
+      "$ref": "#/$defs/fileIdentity"
+    },
+    "policy": {
+      "$ref": "#/$defs/fileIdentity"
+    },
+    "effective_decisions_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "utcSecond": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "fileIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

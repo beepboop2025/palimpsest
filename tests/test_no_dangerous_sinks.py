@@ -91,6 +91,13 @@ _SINKS = re.compile(
 #   fixed flags and private temporary paths. Provenance bytes are written as
 #   data files, stdin is closed, the environment and timeout are fixed, and no
 #   shell or fetched value becomes executable text.
+#   pages_artifact_capacity.py: invokes absolute Git and tar executables only
+#   to materialize a locally staged Git tree. Revisions are exact 40/64-hex
+#   object IDs before argv construction; Git config, stdin, tar environment,
+#   timeouts, and every command verb are closed. No collected byte enters argv.
+#   build_pages_binary_allowlist.py: invokes only absolute /usr/bin/git with a
+#   fixed ls-files argv to enumerate the local publication tree. Stdin is
+#   closed, replacement objects are disabled, and no evidence bytes enter argv.
 _ALLOWED = {
     ("ops/common-crawl/run_duckdb_filter.py", "subprocess."),
     ("ops/investigative_analysis_broker.py", "subprocess."),
@@ -99,13 +106,57 @@ _ALLOWED = {
     ("ops/osint-sync/public_osint_sync.py", "subprocess."),
     ("scripts/anchor_roots.py", "subprocess."),
     ("scripts/dispatch_publication_contract.py", "subprocess."),
+    ("scripts/pages_artifact_capacity.py", "subprocess."),
     ("scripts/build_china_econ_export.py", "subprocess."),
     ("scripts/build_china_econ_lineage.py", "subprocess."),
+    ("scripts/build_pages_binary_allowlist.py", "subprocess."),
     ("scripts/push_data_commit.py", "subprocess."),
     ("scripts/recover_readings_ledger.py", "subprocess."),
     ("scripts/reproduce_all.py", "subprocess."),
     ("scripts/verify_public_surface.py", "subprocess."),
 }
+
+
+def test_pages_binary_allowlist_keeps_a_closed_git_boundary():
+    source = (ROOT / "scripts" / "build_pages_binary_allowlist.py").read_text(
+        encoding="utf-8"
+    )
+    tree = ast.parse(source)
+    calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "subprocess"
+        and node.func.attr == "run"
+    ]
+    assert len(calls) == 1
+    call = calls[0]
+    assert ast.unparse(call.args[0]) == (
+        "[GIT_EXECUTABLE, '--no-replace-objects', 'ls-files', '-z', "
+        "'--cached', '--others', '--exclude-standard']"
+    )
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords}
+    assert set(keywords) == {
+        "capture_output",
+        "check",
+        "cwd",
+        "env",
+        "stdin",
+        "timeout",
+    }
+    assert ast.literal_eval(keywords["capture_output"]) is True
+    assert ast.literal_eval(keywords["check"]) is True
+    assert ast.unparse(keywords["cwd"]) == "root"
+    assert ast.literal_eval(keywords["env"]) == {
+        "PATH": "/usr/bin:/bin",
+        "LC_ALL": "C",
+    }
+    assert ast.unparse(keywords["stdin"]) == "subprocess.DEVNULL"
+    assert ast.literal_eval(keywords["timeout"]) == 120
+    assert 'GIT_EXECUTABLE = "/usr/bin/git"' in source
+    assert "shell=True" not in source
 
 
 def test_mcp_release_verifier_keeps_a_closed_gpgv_boundary():
@@ -188,6 +239,54 @@ def test_china_economic_git_helpers_keep_a_closed_subprocess_boundary():
     assert 'revision != "HEAD"' in lineage
     assert 're.fullmatch(r"[0-9a-f]{40}", revision)' in lineage
     assert "--max-count={MAX_WDI_LINEAGE_NODES + 1}" in lineage
+
+
+def test_pages_capacity_guard_keeps_a_closed_staged_tree_process_boundary():
+    source = (ROOT / "scripts" / "pages_artifact_capacity.py").read_text(
+        encoding="utf-8"
+    )
+
+    assert "shell=True" not in source
+    assert 'GIT_EXECUTABLE = "/usr/bin/git"' in source
+    assert 'SYSTEM_TAR_EXECUTABLE = "/usr/bin/tar"' in source
+    assert '[GIT_EXECUTABLE, "--no-replace-objects", *arguments]' in source
+    assert (
+        '[GIT_EXECUTABLE, "--no-replace-objects", "archive", "--format=tar", tree]'
+        in source
+    )
+    assert '[SYSTEM_TAR_EXECUTABLE, "-xf", "-", "-C", str(destination)]' in source
+    assert "OBJECT_ID_RE.fullmatch(revision)" in source
+    assert "COMMIT_SHA_RE.fullmatch(publication_sha)" in source
+    assert 'tree = _git(repo, "write-tree")' in source
+    assert "pages_rights.stage_pages_tree(" in source
+    assert "pages_rights.verify_staged_tree(" in source
+    assert "wire_archive.build_for_pages(stage, publication_sha)" in source
+    assert "wire_archive.verify_for_pages(stage, publication_sha)" in source
+    assert "stdin=subprocess.DEVNULL" in source
+    assert "env=GIT_ENVIRONMENT" in source
+    assert "env=TAR_ENVIRONMENT" in source
+    assert "timeout=PROCESS_TIMEOUT_SECONDS" in source
+
+    tree = ast.parse(source)
+    calls: list[str] = []
+    for function in (
+        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)
+    ):
+        for node in ast.walk(function):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "subprocess"
+            ):
+                calls.append(f"{function.name}:{node.func.attr}")
+    assert sorted(calls) == [
+        "_create_action_tar:run",
+        "_extract_tree:Popen",
+        "_extract_tree:run",
+        "_git:run",
+        "_gnu_tar:run",
+    ], "every Pages capacity subprocess call must stay inside its reviewed boundary"
 
 
 def _py_files():

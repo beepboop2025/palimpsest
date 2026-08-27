@@ -1,0 +1,561 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/railway-continuous-release-receipt-v1.schema.json",
+  "title": "Palimpsest Railway continuous release receipt v1",
+  "description": "A secret-free proof that one exact immutable Palimpsest bundle, admitted at a current-main mutation boundary, is the successful Railway deployment, with conditional proof of byte identity at the public origin when that surface is requested.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "verified_at",
+    "preflight",
+    "release",
+    "deployment",
+    "topology",
+    "live",
+    "verification_policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "palimpsest.railway-continuous-release-receipt.v1"
+    },
+    "status": {
+      "const": "verified"
+    },
+    "verified_at": {
+      "$ref": "#/$defs/utcSecond"
+    },
+    "preflight": {
+      "$ref": "#/$defs/preflight"
+    },
+    "release": {
+      "$ref": "#/$defs/release"
+    },
+    "deployment": {
+      "$ref": "#/$defs/deployment"
+    },
+    "topology": {
+      "$ref": "#/$defs/topology"
+    },
+    "live": {
+      "$ref": "#/$defs/live"
+    },
+    "verification_policy": {
+      "$ref": "#/$defs/verificationPolicy"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "live": {
+            "properties": {
+              "public_origin_verified": {
+                "const": true
+              }
+            },
+            "required": ["public_origin_verified"]
+          }
+        },
+        "required": ["live"]
+      },
+      "then": {
+        "properties": {
+          "live": {
+            "properties": {
+              "public_origin": {
+                "$ref": "#/$defs/liveSurface"
+              },
+              "manifest_byte_identical": {
+                "const": true
+              },
+              "critical_inventory_byte_identical": {
+                "const": true
+              }
+            }
+          },
+          "verification_policy": {
+            "properties": {
+              "attempts_used": {
+                "properties": {
+                  "public_origin": {
+                    "$ref": "#/$defs/attemptCount"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "live": {
+            "properties": {
+              "public_origin": {
+                "type": "null"
+              },
+              "manifest_byte_identical": {
+                "type": "null"
+              },
+              "critical_inventory_byte_identical": {
+                "type": "null"
+              }
+            }
+          },
+          "verification_policy": {
+            "properties": {
+              "attempts_used": {
+                "properties": {
+                  "public_origin": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "deployment": {
+            "properties": {
+              "reason": {
+                "const": "deploy"
+              }
+            },
+            "required": ["reason"]
+          }
+        },
+        "required": ["deployment"]
+      },
+      "then": {
+        "properties": {
+          "topology": {
+            "properties": {
+              "latest_deployment_reason": {
+                "const": "deploy"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "topology": {
+            "properties": {
+              "latest_deployment_reason": {
+                "const": "deploymentRollback"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "imageDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "deploymentReason": {
+      "enum": ["deploy", "deploymentRollback"]
+    },
+    "canonicalUuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "utcSecond": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    "httpsOrigin": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 512,
+      "pattern": "^https://[^/?#@\\s]+$"
+    },
+    "attemptCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 20
+    },
+    "preflight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expected_source_commit",
+        "checkout_source_commit",
+        "current_main_source_commit",
+        "worktree_clean"
+      ],
+      "properties": {
+        "expected_source_commit": {
+          "$ref": "#/$defs/commitSha"
+        },
+        "checkout_source_commit": {
+          "$ref": "#/$defs/commitSha"
+        },
+        "current_main_source_commit": {
+          "description": "The origin/main value captured by the transaction's final pre-mutation fetch; equality does not assert that main stayed unchanged after upload began.",
+          "$ref": "#/$defs/commitSha"
+        },
+        "worktree_clean": {
+          "const": true
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "source_commit",
+        "tree_sha256",
+        "manifest_sha256",
+        "built_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "palimpsest.railway-static-release.v1"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/commitSha"
+        },
+        "tree_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "manifest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "built_at": {
+          "$ref": "#/$defs/utcSecond"
+        }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deployment_id",
+        "status",
+        "created_at",
+        "image_digest",
+        "reason"
+      ],
+      "properties": {
+        "deployment_id": {
+          "$ref": "#/$defs/canonicalUuid"
+        },
+        "status": {
+          "const": "SUCCESS"
+        },
+        "created_at": {
+          "$ref": "#/$defs/utcSecond"
+        },
+        "image_digest": {
+          "$ref": "#/$defs/imageDigest"
+        },
+        "reason": {
+          "$ref": "#/$defs/deploymentReason"
+        }
+      }
+    },
+    "topology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "environment_id",
+        "service_id",
+        "service_name",
+        "latest_deployment_id",
+        "latest_deployment_reason",
+        "source_attached",
+        "cron_schedule",
+        "volume_instance_count",
+        "volume_mount_count",
+        "service_manifest"
+      ],
+      "properties": {
+        "project_id": {
+          "$ref": "#/$defs/canonicalUuid"
+        },
+        "environment_id": {
+          "$ref": "#/$defs/canonicalUuid"
+        },
+        "service_id": {
+          "$ref": "#/$defs/canonicalUuid"
+        },
+        "service_name": {
+          "const": "palimpsest-publication"
+        },
+        "latest_deployment_id": {
+          "$ref": "#/$defs/canonicalUuid"
+        },
+        "latest_deployment_reason": {
+          "$ref": "#/$defs/deploymentReason"
+        },
+        "source_attached": {
+          "const": false
+        },
+        "cron_schedule": {
+          "type": "null"
+        },
+        "volume_instance_count": {
+          "const": 0
+        },
+        "volume_mount_count": {
+          "const": 0
+        },
+        "service_manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "builder",
+            "dockerfile_path",
+            "healthcheck_path",
+            "num_replicas"
+          ],
+          "properties": {
+            "builder": {
+              "const": "DOCKERFILE"
+            },
+            "dockerfile_path": {
+              "const": "ops/railway/Dockerfile.static"
+            },
+            "healthcheck_path": {
+              "const": "/healthz"
+            },
+            "num_replicas": {
+              "const": 1
+            }
+          }
+        }
+      }
+    },
+    "healthEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "http_status",
+        "cache_control",
+        "source_commit",
+        "tree_sha256"
+      ],
+      "properties": {
+        "path": {
+          "const": "/healthz"
+        },
+        "http_status": {
+          "const": 200
+        },
+        "cache_control": {
+          "const": "no-store"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/commitSha"
+        },
+        "tree_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "releaseManifestEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "http_status",
+        "cache_control",
+        "source_commit",
+        "tree_sha256",
+        "manifest_sha256",
+        "built_at"
+      ],
+      "properties": {
+        "path": {
+          "const": "/railway-release.json"
+        },
+        "http_status": {
+          "const": 200
+        },
+        "cache_control": {
+          "const": "no-store"
+        },
+        "source_commit": {
+          "$ref": "#/$defs/commitSha"
+        },
+        "tree_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "manifest_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "built_at": {
+          "$ref": "#/$defs/utcSecond"
+        }
+      }
+    },
+    "criticalFilesEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "all_manifest_entries_verified",
+        "verified_count",
+        "verified_total_bytes",
+        "inventory_sha256"
+      ],
+      "properties": {
+        "all_manifest_entries_verified": {
+          "const": true
+        },
+        "verified_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256
+        },
+        "verified_total_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456
+        },
+        "inventory_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "liveSurface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_url", "health", "release_manifest", "critical_files"],
+      "properties": {
+        "base_url": {
+          "$ref": "#/$defs/httpsOrigin"
+        },
+        "health": {
+          "$ref": "#/$defs/healthEvidence"
+        },
+        "release_manifest": {
+          "$ref": "#/$defs/releaseManifestEvidence"
+        },
+        "critical_files": {
+          "$ref": "#/$defs/criticalFilesEvidence"
+        }
+      }
+    },
+    "live": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider_origin",
+        "public_origin",
+        "public_origin_verified",
+        "manifest_byte_identical",
+        "critical_inventory_byte_identical"
+      ],
+      "properties": {
+        "provider_origin": {
+          "$ref": "#/$defs/liveSurface"
+        },
+        "public_origin": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/liveSurface"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "public_origin_verified": {
+          "type": "boolean"
+        },
+        "manifest_byte_identical": {
+          "type": ["boolean", "null"]
+        },
+        "critical_inventory_byte_identical": {
+          "type": ["boolean", "null"]
+        }
+      }
+    },
+    "attemptsUsed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_origin", "public_origin"],
+      "properties": {
+        "provider_origin": {
+          "$ref": "#/$defs/attemptCount"
+        },
+        "public_origin": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/attemptCount"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "verificationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempts_used",
+        "attempts_limit",
+        "retry_delay_seconds",
+        "request_timeout_seconds",
+        "maximum_deployment_age_seconds",
+        "maximum_release_age_seconds",
+        "maximum_future_skew_seconds"
+      ],
+      "properties": {
+        "attempts_used": {
+          "$ref": "#/$defs/attemptsUsed"
+        },
+        "attempts_limit": {
+          "$ref": "#/$defs/attemptCount"
+        },
+        "retry_delay_seconds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "request_timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 60
+        },
+        "maximum_deployment_age_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        },
+        "maximum_release_age_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 604800
+        },
+        "maximum_future_skew_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/ucdp-reviewed-acquisition-lock-v1.schema.json",
+  "title": "Palimpsest reviewed UCDP acquisition lock v1",
+  "description": "Repository-reviewed approval anchor for exact UCDP acquisition, rights-snapshot, and receipt bytes. This is not an upstream signature.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "dataset_version",
+    "trust_model",
+    "policy",
+    "rights_decision",
+    "expected_public_aggregate",
+    "inputs"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest.ucdp-reviewed-acquisition-lock.v1"},
+    "status": {"enum": ["review_required", "approved"]},
+    "dataset_version": {"const": "26.1"},
+    "trust_model": {"const": "palimpsest_reviewed_git_lock_for_hardened_tls_acquisition_no_upstream_signature"},
+    "policy": {"$ref": "#/$defs/policy"},
+    "rights_decision": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/rightsDecision"}
+      ]
+    },
+    "expected_public_aggregate": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/expectedPublicAggregate"}
+      ]
+    },
+    "inputs": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/inputPin"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "review_required"}}},
+      "then": {
+        "properties": {
+          "rights_decision": {"type": "null"},
+          "expected_public_aggregate": {"type": "null"},
+          "inputs": {"maxItems": 0}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"status": {"const": "approved"}}},
+      "then": {
+        "properties": {
+          "rights_decision": {"$ref": "#/$defs/rightsDecision"},
+          "expected_public_aggregate": {"$ref": "#/$defs/expectedPublicAggregate"},
+          "inputs": {"minItems": 3, "maxItems": 3}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximum_future_skew_seconds",
+        "maximum_cross_input_retrieval_skew_seconds",
+        "maximum_evidence_age_days"
+      ],
+      "properties": {
+        "maximum_future_skew_seconds": {"const": 300},
+        "maximum_cross_input_retrieval_skew_seconds": {"const": 900},
+        "maximum_evidence_age_days": {"const": 550}
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["citation_id", "title", "url", "applies_to"],
+      "properties": {
+        "citation_id": {"type": "string"},
+        "title": {"type": "string"},
+        "url": {"type": "string", "format": "uri", "pattern": "^https://"},
+        "applies_to": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"enum": ["actor_registry", "armed_conflict", "organized_country_year"]}
+        }
+      }
+    },
+    "rightsDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_id",
+        "status",
+        "decision",
+        "scope",
+        "rights_page_url",
+        "rights_page_snapshot_sha256",
+        "rights_page_snapshot_bytes",
+        "rights_page_snapshot_receipt_sha256",
+        "observed_at",
+        "reviewed_at",
+        "valid_until",
+        "license",
+        "license_url",
+        "attribution",
+        "reviewed_by",
+        "policy_version",
+        "citations"
+      ],
+      "properties": {
+        "decision_id": {"$ref": "#/$defs/sha256"},
+        "status": {"const": "approved_for_public_annual_aggregates"},
+        "decision": {"const": "allow_with_attribution"},
+        "scope": {"const": "annual_aggregate_context_only"},
+        "rights_page_url": {"const": "https://ucdp.uu.se/downloads/"},
+        "rights_page_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+        "rights_page_snapshot_bytes": {"type": "integer", "minimum": 1, "maximum": 2097152},
+        "rights_page_snapshot_receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "reviewed_at": {"$ref": "#/$defs/timestamp"},
+        "valid_until": {"$ref": "#/$defs/timestamp"},
+        "license": {"const": "CC-BY-4.0"},
+        "license_url": {"const": "https://creativecommons.org/licenses/by/4.0/"},
+        "attribution": {"const": "Uppsala Conflict Data Program (UCDP), version 26.1"},
+        "reviewed_by": {"const": "palimpsest-publication-rights-review"},
+        "policy_version": {"const": "palimpsest.ucdp-publication-policy.v1"},
+        "citations": {
+          "const": [
+            {
+              "citation_id": "davies-pettersson-oberg-2026",
+              "title": "Organized violence 1989-2025, and violent political protests",
+              "url": "https://doi.org/10.1093/jopres/xjag046",
+              "applies_to": ["actor_registry", "armed_conflict", "organized_country_year"]
+            },
+            {
+              "citation_id": "gleditsch-et-al-2002",
+              "title": "Armed Conflict 1946-2001: A New Dataset",
+              "url": "https://doi.org/10.1177/0022343302039005007",
+              "applies_to": ["armed_conflict"]
+            },
+            {
+              "citation_id": "sundberg-melander-2013",
+              "title": "Introducing the UCDP Georeferenced Event Dataset",
+              "url": "https://doi.org/10.1177/0022343313484347",
+              "applies_to": ["organized_country_year"]
+            }
+          ]
+        }
+      }
+    },
+    "expectedPublicAggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actor_registry_id_count",
+        "actor_registry_ids_sha256",
+        "conflict_years_sha256",
+        "country_years_sha256"
+      ],
+      "properties": {
+        "actor_registry_id_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "actor_registry_ids_sha256": {"$ref": "#/$defs/sha256"},
+        "conflict_years_sha256": {"$ref": "#/$defs/sha256"},
+        "country_years_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "inputPin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_id",
+        "archive_sha256",
+        "archive_bytes",
+        "member_sha256",
+        "member_bytes",
+        "receipt_sha256",
+        "transport_policy_sha256"
+      ],
+      "properties": {
+        "input_id": {"enum": ["actor_registry", "armed_conflict", "organized_country_year"]},
+        "archive_sha256": {"$ref": "#/$defs/sha256"},
+        "archive_bytes": {"type": "integer", "minimum": 1, "maximum": 4194304},
+        "member_sha256": {"$ref": "#/$defs/sha256"},
+        "member_bytes": {"type": "integer", "minimum": 1, "maximum": 8388608},
+        "receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "transport_policy_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

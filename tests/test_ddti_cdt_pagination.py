@@ -318,3 +318,19 @@ def test_environment_derived_crawl_budgets_are_bounded(monkeypatch, field, value
     monkeypatch.setattr(dlp, field, value)
     with pytest.raises(ValueError):
         dlp._feed_budgets()
+
+
+def test_live_pull_uses_the_shared_bounded_dashboard_injector(monkeypatch, tmp_path):
+    dashboard = tmp_path / "ddti.html"
+    index = {"sentinel": "collector index"}
+    calls = []
+
+    def shared(path, value):
+        calls.append((path, value))
+        return "updated"
+
+    monkeypatch.setattr(dlp, "DASHBOARD", dashboard)
+    monkeypatch.setattr(dlp, "inject_dashboard", shared)
+
+    assert dlp.embed_in_dashboard(index) is True
+    assert calls == [(dashboard, index)]

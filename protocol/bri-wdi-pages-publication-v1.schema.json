@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/bri-wdi-pages-publication-v1.schema.json",
+  "title": "Palimpsest BRI WDI Pages publication receipt",
+  "$comment": "This schema validates the public structure. core/pages_publication_receipt.py is authoritative for canonical bytes and cross-field URL, identity, clock, digest, and arithmetic bindings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "dataset_id",
+    "source_id",
+    "collection_id",
+    "workflow",
+    "pages_artifact",
+    "archived_size_receipt",
+    "deployment",
+    "served_verification"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest.bri-wdi-pages-publication.v1"},
+    "status": {"const": "production_verified"},
+    "dataset_id": {"const": "bri-economic-context-world-bank-wdi"},
+    "source_id": {"const": "world_bank_wdi"},
+    "collection_id": {"$ref": "#/$defs/sha256"},
+    "workflow": {"$ref": "#/$defs/workflow"},
+    "pages_artifact": {"$ref": "#/$defs/pagesArtifact"},
+    "archived_size_receipt": {"$ref": "#/$defs/archivedSizeReceipt"},
+    "deployment": {"$ref": "#/$defs/deployment"},
+    "served_verification": {"$ref": "#/$defs/servedVerification"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "gitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9223372036854775807
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "publication_sha",
+        "workflow_path",
+        "run_id",
+        "run_attempt",
+        "run_url",
+        "run_api_url",
+        "event",
+        "branch",
+        "conclusion",
+        "pages_package_job_id",
+        "pages_deploy_job_id",
+        "pages_package_job",
+        "pages_deploy_job"
+      ],
+      "properties": {
+        "repository": {"const": "beepboop2025/palimpsest"},
+        "publication_sha": {"$ref": "#/$defs/gitSha"},
+        "workflow_path": {"const": ".github/workflows/tests.yml"},
+        "run_id": {"$ref": "#/$defs/positiveInteger"},
+        "run_attempt": {"$ref": "#/$defs/positiveInteger"},
+        "run_url": {"type": "string", "format": "uri", "pattern": "^https://github\\.com/beepboop2025/palimpsest/actions/runs/[1-9][0-9]*$"},
+        "run_api_url": {"type": "string", "format": "uri", "pattern": "^https://api\\.github\\.com/repos/beepboop2025/palimpsest/actions/runs/[1-9][0-9]*$"},
+        "event": {"const": "repository_dispatch"},
+        "branch": {"const": "main"},
+        "conclusion": {"const": "success"},
+        "pages_package_job_id": {"$ref": "#/$defs/positiveInteger"},
+        "pages_deploy_job_id": {"$ref": "#/$defs/positiveInteger"},
+        "pages_package_job": {
+          "allOf": [
+            {"$ref": "#/$defs/job"},
+            {"properties": {"name": {"const": "Package exact complete Pages edition"}}}
+          ]
+        },
+        "pages_deploy_job": {
+          "allOf": [
+            {"$ref": "#/$defs/job"},
+            {"properties": {"name": {"const": "Deploy exact complete Pages edition"}}}
+          ]
+        }
+      }
+    },
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "api_url", "html_url", "run_id", "run_attempt", "head_sha", "conclusion"],
+      "properties": {
+        "id": {"$ref": "#/$defs/positiveInteger"},
+        "name": {"type": "string", "minLength": 1},
+        "api_url": {"type": "string", "format": "uri", "pattern": "^https://api\\.github\\.com/repos/beepboop2025/palimpsest/actions/jobs/[1-9][0-9]*$"},
+        "html_url": {"type": "string", "format": "uri", "pattern": "^https://github\\.com/beepboop2025/palimpsest/actions/runs/[1-9][0-9]*/job/[1-9][0-9]*$"},
+        "run_id": {"$ref": "#/$defs/positiveInteger"},
+        "run_attempt": {"$ref": "#/$defs/positiveInteger"},
+        "head_sha": {"$ref": "#/$defs/gitSha"},
+        "conclusion": {"const": "success"}
+      }
+    },
+    "pagesArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "api_url", "archive_bytes", "digest_sha256", "workflow_run_id", "workflow_run_head_sha", "created_at", "expires_at", "captured_at"],
+      "properties": {
+        "id": {"$ref": "#/$defs/positiveInteger"},
+        "name": {"const": "github-pages"},
+        "api_url": {"type": "string", "format": "uri", "pattern": "^https://api\\.github\\.com/repos/beepboop2025/palimpsest/actions/artifacts/[1-9][0-9]*$"},
+        "archive_bytes": {"type": "integer", "minimum": 1, "maximum": 4294967296},
+        "digest_sha256": {"$ref": "#/$defs/sha256"},
+        "workflow_run_id": {"$ref": "#/$defs/positiveInteger"},
+        "workflow_run_head_sha": {"$ref": "#/$defs/gitSha"},
+        "created_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "expires_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "captured_at": {"type": "string", "format": "date-time", "pattern": "Z$"}
+      }
+    },
+    "archivedSizeReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "artifact_name", "artifact_api_url", "archive_bytes", "digest_sha256", "workflow_run_id", "workflow_run_head_sha", "checked_in_path", "public_url", "bytes", "sha256", "parsed"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/positiveInteger"},
+        "artifact_name": {"type": "string", "pattern": "^pages-artifact-size-[0-9a-f]{40}$"},
+        "artifact_api_url": {"type": "string", "format": "uri", "pattern": "^https://api\\.github\\.com/repos/beepboop2025/palimpsest/actions/artifacts/[1-9][0-9]*$"},
+        "archive_bytes": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "digest_sha256": {"$ref": "#/$defs/sha256"},
+        "workflow_run_id": {"$ref": "#/$defs/positiveInteger"},
+        "workflow_run_head_sha": {"$ref": "#/$defs/gitSha"},
+        "checked_in_path": {"type": "string", "pattern": "^\\.well-known/receipts/pages-artifact-size-[0-9a-f]{40}\\.json$"},
+        "public_url": {"type": "string", "pattern": "^https://palimpsest\\.info/\\.well-known/receipts/pages-artifact-size-[0-9a-f]{40}\\.json$"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "parsed": {"$ref": "#/$defs/parsedSizeReceipt"}
+      }
+    },
+    "parsedSizeReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_bytes", "artifact_name", "artifact_sha256", "headroom_bytes", "limit_bytes", "publication_sha", "schema_version", "status"],
+      "properties": {
+        "artifact_bytes": {"type": "integer", "minimum": 1, "maximum": 4294967296},
+        "artifact_name": {"const": "github-pages/artifact.tar"},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "headroom_bytes": {"type": "integer", "minimum": 0, "maximum": 4294967296},
+        "limit_bytes": {"type": "integer", "minimum": 1, "maximum": 4294967296},
+        "publication_sha": {"$ref": "#/$defs/gitSha"},
+        "schema_version": {"const": "palimpsest.pages-artifact-size.v1"},
+        "status": {"const": "within-limit"}
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deployment_id", "deployment_api_url", "sha", "ref", "environment", "environment_url", "success_status_id", "success_status_api_url", "success_status_deployment_url", "state_at_verification", "deployed_at", "log_url"],
+      "properties": {
+        "deployment_id": {"$ref": "#/$defs/positiveInteger"},
+        "deployment_api_url": {"type": "string", "format": "uri", "pattern": "^https://api\\.github\\.com/repos/beepboop2025/palimpsest/deployments/[1-9][0-9]*$"},
+        "sha": {"$ref": "#/$defs/gitSha"},
+        "ref": {"oneOf": [{"const": "main"}, {"$ref": "#/$defs/gitSha"}]},
+        "environment": {"const": "github-pages"},
+        "environment_url": {"const": "https://palimpsest.info/"},
+        "success_status_id": {"$ref": "#/$defs/positiveInteger"},
+        "success_status_api_url": {"type": "string", "format": "uri", "pattern": "^https://api\\.github\\.com/repos/beepboop2025/palimpsest/deployments/[1-9][0-9]*/statuses/[1-9][0-9]*$"},
+        "success_status_deployment_url": {"type": "string", "format": "uri", "pattern": "^https://api\\.github\\.com/repos/beepboop2025/palimpsest/deployments/[1-9][0-9]*$"},
+        "state_at_verification": {"const": "success"},
+        "deployed_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "log_url": {"type": "string", "format": "uri", "pattern": "^https://github\\.com/beepboop2025/palimpsest/actions/runs/[1-9][0-9]*/job/[1-9][0-9]*$"}
+      }
+    },
+    "servedVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified_at", "method", "resources"],
+      "properties": {
+        "verified_at": {"type": "string", "format": "date-time", "pattern": "Z$"},
+        "method": {"const": "cache_busted_https_get"},
+        "resources": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {"$ref": "#/$defs/servedResource"}
+        }
+      }
+    },
+    "servedResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "url", "http_status", "bytes", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "uri"},
+        "http_status": {"const": 200},
+        "bytes": {"$ref": "#/$defs/positiveInteger"},
+        "sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

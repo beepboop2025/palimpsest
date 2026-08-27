@@ -340,8 +340,9 @@ def render_article(article: Mapping[str, Any]) -> str:
 </section>"""
     externals_markup = f"        {externals}" if externals else ""
     commands = "".join(f"<li><code>{_h(command)}</code></li>" for command in article["verification"])
+    current_path = f"/evals/{article['slug']}/"
     body = f"""<body class="ps eval-journal-page eval-article-page">
-{site_nav.render('/evals/')}
+{site_nav.render(current_path)}
 <main id="main" class="ej-shell">
   <article class="ej-article">
     <header class="ej-article__header">

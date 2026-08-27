@@ -51,6 +51,7 @@ REQUIRED_PROMPTS = {
     "gfw_status_check",
     "signal_deep_dive",
 }
+REQUIRED_RESOURCES = {"palimpsest://china-economic/publication-rights"}
 
 
 class VerificationError(RuntimeError):
@@ -324,6 +325,12 @@ def verify_candidate(module_path: Path, manifest_path: Path) -> dict[str, Any]:
         raise VerificationError("initialize reports the wrong server name")
     if server_info.get("version") != version:
         raise VerificationError("initialize version does not match server.json")
+    capabilities = initialize.get("capabilities")
+    resources_capability = (
+        capabilities.get("resources") if isinstance(capabilities, dict) else None
+    )
+    if resources_capability != {"subscribe": False, "listChanged": False}:
+        raise VerificationError("initialize does not declare the reviewed resource capability")
 
     tool_result = _result(
         dispatch({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
@@ -383,11 +390,64 @@ def verify_candidate(module_path: Path, manifest_path: Path) -> dict[str, Any]:
             "prompt inventory drifted from the reviewed release contract"
         )
 
+    resource_result = _result(
+        dispatch({"jsonrpc": "2.0", "id": 4, "method": "resources/list", "params": {}}),
+        "resources/list",
+    )
+    resources = resource_result.get("resources")
+    if not isinstance(resources, list):
+        raise VerificationError("resources/list result has no resources array")
+    resource_uris = {
+        resource.get("uri")
+        for resource in resources
+        if isinstance(resource, dict) and isinstance(resource.get("uri"), str)
+    }
+    if resource_uris != REQUIRED_RESOURCES or len(resources) != len(REQUIRED_RESOURCES):
+        raise VerificationError("resource inventory drifted from the reviewed release contract")
+    # Candidate verification is deliberately offline. Force the native resource's
+    # own fallback path and prove that a missing Pages status remains restricted,
+    # unavailable and metadata-only instead of becoming a neutral/empty reading.
+    setattr(
+        module,
+        "_fetch_economic_rights_status",
+        lambda: (_ for _ in ()).throw(RuntimeError("offline release verification")),
+    )
+    read_result = _result(
+        dispatch({
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "resources/read",
+            "params": {"uri": next(iter(REQUIRED_RESOURCES))},
+        }),
+        "resources/read",
+    )
+    contents = read_result.get("contents")
+    if not isinstance(contents, list) or len(contents) != 1:
+        raise VerificationError("rights resource did not return one content block")
+    content = contents[0]
+    try:
+        rights = json.loads(content.get("text", "")) if isinstance(content, dict) else None
+    except json.JSONDecodeError as exc:
+        raise VerificationError("rights resource did not return JSON text") from exc
+    if (
+        not isinstance(rights, dict)
+        or rights.get("status") != "restricted"
+        or rights.get("availability") != "unavailable"
+        or rights.get("publication_allowed") is not False
+        or rights.get("no_partial_rows") is not True
+        or not isinstance(rights.get("counts"), dict)
+        or rights["counts"].get("published_records") != 0
+        or "observations" in rights
+        or rights.get("status_artifact", {}).get("integrity") != "unavailable"
+    ):
+        raise VerificationError("rights resource fallback is not fail-closed")
+
     return {
         "version": version,
         "server_name": EXPECTED_SERVER_NAME,
         "tools": sorted(tool_by_name),
         "prompts": sorted(prompt_names),
+        "resources": sorted(resource_uris),
     }
 
 

@@ -1,0 +1,261 @@
+name: Queue exact Railway publication
+
+# Coalesce every accepted collector commit into at most one Railway release per
+# hour.  The controller never deploys.  It asks the existing complete
+# publication contract to re-prove the current main tip and to deploy only that
+# exact SHA after all evidence, rights, and MCP gates succeed.
+on:
+  schedule:
+    - cron: "13 * * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Re-prove and redeploy the current main tip even when it is live
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: railway-publication-controller
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    if: ${{ vars.RAILWAY_PUBLICATION_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+        with:
+          # The artifact verifier binds the request to the workflow run's own
+          # immutable head SHA. A newer main tip is left for the next hourly
+          # run instead of silently changing this run's authority.
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compare the exact main tip with the live Railway edition
+        id: plan
+        env:
+          FORCE_RELEASE: ${{ inputs.force || false }}
+          PROVIDER_MANIFEST_URL: https://palimpsest-publication-production.up.railway.app/railway-release.json
+          PUBLIC_MANIFEST_URL: https://www.palimpsest.info/railway-release.json
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          main_sha=$(git rev-parse origin/main)
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$main_sha" = "$GITHUB_SHA"
+          [[ "$main_sha" =~ ^[0-9a-f]{40}$ ]]
+
+          provider_manifest="$RUNNER_TEMP/provider-railway-release.json"
+          public_manifest="$RUNNER_TEMP/public-railway-release.json"
+          fetch_manifest() {
+            local url="$1"
+            local destination="$2"
+            local response_code
+            response_code=$(curl --fail --silent --show-error \
+              --proto '=https' \
+              --tlsv1.2 \
+              --retry 3 \
+              --retry-all-errors \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --max-filesize 4194304 \
+              --header 'Accept: application/json' \
+              --header 'Accept-Encoding: identity' \
+              --header 'Cache-Control: no-cache' \
+              "${url}?controller_run=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+              --output "$destination" \
+              --write-out '%{http_code}')
+            if [ "$response_code" != 200 ]; then
+              echo "Railway manifest endpoint returned HTTP $response_code" >&2
+              exit 1
+            fi
+          }
+          fetch_manifest "$PROVIDER_MANIFEST_URL" "$provider_manifest"
+          fetch_manifest "$PUBLIC_MANIFEST_URL" "$public_manifest"
+          cmp --silent "$provider_manifest" "$public_manifest"
+
+          live_sha=$(python3 - "$provider_manifest" <<'PY'
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          def strict_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise SystemExit(f"duplicate live-manifest key: {key}")
+                  result[key] = value
+              return result
+
+          path = Path(sys.argv[1])
+          raw = path.read_bytes()
+          if not 1 <= len(raw) <= 4 * 1024 * 1024:
+              raise SystemExit("live Railway manifest has an invalid byte size")
+          document = json.loads(raw, object_pairs_hook=strict_object)
+          if document.get("schema_version") != "palimpsest.railway-static-release.v1":
+              raise SystemExit("live Railway manifest has the wrong schema")
+          if document.get("deployment_source") != "local-git-archive":
+              raise SystemExit("live Railway release is not an admitted local archive")
+          if document.get("github_required") is not False:
+              raise SystemExit("live Railway release changed its GitHub authority boundary")
+          if document.get("state") != "artifact_ready":
+              raise SystemExit("live Railway release is not artifact-ready")
+          source = document.get("source_commit")
+          tree = document.get("tree_sha256")
+          if not isinstance(source, str) or not re.fullmatch(r"[0-9a-f]{40}", source):
+              raise SystemExit("live Railway release has no exact source commit")
+          if not isinstance(tree, str) or not re.fullmatch(r"[0-9a-f]{64}", tree):
+              raise SystemExit("live Railway release has no exact tree digest")
+          print(source)
+          PY
+          )
+
+          if [ "$live_sha" = "$main_sha" ] && [ "$FORCE_RELEASE" != true ]; then
+            {
+              echo "dispatch_required=false"
+              echo "main_sha=$main_sha"
+              echo "live_sha=$live_sha"
+            } >> "$GITHUB_OUTPUT"
+            echo "Railway already serves the exact current main tip." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # This is the anti-downgrade gate.  A local-only or divergent live
+          # release must first be integrated into public main; the controller
+          # cannot replace it merely because main is different.
+          if ! git cat-file -e "${live_sha}^{commit}" 2>/dev/null; then
+            echo "live Railway commit is absent from public Git history" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$live_sha" "$main_sha"; then
+            echo "refusing to replace a live Railway edition not ancestral to main" >&2
+            exit 1
+          fi
+          {
+            echo "dispatch_required=true"
+            echo "main_sha=$main_sha"
+            echo "live_sha=$live_sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create the canonical controller request
+        id: request
+        if: ${{ steps.plan.outputs.dispatch_required == 'true' }}
+        env:
+          PUBLICATION_SHA: ${{ steps.plan.outputs.main_sha }}
+          CONTROLLER_WORKFLOW_PATH: .github/workflows/railway-publication-controller.yml
+        run: |
+          set -euo pipefail
+          request_path="$RUNNER_TEMP/railway-publication-request.json"
+          python3 - "$request_path" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          run_id = int(os.environ["GITHUB_RUN_ID"])
+          run_attempt = int(os.environ["GITHUB_RUN_ATTEMPT"])
+          if run_id < 1 or run_attempt < 1:
+              raise SystemExit("controller run identity is invalid")
+          requested_at = datetime.now(UTC).replace(microsecond=0).strftime(
+              "%Y-%m-%dT%H:%M:%SZ"
+          )
+          request = {
+              "controller_repository": os.environ["GITHUB_REPOSITORY"],
+              "controller_run_attempt": run_attempt,
+              "controller_run_id": run_id,
+              "controller_workflow_path": os.environ["CONTROLLER_WORKFLOW_PATH"],
+              "deploy_railway": True,
+              "requested_at": requested_at,
+              "schema_version": "palimpsest.railway-publication-request.v1",
+              "scope": "complete",
+              "sha": os.environ["PUBLICATION_SHA"],
+          }
+          raw = (
+              json.dumps(
+                  request,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  separators=(",", ":"),
+                  sort_keys=True,
+              ).encode("ascii")
+              + b"\n"
+          )
+          path = Path(sys.argv[1])
+          path.write_bytes(raw)
+          path.chmod(0o600)
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              output.write(f"requested_at={requested_at}\n")
+              output.write(f"request_sha256={hashlib.sha256(raw).hexdigest()}\n")
+          PY
+
+      - name: Upload the immutable 90-day controller request
+        id: request_artifact
+        if: ${{ steps.plan.outputs.dispatch_required == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        with:
+          name: railway-publication-request-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/railway-publication-request.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+          overwrite: false
+          include-hidden-files: false
+          archive: true
+
+      - name: Dispatch one exact complete publication transaction
+        if: ${{ steps.plan.outputs.dispatch_required == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLICATION_SHA: ${{ steps.plan.outputs.main_sha }}
+          REQUESTED_AT: ${{ steps.request.outputs.requested_at }}
+          REQUEST_SHA256: ${{ steps.request.outputs.request_sha256 }}
+          REQUEST_ARTIFACT_ID: ${{ steps.request_artifact.outputs.artifact-id }}
+          REQUEST_ARTIFACT_DIGEST: ${{ steps.request_artifact.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          remote_main=$(timeout --signal=TERM --kill-after=5s 30s gh api \
+            "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" \
+            --jq '.object.sha')
+          test "$remote_main" = "$PUBLICATION_SHA"
+          [[ "$REQUEST_ARTIFACT_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$REQUEST_ARTIFACT_DIGEST" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$REQUEST_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          jq -n \
+            --arg event_type publication_contract \
+            --arg sha "$PUBLICATION_SHA" \
+            --argjson controller_run_id "$GITHUB_RUN_ID" \
+            --argjson controller_run_attempt "$GITHUB_RUN_ATTEMPT" \
+            --arg requested_at "$REQUESTED_AT" \
+            --argjson controller_artifact_id "$REQUEST_ARTIFACT_ID" \
+            --arg controller_artifact_digest "$REQUEST_ARTIFACT_DIGEST" \
+            --arg controller_request_sha256 "$REQUEST_SHA256" '
+              {
+                event_type: $event_type,
+                client_payload: {
+                  sha: $sha,
+                  scope: "complete",
+                  deploy_railway: true,
+                  controller_run_id: $controller_run_id,
+                  controller_run_attempt: $controller_run_attempt,
+                  requested_at: $requested_at,
+                  controller_artifact_id: $controller_artifact_id,
+                  controller_artifact_digest: $controller_artifact_digest,
+                  controller_request_sha256: $controller_request_sha256
+                }
+              }
+            ' | timeout --signal=TERM --kill-after=5s 30s gh api --method POST \
+              "repos/${GITHUB_REPOSITORY}/dispatches" \
+              --input -
+          printf 'Queued exact Railway publication %s.\n' "$PUBLICATION_SHA" \
+            >> "$GITHUB_STEP_SUMMARY"

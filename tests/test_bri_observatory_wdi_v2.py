@@ -112,9 +112,28 @@ def _reseal(document: dict) -> dict:
     return payload
 
 
+def _repository_ready_registry() -> dict:
+    registry = deepcopy(load_registry(BRI_REGISTRY))
+    next(
+        source
+        for source in registry["sources"]
+        if source["source_id"] == "world_bank_wdi"
+    )["implementation"] = "repository_ready"
+    return registry
+
+
+def _repository_ready_registry_path(tmp_path: Path) -> Path:
+    path = tmp_path / "repository-ready-bri-registry.json"
+    path.write_text(
+        json.dumps(_repository_ready_registry(), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return path
+
+
 def _descriptor_context(tmp_path: Path):
     bundle_path = _bundle_path(tmp_path)
-    registry = load_registry(BRI_REGISTRY)
+    registry = _repository_ready_registry()
     descriptor = build_wdi_observation_descriptor(
         registry,
         bundle_path=bundle_path,
@@ -153,8 +172,9 @@ def test_v2_binds_exact_bundle_contracts_counts_clocks_rights_and_boundaries(
 ) -> None:
     bundle_path = _bundle_path(tmp_path)
     json_bytes, html_bytes = build(
-        BRI_REGISTRY,
+        _repository_ready_registry_path(tmp_path),
         wdi_bundle_path=bundle_path,
+        wdi_publication_receipt_path=None,
     )
     artifact = json.loads(json_bytes)
     schema = json.loads(BRI_V2_SCHEMA.read_text(encoding="utf-8"))
@@ -166,12 +186,7 @@ def test_v2_binds_exact_bundle_contracts_counts_clocks_rights_and_boundaries(
 
     assert artifact["schema_version"] == "palimpsest.belt-and-road-observatory.v2"
     [descriptor] = artifact["observation_datasets"]
-    expected_implementation = next(
-        source["implementation"]
-        for source in load_registry(BRI_REGISTRY)["sources"]
-        if source["source_id"] == "world_bank_wdi"
-    )
-    assert descriptor["implementation_state"] == expected_implementation
+    assert descriptor["implementation_state"] == "repository_ready"
     assert descriptor["publication_state"] == "repository_ready_not_deployed"
     assert descriptor["publication_receipt"] is None
     assert descriptor["artifact"] == {
@@ -217,6 +232,7 @@ def test_v2_binds_exact_bundle_contracts_counts_clocks_rights_and_boundaries(
     assert "Country-period context" in page
     assert "Source-marked forecasts" not in page
     assert "repository ready not deployed" in page
+    assert "Inspect the immutable receipt" not in page
 
 
 @pytest.mark.parametrize(
@@ -251,7 +267,7 @@ def test_bundle_identity_count_and_clock_mismatches_fail_closed(
     path = _bundle_path(tmp_path, bundle)
     with pytest.raises(BriRegistryError, match=message):
         build_wdi_observation_descriptor(
-            load_registry(BRI_REGISTRY),
+            _repository_ready_registry(),
             bundle_path=path,
             observation_schema_path=WDI_SCHEMA,
             series_registry_path=WDI_REGISTRY,
@@ -262,12 +278,7 @@ def test_registry_clock_descriptor_state_hash_and_boundary_mismatches_fail_close
     tmp_path: Path,
 ) -> None:
     bundle_path = _bundle_path(tmp_path)
-    repository_ready_registry = deepcopy(load_registry(BRI_REGISTRY))
-    next(
-        source
-        for source in repository_ready_registry["sources"]
-        if source["source_id"] == "world_bank_wdi"
-    )["implementation"] = "repository_ready"
+    repository_ready_registry = _repository_ready_registry()
     repository_ready = build_wdi_observation_descriptor(
         repository_ready_registry,
         bundle_path=bundle_path,
@@ -278,7 +289,7 @@ def test_registry_clock_descriptor_state_hash_and_boundary_mismatches_fail_close
     assert repository_ready["publication_state"] == "repository_ready_not_deployed"
     assert repository_ready["publication_receipt"] is None
 
-    stale_registry = deepcopy(load_registry(BRI_REGISTRY))
+    stale_registry = _repository_ready_registry()
     stale_registry["as_of"] = "2026-08-26T10:29:59Z"
     with pytest.raises(BriRegistryError, match="as_of precedes"):
         build_wdi_observation_descriptor(
@@ -381,7 +392,11 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
     tmp_path: Path,
 ) -> None:
     bundle_path = _bundle_path(tmp_path)
-    v2_json, _v2_html = build(BRI_REGISTRY, wdi_bundle_path=bundle_path)
+    v2_json, _v2_html = build(
+        _repository_ready_registry_path(tmp_path),
+        wdi_bundle_path=bundle_path,
+        wdi_publication_receipt_path=None,
+    )
     mesh_root = tmp_path / "mesh"
     _copy_mesh_inputs(mesh_root)
     reading = mesh_root / "readings" / "belt-and-road-observatory-latest.json"
@@ -392,7 +407,7 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
 
     mesh = build_evidence_mesh(
         mesh_root,
-        now=datetime(2026, 8, 26, 14, 0, 0, tzinfo=UTC),
+        now=datetime(2026, 8, 26, 20, 0, 0, tzinfo=UTC),
     )
     resource = next(
         row
@@ -400,6 +415,7 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
         if row["resource_id"] == "palimpsest:context:bri-world-bank-wdi"
     )
     assert resource["allowed_role"] == "context"
+    assert resource["availability"] == "available"
     assert resource["independence_eligible"] is False
     assert resource["rights"] == {
         "redistribution": "ATTRIBUTION_REQUIRED",
@@ -411,6 +427,11 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
         "knowledge_time": "2026-08-26T10:30:00Z",
         "publication_time": None,
     }
+    assert resource["freshness"]["cadence"] == "P1Y"
+    assert any(
+        "null publication receipt" in limitation
+        for limitation in resource["limitations"]
+    )
     assert resource["source_temporal_coverage"] == {
         "kind": "year_range",
         "from_year": 2024,
@@ -423,6 +444,8 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
         if row["input_id"] == "palimpsest-bri-wdi-world-bank"
     )
     assert receipt["byte_identity"] == "match"
+    assert receipt["availability"] == "available"
+    assert "publication receipt remains null" in receipt["reason"]
     assert receipt["resource_count"] == 54
     assert receipt["sha256"] == sha256_bytes(bundle_path.read_bytes())
 
