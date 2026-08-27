@@ -28,6 +28,7 @@ looks live is worse than a board that is visibly down.
 
 Standard library only, like the rest of tests/.
 """
+import html
 import pathlib
 import re
 import shutil
@@ -216,6 +217,8 @@ def test_nav_targets_resolve():
         for col in item.get("columns", []):
             for entry in col["links"]:
                 check(entry[0])
+    for href, _label in site_nav.REGIONAL_EVIDENCE:
+        check(href)
 
     assert not dangling, f"nav links to files that do not exist: {dangling}"
     assert not missing_anchor, (
@@ -312,22 +315,45 @@ def test_observatory_flyout_is_active_for_generated_china_routes():
     )
 
 
-def test_bri_regions_are_first_class_primary_navigation_destinations():
-    regional = next(item for item in site_nav.NAV if item["label"] == "BRI regions")
-    links = {
-        title: href
-        for column in regional["columns"]
-        for href, title, *_rest in column["links"]
-    }
+def test_bri_regions_are_an_always_visible_semantic_link_rail():
+    assert site_nav.REGIONAL_EVIDENCE == (
+        ("/belt-and-road/#bri-corridors", "BRI & Corridors"),
+        ("/belt-and-road/#balochistan", "Balochistan"),
+        ("/belt-and-road/#pakistan-gwadar", "Pakistan & Gwadar"),
+        ("/belt-and-road/#myanmar", "Myanmar"),
+    )
 
-    assert links == {
-        "BRI & Corridors": "/belt-and-road/#bri-corridors",
-        "Balochistan": "/belt-and-road/#balochistan",
-        "Pakistan & Gwadar": "/belt-and-road/#pakistan-gwadar",
-        "Myanmar": "/belt-and-road/#myanmar",
-    }
-    assert site_nav._within(regional, "/belt-and-road/")
-    assert 'data-within=""' in site_nav.render("/belt-and-road/")
+    rendered = site_nav.render("/")
+    rail = rendered.split('<div class="ps-region-rail">', 1)[1].split(
+        "</div>", 1
+    )[0]
+    assert '<ul class="ps-region-rail__list" aria-label="Regional evidence">' in rail
+    assert 'role="tablist"' not in rail
+    assert 'role="tab"' not in rail
+    for href, label in site_nav.REGIONAL_EVIDENCE:
+        assert rendered.count(f'href="{href}"') == 1
+        assert f'>{html.escape(label)}</a>' in rail
+    assert "BRI regions" not in rendered
+
+
+def test_regional_rail_is_one_row_on_desktop_and_two_by_two_on_small_screens():
+    css = (ROOT / "assets/shell.css").read_text(encoding="utf-8")
+
+    assert "--ps-nav-bar-h: 52px" in css
+    assert "--ps-region-rail-h: 44px" in css
+    assert "--ps-nav-h: calc(var(--ps-nav-bar-h) + var(--ps-region-rail-h))" in css
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in css
+    assert "height: 100%; min-height: 44px" in css
+    nav_items = css.split(".ps-nav__items {", 1)[1].split("}", 1)[0]
+    assert "min-height: var(--ps-nav-bar-h)" in nav_items
+    assert not re.search(r"(?m)^\s*height:", nav_items)
+
+    mobile = css.split("@media (max-width: 620px)", 1)[1].split(
+        "/* ---- no JavaScript", 1
+    )[0]
+    assert "--ps-region-rail-h: 88px" in mobile
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in mobile
+    assert "grid-template-rows: repeat(2, 44px)" in mobile
 
 
 def test_no_javascript_navigation_exposes_flyouts_on_mobile_and_desktop():
