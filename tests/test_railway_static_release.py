@@ -124,6 +124,15 @@ CONTINUOUS_RELEASE_CRITICAL_PATHS = {
     "tests/test_railway_producer_restore_helper.py",
     "tests/test_railway_static_release.py",
 }
+EVIDENCE_LAKE_CRITICAL_PATHS = {
+    "assets/evidence-lake-metrics.css",
+    "assets/evidence-lake-metrics.js",
+    "data.html",
+    "docs/EVIDENCE-LAKE-METRICS-PUBLICATION.md",
+    "protocol/evidence-lake-metrics-producer-receipt-v1.schema.json",
+    "protocol/evidence-lake-metrics-v1.schema.json",
+    "readings/evidence-lake-metrics-latest.json",
+}
 
 
 def _publication_root(tmp_path: Path) -> Path:
@@ -158,6 +167,21 @@ def test_manifest_binds_every_rights_critical_file(tmp_path: Path) -> None:
             "sha256": hashlib.sha256(raw).hexdigest(),
         }
     assert "pages-rights-release-receipt.json" not in manifest["critical_files"]
+
+
+def test_manifest_binds_evidence_lake_page_schemas_and_projection(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    manifest = manifest_module.build_manifest(root, "d" * 40, "2026-08-28T11:00:00Z")
+
+    assert EVIDENCE_LAKE_CRITICAL_PATHS <= set(manifest_module.CRITICAL_PATHS)
+    for relative in EVIDENCE_LAKE_CRITICAL_PATHS:
+        raw = (root / relative).read_bytes()
+        assert manifest["critical_files"][relative] == {
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
 
 
 def test_manifest_binds_reviewed_live_ucdp_release_without_claiming_upstream_signature(
@@ -318,6 +342,34 @@ def test_server_serves_manifest_bound_publication(tmp_path: Path) -> None:
                 base + "/pages-rights-release-receipt.json", timeout=5
             )
         assert missing_receipt.value.code == 404
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_server_never_caches_mutable_evidence_lake_metrics_head(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    server = server_module.create_server(root, "127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with urllib.request.urlopen(
+            base + "/readings/evidence-lake-metrics-latest.json", timeout=5
+        ) as response:
+            assert response.status == 200
+            assert response.headers["Cache-Control"] == "no-store"
+
+        with urllib.request.urlopen(
+            base + "/assets/evidence-lake-metrics.js", timeout=5
+        ) as response:
+            assert response.status == 200
+            assert response.headers["Cache-Control"] == (
+                "public, max-age=3600, stale-while-revalidate=86400"
+            )
     finally:
         server.shutdown()
         server.server_close()

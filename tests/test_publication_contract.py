@@ -88,6 +88,15 @@ CONTRACT = {
     "public-deletion-ledgers": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
+    "evidence-lake-metrics": _d(
+        "generated_at",
+        ["metrics_sha256", "edition", "gates"],
+        reason="a closed inventory of distinct analytical, publication-eligible, "
+               "review-gated and blocked populations. Each lane declares its own "
+               "queryable and eligible counts; one denominator would falsely imply "
+               "that private rows, release files and blocked zero-payload lanes are "
+               "one sampled population.",
+    ),
     "official-first-seen": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
@@ -509,6 +518,8 @@ def test_hetzner_host_snapshots_are_scheduled_fixed_origin_imports():
         assert name not in PENDING
         assert name in SCHEDULED_PUBLICATIONS
         assert name in CONTRACT
+    assert "evidence-lake-metrics" in CONTRACT
+    assert "evidence-lake-metrics" not in SCHEDULED_PUBLICATIONS
 
 
 def test_reporting_newsroom_feeds_have_explicit_publication_contracts():
@@ -603,7 +614,7 @@ def test_newsroom_discovery_and_live_json_cache_policy_are_explicit():
         "Sitemap: https://palimpsest.info/china/sitemap.xml"
     ) == 1
 
-    assert 'const CACHE = "palimpsest-v20"' in worker
+    assert 'const CACHE = "palimpsest-v21"' in worker
     assert 'const LIVE_NEWSROOM = "/readings/newsroom-latest.json"' in worker
     assert '"/readings/gfi-transcripts-latest.json"' in worker
     for endpoint in (

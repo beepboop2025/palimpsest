@@ -56,6 +56,15 @@ Use the narrow landing page that matches the question:
   served-byte verification `2026-08-26T15:55:34Z`, and point-in-time
   `fresh_until` `2026-08-27T15:55:34Z`. This is not continuous availability
   monitoring and does not replace the WDI source or acquisition clocks.
+- [Evidence-lake aggregate metrics](https://palimpsest.info/readings/evidence-lake-metrics-latest.json):
+  a closed, digest-bound four-lane public-metrics v1 subset. Read current totals and
+  per-lane counts from that mutable JSON rather than copied prose. Publication-eligible
+  does not mean the rows are served; OFR remains review-gated. UCDP and GDELT are
+  excluded pending a separately reviewed v2. The zero Telegram value applies only to
+  Neo's blocked large-corpus lane, and crypto payloads remain zero. The browser can
+  recompute the metrics digest, while the inactive host importer separately requires a
+  shared-secret HMAC admission receipt. This committed snapshot does not prove
+  continuous Hetzner-to-Railway publication.
 - [Financial Evidence Agent Skill](https://github.com/beepboop2025/financial-evidence-skills/tree/main/financial-evidence):
   route Palimpsest China evidence, Seiche system and money/capital transmission,
   LiquiLens institutions, and Undertow exit liquidity without collapsing their claims.
