@@ -381,23 +381,25 @@ def test_origins_are_code_constants_not_configuration():
     assert "os.environ" not in source
 
 
-def test_evidence_lake_origin_is_pinned_but_not_active_before_host_verification():
+def test_evidence_lake_origin_is_pinned_and_active_after_host_verification():
     assert importer.PENDING_SNAPSHOTS == (importer.EVIDENCE_LAKE_SNAPSHOT,)
-    assert importer.EVIDENCE_LAKE_SNAPSHOT not in importer.SNAPSHOTS
+    assert importer.SNAPSHOTS[-1] == importer.EVIDENCE_LAKE_SNAPSHOT
     assert [spec.snapshot_id for spec in importer.SNAPSHOTS] == [
         "baike-public-snapshot",
         "peer-context",
         "greatfire-context",
         "public-deletion-ledgers",
+        "evidence-lake-metrics",
     ]
     source = (ROOT / "scripts" / "import_host_snapshot.py").read_text(encoding="utf-8")
-    assert ") + ()" in source
-    assert "replace" in source and "+ PENDING_SNAPSHOTS" in source
+    assert ") + ()" not in source
+    assert ") + PENDING_SNAPSHOTS" in source
 
 
-def test_normal_refresh_never_requests_the_pending_evidence_lake_route(
-    tmp_path, capsys
+def test_normal_refresh_requests_the_active_evidence_lake_pair(
+    monkeypatch, tmp_path, capsys
 ):
+    monkeypatch.setenv(importer.EVIDENCE_LAKE_RECEIPT_KEY_ENV, LAKE_KEY)
     factories = {
         "baike-public-snapshot": _baike_document,
         "peer-context": _peer_document,
@@ -407,22 +409,36 @@ def test_normal_refresh_never_requests_the_pending_evidence_lake_route(
     payloads = {
         spec.url: json.dumps(factories[spec.snapshot_id]()).encode("utf-8")
         for spec in importer.SNAPSHOTS
+        if spec != importer.EVIDENCE_LAKE_SNAPSHOT
     }
+    projection_raw = _canonical_bytes(_evidence_lake_document())
+    receipt_raw = _evidence_lake_receipt(projection_raw)
     calls = []
 
     def fetch(url, **_kwargs):
         calls.append(url)
+        if url == importer.EVIDENCE_LAKE_RECEIPT_URL:
+            return receipt_raw
+        if url == importer.EVIDENCE_LAKE_SNAPSHOT.url:
+            return projection_raw
         return payloads[url]
 
-    outcomes = importer.import_all(readings=tmp_path, fetcher=fetch, now=NOW)
+    outcomes = importer.import_all(readings=tmp_path, fetcher=fetch, now=LAKE_NOW)
 
     assert list(outcomes) == [spec.snapshot_id for spec in importer.SNAPSHOTS]
-    assert calls == [spec.url for spec in importer.SNAPSHOTS]
-    assert importer.EVIDENCE_LAKE_SNAPSHOT.url not in calls
+    assert calls == [
+        spec.url
+        for spec in importer.SNAPSHOTS
+        if spec != importer.EVIDENCE_LAKE_SNAPSHOT
+    ] + [
+        importer.EVIDENCE_LAKE_RECEIPT_URL,
+        importer.EVIDENCE_LAKE_SNAPSHOT.url,
+        importer.EVIDENCE_LAKE_RECEIPT_URL,
+    ]
     assert len(capsys.readouterr().out.splitlines()) == len(importer.SNAPSHOTS)
 
 
-def test_pending_route_reads_no_receipt_secret_and_makes_no_receipt_request(
+def test_active_batch_requires_receipt_secret_before_evidence_lake_egress(
     monkeypatch, tmp_path
 ):
     factories = {
@@ -434,19 +450,24 @@ def test_pending_route_reads_no_receipt_secret_and_makes_no_receipt_request(
     payloads = {
         spec.url: json.dumps(factories[spec.snapshot_id]()).encode("utf-8")
         for spec in importer.SNAPSHOTS
+        if spec != importer.EVIDENCE_LAKE_SNAPSHOT
     }
     calls = []
 
-    def forbidden_key_read():
-        raise AssertionError("pending Evidence Lake route read its secret")
+    monkeypatch.delenv(importer.EVIDENCE_LAKE_RECEIPT_KEY_ENV, raising=False)
 
     def fetch(url, **_kwargs):
         calls.append(url)
         return payloads[url]
 
-    monkeypatch.setattr(importer, "_evidence_lake_key", forbidden_key_read)
-    importer.import_all(readings=tmp_path, fetcher=fetch, now=NOW)
+    with pytest.raises(importer.HostSnapshotImportError, match="receipt key"):
+        importer.import_all(readings=tmp_path, fetcher=fetch, now=NOW)
 
+    assert calls == [
+        spec.url
+        for spec in importer.SNAPSHOTS
+        if spec != importer.EVIDENCE_LAKE_SNAPSHOT
+    ]
     assert importer.EVIDENCE_LAKE_RECEIPT_URL not in calls
     assert importer.EVIDENCE_LAKE_SNAPSHOT.url not in calls
 

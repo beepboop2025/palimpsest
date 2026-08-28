@@ -77,6 +77,7 @@ CRITICAL_PATHS = (
     "readings/china-publication-rights-latest.json",
     "readings/china-situation-latest.json",
     "readings/evidence-lake-metrics-latest.json",
+    "readings/evidence-lake-metrics-producer-receipt.json",
     "readings/newswire-latest.json",
     "readings/osint-china-latest.json",
     "readings/publication-freshness-attestation-latest.json",
