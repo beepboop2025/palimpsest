@@ -52,16 +52,19 @@
         file_server
     }
 
-    @palimpsest_evidence_lake_metrics path \
-        /palimpsest/evidence-lake-metrics/evidence-lake-metrics-latest.json \
-        /palimpsest/evidence-lake-metrics/evidence-lake-metrics-producer-receipt.json
+    @palimpsest_evidence_lake_metrics {
+        method GET HEAD
+        path \
+            /palimpsest/evidence-lake-metrics/evidence-lake-metrics-latest.json \
+            /palimpsest/evidence-lake-metrics/evidence-lake-metrics-producer-receipt.json
+    }
     handle @palimpsest_evidence_lake_metrics {
         header Access-Control-Allow-Origin "https://palimpsest.info"
         header Cache-Control "no-store, no-transform"
         header Content-Disposition "inline"
         header X-Content-Type-Options "nosniff"
         uri strip_prefix /palimpsest/evidence-lake-metrics
-        root * /var/lib/palimpsest/readings
+        root * /var/lib/palimpsest/evidence-lake-metrics/current
         file_server
     }
 }
