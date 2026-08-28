@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/evidence-lake-metrics-v1.schema.json",
+  "title": "Palimpsest evidence-lake public metrics v1",
+  "description": "The closed, aggregate-only four-lane bulk.public-metrics.v1 subset admitted to Palimpsest. It includes WDI, UNODC IDS, OFR STFM and a manifest-only Binance lane. Verified UCDP and GDELT materializations are outside v1 and require a separately reviewed v2. It reports bounded analytical coverage and publication gates without local paths, raw receipts, credentials, or row payloads.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "generated_at", "edition", "summary", "lanes", "gates", "metrics_sha256"],
+  "properties": {
+    "schema": {"const": "bulk.public-metrics.v1"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "edition": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+    "summary": {"$ref": "#/$defs/summary"},
+    "lanes": {
+      "description": "Exactly the four public-metrics v1 lanes. This is not an inventory of every private evidence-lake materialization.",
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/wdiLane"},
+        {"$ref": "#/$defs/unodcLane"},
+        {"$ref": "#/$defs/ofrLane"},
+        {"$ref": "#/$defs/binanceLane"}
+      ],
+      "items": false
+    },
+    "gates": {"$ref": "#/$defs/gates"},
+    "metrics_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z$"
+    },
+    "nonnegativeInteger": {"type": "integer", "minimum": 0},
+    "period": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "prefixItems": [
+        {"type": "integer", "minimum": 1800, "maximum": 2200},
+        {"type": "integer", "minimum": 1800, "maximum": 2200}
+      ],
+      "items": false
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["analytical_rows", "publication_eligible_rows", "verified_source_bytes", "palimpsest_release_files", "telegram_corpus_records"],
+      "properties": {
+        "analytical_rows": {"allOf": [{"$ref": "#/$defs/nonnegativeInteger"}], "description": "Sum of queryable records across the four included v1 lanes only."},
+        "publication_eligible_rows": {"$ref": "#/$defs/nonnegativeInteger"},
+        "verified_source_bytes": {"$ref": "#/$defs/nonnegativeInteger"},
+        "palimpsest_release_files": {"allOf": [{"$ref": "#/$defs/nonnegativeInteger"}], "description": "Neo producer catalog count at generated_at; not a claim about a later Palimpsest Git tree."},
+        "telegram_corpus_records": {"const": 0, "description": "Neo's blocked large-corpus lane only; separate bounded public-channel observations are outside this metric."}
+      }
+    },
+    "wdiLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "products", "queryable_records", "publication_eligible_records", "publication_state", "coverage", "citation"],
+      "properties": {
+        "id": {"const": "world-bank-wdi"},
+        "products": {"const": ["palimpsest", "seiche"]},
+        "queryable_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "publication_eligible_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "publication_state": {"const": "allowed-with-attribution"},
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["period", "indicators", "economies"],
+          "properties": {
+            "period": {"$ref": "#/$defs/period"},
+            "indicators": {"$ref": "#/$defs/nonnegativeInteger"},
+            "economies": {"$ref": "#/$defs/nonnegativeInteger"}
+          }
+        },
+        "citation": {"const": {"label": "World Bank, World Development Indicators", "url": "https://datacatalog.worldbank.org/search/dataset/0037712/world-development-indicators"}}
+      }
+    },
+    "unodcLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "products", "queryable_records", "publication_eligible_records", "publication_state", "coverage", "citation"],
+      "properties": {
+        "id": {"const": "unodc-ids"},
+        "products": {"const": ["narcoscope", "palimpsest"]},
+        "queryable_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "publication_eligible_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "publication_state": {"const": "allowed-with-citation"},
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["period", "countries_or_territories", "drug_substances", "distinct_exact_content"],
+          "properties": {
+            "period": {"$ref": "#/$defs/period"},
+            "countries_or_territories": {"$ref": "#/$defs/nonnegativeInteger"},
+            "drug_substances": {"$ref": "#/$defs/nonnegativeInteger"},
+            "distinct_exact_content": {"$ref": "#/$defs/nonnegativeInteger"}
+          }
+        },
+        "citation": {"const": {"label": "UNODC Drugs Monitoring Platform", "url": "https://dmpone.unodc.org/downloadIDS"}}
+      }
+    },
+    "ofrLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "products", "queryable_records", "publication_eligible_records", "publication_state", "coverage", "citation"],
+      "properties": {
+        "id": {"const": "ofr-stfm"},
+        "products": {"const": ["liquilens", "seiche"]},
+        "queryable_records": {"$ref": "#/$defs/nonnegativeInteger"},
+        "publication_eligible_records": {"const": 0},
+        "publication_state": {"const": "review-required"},
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["series"],
+          "properties": {"series": {"$ref": "#/$defs/nonnegativeInteger"}}
+        },
+        "citation": {"const": {"label": "U.S. Office of Financial Research, Short-term Funding Monitor", "url": "https://www.financialresearch.gov/short-term-funding-monitor/api/"}}
+      }
+    },
+    "binanceLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "products", "queryable_records", "publication_eligible_records", "publication_state", "coverage", "citation"],
+      "properties": {
+        "id": {"const": "binance-public-archive"},
+        "products": {"const": ["crypto"]},
+        "queryable_records": {"const": 0},
+        "publication_eligible_records": {"const": 0},
+        "publication_state": {"const": "manifest-only-pending-data-terms-review"},
+        "coverage": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["verified_manifest_files", "collected_payload_files"],
+          "properties": {
+            "verified_manifest_files": {"$ref": "#/$defs/nonnegativeInteger"},
+            "collected_payload_files": {"const": 0}
+          }
+        },
+        "citation": {"const": {"label": "Binance public data archive documentation", "url": "https://github.com/binance/binance-public-data"}}
+      }
+    },
+    "gates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ofr_publication", "crypto_payload_collection", "telegram_corpus_collection", "ooni_bulk_collection", "common_crawl_bodies"],
+      "properties": {
+        "ofr_publication": {"const": "review-required"},
+        "crypto_payload_collection": {"const": "disabled-pending-data-terms-review"},
+        "telegram_corpus_collection": {"const": "blocked"},
+        "ooni_bulk_collection": {"const": "blocked-pending-commercial-and-privacy-review"},
+        "common_crawl_bodies": {"const": "not-collected"}
+      }
+    }
+  }
+}

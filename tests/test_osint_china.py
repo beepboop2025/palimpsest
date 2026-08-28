@@ -137,6 +137,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "rumour-board-latest.json",
         "corroboration-latest.json",
         "editorial-readiness-latest.json",
+        "evidence-lake-metrics-latest.json",
         "evidence-mesh-latest.json",
         "eval-assurance-latest.json",
         "eval-articles-latest.json",

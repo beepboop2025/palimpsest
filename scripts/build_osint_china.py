@@ -730,8 +730,10 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # contract rather than a live China signal; its normalized WDI bundle is national economic
 # context and is likewise excluded so it cannot be promoted into an event signal. The UCDP
 # aggregate is a separately licensed, delayed historical conflict publication for the
-# Balochistan lane; shared repository placement cannot turn it into a China signal. Research-
-# corpus metadata is a first-party China-adjacent input and is listed in SIGNALS.
+# Balochistan lane; shared repository placement cannot turn it into a China signal. The
+# evidence-lake projection is aggregate infrastructure inventory, not an observed China
+# event or measurement. Research-corpus metadata is a first-party China-adjacent input and
+# is listed in SIGNALS.
 EXCLUDED_LATEST_FILES = frozenset(
     {
         "china-article-stream-latest.json",
@@ -749,6 +751,7 @@ EXCLUDED_LATEST_FILES = frozenset(
         "rumour-board-latest.json",
         "corroboration-latest.json",
         "editorial-readiness-latest.json",
+        "evidence-lake-metrics-latest.json",
         "evidence-mesh-latest.json",
         "eval-assurance-latest.json",
         "eval-articles-latest.json",

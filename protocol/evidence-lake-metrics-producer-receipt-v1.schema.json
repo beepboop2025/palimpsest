@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/evidence-lake-metrics-producer-receipt-v1.schema.json",
+  "title": "Evidence-lake metrics producer receipt v1",
+  "description": "Closed shared-secret HMAC-SHA256 receipt admitting one exact bulk.public-metrics.v1 projection. It proves possession of the reviewed admission key, not asymmetric non-repudiation or exclusive producer identity. The receipt exposes only content and reviewed release identities; private status bytes and the HMAC key remain private.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "projection", "producer", "key_id", "signed_at", "hmac_sha256"],
+  "properties": {
+    "schema": {"const": "bulk.public-metrics-producer-receipt.v1"},
+    "projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "bytes", "metrics_sha256", "edition", "generated_at"],
+      "properties": {
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "bytes": {"type": "integer", "minimum": 1, "maximum": 65536},
+        "metrics_sha256": {"$ref": "#/$defs/sha256"},
+        "edition": {"type": "string", "pattern": "^[0-9a-f]{16}$"},
+        "generated_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "release_id", "release_manifest_sha256", "private_status_sha256"],
+      "properties": {
+        "id": {"const": "palimpsest-bulk-data-plane"},
+        "release_id": {"$ref": "#/$defs/sha256"},
+        "release_manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "private_status_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "key_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "signed_at": {"$ref": "#/$defs/timestamp"},
+    "hmac_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,9})?Z$"
+    }
+  }
+}

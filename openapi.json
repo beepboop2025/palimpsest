@@ -23,6 +23,12 @@
         "required": ["schema", "generated_at", "summary", "datasets"],
         "additionalProperties": true
       },
+      "EvidenceLakeMetrics": {
+        "$ref": "https://palimpsest.info/protocol/evidence-lake-metrics-v1.schema.json"
+      },
+      "EvidenceLakeMetricsProducerReceipt": {
+        "$ref": "https://palimpsest.info/protocol/evidence-lake-metrics-producer-receipt-v1.schema.json"
+      },
       "EvidenceNewswire": {
         "$ref": "https://palimpsest.info/protocol/newswire-v1.schema.json"
       },
@@ -308,6 +314,10 @@
         "description": "Published machine-readable dataset catalog",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/DataCatalog"}}}
       },
+      "EvidenceLakeMetrics": {
+        "description": "Rights-clean aggregate metrics for the private evidence lake. Publication eligibility is not public row distribution, and the file makes no continuous-deployment claim.",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvidenceLakeMetrics"}}}
+      },
       "EvidenceNewswire": {
         "description": "Published metadata-only evidence wire with source coverage receipts",
         "content": {"application/json": {"schema": {"$ref": "#/components/schemas/EvidenceNewswire"}}}
@@ -436,6 +446,11 @@
       "operationId": "getEvidenceAtlasJsonLd",
       "summary": "Discover available datasets as schema.org/DCAT JSON-LD",
       "responses": {"200": {"description": "JSON-LD data catalog", "content": {"application/ld+json": {"schema": {"type": "object", "additionalProperties": true}}}}}
+    }},
+    "/readings/evidence-lake-metrics-latest.json": {"get": {
+      "operationId": "getEvidenceLakeMetrics",
+      "summary": "Read private analytical-lake scale, publication-eligibility counts and fail-closed source gates without row payloads",
+      "responses": {"200": {"$ref": "#/components/responses/EvidenceLakeMetrics"}}
     }},
     "/readings/newsroom-latest.json": {"get": {
       "operationId": "getNewsroomFeed",

@@ -87,6 +87,16 @@ def _require_fresh_output(
         )
 
 
+def _frozen_vantage_abstention(result: dict, *, decision_text: str) -> dict:
+    """Expose a selector-complete null without carrying a stale fused value."""
+
+    frozen = dict(result)
+    frozen["generated_at"] = decision_text
+    frozen["status"] = "abstain"
+    frozen["fused_index"] = None
+    return frozen
+
+
 def _materialize_frozen_inputs(frozen_dir: Path, readings_dir: Path) -> None:
     """Copy the read-only evidence snapshot into a disposable work directory."""
 
@@ -205,10 +215,13 @@ def run(
         ):
             # The public legacy driver intentionally preserves last-good on an
             # abstention. Inside a frozen run that would masquerade as fresh, so
-            # write the explicit abstention into staging only.
-            result = dict(result)
-            result["generated_at"] = decision_text
-            result["status"] = "abstain"
+            # write a selector-complete explicit null into staging only.  This
+            # lets fixed downstream evidence selectors abstain instead of
+            # crashing, without carrying the last-good number forward.
+            result = _frozen_vantage_abstention(
+                result,
+                decision_text=decision_text,
+            )
             atomic_write(output, canonical_json_bytes(result), mode=0o640)
         _require_fresh_output(output, previous, decision_text=decision_text)
         completed.append(name)

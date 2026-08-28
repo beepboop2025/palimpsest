@@ -90,11 +90,15 @@ jobs:
         run: python -m scripts.import_nemesis_snapshot
 
       - name: Import the pinned BLEEDTHROUGH public aggregate
-        run: |
-          python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
-          python -m scripts.import_host_snapshot \
-            --allow-empty-bootstrap-404 \
-            --keep-last-good-on-stale
+        run: python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
+
+      - name: Import authenticated host snapshots
+        env:
+          EVIDENCE_LAKE_METRICS_HMAC_KEY: ${{ secrets.EVIDENCE_LAKE_METRICS_HMAC_KEY }}
+        run: >-
+          python -m scripts.import_host_snapshot
+          --allow-empty-bootstrap-404
+          --keep-last-good-on-stale
 
       - name: Import Telegram observations and collect Instagram publishers
         env:
@@ -149,6 +153,7 @@ jobs:
           python -m pytest -q \
             tests/test_import_bleedthrough_snapshot.py \
             tests/test_import_host_snapshot.py \
+            tests/test_evidence_lake_metrics.py \
             tests/test_import_nemesis_snapshot.py \
             tests/test_import_social_observations.py \
             tests/test_social_observations.py \
@@ -287,11 +292,17 @@ jobs:
           fi
           python -m scripts.import_nemesis_snapshot
           python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
-          python -m scripts.import_host_snapshot \
-            --allow-empty-bootstrap-404 \
-            --keep-last-good-on-stale
           python -m scripts.import_social_observations
           python -m scripts.instagram_pull
+
+      - name: Re-import authenticated host snapshots after a pre-publication ledger change
+        if: steps.prepublish_sync.outputs.rebuild == 'true'
+        env:
+          EVIDENCE_LAKE_METRICS_HMAC_KEY: ${{ secrets.EVIDENCE_LAKE_METRICS_HMAC_KEY }}
+        run: >-
+          python -m scripts.import_host_snapshot
+          --allow-empty-bootstrap-404
+          --keep-last-good-on-stale
 
       - name: Rebuild and reseal after a pre-publication ledger change
         if: steps.prepublish_sync.outputs.rebuild == 'true'
@@ -326,6 +337,7 @@ jobs:
           python -m pytest -q \
             tests/test_import_bleedthrough_snapshot.py \
             tests/test_import_host_snapshot.py \
+            tests/test_evidence_lake_metrics.py \
             tests/test_import_nemesis_snapshot.py \
             tests/test_import_social_observations.py \
             tests/test_social_observations.py \
@@ -489,11 +501,17 @@ jobs:
           fi
           python -m scripts.import_nemesis_snapshot
           python -m scripts.import_bleedthrough_snapshot --allow-empty-bootstrap-404
-          python -m scripts.import_host_snapshot \
-            --allow-empty-bootstrap-404 \
-            --keep-last-good-on-stale
           python -m scripts.import_social_observations
           python -m scripts.instagram_pull
+
+      - name: Re-import authenticated host snapshots after a push race
+        if: steps.push_attempt.outputs.exit_code == '75'
+        env:
+          EVIDENCE_LAKE_METRICS_HMAC_KEY: ${{ secrets.EVIDENCE_LAKE_METRICS_HMAC_KEY }}
+        run: >-
+          python -m scripts.import_host_snapshot
+          --allow-empty-bootstrap-404
+          --keep-last-good-on-stale
 
       - name: Rebuild and reseal after a push race
         if: steps.push_attempt.outputs.exit_code == '75'
@@ -528,6 +546,7 @@ jobs:
           python -m pytest -q \
             tests/test_import_bleedthrough_snapshot.py \
             tests/test_import_host_snapshot.py \
+            tests/test_evidence_lake_metrics.py \
             tests/test_import_nemesis_snapshot.py \
             tests/test_import_social_observations.py \
             tests/test_social_observations.py \

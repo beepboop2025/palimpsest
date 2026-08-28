@@ -9,6 +9,7 @@
   <link rel="alternate" type="application/json" href="https://palimpsest.info/readings/catalog.json" title="Palimpsest data catalog">
   <link rel="alternate" type="application/ld+json" href="https://palimpsest.info/readings/catalog.jsonld" title="Palimpsest DCAT/schema.org catalog">
   <link rel="alternate" type="application/json" href="https://palimpsest.info/datapackage.json" title="Palimpsest data package">
+  <link rel="alternate" type="application/json" href="https://palimpsest.info/readings/evidence-lake-metrics-latest.json" title="Palimpsest evidence-lake aggregate metrics">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta property="og:site_name" content="Palimpsest">
   <meta property="og:title" content="Evidence Atlas · Palimpsest">
@@ -31,6 +32,7 @@
   <link rel="stylesheet" href="/dashboards/assets/tikto.css">
   <link rel="stylesheet" href="/assets/shell.css">
   <link rel="stylesheet" href="/assets/data-catalog.css">
+  <link rel="stylesheet" href="/assets/evidence-lake-metrics.css">
 </head>
 <body class="ps tk atlas">
 <!--PS_NAV-->
@@ -134,6 +136,7 @@
         <a class="ps-btn ps-btn--ghost" href="/readings/catalog.json">Catalog JSON</a>
         <a class="ps-btn ps-btn--ghost" href="/readings/catalog.jsonld">JSON-LD</a>
         <a class="ps-btn ps-btn--ghost" href="/datapackage.json">Data package</a>
+        <a class="ps-btn ps-btn--ghost" href="#evidence-lake">Lake metrics</a>
       </div>
     </div>
     <aside class="atlas-principle" aria-label="Publication boundary">
@@ -150,6 +153,44 @@
     <div class="atlas-stat"><span id="stat-rows">—</span><small>published history rows</small></div>
     <div class="atlas-stat"><span id="stat-bytes">—</span><small>public evidence files</small></div>
     <p class="atlas-asof" id="catalog-asof" role="status">Loading catalog…</p>
+  </section>
+
+  <section class="ps-wrap ps-wrap--wide lake-section" id="evidence-lake" aria-labelledby="evidence-lake-title">
+    <div class="lake-head">
+      <div>
+        <p class="ps-kicker">Four-lane private scale · public boundary</p>
+        <h2 id="evidence-lake-title">A reviewed evidence-lake subset, without pretending it is a public download</h2>
+      </div>
+      <div>
+        <p class="lake-head__copy">This admitted v1 projection counts four reviewed lanes kept in the private lake and names the gate on each source. <b>Publication-eligible is a rights state, not a claim that those rows are currently served.</b> UCDP and GDELT are excluded pending a separately reviewed v2. Product views overlap over the same physical records and are never added together.</p>
+        <div class="lake-toolbar">
+          <span class="lake-state" id="lake-state" role="status">Loading projection and checking its metrics digest…</span>
+          <a class="lake-link" href="/readings/evidence-lake-metrics-latest.json">Metrics JSON</a>
+          <a class="lake-link" href="/protocol/evidence-lake-metrics-v1.schema.json">Closed schema</a>
+          <a class="lake-link" href="/docs/EVIDENCE-LAKE-METRICS-PUBLICATION.md">Admission method</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="lake-summary" aria-label="Evidence-lake aggregate metrics">
+      <div class="lake-metric"><b id="lake-private-rows">—</b><span>four-lane analytical rows</span><small>WDI observations + UNODC provenance rows + OFR observations; exact-distinct UNODC content is shown in its lane.</small></div>
+      <div class="lake-metric"><b id="lake-eligible-rows">—</b><span>publication-eligible rows</span><small>WDI attribution + UNODC citation required; not currently served.</small></div>
+      <div class="lake-metric"><b id="lake-gated-rows">—</b><span>review-gated rows</span><small>OFR stays outside public row distribution.</small></div>
+      <div class="lake-metric"><b id="lake-telegram-rows">—</b><span>Neo large-corpus records</span><small>This blocked Neo lane has zero collected records; separate bounded public-channel observations are outside this metric.</small></div>
+      <div class="lake-metric"><b id="lake-source-bytes">—</b><span>verified source bytes</span><small>Source archives and the crypto manifest; not a public bundle size.</small></div>
+      <div class="lake-metric"><b id="lake-release-files">—</b><span>Neo-cataloged release files</span><small>Producer inventory at the projection clock, not the current Git tree count.</small></div>
+    </div>
+
+    <aside class="lake-boundary" aria-label="Evidence-lake publication boundary">
+      <h3>What crosses the boundary</h3>
+      <p>Only this small, schema-closed four-lane aggregate file. Raw archives, Parquet, private collector receipts, local paths and row payloads stay outside the Railway static publication. A bounded shared-secret admission receipt is required at import before any continuous route can activate. The committed snapshot does not prove that a Hetzner-to-GitHub-to-Railway refresh is active.</p>
+    </aside>
+
+    <div class="lake-lanes" id="lake-lanes" aria-live="polite">
+      <p class="lake-empty">Loading the closed aggregate projection…</p>
+    </div>
+    <p class="lake-proof"><span id="lake-asof">No freshness claim until the projection digest verifies.</span><code id="lake-digest" aria-label="Metrics SHA-256"></code></p>
+    <noscript><p class="lake-empty">JavaScript is required to digest-check and render these counts. Inspect the <a href="/readings/evidence-lake-metrics-latest.json">aggregate JSON</a> directly; it contains no row payloads.</p></noscript>
   </section>
 
   <section class="ps-wrap ps-wrap--wide loom-section" aria-labelledby="loom-title">
@@ -230,6 +271,7 @@
 </footer>
 
 <script src="/assets/shell.js" defer></script>
+<script src="/assets/evidence-lake-metrics.js" defer></script>
 <script src="/assets/data-catalog.js" defer></script>
 </body>
 </html>

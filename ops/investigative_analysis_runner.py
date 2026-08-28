@@ -118,6 +118,15 @@ _DERIVED_STEMS = {
     "osint-china",
     "vantage-fusion",
 }
+# Product/operations projections can be useful public telemetry without being
+# evidence for the private investigative cascade.  Keep this exclusion set exact:
+# their serialization clocks must not trigger or age analytical observations,
+# and their bytes must not enter the frozen evidence lineage.
+NON_INVESTIGATIVE_LATEST = frozenset(
+    {
+        "evidence-lake-metrics-latest.json",
+    }
+)
 
 
 class AnalysisRunnerError(RuntimeError):
@@ -286,6 +295,8 @@ def _source_files(readings_dir: Path, newswire_dir: Path) -> list[tuple[str, Pat
     rows: list[tuple[str, Path]] = []
     for path in sorted(readings_dir.iterdir(), key=lambda item: item.name):
         if path.name in {"newswire-latest.json", "newswire-versions.jsonl"}:
+            continue
+        if path.name in NON_INVESTIGATIVE_LATEST:
             continue
         if not path.name.endswith(
             ("-latest.json", "-history.jsonl")
