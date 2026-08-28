@@ -95,9 +95,10 @@ class ImportOutcome:
         return asdict(self)
 
 
-# Code-pinned now, but deliberately not fetched by the recurring workflow until the
-# exact Caddy route is deployed and independently verified. Activation is the one-line
-# replacement of ``+ ()`` below with ``+ PENDING_SNAPSHOTS``; 404 semantics stay strict.
+# The Evidence Lake route is code-pinned and activated only through the reviewed
+# ``PENDING_SNAPSHOTS`` tuple below. Keeping the activation tuple explicit preserves a
+# one-line audit trail while the normal strict 404 and shared-secret gates remain in
+# force.
 EVIDENCE_LAKE_SNAPSHOT = HostSnapshot(
     snapshot_id="evidence-lake-metrics",
     url=(
@@ -127,7 +128,7 @@ PENDING_SNAPSHOTS: tuple[HostSnapshot, ...] = (EVIDENCE_LAKE_SNAPSHOT,)
 
 
 # Deliberately not environment or CLI. Changing or activating a trust origin is a
-# code review. The empty tuple is the closed activation gate documented above.
+# code review; this explicit tuple append is the reviewed activation gate.
 SNAPSHOTS: tuple[HostSnapshot, ...] = (
     HostSnapshot(
         snapshot_id="baike-public-snapshot",
@@ -174,7 +175,7 @@ SNAPSHOTS: tuple[HostSnapshot, ...] = (
         max_bytes=512 * 1024,
         required_fields=("generated_at", "source", "method", "scope", "n_observations"),
     ),
-) + ()
+) + PENDING_SNAPSHOTS
 
 
 def _reject_duplicate_keys(

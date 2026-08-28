@@ -394,18 +394,17 @@ def test_refresh_workflow_imports_and_tests_projection_on_all_race_paths():
     assert "git add -A -- readings china news datapackage.json" in workflow_text
 
 
-def test_activation_method_keeps_pending_route_closed_until_host_proof():
+def test_activation_method_binds_the_verified_route_and_receipt():
     method = (ROOT / "docs" / "EVIDENCE-LAKE-METRICS-PUBLICATION.md").read_text(
         encoding="utf-8"
     )
     importer_source = (ROOT / "scripts" / "import_host_snapshot.py").read_text(
         encoding="utf-8"
     )
-    assert "normal refreshes do not request it" in method
     assert "Do not activate import from repository intent alone" in method
     assert "Redirects are disabled" in method
     assert "evidence-lake-metrics-producer-receipt.json" in method
     assert "CRITICAL_PATHS" in method
-    assert "change the single active-tuple suffix" in method
-    assert "+ ()" in importer_source
-    assert "PENDING_SNAPSHOTS" in importer_source
+    assert "normal refreshes now request" in method
+    assert "+ ()" not in importer_source
+    assert ") + PENDING_SNAPSHOTS" in importer_source
