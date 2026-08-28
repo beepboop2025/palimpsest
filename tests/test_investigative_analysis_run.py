@@ -19,9 +19,28 @@ from ops.investigative_analysis_runner import (
     WIRE_STATUS_SCHEMA,
     snapshot_inputs,
 )
+from scripts.investigative_analysis_run import _frozen_vantage_abstention
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_frozen_vantage_abstention_is_selector_complete_without_a_stale_value() -> None:
+    original = {
+        "ok": False,
+        "reason": "no quantitative vantage is current enough to fuse",
+        "fused_index": 28.6,
+    }
+
+    frozen = _frozen_vantage_abstention(
+        original,
+        decision_text="2026-08-28T11:13:49Z",
+    )
+
+    assert original["fused_index"] == 28.6
+    assert frozen["fused_index"] is None
+    assert frozen["status"] == "abstain"
+    assert frozen["generated_at"] == "2026-08-28T11:13:49Z"
 
 
 def _execute_real_cascade(

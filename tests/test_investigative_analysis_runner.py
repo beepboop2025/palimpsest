@@ -307,6 +307,53 @@ def test_snapshot_includes_gfi_and_separates_trigger_from_lineage(
     assert lineage_one != lineage_two
 
 
+def test_snapshot_excludes_non_investigative_projection_from_lineage_and_clock(
+    tmp_path: Path,
+) -> None:
+    readings, wire, _commit = _inputs(tmp_path)
+    projection = readings / "evidence-lake-metrics-latest.json"
+    _write(
+        projection,
+        {
+            "schema": "bulk.public-metrics.v1",
+            "generated_at": "2026-08-12T12:00:00Z",
+            "summary": {"analytical_rows": 12_075_244},
+        },
+    )
+
+    trigger_one, lineage_one, manifest_one, clock_one = runner.snapshot_inputs(
+        readings_dir=readings,
+        newswire_dir=wire,
+        staging_readings=tmp_path / "stage-one",
+    )
+    _write(
+        projection,
+        {
+            "schema": "bulk.public-metrics.v1",
+            "generated_at": "2026-08-13T12:00:00Z",
+            "summary": {"analytical_rows": 12_075_245},
+        },
+    )
+    trigger_two, lineage_two, manifest_two, clock_two = runner.snapshot_inputs(
+        readings_dir=readings,
+        newswire_dir=wire,
+        staging_readings=tmp_path / "stage-two",
+    )
+
+    assert runner.NON_INVESTIGATIVE_LATEST == frozenset(
+        {"evidence-lake-metrics-latest.json"}
+    )
+    for manifest in (manifest_one, manifest_two):
+        assert "readings/evidence-lake-metrics-latest.json" not in {
+            row["path"] for row in manifest
+        }
+    assert not (tmp_path / "stage-one" / projection.name).exists()
+    assert not (tmp_path / "stage-two" / projection.name).exists()
+    assert trigger_one == trigger_two
+    assert lineage_one == lineage_two
+    assert clock_one == clock_two == "2026-08-11T18:00:00Z"
+
+
 def test_snapshot_rejects_future_source_clock(tmp_path: Path) -> None:
     readings, wire, _commit = _inputs(tmp_path)
     _write(readings / "ooni-gfw-latest.json", {"generated_at": "2999-01-01T00:00:00Z"})
