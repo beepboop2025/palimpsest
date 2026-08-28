@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import io
 import json
 import re
 import shutil
+import subprocess
+import tarfile
 import threading
 import urllib.error
 import urllib.request
@@ -41,9 +44,16 @@ RIGHTS_CRITICAL_PATHS = {
     "config/china_econ_source_policy.json",
     "config/pages_public_binary_allowlist.json",
     "protocol/pages-rights-release-receipt-v1.schema.json",
+    "protocol/pages-rights-release-receipt-v2.schema.json",
+    "protocol/publication-freshness-attestation-v1.schema.json",
     "protocol/restricted-publication-endpoint-v1.schema.json",
     "protocol/restricted-publication-v1.schema.json",
     "readings/china-publication-rights-latest.json",
+    "readings/china-situation-latest.json",
+    "readings/newswire-latest.json",
+    "readings/osint-china-latest.json",
+    "readings/publication-freshness-attestation-latest.json",
+    "readings/readings-ledger.jsonl",
 }
 UCDP_RELEASE_CRITICAL_PATHS = {
     "collectors/ucdp_bulk.py",
@@ -74,14 +84,45 @@ DEEP_REPORT_CRITICAL_PATHS = {
     "tests/test_deep_research_publication.py",
 }
 CONTINUOUS_RELEASE_CRITICAL_PATHS = {
+    ".github/workflows/collector-health-watchdog.yml",
+    ".github/workflows/newswire-refresh.yml",
+    ".github/workflows/osint-china-v2-refresh.yml",
+    ".github/workflows/railway-publication-controller.yml",
+    ".github/workflows/tests.yml",
     "docs/HETZNER-RAILWAY-CONTINUOUS-PUBLICATION.md",
+    "ops/DEPLOY-HETZNER.md",
+    "ops/osint-sync/public_osint_sync.py",
+    "ops/railway/Dockerfile.static",
+    "ops/railway/build-static-bundle.sh",
+    "ops/railway/build_release_manifest.py",
     "ops/railway/deploy-continuous-release.sh",
+    "ops/railway/enable-hourly-publication",
+    "ops/railway/run-activation-canary",
+    "ops/railway/run-newswire-prerequisite.sh",
+    "ops/railway/run-producer-restore",
+    "ops/railway/static_server.py",
     "ops/railway/verify_continuous_release.py",
+    "ops/railway/verify_rights_clean.py",
+    "ops/watchdog/palimpsest_freshness_watchdog.py",
+    "protocol/collector-health-watchdog-receipt-v1.schema.json",
     "protocol/railway-continuous-release-receipt-v1.schema.json",
+    "scripts/build_pages_wire_archive.py",
+    "scripts/stage_pages_rights.py",
+    "tests/test_collector_health_watchdog.py",
     "scripts/verify_railway_controller_request.py",
+    "tests/test_deploy_transaction_contract.py",
+    "tests/test_newswire_activation_prerequisite.py",
+    "tests/test_newswire_manual_outcome_receipt.py",
+    "tests/test_osint_manual_outcome_receipt.py",
+    "tests/test_pages_rights_gate.py",
+    "tests/test_public_osint_sync.py",
+    "tests/test_public_osint_sync_bundle_contract.py",
+    "tests/test_railway_activation_canary_helper.py",
     "tests/test_railway_continuous_publication.py",
     "tests/test_railway_continuous_release_verifier.py",
     "tests/test_railway_controller_authority.py",
+    "tests/test_railway_producer_restore_helper.py",
+    "tests/test_railway_static_release.py",
 }
 
 
@@ -318,6 +359,58 @@ def test_railway_container_is_non_root_and_bundle_stays_public_only() -> None:
     assert "railway.static.json" not in builder
     assert 'top_level_path" == .*' in builder
     assert 'top_level_path" != ".well-known"' in builder
+    assert 'archive_paths+=("${release_authority_paths[@]}")' in builder
+
+
+def test_railway_bundle_git_archive_contains_only_allowlisted_github_authority() -> (
+    None
+):
+    builder = (RAILWAY / "build-static-bundle.sh").read_text(encoding="utf-8")
+    match = re.search(
+        r"release_authority_paths=\(\n(?P<body>.*?)\n\)", builder, flags=re.DOTALL
+    )
+    assert match is not None
+    authority_paths = re.findall(r'^\s+"([^"]+)"$', match.group("body"), re.MULTILINE)
+    assert authority_paths == [
+        ".github/workflows/collector-health-watchdog.yml",
+        ".github/workflows/newswire-refresh.yml",
+        ".github/workflows/osint-china-v2-refresh.yml",
+        ".github/workflows/railway-publication-controller.yml",
+        ".github/workflows/tests.yml",
+    ]
+    assert set(authority_paths) == {
+        path for path in manifest_module.CRITICAL_PATHS if path.startswith(".github/")
+    }
+
+    archive = subprocess.run(
+        ["git", "-C", str(ROOT), "archive", "--format=tar", "HEAD", *authority_paths],
+        check=True,
+        capture_output=True,
+    ).stdout
+    with tarfile.open(fileobj=io.BytesIO(archive), mode="r:") as handle:
+        archived_files = {member.name for member in handle if member.isfile()}
+    assert archived_files == set(authority_paths)
+
+    tracked_github = set(
+        subprocess.run(
+            [
+                "git",
+                "-C",
+                str(ROOT),
+                "ls-tree",
+                "-r",
+                "--name-only",
+                "HEAD",
+                ".github",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+    )
+    non_authority_github = tracked_github - set(authority_paths)
+    assert non_authority_github
+    assert archived_files.isdisjoint(non_authority_github)
 
 
 def test_railway_bundle_orders_rights_before_wire_and_manifest() -> None:
@@ -382,6 +475,8 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
         "config/china_econ_source_policy.json",
         "config/pages_public_binary_allowlist.json",
         "readings/china-econ-observations.jsonl",
+        "readings/china-situation-latest.json",
+        "readings/newswire-latest.json",
         "readings/bri-economic-observations-latest.json",
         "readings/ucdp-aggregate-latest.json",
         "readings/ucdp-aggregate-release-receipt.json",

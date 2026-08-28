@@ -1,0 +1,3027 @@
+#!/usr/bin/env python3
+"""Run one exact, operator-approved Palimpsest Railway activation canary.
+
+Required environment:
+
+* EXPECTED_CANARY_SHA: the reviewed 40-hex commit currently at public main.
+* ACTIVATION_CANARY_RECEIPT: an absolute, not-yet-existing output path.
+* NEWSWIRE_PREREQUISITE_RECEIPT: the private receipt from the bounded refresh.
+
+The helper never enables hourly publication.  It dispatches the manual
+controller with activation_canary=true and force=false, binds the resulting
+repository_dispatch run, approves only that run's protected environment, and
+writes a canonical secret-free receipt after artifact and live-byte proof.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import os
+import re
+import shutil
+import signal
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import zipfile
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, NoReturn, Sequence
+
+
+DEFAULT_REPOSITORY = "beepboop2025/palimpsest"
+CONTROLLER_WORKFLOW = "railway-publication-controller.yml"
+CONTROLLER_NAME = "Queue exact Railway publication"
+RELEASE_WORKFLOW = "tests.yml"
+RELEASE_NAME = "Tests"
+PRODUCTION_ENVIRONMENT = "palimpsest-railway-production"
+EXCLUSIVE_WRITER_ACK = "palimpsest-github-environment-v1"
+GITHUB_ENVIRONMENT_ID = 20705508397
+GITHUB_REVIEWER_ID = 215868371
+GITHUB_REVIEWER_LOGIN = "beepboop2025"
+GITHUB_REVIEWER_RULE_ID = 63841171
+GITHUB_BRANCH_RULE_ID = 63841172
+GITHUB_BRANCH_POLICY_ID = 58388360
+RAILWAY_SECRET_NAME = "PALIMPSEST_RAILWAY_TOKEN"
+PROVIDER_ORIGIN = "https://palimpsest-publication-production.up.railway.app"
+PUBLIC_ORIGIN = "https://www.palimpsest.info"
+RAILWAY_PROJECT_ID = "f7c86128-53a7-458a-a931-6628c6e61fb2"
+RAILWAY_ENVIRONMENT_ID = "1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2"
+RAILWAY_SERVICE_ID = "86a6f49c-b9dc-4be8-acd1-dd180c693230"
+
+APPROVAL_BUDGET_SECONDS = 5400
+COMPLETION_BUDGET_SECONDS = 4200
+COMMAND_TIMEOUT_SECONDS = 60
+PROMPT_TIMEOUT_SECONDS = 300
+POLL_INTERVAL_SECONDS = 2
+MAX_JSON_BYTES = 2 * 1024 * 1024
+MAX_MANIFEST_BYTES = 4 * 1024 * 1024
+MAX_NEWSWIRE_RECEIPT_BYTES = 2 * 1024 * 1024
+MAX_ARTIFACT_ARCHIVE_BYTES = 32 * 1024 * 1024
+FRESHNESS_ATTESTATION_PATH = "readings/publication-freshness-attestation-latest.json"
+FRESHNESS_ATTESTATION_LIMITATIONS = (
+    "Metadata only; quarantined source artifacts are not republished here.",
+    "No source values, observations, or per-record identifiers are included.",
+    "This attestation conveys no observation or publication authority.",
+    "Unavailable or restricted evidence is not a directional signal.",
+)
+
+SHA40 = re.compile(r"[0-9a-f]{40}\Z")
+SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+REPOSITORY = re.compile(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\Z")
+UUID = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
+    r"[89ab][0-9a-f]{3}-[0-9a-f]{12}\Z"
+)
+
+EXPECTED_JOBS = {
+    "contract": "success",
+    "Package exact complete Pages edition": "success",
+    "Deploy exact complete Pages edition": "success",
+    "Deploy and prove exact Railway publication": "success",
+    "Verify exact Pages and native MCP rights closure": "skipped",
+}
+
+
+class CanaryError(RuntimeError):
+    """A fail-closed activation-canary error."""
+
+
+class CommandError(CanaryError):
+    """A bounded external command failed."""
+
+    def __init__(self, label: str, returncode: int) -> None:
+        super().__init__(f"{label} failed with exit status {returncode}")
+        self.returncode = returncode
+
+
+class PromptExpired(CanaryError):
+    """The bounded approval prompt expired."""
+
+
+class SignalAbort(CanaryError):
+    """A terminating signal that still requires authority cleanup."""
+
+    def __init__(self, signum: int) -> None:
+        super().__init__(f"activation canary interrupted by signal {signum}")
+        self.signum = signum
+
+
+@dataclass
+class RunState:
+    release_run_id: int | None = None
+    receipt_committed: bool = False
+
+
+@dataclass(frozen=True)
+class NewswirePrerequisite:
+    receipt_sha256: str
+    publication_sha: str
+    newswire_generated_at: str
+    newswire_canonical_sha256: str
+    situation_generated_at: str
+    situation_canonical_sha256: str
+
+
+def _reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_constant(value: str) -> NoReturn:
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+def _strict_json_bytes(raw: bytes, *, label: str, maximum: int) -> Any:
+    if not 0 < len(raw) <= maximum:
+        raise CanaryError(f"{label} has an invalid byte size")
+    try:
+        return json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=_reject_duplicates,
+            parse_constant=_reject_constant,
+        )
+    except (UnicodeError, ValueError) as error:
+        raise CanaryError(f"{label} is not strict JSON") from error
+
+
+def _strict_json_text(text: str, *, label: str) -> Any:
+    return _strict_json_bytes(text.encode("utf-8"), label=label, maximum=MAX_JSON_BYTES)
+
+
+def _canonical_json(document: dict[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("ascii")
+        + b"\n"
+    )
+
+
+@dataclass(frozen=True)
+class Deadline:
+    expires_at: float
+
+    @classmethod
+    def start(cls, budget_seconds: int) -> "Deadline":
+        if budget_seconds <= 0:
+            raise CanaryError("activation-canary phase budget must be positive")
+        return cls(time.monotonic() + budget_seconds)
+
+    def remaining(self) -> float:
+        return max(0.0, self.expires_at - time.monotonic())
+
+    def require(self) -> float:
+        remaining = self.remaining()
+        if remaining <= 0:
+            raise CanaryError("the monotonic activation-canary phase deadline expired")
+        return remaining
+
+    def command_timeout(self, ceiling: int = COMMAND_TIMEOUT_SECONDS) -> float:
+        return max(0.1, min(float(ceiling), self.require()))
+
+    def sleep(self, requested: float = POLL_INTERVAL_SECONDS) -> None:
+        time.sleep(min(requested, self.require()))
+
+
+def _process_group_exists(process_group_id: int) -> bool:
+    try:
+        os.killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _terminate_process_group(process: subprocess.Popen[bytes]) -> None:
+    process_group_id = process.pid
+    try:
+        os.killpg(process_group_id, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    grace_deadline = time.monotonic() + 5.0
+    while _process_group_exists(process_group_id):
+        remaining = grace_deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        if process.poll() is None:
+            try:
+                process.communicate(timeout=remaining)
+            except subprocess.TimeoutExpired:
+                break
+        else:
+            time.sleep(min(0.05, remaining))
+    if _process_group_exists(process_group_id):
+        try:
+            os.killpg(process_group_id, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    try:
+        process.communicate(timeout=5.0)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process_group_id, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait(timeout=5.0)
+
+
+def _trusted_executable(name: str) -> str:
+    candidate = shutil.which(name)
+    if candidate is None:
+        raise CanaryError(f"required operator executable is unavailable: {name}")
+    path = Path(candidate).resolve(strict=True)
+    details = path.stat()
+    parent = path.parent.stat()
+    if (
+        path.name != Path(name).name
+        or not stat.S_ISREG(details.st_mode)
+        or details.st_uid not in {0, os.geteuid()}
+        or stat.S_IMODE(details.st_mode) & 0o022
+        or parent.st_uid not in {0, os.geteuid()}
+        or stat.S_IMODE(parent.st_mode) & 0o022
+    ):
+        raise CanaryError(f"operator executable is not trusted: {name}")
+    return str(path)
+
+
+def _command_environment(executable: str) -> dict[str, str]:
+    environment: dict[str, str] = {}
+    for name in ("LANG", "LC_ALL", "LC_CTYPE"):
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    if Path(executable).name == "gh":
+        home = os.environ.get("HOME")
+        if home:
+            environment["HOME"] = home
+        for name in (
+            "GH_TOKEN",
+            "GITHUB_TOKEN",
+            "GH_ENTERPRISE_TOKEN",
+            "GITHUB_ENTERPRISE_TOKEN",
+        ):
+            value = os.environ.get(name)
+            if value:
+                environment[name] = value
+        environment.update(
+            {"GH_HOST": "github.com", "GH_PROMPT_DISABLED": "1", "NO_COLOR": "1"}
+        )
+    directories = [
+        str(Path(executable).parent),
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/usr/sbin",
+        "/sbin",
+    ]
+    environment["PATH"] = os.pathsep.join(dict.fromkeys(directories))
+    return environment
+
+
+def _require_gh_transport(deadline: Deadline) -> None:
+    socket_path = _gh(
+        deadline,
+        "config",
+        "get",
+        "http_unix_socket",
+        "--host",
+        "github.com",
+    )
+    if socket_path not in {"", "\n", "\r\n"}:
+        raise CanaryError("GitHub CLI http_unix_socket transport is not empty")
+
+
+def _bounded_bytes(
+    arguments: Sequence[str],
+    *,
+    timeout: float,
+    label: str,
+    maximum: int = MAX_JSON_BYTES * 8,
+) -> bytes:
+    if timeout <= 0:
+        raise CanaryError(f"{label} has no remaining command budget")
+    process: subprocess.Popen[bytes] | None = None
+    expires_at = time.monotonic() + timeout
+    try:
+        executable = _trusted_executable(arguments[0])
+        process = subprocess.Popen(
+            [executable, *arguments[1:]],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=_command_environment(executable),
+            start_new_session=True,
+        )
+        remaining = expires_at - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(arguments, timeout)
+        stdout, _stderr = process.communicate(timeout=remaining)
+    except subprocess.TimeoutExpired as error:
+        if process is not None:
+            _terminate_process_group(process)
+        raise CommandError(f"bounded {label}", 124) from error
+    except BaseException:
+        if process is not None:
+            _terminate_process_group(process)
+        raise
+    if process.returncode is None:
+        _terminate_process_group(process)
+        raise CommandError(label, 125)
+    if _process_group_exists(process.pid):
+        _terminate_process_group(process)
+        raise CommandError(f"{label} left a surviving child process", 125)
+    if process.returncode != 0:
+        raise CommandError(label, process.returncode)
+    if len(stdout) > maximum:
+        raise CanaryError(f"{label} emitted excessive output")
+    return stdout
+
+
+def _bounded_command(
+    arguments: Sequence[str],
+    *,
+    timeout: float,
+    label: str,
+) -> str:
+    stdout = _bounded_bytes(arguments, timeout=timeout, label=label)
+    try:
+        return stdout.decode("utf-8", "strict")
+    except UnicodeError as error:
+        raise CanaryError(f"{label} emitted non-UTF-8 output") from error
+
+
+def _gh(
+    deadline: Deadline, *arguments: str, ceiling: int = COMMAND_TIMEOUT_SECONDS
+) -> str:
+    return _bounded_command(
+        ("gh", *arguments),
+        timeout=deadline.command_timeout(ceiling),
+        label="GitHub command",
+    )
+
+
+def _cleanup_gh(*arguments: str) -> str:
+    return _bounded_command(
+        ("gh", *arguments),
+        timeout=COMMAND_TIMEOUT_SECONDS,
+        label="GitHub cleanup command",
+    )
+
+
+def _exact_text(text: str, *, label: str) -> str:
+    value = text.rstrip("\r\n")
+    if not value or "\n" in value or "\r" in value:
+        raise CanaryError(f"{label} is not one exact line")
+    return value
+
+
+def _run_list(
+    deadline: Deadline,
+    repository: str,
+    workflow: str,
+    event: str,
+    *,
+    release: bool,
+) -> list[dict[str, Any]]:
+    fields = (
+        "databaseId,event,headSha,workflowName"
+        if release
+        else "databaseId,event,headSha"
+    )
+    raw = _gh(
+        deadline,
+        "run",
+        "list",
+        "--repo",
+        repository,
+        "--workflow",
+        workflow,
+        "--event",
+        event,
+        "--limit",
+        "100",
+        "--json",
+        fields,
+    )
+    value = _strict_json_text(raw, label=f"{workflow} run inventory")
+    if not isinstance(value, list):
+        raise CanaryError(f"{workflow} run inventory is not a list")
+    expected_fields = {"databaseId", "event", "headSha"}
+    if release:
+        expected_fields.add("workflowName")
+    seen: set[int] = set()
+    for item in value:
+        if not isinstance(item, dict) or set(item) != expected_fields:
+            raise CanaryError(f"{workflow} run inventory has an unexpected row")
+        run_id = item.get("databaseId")
+        if type(run_id) is not int or run_id <= 0 or run_id in seen:
+            raise CanaryError(f"{workflow} run inventory has an invalid identity")
+        if not isinstance(item.get("event"), str) or not isinstance(
+            item.get("headSha"), str
+        ):
+            raise CanaryError(f"{workflow} run inventory has invalid fields")
+        if release and not isinstance(item.get("workflowName"), str):
+            raise CanaryError(f"{workflow} run inventory has an invalid workflow name")
+        seen.add(run_id)
+    return value
+
+
+def _select_one_new_run(
+    *,
+    before: list[dict[str, Any]],
+    after: list[dict[str, Any]],
+    expected_sha: str,
+    expected_event: str,
+    expected_workflow_name: str | None,
+    label: str,
+) -> int | None:
+    before_ids = {item["databaseId"] for item in before}
+    new_rows = [item for item in after if item["databaseId"] not in before_ids]
+    if not new_rows:
+        return None
+    if len(new_rows) != 1:
+        raise CanaryError(f"expected exactly one new {label} run")
+    candidate = new_rows[0]
+    if (
+        candidate.get("event") != expected_event
+        or candidate.get("headSha") != expected_sha
+    ):
+        raise CanaryError(f"the new {label} run is not causally bound")
+    if (
+        expected_workflow_name is not None
+        and candidate.get("workflowName") != expected_workflow_name
+    ):
+        raise CanaryError(f"the new {label} run has the wrong workflow")
+    return int(candidate["databaseId"])
+
+
+def _poll_new_run(
+    deadline: Deadline,
+    *,
+    repository: str,
+    workflow: str,
+    event: str,
+    before: list[dict[str, Any]],
+    expected_sha: str,
+    expected_workflow_name: str | None,
+    label: str,
+) -> int:
+    while True:
+        after = _run_list(
+            deadline,
+            repository,
+            workflow,
+            event,
+            release=expected_workflow_name is not None,
+        )
+        selected = _select_one_new_run(
+            before=before,
+            after=after,
+            expected_sha=expected_sha,
+            expected_event=event,
+            expected_workflow_name=expected_workflow_name,
+            label=label,
+        )
+        if selected is not None:
+            return selected
+        deadline.sleep()
+
+
+def _run_view(deadline: Deadline, repository: str, run_id: int) -> dict[str, Any]:
+    fields = "databaseId,event,workflowName,headBranch,headSha,status,conclusion"
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "run",
+            "view",
+            str(run_id),
+            "--repo",
+            repository,
+            "--json",
+            fields,
+        ),
+        label=f"run {run_id} identity",
+    )
+    expected = {
+        "databaseId",
+        "event",
+        "workflowName",
+        "headBranch",
+        "headSha",
+        "status",
+        "conclusion",
+    }
+    if not isinstance(value, dict) or set(value) != expected:
+        raise CanaryError(f"run {run_id} identity is malformed")
+    return value
+
+
+def _validate_run(
+    value: dict[str, Any],
+    *,
+    run_id: int,
+    event: str,
+    workflow_name: str,
+    expected_sha: str,
+) -> None:
+    if (
+        value.get("databaseId") != run_id
+        or value.get("event") != event
+        or value.get("workflowName") != workflow_name
+        or value.get("headBranch") != "main"
+        or value.get("headSha") != expected_sha
+    ):
+        raise CanaryError(f"run {run_id} changed its exact identity")
+    if value.get("status") not in {
+        "requested",
+        "queued",
+        "pending",
+        "waiting",
+        "in_progress",
+        "completed",
+    }:
+        raise CanaryError(f"run {run_id} has an unexpected status")
+    conclusion = value.get("conclusion")
+    if value["status"] == "completed":
+        if not isinstance(conclusion, str) or not conclusion:
+            raise CanaryError(f"run {run_id} has an invalid conclusion")
+    elif conclusion not in {None, ""}:
+        raise CanaryError(f"unfinished run {run_id} has an unexpected conclusion")
+
+
+def _wait_for_success(
+    deadline: Deadline,
+    *,
+    repository: str,
+    run_id: int,
+    event: str,
+    workflow_name: str,
+    expected_sha: str,
+) -> dict[str, Any]:
+    while True:
+        value = _run_view(deadline, repository, run_id)
+        _validate_run(
+            value,
+            run_id=run_id,
+            event=event,
+            workflow_name=workflow_name,
+            expected_sha=expected_sha,
+        )
+        if value["status"] == "completed":
+            if value["conclusion"] != "success":
+                raise CanaryError(f"run {run_id} did not conclude successfully")
+            return value
+        deadline.sleep()
+
+
+def _run_attempt(deadline: Deadline, repository: str, run_id: int) -> int:
+    value = _exact_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}",
+            "--jq",
+            ".run_attempt",
+        ),
+        label=f"run {run_id} attempt",
+    )
+    if not value.isdecimal() or int(value) <= 0:
+        raise CanaryError(f"run {run_id} attempt is invalid")
+    return int(value)
+
+
+def _hourly_gate(deadline: Deadline, repository: str) -> str:
+    return _exact_text(
+        _gh(
+            deadline,
+            "variable",
+            "get",
+            "RAILWAY_PUBLICATION_ENABLED",
+            "--repo",
+            repository,
+        ),
+        label="Railway hourly publication gate",
+    )
+
+
+def _exclusive_writer_ack(deadline: Deadline, repository: str) -> str:
+    return _exact_text(
+        _gh(
+            deadline,
+            "variable",
+            "get",
+            "RAILWAY_EXCLUSIVE_WRITER_ACK",
+            "--repo",
+            repository,
+            "--env",
+            PRODUCTION_ENVIRONMENT,
+        ),
+        label="Railway exclusive-writer acknowledgement",
+    )
+
+
+def _require_closed_authority(deadline: Deadline, repository: str) -> None:
+    if _hourly_gate(deadline, repository) != "false":
+        raise CanaryError("RAILWAY_PUBLICATION_ENABLED is not exactly false")
+    if _exclusive_writer_ack(deadline, repository) != EXCLUSIVE_WRITER_ACK:
+        raise CanaryError("the protected Railway writer acknowledgement is not exact")
+
+
+def _pending_state(
+    deadline: Deadline,
+    *,
+    repository: str,
+    run_id: int,
+    environment_id: int,
+) -> str:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}/pending_deployments",
+        ),
+        label="pending protected deployments",
+    )
+    if not isinstance(value, list):
+        raise CanaryError("pending protected deployments is not a list")
+    if not value:
+        return "wait"
+    if len(value) != 1 or not isinstance(value[0], dict):
+        raise CanaryError("the protected deployment set is not exact")
+    environment = value[0].get("environment")
+    if not isinstance(environment, dict):
+        raise CanaryError("the protected deployment environment is malformed")
+    if (
+        environment.get("id") != environment_id
+        or environment.get("name") != PRODUCTION_ENVIRONMENT
+        or value[0].get("current_user_can_approve") is not True
+    ):
+        raise CanaryError("the protected deployment cannot be approved exactly")
+    return "ready"
+
+
+def _validate_protected_environment_contract(
+    deadline: Deadline, repository: str
+) -> dict[str, Any]:
+    environment = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/environments/{PRODUCTION_ENVIRONMENT}",
+        ),
+        label="protected Railway environment",
+    )
+    if not isinstance(environment, dict):
+        raise CanaryError("protected Railway environment is malformed")
+    branch_policy = environment.get("deployment_branch_policy")
+    if branch_policy != {
+        "custom_branch_policies": True,
+        "protected_branches": False,
+    }:
+        raise CanaryError("protected Railway branch policy mode is not exact")
+    rules = environment.get("protection_rules")
+    if not isinstance(rules, list) or len(rules) != 2:
+        raise CanaryError("protected Railway rules are not exact")
+    if any(not isinstance(item, dict) for item in rules):
+        raise CanaryError("protected Railway rules are not exact")
+    by_type = {str(item.get("type")): item for item in rules}
+    if set(by_type) != {"branch_policy", "required_reviewers"}:
+        raise CanaryError("protected Railway rule types are not exact")
+    rule = by_type["required_reviewers"]
+    branch_rule = by_type["branch_policy"]
+    reviewers = rule.get("reviewers") if isinstance(rule, dict) else None
+    if (
+        not isinstance(rule, dict)
+        or rule.get("id") != GITHUB_REVIEWER_RULE_ID
+        or rule.get("type") != "required_reviewers"
+        or rule.get("prevent_self_review") is not False
+        or not isinstance(reviewers, list)
+        or len(reviewers) != 1
+    ):
+        raise CanaryError("protected Railway reviewer rule is not exact")
+    if branch_rule.get("id") != GITHUB_BRANCH_RULE_ID:
+        raise CanaryError("protected Railway branch rule is not exact")
+    reviewer_entry = reviewers[0]
+    reviewer = (
+        reviewer_entry.get("reviewer") if isinstance(reviewer_entry, dict) else None
+    )
+    if (
+        not isinstance(reviewer_entry, dict)
+        or reviewer_entry.get("type") != "User"
+        or not isinstance(reviewer, dict)
+        or reviewer.get("id") != GITHUB_REVIEWER_ID
+        or reviewer.get("login") != GITHUB_REVIEWER_LOGIN
+    ):
+        raise CanaryError("protected Railway reviewer identity is not exact")
+    if (
+        environment.get("id") != GITHUB_ENVIRONMENT_ID
+        or environment.get("name") != PRODUCTION_ENVIRONMENT
+        or environment.get("can_admins_bypass") is not False
+    ):
+        raise CanaryError("protected Railway environment identity is not exact")
+
+    policies = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            (
+                f"repos/{repository}/environments/{PRODUCTION_ENVIRONMENT}/"
+                "deployment-branch-policies?per_page=100"
+            ),
+        ),
+        label="protected Railway deployment branch policies",
+    )
+    if (
+        not isinstance(policies, dict)
+        or policies.get("total_count") != 1
+        or not isinstance(policies.get("branch_policies"), list)
+        or len(policies["branch_policies"]) != 1
+    ):
+        raise CanaryError("protected Railway branch policy inventory is not exact")
+    policy = policies["branch_policies"][0]
+    if (
+        not isinstance(policy, dict)
+        or policy.get("id") != GITHUB_BRANCH_POLICY_ID
+        or policy.get("name") != "main"
+        or policy.get("type") != "branch"
+    ):
+        raise CanaryError("protected Railway main-only policy is not exact")
+
+    secrets = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            (
+                f"repos/{repository}/environments/{PRODUCTION_ENVIRONMENT}/"
+                "secrets?per_page=100"
+            ),
+        ),
+        label="protected Railway secret inventory",
+    )
+    if (
+        not isinstance(secrets, dict)
+        or secrets.get("total_count") != 1
+        or not isinstance(secrets.get("secrets"), list)
+        or len(secrets["secrets"]) != 1
+        or not isinstance(secrets["secrets"][0], dict)
+        or secrets["secrets"][0].get("name") != RAILWAY_SECRET_NAME
+    ):
+        raise CanaryError("protected Railway secret inventory is not exact")
+    variables = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            (
+                f"repos/{repository}/environments/{PRODUCTION_ENVIRONMENT}/"
+                "variables?per_page=100"
+            ),
+        ),
+        label="protected Railway environment variable inventory",
+    )
+    if (
+        not isinstance(variables, dict)
+        or variables.get("total_count") != 1
+        or not isinstance(variables.get("variables"), list)
+        or len(variables["variables"]) != 1
+        or not isinstance(variables["variables"][0], dict)
+        or variables["variables"][0].get("name") != "RAILWAY_EXCLUSIVE_WRITER_ACK"
+        or variables["variables"][0].get("value") != EXCLUSIVE_WRITER_ACK
+    ):
+        raise CanaryError(
+            "protected Railway environment variable inventory is not exact"
+        )
+    if _exclusive_writer_ack(deadline, repository) != EXCLUSIVE_WRITER_ACK:
+        raise CanaryError("protected Railway writer acknowledgement is not exact")
+    return {
+        "branch_policy": {
+            "custom_branch_policies": True,
+            "id": GITHUB_BRANCH_POLICY_ID,
+            "name": "main",
+            "protected_branches": False,
+            "rule_id": GITHUB_BRANCH_RULE_ID,
+            "type": "branch",
+        },
+        "environment_id": GITHUB_ENVIRONMENT_ID,
+        "environment_name": PRODUCTION_ENVIRONMENT,
+        "can_admins_bypass": False,
+        "prevent_self_review": False,
+        "reviewer": {
+            "id": GITHUB_REVIEWER_ID,
+            "login": GITHUB_REVIEWER_LOGIN,
+            "rule_id": GITHUB_REVIEWER_RULE_ID,
+            "type": "User",
+        },
+        "secret_names": [RAILWAY_SECRET_NAME],
+        "variable_names": ["RAILWAY_EXCLUSIVE_WRITER_ACK"],
+        "writer_acknowledgement": EXCLUSIVE_WRITER_ACK,
+    }
+
+
+def _prompt_exact_sha(
+    deadline: Deadline, expected_sha: str, release_run_id: int
+) -> None:
+    timeout = min(float(PROMPT_TIMEOUT_SECONDS), deadline.require())
+
+    def expire(_signum: int, _frame: Any) -> NoReturn:
+        raise PromptExpired("the typed-SHA approval prompt expired")
+
+    previous = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, expire)
+    signal.setitimer(signal.ITIMER_REAL, timeout)
+    try:
+        print(
+            f"Type the exact canary SHA to approve protected release {release_run_id}: ",
+            end="",
+            file=sys.stderr,
+            flush=True,
+        )
+        line = sys.stdin.readline(128)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+    if not line or line.rstrip("\r\n") != expected_sha:
+        raise CanaryError("typed canary SHA did not match exactly")
+
+
+def _write_private_json(path: Path, document: dict[str, Any]) -> None:
+    payload = _canonical_json(document)
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
+
+
+def _validate_jobs(deadline: Deadline, repository: str, run_id: int) -> dict[str, str]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "run",
+            "view",
+            str(run_id),
+            "--repo",
+            repository,
+            "--json",
+            "jobs",
+        ),
+        label="downstream release jobs",
+    )
+    if (
+        not isinstance(value, dict)
+        or set(value) != {"jobs"}
+        or not isinstance(value["jobs"], list)
+    ):
+        raise CanaryError("downstream release jobs are malformed")
+    observed: dict[str, str] = {}
+    for job in value["jobs"]:
+        if not isinstance(job, dict):
+            raise CanaryError("downstream release job is malformed")
+        name = job.get("name")
+        conclusion = job.get("conclusion")
+        if (
+            not isinstance(name, str)
+            or not isinstance(conclusion, str)
+            or name in observed
+        ):
+            raise CanaryError("downstream release job identity is invalid")
+        observed[name] = conclusion
+    for name, conclusion in EXPECTED_JOBS.items():
+        if observed.get(name) != conclusion:
+            raise CanaryError(f"downstream release job is not exact: {name}")
+    if any(
+        conclusion not in {"success", "skipped"} for conclusion in observed.values()
+    ):
+        raise CanaryError("downstream release has a failed or incomplete extra job")
+    return dict(EXPECTED_JOBS)
+
+
+def _read_receipt(path: Path, *, label: str) -> tuple[bytes, dict[str, Any]]:
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise CanaryError(f"{label} is unavailable") from error
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or metadata.st_nlink != 1
+        or not 0 < metadata.st_size <= MAX_JSON_BYTES
+    ):
+        raise CanaryError(f"{label} is not a bounded, unlinked regular file")
+    raw = path.read_bytes()
+    value = _strict_json_bytes(raw, label=label, maximum=MAX_JSON_BYTES)
+    if not isinstance(value, dict) or raw != _canonical_json(value):
+        raise CanaryError(f"{label} is not canonical immutable evidence")
+    return raw, value
+
+
+def _read_bounded_json(path: Path, *, label: str) -> tuple[bytes, dict[str, Any]]:
+    try:
+        metadata = path.lstat()
+    except OSError as error:
+        raise CanaryError(f"{label} is unavailable") from error
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or metadata.st_nlink != 1
+        or not 0 < metadata.st_size <= MAX_JSON_BYTES
+    ):
+        raise CanaryError(f"{label} is not a bounded, unlinked regular file")
+    raw = path.read_bytes()
+    value = _strict_json_bytes(raw, label=label, maximum=MAX_JSON_BYTES)
+    if not isinstance(value, dict):
+        raise CanaryError(f"{label} is not a JSON object")
+    return raw, value
+
+
+def _require_exact_keys(
+    value: Any, expected: set[str], *, label: str
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != expected:
+        raise CanaryError(f"{label} changed its schema")
+    return value
+
+
+def _strict_utc(value: Any, *, label: str) -> datetime:
+    if (
+        not isinstance(value, str)
+        or re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z", value
+        )
+        is None
+    ):
+        raise CanaryError(f"{label} is not a strict UTC timestamp")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as error:
+        raise CanaryError(f"{label} is not a valid UTC timestamp") from error
+
+
+def _load_newswire_prerequisite(
+    path: Path,
+    *,
+    repository: str,
+    expected_sha: str,
+) -> NewswirePrerequisite:
+    if not path.is_absolute():
+        raise CanaryError("NEWSWIRE_PREREQUISITE_RECEIPT must be an absolute path")
+    try:
+        parent_metadata = path.parent.lstat()
+    except OSError as error:
+        raise CanaryError("Newswire prerequisite receipt is unavailable") from error
+    if (
+        path.parent != Path(os.path.realpath(path.parent))
+        or stat.S_ISLNK(parent_metadata.st_mode)
+        or not stat.S_ISDIR(parent_metadata.st_mode)
+        or parent_metadata.st_uid != os.getuid()
+        or parent_metadata.st_gid != os.getgid()
+        or stat.S_IMODE(parent_metadata.st_mode) & 0o077
+    ):
+        raise CanaryError("Newswire prerequisite receipt directory is not private")
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as error:
+        raise CanaryError(
+            "Newswire prerequisite receipt cannot be opened safely"
+        ) from error
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.getuid()
+            or before.st_gid != os.getgid()
+            or stat.S_IMODE(before.st_mode) != 0o600
+            or before.st_nlink != 1
+            or not 0 < before.st_size <= MAX_NEWSWIRE_RECEIPT_BYTES
+        ):
+            raise CanaryError(
+                "Newswire prerequisite receipt is not a private regular file"
+            )
+        chunks: list[bytes] = []
+        remaining = before.st_size
+        while remaining:
+            chunk = os.read(descriptor, min(65536, remaining))
+            if not chunk:
+                raise CanaryError("Newswire prerequisite receipt changed while read")
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        if os.read(descriptor, 1):
+            raise CanaryError("Newswire prerequisite receipt grew while read")
+        after = os.fstat(descriptor)
+        if (
+            before.st_dev,
+            before.st_ino,
+            before.st_size,
+            before.st_mtime_ns,
+        ) != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
+            raise CanaryError("Newswire prerequisite receipt changed while read")
+        raw = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    receipt = _strict_json_bytes(
+        raw,
+        label="Newswire prerequisite receipt",
+        maximum=MAX_NEWSWIRE_RECEIPT_BYTES,
+    )
+    if not isinstance(receipt, dict) or raw != _canonical_json(receipt):
+        raise CanaryError("Newswire prerequisite receipt is not canonical")
+    _require_exact_keys(
+        receipt,
+        {
+            "base_push_run_id",
+            "base_sha",
+            "created_at",
+            "hourly_publication_enabled",
+            "newswire",
+            "publication_contract",
+            "publication_sha",
+            "repository",
+            "schema_version",
+            "situation",
+            "workflow_state",
+        },
+        label="Newswire prerequisite receipt",
+    )
+    newswire = _require_exact_keys(
+        receipt.get("newswire"),
+        {
+            "acquisition_artifact",
+            "canonical_sha256",
+            "commit",
+            "generated_at",
+            "raw_sha256",
+            "run_attempt",
+            "run_id",
+        },
+        label="Newswire prerequisite identity",
+    )
+    situation = _require_exact_keys(
+        receipt.get("situation"),
+        {"canonical_sha256", "generated_at", "inputs", "raw_sha256"},
+        label="situation prerequisite identity",
+    )
+    situation_inputs = _require_exact_keys(
+        situation.get("inputs"),
+        {"newswire_canonical_sha256", "newswire_generated_at"},
+        label="situation Newswire input identity",
+    )
+    publication_contract = _require_exact_keys(
+        receipt.get("publication_contract"),
+        {"run_attempt", "run_id"},
+        label="Newswire publication contract",
+    )
+    acquisition = _require_exact_keys(
+        newswire.get("acquisition_artifact"),
+        {"digest", "id", "name", "size_in_bytes"},
+        label="Newswire acquisition artifact",
+    )
+    commit = _require_exact_keys(
+        newswire.get("commit"),
+        {"blobs", "commit_at", "run_completed_at", "run_started_at"},
+        label="Newswire commit proof",
+    )
+    blobs = _require_exact_keys(
+        commit.get("blobs"),
+        {"newswire", "situation"},
+        label="Newswire changed-blob proof",
+    )
+    for name in ("newswire", "situation"):
+        row = _require_exact_keys(
+            blobs.get(name),
+            {"after_sha", "before_sha"},
+            label=f"Newswire {name} blob proof",
+        )
+        if (
+            not all(
+                isinstance(row.get(key), str) and SHA40.fullmatch(row[key]) is not None
+                for key in ("after_sha", "before_sha")
+            )
+            or row["after_sha"] == row["before_sha"]
+        ):
+            raise CanaryError(f"Newswire {name} blob proof is invalid")
+
+    base_sha = receipt.get("base_sha")
+    publication_sha = receipt.get("publication_sha")
+    newswire_digest = newswire.get("canonical_sha256")
+    situation_digest = situation.get("canonical_sha256")
+    if (
+        receipt.get("schema_version")
+        != "palimpsest.newswire-activation-prerequisite.v1"
+        or receipt.get("repository") != repository
+        or not isinstance(base_sha, str)
+        or SHA40.fullmatch(base_sha) is None
+        or base_sha == expected_sha
+        or publication_sha != expected_sha
+        or receipt.get("hourly_publication_enabled") is not False
+        or receipt.get("workflow_state") != "disabled_manually"
+        or type(receipt.get("base_push_run_id")) is not int
+        or receipt["base_push_run_id"] <= 0
+        or any(
+            type(row.get(key)) is not int or row[key] <= 0
+            for row in (newswire, publication_contract)
+            for key in ("run_id", "run_attempt")
+        )
+        or not isinstance(newswire_digest, str)
+        or SHA256.fullmatch(newswire_digest) is None
+        or not isinstance(newswire.get("raw_sha256"), str)
+        or SHA256.fullmatch(newswire["raw_sha256"]) is None
+        or not isinstance(situation_digest, str)
+        or SHA256.fullmatch(situation_digest) is None
+        or not isinstance(situation.get("raw_sha256"), str)
+        or SHA256.fullmatch(situation["raw_sha256"]) is None
+    ):
+        raise CanaryError("Newswire prerequisite receipt is not exact")
+    if (
+        type(acquisition.get("id")) is not int
+        or acquisition["id"] <= 0
+        or type(acquisition.get("size_in_bytes")) is not int
+        or not 1 <= acquisition["size_in_bytes"] <= 16 * 1024 * 1024
+        or not isinstance(acquisition.get("digest"), str)
+        or SHA256.fullmatch(acquisition["digest"]) is None
+        or acquisition.get("name")
+        != (
+            f"newswire-acquisition-{base_sha}-{newswire['run_id']}"
+            f"-{newswire['run_attempt']}"
+        )
+    ):
+        raise CanaryError("Newswire prerequisite acquisition artifact is invalid")
+    for field in ("commit_at", "run_completed_at", "run_started_at"):
+        _strict_utc(commit.get(field), label=f"Newswire commit proof {field}")
+
+    created_at = _strict_utc(
+        receipt.get("created_at"), label="Newswire prerequisite created_at"
+    )
+    newswire_at = _strict_utc(
+        newswire.get("generated_at"), label="Newswire prerequisite generated_at"
+    )
+    situation_at = _strict_utc(
+        situation.get("generated_at"), label="situation prerequisite generated_at"
+    )
+    now = datetime.now(UTC)
+    for label, observed in (
+        ("receipt", created_at),
+        ("Newswire", newswire_at),
+        ("situation", situation_at),
+    ):
+        age_seconds = (now - observed).total_seconds()
+        if age_seconds < -300 or age_seconds > 2 * 60 * 60:
+            raise CanaryError(f"Newswire prerequisite {label} clock is not fresh")
+    if situation_at < newswire_at or created_at < situation_at:
+        raise CanaryError("Newswire prerequisite clocks are causally inconsistent")
+    expected_inputs = {
+        "newswire_canonical_sha256": newswire_digest,
+        "newswire_generated_at": newswire["generated_at"],
+    }
+    if situation_inputs != expected_inputs:
+        raise CanaryError("situation prerequisite does not bind the exact Newswire")
+
+    return NewswirePrerequisite(
+        receipt_sha256=hashlib.sha256(raw).hexdigest(),
+        publication_sha=expected_sha,
+        newswire_generated_at=str(newswire["generated_at"]),
+        newswire_canonical_sha256=str(newswire_digest),
+        situation_generated_at=str(situation["generated_at"]),
+        situation_canonical_sha256=str(situation_digest),
+    )
+
+
+def _artifact_inventory(
+    deadline: Deadline, repository: str, run_id: int
+) -> list[dict[str, Any]]:
+    value = _strict_json_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/actions/runs/{run_id}/artifacts?per_page=100",
+        ),
+        label=f"run {run_id} artifact inventory",
+    )
+    if not isinstance(value, dict) or not isinstance(value.get("artifacts"), list):
+        raise CanaryError(f"run {run_id} artifact inventory is malformed")
+    return value["artifacts"]
+
+
+def _extract_verified_zip(raw: bytes, destination: Path) -> None:
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(raw))
+    except (OSError, zipfile.BadZipFile) as error:
+        raise CanaryError("GitHub artifact archive is not a valid ZIP") from error
+    with archive:
+        infos = archive.infolist()
+        if not infos or len({item.filename for item in infos}) != len(infos):
+            raise CanaryError("GitHub artifact ZIP inventory is empty or duplicated")
+        total = 0
+        for info in infos:
+            path = Path(info.filename)
+            mode = info.external_attr >> 16
+            if (
+                info.is_dir()
+                or path.is_absolute()
+                or len(path.parts) != 1
+                or path.name in {"", ".", ".."}
+                or stat.S_ISLNK(mode)
+                or info.file_size <= 0
+            ):
+                raise CanaryError("GitHub artifact ZIP contains an unsafe member")
+            total += info.file_size
+            if total > MAX_ARTIFACT_ARCHIVE_BYTES:
+                raise CanaryError("GitHub artifact ZIP expands past its byte ceiling")
+            target = destination / path.name
+            descriptor = os.open(
+                target,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+            )
+            try:
+                with (
+                    archive.open(info, "r") as source,
+                    os.fdopen(descriptor, "wb") as output,
+                ):
+                    descriptor = -1
+                    while True:
+                        chunk = source.read(65536)
+                        if not chunk:
+                            break
+                        output.write(chunk)
+                    output.flush()
+                    os.fsync(output.fileno())
+            finally:
+                if descriptor >= 0:
+                    os.close(descriptor)
+
+
+def _download_verified_artifact(
+    deadline: Deadline,
+    *,
+    repository: str,
+    run_id: int,
+    name: str,
+    destination: Path,
+    expected_id: int | None = None,
+    expected_digest: str | None = None,
+    expected_size: int | None = None,
+) -> dict[str, Any]:
+    matches = [
+        item
+        for item in _artifact_inventory(deadline, repository, run_id)
+        if isinstance(item, dict) and item.get("name") == name
+    ]
+    if len(matches) != 1:
+        raise CanaryError(f"run {run_id} lacks one exact {name} artifact")
+    artifact = matches[0]
+    workflow_run = artifact.get("workflow_run")
+    digest = artifact.get("digest")
+    artifact_id = artifact.get("id")
+    size = artifact.get("size_in_bytes")
+    if (
+        not isinstance(artifact_id, int)
+        or isinstance(artifact_id, bool)
+        or artifact_id < 1
+        or artifact.get("expired") is not False
+        or not isinstance(size, int)
+        or isinstance(size, bool)
+        or not 0 < size <= MAX_ARTIFACT_ARCHIVE_BYTES
+        or not isinstance(digest, str)
+        or not digest.startswith("sha256:")
+        or SHA256.fullmatch(digest.removeprefix("sha256:")) is None
+        or not isinstance(workflow_run, dict)
+        or workflow_run.get("id") != run_id
+        or (expected_id is not None and artifact_id != expected_id)
+        or (
+            expected_digest is not None
+            and digest.removeprefix("sha256:") != expected_digest
+        )
+        or (expected_size is not None and size != expected_size)
+    ):
+        raise CanaryError(f"{name} artifact metadata is not exact")
+    raw = _bounded_bytes(
+        (
+            "gh",
+            "api",
+            f"repos/{repository}/actions/artifacts/{artifact_id}/zip",
+        ),
+        timeout=deadline.command_timeout(),
+        label=f"download verified {name} artifact archive",
+        maximum=MAX_ARTIFACT_ARCHIVE_BYTES,
+    )
+    if len(raw) != size or hashlib.sha256(raw).hexdigest() != digest.removeprefix(
+        "sha256:"
+    ):
+        raise CanaryError(f"{name} archive bytes do not match GitHub metadata")
+    destination.mkdir(mode=0o700)
+    _extract_verified_zip(raw, destination)
+    return {
+        "artifact_digest": digest.removeprefix("sha256:"),
+        "artifact_id": artifact_id,
+        "name": name,
+        "size_in_bytes": size,
+    }
+
+
+def _validate_controller_outcome(
+    raw: bytes,
+    *,
+    repository: str,
+    run_id: int,
+    run_attempt: int,
+    event: str,
+    expected_sha: str,
+    activation_canary: bool,
+    gate_enabled: bool,
+) -> dict[str, Any]:
+    value = _strict_json_bytes(
+        raw, label="Railway controller outcome", maximum=MAX_JSON_BYTES
+    )
+    if raw != _canonical_json(value):
+        raise CanaryError("Railway controller outcome is not canonical")
+    outcome = _require_exact_keys(
+        value,
+        {
+            "activation_canary",
+            "controller_run_attempt",
+            "controller_run_id",
+            "event",
+            "force",
+            "gate_enabled",
+            "head_sha",
+            "live_sha",
+            "main_sha",
+            "recorded_at",
+            "repository",
+            "request_artifact_digest",
+            "request_artifact_id",
+            "request_artifact_name",
+            "request_artifact_size",
+            "request_sha256",
+            "requested_at",
+            "result",
+            "schema_version",
+            "workflow",
+            "workflow_name",
+        },
+        label="Railway controller outcome",
+    )
+    _strict_utc(outcome["recorded_at"], label="controller outcome recorded_at")
+    if (
+        outcome["schema_version"]
+        != "palimpsest.railway-publication-controller-outcome.v1"
+        or outcome["repository"] != repository
+        or outcome["workflow"] != ".github/workflows/railway-publication-controller.yml"
+        or outcome["workflow_name"] != CONTROLLER_NAME
+        or outcome["controller_run_id"] != run_id
+        or outcome["controller_run_attempt"] != run_attempt
+        or outcome["event"] != event
+        or outcome["head_sha"] != expected_sha
+        or outcome["main_sha"] != expected_sha
+        or not isinstance(outcome["live_sha"], str)
+        or SHA40.fullmatch(outcome["live_sha"]) is None
+        or outcome["activation_canary"] is not activation_canary
+        or outcome["force"] is not False
+        or outcome["gate_enabled"] is not gate_enabled
+        or outcome["result"] not in {"dispatched", "no_change"}
+    ):
+        raise CanaryError("Railway controller outcome authority is invalid")
+    request_fields = (
+        "request_artifact_digest",
+        "request_artifact_id",
+        "request_artifact_name",
+        "request_artifact_size",
+        "request_sha256",
+        "requested_at",
+    )
+    if outcome["result"] == "no_change":
+        if outcome["live_sha"] != expected_sha or any(
+            outcome[field] is not None for field in request_fields
+        ):
+            raise CanaryError("controller no-change outcome is not exact")
+    elif (
+        outcome["live_sha"] == expected_sha
+        or not isinstance(outcome["request_artifact_id"], int)
+        or isinstance(outcome["request_artifact_id"], bool)
+        or outcome["request_artifact_id"] < 1
+        or not isinstance(outcome["request_artifact_size"], int)
+        or isinstance(outcome["request_artifact_size"], bool)
+        or outcome["request_artifact_size"] < 1
+        or outcome["request_artifact_name"]
+        != f"railway-publication-request-{run_id}-{run_attempt}"
+        or not isinstance(outcome["request_artifact_digest"], str)
+        or SHA256.fullmatch(outcome["request_artifact_digest"]) is None
+        or not isinstance(outcome["request_sha256"], str)
+        or SHA256.fullmatch(outcome["request_sha256"]) is None
+        or not isinstance(outcome["requested_at"], str)
+    ):
+        raise CanaryError("controller dispatched outcome is not exact")
+    if outcome["requested_at"] is not None:
+        _strict_utc(outcome["requested_at"], label="controller requested_at")
+    return outcome
+
+
+def _validate_controller_request(
+    raw: bytes,
+    *,
+    repository: str,
+    controller_run_id: int,
+    controller_run_attempt: int,
+    expected_sha: str,
+    activation_canary: bool,
+    expected_requested_at: str,
+) -> dict[str, Any]:
+    value = _strict_json_bytes(
+        raw, label="Railway controller request", maximum=MAX_JSON_BYTES
+    )
+    if raw != _canonical_json(value):
+        raise CanaryError("Railway controller request is not canonical")
+    request = _require_exact_keys(
+        value,
+        {
+            "activation_canary",
+            "controller_repository",
+            "controller_run_attempt",
+            "controller_run_id",
+            "controller_workflow_path",
+            "deploy_railway",
+            "requested_at",
+            "schema_version",
+            "scope",
+            "sha",
+        },
+        label="Railway controller request",
+    )
+    expected = {
+        "activation_canary": activation_canary,
+        "controller_repository": repository,
+        "controller_run_attempt": controller_run_attempt,
+        "controller_run_id": controller_run_id,
+        "controller_workflow_path": ".github/workflows/railway-publication-controller.yml",
+        "deploy_railway": True,
+        "requested_at": expected_requested_at,
+        "schema_version": "palimpsest.railway-publication-request.v2",
+        "scope": "complete",
+        "sha": expected_sha,
+    }
+    if request != expected:
+        raise CanaryError("Railway controller request semantics are invalid")
+    _strict_utc(request["requested_at"], label="controller request requested_at")
+    return request
+
+
+def _validate_artifact_receipts(
+    *,
+    artifact_directory: Path,
+    repository: str,
+    run_id: int,
+    run_attempt: int,
+    expected_sha: str,
+    controller_dispatch: dict[str, Any],
+) -> tuple[str, str, str]:
+    expected_files = {
+        "candidate-pages-rights-release-receipt.json",
+        "candidate-railway-release.json",
+        "controller-provenance.json",
+        "pages-mcp-rights-live-receipt.json",
+        "previous-release-identity.json",
+        "railway-continuous-transaction.json",
+        "railway-continuous-verification.json",
+    }
+    entries = list(artifact_directory.iterdir())
+    if {item.name for item in entries} != expected_files or len(entries) != len(
+        expected_files
+    ):
+        raise CanaryError("Railway release artifact inventory is not exact")
+    for item in entries:
+        metadata = item.lstat()
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or stat.S_ISLNK(metadata.st_mode)
+            or metadata.st_nlink != 1
+            or not 0 < metadata.st_size <= MAX_JSON_BYTES
+        ):
+            raise CanaryError("Railway release artifact contains an unsafe file")
+    transaction_path = artifact_directory / "railway-continuous-transaction.json"
+    verification_path = artifact_directory / "railway-continuous-verification.json"
+    transaction_raw, transaction = _read_receipt(
+        transaction_path, label="Railway transaction receipt"
+    )
+    verification_raw, verification = _read_receipt(
+        verification_path, label="Railway verification receipt"
+    )
+
+    _require_exact_keys(
+        transaction,
+        {
+            "candidate",
+            "deadline",
+            "failure_reason",
+            "pages_rights_receipt_sha256",
+            "phase",
+            "previous_release",
+            "publication_sha",
+            "railway",
+            "recorded_at",
+            "repository",
+            "rights_admission_epoch",
+            "rollback",
+            "run_attempt",
+            "run_id",
+            "schema_version",
+            "signal",
+            "status",
+            "verification",
+            "workflow",
+        },
+        label="Railway transaction receipt",
+    )
+    deadline = _require_exact_keys(
+        transaction.get("deadline"),
+        {"mutation_deadline_epoch", "started_epoch", "transaction_deadline_epoch"},
+        label="Railway transaction deadline",
+    )
+    railway = _require_exact_keys(
+        transaction.get("railway"),
+        {
+            "candidate_observed_status",
+            "deployment_mode",
+            "environment_id",
+            "exclusive_writer_ack",
+            "new_deployment_id",
+            "new_deployment_reason",
+            "new_image_digest",
+            "previous_deployment_id",
+            "previous_deployment_reason",
+            "previous_image_digest",
+            "project_id",
+            "service_id",
+            "submission_state",
+            "terminal_status",
+            "upload_exit_code",
+            "upload_message",
+            "upload_reported_deployment_id",
+        },
+        label="Railway transaction topology",
+    )
+    _require_exact_keys(
+        transaction.get("previous_release"),
+        {"manifest_sha256", "source_commit", "tree_sha256"},
+        label="Railway previous release",
+    )
+    candidate = _require_exact_keys(
+        transaction.get("candidate"),
+        {"manifest_sha256", "tree_sha256"},
+        label="Railway candidate release",
+    )
+    transaction_verification = _require_exact_keys(
+        transaction.get("verification"),
+        {"mcp_rights_smoke", "receipt_sha256"},
+        label="Railway transaction verification",
+    )
+    rollback = _require_exact_keys(
+        transaction.get("rollback"),
+        {
+            "restored_deployment_id",
+            "restored_image_digest",
+            "restored_reason",
+            "result",
+            "target_deployment_id",
+        },
+        label="Railway rollback result",
+    )
+    verification_sha256 = hashlib.sha256(verification_raw).hexdigest()
+    expected_workflow = f"{repository}/.github/workflows/tests.yml@refs/heads/main"
+    transaction_checks = (
+        transaction.get("schema_version")
+        == "palimpsest.railway-continuous-transaction.v1",
+        transaction.get("status") in {"deployed", "recovered_existing"},
+        transaction.get("phase") == "complete",
+        transaction.get("failure_reason") is None,
+        transaction.get("repository") == repository,
+        transaction.get("workflow") == expected_workflow,
+        transaction.get("run_id") == str(run_id),
+        transaction.get("run_attempt") == str(run_attempt),
+        transaction.get("publication_sha") == expected_sha,
+        type(transaction.get("rights_admission_epoch")) is int,
+        isinstance(transaction.get("pages_rights_receipt_sha256"), str)
+        and SHA256.fullmatch(transaction["pages_rights_receipt_sha256"]) is not None,
+        all(type(deadline.get(key)) is int and deadline[key] > 0 for key in deadline),
+        railway.get("project_id") == RAILWAY_PROJECT_ID,
+        railway.get("environment_id") == RAILWAY_ENVIRONMENT_ID,
+        railway.get("service_id") == RAILWAY_SERVICE_ID,
+        railway.get("exclusive_writer_ack") == EXCLUSIVE_WRITER_ACK,
+        railway.get("terminal_status") == "SUCCESS",
+        isinstance(railway.get("new_deployment_id"), str)
+        and UUID.fullmatch(railway["new_deployment_id"]) is not None,
+        isinstance(railway.get("new_image_digest"), str)
+        and re.fullmatch(r"sha256:[0-9a-f]{64}", railway["new_image_digest"])
+        is not None,
+        isinstance(candidate.get("tree_sha256"), str)
+        and SHA256.fullmatch(candidate["tree_sha256"]) is not None,
+        isinstance(candidate.get("manifest_sha256"), str)
+        and SHA256.fullmatch(candidate["manifest_sha256"]) is not None,
+        transaction_verification.get("mcp_rights_smoke") == "verified",
+        transaction_verification.get("receipt_sha256") == verification_sha256,
+        rollback.get("result") == "not_required",
+        all(rollback.get(key) is None for key in rollback if key != "result"),
+        transaction.get("signal") is None,
+    )
+    if not all(transaction_checks):
+        raise CanaryError("Railway transaction receipt is not exact complete evidence")
+    if (
+        transaction["status"] == "deployed"
+        and railway.get("deployment_mode") != "uploaded"
+    ):
+        raise CanaryError("deployed transaction did not use the exact upload mode")
+    if (
+        transaction["status"] == "recovered_existing"
+        and railway.get("deployment_mode") != "recovered_existing"
+    ):
+        raise CanaryError("recovered transaction did not use the exact recovery mode")
+
+    _require_exact_keys(
+        verification,
+        {
+            "deployment",
+            "live",
+            "preflight",
+            "release",
+            "schema_version",
+            "status",
+            "topology",
+            "verification_policy",
+            "verified_at",
+        },
+        label="Railway verification receipt",
+    )
+    preflight = _require_exact_keys(
+        verification.get("preflight"),
+        {
+            "checkout_source_commit",
+            "current_main_source_commit",
+            "expected_source_commit",
+            "worktree_clean",
+        },
+        label="Railway verification preflight",
+    )
+    release = _require_exact_keys(
+        verification.get("release"),
+        {
+            "built_at",
+            "manifest_sha256",
+            "schema_version",
+            "source_commit",
+            "tree_sha256",
+        },
+        label="Railway verification release",
+    )
+    deployment = _require_exact_keys(
+        verification.get("deployment"),
+        {"created_at", "deployment_id", "image_digest", "reason", "status"},
+        label="Railway verified deployment",
+    )
+    live = _require_exact_keys(
+        verification.get("live"),
+        {
+            "critical_inventory_byte_identical",
+            "manifest_byte_identical",
+            "provider_origin",
+            "public_origin",
+            "public_origin_verified",
+        },
+        label="Railway live verification",
+    )
+    if (
+        verification.get("schema_version")
+        != "palimpsest.railway-continuous-release-receipt.v1"
+        or verification.get("status") != "verified"
+        or preflight
+        != {
+            "checkout_source_commit": expected_sha,
+            "current_main_source_commit": expected_sha,
+            "expected_source_commit": expected_sha,
+            "worktree_clean": True,
+        }
+        or release.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or release.get("source_commit") != expected_sha
+        or candidate.get("manifest_sha256") != release.get("manifest_sha256")
+        or candidate.get("tree_sha256") != release.get("tree_sha256")
+        or deployment.get("status") != "SUCCESS"
+        or deployment.get("deployment_id") != railway.get("new_deployment_id")
+        or deployment.get("image_digest") != railway.get("new_image_digest")
+        or live.get("public_origin_verified") is not True
+        or live.get("manifest_byte_identical") is not True
+        or live.get("critical_inventory_byte_identical") is not True
+    ):
+        raise CanaryError("Railway verification receipt is not exact live evidence")
+    for key, expected_origin in (
+        ("provider_origin", PROVIDER_ORIGIN),
+        ("public_origin", PUBLIC_ORIGIN),
+    ):
+        origin = _require_exact_keys(
+            live.get(key),
+            {"base_url", "critical_files", "health", "release_manifest"},
+            label=f"Railway {key}",
+        )
+        manifest = _require_exact_keys(
+            origin.get("release_manifest"),
+            {
+                "built_at",
+                "cache_control",
+                "http_status",
+                "manifest_sha256",
+                "path",
+                "source_commit",
+                "tree_sha256",
+            },
+            label=f"Railway {key} manifest",
+        )
+        if (
+            origin.get("base_url") != expected_origin
+            or manifest.get("path") != "/railway-release.json"
+            or manifest.get("http_status") != 200
+            or manifest.get("cache_control") != "no-store"
+            or manifest.get("source_commit") != expected_sha
+            or manifest.get("tree_sha256") != release.get("tree_sha256")
+            or manifest.get("manifest_sha256") != release.get("manifest_sha256")
+        ):
+            raise CanaryError(f"Railway {key} manifest evidence is not exact")
+
+    candidate_manifest_raw, candidate_manifest = _read_bounded_json(
+        artifact_directory / "candidate-railway-release.json",
+        label="candidate Railway release manifest",
+    )
+    if (
+        hashlib.sha256(candidate_manifest_raw).hexdigest()
+        != candidate["manifest_sha256"]
+        or candidate_manifest.get("source_commit") != expected_sha
+        or candidate_manifest.get("tree_sha256") != candidate["tree_sha256"]
+    ):
+        raise CanaryError("candidate Railway manifest is not transaction-bound")
+    pages_raw, _pages = _read_bounded_json(
+        artifact_directory / "candidate-pages-rights-release-receipt.json",
+        label="candidate Pages rights receipt",
+    )
+    if (
+        hashlib.sha256(pages_raw).hexdigest()
+        != transaction["pages_rights_receipt_sha256"]
+    ):
+        raise CanaryError("candidate Pages receipt is not transaction-bound")
+    _read_bounded_json(
+        artifact_directory / "previous-release-identity.json",
+        label="previous Railway release identity",
+    )
+    _read_bounded_json(
+        artifact_directory / "pages-mcp-rights-live-receipt.json",
+        label="live Pages MCP rights receipt",
+    )
+    _provenance_raw, provenance = _read_receipt(
+        artifact_directory / "controller-provenance.json",
+        label="Railway controller provenance",
+    )
+    _require_exact_keys(
+        provenance,
+        {
+            "dispatch",
+            "event_name",
+            "repository",
+            "schema_version",
+            "workflow_ref",
+            "workflow_run_attempt",
+            "workflow_run_id",
+        },
+        label="Railway controller provenance",
+    )
+    expected_provenance_dispatch = {
+        key: controller_dispatch[key]
+        for key in (
+            "controller_artifact_digest",
+            "controller_artifact_id",
+            "controller_request_sha256",
+            "controller_run_attempt",
+            "controller_run_id",
+            "deploy_railway",
+            "requested_at",
+            "scope",
+            "sha",
+        )
+    }
+    if (
+        provenance["schema_version"] != "palimpsest.railway-controller-provenance.v1"
+        or provenance["repository"] != repository
+        or provenance["workflow_ref"] != expected_workflow
+        or provenance["workflow_run_id"] != str(run_id)
+        or provenance["workflow_run_attempt"] != str(run_attempt)
+        or provenance["event_name"] != "repository_dispatch"
+        or provenance["dispatch"] != expected_provenance_dispatch
+    ):
+        raise CanaryError("Railway controller provenance is not causal authority")
+
+    return (
+        hashlib.sha256(transaction_raw).hexdigest(),
+        verification_sha256,
+        str(release["manifest_sha256"]),
+    )
+
+
+def _fetch_live_json(
+    deadline: Deadline,
+    *,
+    origin: str,
+    relative_path: str,
+    destination: Path,
+    nonce: str,
+    label: str,
+) -> bytes:
+    if relative_path not in {
+        "railway-release.json",
+        FRESHNESS_ATTESTATION_PATH,
+    }:
+        raise CanaryError("refusing an unrecognized Railway live-proof path")
+    destination.unlink(missing_ok=True)
+    url = f"{origin}/{relative_path}?activation_canary={nonce}"
+    timeout_seconds = max(1, min(30, int(deadline.require())))
+    response = _bounded_command(
+        (
+            "curl",
+            "--disable",
+            "--fail",
+            "--silent",
+            "--show-error",
+            "--proto",
+            "=https",
+            "--tlsv1.2",
+            "--connect-timeout",
+            "10",
+            "--max-time",
+            str(timeout_seconds),
+            "--max-filesize",
+            str(MAX_MANIFEST_BYTES),
+            "--header",
+            "Accept: application/json",
+            "--header",
+            "Accept-Encoding: identity",
+            "--header",
+            "Cache-Control: no-cache",
+            "--output",
+            str(destination),
+            "--write-out",
+            "%{http_code}",
+            url,
+        ),
+        timeout=deadline.command_timeout(timeout_seconds + 5),
+        label=f"canonical Railway {label} fetch",
+    )
+    if _exact_text(response, label=f"Railway {label} HTTP status") != "200":
+        raise CanaryError(f"Railway {label} endpoint did not return HTTP 200")
+    try:
+        metadata = destination.lstat()
+    except OSError as error:
+        raise CanaryError(f"Railway {label} download is unavailable") from error
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or stat.S_ISLNK(metadata.st_mode)
+        or metadata.st_nlink != 1
+        or not 0 < metadata.st_size <= MAX_MANIFEST_BYTES
+    ):
+        raise CanaryError(f"Railway {label} download is not a bounded regular file")
+    return destination.read_bytes()
+
+
+def _validate_freshness_attestation(
+    raw: bytes,
+    *,
+    expected_sha: str,
+    newswire: NewswirePrerequisite,
+) -> str:
+    document = _strict_json_bytes(
+        raw,
+        label="publication freshness attestation",
+        maximum=MAX_MANIFEST_BYTES,
+    )
+    if not isinstance(document, dict):
+        raise CanaryError("publication freshness attestation is not an object")
+    canonical = (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
+    if raw != canonical:
+        raise CanaryError("publication freshness attestation is not canonical")
+    _require_exact_keys(
+        document,
+        {
+            "artifacts",
+            "attested_at",
+            "limitations",
+            "mode",
+            "publication_allowed",
+            "publication_sha",
+            "rights_status",
+            "schema_version",
+        },
+        label="publication freshness attestation",
+    )
+    artifacts = _require_exact_keys(
+        document.get("artifacts"),
+        {"china_situation", "newswire"},
+        label="publication freshness artifacts",
+    )
+    newswire_row = _require_exact_keys(
+        artifacts.get("newswire"),
+        {"canonical_sha256", "generated_at", "path", "schema_version"},
+        label="attested Newswire identity",
+    )
+    situation_row = _require_exact_keys(
+        artifacts.get("china_situation"),
+        {
+            "canonical_sha256",
+            "generated_at",
+            "inputs",
+            "path",
+            "schema_version",
+        },
+        label="attested situation identity",
+    )
+    situation_inputs = _require_exact_keys(
+        situation_row.get("inputs"),
+        {"newswire_canonical_sha256", "newswire_generated_at"},
+        label="attested situation inputs",
+    )
+    rights_status = _require_exact_keys(
+        document.get("rights_status"),
+        {"bytes", "path", "sha256"},
+        label="attested publication rights status",
+    )
+    _strict_utc(document.get("attested_at"), label="freshness attested_at")
+    _strict_utc(newswire_row.get("generated_at"), label="attested Newswire clock")
+    _strict_utc(situation_row.get("generated_at"), label="attested situation clock")
+    expected_newswire = {
+        "canonical_sha256": newswire.newswire_canonical_sha256,
+        "generated_at": newswire.newswire_generated_at,
+        "path": "readings/newswire-latest.json",
+        "schema_version": "palimpsest-newswire.v1",
+    }
+    expected_inputs = {
+        "newswire_canonical_sha256": newswire.newswire_canonical_sha256,
+        "newswire_generated_at": newswire.newswire_generated_at,
+    }
+    if (
+        document.get("schema_version")
+        != "palimpsest.publication-freshness-attestation.v1"
+        or document.get("publication_sha") != expected_sha
+        or document.get("mode") != "rights-suppressed"
+        or document.get("publication_allowed") is not False
+        or newswire_row != expected_newswire
+        or situation_row.get("path") != "readings/china-situation-latest.json"
+        or situation_row.get("schema_version") != "palimpsest-china-situation.v1"
+        or situation_row.get("generated_at") != newswire.situation_generated_at
+        or situation_row.get("canonical_sha256") != newswire.situation_canonical_sha256
+        or situation_inputs != expected_inputs
+        or rights_status.get("path") != "readings/china-publication-rights-latest.json"
+        or not isinstance(rights_status.get("sha256"), str)
+        or SHA256.fullmatch(rights_status["sha256"]) is None
+        or type(rights_status.get("bytes")) is not int
+        or rights_status["bytes"] <= 0
+        or document.get("limitations") != list(FRESHNESS_ATTESTATION_LIMITATIONS)
+    ):
+        raise CanaryError(
+            "publication freshness attestation is not exact prerequisite evidence"
+        )
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _validate_live_manifest(
+    raw: bytes,
+    *,
+    label: str,
+    expected_sha: str,
+    expected_manifest_sha256: str,
+    freshness_raw: bytes,
+) -> str:
+    manifest = _strict_json_bytes(
+        raw, label=f"served {label} Railway manifest", maximum=MAX_MANIFEST_BYTES
+    )
+    if not isinstance(manifest, dict):
+        raise CanaryError(f"served {label} Railway manifest is not an object")
+    critical_files = manifest.get("critical_files")
+    if not isinstance(critical_files, dict):
+        raise CanaryError(f"served {label} Railway critical inventory is missing")
+    attestation_row = _require_exact_keys(
+        critical_files.get(FRESHNESS_ATTESTATION_PATH),
+        {"bytes", "sha256"},
+        label=f"served {label} freshness critical identity",
+    )
+    checks = (
+        manifest.get("schema_version") == "palimpsest.railway-static-release.v1",
+        manifest.get("source_commit") == expected_sha,
+        isinstance(manifest.get("tree_sha256"), str)
+        and SHA256.fullmatch(manifest["tree_sha256"]) is not None,
+        manifest.get("deployment_source") == "local-git-archive",
+        manifest.get("github_required") is False,
+        manifest.get("state") == "artifact_ready",
+        attestation_row.get("sha256") == hashlib.sha256(freshness_raw).hexdigest(),
+        attestation_row.get("bytes") == len(freshness_raw),
+    )
+    digest = hashlib.sha256(raw).hexdigest()
+    if not all(checks) or digest != expected_manifest_sha256:
+        raise CanaryError(f"served {label} manifest is not the exact artifact release")
+    return digest
+
+
+def _validate_live_release_proof_once(
+    deadline: Deadline,
+    *,
+    temporary_directory: Path,
+    expected_sha: str,
+    controller_run_id: int,
+    release_run_id: int,
+    expected_manifest_sha256: str,
+    newswire: NewswirePrerequisite,
+    attempt: int,
+) -> tuple[str, str]:
+    nonce = f"{controller_run_id}-{release_run_id}-{attempt}"
+    provider_attestation = _fetch_live_json(
+        deadline,
+        origin=PROVIDER_ORIGIN,
+        relative_path=FRESHNESS_ATTESTATION_PATH,
+        destination=temporary_directory / "provider-freshness-attestation.json",
+        nonce=nonce,
+        label="freshness attestation",
+    )
+    public_attestation = _fetch_live_json(
+        deadline,
+        origin=PUBLIC_ORIGIN,
+        relative_path=FRESHNESS_ATTESTATION_PATH,
+        destination=temporary_directory / "public-freshness-attestation.json",
+        nonce=nonce,
+        label="freshness attestation",
+    )
+    if provider_attestation != public_attestation:
+        raise CanaryError(
+            "provider and www freshness attestations are not byte-identical"
+        )
+    attestation_digest = _validate_freshness_attestation(
+        provider_attestation,
+        expected_sha=expected_sha,
+        newswire=newswire,
+    )
+    provider_manifest = _fetch_live_json(
+        deadline,
+        origin=PROVIDER_ORIGIN,
+        relative_path="railway-release.json",
+        destination=temporary_directory / "provider-railway-release.json",
+        nonce=nonce,
+        label="release manifest",
+    )
+    public_manifest = _fetch_live_json(
+        deadline,
+        origin=PUBLIC_ORIGIN,
+        relative_path="railway-release.json",
+        destination=temporary_directory / "public-railway-release.json",
+        nonce=nonce,
+        label="release manifest",
+    )
+    if provider_manifest != public_manifest:
+        raise CanaryError("provider and www Railway manifests are not byte-identical")
+    provider_digest = _validate_live_manifest(
+        provider_manifest,
+        label="provider",
+        expected_sha=expected_sha,
+        expected_manifest_sha256=expected_manifest_sha256,
+        freshness_raw=provider_attestation,
+    )
+    public_digest = _validate_live_manifest(
+        public_manifest,
+        label="www",
+        expected_sha=expected_sha,
+        expected_manifest_sha256=expected_manifest_sha256,
+        freshness_raw=public_attestation,
+    )
+    if provider_digest != public_digest:
+        raise CanaryError("provider and www manifest digests differ")
+    return provider_digest, attestation_digest
+
+
+def _validate_live_release_proof(
+    deadline: Deadline,
+    **arguments: Any,
+) -> tuple[str, str]:
+    last_error: CanaryError | None = None
+    for attempt in range(1, 13):
+        try:
+            return _validate_live_release_proof_once(
+                deadline,
+                attempt=attempt,
+                **arguments,
+            )
+        except CanaryError as error:
+            last_error = error
+            if attempt < 12:
+                deadline.sleep(5)
+    assert last_error is not None
+    raise CanaryError(
+        "Railway live proof did not converge after 12 bounded attempts"
+    ) from last_error
+
+
+def _probe_live_manifest_digest(
+    deadline: Deadline, *, temporary_directory: Path, controller_run_id: int
+) -> str:
+    nonce = f"{controller_run_id}-no-change-probe"
+    provider = _fetch_live_json(
+        deadline,
+        origin=PROVIDER_ORIGIN,
+        relative_path="railway-release.json",
+        destination=temporary_directory / "provider-no-change-probe.json",
+        nonce=nonce,
+        label="release manifest",
+    )
+    public = _fetch_live_json(
+        deadline,
+        origin=PUBLIC_ORIGIN,
+        relative_path="railway-release.json",
+        destination=temporary_directory / "public-no-change-probe.json",
+        nonce=nonce,
+        label="release manifest",
+    )
+    if provider != public:
+        raise CanaryError("no-change provider and www manifests are not identical")
+    return hashlib.sha256(provider).hexdigest()
+
+
+def _prepare_output_path(text: str) -> Path:
+    path = Path(text)
+    if not path.is_absolute() or path.name in {"", ".", ".."}:
+        raise CanaryError("ACTIVATION_CANARY_RECEIPT must be an absolute file path")
+    try:
+        parent = path.parent
+        parent_metadata = parent.lstat()
+    except OSError as error:
+        raise CanaryError(
+            "activation-canary receipt directory is unavailable"
+        ) from error
+    if (
+        stat.S_ISLNK(parent_metadata.st_mode)
+        or not stat.S_ISDIR(parent_metadata.st_mode)
+        or parent_metadata.st_uid != os.getuid()
+        or parent_metadata.st_mode & 0o022
+    ):
+        raise CanaryError(
+            "activation-canary receipt directory is not private and owned"
+        )
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return path
+    except OSError as error:
+        raise CanaryError(
+            "activation-canary receipt path cannot be inspected"
+        ) from error
+    raise CanaryError("refusing to overwrite an existing activation-canary receipt")
+
+
+def _write_final_receipt(
+    path: Path,
+    document: dict[str, Any],
+    *,
+    run_state: RunState,
+) -> str:
+    payload = _canonical_json(document)
+    if len(payload) > 128 * 1024:
+        raise CanaryError("activation-canary receipt exceeds its byte ceiling")
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
+    temporary = Path(temporary_name)
+    linked = False
+    previous_signal_mask: set[signal.Signals] | None = None
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fchmod(handle.fileno(), stat.S_IRUSR)
+            os.fsync(handle.fileno())
+        try:
+            previous_signal_mask = signal.pthread_sigmask(
+                signal.SIG_BLOCK,
+                {signal.SIGHUP, signal.SIGINT, signal.SIGTERM},
+            )
+            try:
+                os.link(temporary, path, follow_symlinks=False)
+                linked = True
+                run_state.receipt_committed = True
+            except FileExistsError as error:
+                raise CanaryError(
+                    "activation-canary receipt destination appeared concurrently"
+                ) from error
+            temporary.unlink()
+            directory_descriptor = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_descriptor)
+            finally:
+                os.close(directory_descriptor)
+        finally:
+            if previous_signal_mask is not None:
+                signal.pthread_sigmask(signal.SIG_SETMASK, previous_signal_mask)
+    except BaseException:
+        if linked:
+            try:
+                path.unlink()
+            except FileNotFoundError:
+                pass
+            finally:
+                run_state.receipt_committed = False
+        raise
+    finally:
+        temporary.unlink(missing_ok=True)
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _ack_state_from_inventory(raw: str) -> str:
+    value = _strict_json_text(raw, label="protected environment variables")
+    if not isinstance(value, list):
+        return "unproved"
+    matches: list[Any] = []
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"name", "value"}:
+            return "unproved"
+        if item.get("name") == "RAILWAY_EXCLUSIVE_WRITER_ACK":
+            matches.append(item.get("value"))
+    if not matches:
+        return "absent"
+    if matches == [EXCLUSIVE_WRITER_ACK]:
+        return "exact"
+    return "unexpected"
+
+
+def _prove_ack_absent(raw: str) -> bool:
+    value = _strict_json_text(raw, label="protected environment variable names")
+    if not isinstance(value, list):
+        return False
+    for item in value:
+        if not isinstance(item, dict) or set(item) != {"name"}:
+            return False
+        if item.get("name") == "RAILWAY_EXCLUSIVE_WRITER_ACK":
+            return False
+    return True
+
+
+def _failure_cleanup(repository: str, release_run_id: int | None) -> bool:
+    cleanup_ok = True
+    try:
+        _cleanup_gh(
+            "variable",
+            "set",
+            "RAILWAY_PUBLICATION_ENABLED",
+            "--body",
+            "false",
+            "--repo",
+            repository,
+        )
+        closed = _exact_text(
+            _cleanup_gh(
+                "variable",
+                "get",
+                "RAILWAY_PUBLICATION_ENABLED",
+                "--repo",
+                repository,
+            ),
+            label="cleanup Railway hourly gate",
+        )
+        if closed != "false":
+            raise CanaryError("cleanup did not prove the hourly gate closed")
+    except CanaryError as error:
+        print(str(error), file=sys.stderr)
+        cleanup_ok = False
+
+    try:
+        state = _ack_state_from_inventory(
+            _cleanup_gh(
+                "variable",
+                "list",
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+                "--json",
+                "name,value",
+            )
+        )
+        if state == "exact":
+            _cleanup_gh(
+                "variable",
+                "delete",
+                "RAILWAY_EXCLUSIVE_WRITER_ACK",
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+            )
+        elif state != "absent":
+            raise CanaryError(
+                "refusing to delete an unfamiliar Railway writer acknowledgement"
+            )
+        if not _prove_ack_absent(
+            _cleanup_gh(
+                "variable",
+                "list",
+                "--repo",
+                repository,
+                "--env",
+                PRODUCTION_ENVIRONMENT,
+                "--json",
+                "name",
+            )
+        ):
+            raise CanaryError("cleanup did not prove the writer acknowledgement absent")
+    except CanaryError as error:
+        print(str(error), file=sys.stderr)
+        cleanup_ok = False
+
+    if release_run_id is not None:
+        print(
+            f"Reconcile downstream Railway release run {release_run_id}; "
+            "cleanup did not cancel it.",
+            file=sys.stderr,
+        )
+    return cleanup_ok
+
+
+def _execute(
+    *,
+    repository: str,
+    expected_sha: str,
+    newswire_receipt_path: Path,
+    newswire: NewswirePrerequisite,
+    temporary_directory: Path,
+    run_state: RunState,
+) -> tuple[dict[str, Any], int]:
+    deadline = Deadline.start(APPROVAL_BUDGET_SECONDS)
+    _gh(deadline, "auth", "status", "--hostname", "github.com")
+    _require_gh_transport(deadline)
+    main_sha = _exact_text(
+        _gh(
+            deadline,
+            "api",
+            f"repos/{repository}/commits/main",
+            "--jq",
+            ".sha",
+        ),
+        label="public main SHA",
+    )
+    if main_sha != expected_sha:
+        raise CanaryError("public main is not the exact reviewed canary SHA")
+    if (
+        _load_newswire_prerequisite(
+            newswire_receipt_path,
+            repository=repository,
+            expected_sha=expected_sha,
+        )
+        != newswire
+    ):
+        raise CanaryError("Newswire prerequisite receipt changed before dispatch")
+    _require_closed_authority(deadline, repository)
+
+    controller_before = _run_list(
+        deadline,
+        repository,
+        CONTROLLER_WORKFLOW,
+        "workflow_dispatch",
+        release=False,
+    )
+    release_before = _run_list(
+        deadline,
+        repository,
+        RELEASE_WORKFLOW,
+        "repository_dispatch",
+        release=True,
+    )
+    _gh(
+        deadline,
+        "workflow",
+        "run",
+        CONTROLLER_WORKFLOW,
+        "--repo",
+        repository,
+        "--ref",
+        "main",
+        "-f",
+        "activation_canary=true",
+        "-f",
+        "force=false",
+    )
+    if _hourly_gate(deadline, repository) != "false":
+        raise CanaryError("the controller dispatch opened the hourly publication gate")
+
+    controller_run_id = _poll_new_run(
+        deadline,
+        repository=repository,
+        workflow=CONTROLLER_WORKFLOW,
+        event="workflow_dispatch",
+        before=controller_before,
+        expected_sha=expected_sha,
+        expected_workflow_name=None,
+        label="manual controller",
+    )
+    _wait_for_success(
+        deadline,
+        repository=repository,
+        run_id=controller_run_id,
+        event="workflow_dispatch",
+        workflow_name=CONTROLLER_NAME,
+        expected_sha=expected_sha,
+    )
+    controller_run_attempt = _run_attempt(deadline, repository, controller_run_id)
+    if _hourly_gate(deadline, repository) != "false":
+        raise CanaryError("the controller run opened the hourly publication gate")
+
+    outcome_directory = temporary_directory / "controller-outcome"
+    outcome_artifact = _download_verified_artifact(
+        deadline,
+        repository=repository,
+        run_id=controller_run_id,
+        name=(
+            f"railway-publication-controller-outcome-{controller_run_id}-"
+            f"{controller_run_attempt}"
+        ),
+        destination=outcome_directory,
+    )
+    outcome_entries = list(outcome_directory.iterdir())
+    if (
+        len(outcome_entries) != 1
+        or outcome_entries[0].name != "railway-publication-controller-outcome.json"
+    ):
+        raise CanaryError("controller outcome artifact contents are not exact")
+    controller_outcome = _validate_controller_outcome(
+        outcome_entries[0].read_bytes(),
+        repository=repository,
+        run_id=controller_run_id,
+        run_attempt=controller_run_attempt,
+        event="workflow_dispatch",
+        expected_sha=expected_sha,
+        activation_canary=True,
+        gate_enabled=False,
+    )
+    controller_request_artifact: dict[str, Any] | None = None
+    controller_dispatch: dict[str, Any] | None = None
+    if controller_outcome["result"] == "dispatched":
+        request_directory = temporary_directory / "controller-request"
+        controller_request_artifact = _download_verified_artifact(
+            deadline,
+            repository=repository,
+            run_id=controller_run_id,
+            name=controller_outcome["request_artifact_name"],
+            destination=request_directory,
+            expected_id=controller_outcome["request_artifact_id"],
+            expected_digest=controller_outcome["request_artifact_digest"],
+            expected_size=controller_outcome["request_artifact_size"],
+        )
+        request_entries = list(request_directory.iterdir())
+        if (
+            len(request_entries) != 1
+            or request_entries[0].name != "railway-publication-request.json"
+        ):
+            raise CanaryError("controller request artifact contents are not exact")
+        request_raw = request_entries[0].read_bytes()
+        if (
+            hashlib.sha256(request_raw).hexdigest()
+            != controller_outcome["request_sha256"]
+        ):
+            raise CanaryError("controller request digest is not outcome-bound")
+        _validate_controller_request(
+            request_raw,
+            repository=repository,
+            controller_run_id=controller_run_id,
+            controller_run_attempt=controller_run_attempt,
+            expected_sha=expected_sha,
+            activation_canary=True,
+            expected_requested_at=controller_outcome["requested_at"],
+        )
+        controller_dispatch = {
+            "activation_canary": True,
+            "controller_artifact_digest": controller_outcome["request_artifact_digest"],
+            "controller_artifact_id": controller_outcome["request_artifact_id"],
+            "controller_request_sha256": controller_outcome["request_sha256"],
+            "controller_run_attempt": controller_run_attempt,
+            "controller_run_id": controller_run_id,
+            "deploy_railway": True,
+            "requested_at": controller_outcome["requested_at"],
+            "scope": "complete",
+            "sha": expected_sha,
+        }
+    else:
+        release_after = _run_list(
+            deadline,
+            repository,
+            RELEASE_WORKFLOW,
+            "repository_dispatch",
+            release=True,
+        )
+        if release_after != release_before:
+            raise CanaryError("controller no-change branch created a downstream run")
+        environment_contract = _validate_protected_environment_contract(
+            deadline, repository
+        )
+        if (
+            _load_newswire_prerequisite(
+                newswire_receipt_path,
+                repository=repository,
+                expected_sha=expected_sha,
+            )
+            != newswire
+        ):
+            raise CanaryError(
+                "Newswire prerequisite changed before no-change live proof"
+            )
+        if _hourly_gate(deadline, repository) != "false":
+            raise CanaryError("activation no-change branch opened hourly publication")
+        manifest_digest = _probe_live_manifest_digest(
+            deadline,
+            temporary_directory=temporary_directory,
+            controller_run_id=controller_run_id,
+        )
+        live_manifest_digest, freshness_attestation_digest = (
+            _validate_live_release_proof(
+                deadline,
+                temporary_directory=temporary_directory,
+                expected_sha=expected_sha,
+                controller_run_id=controller_run_id,
+                release_run_id=0,
+                expected_manifest_sha256=manifest_digest,
+                newswire=newswire,
+            )
+        )
+        return {
+            "artifact_evidence": None,
+            "controller": {
+                "outcome_artifact": outcome_artifact,
+                "result": "no_change",
+                "run_attempt": controller_run_attempt,
+                "run_id": controller_run_id,
+            },
+            "jobs": None,
+            "live": {
+                "freshness_attestation_sha256": freshness_attestation_digest,
+                "manifest_sha256": live_manifest_digest,
+                "provider_origin": PROVIDER_ORIGIN,
+                "public_origin": PUBLIC_ORIGIN,
+                "source_commit": expected_sha,
+            },
+            "newswire_prerequisite": {
+                "newswire_canonical_sha256": newswire.newswire_canonical_sha256,
+                "newswire_generated_at": newswire.newswire_generated_at,
+                "publication_sha": newswire.publication_sha,
+                "receipt_sha256": newswire.receipt_sha256,
+                "situation_canonical_sha256": newswire.situation_canonical_sha256,
+                "situation_generated_at": newswire.situation_generated_at,
+            },
+            "policy": {
+                "approval_budget_seconds": APPROVAL_BUDGET_SECONDS,
+                "activation_canary": True,
+                "completion_budget_seconds": COMPLETION_BUDGET_SECONDS,
+                "force": False,
+                "hourly_publication_enabled": False,
+            },
+            "protected_environment": {
+                "approval": "not_required",
+                "contract": environment_contract,
+                "id": environment_contract["environment_id"],
+                "name": PRODUCTION_ENVIRONMENT,
+            },
+            "release": None,
+            "repository": repository,
+            "schema_version": "palimpsest.railway-activation-canary-receipt.v1",
+            "source_commit": expected_sha,
+            "status": "verified",
+            "verified_at": datetime.now(UTC)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z"),
+        }, 0
+
+    release_run_id = _poll_new_run(
+        deadline,
+        repository=repository,
+        workflow=RELEASE_WORKFLOW,
+        event="repository_dispatch",
+        before=release_before,
+        expected_sha=expected_sha,
+        expected_workflow_name=RELEASE_NAME,
+        label="downstream Railway release",
+    )
+    run_state.release_run_id = release_run_id
+    release_identity = _run_view(deadline, repository, release_run_id)
+    _validate_run(
+        release_identity,
+        run_id=release_run_id,
+        event="repository_dispatch",
+        workflow_name=RELEASE_NAME,
+        expected_sha=expected_sha,
+    )
+    if release_identity["status"] == "completed":
+        raise CanaryError("downstream release completed before protected approval")
+
+    environment_contract = _validate_protected_environment_contract(
+        deadline, repository
+    )
+    environment_id = environment_contract["environment_id"]
+    approval_path = temporary_directory / "approval.json"
+    _write_private_json(
+        approval_path,
+        {
+            "comment": (
+                "Approve exact Palimpsest activation canary "
+                f"controller={controller_run_id} release={release_run_id} sha={expected_sha}"
+            ),
+            "environment_ids": [environment_id],
+            "state": "approved",
+        },
+    )
+
+    while True:
+        pending = _pending_state(
+            deadline,
+            repository=repository,
+            run_id=release_run_id,
+            environment_id=environment_id,
+        )
+        if pending == "ready":
+            _require_closed_authority(deadline, repository)
+            if (
+                _validate_protected_environment_contract(deadline, repository)
+                != environment_contract
+            ):
+                raise CanaryError(
+                    "protected Railway environment changed before approval prompt"
+                )
+            _prompt_exact_sha(deadline, expected_sha, release_run_id)
+
+            # The prompt is a deliberate human pause. Re-read every mutable
+            # approval fact after it and immediately before the POST.
+            if (
+                _pending_state(
+                    deadline,
+                    repository=repository,
+                    run_id=release_run_id,
+                    environment_id=environment_id,
+                )
+                != "ready"
+            ):
+                raise CanaryError("protected deployment changed during approval")
+            _require_closed_authority(deadline, repository)
+            current_main = _exact_text(
+                _gh(
+                    deadline,
+                    "api",
+                    f"repos/{repository}/commits/main",
+                    "--jq",
+                    ".sha",
+                ),
+                label="post-prompt public main SHA",
+            )
+            if current_main != expected_sha:
+                raise CanaryError("public main changed during protected approval")
+            if (
+                _load_newswire_prerequisite(
+                    newswire_receipt_path,
+                    repository=repository,
+                    expected_sha=expected_sha,
+                )
+                != newswire
+            ):
+                raise CanaryError(
+                    "Newswire prerequisite receipt changed during approval"
+                )
+            release_identity = _run_view(deadline, repository, release_run_id)
+            _validate_run(
+                release_identity,
+                run_id=release_run_id,
+                event="repository_dispatch",
+                workflow_name=RELEASE_NAME,
+                expected_sha=expected_sha,
+            )
+            if release_identity["status"] == "completed":
+                raise CanaryError(
+                    "downstream release completed during protected approval"
+                )
+            if (
+                _validate_protected_environment_contract(deadline, repository)
+                != environment_contract
+            ):
+                raise CanaryError(
+                    "protected Railway environment changed during approval"
+                )
+            _gh(
+                deadline,
+                "api",
+                "--method",
+                "POST",
+                f"repos/{repository}/actions/runs/{release_run_id}/pending_deployments",
+                "--input",
+                str(approval_path),
+            )
+            # Admission and operator approval have their own 90-minute bound.
+            # The protected Railway job has a separate 55-minute workflow
+            # ceiling, so its proof receives a fresh monotonic 70-minute bound.
+            deadline = Deadline.start(COMPLETION_BUDGET_SECONDS)
+            break
+        release_identity = _run_view(deadline, repository, release_run_id)
+        _validate_run(
+            release_identity,
+            run_id=release_run_id,
+            event="repository_dispatch",
+            workflow_name=RELEASE_NAME,
+            expected_sha=expected_sha,
+        )
+        if release_identity["status"] == "completed":
+            raise CanaryError("downstream release completed without protected approval")
+        deadline.sleep()
+
+    _wait_for_success(
+        deadline,
+        repository=repository,
+        run_id=release_run_id,
+        event="repository_dispatch",
+        workflow_name=RELEASE_NAME,
+        expected_sha=expected_sha,
+    )
+    jobs = _validate_jobs(deadline, repository, release_run_id)
+    release_run_attempt = _run_attempt(deadline, repository, release_run_id)
+    evidence_directory = temporary_directory / "railway-release-evidence"
+    artifact_name = (
+        f"railway-continuous-release-{expected_sha}-run-{release_run_id}"
+        f"-attempt-{release_run_attempt}"
+    )
+    release_artifact = _download_verified_artifact(
+        deadline,
+        repository=repository,
+        run_id=release_run_id,
+        name=artifact_name,
+        destination=evidence_directory,
+    )
+    if controller_dispatch is None:
+        raise CanaryError("controller dispatch authority is unavailable")
+    transaction_digest, verification_digest, manifest_digest = (
+        _validate_artifact_receipts(
+            artifact_directory=evidence_directory,
+            repository=repository,
+            run_id=release_run_id,
+            run_attempt=release_run_attempt,
+            expected_sha=expected_sha,
+            controller_dispatch=controller_dispatch,
+        )
+    )
+    if (
+        _load_newswire_prerequisite(
+            newswire_receipt_path,
+            repository=repository,
+            expected_sha=expected_sha,
+        )
+        != newswire
+    ):
+        raise CanaryError("Newswire prerequisite receipt changed before live proof")
+    if _hourly_gate(deadline, repository) != "false":
+        raise CanaryError("activation canary did not leave hourly publication closed")
+    # The live-byte read is deliberately the final external observation.  No
+    # mutable GitHub or Railway authority is queried after these bytes and
+    # before the immutable receipt is constructed and committed.
+    live_manifest_digest, freshness_attestation_digest = _validate_live_release_proof(
+        deadline,
+        temporary_directory=temporary_directory,
+        expected_sha=expected_sha,
+        controller_run_id=controller_run_id,
+        release_run_id=release_run_id,
+        expected_manifest_sha256=manifest_digest,
+        newswire=newswire,
+    )
+    if live_manifest_digest != manifest_digest:
+        raise CanaryError("live manifest digest is not artifact-bound")
+    receipt = {
+        "artifact_evidence": {
+            "release_artifact": release_artifact,
+            "transaction_receipt_sha256": transaction_digest,
+            "verification_receipt_sha256": verification_digest,
+        },
+        "controller": {
+            "outcome_artifact": outcome_artifact,
+            "request_artifact": controller_request_artifact,
+            "request_sha256": controller_outcome["request_sha256"],
+            "result": "dispatched",
+            "run_attempt": controller_run_attempt,
+            "run_id": controller_run_id,
+        },
+        "jobs": jobs,
+        "live": {
+            "freshness_attestation_sha256": freshness_attestation_digest,
+            "manifest_sha256": live_manifest_digest,
+            "provider_origin": PROVIDER_ORIGIN,
+            "public_origin": PUBLIC_ORIGIN,
+            "source_commit": expected_sha,
+        },
+        "policy": {
+            "approval_budget_seconds": APPROVAL_BUDGET_SECONDS,
+            "activation_canary": True,
+            "completion_budget_seconds": COMPLETION_BUDGET_SECONDS,
+            "force": False,
+            "hourly_publication_enabled": False,
+        },
+        "newswire_prerequisite": {
+            "newswire_canonical_sha256": newswire.newswire_canonical_sha256,
+            "newswire_generated_at": newswire.newswire_generated_at,
+            "publication_sha": newswire.publication_sha,
+            "receipt_sha256": newswire.receipt_sha256,
+            "situation_canonical_sha256": newswire.situation_canonical_sha256,
+            "situation_generated_at": newswire.situation_generated_at,
+        },
+        "protected_environment": {
+            "contract": environment_contract,
+            "id": environment_id,
+            "name": PRODUCTION_ENVIRONMENT,
+        },
+        "release": {
+            "run_attempt": release_run_attempt,
+            "run_id": release_run_id,
+        },
+        "repository": repository,
+        "schema_version": "palimpsest.railway-activation-canary-receipt.v1",
+        "source_commit": expected_sha,
+        "status": "verified",
+        "verified_at": datetime.now(UTC)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z"),
+    }
+    return receipt, release_run_id
+
+
+def _report_success_warning_only(
+    *,
+    receipt_path: Path,
+    receipt_sha256: str,
+    stream: Any = None,
+) -> None:
+    output = sys.stdout if stream is None else stream
+    summary = json.dumps(
+        {
+            "receipt": str(receipt_path),
+            "receipt_sha256": receipt_sha256,
+            "status": "verified",
+        },
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    try:
+        output.write(summary + "\n")
+        output.flush()
+    except (BrokenPipeError, OSError, ValueError) as error:
+        if output is sys.stdout:
+            try:
+                null_descriptor = os.open(os.devnull, os.O_WRONLY)
+                try:
+                    os.dup2(null_descriptor, sys.stdout.fileno())
+                finally:
+                    os.close(null_descriptor)
+            except (OSError, ValueError):
+                pass
+        try:
+            print(
+                f"activation canary verified; stdout reporting failed: {error}",
+                file=sys.stderr,
+            )
+        except (BrokenPipeError, OSError, ValueError):
+            pass
+
+
+def main() -> int:
+    if len(sys.argv) != 1:
+        print("run-activation-canary accepts environment inputs only", file=sys.stderr)
+        return 2
+    expected_sha = os.environ.get("EXPECTED_CANARY_SHA", "")
+    receipt_text = os.environ.get("ACTIVATION_CANARY_RECEIPT", "")
+    newswire_receipt_text = os.environ.get("NEWSWIRE_PREREQUISITE_RECEIPT", "")
+    repository = os.environ.get("PALIMPSEST_REPOSITORY", DEFAULT_REPOSITORY)
+    activation_canary = os.environ.get("ACTIVATION_CANARY", "true")
+    force = os.environ.get("FORCE", "false")
+    if SHA40.fullmatch(expected_sha) is None:
+        print(
+            "EXPECTED_CANARY_SHA must be exactly 40 lowercase hex characters",
+            file=sys.stderr,
+        )
+        return 2
+    if REPOSITORY.fullmatch(repository) is None:
+        print("PALIMPSEST_REPOSITORY is not an exact repository slug", file=sys.stderr)
+        return 2
+    if activation_canary != "true" or force != "false":
+        print(
+            "the helper accepts only ACTIVATION_CANARY=true and FORCE=false",
+            file=sys.stderr,
+        )
+        return 2
+    run_state = RunState()
+    status = 1
+    preflight_complete = False
+    receipt_path: Path | None = None
+    newswire_receipt_path: Path | None = None
+    temporary_directory: Path | None = None
+    receipt_digest = ""
+    temporary_removed = False
+
+    def abort_on_signal(signum: int, _frame: Any) -> NoReturn:
+        raise SignalAbort(signum)
+
+    previous_hup = signal.getsignal(signal.SIGHUP)
+    previous_term = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGHUP, abort_on_signal)
+    signal.signal(signal.SIGTERM, abort_on_signal)
+    try:
+        receipt_path = _prepare_output_path(receipt_text)
+        newswire_receipt_path = Path(newswire_receipt_text)
+        newswire = _load_newswire_prerequisite(
+            newswire_receipt_path,
+            repository=repository,
+            expected_sha=expected_sha,
+        )
+        preflight_complete = True
+        temporary_directory = Path(tempfile.mkdtemp(prefix="palimpsest-canary-"))
+        temporary_directory.chmod(0o700)
+        receipt_document, _release_run_id = _execute(
+            repository=repository,
+            expected_sha=expected_sha,
+            newswire_receipt_path=newswire_receipt_path,
+            newswire=newswire,
+            temporary_directory=temporary_directory,
+            run_state=run_state,
+        )
+        shutil.rmtree(temporary_directory)
+        temporary_removed = True
+        receipt_digest = _write_final_receipt(
+            receipt_path,
+            receipt_document,
+            run_state=run_state,
+        )
+        status = 0
+    except KeyboardInterrupt:
+        print("activation canary interrupted", file=sys.stderr)
+        status = 130
+    except SignalAbort as error:
+        print(str(error), file=sys.stderr)
+        status = 128 + error.signum
+    except CommandError as error:
+        print(str(error), file=sys.stderr)
+        status = error.returncode if 1 <= error.returncode <= 125 else 1
+    except (CanaryError, OSError, ValueError) as error:
+        print(str(error), file=sys.stderr)
+        status = 1 if preflight_complete else 2
+    finally:
+        signal.signal(signal.SIGHUP, previous_hup)
+        signal.signal(signal.SIGTERM, previous_term)
+        cleanup_error = False
+        if status != 0 and not run_state.receipt_committed:
+            cleanup_error = not _failure_cleanup(repository, run_state.release_run_id)
+        if temporary_directory is not None and not temporary_removed:
+            try:
+                shutil.rmtree(temporary_directory)
+            except OSError as error:
+                print(
+                    f"failed to remove private canary temporary directory: {error}",
+                    file=sys.stderr,
+                )
+                cleanup_error = True
+        if run_state.receipt_committed:
+            status = 0
+        elif status == 0 and cleanup_error:
+            status = 1
+            _failure_cleanup(repository, run_state.release_run_id)
+    if run_state.receipt_committed:
+        assert receipt_path is not None
+        _report_success_warning_only(
+            receipt_path=receipt_path,
+            receipt_sha256=receipt_digest,
+        )
+    return status
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

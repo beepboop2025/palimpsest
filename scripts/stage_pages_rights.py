@@ -12,6 +12,7 @@ shape remains in the public China surfaces.
 This is deliberately not an Evidence Carrier.  A restricted status has no
 observation payload, value clock, source hash, or authority claim to transport.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -33,6 +34,8 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 from urllib.parse import unquote
 
+from core import china_situation as china_situation_model
+from core import newswire as newswire_model
 from core.china_econ_export import SourcePolicy, load_source_policy
 
 
@@ -42,11 +45,20 @@ BINARY_ALLOWLIST_RELATIVE_PATH = Path("config/pages_public_binary_allowlist.json
 STATUS_RELATIVE_PATH = Path("readings/china-publication-rights-latest.json")
 STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
 STATUS_SCHEMA_PATH = "protocol/restricted-publication-v1.schema.json"
-ENDPOINT_STATUS_SCHEMA = "palimpsest-restricted-publication-endpoint.v1"
-ENDPOINT_STATUS_SCHEMA_PATH = (
-    "protocol/restricted-publication-endpoint-v1.schema.json"
+FRESHNESS_ATTESTATION_RELATIVE_PATH = Path(
+    "readings/publication-freshness-attestation-latest.json"
 )
-RELEASE_RECEIPT_SCHEMA = "palimpsest.pages-rights-release-receipt.v1"
+FRESHNESS_ATTESTATION_SCHEMA = "palimpsest.publication-freshness-attestation.v1"
+FRESHNESS_ATTESTATION_SCHEMA_PATH = (
+    "protocol/publication-freshness-attestation-v1.schema.json"
+)
+NEWSWIRE_RELATIVE_PATH = Path("readings/newswire-latest.json")
+CHINA_SITUATION_RELATIVE_PATH = Path("readings/china-situation-latest.json")
+NEWSWIRE_SCHEMA = "palimpsest-newswire.v1"
+CHINA_SITUATION_SCHEMA = "palimpsest-china-situation.v1"
+ENDPOINT_STATUS_SCHEMA = "palimpsest-restricted-publication-endpoint.v1"
+ENDPOINT_STATUS_SCHEMA_PATH = "protocol/restricted-publication-endpoint-v1.schema.json"
+RELEASE_RECEIPT_SCHEMA = "palimpsest.pages-rights-release-receipt.v2"
 MAX_PUBLIC_FILE_BYTES = 64 * 1024 * 1024
 MAX_DECODED_BYTES = 16 * 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 256
@@ -76,6 +88,7 @@ ALWAYS_RESTRICT = frozenset(
         "readings/china-econ-observations.jsonl",
         "readings/china-economic-pulse-latest.json",
         "readings/china-index-latest.json",
+        "readings/china-situation-latest.json",
         "readings/coverage-guard-latest.json",
         "readings/cross-layer-latest.json",
         "readings/cny-fix-gap-history.jsonl",
@@ -87,8 +100,16 @@ ALWAYS_RESTRICT = frozenset(
         "readings/investigations-latest.json",
         "readings/newsroom-latest.json",
         "readings/newswire-latest.json",
+        "readings/osint-china-latest.json",
         "readings/index.html",
     }
+)
+
+FRESHNESS_ATTESTATION_LIMITATIONS = (
+    "Metadata only; quarantined source artifacts are not republished here.",
+    "No source values, observations, or per-record identifiers are included.",
+    "This attestation conveys no observation or publication authority.",
+    "Unavailable or restricted evidence is not a directional signal.",
 )
 
 DIRECT_VALUE_KEYS = frozenset(
@@ -228,9 +249,7 @@ DELIMITED_LINEAGE_BYTES = re.compile(
     re.IGNORECASE,
 )
 DERIVED_INSTRUMENT_BYTES = re.compile(
-    b"|".join(
-        re.escape(key.encode("ascii")) for key in sorted(DERIVED_INSTRUMENTS)
-    ),
+    b"|".join(re.escape(key.encode("ascii")) for key in sorted(DERIVED_INSTRUMENTS)),
     re.IGNORECASE,
 )
 ENCODED_SHAPE_BYTES = re.compile(
@@ -248,12 +267,25 @@ class PagesRightsError(ValueError):
 def _canonical_json(value: Mapping[str, Any], *, jsonl: bool = False) -> bytes:
     if jsonl:
         return (
-            json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            json.dumps(
+                value,
+                allow_nan=False,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
             + "\n"
         ).encode("utf-8")
-    return (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode(
-        "utf-8"
-    )
+    return (
+        json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
 
 
 def _atomic_write(path: Path, payload: bytes, *, durable: bool = True) -> None:
@@ -293,7 +325,9 @@ def _read_bounded(path: Path) -> bytes:
     except OSError as exc:
         raise PagesRightsError(f"cannot inspect staged file {path}: {exc}") from exc
     if size > MAX_PUBLIC_FILE_BYTES:
-        raise PagesRightsError(f"staged public file exceeds scan cap: {path} ({size} bytes)")
+        raise PagesRightsError(
+            f"staged public file exceeds scan cap: {path} ({size} bytes)"
+        )
     try:
         return path.read_bytes()
     except OSError as exc:
@@ -316,7 +350,9 @@ def _load_binary_allowlist(root: Path) -> dict[str, tuple[str, int]]:
     if document["schema_version"] != "palimpsest.pages-public-binary-allowlist.v1":
         raise PagesRightsError("public binary allowlist has an unsupported schema")
     rows = document["files"]
-    if not isinstance(rows, list) or rows != sorted(rows, key=lambda row: row.get("path", "")):
+    if not isinstance(rows, list) or rows != sorted(
+        rows, key=lambda row: row.get("path", "")
+    ):
         raise PagesRightsError("public binary allowlist is not path-sorted")
     allowed: dict[str, tuple[str, int]] = {}
     for row in rows:
@@ -370,6 +406,27 @@ def _public_candidates(root: Path) -> list[Path]:
     return sorted(candidates, key=lambda path: path.relative_to(root).as_posix())
 
 
+def _strict_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_json_constant(value: str) -> None:
+    raise ValueError(f"non-finite JSON value: {value}")
+
+
+def _strict_json_loads(value: str) -> Any:
+    return json.loads(
+        value,
+        object_pairs_hook=_strict_json_object,
+        parse_constant=_reject_json_constant,
+    )
+
+
 def _json_documents(path: Path, raw: bytes) -> list[Any]:
     try:
         text = raw.decode("utf-8")
@@ -377,9 +434,11 @@ def _json_documents(path: Path, raw: bytes) -> list[Any]:
         raise PagesRightsError(f"non-UTF-8 public artifact: {path}") from exc
     try:
         if path.suffix.lower() == ".jsonl":
-            return [json.loads(line) for line in text.splitlines() if line.strip()]
-        return [json.loads(text)]
-    except (json.JSONDecodeError, RecursionError) as exc:
+            return [
+                _strict_json_loads(line) for line in text.splitlines() if line.strip()
+            ]
+        return [_strict_json_loads(text)]
+    except (ValueError, RecursionError) as exc:
         raise PagesRightsError(f"invalid public JSON artifact {path}: {exc}") from exc
 
 
@@ -417,6 +476,245 @@ def _parse_clock(value: Any, *, path: str) -> datetime:
     except ValueError as exc:
         raise PagesRightsError(f"{path} is not a valid timestamp") from exc
     return _normalize_evaluated_at(parsed)
+
+
+def _canonical_artifact_bytes(value: Mapping[str, Any]) -> bytes:
+    """Return the compact canonical bytes used by publication lineage hashes."""
+
+    return (
+        json.dumps(
+            value,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def _validate_pre_quarantine_source_contract(
+    relative_path: Path,
+    document: Mapping[str, Any],
+) -> None:
+    try:
+        if relative_path == NEWSWIRE_RELATIVE_PATH:
+            newswire_model.validate_newswire_document(document)
+        elif relative_path == CHINA_SITUATION_RELATIVE_PATH:
+            china_situation_model.validate_china_situation(document)
+        else:  # pragma: no cover - every caller is an explicit freshness input
+            raise PagesRightsError(
+                "unsupported pre-quarantine freshness input: "
+                + relative_path.as_posix()
+            )
+    except (
+        newswire_model.NewswireError,
+        china_situation_model.ChinaSituationError,
+    ) as exc:
+        raise PagesRightsError(
+            "pre-quarantine freshness input fails its source contract: "
+            + relative_path.as_posix()
+        ) from exc
+
+
+def _load_pre_quarantine_artifact(
+    root: Path,
+    relative_path: Path,
+    *,
+    expected_schema: str,
+) -> tuple[dict[str, str], dict[str, Any]]:
+    path = root / relative_path
+    if not path.is_file() or not _within_root(root, path):
+        raise PagesRightsError(
+            "staged Pages tree lacks pre-quarantine freshness input: "
+            + relative_path.as_posix()
+        )
+    documents = _json_documents(path, _read_bounded(path))
+    if len(documents) != 1 or not isinstance(documents[0], dict):
+        raise PagesRightsError(
+            "pre-quarantine freshness input must be one JSON object: "
+            + relative_path.as_posix()
+        )
+    document = documents[0]
+    if document.get("schema_version") != expected_schema:
+        raise PagesRightsError(
+            "pre-quarantine freshness input has an unsupported schema: "
+            + relative_path.as_posix()
+        )
+    _validate_pre_quarantine_source_contract(relative_path, document)
+    generated_at = _parse_clock(
+        document.get("generated_at"),
+        path=f"{relative_path.as_posix()}.generated_at",
+    )
+    generated_text = _clock_text(generated_at)
+    if document.get("generated_at") != generated_text:
+        raise PagesRightsError(
+            "pre-quarantine freshness input clock is not canonical: "
+            + relative_path.as_posix()
+        )
+    canonical = _canonical_artifact_bytes(document)
+    return (
+        {
+            "path": relative_path.as_posix(),
+            "schema_version": expected_schema,
+            "generated_at": generated_text,
+            "canonical_sha256": hashlib.sha256(canonical).hexdigest(),
+        },
+        document,
+    )
+
+
+def _capture_pre_quarantine_freshness(root: Path) -> dict[str, dict[str, Any]]:
+    newswire, _newswire_document = _load_pre_quarantine_artifact(
+        root,
+        NEWSWIRE_RELATIVE_PATH,
+        expected_schema=NEWSWIRE_SCHEMA,
+    )
+    situation, situation_document = _load_pre_quarantine_artifact(
+        root,
+        CHINA_SITUATION_RELATIVE_PATH,
+        expected_schema=CHINA_SITUATION_SCHEMA,
+    )
+    inputs = situation_document.get("inputs")
+    if not isinstance(inputs, dict):
+        raise PagesRightsError(
+            "pre-quarantine China situation lacks its newswire input identity"
+        )
+    if (
+        inputs.get("newswire_generated_at") != newswire["generated_at"]
+        or inputs.get("newswire_sha256") != newswire["canonical_sha256"]
+    ):
+        raise PagesRightsError(
+            "pre-quarantine China situation does not bind the exact newswire input"
+        )
+    situation["inputs"] = {
+        "newswire_generated_at": newswire["generated_at"],
+        "newswire_canonical_sha256": newswire["canonical_sha256"],
+    }
+    return {"newswire": newswire, "china_situation": situation}
+
+
+def _validated_attested_artifacts(value: Any) -> dict[str, dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) != {
+        "newswire",
+        "china_situation",
+    }:
+        raise PagesRightsError("publication-freshness artifacts have an invalid shape")
+    expected = {
+        "newswire": (NEWSWIRE_RELATIVE_PATH.as_posix(), NEWSWIRE_SCHEMA),
+        "china_situation": (
+            CHINA_SITUATION_RELATIVE_PATH.as_posix(),
+            CHINA_SITUATION_SCHEMA,
+        ),
+    }
+    validated: dict[str, dict[str, Any]] = {}
+    for name in ("newswire", "china_situation"):
+        row = value.get(name)
+        required = {"path", "schema_version", "generated_at", "canonical_sha256"}
+        if name == "china_situation":
+            required.add("inputs")
+        if not isinstance(row, dict) or set(row) != required:
+            raise PagesRightsError(
+                f"publication-freshness {name} identity has an invalid shape"
+            )
+        expected_path, expected_schema = expected[name]
+        generated = _parse_clock(
+            row.get("generated_at"), path=f"artifacts.{name}.generated_at"
+        )
+        digest = row.get("canonical_sha256")
+        if (
+            row.get("path") != expected_path
+            or row.get("schema_version") != expected_schema
+            or row.get("generated_at") != _clock_text(generated)
+            or not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        ):
+            raise PagesRightsError(f"publication-freshness {name} identity is invalid")
+        validated[name] = dict(row)
+    newswire = validated["newswire"]
+    situation_inputs = validated["china_situation"].get("inputs")
+    if not isinstance(situation_inputs, dict) or set(situation_inputs) != {
+        "newswire_generated_at",
+        "newswire_canonical_sha256",
+    }:
+        raise PagesRightsError(
+            "publication-freshness China situation inputs have an invalid shape"
+        )
+    if situation_inputs != {
+        "newswire_generated_at": newswire["generated_at"],
+        "newswire_canonical_sha256": newswire["canonical_sha256"],
+    }:
+        raise PagesRightsError(
+            "publication-freshness China situation input identity has drifted"
+        )
+    return validated
+
+
+def build_publication_freshness_attestation(
+    *,
+    publication_sha: str,
+    evaluated_at: datetime,
+    artifacts: Mapping[str, Any],
+    rights_status_sha256: str,
+    rights_status_bytes: int,
+) -> dict[str, Any]:
+    """Build an aggregate-only identity for inputs removed by quarantine."""
+
+    revision = _validated_publication_sha(publication_sha)
+    clock = _normalize_evaluated_at(evaluated_at)
+    snapshots = _validated_attested_artifacts(dict(artifacts))
+    if (
+        not isinstance(rights_status_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", rights_status_sha256) is None
+        or type(rights_status_bytes) is not int
+        or rights_status_bytes <= 0
+    ):
+        raise PagesRightsError("publication-freshness rights identity is invalid")
+    return {
+        "schema_version": FRESHNESS_ATTESTATION_SCHEMA,
+        "publication_sha": revision,
+        "attested_at": _clock_text(clock),
+        "mode": "rights-suppressed",
+        "publication_allowed": False,
+        "artifacts": snapshots,
+        "rights_status": {
+            "path": STATUS_RELATIVE_PATH.as_posix(),
+            "sha256": rights_status_sha256,
+            "bytes": rights_status_bytes,
+        },
+        "limitations": list(FRESHNESS_ATTESTATION_LIMITATIONS),
+    }
+
+
+def _verify_publication_freshness_attestation(
+    *,
+    root: Path,
+    publication_sha: str,
+    evaluated_at: datetime,
+    rights_status_raw: bytes,
+) -> dict[str, Any]:
+    path = root / FRESHNESS_ATTESTATION_RELATIVE_PATH
+    if not path.is_file() or not _within_root(root, path):
+        raise PagesRightsError(
+            "staged Pages tree lacks publication-freshness attestation"
+        )
+    raw = _read_bounded(path)
+    documents = _json_documents(path, raw)
+    if len(documents) != 1 or not isinstance(documents[0], dict):
+        raise PagesRightsError("publication-freshness attestation must be one object")
+    attestation = documents[0]
+    expected = build_publication_freshness_attestation(
+        publication_sha=publication_sha,
+        evaluated_at=evaluated_at,
+        artifacts=attestation.get("artifacts", {}),
+        rights_status_sha256=hashlib.sha256(rights_status_raw).hexdigest(),
+        rights_status_bytes=len(rights_status_raw),
+    )
+    if attestation != expected or raw != _canonical_json(expected):
+        raise PagesRightsError(
+            "publication-freshness attestation is not the exact deterministic stub"
+        )
+    return attestation
 
 
 def _validated_publication_sha(value: Any) -> str:
@@ -501,9 +799,7 @@ def _mapping_lineage(
         return True
     for key in LINEAGE_FIELDS & value.keys():
         for token in _strings(value[key]):
-            if _token_has_denied_lineage(
-                token, denied_source_ids=denied_source_ids
-            ):
+            if _token_has_denied_lineage(token, denied_source_ids=denied_source_ids):
                 return True
             if (
                 mapping_scope
@@ -641,7 +937,9 @@ def _delimited_documents(text: str) -> list[dict[str, str]]:
             ):
                 continue
             reader = csv.DictReader(io.StringIO(text), delimiter=delimiter)
-            fields = [str(field or "").strip().lower() for field in reader.fieldnames or []]
+            fields = [
+                str(field or "").strip().lower() for field in reader.fieldnames or []
+            ]
             if fields != normalized_fields:
                 continue
             rows = []
@@ -664,9 +962,11 @@ def _structured_documents(path: Path, text: str) -> list[Any]:
     suffix = path.suffix.lower()
     if suffix in {".json", ".jsonl"}:
         return _json_documents(path, text.encode("utf-8"))
-    looks_like_json = stripped.startswith("{") or re.match(
-        r'^\[\s*(?:[\[{"\d-]|true\b|false\b|null\b|\])', stripped
-    ) is not None
+    looks_like_json = (
+        stripped.startswith("{")
+        or re.match(r'^\[\s*(?:[\[{"\d-]|true\b|false\b|null\b|\])', stripped)
+        is not None
+    )
     if looks_like_json:
         try:
             return [json.loads(stripped)]
@@ -687,7 +987,9 @@ def _decoded_payloads(raw: bytes) -> Iterable[bytes]:
     """Yield bounded common encodings used to conceal a textual derivative."""
 
     lowered = raw.lower()
-    if not any(token in lowered for token in (b";base64,", b"base64", b"encoded", b"payload")):
+    if not any(
+        token in lowered for token in (b";base64,", b"base64", b"encoded", b"payload")
+    ):
         if BASE64_WHOLE.fullmatch(raw) is None:
             return
     tokens = [
@@ -722,7 +1024,9 @@ def _container_payloads(path: Path, raw: bytes) -> Iterable[bytes]:
         except (OSError, EOFError) as exc:
             raise PagesRightsError(f"invalid gzip public artifact: {path}") from exc
         if len(decoded) > MAX_DECODED_BYTES:
-            raise PagesRightsError(f"gzip public artifact exceeds expansion cap: {path}")
+            raise PagesRightsError(
+                f"gzip public artifact exceeds expansion cap: {path}"
+            )
         yield decoded
         return
     if not raw.startswith(b"PK\x03\x04"):
@@ -731,7 +1035,9 @@ def _container_payloads(path: Path, raw: bytes) -> Iterable[bytes]:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             members = archive.infolist()
             if len(members) > MAX_ARCHIVE_MEMBERS:
-                raise PagesRightsError(f"zip public artifact exceeds member cap: {path}")
+                raise PagesRightsError(
+                    f"zip public artifact exceeds member cap: {path}"
+                )
             expanded = 0
             for member in members:
                 member_path = Path(member.filename)
@@ -770,16 +1076,10 @@ def _contains_denied_payload(
         raise PagesRightsError(f"encoded public artifact exceeds decode depth: {path}")
     policy_scope = _policy_scope_path(root, path)
     lineage_pattern = lineage_pattern or _lineage_pattern(denied_source_ids)
-    text = (
-        _decode_public_text(raw)
-        if decoded_text is _UNSET
-        else decoded_text
-    )
+    text = _decode_public_text(raw) if decoded_text is _UNSET else decoded_text
     if text is not None:
         semantic_raw = (
-            text.encode("utf-8")
-            if raw.startswith((b"\xff\xfe", b"\xfe\xff"))
-            else raw
+            text.encode("utf-8") if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else raw
         )
         has_direct_key = DIRECT_KEY_BYTES.search(semantic_raw) is not None
         has_known_lineage = (
@@ -805,7 +1105,6 @@ def _contains_denied_payload(
         ):
             return False
         lowered_raw = semantic_raw.lower()
-        lowered_text = text.lower()
         known_interest = has_known_lineage or has_direct_key
         scoped_unknown_interest = policy_scope and (
             has_scoped_lineage and has_value_field
@@ -835,10 +1134,7 @@ def _contains_denied_payload(
         )
         if (
             (has_direct_key and TEXT_DIRECT_VALUE_SHAPE.search(text) is not None)
-            or (
-                has_mapping_key
-                and TEXT_DENIED_MAPPING_VALUE.search(text) is not None
-            )
+            or (has_mapping_key and TEXT_DENIED_MAPPING_VALUE.search(text) is not None)
             or (
                 has_lineage
                 and has_html_value_key
@@ -858,14 +1154,18 @@ def _contains_denied_payload(
                 or any(source_id in lowered_decoded for source_id in denied_source_ids)
                 or any(key in lowered_decoded for key in DIRECT_VALUE_KEYS)
             )
-            if decoded_text != text and scan_decoded and _contains_denied_payload(
-                root,
-                path,
-                decoded_text.encode("utf-8"),
-                denied_source_ids=denied_source_ids,
-                allowed_source_ids=allowed_source_ids,
-                depth=depth + 1,
-                lineage_pattern=lineage_pattern,
+            if (
+                decoded_text != text
+                and scan_decoded
+                and _contains_denied_payload(
+                    root,
+                    path,
+                    decoded_text.encode("utf-8"),
+                    denied_source_ids=denied_source_ids,
+                    allowed_source_ids=allowed_source_ids,
+                    depth=depth + 1,
+                    lineage_pattern=lineage_pattern,
+                )
             ):
                 return True
     elif path.suffix.lower() in SCANNED_SUFFIXES:
@@ -968,17 +1268,14 @@ def find_denied_value_paths(
             continue
         raw = _read_bounded(path)
         decoded_text = _decode_public_text(raw)
-        reviewed_binary = _is_reviewed_binary(
-            root, path, raw, allowed=binary_allowlist
-        )
+        reviewed_binary = _is_reviewed_binary(root, path, raw, allowed=binary_allowlist)
         if (
             decoded_text is None
             and not raw.startswith((b"\x1f\x8b", b"PK\x03\x04"))
             and not reviewed_binary
         ):
             raise PagesRightsError(
-                "opaque public artifact lacks exact path-and-digest review: "
-                + relative
+                "opaque public artifact lacks exact path-and-digest review: " + relative
             )
         if reviewed_binary:
             continue
@@ -1106,9 +1403,7 @@ def build_restricted_status(
     policy_document = json.loads(policy_raw)
     clock = _normalize_evaluated_at(evaluated_at)
     revision = _validated_publication_sha(publication_sha)
-    decisions = _source_decisions(
-        policy, input_counts=input_counts, evaluated_at=clock
-    )
+    decisions = _source_decisions(policy, input_counts=input_counts, evaluated_at=clock)
     restricted_records = sum(
         row["input_records"] for row in decisions if not row["values_allowed"]
     )
@@ -1230,20 +1525,20 @@ def _status_for_artifact(
 def _restricted_html(status: Mapping[str, Any]) -> bytes:
     artifact_path = str(status["artifact"]["path"])
     counts = status["counts"]
-    return f'''<!doctype html>
+    return f"""<!doctype html>
 <html lang="en" data-palimpsest-publication-status="restricted">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow"><title>Restricted evidence · Palimpsest</title></head>
 <body><main><p>Palimpsest China evidence</p><h1>Values unavailable: publication restricted</h1>
 <p>This same-path endpoint is metadata-only because the current source policy denies publication of an upstream value family.</p>
 <dl><dt>Endpoint</dt><dd><code>{html.escape(artifact_path)}</code></dd>
-<dt>Input records evaluated</dt><dd>{counts['input_records']}</dd>
-<dt>Restricted records</dt><dd>{counts['restricted_records']}</dd>
+<dt>Input records evaluated</dt><dd>{counts["input_records"]}</dd>
+<dt>Restricted records</dt><dd>{counts["restricted_records"]}</dd>
 <dt>Published records</dt><dd>0</dd></dl>
 <p>Unavailable or restricted evidence is not zero, calm, healthy, or a directional signal.</p>
 <p><a href="/readings/china-publication-rights-latest.json">Machine-readable export status</a> · <a href="/config/china_econ_source_policy.json">Source policy</a></p>
 </main></body></html>
-'''.encode("utf-8")
+""".encode("utf-8")
 
 
 def _restricted_text(status: Mapping[str, Any]) -> bytes:
@@ -1298,7 +1593,9 @@ def _status_input_counts(status: Mapping[str, Any]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for row in rows:
         if not isinstance(row, dict):
-            raise PagesRightsError("publication-rights source decision is not an object")
+            raise PagesRightsError(
+                "publication-rights source decision is not an object"
+            )
         source_id = row.get("source_id")
         count = row.get("input_records")
         if (
@@ -1308,7 +1605,9 @@ def _status_input_counts(status: Mapping[str, Any]) -> dict[str, int]:
             or type(count) is not int
             or count < 0
         ):
-            raise PagesRightsError("publication-rights source decision identity is invalid")
+            raise PagesRightsError(
+                "publication-rights source decision identity is invalid"
+            )
         counts[source_id] = count
     return counts
 
@@ -1325,7 +1624,9 @@ def _status_quarantined_paths(root: Path, status: Mapping[str, Any]) -> list[str
     for relative in values:
         path = root / relative
         if Path(relative).is_absolute() or not _within_root(root, path):
-            raise PagesRightsError(f"publication-rights path escaped staged root: {relative}")
+            raise PagesRightsError(
+                f"publication-rights path escaped staged root: {relative}"
+            )
     return values
 
 
@@ -1437,9 +1738,12 @@ def stage_pages_tree(
         raise PagesRightsError("staged Pages root must be a directory")
     policy_path = root / POLICY_RELATIVE_PATH
     if not policy_path.is_file() or not _within_root(root, policy_path):
-        raise PagesRightsError("staged Pages tree lacks its in-root China source policy")
+        raise PagesRightsError(
+            "staged Pages tree lacks its in-root China source policy"
+        )
     policy = load_source_policy(policy_path)
     revision = _validated_publication_sha(publication_sha)
+    freshness_artifacts = _capture_pre_quarantine_freshness(root)
     input_counts = _ledger_source_counts(root)
     clock, admission = _assert_policy_stable(
         policy,
@@ -1462,6 +1766,13 @@ def stage_pages_tree(
     )
     master_payload = _canonical_json(master)
     master_sha256 = hashlib.sha256(master_payload).hexdigest()
+    freshness_attestation = build_publication_freshness_attestation(
+        publication_sha=revision,
+        evaluated_at=clock,
+        artifacts=freshness_artifacts,
+        rights_status_sha256=master_sha256,
+        rights_status_bytes=len(master_payload),
+    )
     for relative in quarantined:
         path = root / relative
         if not _within_root(root, path):
@@ -1474,6 +1785,11 @@ def stage_pages_tree(
             master_bytes=len(master_payload),
         )
     _atomic_write(root / STATUS_RELATIVE_PATH, master_payload, durable=False)
+    _atomic_write(
+        root / FRESHNESS_ATTESTATION_RELATIVE_PATH,
+        _canonical_json(freshness_attestation),
+        durable=False,
+    )
 
     remaining = find_denied_value_paths(root, policy=policy, evaluated_at=admission)
     if remaining:
@@ -1525,13 +1841,17 @@ def verify_staged_tree(
         raise PagesRightsError("publication-rights edition clock has drifted")
     if status_raw != _canonical_json(status):
         raise PagesRightsError("publication-rights status is not canonical JSON")
+    _verify_publication_freshness_attestation(
+        root=root,
+        publication_sha=revision,
+        evaluated_at=staged_at,
+        rights_status_raw=status_raw,
+    )
     master_sha256 = hashlib.sha256(status_raw).hexdigest()
     required = {path for path in ALWAYS_RESTRICT if (root / path).is_file()}
     if not required.issubset(quarantined):
         raise PagesRightsError("publication-rights status omits a designated endpoint")
-    remaining = find_denied_value_paths(
-        root, policy=policy, evaluated_at=verified_at
-    )
+    remaining = find_denied_value_paths(root, policy=policy, evaluated_at=verified_at)
     if remaining:
         raise PagesRightsError("denied China values remain: " + ", ".join(remaining))
     for relative in quarantined:
@@ -1542,7 +1862,9 @@ def verify_staged_tree(
         expected = _status_for_artifact(status, relative)
         if path.suffix.lower() == ".html":
             if raw != _restricted_html(expected):
-                raise PagesRightsError(f"HTML endpoint is not an exact stub: {relative}")
+                raise PagesRightsError(
+                    f"HTML endpoint is not an exact stub: {relative}"
+                )
         elif path.suffix.lower() in {".json", ".jsonl"}:
             endpoint_documents = _json_documents(path, raw)
             if len(endpoint_documents) != 1:
@@ -1595,6 +1917,16 @@ def build_release_receipt(
     decisions_raw = json.dumps(
         decisions, ensure_ascii=False, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
+    freshness_attestation = _verify_publication_freshness_attestation(
+        root=root,
+        publication_sha=revision,
+        evaluated_at=edition,
+        rights_status_raw=status_raw,
+    )
+    # Hash the exact canonical bytes already validated above. Reading the path
+    # again would create a needless time-of-check/time-of-use window between
+    # validation and sealing the out-of-tree receipt.
+    attestation_raw = _canonical_json(freshness_attestation)
     return {
         "schema_version": RELEASE_RECEIPT_SCHEMA,
         "publication_sha": revision,
@@ -1609,6 +1941,11 @@ def build_release_receipt(
             "path": POLICY_RELATIVE_PATH.as_posix(),
             "sha256": hashlib.sha256(policy_raw).hexdigest(),
             "bytes": len(policy_raw),
+        },
+        "freshness_attestation": {
+            "path": FRESHNESS_ATTESTATION_RELATIVE_PATH.as_posix(),
+            "sha256": hashlib.sha256(attestation_raw).hexdigest(),
+            "bytes": len(attestation_raw),
         },
         "effective_decisions_sha256": hashlib.sha256(decisions_raw).hexdigest(),
     }
@@ -1685,7 +2022,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         receipt_path = args.receipt.resolve(strict=False)
         root = args.root.resolve(strict=True)
         if _within_root(root, receipt_path):
-            raise PagesRightsError("release receipt must remain outside the public tree")
+            raise PagesRightsError(
+                "release receipt must remain outside the public tree"
+            )
         if args.check:
             status = verify_staged_tree(
                 root,
@@ -1716,7 +2055,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 evaluated_at=evaluated_at,
                 admission_at=admission_at,
             )
-    except (PagesRightsError, OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+    except (
+        PagesRightsError,
+        OSError,
+        ValueError,
+        TypeError,
+        json.JSONDecodeError,
+    ) as exc:
         print(f"pages-rights-gate refused: {exc}")
         return 2
     counts = status["counts"]
@@ -1734,11 +2079,14 @@ if __name__ == "__main__":
 
 __all__ = [
     "ALWAYS_RESTRICT",
+    "FRESHNESS_ATTESTATION_RELATIVE_PATH",
+    "FRESHNESS_ATTESTATION_SCHEMA",
     "PagesRightsError",
     "STATUS_RELATIVE_PATH",
     "STATUS_SCHEMA",
     "RELEASE_RECEIPT_SCHEMA",
     "build_release_receipt",
+    "build_publication_freshness_attestation",
     "build_restricted_status",
     "find_denied_value_paths",
     "stage_pages_tree",

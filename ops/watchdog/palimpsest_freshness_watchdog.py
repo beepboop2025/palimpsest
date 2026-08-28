@@ -3,10 +3,10 @@
 
 This program is intentionally standard-library-only and is scheduled by a host
 systemd timer, not Celery Beat. It reads the dynamic localhost status endpoint,
-the local OSINT roll-up, and two fixed public publication heads. It recomputes
-evidence deadlines against its own clock, writes a bounded status document, and
-optionally alerts on condition transitions. It never edits a reading, invokes a
-collector, or dispatches a publication workflow.
+the local OSINT roll-up, and five fixed public publication documents. It
+recomputes evidence deadlines against its own clock, writes a bounded status
+document, and optionally alerts on condition transitions. It never edits a
+reading, invokes a collector, or dispatches a publication workflow.
 
 Exit codes: 0 = healthy, 2 = one or more conditions active, 3 = watchdog error.
 """
@@ -26,6 +26,7 @@ import tempfile
 import urllib.parse
 import urllib.request
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -42,9 +43,35 @@ DEFAULT_STATE_PATH = Path("/var/lib/palimpsest-watchdog/alert-state.json")
 DEFAULT_BUNDLE_MAX_AGE_SECONDS = 2 * 60 * 60
 PUBLICATION_MAX_AGE_SECONDS = 2 * 60 * 60
 PUBLICATION_TIMEOUT_SECONDS = 10
-PUBLIC_NEWSWIRE_URL = "https://palimpsest.info/readings/newswire-latest.json"
-PUBLIC_SITUATION_URL = "https://palimpsest.info/readings/china-situation-latest.json"
-PUBLICATION_URLS = frozenset({PUBLIC_NEWSWIRE_URL, PUBLIC_SITUATION_URL})
+LOCAL_STATUS_TIMEOUT_SECONDS = 5
+WEBHOOK_TIMEOUT_SECONDS = 10
+PUBLIC_ORIGIN = "https://www.palimpsest.info"
+PUBLIC_NEWSWIRE_PATH = "readings/newswire-latest.json"
+PUBLIC_SITUATION_PATH = "readings/china-situation-latest.json"
+PUBLIC_ATTESTATION_PATH = "readings/publication-freshness-attestation-latest.json"
+PUBLIC_RIGHTS_STATUS_PATH = "readings/china-publication-rights-latest.json"
+PUBLIC_RELEASE_MANIFEST_PATH = "railway-release.json"
+PUBLIC_NEWSWIRE_URL = f"{PUBLIC_ORIGIN}/{PUBLIC_NEWSWIRE_PATH}"
+PUBLIC_SITUATION_URL = f"{PUBLIC_ORIGIN}/{PUBLIC_SITUATION_PATH}"
+PUBLIC_ATTESTATION_URL = f"{PUBLIC_ORIGIN}/{PUBLIC_ATTESTATION_PATH}"
+PUBLIC_RIGHTS_STATUS_URL = f"{PUBLIC_ORIGIN}/{PUBLIC_RIGHTS_STATUS_PATH}"
+PUBLIC_RELEASE_MANIFEST_URL = f"{PUBLIC_ORIGIN}/{PUBLIC_RELEASE_MANIFEST_PATH}"
+PUBLICATION_URLS = frozenset(
+    {
+        PUBLIC_NEWSWIRE_URL,
+        PUBLIC_SITUATION_URL,
+        PUBLIC_ATTESTATION_URL,
+        PUBLIC_RIGHTS_STATUS_URL,
+        PUBLIC_RELEASE_MANIFEST_URL,
+    }
+)
+PUBLICATION_ENDPOINTS = (
+    ("newswire", PUBLIC_NEWSWIRE_URL),
+    ("situation", PUBLIC_SITUATION_URL),
+    ("attestation", PUBLIC_ATTESTATION_URL),
+    ("rights_status", PUBLIC_RIGHTS_STATUS_URL),
+    ("release_manifest", PUBLIC_RELEASE_MANIFEST_URL),
+)
 MAX_INPUT_BYTES = 4 * 1024 * 1024
 MAX_PUBLICATION_INPUT_BYTES = 12 * 1024 * 1024
 MAX_STATE_BYTES = 64 * 1024
@@ -55,10 +82,32 @@ MAX_ALERT_BYTES = 16 * 1024
 NODE_STATUS_MAX_AGE_SECONDS = 10 * 60
 _IDENTIFIER = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
+_COMMIT_SHA = re.compile(r"[0-9a-f]{40}")
+ORIGINAL_NEWSWIRE_SCHEMA = "palimpsest-newswire.v1"
+ORIGINAL_SITUATION_SCHEMA = "palimpsest-china-situation.v1"
+RESTRICTED_ENDPOINT_SCHEMA = "palimpsest-restricted-publication-endpoint.v1"
+RIGHTS_STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
+FRESHNESS_ATTESTATION_SCHEMA = "palimpsest.publication-freshness-attestation.v1"
+RELEASE_MANIFEST_SCHEMA = "palimpsest.railway-static-release.v1"
+FRESHNESS_ATTESTATION_LIMITATIONS = (
+    "Metadata only; quarantined source artifacts are not republished here.",
+    "No source values, observations, or per-record identifiers are included.",
+    "This attestation conveys no observation or publication authority.",
+    "Unavailable or restricted evidence is not a directional signal.",
+)
 
 
 class WatchdogError(RuntimeError):
     """The watchdog cannot safely inspect or persist its inputs."""
+
+
+class _FetchedDocument(dict[str, Any]):
+    """Parsed JSON that retains the identity of the exact served bytes."""
+
+    def __init__(self, document: Mapping[str, Any], raw: bytes):
+        super().__init__(document)
+        self.served_sha256 = hashlib.sha256(raw).hexdigest()
+        self.served_bytes = len(raw)
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -152,7 +201,7 @@ def _fetch_json(url: str, *, opener: Any | None = None) -> dict[str, Any]:
     )
     client = opener or urllib.request.build_opener(_NoRedirect())
     try:
-        with client.open(request, timeout=5) as response:
+        with client.open(request, timeout=LOCAL_STATUS_TIMEOUT_SECONDS) as response:
             body = response.read(MAX_INPUT_BYTES + 1)
     except Exception as exc:
         raise WatchdogError("local status endpoint is unavailable") from exc
@@ -205,7 +254,7 @@ def _canonical_json_bytes(value: Any) -> bytes:
             + "\n"
         ).encode("utf-8")
     except (TypeError, ValueError) as exc:
-        raise WatchdogError("public newswire cannot be canonicalized") from exc
+        raise WatchdogError("public publication cannot be canonicalized") from exc
 
 
 def _fetch_public_json(
@@ -213,7 +262,7 @@ def _fetch_public_json(
     *,
     observed_at: datetime | None = None,
     opener: Any | None = None,
-) -> dict[str, Any]:
+) -> _FetchedDocument:
     """Fetch one immutable-authority publication head through a closed egress lane."""
 
     if url not in PUBLICATION_URLS:
@@ -248,7 +297,41 @@ def _fetch_public_json(
         raise WatchdogError("public publication endpoint is unavailable") from exc
     if len(body) > MAX_PUBLICATION_INPUT_BYTES:
         raise WatchdogError("public publication response exceeds its byte ceiling")
-    return _strict_json_object(body, label="public publication")
+    return _FetchedDocument(
+        _strict_json_object(body, label="public publication"),
+        body,
+    )
+
+
+def _fetch_publication_documents(
+    *,
+    observed_at: datetime,
+    opener: Any | None = None,
+) -> tuple[_FetchedDocument | None, ...]:
+    """Fetch the fixed public evidence set within one network-timeout window."""
+
+    def fetch(url: str) -> _FetchedDocument | None:
+        try:
+            return _fetch_public_json(
+                url,
+                observed_at=observed_at,
+                opener=opener,
+            )
+        except WatchdogError:
+            return None
+
+    # Each production request builds an independent no-redirect opener. Running
+    # the five fixed reads concurrently bounds the public outage path to one
+    # ten-second request window, leaving time for fail-closed state persistence
+    # and the optional alert webhook before systemd's unit deadline.
+    with ThreadPoolExecutor(
+        max_workers=len(PUBLICATION_ENDPOINTS),
+        thread_name_prefix="palimpsest-publication",
+    ) as executor:
+        futures = {
+            name: executor.submit(fetch, url) for name, url in PUBLICATION_ENDPOINTS
+        }
+        return tuple(futures[name].result() for name, _url in PUBLICATION_ENDPOINTS)
 
 
 def _load_json(path: Path) -> dict[str, Any]:
@@ -422,12 +505,117 @@ def _publication_clock_state(
     return None
 
 
-def _newswire_state(
-    document: Mapping[str, Any] | None, *, now: datetime
-) -> str | None:
+def _public_identity(document: Mapping[str, Any]) -> tuple[str, int]:
+    if isinstance(document, _FetchedDocument):
+        return document.served_sha256, document.served_bytes
+    payload = _canonical_json_bytes(document)
+    return hashlib.sha256(payload).hexdigest(), len(payload)
+
+
+def _exact_keys(document: object, expected: frozenset[str]) -> bool:
+    return isinstance(document, Mapping) and frozenset(document) == expected
+
+
+def _sha256(value: object) -> bool:
+    return isinstance(value, str) and _SHA256.fullmatch(value) is not None
+
+
+def _commit_sha(value: object) -> bool:
+    return isinstance(value, str) and _COMMIT_SHA.fullmatch(value) is not None
+
+
+def _positive_integer(value: object) -> bool:
+    return type(value) is int and 0 < value <= 9_007_199_254_740_991
+
+
+def _nonnegative_integer(value: object) -> bool:
+    return type(value) is int and 0 <= value <= 9_007_199_254_740_991
+
+
+def _nonblank(value: object, *, maximum: int = 8192) -> bool:
+    return isinstance(value, str) and 0 < len(value) <= maximum and bool(value.strip())
+
+
+def _relative_path(value: object) -> bool:
+    if (
+        not isinstance(value, str)
+        or not 1 <= len(value) <= 1024
+        or "\x00" in value
+        or value.startswith("/")
+    ):
+        return False
+    return ".." not in Path(value).parts
+
+
+def _nullable_text(value: object) -> bool:
+    return value is None or _nonblank(value)
+
+
+def _nullable_https_url(value: object) -> bool:
+    if value is None:
+        return True
+    if not isinstance(value, str) or len(value) > 8192:
+        return False
+    try:
+        parsed = urllib.parse.urlsplit(value)
+    except ValueError:
+        return False
+    return bool(
+        parsed.scheme == "https"
+        and parsed.hostname
+        and parsed.username is None
+        and parsed.password is None
+    )
+
+
+def _nullable_clock(value: object) -> bool:
+    if value is None:
+        return True
+    parsed = _timestamp(value)
+    return bool(parsed is not None and isinstance(value, str) and value == _iso(parsed))
+
+
+def _clock_is_valid(value: object, *, now: datetime) -> bool:
+    parsed = _timestamp(value)
+    return bool(
+        parsed is not None
+        and isinstance(value, str)
+        and value == _iso(parsed)
+        and parsed - now <= timedelta(minutes=5)
+    )
+
+
+def _attested_clock_state(value: object, *, now: datetime) -> str | None:
+    parsed = _timestamp(value)
+    if parsed is None or parsed - now > timedelta(minutes=5):
+        return "corrupt"
+    if (now - parsed).total_seconds() > PUBLICATION_MAX_AGE_SECONDS:
+        return "stale"
+    return None
+
+
+def _unknown_publication_summary() -> dict[str, Any]:
+    return {
+        "mode": "unknown",
+        "publication_sha": None,
+        "newswire_generated_at": None,
+        "china_situation_generated_at": None,
+        "attestation": None,
+        "release_manifest": None,
+    }
+
+
+def _bounded_publication_clock(document: Mapping[str, Any] | None) -> str | None:
+    if not isinstance(document, Mapping):
+        return None
+    parsed = _timestamp(document.get("generated_at"))
+    return _iso(parsed) if parsed is not None else None
+
+
+def _newswire_state(document: Mapping[str, Any] | None, *, now: datetime) -> str | None:
     state = _publication_clock_state(
         document,
-        schema_version="palimpsest-newswire.v1",
+        schema_version=ORIGINAL_NEWSWIRE_SCHEMA,
         now=now,
     )
     if state in {"unavailable", "corrupt"} or document is None:
@@ -457,7 +645,7 @@ def _situation_state(
 ) -> str | None:
     state = _publication_clock_state(
         document,
-        schema_version="palimpsest-china-situation.v1",
+        schema_version=ORIGINAL_SITUATION_SCHEMA,
         now=now,
     )
     if state in {"unavailable", "corrupt"} or document is None:
@@ -493,12 +681,12 @@ def _situation_state(
     return state
 
 
-def _publication_problems(
+def _full_publication_evaluation(
     newswire: Mapping[str, Any] | None,
     situation: Mapping[str, Any] | None,
     *,
     now: datetime,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     newswire_state = _newswire_state(newswire, now=now)
     situation_state = _situation_state(
         situation,
@@ -511,7 +699,591 @@ def _publication_problems(
         problems.append(_problem("publication", "newswire", newswire_state))
     if situation_state is not None:
         problems.append(_problem("publication", "china-situation", situation_state))
-    return problems
+    summary = {
+        "mode": "full",
+        "publication_sha": None,
+        "newswire_generated_at": _bounded_publication_clock(newswire),
+        "china_situation_generated_at": _bounded_publication_clock(situation),
+        "attestation": None,
+        "release_manifest": None,
+    }
+    return problems, summary
+
+
+_STUB_KEYS = frozenset(
+    {
+        "schema_version",
+        "publication_sha",
+        "rights_evaluated_at",
+        "status",
+        "availability",
+        "publication_allowed",
+        "reason",
+        "artifact",
+        "policy",
+        "master_status",
+        "counts",
+        "limitations",
+    }
+)
+_STUB_ARTIFACT_KEYS = frozenset({"path", "media_type"})
+_STUB_MASTER_KEYS = frozenset({"path", "sha256", "bytes"})
+_POLICY_KEYS = frozenset(
+    {
+        "path",
+        "schema_version",
+        "policy_scope",
+        "default_decision",
+        "sha256",
+        "bytes",
+    }
+)
+_STUB_COUNTS_KEYS = frozenset(
+    {"input_records", "restricted_records", "published_records"}
+)
+_ATTESTATION_KEYS = frozenset(
+    {
+        "schema_version",
+        "publication_sha",
+        "attested_at",
+        "mode",
+        "publication_allowed",
+        "artifacts",
+        "rights_status",
+        "limitations",
+    }
+)
+_ATTESTED_ARTIFACT_KEYS = frozenset(
+    {"path", "schema_version", "generated_at", "canonical_sha256"}
+)
+_ATTESTED_SITUATION_KEYS = _ATTESTED_ARTIFACT_KEYS | {"inputs"}
+_ATTESTED_INPUT_KEYS = frozenset({"newswire_generated_at", "newswire_canonical_sha256"})
+_RIGHTS_IDENTITY_KEYS = frozenset({"path", "sha256", "bytes"})
+_RIGHTS_STATUS_KEYS = frozenset(
+    {
+        "schema_version",
+        "publication_sha",
+        "rights_evaluated_at",
+        "status",
+        "availability",
+        "publication_allowed",
+        "reason",
+        "artifact",
+        "policy",
+        "counts",
+        "source_decisions",
+        "quarantined_paths",
+        "limitations",
+    }
+)
+_RIGHTS_COUNTS_KEYS = frozenset(
+    {
+        "input_records",
+        "allowed_records",
+        "restricted_records",
+        "published_records",
+        "quarantined_artifacts",
+    }
+)
+_SOURCE_DECISION_KEYS = frozenset(
+    {
+        "source_id",
+        "decision",
+        "configured_decision",
+        "availability",
+        "values_allowed",
+        "seiche_export_allowed",
+        "license",
+        "license_url",
+        "rights_evidence_url",
+        "attribution",
+        "reviewed_at",
+        "expires_at",
+        "reason",
+        "decision_sha256",
+        "input_records",
+        "published_records",
+    }
+)
+_SOURCE_ID = re.compile(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*")
+_RELEASE_MANIFEST_KEYS = frozenset(
+    {
+        "schema_version",
+        "source_commit",
+        "built_at",
+        "deployment_source",
+        "github_required",
+        "state",
+        "file_count",
+        "total_bytes",
+        "tree_sha256",
+        "critical_files",
+    }
+)
+
+
+def _restricted_stub_valid(
+    document: Mapping[str, Any],
+    *,
+    expected_path: str,
+    now: datetime,
+) -> bool:
+    artifact = document.get("artifact")
+    policy = document.get("policy")
+    master = document.get("master_status")
+    counts = document.get("counts")
+    limitations = document.get("limitations")
+    return bool(
+        _exact_keys(document, _STUB_KEYS)
+        and document.get("schema_version") == RESTRICTED_ENDPOINT_SCHEMA
+        and _commit_sha(document.get("publication_sha"))
+        and _clock_is_valid(document.get("rights_evaluated_at"), now=now)
+        and document.get("status") == "restricted"
+        and document.get("availability") == "unavailable"
+        and document.get("publication_allowed") is False
+        and _nonblank(document.get("reason"))
+        and _exact_keys(artifact, _STUB_ARTIFACT_KEYS)
+        and artifact.get("path") == expected_path
+        and artifact.get("media_type") == "application/json"
+        and _exact_keys(policy, _POLICY_KEYS)
+        and policy.get("path") == "config/china_econ_source_policy.json"
+        and policy.get("schema_version") == "palimpsest.china-economic-source-policy.v1"
+        and policy.get("policy_scope") == "china_economic_values_and_seiche_export"
+        and policy.get("default_decision") == "deny"
+        and _sha256(policy.get("sha256"))
+        and _positive_integer(policy.get("bytes"))
+        and _exact_keys(master, _STUB_MASTER_KEYS)
+        and master.get("path") == f"/{PUBLIC_RIGHTS_STATUS_PATH}"
+        and _sha256(master.get("sha256"))
+        and _positive_integer(master.get("bytes"))
+        and _exact_keys(counts, _STUB_COUNTS_KEYS)
+        and all(_nonnegative_integer(counts.get(key)) for key in _STUB_COUNTS_KEYS)
+        and counts.get("published_records") == 0
+        and isinstance(limitations, list)
+        and 3 <= len(limitations) <= 32
+        and all(_nonblank(item) for item in limitations)
+    )
+
+
+def _source_decision_valid(value: object) -> bool:
+    if not _exact_keys(value, _SOURCE_DECISION_KEYS):
+        return False
+    assert isinstance(value, Mapping)
+    source_id = value.get("source_id")
+    decision = value.get("decision")
+    configured = value.get("configured_decision")
+    availability = value.get("availability")
+    input_records = value.get("input_records")
+    if not (
+        isinstance(source_id, str)
+        and len(source_id) <= 128
+        and _SOURCE_ID.fullmatch(source_id) is not None
+        and decision in ("allow", "deny", "expired", "not_yet_effective", "unknown")
+        and configured in ("allow", "deny", None)
+        and availability in ("available", "unavailable", "restricted")
+        and type(value.get("values_allowed")) is bool
+        and type(value.get("seiche_export_allowed")) is bool
+        and _nullable_text(value.get("license"))
+        and _nullable_https_url(value.get("license_url"))
+        and _nullable_https_url(value.get("rights_evidence_url"))
+        and _nullable_text(value.get("attribution"))
+        and _nullable_clock(value.get("reviewed_at"))
+        and _nullable_clock(value.get("expires_at"))
+        and _nonblank(value.get("reason"))
+        and (
+            value.get("decision_sha256") is None
+            or _sha256(value.get("decision_sha256"))
+        )
+        and _nonnegative_integer(input_records)
+        and value.get("published_records") == 0
+    ):
+        return False
+    if decision == "unknown":
+        return all(
+            value.get(field) is None
+            for field in (
+                "configured_decision",
+                "license",
+                "license_url",
+                "rights_evidence_url",
+                "attribution",
+                "reviewed_at",
+                "expires_at",
+                "decision_sha256",
+            )
+        ) and (
+            availability == "restricted"
+            and value.get("values_allowed") is False
+            and value.get("seiche_export_allowed") is False
+        )
+    if (
+        configured not in ("allow", "deny")
+        or value.get("decision_sha256") is None
+        or value.get("reviewed_at") is None
+        or value.get("expires_at") is None
+    ):
+        return False
+    if decision == "allow":
+        return bool(
+            configured == "allow"
+            and availability == ("available" if input_records else "unavailable")
+            and value.get("values_allowed") is True
+            and value.get("seiche_export_allowed") is True
+        )
+    if decision == "deny":
+        return bool(
+            configured == "deny"
+            and availability == "restricted"
+            and value.get("values_allowed") is False
+            and value.get("seiche_export_allowed") is False
+        )
+    return bool(
+        availability == "restricted"
+        and value.get("values_allowed") is False
+        and value.get("seiche_export_allowed") is False
+    )
+
+
+def _rights_status_valid(
+    document: Mapping[str, Any],
+    *,
+    publication_sha: str,
+    attested_at: str,
+    now: datetime,
+) -> bool:
+    policy = document.get("policy")
+    artifact = document.get("artifact")
+    counts = document.get("counts")
+    decisions = document.get("source_decisions")
+    quarantined = document.get("quarantined_paths")
+    limitations = document.get("limitations")
+    if not (
+        _exact_keys(document, _RIGHTS_STATUS_KEYS)
+        and document.get("schema_version") == RIGHTS_STATUS_SCHEMA
+        and document.get("publication_sha") == publication_sha
+        and document.get("rights_evaluated_at") == attested_at
+        and _clock_is_valid(document.get("rights_evaluated_at"), now=now)
+        and document.get("status") == "restricted"
+        and document.get("availability") == "unavailable"
+        and document.get("publication_allowed") is False
+        and _nonblank(document.get("reason"))
+        and _exact_keys(artifact, _STUB_ARTIFACT_KEYS)
+        and artifact.get("path") == PUBLIC_RIGHTS_STATUS_PATH
+        and artifact.get("media_type") == "application/json"
+        and _exact_keys(policy, _POLICY_KEYS)
+        and policy.get("path") == "config/china_econ_source_policy.json"
+        and policy.get("schema_version") == "palimpsest.china-economic-source-policy.v1"
+        and policy.get("policy_scope") == "china_economic_values_and_seiche_export"
+        and policy.get("default_decision") == "deny"
+        and _sha256(policy.get("sha256"))
+        and _positive_integer(policy.get("bytes"))
+        and _exact_keys(counts, _RIGHTS_COUNTS_KEYS)
+        and all(_nonnegative_integer(counts.get(key)) for key in _RIGHTS_COUNTS_KEYS)
+        and counts.get("input_records")
+        == counts.get("allowed_records") + counts.get("restricted_records")
+        and counts.get("published_records") == 0
+        and isinstance(decisions, list)
+        and 1 <= len(decisions) <= 256
+        and isinstance(quarantined, list)
+        and len(quarantined) <= 50_000
+        and quarantined == sorted(set(quarantined))
+        and all(_relative_path(path) for path in quarantined)
+        and PUBLIC_NEWSWIRE_PATH in quarantined
+        and PUBLIC_SITUATION_PATH in quarantined
+        and counts.get("quarantined_artifacts") == len(quarantined)
+        and isinstance(limitations, list)
+        and 3 <= len(limitations) <= 32
+        and all(_nonblank(item) for item in limitations)
+        and len(limitations) == len(set(limitations))
+    ):
+        return False
+
+    source_ids: list[str] = []
+    allowed_records = 0
+    restricted_records = 0
+    for row in decisions:
+        if not _source_decision_valid(row):
+            return False
+        source_ids.append(row["source_id"])
+        if row["values_allowed"]:
+            allowed_records += row["input_records"]
+        else:
+            restricted_records += row["input_records"]
+    return bool(
+        source_ids == sorted(set(source_ids))
+        and counts.get("input_records") == allowed_records + restricted_records
+        and counts.get("allowed_records") == allowed_records
+        and counts.get("restricted_records") == restricted_records
+    )
+
+
+def _attestation_valid(
+    document: Mapping[str, Any], *, publication_sha: str, now: datetime
+) -> bool:
+    artifacts = document.get("artifacts")
+    rights_status = document.get("rights_status")
+    limitations = document.get("limitations")
+    if not (
+        _exact_keys(document, _ATTESTATION_KEYS)
+        and document.get("schema_version") == FRESHNESS_ATTESTATION_SCHEMA
+        and document.get("publication_sha") == publication_sha
+        and _clock_is_valid(document.get("attested_at"), now=now)
+        and document.get("mode") == "rights-suppressed"
+        and document.get("publication_allowed") is False
+        and _exact_keys(artifacts, frozenset({"newswire", "china_situation"}))
+        and _exact_keys(rights_status, _RIGHTS_IDENTITY_KEYS)
+        and rights_status.get("path") == PUBLIC_RIGHTS_STATUS_PATH
+        and _sha256(rights_status.get("sha256"))
+        and _positive_integer(rights_status.get("bytes"))
+        and limitations == list(FRESHNESS_ATTESTATION_LIMITATIONS)
+    ):
+        return False
+
+    newswire = artifacts.get("newswire")
+    situation = artifacts.get("china_situation")
+    if not (
+        _exact_keys(newswire, _ATTESTED_ARTIFACT_KEYS)
+        and newswire.get("path") == PUBLIC_NEWSWIRE_PATH
+        and newswire.get("schema_version") == ORIGINAL_NEWSWIRE_SCHEMA
+        and _clock_is_valid(newswire.get("generated_at"), now=now)
+        and _sha256(newswire.get("canonical_sha256"))
+        and _exact_keys(situation, _ATTESTED_SITUATION_KEYS)
+        and situation.get("path") == PUBLIC_SITUATION_PATH
+        and situation.get("schema_version") == ORIGINAL_SITUATION_SCHEMA
+        and _clock_is_valid(situation.get("generated_at"), now=now)
+        and _sha256(situation.get("canonical_sha256"))
+    ):
+        return False
+    inputs = situation.get("inputs")
+    return bool(
+        _exact_keys(inputs, _ATTESTED_INPUT_KEYS)
+        and inputs.get("newswire_generated_at") == newswire.get("generated_at")
+        and inputs.get("newswire_canonical_sha256") == newswire.get("canonical_sha256")
+    )
+
+
+def _release_manifest_valid(
+    document: Mapping[str, Any],
+    *,
+    publication_sha: str,
+    critical_documents: Mapping[str, Mapping[str, Any]],
+    now: datetime,
+) -> bool:
+    built_at = document.get("built_at")
+    critical = document.get("critical_files")
+    if not (
+        _exact_keys(document, _RELEASE_MANIFEST_KEYS)
+        and document.get("schema_version") == RELEASE_MANIFEST_SCHEMA
+        and document.get("source_commit") == publication_sha
+        and _clock_is_valid(built_at, now=now)
+        and document.get("deployment_source") == "local-git-archive"
+        and document.get("github_required") is False
+        and document.get("state") == "artifact_ready"
+        and _positive_integer(document.get("file_count"))
+        and _positive_integer(document.get("total_bytes"))
+        and _sha256(document.get("tree_sha256"))
+        and isinstance(critical, Mapping)
+        and document.get("file_count") >= len(critical)
+    ):
+        return False
+    if not critical or any(
+        not isinstance(path, str)
+        or not path
+        or not _exact_keys(row, frozenset({"bytes", "sha256"}))
+        or not _positive_integer(row.get("bytes"))
+        or not _sha256(row.get("sha256"))
+        for path, row in critical.items()
+    ):
+        return False
+    for path, public_document in critical_documents.items():
+        row = critical.get(path)
+        if not _exact_keys(row, frozenset({"bytes", "sha256"})):
+            return False
+        expected_sha256, expected_bytes = _public_identity(public_document)
+        if row.get("sha256") != expected_sha256 or row.get("bytes") != expected_bytes:
+            return False
+    if document["total_bytes"] < sum(row["bytes"] for row in critical.values()):
+        return False
+    return True
+
+
+def _restricted_publication_evaluation(
+    newswire: Mapping[str, Any],
+    situation: Mapping[str, Any],
+    attestation: Mapping[str, Any] | None,
+    rights_status: Mapping[str, Any] | None,
+    release_manifest: Mapping[str, Any] | None,
+    *,
+    now: datetime,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    unavailable_support = any(
+        document is None for document in (attestation, rights_status, release_manifest)
+    )
+    if unavailable_support:
+        return (
+            [
+                _problem("publication", "newswire", "unavailable"),
+                _problem("publication", "china-situation", "unavailable"),
+            ],
+            _unknown_publication_summary(),
+        )
+    assert attestation is not None
+    assert rights_status is not None
+    assert release_manifest is not None
+
+    if not (
+        _restricted_stub_valid(newswire, expected_path=PUBLIC_NEWSWIRE_PATH, now=now)
+        and _restricted_stub_valid(
+            situation, expected_path=PUBLIC_SITUATION_PATH, now=now
+        )
+    ):
+        return (
+            [
+                _problem("publication", "newswire", "corrupt"),
+                _problem("publication", "china-situation", "corrupt"),
+            ],
+            _unknown_publication_summary(),
+        )
+
+    publication_sha = str(newswire["publication_sha"])
+    attested_at = attestation.get("attested_at")
+    wire_master = newswire["master_status"]
+    situation_master = situation["master_status"]
+    master_sha256, master_bytes = _public_identity(rights_status)
+    rights_counts = rights_status.get("counts")
+    safe_rights_counts = rights_counts if isinstance(rights_counts, Mapping) else {}
+    expected_stub_counts = {
+        "input_records": safe_rights_counts.get("input_records"),
+        "restricted_records": safe_rights_counts.get("restricted_records"),
+        "published_records": 0,
+    }
+    common_valid = bool(
+        situation.get("publication_sha") == publication_sha
+        and newswire.get("rights_evaluated_at") == attested_at
+        and situation.get("rights_evaluated_at") == attested_at
+        and newswire.get("policy") == situation.get("policy")
+        and newswire.get("reason") == rights_status.get("reason")
+        and situation.get("reason") == rights_status.get("reason")
+        and newswire.get("counts") == expected_stub_counts
+        and situation.get("counts") == expected_stub_counts
+        and newswire.get("limitations") == rights_status.get("limitations")
+        and situation.get("limitations") == rights_status.get("limitations")
+        and wire_master == situation_master
+        and wire_master.get("sha256") == master_sha256
+        and wire_master.get("bytes") == master_bytes
+        and _rights_status_valid(
+            rights_status,
+            publication_sha=publication_sha,
+            attested_at=str(attested_at),
+            now=now,
+        )
+        and rights_status.get("policy") == newswire.get("policy")
+        and _attestation_valid(attestation, publication_sha=publication_sha, now=now)
+        and attestation["rights_status"].get("sha256") == master_sha256
+        and attestation["rights_status"].get("bytes") == master_bytes
+        and _release_manifest_valid(
+            release_manifest,
+            publication_sha=publication_sha,
+            critical_documents={
+                PUBLIC_NEWSWIRE_PATH: newswire,
+                PUBLIC_SITUATION_PATH: situation,
+                PUBLIC_ATTESTATION_PATH: attestation,
+                PUBLIC_RIGHTS_STATUS_PATH: rights_status,
+            },
+            now=now,
+        )
+    )
+    if not common_valid:
+        return (
+            [
+                _problem("publication", "newswire", "corrupt"),
+                _problem("publication", "china-situation", "corrupt"),
+            ],
+            _unknown_publication_summary(),
+        )
+
+    attested_artifacts = attestation["artifacts"]
+    attested_wire = attested_artifacts["newswire"]
+    attested_situation = attested_artifacts["china_situation"]
+    newswire_state = _attested_clock_state(attested_wire.get("generated_at"), now=now)
+    situation_state = _attested_clock_state(
+        attested_situation.get("generated_at"), now=now
+    )
+    if newswire_state == "stale" and situation_state is None:
+        situation_state = "stale"
+    problems: list[dict[str, Any]] = []
+    if newswire_state is not None:
+        problems.append(_problem("publication", "newswire", newswire_state))
+    if situation_state is not None:
+        problems.append(_problem("publication", "china-situation", situation_state))
+    attestation_sha256, attestation_bytes = _public_identity(attestation)
+    manifest_sha256, manifest_bytes = _public_identity(release_manifest)
+    summary = {
+        "mode": "rights-suppressed",
+        "publication_sha": publication_sha,
+        "newswire_generated_at": attested_wire["generated_at"],
+        "china_situation_generated_at": attested_situation["generated_at"],
+        "attestation": {
+            "sha256": attestation_sha256,
+            "bytes": attestation_bytes,
+        },
+        "release_manifest": {
+            "source_commit": release_manifest["source_commit"],
+            "tree_sha256": release_manifest["tree_sha256"],
+            "sha256": manifest_sha256,
+            "bytes": manifest_bytes,
+        },
+    }
+    return problems, summary
+
+
+def _publication_evaluation(
+    newswire: Mapping[str, Any] | None,
+    situation: Mapping[str, Any] | None,
+    attestation: Mapping[str, Any] | None,
+    rights_status: Mapping[str, Any] | None,
+    release_manifest: Mapping[str, Any] | None,
+    *,
+    now: datetime,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    newswire_schema = newswire.get("schema_version") if newswire is not None else None
+    situation_schema = (
+        situation.get("schema_version") if situation is not None else None
+    )
+    if (
+        newswire_schema == ORIGINAL_NEWSWIRE_SCHEMA
+        and situation_schema == ORIGINAL_SITUATION_SCHEMA
+    ):
+        return _full_publication_evaluation(newswire, situation, now=now)
+    if (
+        newswire_schema == RESTRICTED_ENDPOINT_SCHEMA
+        and situation_schema == RESTRICTED_ENDPOINT_SCHEMA
+    ):
+        return _restricted_publication_evaluation(
+            newswire,
+            situation,
+            attestation,
+            rights_status,
+            release_manifest,
+            now=now,
+        )
+
+    # An original document beside a restricted stub is never a partial success.
+    # It is a mixed publication generation and both semantic conditions fail.
+    if newswire is not None and situation is not None:
+        states = ("corrupt", "corrupt")
+    else:
+        states = (
+            "unavailable" if newswire is None else "corrupt",
+            "unavailable" if situation is None else "corrupt",
+        )
+    return (
+        [
+            _problem("publication", "newswire", states[0]),
+            _problem("publication", "china-situation", states[1]),
+        ],
+        _unknown_publication_summary(),
+    )
 
 
 def evaluate(
@@ -519,6 +1291,9 @@ def evaluate(
     osint: Mapping[str, Any] | None,
     newswire: Mapping[str, Any] | None,
     situation: Mapping[str, Any] | None,
+    attestation: Mapping[str, Any] | None = None,
+    rights_status: Mapping[str, Any] | None = None,
+    release_manifest: Mapping[str, Any] | None = None,
     *,
     now: datetime | None = None,
     bundle_max_age_seconds: int = DEFAULT_BUNDLE_MAX_AGE_SECONDS,
@@ -530,6 +1305,14 @@ def evaluate(
     if not 60 <= int(bundle_max_age_seconds) <= 7 * 24 * 60 * 60:
         raise WatchdogError("bundle max age is outside the safe range")
 
+    publication_problems, publication_summary = _publication_evaluation(
+        newswire,
+        situation,
+        attestation,
+        rights_status,
+        release_manifest,
+        now=observed_at,
+    )
     raw_problems = (
         _node_problems(status, now=observed_at)
         + _osint_problems(
@@ -537,7 +1320,7 @@ def evaluate(
             now=observed_at,
             bundle_max_age_seconds=int(bundle_max_age_seconds),
         )
-        + _publication_problems(newswire, situation, now=observed_at)
+        + publication_problems
     )
     by_condition: dict[str, dict[str, Any]] = {}
     for item in raw_problems:
@@ -553,6 +1336,7 @@ def evaluate(
         "status": "healthy" if not problems else "degraded",
         "active_count": len(problems),
         "counts": dict(sorted(counts.items())),
+        "publication": publication_summary,
         "problems": problems,
     }
 
@@ -688,7 +1472,7 @@ def _deliver_webhook(url: str, payload: bytes, *, opener: Any | None = None) -> 
     )
     client = opener or urllib.request.build_opener(_NoRedirect())
     try:
-        with client.open(request, timeout=10) as response:
+        with client.open(request, timeout=WEBHOOK_TIMEOUT_SECONDS) as response:
             response.read(1024)
         return True
     except Exception:
@@ -731,6 +1515,12 @@ def _arguments(argv: Iterable[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--now", help="fixed timezone-aware ISO timestamp for offline replay"
     )
+    parser.add_argument(
+        "--required-publication-mode",
+        choices=("either", "rights-suppressed"),
+        default=os.getenv("PALIMPSEST_REQUIRED_PUBLICATION_MODE", "either"),
+        help="fail closed unless the public edition uses the required rights mode",
+    )
     return parser.parse_args(list(argv) if argv is not None else None)
 
 
@@ -758,31 +1548,47 @@ def run(
         osint = _load_json(args.osint_path)
     except WatchdogError:
         osint = None
-    try:
-        newswire = _fetch_public_json(
-            PUBLIC_NEWSWIRE_URL,
+    newswire, situation, attestation, rights_status, release_manifest = (
+        _fetch_publication_documents(
             observed_at=observed_at,
             opener=publication_opener,
         )
-    except WatchdogError:
-        newswire = None
-    try:
-        situation = _fetch_public_json(
-            PUBLIC_SITUATION_URL,
-            observed_at=observed_at,
-            opener=publication_opener,
-        )
-    except WatchdogError:
-        situation = None
+    )
 
     document = evaluate(
         status,
         osint,
         newswire,
         situation,
+        attestation,
+        rights_status,
+        release_manifest,
         now=observed_at,
         bundle_max_age_seconds=args.bundle_max_age_seconds,
     )
+    required_publication_mode = getattr(args, "required_publication_mode", "either")
+    if required_publication_mode not in {"either", "rights-suppressed"}:
+        raise WatchdogError("required publication mode is invalid")
+    if (
+        required_publication_mode == "rights-suppressed"
+        and document["publication"].get("mode") != "rights-suppressed"
+    ):
+        document["problems"] = sorted(
+            [
+                *document["problems"],
+                _problem(
+                    "publication",
+                    "rights-mode",
+                    "restricted-required",
+                ),
+            ],
+            key=lambda item: item["condition"],
+        )[:MAX_CONDITIONS]
+        document["status"] = "degraded"
+        document["active_count"] = len(document["problems"])
+        document["counts"] = dict(
+            sorted(Counter(item["scope"] for item in document["problems"]).items())
+        )
     document["invocation_id"] = _invocation_id()
     try:
         previous = _load_state(args.state)

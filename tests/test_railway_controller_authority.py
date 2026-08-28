@@ -3,9 +3,11 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import re
 import stat
 import subprocess
+import sys
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
@@ -44,6 +46,117 @@ def _canonical(document: dict) -> bytes:
     )
 
 
+def _controller_outcome_source() -> str:
+    controller = _workflow(CONTROLLER)
+    step = next(
+        item
+        for item in controller["jobs"]["dispatch"]["steps"]
+        if item.get("id") == "outcome"
+    )
+    return step["run"].split("<<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]
+
+
+def _outcome_environment(
+    *,
+    dispatch_required: bool,
+    live_sha: str,
+    event: str = "schedule",
+    activation_canary: bool = False,
+    force: bool = False,
+    gate_enabled: bool = True,
+) -> dict[str, str]:
+    dispatched = dispatch_required
+    return {
+        **os.environ,
+        "ACTIVATION_CANARY": str(activation_canary).lower(),
+        "FORCE_RELEASE": str(force).lower(),
+        "GATE_ENABLED": str(gate_enabled).lower(),
+        "GITHUB_EVENT_NAME": event,
+        "GITHUB_REPOSITORY": REPOSITORY,
+        "GITHUB_RUN_ATTEMPT": str(RUN_ATTEMPT),
+        "GITHUB_RUN_ID": str(RUN_ID),
+        "GITHUB_SHA": SHA,
+        "PLAN_DISPATCH_REQUIRED": str(dispatch_required).lower(),
+        "PLAN_LIVE_SHA": live_sha,
+        "PLAN_MAIN_SHA": SHA,
+        "PUBLICATION_DISPATCH_STEP_OUTCOME": ("success" if dispatched else "skipped"),
+        "REQUEST_ARTIFACT_DIGEST": "b" * 64 if dispatched else "",
+        "REQUEST_ARTIFACT_ID": "42424242" if dispatched else "",
+        "REQUEST_ARTIFACT_STEP_OUTCOME": "success" if dispatched else "skipped",
+        "REQUESTED_AT": REQUESTED_AT if dispatched else "",
+        "REQUEST_SHA256": "",
+        "REQUEST_STEP_OUTCOME": "success" if dispatched else "skipped",
+    }
+
+
+def _run_outcome_writer(
+    root: Path,
+    *,
+    dispatch_required: bool,
+    live_sha: str,
+    event: str = "schedule",
+    activation_canary: bool = False,
+    force: bool = False,
+    gate_enabled: bool = True,
+    mutate_environment: Callable[[dict[str, str]], None] | None = None,
+    mutate_metadata: Callable[[dict], None] | None = None,
+    mutate_request: Callable[[dict], None] | None = None,
+) -> tuple[subprocess.CompletedProcess[str], Path]:
+    metadata_path = root / "railway-publication-request-artifact.json"
+    request_path = root / "railway-publication-request.json"
+    outcome_path = root / "railway-publication-controller-outcome.json"
+    environment = _outcome_environment(
+        dispatch_required=dispatch_required,
+        live_sha=live_sha,
+        event=event,
+        activation_canary=activation_canary,
+        force=force,
+        gate_enabled=gate_enabled,
+    )
+    if dispatch_required:
+        request = {
+            **_request(),
+            "activation_canary": activation_canary,
+        }
+        if mutate_request is not None:
+            mutate_request(request)
+        request_raw = _canonical(request)
+        request_path.write_bytes(request_raw)
+        environment["REQUEST_SHA256"] = hashlib.sha256(request_raw).hexdigest()
+        metadata = {
+            "digest": f"sha256:{environment['REQUEST_ARTIFACT_DIGEST']}",
+            "expired": False,
+            "id": int(environment["REQUEST_ARTIFACT_ID"]),
+            "name": f"railway-publication-request-{RUN_ID}-{RUN_ATTEMPT}",
+            "size_in_bytes": 1234,
+            "workflow_run": {
+                "head_branch": "main",
+                "head_sha": SHA,
+                "id": RUN_ID,
+            },
+        }
+        if mutate_metadata is not None:
+            mutate_metadata(metadata)
+        metadata_path.write_text(json.dumps(metadata), encoding="utf-8")
+    if mutate_environment is not None:
+        mutate_environment(environment)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            _controller_outcome_source(),
+            str(metadata_path),
+            str(request_path),
+            str(outcome_path),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+    return completed, outcome_path
+
+
 def _zip(entries: list[tuple[str, bytes, int | None]]) -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_STORED) as archive:
@@ -58,6 +171,7 @@ def _zip(entries: list[tuple[str, bytes, int | None]]) -> bytes:
 
 def _request() -> dict:
     return {
+        "activation_canary": False,
         "controller_repository": REPOSITORY,
         "controller_run_attempt": RUN_ATTEMPT,
         "controller_run_id": RUN_ID,
@@ -98,8 +212,12 @@ def _write_case(
         )
     )
     artifact_digest = hashlib.sha256(archive_raw).hexdigest()
+    baseline_request = _request()
     payload = {
-        **{key: request[key] for key in verifier.TRANSPORTED_REQUEST_KEYS},
+        **{
+            key: request.get(key, baseline_request[key])
+            for key in verifier.TRANSPORTED_REQUEST_KEYS
+        },
         "controller_artifact_digest": artifact_digest,
         "controller_artifact_id": 42_424_242,
         "controller_request_sha256": hashlib.sha256(request_raw).hexdigest(),
@@ -168,12 +286,108 @@ def test_exact_controller_request_chain_is_accepted(tmp_path: Path) -> None:
     request = _verify(paths)
 
     assert request == _request()
+    assert request["activation_canary"] is False
+
+
+def test_authenticated_manual_activation_canary_is_accepted(tmp_path: Path) -> None:
+    paths = _write_case(
+        tmp_path,
+        request_mutation=lambda value: value.__setitem__("activation_canary", True),
+        run_mutation=lambda value: value.__setitem__("event", "workflow_dispatch"),
+    )
+
+    request = _verify(paths)
+
+    assert request["activation_canary"] is True
+
+
+def test_scheduled_run_cannot_claim_activation_canary_authority(tmp_path: Path) -> None:
+    paths = _write_case(
+        tmp_path,
+        request_mutation=lambda value: value.__setitem__("activation_canary", True),
+    )
+
+    with pytest.raises(
+        verifier.ControllerRequestError,
+        match="requires a manual controller run",
+    ):
+        _verify(paths)
+
+
+@pytest.mark.parametrize("activation_canary", [False, True])
+def test_cli_emits_only_the_authenticated_activation_authority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    activation_canary: bool,
+) -> None:
+    request = {**_request(), "activation_canary": activation_canary}
+    monkeypatch.setattr(
+        verifier,
+        "verify_controller_request",
+        lambda **_arguments: request,
+    )
+    output = tmp_path / "github-output.txt"
+    placeholder = tmp_path / "unused"
+
+    result = verifier.main(
+        [
+            "--event",
+            str(placeholder),
+            "--run-json",
+            str(placeholder),
+            "--artifact-json",
+            str(placeholder),
+            "--artifact-zip",
+            str(placeholder),
+            "--repository",
+            REPOSITORY,
+            "--github-output",
+            str(output),
+        ]
+    )
+
+    assert result == 0
+    assert output.read_text(encoding="utf-8") == (
+        f"activation_canary={str(activation_canary).lower()}\n"
+    )
+
+
+def test_cli_does_not_emit_authority_after_failed_verification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def reject(**_arguments: object) -> dict:
+        raise verifier.ControllerRequestError("tampered")
+
+    monkeypatch.setattr(verifier, "verify_controller_request", reject)
+    output = tmp_path / "github-output.txt"
+    placeholder = tmp_path / "unused"
+
+    result = verifier.main(
+        [
+            "--event",
+            str(placeholder),
+            "--run-json",
+            str(placeholder),
+            "--artifact-json",
+            str(placeholder),
+            "--artifact-zip",
+            str(placeholder),
+            "--repository",
+            REPOSITORY,
+            "--github-output",
+            str(output),
+        ]
+    )
+
+    assert result == 1
+    assert not output.exists()
 
 
 @pytest.mark.parametrize(
     ("label", "mutation"),
     [
-        ("schema", lambda value: value.__setitem__("schema_version", "v2")),
+        ("schema", lambda value: value.__setitem__("schema_version", "v1")),
         (
             "repository",
             lambda value: value.__setitem__("controller_repository", "other/repo"),
@@ -186,6 +400,11 @@ def test_exact_controller_request_chain_is_accepted(tmp_path: Path) -> None:
         ),
         ("run-id", lambda value: value.__setitem__("controller_run_id", 0)),
         ("attempt", lambda value: value.__setitem__("controller_run_attempt", True)),
+        (
+            "activation-canary-type",
+            lambda value: value.__setitem__("activation_canary", "false"),
+        ),
+        ("activation-canary-missing", lambda value: value.pop("activation_canary")),
         ("deploy", lambda value: value.__setitem__("deploy_railway", False)),
         ("scope", lambda value: value.__setitem__("scope", "source")),
         ("sha", lambda value: value.__setitem__("sha", "A" * 40)),
@@ -222,6 +441,10 @@ def test_request_contract_fails_closed(
         (
             "request-equality",
             lambda value: value.__setitem__("requested_at", "2026-08-27T10:00:01Z"),
+        ),
+        (
+            "activation-canary-equality",
+            lambda value: value.__setitem__("activation_canary", True),
         ),
     ],
 )
@@ -383,8 +606,9 @@ def test_zip_shape_fails_closed(
 def test_request_must_use_the_one_canonical_byte_form(tmp_path: Path) -> None:
     paths = _write_case(
         tmp_path,
-        request_renderer=lambda value: json.dumps(value, indent=2).encode("utf-8")
-        + b"\n",
+        request_renderer=lambda value: (
+            json.dumps(value, indent=2).encode("utf-8") + b"\n"
+        ),
     )
 
     with pytest.raises(verifier.ControllerRequestError, match="not canonical"):
@@ -405,6 +629,246 @@ def test_request_clock_has_bounded_replay_and_future_windows(
 
     with pytest.raises(verifier.ControllerRequestError):
         _verify(paths, now=now)
+
+
+def test_controller_seals_a_canonical_scheduled_no_change_outcome(
+    tmp_path: Path,
+) -> None:
+    completed, outcome_path = _run_outcome_writer(
+        tmp_path,
+        dispatch_required=False,
+        live_sha=SHA,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    raw = outcome_path.read_bytes()
+    outcome = json.loads(raw)
+    assert raw == _canonical(outcome)
+    assert stat.S_IMODE(outcome_path.stat().st_mode) == 0o600
+    assert outcome == {
+        "activation_canary": False,
+        "controller_run_attempt": RUN_ATTEMPT,
+        "controller_run_id": RUN_ID,
+        "event": "schedule",
+        "force": False,
+        "gate_enabled": True,
+        "head_sha": SHA,
+        "live_sha": SHA,
+        "main_sha": SHA,
+        "recorded_at": outcome["recorded_at"],
+        "repository": REPOSITORY,
+        "request_artifact_digest": None,
+        "request_artifact_id": None,
+        "request_artifact_name": None,
+        "request_artifact_size": None,
+        "request_sha256": None,
+        "requested_at": None,
+        "result": "no_change",
+        "schema_version": "palimpsest.railway-publication-controller-outcome.v1",
+        "workflow": ".github/workflows/railway-publication-controller.yml",
+        "workflow_name": "Queue exact Railway publication",
+    }
+    datetime.fromisoformat(outcome["recorded_at"].replace("Z", "+00:00"))
+
+
+def test_controller_seals_a_provenance_ready_dispatched_outcome(
+    tmp_path: Path,
+) -> None:
+    completed, outcome_path = _run_outcome_writer(
+        tmp_path,
+        dispatch_required=True,
+        live_sha="c" * 40,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    raw = outcome_path.read_bytes()
+    outcome = json.loads(raw)
+    assert raw == _canonical(outcome)
+    assert outcome["result"] == "dispatched"
+    assert outcome["head_sha"] == outcome["main_sha"] == SHA
+    assert outcome["live_sha"] == "c" * 40
+    assert outcome["request_artifact_id"] == 42_424_242
+    assert outcome["request_artifact_name"] == (
+        f"railway-publication-request-{RUN_ID}-{RUN_ATTEMPT}"
+    )
+    assert outcome["request_artifact_digest"] == "b" * 64
+    assert outcome["request_artifact_size"] == 1234
+    assert (
+        outcome["request_sha256"] == hashlib.sha256(_canonical(_request())).hexdigest()
+    )
+    assert outcome["requested_at"] == REQUESTED_AT
+
+
+@pytest.mark.parametrize(
+    ("label", "arguments"),
+    [
+        (
+            "no-change-live-drift",
+            {"dispatch_required": False, "live_sha": "c" * 40},
+        ),
+        (
+            "forced-no-change",
+            {"dispatch_required": False, "live_sha": SHA, "force": True},
+        ),
+        (
+            "scheduled-gate-closed",
+            {"dispatch_required": False, "live_sha": SHA, "gate_enabled": False},
+        ),
+        (
+            "manual-without-authority",
+            {
+                "dispatch_required": False,
+                "live_sha": SHA,
+                "event": "workflow_dispatch",
+                "gate_enabled": False,
+            },
+        ),
+    ],
+)
+def test_controller_no_change_outcome_fails_closed(
+    tmp_path: Path,
+    label: str,
+    arguments: dict[str, object],
+) -> None:
+    completed, outcome_path = _run_outcome_writer(tmp_path, **arguments)
+
+    assert completed.returncode != 0, (label, completed.stdout, completed.stderr)
+    assert not outcome_path.exists()
+
+
+@pytest.mark.parametrize(
+    ("label", "environment_mutation", "metadata_mutation", "request_mutation"),
+    [
+        (
+            "main-head-drift",
+            lambda value: value.__setitem__("PLAN_MAIN_SHA", "d" * 40),
+            None,
+            None,
+        ),
+        (
+            "artifact-digest-drift",
+            None,
+            lambda value: value.__setitem__("digest", f"sha256:{'d' * 64}"),
+            None,
+        ),
+        (
+            "artifact-run-drift",
+            None,
+            lambda value: value["workflow_run"].__setitem__("id", RUN_ID + 1),
+            None,
+        ),
+        (
+            "request-authority-drift",
+            None,
+            None,
+            lambda value: value.__setitem__("activation_canary", True),
+        ),
+        (
+            "request-step-not-successful",
+            lambda value: value.__setitem__("REQUEST_STEP_OUTCOME", "failure"),
+            None,
+            None,
+        ),
+    ],
+)
+def test_controller_dispatched_outcome_rejects_substituted_evidence(
+    tmp_path: Path,
+    label: str,
+    environment_mutation: Callable[[dict[str, str]], None] | None,
+    metadata_mutation: Callable[[dict], None] | None,
+    request_mutation: Callable[[dict], None] | None,
+) -> None:
+    completed, outcome_path = _run_outcome_writer(
+        tmp_path,
+        dispatch_required=True,
+        live_sha="c" * 40,
+        mutate_environment=environment_mutation,
+        mutate_metadata=metadata_mutation,
+        mutate_request=request_mutation,
+    )
+
+    assert completed.returncode != 0, (label, completed.stdout, completed.stderr)
+    assert not outcome_path.exists()
+
+
+def test_controller_outcome_is_exclusive_and_secret_free(tmp_path: Path) -> None:
+    outcome_path = tmp_path / "railway-publication-controller-outcome.json"
+    outcome_path.write_text("owner evidence\n", encoding="utf-8")
+
+    completed, returned_path = _run_outcome_writer(
+        tmp_path,
+        dispatch_required=False,
+        live_sha=SHA,
+    )
+
+    assert returned_path == outcome_path
+    assert completed.returncode != 0
+    assert outcome_path.read_text(encoding="utf-8") == "owner evidence\n"
+
+    clean_root = tmp_path / "clean"
+    clean_root.mkdir()
+    clean, clean_path = _run_outcome_writer(
+        clean_root,
+        dispatch_required=False,
+        live_sha=SHA,
+    )
+    assert clean.returncode == 0, clean.stderr
+    outcome = json.loads(clean_path.read_bytes())
+    secret_key = re.compile(
+        r"(?:^|_)(?:secret|token|password|credential|private_key)(?:_|$)", re.I
+    )
+    assert not any(secret_key.search(key) for key in outcome)
+
+
+def test_controller_workflow_preserves_every_unambiguous_outcome() -> None:
+    controller = _workflow(CONTROLLER)
+    assert controller["permissions"] == {"actions": "read", "contents": "write"}
+    steps = controller["jobs"]["dispatch"]["steps"]
+    dispatch = next(step for step in steps if step.get("id") == "publication_dispatch")
+    outcome = next(step for step in steps if step.get("id") == "outcome")
+    artifact = next(step for step in steps if step.get("id") == "outcome_artifact")
+    enforce = next(
+        step
+        for step in steps
+        if step.get("name") == "Enforce one immutable controller outcome"
+    )
+
+    assert dispatch["name"] == "Dispatch one exact complete publication transaction"
+    assert "steps.plan.outputs.dispatch_required == 'false'" in outcome["if"]
+    assert "steps.publication_dispatch.outcome == 'success'" in outcome["if"]
+    assert "actions/artifacts/$REQUEST_ARTIFACT_ID" in outcome["run"]
+    assert "timeout --signal=TERM --kill-after=5s 30s gh api" in outcome["run"]
+    assert "os.O_EXCL" in outcome["run"]
+    assert "os.O_NOFOLLOW" in outcome["run"]
+    assert "os.fsync" in outcome["run"]
+    for field in (
+        "request_artifact_digest",
+        "request_artifact_id",
+        "request_artifact_name",
+        "request_artifact_size",
+        "request_sha256",
+        "requested_at",
+    ):
+        assert f'"{field}"' in outcome["run"]
+    assert artifact["if"] == "${{ always() && steps.outcome.outcome == 'success' }}"
+    assert (
+        artifact["uses"]
+        == "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+    )
+    assert artifact["with"] == {
+        "name": "railway-publication-controller-outcome-${{ github.run_id }}-${{ github.run_attempt }}",
+        "path": "${{ runner.temp }}/railway-publication-controller-outcome.json",
+        "if-no-files-found": "error",
+        "retention-days": 90,
+        "compression-level": 0,
+        "overwrite": False,
+        "include-hidden-files": False,
+        "archive": True,
+    }
+    assert enforce["if"] == "${{ always() }}"
+    assert 'test "$PLAN_STEP" = success' in enforce["run"]
+    assert 'test "$OUTCOME_STEP" = success' in enforce["run"]
+    assert 'test "$OUTCOME_ARTIFACT_STEP" = success' in enforce["run"]
 
 
 def test_workflows_bind_dispatch_to_immutable_controller_artifact() -> None:
@@ -442,7 +906,14 @@ def test_workflows_bind_dispatch_to_immutable_controller_artifact() -> None:
     }
     assert "sort_keys=True" in request["run"]
     assert 'separators=(",", ":")' in request["run"]
+    assert request["env"]["ACTIVATION_CANARY"] == (
+        "${{ github.event_name == 'workflow_dispatch' && "
+        "inputs.activation_canary == true }}"
+    )
+    assert '"activation_canary": activation_canary' in request["run"]
+    assert "activation_canary={str(activation_canary).lower()}" in request["run"]
     for output in (
+        "steps.request.outputs.activation_canary",
         "steps.request.outputs.requested_at",
         "steps.request.outputs.request_sha256",
         "steps.request_artifact.outputs.artifact-id",
@@ -456,6 +927,9 @@ def test_workflows_bind_dispatch_to_immutable_controller_artifact() -> None:
     contract = tests["jobs"]["contract"]
     assert contract["timeout-minutes"] == 45
     assert contract["permissions"] == {"actions": "read", "contents": "read"}
+    assert contract["outputs"]["activation_canary"] == (
+        "${{ steps.controller_request.outputs.activation_canary }}"
+    )
     contract_steps = contract["steps"]
     checkout_index = next(
         index
@@ -483,6 +957,7 @@ def test_workflows_bind_dispatch_to_immutable_controller_artifact() -> None:
     assert authentication["env"]["CONTROLLER_RUN_ATTEMPT"] == (
         "${{ github.event.client_payload.controller_run_attempt }}"
     )
+    assert authentication["id"] == "controller_request"
     run_endpoints = re.findall(
         r'"repos/\$GITHUB_REPOSITORY/actions/runs/[^\"]+"', script
     )
@@ -495,6 +970,7 @@ def test_workflows_bind_dispatch_to_immutable_controller_artifact() -> None:
     assert "actions/artifacts/$CONTROLLER_ARTIFACT_ID" in script
     assert "actions/artifacts/$CONTROLLER_ARTIFACT_ID/zip" in script
     assert "scripts/verify_railway_controller_request.py" in script
+    assert '--github-output "$GITHUB_OUTPUT"' in script
     assert script.count("gh api") == 3
     assert script.count("timeout --signal=TERM --kill-after=5s") == 3
 
@@ -530,6 +1006,15 @@ def test_contract_retains_closed_ordinary_and_railway_dispatch_schemas(
     cases = (
         ({"sha": SHA, "scope": "complete"}, True),
         (signed_payload, True),
+        ({**signed_payload, "activation_canary": "false"}, False),
+        (
+            {
+                key: value
+                for key, value in signed_payload.items()
+                if key != "activation_canary"
+            },
+            False,
+        ),
         ({**signed_payload, "extra": "drift"}, False),
         ({"sha": SHA, "scope": "complete", "extra": "drift"}, False),
     )
@@ -562,6 +1047,7 @@ def test_contract_retains_closed_ordinary_and_railway_dispatch_schemas(
 
 def test_repository_dispatch_payload_stays_below_github_property_limit() -> None:
     expected_keys = {
+        "activation_canary",
         "controller_artifact_digest",
         "controller_artifact_id",
         "controller_request_sha256",
@@ -573,7 +1059,7 @@ def test_repository_dispatch_payload_stays_below_github_property_limit() -> None
         "sha",
     }
     assert verifier.RAILWAY_PAYLOAD_KEYS == expected_keys
-    assert len(verifier.RAILWAY_PAYLOAD_KEYS) == 9
+    assert len(verifier.RAILWAY_PAYLOAD_KEYS) == 10
     assert len(verifier.RAILWAY_PAYLOAD_KEYS) <= 10
 
     controller = _workflow(CONTROLLER)

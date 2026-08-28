@@ -957,16 +957,20 @@ the old `6de3` line is not a generic recovery target. The raw old deployment
 receipt is evidence checked against the reviewed expectation, not a release
 decision.
 
-Before choosing `EXPECTED_DEPLOY_SHA`, publish one fresh Newswire candidate
-from reviewed `main` and wait for Pages to serve both
-`readings/newswire-latest.json` and `readings/china-situation-latest.json` from
-that descendant. The situation must embed the exact canonical Newswire digest
-and timestamp, and both publication clocks must be within the watchdog's
-two-hour window when Phase 1 starts. Scheduled publishers remain disabled
-during this release; this is an explicit, observed manual prerequisite, not a
-temporary policy exemption. Choose the resulting current `main` head as the
-deployment target. Phase 1 executes the target watchdog and refuses any
-remaining `publication/*` problem before the first host mutation.
+Before choosing `EXPECTED_DEPLOY_SHA`, keep the repository variable
+`RAILWAY_PUBLICATION_ENABLED=false` and every scheduled producer disabled.
+Run one reviewed, production Newswire refresh, then dispatch the Railway
+controller with `activation_canary=true` and `force=false`. The canary must
+publish the resulting exact current `main` commit through the canonical
+`https://www.palimpsest.info` origin. The public Newswire and China-situation
+paths deliberately remain restricted same-path stubs; freshness authority is
+the rights-suppressed watchdog attestation, not equality with the quarantined
+raw Git artifacts. Choose the canary's exact Railway manifest source commit as
+the deployment target. When Phase 1 starts, the attested Newswire and situation
+clocks must both be within the watchdog's two-hour window, the watchdog
+publication mode must be `rights-suppressed`, and its `publication_sha` must
+equal `EXPECTED_DEPLOY_SHA`. Phase 1 refuses any remaining `publication/*`
+problem or identity mismatch before the first host mutation.
 
 This transaction is deliberately forward-only. After a migration, publication,
 or append-only witness advance, checking out a historical commit cannot restore
@@ -1226,6 +1230,137 @@ candidate mutation. A reboot during the external publication pause therefore
 cannot restart a timer, socket, or path and mutate the receipt. Phase 3 restores
 the exact captured enablement and activity; any failure leaves all activators
 disabled and the release proof in place.
+
+### First Newswire prerequisite and Railway activation canary
+
+Run this block on the trusted operator workstation from a clean checkout of the
+exact current `main` commit, after the exclusive-writer credential audit and
+before opening the Phase 1 SSH shell. It deliberately keeps
+`RAILWAY_PUBLICATION_ENABLED=false`. The first helper performs one bounded
+enable-dispatch-disable Newswire refresh and records the exact accepted child
+commit. The second helper deploys only that child through the protected
+environment and binds both live origins, the release artifact, and the
+rights-suppressed publication-freshness attestation back to the first receipt.
+
+Both output paths must be new files in one private operator-owned directory.
+Preserve that directory as activation evidence; neither file contains a
+credential. Do not substitute a direct `railway up`, a dashboard deployment, or
+a manually selected workflow run.
+
+```bash
+set -Eeuo pipefail
+umask 077
+test -x ops/railway/run-newswire-prerequisite.sh
+test -x ops/railway/run-activation-canary
+test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+export PALIMPSEST_REPOSITORY=beepboop2025/palimpsest
+export EXPECTED_NEWSWIRE_BASE_SHA="$(git rev-parse HEAD)"
+[[ "$EXPECTED_NEWSWIRE_BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+
+FIRST_ACTIVATION_EVIDENCE_DIR="$(
+  mktemp -d "${TMPDIR:-/tmp}/palimpsest-first-activation.XXXXXX"
+)"
+chmod 0700 "$FIRST_ACTIVATION_EVIDENCE_DIR"
+export NEWSWIRE_PREREQUISITE_RECEIPT="${FIRST_ACTIVATION_EVIDENCE_DIR}/newswire-prerequisite.json"
+
+ops/railway/run-newswire-prerequisite.sh
+
+export EXPECTED_CANARY_SHA="$(python3 - "$NEWSWIRE_PREREQUISITE_RECEIPT" <<'PY'
+import json
+from pathlib import Path
+import re
+import sys
+
+
+def reject_duplicate(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("duplicate key in Newswire prerequisite receipt")
+        value[key] = item
+    return value
+
+
+path = Path(sys.argv[1])
+if path.is_symlink() or not path.is_file():
+    raise SystemExit("Newswire prerequisite receipt is not a regular file")
+raw = path.read_bytes()
+if not 1 <= len(raw) <= 256 * 1024:
+    raise SystemExit("Newswire prerequisite receipt has an invalid size")
+value = json.loads(
+    raw.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicate,
+    parse_constant=lambda token: (_ for _ in ()).throw(
+        ValueError(f"invalid JSON constant: {token}")
+    ),
+)
+sha = value.get("publication_sha") if isinstance(value, dict) else None
+if (
+    value.get("schema_version")
+    != "palimpsest.newswire-activation-prerequisite.v1"
+    or not isinstance(sha, str)
+    or re.fullmatch(r"[0-9a-f]{40}", sha) is None
+):
+    raise SystemExit("Newswire prerequisite receipt identity is invalid")
+print(sha)
+PY
+)"
+
+export ACTIVATION_CANARY_RECEIPT="${FIRST_ACTIVATION_EVIDENCE_DIR}/railway-activation-canary.json"
+ACTIVATION_CANARY=true FORCE=false ops/railway/run-activation-canary
+
+FIRST_CANARY_SOURCE_SHA="$(python3 - "$ACTIVATION_CANARY_RECEIPT" <<'PY'
+import json
+from pathlib import Path
+import re
+import sys
+
+
+def reject_duplicate(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("duplicate key in activation-canary receipt")
+        value[key] = item
+    return value
+
+
+path = Path(sys.argv[1])
+if path.is_symlink() or not path.is_file():
+    raise SystemExit("activation-canary receipt is not a regular file")
+raw = path.read_bytes()
+if not 1 <= len(raw) <= 256 * 1024:
+    raise SystemExit("activation-canary receipt has an invalid size")
+value = json.loads(
+    raw.decode("utf-8", "strict"),
+    object_pairs_hook=reject_duplicate,
+    parse_constant=lambda token: (_ for _ in ()).throw(
+        ValueError(f"invalid JSON constant: {token}")
+    ),
+)
+sha = value.get("source_commit") if isinstance(value, dict) else None
+if (
+    value.get("schema_version")
+    != "palimpsest.railway-activation-canary-receipt.v1"
+    or not isinstance(sha, str)
+    or re.fullmatch(r"[0-9a-f]{40}", sha) is None
+):
+    raise SystemExit("activation-canary receipt identity is invalid")
+print(sha)
+PY
+)"
+test "$FIRST_CANARY_SOURCE_SHA" = "$EXPECTED_CANARY_SHA"
+export EXPECTED_DEPLOY_SHA="$FIRST_CANARY_SOURCE_SHA"
+printf 'FIRST_ACTIVATION_EVIDENCE_DIR=%s\n' "$FIRST_ACTIVATION_EVIDENCE_DIR"
+printf 'EXPECTED_DEPLOY_SHA=%s\n' "$EXPECTED_DEPLOY_SHA"
+```
+
+Carry the printed `EXPECTED_DEPLOY_SHA` into Phase 1. The Newswire and canary
+helpers remove only the exact exclusive-writer acknowledgement they observed
+or created when a failure occurs, restore the Newswire workflow freeze, and
+force the hourly gate back to `false`. An unfamiliar acknowledgement or run is
+preserved and reported rather than guessed away.
 
 ### Phase 1: host transaction and local BLEED recovery
 
@@ -3989,7 +4124,8 @@ watchdog_baseline_rc=0
   2>"$OBSERVER_PREFLIGHT_DIR/watchdog.stderr" \
   || watchdog_baseline_rc=$?
 [[ "$watchdog_baseline_rc" == 0 || "$watchdog_baseline_rc" == 2 ]]
-python3 - "$WATCHDOG_BASELINE_STATUS" "$watchdog_baseline_rc" <<'PY'
+python3 - "$WATCHDOG_BASELINE_STATUS" "$watchdog_baseline_rc" \
+  "$EXPECTED_DEPLOY_SHA" <<'PY'
 import json
 import sys
 
@@ -4007,6 +4143,22 @@ if any(
 ):
     raise SystemExit(
         "fresh, lineage-linked Newswire and China situation are required"
+    )
+publication = value.get("publication")
+release_manifest = (
+    publication.get("release_manifest")
+    if isinstance(publication, dict)
+    else None
+)
+if (
+    not isinstance(publication, dict)
+    or publication.get("mode") != "rights-suppressed"
+    or publication.get("publication_sha") != sys.argv[3]
+    or not isinstance(release_manifest, dict)
+    or release_manifest.get("source_commit") != sys.argv[3]
+):
+    raise SystemExit(
+        "watchdog rights-suppressed publication is not the deployment SHA"
     )
 PY
 WATCHDOG_BASELINE_B64="$(/usr/bin/python3 "$OBSERVER_GATE_PATH" baseline \
@@ -5589,15 +5741,142 @@ expected stale-state evidence, not release success.
 ### Phase 2: external OSINT publication
 
 Use a separately authenticated operator workstation, never credentials copied
-onto the node. Copy the exact Phase 1 SHA values into this shell, dispatch the
-named workflow from `main`, and select only the new `workflow_dispatch` run ID
-shown by `gh run list`. The run's head must be the expected deployment commit or
-a main-line descendant of it. Do not select an older successful run.
+onto the node. Keep `RAILWAY_PUBLICATION_ENABLED=false`. Copy the exact Phase 1
+SHA values into this shell, dispatch the named OSINT workflow from `main`, and
+select only the new `workflow_dispatch` run ID shown by `gh run list`. Then run
+one second, controlled Railway controller canary with
+`activation_canary=true`; that canary creates the exact public release `R`
+containing the OSINT publication commit `P`. Do not select an older successful
+run and do not enable either schedule to complete this transaction.
 
 ```bash
 set -Eeuo pipefail
+PALIMPSEST_REPOSITORY='beepboop2025/palimpsest'
+RAILWAY_PRODUCTION_ENVIRONMENT='palimpsest-railway-production'
+railway_bounded_gh() {
+  (( $# >= 2 ))
+  local command_timeout_seconds="$1"
+  shift
+  [[ "$command_timeout_seconds" =~ ^[1-9][0-9]*$ ]]
+  python3 - "$command_timeout_seconds" "$@" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+
+timeout_seconds = int(sys.argv[1], 10)
+if timeout_seconds <= 0:
+    raise SystemExit("GitHub command timeout must be positive")
+try:
+    process = subprocess.Popen(
+        ["gh", *sys.argv[2:]],
+        start_new_session=True,
+    )
+    returncode = process.wait(timeout=timeout_seconds)
+except subprocess.TimeoutExpired:
+    print("bounded GitHub command timed out", file=sys.stderr)
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        pass
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        process.wait()
+    raise SystemExit(124) from None
+raise SystemExit(returncode)
+PY
+}
+private_directory_is_owned_0700() {
+  (( $# == 1 ))
+  python3 - "$1" "$(id -u)" "$(id -g)" <<'PY'
+import os
+import stat
+import sys
+
+try:
+    metadata = os.lstat(sys.argv[1])
+except OSError:
+    raise SystemExit(1) from None
+if (
+    not stat.S_ISDIR(metadata.st_mode)
+    or metadata.st_uid != int(sys.argv[2], 10)
+    or metadata.st_gid != int(sys.argv[3], 10)
+    or stat.S_IMODE(metadata.st_mode) != 0o700
+):
+    raise SystemExit(1)
+PY
+}
+clear_railway_writer_authority_on_failure() {
+  (( $# == 1 ))
+  local failure_status="$1" acknowledgement_state=''
+  local publication_gate_state=''
+  local acknowledgement_count=''
+  local authority_cleanup_status=0
+  (( failure_status != 0 )) || return 0
+
+  if ! railway_bounded_gh 60 variable set \
+      RAILWAY_PUBLICATION_ENABLED --body false \
+      --repo "$PALIMPSEST_REPOSITORY"; then
+    printf 'failed to force the Railway hourly publication gate closed\n' >&2
+    authority_cleanup_status=1
+  elif ! publication_gate_state="$(railway_bounded_gh 60 variable get \
+      RAILWAY_PUBLICATION_ENABLED \
+      --repo "$PALIMPSEST_REPOSITORY" 2>/dev/null)" \
+      || [[ "$publication_gate_state" != false ]]; then
+    printf 'Railway hourly publication gate did not remain closed\n' >&2
+    authority_cleanup_status=1
+  fi
+
+  acknowledgement_state="$(railway_bounded_gh 60 variable list \
+      --repo "$PALIMPSEST_REPOSITORY" \
+      --env "$RAILWAY_PRODUCTION_ENVIRONMENT" --json name,value \
+      --jq '[.[] | select(.name == "RAILWAY_EXCLUSIVE_WRITER_ACK") | .value]
+        | if length == 0 then "absent"
+          elif length == 1 and .[0] == "palimpsest-github-environment-v1"
+          then "exact" else "unexpected" end' 2>/dev/null)" \
+    || acknowledgement_state='unproved'
+  case "$acknowledgement_state" in
+    absent) ;;
+    exact)
+      if ! railway_bounded_gh 60 variable delete \
+          RAILWAY_EXCLUSIVE_WRITER_ACK \
+          --repo "$PALIMPSEST_REPOSITORY" \
+          --env "$RAILWAY_PRODUCTION_ENVIRONMENT"; then
+        printf 'failed to remove the Railway writer acknowledgement\n' >&2
+        authority_cleanup_status=1
+      fi
+      ;;
+    unexpected)
+      printf 'refusing to delete an unfamiliar Railway writer acknowledgement\n' >&2
+      authority_cleanup_status=1
+      ;;
+    *)
+      printf 'Railway writer acknowledgement state was not proved\n' >&2
+      authority_cleanup_status=1
+      ;;
+  esac
+  acknowledgement_count="$(railway_bounded_gh 60 variable list \
+    --repo "$PALIMPSEST_REPOSITORY" \
+    --env "$RAILWAY_PRODUCTION_ENVIRONMENT" --json name \
+    --jq '[.[] | select(.name == "RAILWAY_EXCLUSIVE_WRITER_ACK")] | length' \
+    2>/dev/null)" || acknowledgement_count='unknown'
+  if [[ "$acknowledgement_count" != 0 ]]; then
+    printf 'Railway writer acknowledgement absence was not proved\n' >&2
+    authority_cleanup_status=1
+  fi
+  if [[ "${RAILWAY_RELEASE_RUN_ID:-}" =~ ^[0-9]+$ ]]; then
+    printf 'Reconcile downstream Railway release run %s; cleanup did not cancel it.\n' \
+      "$RAILWAY_RELEASE_RUN_ID" >&2
+  fi
+  return "$authority_cleanup_status"
+}
 phase2_abort() {
-  local original_status="${1:-1}" current_uid current_gid
+  local original_status="${1:-1}"
   trap - ERR EXIT HUP INT TERM
   if (( BASH_SUBSHELL > 0 )); then
     printf '__PALIMPSEST_COMMAND_SUBSTITUTION_FAILED__\n'
@@ -5608,15 +5887,14 @@ phase2_abort() {
     cleanup_publication_files "$original_status"
   elif declare -F cleanup_phase2 >/dev/null 2>&1; then
     cleanup_phase2 "$original_status" 0
-  elif [[ -n "${PHASE2_TMP_DIR:-}" ]]; then
-    current_uid="$(id -u)"
-    current_gid="$(id -g)"
-    if [[ ! -L "$PHASE2_TMP_DIR" && -d "$PHASE2_TMP_DIR" ]] \
-        && [[ "$(stat -c '%u:%g:%a' "$PHASE2_TMP_DIR" 2>/dev/null)" \
-          == "${current_uid}:${current_gid}:700" ]]; then
-      rm -rf -- "$PHASE2_TMP_DIR"
-    else
-      printf 'refusing unauthenticated Phase 2 temporary cleanup\n' >&2
+  else
+    clear_railway_writer_authority_on_failure "$original_status" || true
+    if [[ -n "${PHASE2_TMP_DIR:-}" ]]; then
+      if private_directory_is_owned_0700 "$PHASE2_TMP_DIR"; then
+        rm -rf -- "$PHASE2_TMP_DIR"
+      else
+        printf 'refusing unauthenticated Phase 2 temporary cleanup\n' >&2
+      fi
     fi
   fi
   (( original_status != 0 )) || original_status=1
@@ -5627,7 +5905,6 @@ trap 'phase2_abort "$?"' EXIT
 trap 'phase2_abort 129' HUP
 trap 'phase2_abort 130' INT
 trap 'phase2_abort 143' TERM
-PALIMPSEST_REPOSITORY='beepboop2025/palimpsest'
 EXPECTED_DEPLOY_SHA='REPLACE_WITH_SAME_REVIEWED_40_HEX_SHA'
 RELEASE_RESUME_TOKEN='REPLACE_WITH_PHASE_1_32_HEX_TOKEN'
 LOCAL_BLEED_SHA256='REPLACE_WITH_PHASE_1_64_HEX_SHA256'
@@ -5648,6 +5925,8 @@ MAIN_RELATION="$(gh api \
 PHASE2_TMP_DIR="$(mktemp -d)"
 chmod 0700 "$PHASE2_TMP_DIR"
 OSINT_WORKFLOW='osint-china-v2-refresh.yml'
+RAILWAY_CONTROLLER_WORKFLOW='railway-publication-controller.yml'
+RAILWAY_RELEASE_WORKFLOW='tests.yml'
 OSINT_WORKFLOW_RESTORE_DISABLED=0
 osint_workflow_state() {
   gh api \
@@ -5678,27 +5957,34 @@ restore_osint_workflow_freeze() {
 }
 cleanup_phase2() {
   local original_status="${1:-$?}" inherited_cleanup_status="${2:-0}"
-  local restore_status=0 cleanup_status=0 current_uid current_gid
+  local authority_cleanup_status=0 restore_status=0 cleanup_status=0
+  local final_failure_status=0
   trap - ERR EXIT HUP INT TERM
   set +e
   restore_osint_workflow_freeze || restore_status=$?
-  current_uid="$(id -u)"
-  current_gid="$(id -g)"
-  if [[ -L "$PHASE2_TMP_DIR" || ! -d "$PHASE2_TMP_DIR" ]] \
-      || [[ "$(stat -c '%u:%g:%a' "$PHASE2_TMP_DIR" 2>/dev/null)" \
-        != "${current_uid}:${current_gid}:700" ]]; then
+  if ! private_directory_is_owned_0700 "$PHASE2_TMP_DIR"; then
     printf 'refusing unauthenticated Phase 2 temporary cleanup\n' >&2
     cleanup_status=1
   elif ! rm -rf -- "$PHASE2_TMP_DIR"; then
     cleanup_status=1
   fi
   if (( original_status != 0 )); then
+    final_failure_status="$original_status"
+  elif (( restore_status != 0 )); then
+    final_failure_status="$restore_status"
+  elif (( inherited_cleanup_status != 0 || cleanup_status != 0 )); then
+    final_failure_status=1
+  fi
+  clear_railway_writer_authority_on_failure "$final_failure_status" \
+    || authority_cleanup_status=$?
+  if (( original_status != 0 )); then
     exit "$original_status"
   fi
   if (( restore_status != 0 )); then
     exit "$restore_status"
   fi
-  if (( inherited_cleanup_status != 0 || cleanup_status != 0 )); then
+  if (( authority_cleanup_status != 0 \
+      || inherited_cleanup_status != 0 || cleanup_status != 0 )); then
     exit 1
   fi
   exit 0
@@ -5883,7 +6169,11 @@ REPOSITORY_BLEED_TMP="$(mktemp)"
 PUBLIC_BLEED_TMP="$(mktemp)"
 REPOSITORY_OSINT_TMP="$(mktemp)"
 REPOSITORY_LEDGER_TMP="$(mktemp)"
+RELEASE_OSINT_TMP="$(mktemp)"
+RELEASE_LEDGER_TMP="$(mktemp)"
+PUBLIC_MANIFEST_TMP="$(mktemp)"
 PUBLIC_OSINT_TMP="$(mktemp)"
+PUBLIC_RIGHTS_TMP="$(mktemp)"
 PUBLIC_LEDGER_TMP="$(mktemp)"
 cleanup_publication_files() {
   local original_status="${1:-$?}" file_cleanup_status=0
@@ -5891,15 +6181,17 @@ cleanup_publication_files() {
   set +e
   rm -f -- \
     "$LIVE_BLEED_TMP" "$REPOSITORY_BLEED_TMP" "$PUBLIC_BLEED_TMP" \
-    "$REPOSITORY_OSINT_TMP" "$REPOSITORY_LEDGER_TMP" "$PUBLIC_OSINT_TMP" \
-    "$PUBLIC_LEDGER_TMP" || file_cleanup_status=$?
+    "$REPOSITORY_OSINT_TMP" "$REPOSITORY_LEDGER_TMP" \
+    "$RELEASE_OSINT_TMP" "$RELEASE_LEDGER_TMP" "$PUBLIC_MANIFEST_TMP" \
+    "$PUBLIC_OSINT_TMP" "$PUBLIC_RIGHTS_TMP" "$PUBLIC_LEDGER_TMP" \
+    || file_cleanup_status=$?
   cleanup_phase2 "$original_status" "$file_cleanup_status"
 }
 trap cleanup_publication_files EXIT
 
-# Bind the host-sync source to one immutable commit, then wait until Pages
-# serves those exact OSINT bytes. Phase 3 independently repeats the Git, seal,
-# ancestry, prefix, freshness, and public-byte proofs before local installation.
+# Bind the private host-sync source to the immutable OSINT publication commit
+# P. Public Railway must never serve these raw bytes: the second activation
+# canary below publishes a rights-suppressed release R that contains P.
 OSINT_FETCHED_MAIN="$(gh api \
   "repos/$PALIMPSEST_REPOSITORY/commits/main" --jq .sha)"
 [[ "$OSINT_FETCHED_MAIN" =~ ^[0-9a-f]{40}$ ]]
@@ -5929,7 +6221,442 @@ gh api -H 'Accept: application/vnd.github.raw+json' \
 REPOSITORY_LEDGER_RAW_SHA256="$(file_sha256 "$REPOSITORY_LEDGER_TMP")"
 [[ "$REPOSITORY_LEDGER_RAW_SHA256" =~ ^[0-9a-f]{64}$ ]]
 test -s "$REPOSITORY_LEDGER_TMP"
-PUBLIC_OSINT_URL="https://palimpsest.info/readings/osint-china-latest.json?publication=$OSINT_PUBLICATION_SHA"
+
+# The hourly gate stays closed throughout both activation canaries. Snapshot
+# controller runs before dispatch so an older success cannot be selected.
+test "$(gh variable get RAILWAY_PUBLICATION_ENABLED \
+  --repo "$PALIMPSEST_REPOSITORY")" = false
+RAILWAY_CANARY_HEAD_SHA="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/commits/main" --jq .sha)"
+[[ "$RAILWAY_CANARY_HEAD_SHA" =~ ^[0-9a-f]{40}$ ]]
+CANARY_CONTAINS_PUBLICATION="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/compare/${OSINT_PUBLICATION_SHA}...${RAILWAY_CANARY_HEAD_SHA}" \
+  --jq .status)"
+[[ "$CANARY_CONTAINS_PUBLICATION" == ahead \
+    || "$CANARY_CONTAINS_PUBLICATION" == identical ]]
+RAILWAY_RUNS_BEFORE_TMP="$PHASE2_TMP_DIR/railway-runs-before.json"
+RAILWAY_RUNS_AFTER_TMP="$PHASE2_TMP_DIR/railway-runs-after.json"
+RAILWAY_RELEASE_RUNS_BEFORE_TMP="$PHASE2_TMP_DIR/railway-release-runs-before.json"
+RAILWAY_RELEASE_RUNS_AFTER_TMP="$PHASE2_TMP_DIR/railway-release-runs-after.json"
+gh run list --repo "$PALIMPSEST_REPOSITORY" \
+  --workflow "$RAILWAY_CONTROLLER_WORKFLOW" --event workflow_dispatch \
+  --limit 100 --json databaseId,event,headSha >"$RAILWAY_RUNS_BEFORE_TMP"
+gh run list --repo "$PALIMPSEST_REPOSITORY" \
+  --workflow "$RAILWAY_RELEASE_WORKFLOW" --event repository_dispatch \
+  --limit 100 --json databaseId,event,headSha,workflowName \
+  >"$RAILWAY_RELEASE_RUNS_BEFORE_TMP"
+gh workflow run "$RAILWAY_CONTROLLER_WORKFLOW" \
+  --repo "$PALIMPSEST_REPOSITORY" --ref main \
+  -f activation_canary=true -f force=false
+test "$(gh variable get RAILWAY_PUBLICATION_ENABLED \
+  --repo "$PALIMPSEST_REPOSITORY")" = false
+RAILWAY_CANARY_RUN_ID=''
+for _ in {1..30}; do
+  gh run list --repo "$PALIMPSEST_REPOSITORY" \
+    --workflow "$RAILWAY_CONTROLLER_WORKFLOW" --event workflow_dispatch \
+    --limit 100 --json databaseId,event,headSha >"$RAILWAY_RUNS_AFTER_TMP"
+  RAILWAY_CANARY_RUN_ID="$(python3 - "$RAILWAY_RUNS_BEFORE_TMP" \
+    "$RAILWAY_RUNS_AFTER_TMP" "$RAILWAY_CANARY_HEAD_SHA" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    before = {item["databaseId"] for item in json.load(handle)}
+with open(sys.argv[2], encoding="utf-8") as handle:
+    after = json.load(handle)
+candidates = [
+    item["databaseId"]
+    for item in after
+    if item["databaseId"] not in before
+    and item.get("event") == "workflow_dispatch"
+    and item.get("headSha") == sys.argv[3]
+]
+if len(candidates) > 1:
+    raise SystemExit("more than one new Railway canary matches this SHA")
+if candidates:
+    print(candidates[0])
+PY
+)"
+  [[ -z "$RAILWAY_CANARY_RUN_ID" ]] || break
+  sleep 2
+done
+[[ "$RAILWAY_CANARY_RUN_ID" =~ ^[0-9]+$ ]]
+test "$(gh run view "$RAILWAY_CANARY_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json event --jq .event)" \
+  = workflow_dispatch
+test "$(gh run view "$RAILWAY_CANARY_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json workflowName --jq .workflowName)" \
+  = "Queue exact Railway publication"
+test "$(gh run view "$RAILWAY_CANARY_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json headBranch --jq .headBranch)" = main
+test "$(gh run view "$RAILWAY_CANARY_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json headSha --jq .headSha)" \
+  = "$RAILWAY_CANARY_HEAD_SHA"
+gh run watch "$RAILWAY_CANARY_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --exit-status
+test "$(gh run view "$RAILWAY_CANARY_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json conclusion --jq .conclusion)" = success
+test "$(gh variable get RAILWAY_PUBLICATION_ENABLED \
+  --repo "$PALIMPSEST_REPOSITORY")" = false
+
+# Controller success proves only that the authenticated request was emitted.
+# Bind the one new downstream Tests run at the same main SHA, approve only its
+# protected Railway environment, and require that exact release run to finish.
+RAILWAY_RELEASE_RUN_ID=''
+for _ in {1..60}; do
+  gh run list --repo "$PALIMPSEST_REPOSITORY" \
+    --workflow "$RAILWAY_RELEASE_WORKFLOW" --event repository_dispatch \
+    --limit 100 --json databaseId,event,headSha,workflowName \
+    >"$RAILWAY_RELEASE_RUNS_AFTER_TMP"
+  RAILWAY_RELEASE_RUN_ID="$(python3 - "$RAILWAY_RELEASE_RUNS_BEFORE_TMP" \
+    "$RAILWAY_RELEASE_RUNS_AFTER_TMP" "$RAILWAY_CANARY_HEAD_SHA" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    before = {item["databaseId"] for item in json.load(handle)}
+with open(sys.argv[2], encoding="utf-8") as handle:
+    after = json.load(handle)
+candidates = [
+    item["databaseId"]
+    for item in after
+    if item["databaseId"] not in before
+    and item.get("event") == "repository_dispatch"
+    and item.get("headSha") == sys.argv[3]
+    and item.get("workflowName") == "Tests"
+]
+if len(candidates) > 1:
+    raise SystemExit("more than one downstream Railway release matches this SHA")
+if candidates:
+    print(candidates[0])
+PY
+)"
+  [[ -z "$RAILWAY_RELEASE_RUN_ID" ]] || break
+  sleep 2
+done
+[[ "$RAILWAY_RELEASE_RUN_ID" =~ ^[0-9]+$ ]]
+test "$(gh run view "$RAILWAY_RELEASE_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json event --jq .event)" \
+  = repository_dispatch
+test "$(gh run view "$RAILWAY_RELEASE_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json workflowName --jq .workflowName)" \
+  = Tests
+test "$(gh run view "$RAILWAY_RELEASE_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json headBranch --jq .headBranch)" = main
+test "$(gh run view "$RAILWAY_RELEASE_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json headSha --jq .headSha)" \
+  = "$RAILWAY_CANARY_HEAD_SHA"
+
+RAILWAY_PRODUCTION_ENVIRONMENT_ID="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/environments/$RAILWAY_PRODUCTION_ENVIRONMENT" \
+  --jq .id)"
+[[ "$RAILWAY_PRODUCTION_ENVIRONMENT_ID" =~ ^[1-9][0-9]*$ ]]
+RAILWAY_PENDING_DEPLOYMENTS_TMP="$PHASE2_TMP_DIR/railway-pending-deployments.json"
+RAILWAY_APPROVAL_REQUEST_TMP="$PHASE2_TMP_DIR/railway-approval-request.json"
+RAILWAY_APPROVAL_WAIT_BUDGET_SECONDS=5400
+RAILWAY_APPROVAL_GH_MAX_SECONDS=60
+RAILWAY_APPROVAL_WAIT_INTERVAL_SECONDS=2
+RAILWAY_APPROVAL_WAIT_DEADLINE_MONOTONIC_NS="$(python3 - \
+  "$RAILWAY_APPROVAL_WAIT_BUDGET_SECONDS" <<'PY'
+import sys
+import time
+
+budget_seconds = int(sys.argv[1], 10)
+if budget_seconds <= 0:
+    raise SystemExit("Railway approval wait budget must be positive")
+print(time.monotonic_ns() + budget_seconds * 1_000_000_000)
+PY
+)"
+[[ "$RAILWAY_APPROVAL_WAIT_DEADLINE_MONOTONIC_NS" =~ ^[0-9]+$ ]]
+
+railway_approval_remaining_seconds() {
+  (( $# == 0 ))
+  python3 - "$RAILWAY_APPROVAL_WAIT_DEADLINE_MONOTONIC_NS" <<'PY'
+import sys
+import time
+
+remaining_ns = int(sys.argv[1], 10) - time.monotonic_ns()
+print(0 if remaining_ns <= 0 else (remaining_ns + 999_999_999) // 1_000_000_000)
+PY
+}
+
+railway_approval_command_timeout() {
+  (( $# == 0 ))
+  local remaining_seconds command_timeout_seconds
+  remaining_seconds="$(railway_approval_remaining_seconds)"
+  [[ "$remaining_seconds" =~ ^[0-9]+$ ]]
+  (( remaining_seconds > 0 )) || return 124
+  command_timeout_seconds="$RAILWAY_APPROVAL_GH_MAX_SECONDS"
+  if (( command_timeout_seconds > remaining_seconds )); then
+    command_timeout_seconds="$remaining_seconds"
+  fi
+  printf '%s\n' "$command_timeout_seconds"
+}
+
+railway_approval_bounded_gh() {
+  (( $# >= 2 ))
+  local command_timeout_seconds="$1"
+  shift
+  [[ "$command_timeout_seconds" =~ ^[1-9][0-9]*$ ]]
+  railway_bounded_gh "$command_timeout_seconds" "$@"
+}
+
+read_railway_pending_state() {
+  (( $# == 0 ))
+  local command_timeout_seconds
+  command_timeout_seconds="$(railway_approval_command_timeout)"
+  railway_approval_bounded_gh "$command_timeout_seconds" api \
+    "repos/$PALIMPSEST_REPOSITORY/actions/runs/$RAILWAY_RELEASE_RUN_ID/pending_deployments" \
+    >"$RAILWAY_PENDING_DEPLOYMENTS_TMP"
+  python3 - "$RAILWAY_PENDING_DEPLOYMENTS_TMP" \
+    "$RAILWAY_PRODUCTION_ENVIRONMENT_ID" \
+    "$RAILWAY_PRODUCTION_ENVIRONMENT" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    pending = json.load(handle)
+if not isinstance(pending, list):
+    raise SystemExit("pending deployments response is not a list")
+if not pending:
+    print("wait")
+    raise SystemExit(0)
+if len(pending) != 1 or not isinstance(pending[0], dict):
+    raise SystemExit("unexpected pending deployment set")
+environment = pending[0].get("environment")
+if not isinstance(environment, dict):
+    raise SystemExit("pending deployment environment is invalid")
+if environment.get("id") != int(sys.argv[2]) or environment.get("name") != sys.argv[3]:
+    raise SystemExit("pending deployment targets the wrong environment")
+if pending[0].get("current_user_can_approve") is not True:
+    raise SystemExit("current operator cannot approve the protected deployment")
+print("ready")
+PY
+}
+
+jq -n \
+  --argjson environment_id "$RAILWAY_PRODUCTION_ENVIRONMENT_ID" \
+  --arg controller_run_id "$RAILWAY_CANARY_RUN_ID" \
+  --arg release_run_id "$RAILWAY_RELEASE_RUN_ID" \
+  --arg sha "$RAILWAY_CANARY_HEAD_SHA" \
+  '{
+    environment_ids: [$environment_id],
+    state: "approved",
+    comment: (
+      "Approve exact Palimpsest activation canary controller="
+      + $controller_run_id + " release=" + $release_run_id + " sha=" + $sha
+    )
+  }' >"$RAILWAY_APPROVAL_REQUEST_TMP"
+RAILWAY_RELEASE_APPROVED=0
+while true; do
+  RAILWAY_APPROVAL_REMAINING_SECONDS="$(railway_approval_remaining_seconds)"
+  [[ "$RAILWAY_APPROVAL_REMAINING_SECONDS" =~ ^[0-9]+$ ]]
+  (( RAILWAY_APPROVAL_REMAINING_SECONDS > 0 )) || {
+    printf 'Railway protected deployment approval deadline expired\n' >&2
+    exit 1
+  }
+  RAILWAY_PENDING_STATE="$(read_railway_pending_state)"
+  case "$RAILWAY_PENDING_STATE" in
+    ready)
+      RAILWAY_APPROVAL_COMMAND_TIMEOUT="$(railway_approval_command_timeout)"
+      test "$(railway_approval_bounded_gh \
+        "$RAILWAY_APPROVAL_COMMAND_TIMEOUT" variable get \
+        RAILWAY_PUBLICATION_ENABLED \
+        --repo "$PALIMPSEST_REPOSITORY")" = false
+      RAILWAY_APPROVAL_COMMAND_TIMEOUT="$(railway_approval_command_timeout)"
+      test "$(railway_approval_bounded_gh \
+        "$RAILWAY_APPROVAL_COMMAND_TIMEOUT" variable get \
+        RAILWAY_EXCLUSIVE_WRITER_ACK \
+        --repo "$PALIMPSEST_REPOSITORY" \
+        --env "$RAILWAY_PRODUCTION_ENVIRONMENT")" \
+        = palimpsest-github-environment-v1
+      printf 'Type the exact canary SHA to approve protected release %s: ' \
+        "$RAILWAY_RELEASE_RUN_ID"
+      RAILWAY_APPROVAL_REMAINING_SECONDS="$(railway_approval_remaining_seconds)"
+      [[ "$RAILWAY_APPROVAL_REMAINING_SECONDS" =~ ^[0-9]+$ ]]
+      (( RAILWAY_APPROVAL_REMAINING_SECONDS > 0 ))
+      IFS= read -r -t "$RAILWAY_APPROVAL_REMAINING_SECONDS" \
+        RAILWAY_APPROVAL_SHA
+      test "$RAILWAY_APPROVAL_SHA" = "$RAILWAY_CANARY_HEAD_SHA"
+      unset RAILWAY_APPROVAL_SHA
+
+      # Close the operator-prompt TOCTOU window. Every mutable approval fact is
+      # re-read immediately before the protected-environment mutation.
+      test "$(read_railway_pending_state)" = ready
+      RAILWAY_APPROVAL_COMMAND_TIMEOUT="$(railway_approval_command_timeout)"
+      test "$(railway_approval_bounded_gh \
+        "$RAILWAY_APPROVAL_COMMAND_TIMEOUT" variable get \
+        RAILWAY_PUBLICATION_ENABLED \
+        --repo "$PALIMPSEST_REPOSITORY")" = false
+      RAILWAY_APPROVAL_COMMAND_TIMEOUT="$(railway_approval_command_timeout)"
+      test "$(railway_approval_bounded_gh \
+        "$RAILWAY_APPROVAL_COMMAND_TIMEOUT" variable get \
+        RAILWAY_EXCLUSIVE_WRITER_ACK \
+        --repo "$PALIMPSEST_REPOSITORY" \
+        --env "$RAILWAY_PRODUCTION_ENVIRONMENT")" \
+        = palimpsest-github-environment-v1
+      RAILWAY_APPROVAL_COMMAND_TIMEOUT="$(railway_approval_command_timeout)"
+      test "$(railway_approval_bounded_gh \
+        "$RAILWAY_APPROVAL_COMMAND_TIMEOUT" run view \
+        "$RAILWAY_RELEASE_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+        --json status --jq .status)" != completed
+      RAILWAY_APPROVAL_COMMAND_TIMEOUT="$(railway_approval_command_timeout)"
+      railway_approval_bounded_gh "$RAILWAY_APPROVAL_COMMAND_TIMEOUT" \
+        api --method POST \
+        "repos/$PALIMPSEST_REPOSITORY/actions/runs/$RAILWAY_RELEASE_RUN_ID/pending_deployments" \
+        --input "$RAILWAY_APPROVAL_REQUEST_TMP" >/dev/null
+      RAILWAY_RELEASE_APPROVED=1
+      break
+      ;;
+    wait) ;;
+    *) printf 'invalid protected deployment approval state\n' >&2; exit 1 ;;
+  esac
+  RAILWAY_APPROVAL_COMMAND_TIMEOUT="$(railway_approval_command_timeout)"
+  test "$(railway_approval_bounded_gh \
+    "$RAILWAY_APPROVAL_COMMAND_TIMEOUT" run view \
+    "$RAILWAY_RELEASE_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+    --json status --jq .status)" \
+    != completed
+  RAILWAY_APPROVAL_REMAINING_SECONDS="$(railway_approval_remaining_seconds)"
+  [[ "$RAILWAY_APPROVAL_REMAINING_SECONDS" =~ ^[0-9]+$ ]]
+  (( RAILWAY_APPROVAL_REMAINING_SECONDS > 0 )) || continue
+  RAILWAY_APPROVAL_SLEEP_SECONDS="$RAILWAY_APPROVAL_WAIT_INTERVAL_SECONDS"
+  if (( RAILWAY_APPROVAL_SLEEP_SECONDS \
+      > RAILWAY_APPROVAL_REMAINING_SECONDS )); then
+    RAILWAY_APPROVAL_SLEEP_SECONDS="$RAILWAY_APPROVAL_REMAINING_SECONDS"
+  fi
+  sleep "$RAILWAY_APPROVAL_SLEEP_SECONDS"
+done
+test "$RAILWAY_RELEASE_APPROVED" = 1
+gh run watch "$RAILWAY_RELEASE_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --exit-status
+test "$(gh run view "$RAILWAY_RELEASE_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" --json conclusion --jq .conclusion)" = success
+RAILWAY_RELEASE_JOBS_TMP="$PHASE2_TMP_DIR/railway-release-jobs.json"
+gh run view "$RAILWAY_RELEASE_RUN_ID" --repo "$PALIMPSEST_REPOSITORY" \
+  --json jobs >"$RAILWAY_RELEASE_JOBS_TMP"
+python3 - "$RAILWAY_RELEASE_JOBS_TMP" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    document = json.load(handle)
+jobs = document.get("jobs") if isinstance(document, dict) else None
+if not isinstance(jobs, list):
+    raise SystemExit("downstream release jobs are invalid")
+observed = {}
+for job in jobs:
+    if not isinstance(job, dict):
+        raise SystemExit("downstream release job is invalid")
+    name = job.get("name")
+    if name in observed:
+        raise SystemExit("downstream release job name is duplicated")
+    observed[name] = job.get("conclusion")
+expected = {
+    "contract": "success",
+    "Package exact complete Pages edition": "success",
+    "Deploy exact complete Pages edition": "success",
+    "Deploy and prove exact Railway publication": "success",
+    "Verify exact Pages and native MCP rights closure": "skipped",
+}
+for name, conclusion in expected.items():
+    if observed.get(name) != conclusion:
+        raise SystemExit(f"downstream release job is not exact: {name}")
+PY
+RAILWAY_RELEASE_RUN_ATTEMPT="$(gh api \
+  "repos/$PALIMPSEST_REPOSITORY/actions/runs/$RAILWAY_RELEASE_RUN_ID" \
+  --jq .run_attempt)"
+[[ "$RAILWAY_RELEASE_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+RAILWAY_RELEASE_EVIDENCE_DIR="$PHASE2_TMP_DIR/railway-release-evidence"
+mkdir -m 0700 "$RAILWAY_RELEASE_EVIDENCE_DIR"
+gh run download "$RAILWAY_RELEASE_RUN_ID" \
+  --repo "$PALIMPSEST_REPOSITORY" \
+  --name "railway-continuous-release-${RAILWAY_CANARY_HEAD_SHA}-run-${RAILWAY_RELEASE_RUN_ID}-attempt-${RAILWAY_RELEASE_RUN_ATTEMPT}" \
+  --dir "$RAILWAY_RELEASE_EVIDENCE_DIR"
+RAILWAY_TRANSACTION_RECEIPT="$RAILWAY_RELEASE_EVIDENCE_DIR/railway-continuous-transaction.json"
+RAILWAY_VERIFICATION_RECEIPT="$RAILWAY_RELEASE_EVIDENCE_DIR/railway-continuous-verification.json"
+python3 - "$RAILWAY_TRANSACTION_RECEIPT" "$RAILWAY_VERIFICATION_RECEIPT" \
+  "$PALIMPSEST_REPOSITORY" "$RAILWAY_RELEASE_RUN_ID" \
+  "$RAILWAY_RELEASE_RUN_ATTEMPT" "$RAILWAY_CANARY_HEAD_SHA" <<'PY'
+import hashlib
+import json
+import stat
+import sys
+from pathlib import Path
+
+
+def reject_duplicates(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def reject_constant(value):
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
+def load_receipt(path_text):
+    path = Path(path_text)
+    metadata = path.lstat()
+    if not stat.S_ISREG(metadata.st_mode) or not 0 < metadata.st_size <= 2 * 1024 * 1024:
+        raise ValueError("Railway receipt is not a bounded regular file")
+    raw = path.read_bytes()
+    return raw, json.loads(
+        raw.decode("utf-8", "strict"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=reject_constant,
+    )
+
+
+transaction_raw, transaction = load_receipt(sys.argv[1])
+verification_raw, verification = load_receipt(sys.argv[2])
+if not isinstance(transaction, dict) or not isinstance(verification, dict):
+    raise SystemExit("Railway receipts are not objects")
+transaction_checks = (
+    transaction.get("schema_version")
+        == "palimpsest.railway-continuous-transaction.v1",
+    transaction.get("status") in {"deployed", "recovered_existing"},
+    transaction.get("phase") == "complete",
+    transaction.get("failure_reason") is None,
+    transaction.get("repository") == sys.argv[3],
+    transaction.get("run_id") == sys.argv[4],
+    transaction.get("run_attempt") == sys.argv[5],
+    transaction.get("publication_sha") == sys.argv[6],
+    isinstance(transaction.get("railway"), dict),
+    transaction.get("railway", {}).get("exclusive_writer_ack")
+        == "palimpsest-github-environment-v1",
+    isinstance(transaction.get("verification"), dict),
+    transaction.get("verification", {}).get("mcp_rights_smoke") == "verified",
+    transaction.get("verification", {}).get("receipt_sha256")
+        == hashlib.sha256(verification_raw).hexdigest(),
+)
+verification_checks = (
+    verification.get("schema_version")
+        == "palimpsest.railway-continuous-release-receipt.v1",
+    verification.get("status") == "verified",
+    isinstance(verification.get("release"), dict),
+    verification.get("release", {}).get("source_commit") == sys.argv[6],
+    isinstance(verification.get("deployment"), dict),
+    verification.get("deployment", {}).get("status") == "SUCCESS",
+    isinstance(verification.get("live"), dict),
+    verification.get("live", {}).get("public_origin_verified") is True,
+    verification.get("live", {}).get("manifest_byte_identical") is True,
+    verification.get("live", {}).get("critical_inventory_byte_identical") is True,
+)
+if not all(transaction_checks) or not all(verification_checks):
+    raise SystemExit("downstream Railway release evidence is invalid")
+PY
+test "$(gh variable get RAILWAY_PUBLICATION_ENABLED \
+  --repo "$PALIMPSEST_REPOSITORY")" = false
+
+PUBLIC_ORIGIN='https://www.palimpsest.info'
+PUBLIC_MANIFEST_URL="$PUBLIC_ORIGIN/railway-release.json?activation_canary=$RAILWAY_CANARY_RUN_ID"
+PUBLIC_OSINT_URL="$PUBLIC_ORIGIN/readings/osint-china-latest.json?activation_canary=$RAILWAY_CANARY_RUN_ID"
+PUBLIC_RIGHTS_URL="$PUBLIC_ORIGIN/readings/china-publication-rights-latest.json?activation_canary=$RAILWAY_CANARY_RUN_ID"
+PUBLIC_LEDGER_URL="$PUBLIC_ORIGIN/readings/readings-ledger.jsonl?activation_canary=$RAILWAY_CANARY_RUN_ID"
 PUBLICATION_WAIT_BUDGET_SECONDS=2700
 PUBLICATION_CURL_MAX_SECONDS=30
 PUBLICATION_WAIT_INTERVAL_SECONDS=15
@@ -5957,6 +6684,23 @@ print(0 if remaining_ns <= 0 else (remaining_ns + 999_999_999) // 1_000_000_000)
 PY
 }
 
+canonical_public_fetch() {
+  (( $# == 3 ))
+  local url="$1" output_path="$2" max_filesize="$3" response_code
+  case "$url" in
+    "$PUBLIC_ORIGIN"/*) ;;
+    *) printf 'refusing non-canonical public origin: %s\n' "$url" >&2; return 1 ;;
+  esac
+  [[ "$max_filesize" =~ ^[0-9]+$ ]]
+  (( max_filesize > 0 ))
+  response_code="$(curl --fail --silent --show-error \
+    --proto '=https' --tlsv1.2 --connect-timeout 10 \
+    --max-filesize "$max_filesize" --max-time "$PUBLICATION_CURL_MAX_SECONDS" \
+    --header 'Accept-Encoding: identity' --header 'Cache-Control: no-cache' \
+    --output "$output_path" --write-out '%{http_code}' "$url")" || return 1
+  test "$response_code" = 200
+}
+
 wait_for_publication_sha256() {
   (( $# == 4 ))
   local url="$1" output_path="$2" expected_sha256="$3"
@@ -5977,10 +6721,8 @@ wait_for_publication_sha256() {
     if (( request_timeout_seconds > remaining_seconds )); then
       request_timeout_seconds="$remaining_seconds"
     fi
-    if curl --fail --silent --show-error --location \
-        --max-filesize "$max_filesize" \
-        --max-time "$request_timeout_seconds" \
-        --output "$output_path" "$url"; then
+    PUBLICATION_CURL_MAX_SECONDS="$request_timeout_seconds"
+    if canonical_public_fetch "$url" "$output_path" "$max_filesize"; then
       actual_sha256="$(file_sha256 "$output_path")"
       if [[ "$actual_sha256" == "$expected_sha256" ]]; then
         return 0
@@ -6001,18 +6743,246 @@ wait_for_publication_sha256() {
   done
 }
 
-wait_for_publication_sha256 \
-  "$PUBLIC_OSINT_URL" "$PUBLIC_OSINT_TMP" \
-  "$REPOSITORY_OSINT_RAW_SHA256" 4194304
-PUBLIC_OSINT_RAW_SHA256="$(file_sha256 "$PUBLIC_OSINT_TMP")"
-test "$PUBLIC_OSINT_RAW_SHA256" = "$REPOSITORY_OSINT_RAW_SHA256"
-python3 -m json.tool "$PUBLIC_OSINT_TMP" >/dev/null
-PUBLIC_LEDGER_URL="https://palimpsest.info/readings/readings-ledger.jsonl?publication=$OSINT_PUBLICATION_SHA"
-wait_for_publication_sha256 \
-  "$PUBLIC_LEDGER_URL" "$PUBLIC_LEDGER_TMP" \
-  "$REPOSITORY_LEDGER_RAW_SHA256" 67108864
+# Wait for the manifest source release R created by the controlled canary. A
+# release is accepted only when R is that canary's exact main head and contains
+# P. Redirects (including an apex-to-www redirect) are never followed.
+RAILWAY_RELEASE_SHA=''
+while true; do
+  remaining_seconds="$(publication_remaining_seconds)"
+  (( remaining_seconds > 0 )) || {
+    printf 'shared publication deadline expired waiting for Railway release R\n' >&2
+    exit 1
+  }
+  if canonical_public_fetch "$PUBLIC_MANIFEST_URL" \
+      "$PUBLIC_MANIFEST_TMP" 4194304; then
+    RAILWAY_RELEASE_SHA="$(python3 - "$PUBLIC_MANIFEST_TMP" <<'PY'
+import json
+import re
+import sys
+
+try:
+    with open(sys.argv[1], encoding="utf-8") as handle:
+        value = json.load(handle)
+except (OSError, UnicodeError, ValueError):
+    value = None
+if (
+    isinstance(value, dict)
+    and value.get("schema_version") == "palimpsest.railway-static-release.v1"
+    and isinstance(value.get("source_commit"), str)
+    and re.fullmatch(r"[0-9a-f]{40}", value["source_commit"])
+):
+    print(value["source_commit"])
+PY
+)"
+    if [[ "$RAILWAY_RELEASE_SHA" == "$RAILWAY_CANARY_HEAD_SHA" ]]; then
+      RELEASE_CONTAINS_PUBLICATION="$(gh api \
+        "repos/$PALIMPSEST_REPOSITORY/compare/${OSINT_PUBLICATION_SHA}...${RAILWAY_RELEASE_SHA}" \
+        --jq .status)"
+      if [[ "$RELEASE_CONTAINS_PUBLICATION" == ahead \
+          || "$RELEASE_CONTAINS_PUBLICATION" == identical ]]; then
+        break
+      fi
+    fi
+  fi
+  sleep_seconds="$PUBLICATION_WAIT_INTERVAL_SECONDS"
+  (( sleep_seconds <= remaining_seconds )) || sleep_seconds="$remaining_seconds"
+  sleep "$sleep_seconds"
+done
+[[ "$RAILWAY_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+
+# Git R must carry exactly P's OSINT input and an append-only extension of P's
+# ledger. The public endpoint, by contrast, must be a restricted same-path stub.
+gh api -H 'Accept: application/vnd.github.raw+json' \
+  "repos/$PALIMPSEST_REPOSITORY/contents/readings/osint-china-latest.json?ref=$RAILWAY_RELEASE_SHA" \
+  >"$RELEASE_OSINT_TMP"
+gh api -H 'Accept: application/vnd.github.raw+json' \
+  "repos/$PALIMPSEST_REPOSITORY/contents/readings/readings-ledger.jsonl?ref=$RAILWAY_RELEASE_SHA" \
+  >"$RELEASE_LEDGER_TMP"
+LATEST_RELEASE_OSINT_COMMIT="$(gh api --method GET \
+  "repos/$PALIMPSEST_REPOSITORY/commits" \
+  -f sha="$RAILWAY_RELEASE_SHA" \
+  -f path='readings/osint-china-latest.json' -f per_page=1 \
+  --jq '.[0].sha')"
+test "$LATEST_RELEASE_OSINT_COMMIT" = "$OSINT_PUBLICATION_SHA"
+RELEASE_OSINT_RAW_SHA256="$(file_sha256 "$RELEASE_OSINT_TMP")"
+RELEASE_LEDGER_RAW_SHA256="$(file_sha256 "$RELEASE_LEDGER_TMP")"
+test "$RELEASE_OSINT_RAW_SHA256" = "$REPOSITORY_OSINT_RAW_SHA256"
+python3 - "$REPOSITORY_LEDGER_TMP" "$RELEASE_LEDGER_TMP" <<'PY'
+import pathlib
+import sys
+
+candidate = pathlib.Path(sys.argv[1]).read_bytes()
+release = pathlib.Path(sys.argv[2]).read_bytes()
+if not candidate or not release.startswith(candidate):
+    raise SystemExit("Git release R does not extend candidate P's ledger")
+PY
+
+# Fetch the canonical www files as one fail-closed proof. The manifest seals
+# the exact stub, master rights status and ledger; the stub seals the master.
+while true; do
+  remaining_seconds="$(publication_remaining_seconds)"
+  (( remaining_seconds > 0 )) || {
+    printf 'shared publication deadline expired waiting for restricted proof\n' >&2
+    exit 1
+  }
+  proof_ready=0
+  if canonical_public_fetch "$PUBLIC_MANIFEST_URL" \
+      "$PUBLIC_MANIFEST_TMP" 4194304 \
+      && canonical_public_fetch "$PUBLIC_OSINT_URL" \
+        "$PUBLIC_OSINT_TMP" 4194304 \
+      && canonical_public_fetch "$PUBLIC_RIGHTS_URL" \
+        "$PUBLIC_RIGHTS_TMP" 4194304 \
+      && canonical_public_fetch "$PUBLIC_LEDGER_URL" \
+        "$PUBLIC_LEDGER_TMP" 67108864 \
+      && python3 - "$PUBLIC_MANIFEST_TMP" "$PUBLIC_OSINT_TMP" \
+        "$PUBLIC_RIGHTS_TMP" "$PUBLIC_LEDGER_TMP" \
+        "$REPOSITORY_OSINT_TMP" "$REPOSITORY_LEDGER_TMP" \
+        "$RELEASE_OSINT_TMP" "$RELEASE_LEDGER_TMP" \
+        "$RAILWAY_RELEASE_SHA" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+(manifest_path, stub_path, rights_path, public_ledger_path,
+ candidate_path, candidate_ledger_path, release_path, release_ledger_path,
+ release_sha) = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+def load_pretty(path, maximum):
+    raw = pathlib.Path(path).read_bytes()
+    if not 1 <= len(raw) <= maximum:
+        raise ValueError(f"invalid bounded JSON size: {path}")
+    value = json.loads(
+        raw.decode("utf-8", "strict"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite JSON number: {item}")
+        ),
+    )
+    canonical = (
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    if raw != canonical:
+        raise ValueError(f"non-canonical JSON framing: {path}")
+    return raw, value
+
+def digest(raw):
+    return hashlib.sha256(raw).hexdigest()
+
+manifest_raw, manifest = load_pretty(manifest_path, 4 * 1024 * 1024)
+stub_raw, stub = load_pretty(stub_path, 4 * 1024 * 1024)
+rights_raw, rights = load_pretty(rights_path, 4 * 1024 * 1024)
+public_ledger = pathlib.Path(public_ledger_path).read_bytes()
+candidate = pathlib.Path(candidate_path).read_bytes()
+candidate_ledger = pathlib.Path(candidate_ledger_path).read_bytes()
+release = pathlib.Path(release_path).read_bytes()
+release_ledger = pathlib.Path(release_ledger_path).read_bytes()
+
+if (
+    not isinstance(manifest, dict)
+    or manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+    or manifest.get("source_commit") != release_sha
+):
+    raise SystemExit("public Railway manifest is not exact release R")
+if candidate != release:
+    raise SystemExit("Git release R does not carry publication P's OSINT input")
+if not release_ledger.startswith(candidate_ledger):
+    raise SystemExit("candidate P ledger is not a prefix of Git release R")
+if public_ledger != release_ledger:
+    raise SystemExit("public ledger is not exact Git release R")
+if stub_raw == candidate:
+    raise SystemExit("raw OSINT publication is forbidden on the public endpoint")
+
+stub_fields = {
+    "schema_version", "publication_sha", "rights_evaluated_at", "status",
+    "availability", "publication_allowed", "reason", "artifact", "policy",
+    "master_status", "counts", "limitations",
+}
+rights_fields = {
+    "schema_version", "publication_sha", "rights_evaluated_at", "status",
+    "availability", "publication_allowed", "reason", "artifact", "policy",
+    "counts", "source_decisions", "quarantined_paths", "limitations",
+}
+if (
+    not isinstance(stub, dict)
+    or set(stub) != stub_fields
+    or stub.get("schema_version")
+        != "palimpsest-restricted-publication-endpoint.v1"
+    or stub.get("publication_sha") != release_sha
+    or stub.get("status") != "restricted"
+    or stub.get("availability") != "unavailable"
+    or stub.get("publication_allowed") is not False
+    or stub.get("artifact") != {
+        "path": "readings/osint-china-latest.json",
+        "media_type": "application/json",
+    }
+):
+    raise SystemExit("public OSINT endpoint is not the exact restricted stub")
+if (
+    not isinstance(rights, dict)
+    or set(rights) != rights_fields
+    or rights.get("schema_version") != "palimpsest-restricted-publication.v1"
+    or rights.get("publication_sha") != release_sha
+    or rights.get("status") != "restricted"
+    or rights.get("availability") != "unavailable"
+    or rights.get("publication_allowed") is not False
+    or not isinstance(rights.get("quarantined_paths"), list)
+    or "readings/osint-china-latest.json" not in rights["quarantined_paths"]
+):
+    raise SystemExit("public master rights status is not exact release R")
+if (
+    stub.get("rights_evaluated_at") != rights.get("rights_evaluated_at")
+    or stub.get("reason") != rights.get("reason")
+    or stub.get("policy") != rights.get("policy")
+    or stub.get("master_status") != {
+        "path": "/readings/china-publication-rights-latest.json",
+        "sha256": digest(rights_raw),
+        "bytes": len(rights_raw),
+    }
+):
+    raise SystemExit("restricted stub is not digest-bound to master rights status")
+
+critical = manifest.get("critical_files")
+if not isinstance(critical, dict):
+    raise SystemExit("Railway manifest critical inventory is missing")
+for relative, raw in (
+    ("readings/osint-china-latest.json", stub_raw),
+    ("readings/china-publication-rights-latest.json", rights_raw),
+    ("readings/readings-ledger.jsonl", public_ledger),
+):
+    row = critical.get(relative)
+    if (
+        not isinstance(row, dict)
+        or set(row) != {"bytes", "sha256"}
+        or type(row.get("bytes")) is not int
+        or row["bytes"] != len(raw)
+        or row.get("sha256") != digest(raw)
+    ):
+        raise SystemExit(f"critical identity mismatch: {relative}")
+PY
+  then
+    proof_ready=1
+  fi
+  (( proof_ready == 1 )) && break
+  sleep_seconds="$PUBLICATION_WAIT_INTERVAL_SECONDS"
+  (( sleep_seconds <= remaining_seconds )) || sleep_seconds="$remaining_seconds"
+  sleep "$sleep_seconds"
+done
+
+PUBLIC_MANIFEST_SHA256="$(file_sha256 "$PUBLIC_MANIFEST_TMP")"
+PUBLIC_OSINT_STUB_SHA256="$(file_sha256 "$PUBLIC_OSINT_TMP")"
+PUBLIC_RIGHTS_STATUS_SHA256="$(file_sha256 "$PUBLIC_RIGHTS_TMP")"
 PUBLIC_LEDGER_RAW_SHA256="$(file_sha256 "$PUBLIC_LEDGER_TMP")"
-test "$PUBLIC_LEDGER_RAW_SHA256" = "$REPOSITORY_LEDGER_RAW_SHA256"
+test "$PUBLIC_OSINT_STUB_SHA256" != "$REPOSITORY_OSINT_RAW_SHA256"
+test "$PUBLIC_LEDGER_RAW_SHA256" = "$RELEASE_LEDGER_RAW_SHA256"
 test -s "$PUBLIC_LEDGER_TMP"
 
 LIVE_BLEED_URL="https://api.seiche.info/palimpsest/bleedthrough/bleedthrough-latest.json?release=$OSINT_RUN_ID"
@@ -6023,7 +6993,7 @@ LIVE_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 "$LIVE_BLEED_TMP")"
 test "$LIVE_BLEED_NORMALIZED_SHA256" = "$LOCAL_BLEED_NORMALIZED_SHA256"
 
 gh api -H 'Accept: application/vnd.github.raw+json' \
-  "repos/$PALIMPSEST_REPOSITORY/contents/readings/bleedthrough-latest.json?ref=$OSINT_FETCHED_MAIN" \
+  "repos/$PALIMPSEST_REPOSITORY/contents/readings/bleedthrough-latest.json?ref=$RAILWAY_RELEASE_SHA" \
   >"$REPOSITORY_BLEED_TMP"
 REPOSITORY_BLEED_RAW_SHA256="$(file_sha256 "$REPOSITORY_BLEED_TMP")"
 REPOSITORY_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
@@ -6031,7 +7001,7 @@ REPOSITORY_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
 test "$REPOSITORY_BLEED_NORMALIZED_SHA256" \
   = "$LOCAL_BLEED_NORMALIZED_SHA256"
 
-PUBLIC_BLEED_URL="https://palimpsest.info/readings/bleedthrough-latest.json?release=$OSINT_RUN_ID"
+PUBLIC_BLEED_URL="$PUBLIC_ORIGIN/readings/bleedthrough-latest.json?release=$OSINT_RUN_ID"
 wait_for_publication_sha256 \
   "$PUBLIC_BLEED_URL" "$PUBLIC_BLEED_TMP" \
   "$REPOSITORY_BLEED_RAW_SHA256" 262144
@@ -6050,11 +7020,13 @@ test "$PUBLIC_BLEED_NORMALIZED_SHA256" \
 RELEASE_RUN_RECEIPT_SHA256="$(file_sha256 "$OSINT_RELEASE_RUN_RECEIPT")"
 [[ "$RELEASE_RUN_RECEIPT_SHA256" =~ ^[0-9a-f]{64}$ ]]
 RELEASE_PROOF_JSON="$(python3 - \
-  "$RELEASE_RESUME_TOKEN" "$EXPECTED_DEPLOY_SHA" "$OSINT_FETCHED_MAIN" \
+  "$RELEASE_RESUME_TOKEN" "$EXPECTED_DEPLOY_SHA" "$RAILWAY_RELEASE_SHA" \
   "$OSINT_PUBLICATION_SHA" "$REPOSITORY_OSINT_RAW_SHA256" \
   "$REPOSITORY_LEDGER_RAW_SHA256" "$OSINT_RUN_ID" \
   "$OSINT_RUN_ATTEMPT" "$OSINT_HEAD_SHA" \
-  "$RELEASE_RUN_RECEIPT_SHA256" <<'PY'
+  "$RELEASE_RUN_RECEIPT_SHA256" "$PUBLIC_MANIFEST_SHA256" \
+  "$PUBLIC_OSINT_STUB_SHA256" "$PUBLIC_RIGHTS_STATUS_SHA256" \
+  "$PUBLIC_LEDGER_RAW_SHA256" "$RAILWAY_CANARY_RUN_ID" <<'PY'
 import json
 import re
 import sys
@@ -6070,6 +7042,11 @@ import sys
     run_attempt,
     workflow_head,
     workflow_receipt,
+    public_manifest,
+    public_stub,
+    public_rights,
+    public_ledger,
+    canary_run_id,
 ) = sys.argv[1:]
 if re.fullmatch(r"[0-9a-f]{32}", token) is None:
     raise SystemExit("invalid resume token")
@@ -6078,13 +7055,19 @@ if any(re.fullmatch(r"[0-9a-f]{40}", value) is None for value in (
 )):
     raise SystemExit("invalid commit in release proof")
 if any(re.fullmatch(r"[0-9a-f]{64}", value) is None for value in (
-    artifact, ledger, workflow_receipt
+    artifact, ledger, workflow_receipt, public_manifest, public_stub,
+    public_rights, public_ledger,
 )):
     raise SystemExit("invalid digest in release proof")
-if not run_id.isdigit() or not run_attempt.isdigit() or int(run_attempt) < 1:
+if (
+    not run_id.isdigit()
+    or not run_attempt.isdigit()
+    or int(run_attempt) < 1
+    or not canary_run_id.isdigit()
+):
     raise SystemExit("invalid workflow identity in release proof")
 value = {
-    "schema": "palimpsest-public-osint-release-proof.v1",
+    "schema": "palimpsest-public-osint-release-proof.v2",
     "resume_token": token,
     "expected_deploy_sha": deployed,
     "fetched_main": fetched,
@@ -6095,6 +7078,12 @@ value = {
     "workflow_run_attempt": int(run_attempt),
     "workflow_head_sha": workflow_head,
     "workflow_receipt_sha256": workflow_receipt,
+    "public_release_commit": fetched,
+    "public_manifest_sha256": public_manifest,
+    "public_osint_stub_sha256": public_stub,
+    "public_rights_status_sha256": public_rights,
+    "public_ledger_sha256": public_ledger,
+    "railway_canary_run_id": int(canary_run_id),
 }
 print(json.dumps(value, sort_keys=True, separators=(",", ":")))
 PY
@@ -6102,27 +7091,33 @@ PY
 RELEASE_HANDOFF_B64="$(printf '%s\n' "$RELEASE_PROOF_JSON" \
   | base64 | tr -d '\n')"
 [[ "$RELEASE_HANDOFF_B64" =~ ^[A-Za-z0-9+/=]+$ ]]
-printf 'Phase 2 complete: run=%s static-raw=%s normalized=%s osint-commit=%s osint-raw=%s ledger-raw=%s\n' \
-  "$OSINT_RUN_ID" "$PUBLIC_BLEED_RAW_SHA256" \
-  "$PUBLIC_BLEED_NORMALIZED_SHA256" "$OSINT_PUBLICATION_SHA" \
-  "$PUBLIC_OSINT_RAW_SHA256" "$REPOSITORY_LEDGER_RAW_SHA256"
+printf 'Phase 2 complete: osint-run=%s railway-canary=%s static-raw=%s normalized=%s publication-P=%s release-R=%s restricted-stub=%s ledger-R=%s\n' \
+  "$OSINT_RUN_ID" "$RAILWAY_CANARY_RUN_ID" \
+  "$PUBLIC_BLEED_RAW_SHA256" "$PUBLIC_BLEED_NORMALIZED_SHA256" \
+  "$OSINT_PUBLICATION_SHA" "$RAILWAY_RELEASE_SHA" \
+  "$PUBLIC_OSINT_STUB_SHA256" "$PUBLIC_LEDGER_RAW_SHA256"
 printf 'Paste this exact one-line handoff into Phase 1:\n%s\n' \
   "$RELEASE_HANDOFF_B64"
 ```
 
-If dispatch, workflow, raw-byte, or normalized semantic validation fails, do
-not run Phase 3. Leave every captured timer stopped and investigate the failed
-publication. Workflow success alone is insufficient unless local raw bytes
-equal the live proxy, repository raw bytes equal the static site, and the three
-normalized digests agree. The exact repository OSINT blob must also match the
-static OSINT bytes before the host resumes.
+If either dispatch, either workflow, the `P -> R` ancestry, restricted-stub,
+master-rights, manifest-critical-file, ledger-prefix, raw-byte, or normalized
+semantic validation fails, do not run Phase 3. Leave every captured timer
+stopped and investigate the failed publication. Workflow success alone is
+insufficient. Public raw OSINT equality is an explicit rights failure: the
+canonical endpoint must serve the exact restricted same-path stub, while the
+public ledger must equal Git release `R` and contain candidate `P`'s ledger as
+a prefix.
 
 ### Phase 3: host finalization
 
 Return to the still-open Phase 1 SSH shell and paste the exact Phase 2 handoff
-only after every publication proof passes. Recheck the public bytes from the host, advance and prove
-the local OSINT receipt, rerun both local consumers, then run both observers
-anew. Finalization accepts only a fresh invocation with
+only after every publication proof passes. Phase 3 canonically validates the
+complete `palimpsest-public-osint-release-proof.v2` object, installs those exact
+bytes unchanged as the provider's root-only release proof, and retains the same
+v2 evidence in the proof-complete receipt. Recheck the public bytes from the
+host, advance and prove the local OSINT receipt, rerun both local consumers,
+then run both observers anew. Finalization accepts only a fresh invocation with
 `ConditionResult=yes`. Generic services still require `Result=success` and
 `ExecMainStatus=0`. The watchdog and witness may retain exit 2 only when every
 fresh structured condition is bound to its pre-release identity and state, or
@@ -7098,9 +8093,12 @@ sudo cmp -s "$WITNESS_CONTROLLER_TIMER" \
   /etc/systemd/system/palimpsest-witness.timer
 verify_observer_units
 
-# Decode, strictly validate, and canonically re-emit the Phase 2 handoff. The
-# fixed root-only path makes every Requires=/Wants= rerun select the same Git
-# publication even if main advances during finalization.
+# Decode, strictly validate, and canonically re-emit the complete Phase 2 v2
+# handoff. The exact canonical v2 bytes become the provider's root-only proof;
+# projecting fields or downgrading its schema would discard the Railway release
+# and public manifest/stub/master/ledger bindings. The fixed path makes every
+# Requires=/Wants= rerun select the same Git/public release pair even if main
+# advances during finalization.
 RELEASE_PROOF_TMP="$(mktemp /tmp/palimpsest-release-proof.XXXXXX)"
 chmod 0600 "$RELEASE_PROOF_TMP"
 python3 - "$RELEASE_HANDOFF_B64" "$RELEASE_RESUME_TOKEN" \
@@ -7135,11 +8133,14 @@ fields = {
     "schema", "resume_token", "expected_deploy_sha", "fetched_main",
     "publication_commit", "artifact_sha256", "ledger_sha256",
     "workflow_run_id", "workflow_run_attempt", "workflow_head_sha",
-    "workflow_receipt_sha256",
+    "workflow_receipt_sha256", "public_release_commit",
+    "public_manifest_sha256", "public_osint_stub_sha256",
+    "public_rights_status_sha256", "public_ledger_sha256",
+    "railway_canary_run_id",
 }
 if not isinstance(value, dict) or set(value) != fields:
     raise SystemExit("invalid Phase 2 handoff fields")
-if value.get("schema") != "palimpsest-public-osint-release-proof.v1":
+if value.get("schema") != "palimpsest-public-osint-release-proof.v2":
     raise SystemExit("invalid Phase 2 handoff schema")
 if value.get("resume_token") != expected_token:
     raise SystemExit("Phase 2 handoff does not match the paused shell")
@@ -7150,43 +8151,188 @@ if value.get("workflow_head_sha") != expected_deploy:
 if any(re.fullmatch(r"[0-9a-f]{40}", value.get(field, "")) is None
        for field in (
            "expected_deploy_sha", "fetched_main", "publication_commit",
-           "workflow_head_sha",
+           "workflow_head_sha", "public_release_commit",
        )):
     raise SystemExit("invalid Phase 2 handoff commit")
+if value.get("public_release_commit") != value.get("fetched_main"):
+    raise SystemExit("Phase 2 public release is not the pinned fetched main")
 if any(re.fullmatch(r"[0-9a-f]{64}", value.get(field, "")) is None
        for field in (
            "artifact_sha256", "ledger_sha256", "workflow_receipt_sha256",
+           "public_manifest_sha256", "public_osint_stub_sha256",
+           "public_rights_status_sha256", "public_ledger_sha256",
        )):
     raise SystemExit("invalid Phase 2 handoff digest")
+if value.get("public_osint_stub_sha256") == value.get("artifact_sha256"):
+    raise SystemExit("Phase 2 handoff attempted unrestricted public OSINT")
 if type(value.get("workflow_run_id")) is not int \
         or value["workflow_run_id"] < 1 \
         or type(value.get("workflow_run_attempt")) is not int \
-        or value["workflow_run_attempt"] < 1:
+        or value["workflow_run_attempt"] < 1 \
+        or type(value.get("railway_canary_run_id")) is not int \
+        or value["railway_canary_run_id"] < 1:
     raise SystemExit("invalid Phase 2 workflow identity")
 print(json.dumps(value, sort_keys=True, separators=(",", ":")))
 PY
 PHASE2_HANDOFF_JSON="$(cat "$RELEASE_PROOF_TMP")"
-SYNC_RELEASE_PROOF_TMP="$(mktemp /tmp/palimpsest-sync-release-proof.XXXXXX)"
-chmod 0600 "$SYNC_RELEASE_PROOF_TMP"
-python3 - "$RELEASE_PROOF_TMP" >"$SYNC_RELEASE_PROOF_TMP" <<'PY'
+
+# Re-fetch Phase 2's exact canonical Railway identities from the host before
+# installing P. No redirect is followed: an apex response is not accepted as
+# evidence for the canonical www authority. The root-mode sync below then
+# independently repeats the Git P -> R, latest-OSINT, and ledger-prefix proof.
+read -r PHASE3_PUBLIC_RELEASE_SHA PHASE3_PUBLIC_MANIFEST_SHA256 \
+  PHASE3_PUBLIC_OSINT_STUB_SHA256 PHASE3_PUBLIC_RIGHTS_SHA256 \
+  PHASE3_PUBLIC_LEDGER_SHA256 PHASE3_PUBLIC_CANARY_RUN_ID \
+  <<<"$(python3 - "$RELEASE_PROOF_TMP" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
-    handoff = json.load(handle)
-fields = (
-    "schema", "resume_token", "expected_deploy_sha", "fetched_main",
-    "publication_commit", "artifact_sha256", "ledger_sha256",
+    value = json.load(handle)
+print(
+    value["public_release_commit"],
+    value["public_manifest_sha256"],
+    value["public_osint_stub_sha256"],
+    value["public_rights_status_sha256"],
+    value["public_ledger_sha256"],
+    value["railway_canary_run_id"],
 )
-proof = {field: handoff[field] for field in fields}
-print(json.dumps(proof, sort_keys=True, separators=(",", ":")))
+PY
+)"
+[[ "$PHASE3_PUBLIC_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$PHASE3_PUBLIC_CANARY_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+PHASE3_PUBLIC_PROOF_DIR="$(mktemp -d /tmp/palimpsest-public-proof.XXXXXX)"
+chmod 0700 "$PHASE3_PUBLIC_PROOF_DIR"
+PHASE3_PUBLIC_MANIFEST="$PHASE3_PUBLIC_PROOF_DIR/railway-release.json"
+PHASE3_PUBLIC_STUB="$PHASE3_PUBLIC_PROOF_DIR/osint-china-latest.json"
+PHASE3_PUBLIC_RIGHTS="$PHASE3_PUBLIC_PROOF_DIR/china-publication-rights-latest.json"
+PHASE3_PUBLIC_LEDGER="$PHASE3_PUBLIC_PROOF_DIR/readings-ledger.jsonl"
+phase3_fetch_canonical_public() {
+  (( $# == 3 ))
+  local relative="$1" destination="$2" maximum="$3" response_code
+  [[ "$relative" == /* && "$relative" != //* ]]
+  response_code="$(curl --fail --silent --show-error \
+    --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 30 \
+    --max-filesize "$maximum" --header 'Accept-Encoding: identity' \
+    --header 'Cache-Control: no-cache' --output "$destination" \
+    --write-out '%{http_code}' \
+    "https://www.palimpsest.info${relative}?phase3_canary=${PHASE3_PUBLIC_CANARY_RUN_ID}")"
+  test "$response_code" = 200
+}
+phase3_fetch_canonical_public /railway-release.json \
+  "$PHASE3_PUBLIC_MANIFEST" 4194304
+phase3_fetch_canonical_public /readings/osint-china-latest.json \
+  "$PHASE3_PUBLIC_STUB" 4194304
+phase3_fetch_canonical_public /readings/china-publication-rights-latest.json \
+  "$PHASE3_PUBLIC_RIGHTS" 4194304
+phase3_fetch_canonical_public /readings/readings-ledger.jsonl \
+  "$PHASE3_PUBLIC_LEDGER" 67108864
+test "$(sha256sum "$PHASE3_PUBLIC_MANIFEST" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_MANIFEST_SHA256"
+test "$(sha256sum "$PHASE3_PUBLIC_STUB" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_OSINT_STUB_SHA256"
+test "$(sha256sum "$PHASE3_PUBLIC_RIGHTS" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_RIGHTS_SHA256"
+test "$(sha256sum "$PHASE3_PUBLIC_LEDGER" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_LEDGER_SHA256"
+test "$PHASE3_PUBLIC_OSINT_STUB_SHA256" \
+  != "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["artifact_sha256"])' \
+    "$RELEASE_PROOF_TMP")"
+python3 - "$PHASE3_PUBLIC_MANIFEST" "$PHASE3_PUBLIC_STUB" \
+  "$PHASE3_PUBLIC_RIGHTS" "$PHASE3_PUBLIC_LEDGER" \
+  "$PHASE3_PUBLIC_RELEASE_SHA" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+manifest_path, stub_path, rights_path, ledger_path, release_sha = sys.argv[1:]
+
+def reject_duplicates(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate public proof key: {key}")
+        value[key] = item
+    return value
+
+def load(path):
+    raw = pathlib.Path(path).read_bytes()
+    value = json.loads(
+        raw.decode("utf-8", "strict"),
+        object_pairs_hook=reject_duplicates,
+        parse_constant=lambda item: (_ for _ in ()).throw(
+            ValueError(f"non-finite public proof value: {item}")
+        ),
+    )
+    expected = (
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    if raw != expected:
+        raise SystemExit("public proof JSON is not canonical")
+    return raw, value
+
+manifest_raw, manifest = load(manifest_path)
+stub_raw, stub = load(stub_path)
+rights_raw, rights = load(rights_path)
+ledger_raw = pathlib.Path(ledger_path).read_bytes()
+digest = lambda raw: hashlib.sha256(raw).hexdigest()
+if (
+    manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+    or manifest.get("source_commit") != release_sha
+):
+    raise SystemExit("Phase 3 manifest is not exact release R")
+if (
+    stub.get("schema_version")
+        != "palimpsest-restricted-publication-endpoint.v1"
+    or stub.get("publication_sha") != release_sha
+    or stub.get("status") != "restricted"
+    or stub.get("availability") != "unavailable"
+    or stub.get("publication_allowed") is not False
+    or stub.get("artifact") != {
+        "path": "readings/osint-china-latest.json",
+        "media_type": "application/json",
+    }
+):
+    raise SystemExit("Phase 3 public OSINT is not the restricted same-path stub")
+if (
+    rights.get("schema_version") != "palimpsest-restricted-publication.v1"
+    or rights.get("publication_sha") != release_sha
+    or rights.get("status") != "restricted"
+    or rights.get("availability") != "unavailable"
+    or rights.get("publication_allowed") is not False
+    or "readings/osint-china-latest.json"
+        not in rights.get("quarantined_paths", [])
+):
+    raise SystemExit("Phase 3 master rights status is invalid")
+if stub.get("master_status") != {
+    "path": "/readings/china-publication-rights-latest.json",
+    "sha256": digest(rights_raw),
+    "bytes": len(rights_raw),
+}:
+    raise SystemExit("Phase 3 stub is not bound to the exact master status")
+critical = manifest.get("critical_files", {})
+for relative, raw in (
+    ("readings/osint-china-latest.json", stub_raw),
+    ("readings/china-publication-rights-latest.json", rights_raw),
+    ("readings/readings-ledger.jsonl", ledger_raw),
+):
+    row = critical.get(relative)
+    if (
+        not isinstance(row, dict)
+        or set(row) != {"bytes", "sha256"}
+        or type(row.get("bytes")) is not int
+        or row["bytes"] != len(raw)
+        or row.get("sha256") != digest(raw)
+    ):
+        raise SystemExit(f"Phase 3 critical identity mismatch: {relative}")
 PY
 RELEASE_PROOF_PATH='/var/lib/palimpsest-public-osint-sync/release-proof.json'
 sudo test ! -e "$RELEASE_PROOF_PATH"
 sudo test ! -L "$RELEASE_PROOF_PATH"
 sudo install -o root -g root -m 0600 \
-  "$SYNC_RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
-sudo cmp -s "$SYNC_RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
+  "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
+sudo cmp -s "$RELEASE_PROOF_TMP" "$RELEASE_PROOF_PATH"
 test "$(sudo stat -c '%u:%g:%a:%h' "$RELEASE_PROOF_PATH")" = "0:0:600:1"
 RELEASE_PROOF_JSON="$(sudo cat "$RELEASE_PROOF_PATH")"
 RELEASE_PROOF_FILE_SHA256="$(sudo sha256sum "$RELEASE_PROOF_PATH" \
@@ -7196,8 +8342,8 @@ RELEASE_PROOF_DIR="$(dirname "$RELEASE_PROOF_PATH")"
 sudo test -d "$RELEASE_PROOF_DIR"
 sudo test ! -L "$RELEASE_PROOF_DIR"
 fsync_installed_paths "$RELEASE_PROOF_PATH"
-rm -f -- "$RELEASE_PROOF_TMP" "$SYNC_RELEASE_PROOF_TMP"
-PUBLIC_BLEED_URL="https://palimpsest.info/readings/bleedthrough-latest.json?release=$EXPECTED_DEPLOY_SHA"
+rm -f -- "$RELEASE_PROOF_TMP"
+PUBLIC_BLEED_URL="https://www.palimpsest.info/readings/bleedthrough-latest.json?release=$EXPECTED_DEPLOY_SHA"
 PUBLIC_BLEED_TMP="$(mktemp /tmp/palimpsest-public-bleed.XXXXXX)"
 chmod 0600 "$PUBLIC_BLEED_TMP"
 curl --fail --silent --show-error --location --max-filesize 262144 \
@@ -7365,7 +8511,7 @@ canonical = json.dumps(
     allow_nan=False,
 ).encode("utf-8")
 checks = (
-    receipt.get("schema") == "palimpsest-public-osint-sync.v2",
+    receipt.get("schema") == "palimpsest-public-osint-sync.v3",
     receipt.get("status") == "installed",
     receipt.get("sync_mode") == "release-pinned",
     receipt.get("deployed_commit") == deployed,
@@ -7375,6 +8521,16 @@ checks = (
         == proof.get("artifact_sha256"),
     receipt.get("ledger_sha256") == ledger_sha
         == proof.get("ledger_sha256"),
+    receipt.get("public_release_commit")
+        == proof.get("public_release_commit"),
+    receipt.get("public_manifest_sha256")
+        == proof.get("public_manifest_sha256"),
+    receipt.get("public_osint_stub_sha256")
+        == proof.get("public_osint_stub_sha256"),
+    receipt.get("public_rights_status_sha256")
+        == proof.get("public_rights_status_sha256"),
+    receipt.get("public_ledger_sha256")
+        == proof.get("public_ledger_sha256"),
     receipt.get("release_proof_sha256")
         == hashlib.sha256(canonical).hexdigest(),
     parse(receipt.get("generated_at", "")) > parse(before),
@@ -7427,11 +8583,32 @@ test "$(sudo sha256sum "$OSINT_LEDGER" | awk '{print $1}')" \
   = "$OSINT_LEDGER_AFTER_SHA256"
 test "$(sudo sha256sum "$RELEASE_PROOF_PATH" | awk '{print $1}')" \
   = "$RELEASE_PROOF_FILE_SHA256"
+# Close the mutable-public-state interval: after the provider's own final
+# public verification, all four canonical identities must still be the exact
+# Phase 2 release R. The closed schedule and exclusive-writer invariant then
+# keep them stable through the final receipt commit.
+phase3_fetch_canonical_public /railway-release.json \
+  "$PHASE3_PUBLIC_MANIFEST" 4194304
+phase3_fetch_canonical_public /readings/osint-china-latest.json \
+  "$PHASE3_PUBLIC_STUB" 4194304
+phase3_fetch_canonical_public /readings/china-publication-rights-latest.json \
+  "$PHASE3_PUBLIC_RIGHTS" 4194304
+phase3_fetch_canonical_public /readings/readings-ledger.jsonl \
+  "$PHASE3_PUBLIC_LEDGER" 67108864
+test "$(sha256sum "$PHASE3_PUBLIC_MANIFEST" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_MANIFEST_SHA256"
+test "$(sha256sum "$PHASE3_PUBLIC_STUB" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_OSINT_STUB_SHA256"
+test "$(sha256sum "$PHASE3_PUBLIC_RIGHTS" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_RIGHTS_SHA256"
+test "$(sha256sum "$PHASE3_PUBLIC_LEDGER" | awk '{print $1}')" \
+  = "$PHASE3_PUBLIC_LEDGER_SHA256"
+rm -rf -- "$PHASE3_PUBLIC_PROOF_DIR"
 FINAL_PUBLIC_BLEED_TMP="$(mktemp /tmp/palimpsest-final-public-bleed.XXXXXX)"
 chmod 0600 "$FINAL_PUBLIC_BLEED_TMP"
 curl --fail --silent --show-error --location --max-filesize 262144 \
   --max-time 30 --output "$FINAL_PUBLIC_BLEED_TMP" \
-  "https://palimpsest.info/readings/bleedthrough-latest.json?final=$RELEASE_RESUME_TOKEN"
+  "https://www.palimpsest.info/readings/bleedthrough-latest.json?final=$RELEASE_RESUME_TOKEN"
 FINAL_PUBLIC_BLEED_NORMALIZED_SHA256="$(normalized_bleed_sha256 \
   "$FINAL_PUBLIC_BLEED_TMP")"
 rm -f -- "$FINAL_PUBLIC_BLEED_TMP"
@@ -9016,6 +10193,481 @@ done
 publish_finalized_receipt
 release_finalized=1
 PHASE3_FAIL_SAFE_ARMED=0
+trap - ERR EXIT HUP INT TERM
+```
+
+Phase 3 completion does not open the Railway schedule gate. The host shell may
+now print the two root-only receipt paths and digests; none of these four values
+is a credential:
+
+```bash
+printf 'FINALIZED_RECEIPT_PATH=%s\nFINALIZED_RECEIPT_SHA256=%s\n' \
+  "$FINALIZED_RECEIPT_PATH" "$FINALIZED_RECEIPT_SHA256"
+printf 'PROOF_COMPLETE_RECEIPT_PATH=%s\nPROOF_COMPLETE_RECEIPT_SHA256=%s\n' \
+  "$PROOF_COMPLETE_RECEIPT_PATH" "$PROOF_COMPLETE_RECEIPT_SHA256"
+```
+
+### Copy Phase 3 authority and restore the scheduled producers
+
+Run this block from the reviewed release checkout on the operator workstation,
+not on Hetzner. Set the six required values from the just-completed transaction
+and choose a private absolute evidence root outside the repository. The remote
+reader refuses a symlink, non-root file, extra hard link, wrong mode, changing
+inode or receipt larger than 4 MiB. `noclobber` makes a partial or repeated copy
+a new reviewed attempt rather than an overwrite.
+
+```bash
+set -Eeuo pipefail
+set -o noclobber
+umask 077
+: "${EXPECTED_HOST_SHA:?exact Phase 3 deployed H}"
+: "${EXPECTED_PUBLIC_RELEASE_SHA:?exact Phase 2 public R}"
+: "${REMOTE_FINALIZED_RECEIPT:?exact root-only finalized path}"
+: "${REMOTE_FINALIZED_SHA256:?exact finalized digest}"
+: "${REMOTE_PROOF_COMPLETE_RECEIPT:?exact root-only proof-complete path}"
+: "${REMOTE_PROOF_COMPLETE_SHA256:?exact proof-complete digest}"
+: "${PALIMPSEST_PRIVATE_EVIDENCE_ROOT:?absolute private path outside this repository}"
+[[ "$EXPECTED_HOST_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$EXPECTED_PUBLIC_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+[[ "$REMOTE_FINALIZED_SHA256" =~ ^[0-9a-f]{64}$ ]]
+[[ "$REMOTE_PROOF_COMPLETE_SHA256" =~ ^[0-9a-f]{64}$ ]]
+[[ "$PALIMPSEST_PRIVATE_EVIDENCE_ROOT" = /* ]]
+[[ "$REMOTE_FINALIZED_RECEIPT" =~ ^/var/lib/palimpsest-release/receipts/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}-[0-9a-f]{32}\.finalized\.json$ ]]
+[[ "$REMOTE_PROOF_COMPLETE_RECEIPT" =~ ^/var/lib/palimpsest-release/receipts/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}-[0-9a-f]{32}\.proof-complete\.json$ ]]
+
+CHECKOUT_ROOT="$(git rev-parse --show-toplevel)"
+CHECKOUT_ROOT="$(cd "$CHECKOUT_ROOT" && pwd -P)"
+cd "$CHECKOUT_ROOT"
+CHECKOUT_STATUS="$(git status --porcelain=v1 --untracked-files=all)"
+test -z "$CHECKOUT_STATUS"
+git fetch --no-tags origin \
+  'refs/heads/main:refs/remotes/origin/main'
+test "$(git rev-parse --verify 'HEAD^{commit}')" \
+  = "$EXPECTED_PUBLIC_RELEASE_SHA"
+test "$(git rev-parse --verify 'refs/remotes/origin/main^{commit}')" \
+  = "$EXPECTED_PUBLIC_RELEASE_SHA"
+PALIMPSEST_PRIVATE_EVIDENCE_ROOT="$(
+  python3 - "$PALIMPSEST_PRIVATE_EVIDENCE_ROOT" <<'PY'
+import os
+import stat
+import sys
+
+path = os.path.abspath(sys.argv[1])
+created = False
+try:
+    os.mkdir(path, 0o700)
+    created = True
+except FileExistsError:
+    pass
+flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0)
+descriptor = os.open(path, flags)
+try:
+    details = os.fstat(descriptor)
+    if (
+        not stat.S_ISDIR(details.st_mode)
+        or details.st_uid != os.geteuid()
+        or stat.S_IMODE(details.st_mode) != 0o700
+    ):
+        raise SystemExit("private evidence root must be an owner-controlled 0700 directory")
+    if created:
+        os.fsync(descriptor)
+finally:
+    os.close(descriptor)
+if created:
+    parent = os.open(
+        os.path.dirname(path),
+        os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+    )
+    try:
+        os.fsync(parent)
+    finally:
+        os.close(parent)
+print(os.path.realpath(path))
+PY
+)"
+case "$PALIMPSEST_PRIVATE_EVIDENCE_ROOT" in
+  "$CHECKOUT_ROOT"|"$CHECKOUT_ROOT"/*)
+    printf 'private evidence root resolves inside the release checkout\n' >&2
+    exit 1
+    ;;
+esac
+COPY_ATTEMPT_ID="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+HANDOFF_DIR="$PALIMPSEST_PRIVATE_EVIDENCE_ROOT/handoff-$EXPECTED_HOST_SHA-$EXPECTED_PUBLIC_RELEASE_SHA-$COPY_ATTEMPT_ID"
+test ! -e "$HANDOFF_DIR"
+install -d -m 0700 "$HANDOFF_DIR"
+python3 - "$HANDOFF_DIR" <<'PY'
+import os
+import stat
+import sys
+
+path = os.path.abspath(sys.argv[1])
+descriptor = os.open(
+    path,
+    os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
+)
+try:
+    details = os.fstat(descriptor)
+    if (
+        not stat.S_ISDIR(details.st_mode)
+        or details.st_uid != os.geteuid()
+        or stat.S_IMODE(details.st_mode) != 0o700
+    ):
+        raise SystemExit("unsafe handoff directory")
+    os.fsync(descriptor)
+finally:
+    os.close(descriptor)
+parent = os.open(
+    os.path.dirname(path),
+    os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+)
+try:
+    os.fsync(parent)
+finally:
+    os.close(parent)
+PY
+LOCAL_FINALIZED_RECEIPT="$HANDOFF_DIR/$(basename "$REMOTE_FINALIZED_RECEIPT")"
+LOCAL_PROOF_COMPLETE_RECEIPT="$HANDOFF_DIR/$(basename "$REMOTE_PROOF_COMPLETE_RECEIPT")"
+
+copy_root_receipt() {
+  local remote_path="$1" local_path="$2" expected_sha="$3"
+  test ! -e "$local_path"
+  ssh -o BatchMode=yes liquilens-hetzner \
+    sudo -n python3 - "$remote_path" <<'PY' >"$local_path"
+import os
+import stat
+import sys
+
+path = sys.argv[1]
+before = os.lstat(path)
+if (
+    not stat.S_ISREG(before.st_mode)
+    or before.st_uid != 0
+    or before.st_gid != 0
+    or stat.S_IMODE(before.st_mode) != 0o600
+    or before.st_nlink != 1
+    or not 0 < before.st_size <= 4 * 1024 * 1024
+):
+    raise SystemExit("unsafe root receipt")
+fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+try:
+    opened = os.fstat(fd)
+    if (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino):
+        raise SystemExit("root receipt changed before open")
+    payload = bytearray()
+    while True:
+        chunk = os.read(fd, 1024 * 1024)
+        if not chunk:
+            break
+        payload.extend(chunk)
+        if len(payload) > 4 * 1024 * 1024:
+            raise SystemExit("root receipt exceeded byte ceiling")
+    after = os.fstat(fd)
+    if (after.st_dev, after.st_ino, after.st_size) != (
+        opened.st_dev, opened.st_ino, opened.st_size
+    ):
+        raise SystemExit("root receipt changed while reading")
+finally:
+    os.close(fd)
+sys.stdout.buffer.write(payload)
+PY
+  chmod 0600 "$local_path"
+  local actual_sha
+  actual_sha="$(shasum -a 256 "$local_path" | awk '{print $1}')"
+  test "$actual_sha" = "$expected_sha"
+  python3 - "$local_path" <<'PY'
+import os
+import stat
+import sys
+
+path = os.path.abspath(sys.argv[1])
+flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
+descriptor = os.open(path, flags)
+try:
+    details = os.fstat(descriptor)
+    if (
+        not stat.S_ISREG(details.st_mode)
+        or details.st_uid != os.geteuid()
+        or stat.S_IMODE(details.st_mode) != 0o600
+        or details.st_nlink != 1
+        or not 0 < details.st_size <= 4 * 1024 * 1024
+    ):
+        raise SystemExit("unsafe local receipt")
+    os.fsync(descriptor)
+finally:
+    os.close(descriptor)
+directory = os.open(
+    os.path.dirname(path),
+    os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+}
+
+copy_root_receipt "$REMOTE_FINALIZED_RECEIPT" \
+  "$LOCAL_FINALIZED_RECEIPT" "$REMOTE_FINALIZED_SHA256"
+copy_root_receipt "$REMOTE_PROOF_COMPLETE_RECEIPT" \
+  "$LOCAL_PROOF_COMPLETE_RECEIPT" "$REMOTE_PROOF_COMPLETE_SHA256"
+
+PHASE2_V2_HANDOFF_RECEIPT="$HANDOFF_DIR/phase2-handoff.json"
+python3 - "$LOCAL_PROOF_COMPLETE_RECEIPT" \
+  "$PHASE2_V2_HANDOFF_RECEIPT" <<'PY'
+import json
+import os
+import sys
+
+source, destination = sys.argv[1:]
+with open(source, "rb") as handle:
+    proof = json.load(handle)
+handoff = proof["publication"]["handoff"]
+payload = (
+    json.dumps(handoff, sort_keys=True, separators=(",", ":"),
+               ensure_ascii=False, allow_nan=False).encode("utf-8")
+    + b"\n"
+)
+flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+fd = os.open(destination, flags, 0o600)
+try:
+    view = memoryview(payload)
+    while view:
+        written = os.write(fd, view)
+        if written <= 0:
+            raise OSError("short write while creating handoff receipt")
+        view = view[written:]
+    os.fsync(fd)
+finally:
+    os.close(fd)
+directory_fd = os.open(
+    os.path.dirname(destination),
+    os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+)
+try:
+    os.fsync(directory_fd)
+finally:
+    os.close(directory_fd)
+PY
+
+ATTEMPT_ID="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+export EXPECTED_HOST_SHA EXPECTED_PUBLIC_RELEASE_SHA
+export PHASE3_FINALIZED_RECEIPT="$LOCAL_FINALIZED_RECEIPT"
+export PHASE3_PROOF_COMPLETE_RECEIPT="$LOCAL_PROOF_COMPLETE_RECEIPT"
+export PHASE2_V2_HANDOFF_RECEIPT
+export PRODUCER_RESTORE_EVIDENCE_DIR="$HANDOFF_DIR/producer-evidence-$ATTEMPT_ID"
+export PRODUCER_RESTORE_RECEIPT="$HANDOFF_DIR/producer-restore-$ATTEMPT_ID.json"
+unset PRODUCER_RESTORE_RESUME_RECEIPT
+ops/railway/run-producer-restore
+
+export HOURLY_ACTIVATION_RECEIPT="$HANDOFF_DIR/hourly-activation-$ATTEMPT_ID.json"
+ops/railway/enable-hourly-publication
+```
+
+`run-producer-restore` keeps `RAILWAY_PUBLICATION_ENABLED=false`, restores only
+Newswire, OSINT v2 and the collector-health watchdog. It enables one owner,
+requires its exact workflow-specific manual outcome artifact
+(`committed`/`no_change` for Newswire or OSINT and an exact canonical
+`abstained` outcome for the watchdog), and refreezes that owner before
+proceeding. Only
+after all three stage receipts are sealed does it re-enable the three owners at
+one short final boundary and prove repeated quiet run inventories and unchanged
+main. Its canonical `verified` receipt is the only producer-restoration
+authority.
+
+A failure attempts to disable all three, close the gate and remove only the
+exact known acknowledgement. It commits `failed-closed` only when that cleanup,
+the last proved main SHA and the complete post-attempt run inventory are exact;
+only that receipt may be supplied as `PRODUCER_RESTORE_RESUME_RECEIPT`. A
+`cleanup-unproved` receipt authorizes no retry. For a reviewed producer retry,
+create new evidence and terminal paths, reconcile every uncertain run, re-audit
+and recreate the exact acknowledgement, and use the prior `failed-closed`
+receipt; never reuse an output path.
+
+`enable-hourly-publication` waits with the gate closed for the UTC
+`:09:00-:10:30` quiet arming window after the watchdog's `:05` tick. It asks for
+the exact final main SHA, freezes Newswire, OSINT and the watchdog, proves that
+their run inventories plus the controller and Tests inventories did not move,
+and opens the gate once before `:13`. It binds exactly one scheduled controller
+run and immediately disables that controller; all four schedules therefore
+remain disabled while the result is proved. `dispatched` requires the exact
+request artifact, its causally bound attempt-1 Tests child, protected approval,
+the seven-file release artifact and immutable transaction/verification proof.
+`no_change` requires no Tests child and proves that both Railway origins already
+serve the exact scheduled main manifest and freshness bytes.
+
+After either branch closes, the helper waits for the next UTC `:20-:30`
+admission window, re-enables all three producers and the controller together,
+and double-proves unchanged run inventories and authority by `:40`. The final
+provider and `www` bytes are then the last external observation, and both that
+proof and the atomic receipt commit are hard-bounded by `:50`, before OSINT's
+`:58` tick.
+
+Only the canonical `verified` hourly receipt is steady-state authority. It
+records the exact controller/run attempt, all four workflow states, the
+reactivation time and the `:20/:30/:40/:50` boundaries. On failure the helper
+attempts to restore the gate to `false`, removes only the exact acknowledgement,
+restores all four schedules to `active`, and never cancels an uncertain run. It
+commits `failed-closed` only when those authority states are proved, there are
+no active runs across the three producer, controller and Tests workflow
+inventories, and every bound controller/Tests run is terminal or absent;
+otherwise it commits `cleanup-unproved`. For a reviewed hourly-only retry,
+retain the same verified producer receipt, reconcile any producer/controller/
+Tests run or workflow-state uncertainty, create a fresh hourly output path,
+re-audit and recreate the exact acknowledgement, and rerun only
+`enable-hourly-publication`. Never print or transfer a Railway token through
+this host transaction.
+
+For that hourly-only retry from a fresh shell, first prove the prior hourly
+failure is fully reconciled and the gate and environment-variable inventory are
+both closed, then run this block. `VERIFIED_PRODUCER_RESTORE_RECEIPT` is the
+unchanged canonical `verified` producer receipt, not the hourly failure receipt:
+
+```bash
+set -Eeuo pipefail
+umask 077
+: "${VERIFIED_PRODUCER_RESTORE_RECEIPT:?absolute verified producer receipt}"
+: "${EXPECTED_PUBLIC_RELEASE_SHA:?exact original public release R}"
+PALIMPSEST_REPOSITORY=beepboop2025/palimpsest
+PALIMPSEST_PRODUCTION_ENVIRONMENT=palimpsest-railway-production
+[[ "$EXPECTED_PUBLIC_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+RETRY_CHECKOUT_ROOT="$(git rev-parse --show-toplevel)"
+RETRY_CHECKOUT_ROOT="$(cd "$RETRY_CHECKOUT_ROOT" && pwd -P)"
+cd "$RETRY_CHECKOUT_ROOT"
+RETRY_CHECKOUT_STATUS="$(git status --porcelain=v1 --untracked-files=all)"
+test -z "$RETRY_CHECKOUT_STATUS"
+test "$(git rev-parse --verify 'HEAD^{commit}')" \
+  = "$EXPECTED_PUBLIC_RELEASE_SHA"
+git fetch --no-tags origin \
+  'refs/heads/main:refs/remotes/origin/main'
+git merge-base --is-ancestor "$EXPECTED_PUBLIC_RELEASE_SHA" \
+  refs/remotes/origin/main
+hourly_retry_authority() {
+  local action="$1"
+  python3 -I - \
+    "$RETRY_CHECKOUT_ROOT/ops/railway/enable-hourly-publication" \
+    "$action" <<'PY'
+import runpy
+import sys
+
+helper_path, action = sys.argv[1:]
+namespace = runpy.run_path(helper_path)
+Deadline = namespace["Deadline"]
+ActivationError = namespace["ActivationError"]
+repository = "beepboop2025/palimpsest"
+environment = "palimpsest-railway-production"
+ack_name = "RAILWAY_EXCLUSIVE_WRITER_ACK"
+ack_value = "palimpsest-github-environment-v1"
+deadline = Deadline.start(180)
+namespace["_gh"](
+    deadline,
+    "auth",
+    "status",
+    "--hostname",
+    "github.com",
+    label="hourly retry GitHub authentication",
+)
+namespace["_require_gh_transport"](deadline)
+
+
+def variables():
+    raw = namespace["_gh"](
+        deadline,
+        "variable",
+        "list",
+        "--repo",
+        repository,
+        "--env",
+        environment,
+        "--json",
+        "name,value",
+        label="hourly retry environment variable inventory",
+    )
+    value = namespace["_strict_json_text"](
+        raw, label="hourly retry environment variable inventory"
+    )
+    if not isinstance(value, list) or any(
+        not isinstance(item, dict)
+        or set(item) != {"name", "value"}
+        or not isinstance(item["name"], str)
+        or not isinstance(item["value"], str)
+        for item in value
+    ):
+        raise ActivationError("hourly retry variable inventory is malformed")
+    return value
+
+
+if action in {"prove-closed", "arm"}:
+    if namespace["_gate"](deadline, repository) != "false" or variables() != []:
+        raise ActivationError("hourly retry authority is not initially closed")
+    if action == "arm":
+        namespace["_gh"](
+            deadline,
+            "variable",
+            "set",
+            ack_name,
+            "--body",
+            ack_value,
+            "--repo",
+            repository,
+            "--env",
+            environment,
+            label="arm exact hourly retry acknowledgement",
+        )
+        namespace["_validate_environment_contract"](deadline, repository)
+elif action == "disarm":
+    observed = variables()
+    if observed == []:
+        raise SystemExit(0)
+    if observed != [{"name": ack_name, "value": ack_value}]:
+        raise ActivationError("refusing to delete unfamiliar retry authority")
+    namespace["_gh"](
+        deadline,
+        "variable",
+        "delete",
+        ack_name,
+        "--repo",
+        repository,
+        "--env",
+        environment,
+        label="remove exact hourly retry acknowledgement",
+    )
+    if variables() != []:
+        raise ActivationError("hourly retry acknowledgement absence is unproved")
+else:
+    raise ActivationError("unknown hourly retry authority action")
+PY
+}
+hourly_retry_authority prove-closed
+HOURLY_RETRY_ID="$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+export PRODUCER_RESTORE_RECEIPT="$VERIFIED_PRODUCER_RESTORE_RECEIPT"
+export HOURLY_ACTIVATION_RECEIPT="$(dirname \
+  "$VERIFIED_PRODUCER_RESTORE_RECEIPT")/hourly-activation-retry-$HOURLY_RETRY_ID.json"
+[[ "$PRODUCER_RESTORE_RECEIPT" = /* ]]
+[[ "$HOURLY_ACTIVATION_RECEIPT" = /* ]]
+test ! -e "$HOURLY_ACTIVATION_RECEIPT"
+test ! -L "$HOURLY_ACTIVATION_RECEIPT"
+export PALIMPSEST_REPOSITORY
+HOURLY_RETRY_ACK_ARMED=0
+hourly_retry_abort() {
+  local original_status="$1"
+  trap - ERR EXIT HUP INT TERM
+  (( original_status != 0 )) || return 0
+  if (( HOURLY_RETRY_ACK_ARMED == 1 )); then
+    if ! hourly_retry_authority disarm; then
+      printf 'hourly retry acknowledgement cleanup is unproved; reconcile it manually\n' >&2
+    fi
+  fi
+  exit "$original_status"
+}
+trap 'hourly_retry_abort "$?"' ERR
+trap 'hourly_retry_abort "$?"' EXIT
+trap 'hourly_retry_abort 129' HUP
+trap 'hourly_retry_abort 130' INT
+trap 'hourly_retry_abort 143' TERM
+HOURLY_RETRY_ACK_ARMED=1
+hourly_retry_authority arm
+ops/railway/enable-hourly-publication
+HOURLY_RETRY_ACK_ARMED=0
 trap - ERR EXIT HUP INT TERM
 ```
 

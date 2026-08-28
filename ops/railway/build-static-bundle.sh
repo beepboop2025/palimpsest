@@ -78,12 +78,20 @@ cleanup() {
 trap cleanup EXIT
 
 archive_paths=()
+release_authority_paths=(
+  ".github/workflows/collector-health-watchdog.yml"
+  ".github/workflows/newswire-refresh.yml"
+  ".github/workflows/osint-china-v2-refresh.yml"
+  ".github/workflows/railway-publication-controller.yml"
+  ".github/workflows/tests.yml"
+)
 while IFS= read -r -d '' top_level_path; do
   if [[ "$top_level_path" == .* && "$top_level_path" != ".well-known" ]]; then
     continue
   fi
   archive_paths+=("$top_level_path")
 done < <(git -C "$repo_root" ls-tree -z --name-only "$expected_sha")
+archive_paths+=("${release_authority_paths[@]}")
 if [[ "${#archive_paths[@]}" -eq 0 ]]; then
   printf 'source revision has no publishable top-level paths\n' >&2
   exit 1

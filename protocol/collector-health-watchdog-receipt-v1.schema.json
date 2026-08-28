@@ -1,0 +1,376 @@
+{
+  "$defs": {
+    "dispatchArgs": {
+      "additionalProperties": false,
+      "properties": {
+        "inputs": {
+          "oneOf": [
+            {
+              "additionalProperties": false,
+              "maxProperties": 0,
+              "type": "object"
+            },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "expected_deploy_sha": {
+                  "$ref": "#/$defs/sha40"
+                },
+                "release_nonce": {
+                  "pattern": "^[0-9a-f]{32}$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "expected_deploy_sha",
+                "release_nonce"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "ref": {
+          "const": "main"
+        }
+      },
+      "required": [
+        "inputs",
+        "ref"
+      ],
+      "type": "object"
+    },
+    "dispatchResult": {
+      "additionalProperties": false,
+      "properties": {
+        "active_runs": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "dispatch_args": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/dispatchArgs"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "main_sha_after_dispatch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha40"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "main_sha_before_dispatch": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha40"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "outcome": {
+          "enum": [
+            "dispatched",
+            "failed_active_query",
+            "failed_allowlist",
+            "failed_dispatch",
+            "failed_main_query",
+            "failed_ref_drift",
+            "failed_state_query",
+            "skipped_active",
+            "skipped_disabled",
+            "skipped_prior_failure"
+          ]
+        },
+        "workflow": {
+          "$ref": "#/$defs/workflow"
+        },
+        "workflow_state": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "active_runs",
+        "dispatch_args",
+        "main_sha_after_dispatch",
+        "main_sha_before_dispatch",
+        "observed_at",
+        "outcome",
+        "workflow",
+        "workflow_state"
+      ],
+      "type": "object"
+    },
+    "plan": {
+      "additionalProperties": false,
+      "properties": {
+        "bundle_generated_at": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "bundle_stale": {
+          "type": "boolean"
+        },
+        "dispatch": {
+          "items": {
+            "$ref": "#/$defs/workflow"
+          },
+          "maxItems": 4,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "escalations": {
+          "items": {
+            "enum": [
+              "publication/newswire",
+              "publication/china-situation"
+            ]
+          },
+          "maxItems": 2,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "generated_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/problem"
+          },
+          "maxItems": 512,
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "collector-watchdog-plan.v2"
+        }
+      },
+      "required": [
+        "bundle_generated_at",
+        "bundle_stale",
+        "dispatch",
+        "escalations",
+        "generated_at",
+        "problems",
+        "schema_version"
+      ],
+      "type": "object"
+    },
+    "problem": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "escalate": {
+          "type": "boolean"
+        },
+        "optional": {
+          "type": "boolean"
+        },
+        "signal_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "status": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "workflow": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/workflow"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "action",
+        "optional",
+        "signal_id",
+        "status",
+        "workflow"
+      ],
+      "type": "object"
+    },
+    "sha40": {
+      "pattern": "^[0-9a-f]{40}$",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "timestamp": {
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "type": "string"
+    },
+    "workflow": {
+      "enum": [
+        "app-storefront-refresh.yml",
+        "apple-censorship-refresh.yml",
+        "believability-refresh.yml",
+        "blocklist-refresh.yml",
+        "board-alarm-refresh.yml",
+        "censored-planet-refresh.yml",
+        "china-econ-refresh.yml",
+        "circumvention-demand-refresh.yml",
+        "cny-fix-gap-refresh.yml",
+        "data-darkness-refresh.yml",
+        "ddti-refresh.yml",
+        "erasure-refresh.yml",
+        "event-flags-refresh.yml",
+        "gdelt-refresh.yml",
+        "gfi-refresh.yml",
+        "github-refuge-refresh.yml",
+        "in-path-interference-refresh.yml",
+        "inside-view-refresh.yml",
+        "ioda-outages-refresh.yml",
+        "net4people-refresh.yml",
+        "newswire-refresh.yml",
+        "ooni-gfw-refresh.yml",
+        "osint-china-v2-refresh.yml",
+        "silence-index-refresh.yml",
+        "stock-connect-refresh.yml",
+        "vantage-fusion-refresh.yml",
+        "wayback-refresh.yml",
+        "weibo-hotsearch-refresh.yml"
+      ]
+    }
+  },
+  "$id": "https://palimpsest.info/protocol/collector-health-watchdog-receipt-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actor": {
+      "maxLength": 100,
+      "minLength": 1,
+      "type": "string"
+    },
+    "checkout_sha": {
+      "$ref": "#/$defs/sha40"
+    },
+    "dispatch_step_outcome": {
+      "enum": [
+        "success",
+        "failure"
+      ]
+    },
+    "dispatches": {
+      "items": {
+        "$ref": "#/$defs/dispatchResult"
+      },
+      "maxItems": 4,
+      "type": "array"
+    },
+    "event": {
+      "enum": [
+        "schedule",
+        "workflow_dispatch",
+        "workflow_run"
+      ]
+    },
+    "event_sha": {
+      "$ref": "#/$defs/sha40"
+    },
+    "final_main_sha": {
+      "$ref": "#/$defs/sha40"
+    },
+    "observed_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "observed_main_sha": {
+      "$ref": "#/$defs/sha40"
+    },
+    "plan": {
+      "$ref": "#/$defs/plan"
+    },
+    "plan_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "repository": {
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+      "type": "string"
+    },
+    "run_attempt": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "run_id": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "palimpsest.collector-health-watchdog-receipt.v1"
+    },
+    "status": {
+      "enum": [
+        "success",
+        "failed"
+      ]
+    },
+    "workflow": {
+      "const": ".github/workflows/collector-health-watchdog.yml"
+    },
+    "workflow_name": {
+      "const": "Recover stale collector publications"
+    }
+  },
+  "required": [
+    "actor",
+    "checkout_sha",
+    "dispatch_step_outcome",
+    "dispatches",
+    "event",
+    "event_sha",
+    "final_main_sha",
+    "observed_at",
+    "observed_main_sha",
+    "plan",
+    "plan_sha256",
+    "repository",
+    "run_attempt",
+    "run_id",
+    "schema_version",
+    "status",
+    "workflow",
+    "workflow_name"
+  ],
+  "title": "Palimpsest collector-health watchdog transaction receipt",
+  "type": "object"
+}

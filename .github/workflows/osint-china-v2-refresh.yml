@@ -75,11 +75,13 @@ jobs:
           -r .github/osint-china-ci-requirements.txt
 
       - name: Synchronize inputs before computation
+        id: acquisition_base
         run: |
           git config user.name "palimpsest-bot"
           git config user.email "bot@palimpsest.info"
           git fetch origin main
           git rebase origin/main
+          echo "base-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Import the optional authenticated runtime snapshot
         env:
@@ -242,6 +244,7 @@ jobs:
             git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip pytest]"
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+          echo "candidate-sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Rebase candidate onto the latest public ledger
         if: steps.candidate.outputs.changed == 'true'
@@ -367,6 +370,7 @@ jobs:
 
       - name: Replace the candidate with the revalidated bytes
         if: steps.prepublish_sync.outputs.rebuild == 'true'
+        id: synchronized_candidate
         run: |
           git add \
             readings/china-economic-pulse-latest.json \
@@ -414,16 +418,21 @@ jobs:
           fi
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet origin/main; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
               echo "no change after synchronization"
             else
               git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip pytest]"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
             fi
           else
             git commit --amend --no-edit
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Attempt the verified push
-        if: steps.candidate.outputs.changed == 'true'
+        if: >-
+          steps.candidate.outputs.changed == 'true' &&
+          steps.synchronized_candidate.outputs.changed != 'false'
         id: push_attempt
         continue-on-error: true
         env:
@@ -437,6 +446,8 @@ jobs:
             PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope complete
           publish_rc=$?
           set -e
+          printf 'candidate_sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          printf 'candidate_parent_sha=%s\n' "$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
           printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
           exit "$publish_rc"
 
@@ -448,16 +459,6 @@ jobs:
         run: |
           echo "FATAL: OSINT publication failed for a reason that is not a base advance"
           exit 1
-
-      - name: Retry the exact contract event without rebuilding
-        if: >-
-          steps.push_attempt.outcome == 'failure' &&
-          steps.push_attempt.outputs.exit_code == '76'
-        env:
-          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
-        run: >-
-          python scripts/dispatch_publication_contract.py
-          --scope complete "$(git rev-parse HEAD)"
 
       - name: Synchronize after a push race
         if: steps.push_attempt.outputs.exit_code == '75'
@@ -571,6 +572,7 @@ jobs:
 
       - name: Commit the race-safe rebuilt bytes
         if: steps.push_attempt.outputs.exit_code == '75'
+        id: race_candidate
         run: |
           git add \
             readings/china-economic-pulse-latest.json \
@@ -618,16 +620,23 @@ jobs:
           fi
           if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
             if git diff --cached --quiet; then
+              echo "changed=false" >> "$GITHUB_OUTPUT"
               echo "no change after push race"
             else
               git commit -m "data: OSINT China refresh ($(date -u +%FT%TZ)) [skip pytest]"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
             fi
           else
             git commit --amend --no-edit
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Push the race-safe rebuilt commit
-        if: steps.push_attempt.outputs.exit_code == '75'
+        if: >-
+          steps.push_attempt.outputs.exit_code == '75' &&
+          steps.race_candidate.outputs.changed == 'true'
+        id: retry_push
+        continue-on-error: true
         env:
           GITHUB_PUSH_TOKEN: ${{ github.token }}
         run: |
@@ -639,21 +648,409 @@ jobs:
             PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" python scripts/push_data_commit.py --base-locked --contract-scope complete
           publish_rc=$?
           set -e
-          if [ "$publish_rc" = '76' ]; then
-            PALIMPSEST_ACTIONS_TOKEN="${{ github.token }}" \
-              python scripts/dispatch_publication_contract.py \
-                --scope complete "$(git rev-parse HEAD)"
-            exit 0
-          fi
+          printf 'candidate_sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          printf 'candidate_parent_sha=%s\n' "$(git rev-parse HEAD^)" >> "$GITHUB_OUTPUT"
+          printf 'exit_code=%s\n' "$publish_rc" >> "$GITHUB_OUTPUT"
           exit "$publish_rc"
 
-      - name: Emit the causally bound publication receipt
-        if: github.event_name == 'workflow_dispatch'
+      - name: Seal the canonical manual OSINT outcome
+        if: >-
+          ${{ always() && github.event_name == 'workflow_dispatch' &&
+          steps.candidate.outcome == 'success' }}
+        id: manual_outcome
         env:
+          GH_TOKEN: ${{ github.token }}
+          ACQUISITION_BASE_SHA: ${{ steps.acquisition_base.outputs.base-sha }}
+          CANDIDATE_CHANGED: ${{ steps.candidate.outputs.changed }}
+          ORIGINAL_CANDIDATE_SHA: ${{ steps.candidate.outputs.candidate-sha }}
+          SYNCHRONIZED_CANDIDATE_CHANGED: ${{ steps.synchronized_candidate.outputs.changed }}
+          INITIAL_PUSH_OUTCOME: ${{ steps.push_attempt.outcome }}
+          INITIAL_PUSH_EXIT_CODE: ${{ steps.push_attempt.outputs.exit_code }}
+          INITIAL_CANDIDATE_SHA: ${{ steps.push_attempt.outputs.candidate_sha }}
+          INITIAL_CANDIDATE_PARENT_SHA: ${{ steps.push_attempt.outputs.candidate_parent_sha }}
+          RACE_CANDIDATE_CHANGED: ${{ steps.race_candidate.outputs.changed }}
+          RETRY_PUSH_OUTCOME: ${{ steps.retry_push.outcome }}
+          RETRY_PUSH_EXIT_CODE: ${{ steps.retry_push.outputs.exit_code }}
+          RETRY_CANDIDATE_SHA: ${{ steps.retry_push.outputs.candidate_sha }}
+          RETRY_CANDIDATE_PARENT_SHA: ${{ steps.retry_push.outputs.candidate_parent_sha }}
           EXPECTED_DEPLOY_SHA: ${{ inputs.expected_deploy_sha }}
           RELEASE_NONCE: ${{ inputs.release_nonce }}
         run: |
+          set -euo pipefail
+          current_main_sha=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/commits/main" --jq '.sha')
+          export CURRENT_MAIN_SHA="$current_main_sha"
+          receipt_path="$RUNNER_TEMP/osint-manual-outcome.json"
+          python - "$receipt_path" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+
+          SHA_RE = re.compile(r"[0-9a-f]{40}\Z")
+          NONCE_RE = re.compile(r"[0-9a-f]{32}\Z")
+          TIME_RE = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\Z")
+          SECRET_KEY_RE = re.compile(
+              r"(?:authorization|credential|password|secret|token)", re.IGNORECASE
+          )
+          OUTCOMES = {"success", "failure", "skipped"}
+          RESULTS = {"committed", "no_change", "concurrent_main_advance"}
+          ROOT_KEYS = {
+              "acquisition_base_sha",
+              "base_sha",
+              "candidate_changed",
+              "candidate_sha",
+              "current_main_sha",
+              "event",
+              "expected_deploy_sha",
+              "head_sha",
+              "output_parents",
+              "output_sha",
+              "publication_commit",
+              "push_exit_code",
+              "push_outcome",
+              "recorded_at",
+              "release_nonce",
+              "repository",
+              "result",
+              "retry_candidate_changed",
+              "retry_candidate_sha",
+              "retry_exit_code",
+              "retry_outcome",
+              "run_attempt",
+              "run_id",
+              "schema_version",
+              "synchronized_candidate_changed",
+              "workflow",
+              "workflow_name",
+          }
+
+
+          def fail(message: str) -> None:
+              raise SystemExit(message)
+
+
+          def required_env(name: str) -> str:
+              value = os.environ.get(name, "")
+              if not value:
+                  fail(f"missing {name}")
+              return value
+
+
+          def required_sha(name: str) -> str:
+              value = required_env(name)
+              if not SHA_RE.fullmatch(value):
+                  fail(f"invalid {name}")
+              return value
+
+
+          def optional_sha(name: str) -> str | None:
+              value = os.environ.get(name, "")
+              if not value:
+                  return None
+              if not SHA_RE.fullmatch(value):
+                  fail(f"invalid {name}")
+              return value
+
+
+          def optional_bool(name: str) -> bool | None:
+              value = os.environ.get(name, "")
+              if not value:
+                  return None
+              if value not in {"true", "false"}:
+                  fail(f"invalid {name}")
+              return value == "true"
+
+
+          def step_outcome(name: str) -> str:
+              value = os.environ.get(name, "") or "skipped"
+              if value not in OUTCOMES:
+                  fail(f"invalid {name}")
+              return value
+
+
+          def exit_code(name: str, outcome: str) -> int | None:
+              value = os.environ.get(name, "")
+              if not value:
+                  if outcome != "skipped":
+                      fail(f"missing {name}")
+                  return None
+              if not value.isascii() or not value.isdigit() or not 0 <= int(value) <= 255:
+                  fail(f"invalid {name}")
+              result = int(value)
+              if (outcome == "success") != (result == 0) or outcome == "skipped":
+                  fail(f"{name} does not match its step outcome")
+              return result
+
+
+          def positive_int(name: str) -> int:
+              value = required_env(name)
+              if not value.isascii() or not value.isdigit() or int(value) < 1:
+                  fail(f"invalid {name}")
+              return int(value)
+
+
+          def reject_secret_fields(value: object) -> None:
+              if isinstance(value, dict):
+                  for key, child in value.items():
+                      if SECRET_KEY_RE.search(str(key)):
+                          fail(f"secret-like receipt field: {key}")
+                      reject_secret_fields(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      reject_secret_fields(child)
+
+
+          head_sha = required_sha("GITHUB_SHA")
+          expected_deploy_sha = required_sha("EXPECTED_DEPLOY_SHA")
+          acquisition_base_sha = required_sha("ACQUISITION_BASE_SHA")
+          original_candidate_sha = required_sha("ORIGINAL_CANDIDATE_SHA")
+          current_main_sha = required_sha("CURRENT_MAIN_SHA")
+          release_nonce = required_env("RELEASE_NONCE")
+          if not NONCE_RE.fullmatch(release_nonce):
+              fail("invalid RELEASE_NONCE")
+          if head_sha != expected_deploy_sha:
+              fail("manual outcome is not bound to its expected deployment")
+
+          candidate_changed = optional_bool("CANDIDATE_CHANGED")
+          if candidate_changed is None:
+              fail("missing CANDIDATE_CHANGED")
+          synchronized_changed = optional_bool("SYNCHRONIZED_CANDIDATE_CHANGED")
+          retry_candidate_changed = optional_bool("RACE_CANDIDATE_CHANGED")
+          push_outcome = step_outcome("INITIAL_PUSH_OUTCOME")
+          retry_outcome = step_outcome("RETRY_PUSH_OUTCOME")
+          push_exit_code = exit_code("INITIAL_PUSH_EXIT_CODE", push_outcome)
+          retry_exit_code = exit_code("RETRY_PUSH_EXIT_CODE", retry_outcome)
+          initial_candidate_sha = optional_sha("INITIAL_CANDIDATE_SHA")
+          initial_parent_sha = optional_sha("INITIAL_CANDIDATE_PARENT_SHA")
+          retry_candidate_sha = optional_sha("RETRY_CANDIDATE_SHA")
+          retry_parent_sha = optional_sha("RETRY_CANDIDATE_PARENT_SHA")
+
+          candidate_sha = initial_candidate_sha or original_candidate_sha
+          base_sha = acquisition_base_sha
+          output_sha = None
+          output_parents: list[str] = []
+
+          if not candidate_changed:
+              if push_outcome != "skipped" or retry_outcome != "skipped":
+                  fail("no-change candidate unexpectedly attempted publication")
+              if (
+                  head_sha == acquisition_base_sha
+                  and candidate_sha == acquisition_base_sha
+                  and current_main_sha == acquisition_base_sha
+              ):
+                  result = "no_change"
+                  output_sha = current_main_sha
+              else:
+                  result = "concurrent_main_advance"
+          elif push_exit_code in {0, 76}:
+              if initial_candidate_sha is None or initial_parent_sha is None:
+                  fail("initial publication lacks exact candidate lineage")
+              base_sha = initial_parent_sha
+              output_sha = initial_candidate_sha
+              output_parents = [initial_parent_sha]
+              materialized = synchronized_changed is not False
+              result = (
+                  "committed"
+                  if materialized and output_sha == current_main_sha
+                  else "concurrent_main_advance"
+              )
+          elif push_exit_code == 75 and retry_exit_code in {0, 76}:
+              if retry_candidate_sha is None or retry_parent_sha is None:
+                  fail("retry publication lacks exact candidate lineage")
+              base_sha = retry_parent_sha
+              output_sha = retry_candidate_sha
+              output_parents = [retry_parent_sha]
+              result = (
+                  "committed"
+                  if retry_candidate_changed is True and output_sha == current_main_sha
+                  else "concurrent_main_advance"
+              )
+          elif current_main_sha != acquisition_base_sha:
+              base_sha = initial_parent_sha or acquisition_base_sha
+              result = "concurrent_main_advance"
+          else:
+              fail("ambiguous failed OSINT publication while main is unchanged")
+
+          recorded_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+          recorded_at = recorded_at.replace("+00:00", "Z")
+          receipt = {
+              "acquisition_base_sha": acquisition_base_sha,
+              "base_sha": base_sha,
+              "candidate_changed": candidate_changed,
+              "candidate_sha": candidate_sha,
+              "current_main_sha": current_main_sha,
+              "event": required_env("GITHUB_EVENT_NAME"),
+              "expected_deploy_sha": expected_deploy_sha,
+              "head_sha": head_sha,
+              "output_parents": output_parents,
+              "output_sha": output_sha,
+              "publication_commit": output_sha,
+              "push_exit_code": push_exit_code,
+              "push_outcome": push_outcome,
+              "recorded_at": recorded_at,
+              "release_nonce": release_nonce,
+              "repository": required_env("GITHUB_REPOSITORY"),
+              "result": result,
+              "retry_candidate_changed": retry_candidate_changed,
+              "retry_candidate_sha": retry_candidate_sha,
+              "retry_exit_code": retry_exit_code,
+              "retry_outcome": retry_outcome,
+              "run_attempt": positive_int("GITHUB_RUN_ATTEMPT"),
+              "run_id": positive_int("GITHUB_RUN_ID"),
+              "schema_version": "palimpsest.osint-manual-outcome.v1",
+              "synchronized_candidate_changed": synchronized_changed,
+              "workflow": ".github/workflows/osint-china-v2-refresh.yml",
+              "workflow_name": "Refresh OSINT China roll-up v2",
+          }
+
+          if set(receipt) != ROOT_KEYS:
+              fail("OSINT outcome root fields are not closed")
+          if receipt["event"] != "workflow_dispatch":
+              fail("manual OSINT outcome has the wrong event")
+          if not re.fullmatch(r"[^/\s]+/[^/\s]+", receipt["repository"]):
+              fail("invalid repository")
+          if result not in RESULTS or not TIME_RE.fullmatch(recorded_at):
+              fail("invalid terminal OSINT result metadata")
+          for field in (
+              "acquisition_base_sha",
+              "base_sha",
+              "candidate_sha",
+              "current_main_sha",
+              "expected_deploy_sha",
+              "head_sha",
+          ):
+              if not SHA_RE.fullmatch(receipt[field]):
+                  fail(f"invalid receipt {field}")
+          for field in ("output_sha", "publication_commit", "retry_candidate_sha"):
+              value = receipt[field]
+              if value is not None and not SHA_RE.fullmatch(value):
+                  fail(f"invalid receipt {field}")
+
+          if result == "no_change":
+              if not (
+                  candidate_changed is False
+                  and head_sha
+                  == expected_deploy_sha
+                  == acquisition_base_sha
+                  == base_sha
+                  == candidate_sha
+                  == output_sha
+                  == receipt["publication_commit"]
+                  == current_main_sha
+                  and output_parents == []
+                  and push_exit_code is retry_exit_code is None
+                  and push_outcome == retry_outcome == "skipped"
+              ):
+                  fail("invalid no_change OSINT invariant")
+          elif result == "committed":
+              initial_commit = (
+                  push_exit_code in {0, 76}
+                  and retry_exit_code is None
+                  and retry_outcome == "skipped"
+              )
+              retry_commit = (
+                  push_exit_code == 75
+                  and retry_exit_code in {0, 76}
+              )
+              if not (
+                  candidate_changed is True
+                  and output_sha == receipt["publication_commit"] == current_main_sha
+                  and output_parents == [base_sha]
+                  and (initial_commit or retry_commit)
+              ):
+                  fail("invalid committed OSINT invariant")
+          elif (
+              current_main_sha == acquisition_base_sha
+              and output_sha is None
+              and push_exit_code not in {0, 76}
+              and retry_exit_code not in {0, 76}
+          ):
+              fail("concurrent OSINT result lacks observable main advance")
+
+          reject_secret_fields(receipt)
+          payload = (
+              json.dumps(
+                  receipt,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  sort_keys=True,
+                  separators=(",", ":"),
+              )
+              + "\n"
+          ).encode("utf-8")
+          output = Path(sys.argv[1])
+          flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+          flags |= getattr(os, "O_NOFOLLOW", 0)
+          descriptor = -1
+          created = False
+          try:
+              descriptor = os.open(output, flags, 0o600)
+              created = True
+              with os.fdopen(descriptor, "wb", closefd=True) as handle:
+                  descriptor = -1
+                  handle.write(payload)
+                  handle.flush()
+                  os.fsync(handle.fileno())
+              directory_flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+              directory_descriptor = os.open(output.parent, directory_flags)
+              try:
+                  os.fsync(directory_descriptor)
+              finally:
+                  os.close(directory_descriptor)
+          except BaseException:
+              if descriptor >= 0:
+                  os.close(descriptor)
+              if created:
+                  try:
+                      output.unlink()
+                  except FileNotFoundError:
+                      pass
+              raise
+          PY
+          receipt_result=$(python -c \
+            'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["result"])' \
+            "$receipt_path")
+          publication_commit=$(python -c \
+            'import json,sys; value=json.load(open(sys.argv[1], encoding="utf-8"))["publication_commit"]; print(value or "")' \
+            "$receipt_path")
+          echo "path=$receipt_path" >> "$GITHUB_OUTPUT"
+          echo "result=$receipt_result" >> "$GITHUB_OUTPUT"
+          echo "publication_commit=$publication_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Preserve the canonical manual OSINT outcome
+        if: ${{ always() && steps.manual_outcome.outcome == 'success' }}
+        id: manual_outcome_artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osint-manual-outcome-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.manual_outcome.outputs.path }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      # Phase 2 predates the producer-restore protocol. Keep its exact seven
+      # fields and historical artifact name only for a real first-attempt
+      # publication; never manufacture legacy authority for no-change/reruns.
+      - name: Emit the causally bound publication receipt
+        if: >-
+          ${{ always() && github.event_name == 'workflow_dispatch' &&
+          github.run_attempt == 1 &&
+          steps.manual_outcome.outputs.result == 'committed' &&
+          steps.manual_outcome_artifact.outcome == 'success' }}
+        id: phase2_compatibility
+        env:
+          EXPECTED_DEPLOY_SHA: ${{ inputs.expected_deploy_sha }}
+          RELEASE_NONCE: ${{ inputs.release_nonce }}
+          PUBLICATION_COMMIT: ${{ steps.manual_outcome.outputs.publication_commit }}
+        run: |
+          set -euo pipefail
           publication_commit=$(git rev-parse HEAD)
+          test "$publication_commit" = "$PUBLICATION_COMMIT"
           git fetch origin main
           [[ "$publication_commit" =~ ^[0-9a-f]{40}$ ]]
           git merge-base --is-ancestor "$publication_commit" origin/main
@@ -662,13 +1059,15 @@ jobs:
             | grep -Fx 'readings/osint-china-latest.json'
           git diff-tree --no-commit-id --name-only -r "$publication_commit" \
             | grep -Fx 'readings/readings-ledger.jsonl'
-          python - "$publication_commit" <<'PY'
+          legacy_path="$RUNNER_TEMP/osint-release-run.json"
+          python - "$legacy_path" "$publication_commit" <<'PY'
           import json
           import os
           import re
           import sys
+          from pathlib import Path
 
-          publication_commit = sys.argv[1]
+          output, publication_commit = sys.argv[1:]
           value = {
               "schema_version": "palimpsest-osint-release-run.v1",
               "run_id": int(os.environ["GITHUB_RUN_ID"]),
@@ -678,21 +1077,151 @@ jobs:
               "release_nonce": os.environ["RELEASE_NONCE"],
               "publication_commit": publication_commit,
           }
-          if any(
-              re.fullmatch(r"[0-9a-f]{40}", value[field]) is None
-              for field in ("head_sha", "expected_deploy_sha", "publication_commit")
-          ) or re.fullmatch(r"[0-9a-f]{32}", value["release_nonce"]) is None:
-              raise SystemExit("invalid release publication receipt")
-          with open("osint-release-run.json", "w", encoding="utf-8") as handle:
-              json.dump(value, handle, sort_keys=True, separators=(",", ":"))
-              handle.write("\n")
+          if set(value) != {
+              "expected_deploy_sha",
+              "head_sha",
+              "publication_commit",
+              "release_nonce",
+              "run_attempt",
+              "run_id",
+              "schema_version",
+          }:
+              raise SystemExit("legacy Phase 2 receipt fields are not exact")
+          if (
+              value["schema_version"] != "palimpsest-osint-release-run.v1"
+              or value["run_attempt"] != 1
+              or value["run_id"] < 1
+              or value["head_sha"] != value["expected_deploy_sha"]
+              or any(
+                  re.fullmatch(r"[0-9a-f]{40}", value[field]) is None
+                  for field in ("head_sha", "expected_deploy_sha", "publication_commit")
+              )
+              or re.fullmatch(r"[0-9a-f]{32}", value["release_nonce"]) is None
+          ):
+              raise SystemExit("invalid legacy Phase 2 publication receipt")
+          payload = (
+              json.dumps(
+                  value,
+                  allow_nan=False,
+                  ensure_ascii=True,
+                  sort_keys=True,
+                  separators=(",", ":"),
+              )
+              + "\n"
+          ).encode("utf-8")
+          path = Path(output)
+          flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+          flags |= getattr(os, "O_NOFOLLOW", 0)
+          descriptor = -1
+          created = False
+          try:
+              descriptor = os.open(path, flags, 0o600)
+              created = True
+              with os.fdopen(descriptor, "wb", closefd=True) as handle:
+                  descriptor = -1
+                  handle.write(payload)
+                  handle.flush()
+                  os.fsync(handle.fileno())
+              directory_descriptor = os.open(
+                  path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+              )
+              try:
+                  os.fsync(directory_descriptor)
+              finally:
+                  os.close(directory_descriptor)
+          except BaseException:
+              if descriptor >= 0:
+                  os.close(descriptor)
+              if created:
+                  try:
+                      path.unlink()
+                  except FileNotFoundError:
+                      pass
+              raise
           PY
+          echo "path=$legacy_path" >> "$GITHUB_OUTPUT"
+          echo "publication_commit=$publication_commit" >> "$GITHUB_OUTPUT"
 
-      - name: Upload the release publication receipt
-        if: github.event_name == 'workflow_dispatch'
+      - name: Upload the committed Phase 2 compatibility receipt
+        if: ${{ always() && steps.phase2_compatibility.outcome == 'success' }}
+        id: phase2_compatibility_artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: palimpsest-osint-release-${{ github.run_id }}
-          path: osint-release-run.json
+          path: ${{ steps.phase2_compatibility.outputs.path }}
           if-no-files-found: error
           retention-days: 14
+
+      - name: Retry the exact contract event without rebuilding
+        if: >-
+          ${{ always() && steps.push_attempt.outputs.exit_code == '76' &&
+          (github.event_name != 'workflow_dispatch' ||
+          (steps.manual_outcome.outputs.result == 'committed' &&
+          steps.manual_outcome_artifact.outcome == 'success')) }}
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/dispatch_publication_contract.py
+          --scope complete "$(git rev-parse HEAD)"
+
+      - name: Retry the race-safe exact contract event
+        if: >-
+          ${{ always() && steps.retry_push.outputs.exit_code == '76' &&
+          (github.event_name != 'workflow_dispatch' ||
+          (steps.manual_outcome.outputs.result == 'committed' &&
+          steps.manual_outcome_artifact.outcome == 'success')) }}
+        env:
+          PALIMPSEST_ACTIONS_TOKEN: ${{ github.token }}
+        run: >-
+          python scripts/dispatch_publication_contract.py
+          --scope complete "$(git rev-parse HEAD)"
+
+      - name: Enforce a successful OSINT publication attempt
+        if: ${{ always() && steps.candidate.outputs.changed == 'true' }}
+        env:
+          INITIAL_EXIT_CODE: ${{ steps.push_attempt.outputs.exit_code }}
+          RACE_CANDIDATE_CHANGED: ${{ steps.race_candidate.outputs.changed }}
+          RETRY_EXIT_CODE: ${{ steps.retry_push.outputs.exit_code }}
+          SYNCHRONIZED_CANDIDATE_CHANGED: ${{ steps.synchronized_candidate.outputs.changed }}
+        run: |
+          if [ "$SYNCHRONIZED_CANDIDATE_CHANGED" = false ]; then
+            exit 0
+          fi
+          if [ "$INITIAL_EXIT_CODE" = 75 ] && [ "$RACE_CANDIDATE_CHANGED" = false ]; then
+            exit 0
+          fi
+          case "$INITIAL_EXIT_CODE:$RETRY_EXIT_CODE" in
+            0:|76:|75:0|75:76) ;;
+            *)
+              echo "::error::OSINT publication did not reach an exact main commit"
+              exit 1
+              ;;
+          esac
+
+      - name: Enforce an unambiguous manual OSINT outcome
+        if: ${{ always() && github.event_name == 'workflow_dispatch' }}
+        env:
+          LEGACY_ARTIFACT_STEP: ${{ steps.phase2_compatibility_artifact.outcome }}
+          LEGACY_RECEIPT_STEP: ${{ steps.phase2_compatibility.outcome }}
+          OUTCOME_ARTIFACT_STEP: ${{ steps.manual_outcome_artifact.outcome }}
+          OUTCOME_RESULT: ${{ steps.manual_outcome.outputs.result }}
+          OUTCOME_STEP: ${{ steps.manual_outcome.outcome }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          if [ "$OUTCOME_STEP" != success ] || [ "$OUTCOME_ARTIFACT_STEP" != success ]; then
+            echo "::error::canonical manual OSINT outcome was not durably preserved"
+            exit 1
+          fi
+          case "$OUTCOME_RESULT" in
+            no_change) ;;
+            committed)
+              if [ "$RUN_ATTEMPT" = 1 ]; then
+                test "$LEGACY_RECEIPT_STEP" = success
+                test "$LEGACY_ARTIFACT_STEP" = success
+              fi
+              ;;
+            *)
+              echo "::error::manual OSINT outcome is not activation-safe: $OUTCOME_RESULT"
+              exit 1
+              ;;
+          esac

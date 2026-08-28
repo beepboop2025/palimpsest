@@ -43,16 +43,19 @@ SCHEMA = json.loads(
     )
 )
 RECEIPT_SCHEMA = json.loads(
-    (ROOT / "protocol" / "pages-rights-release-receipt-v1.schema.json").read_text(
+    (ROOT / "protocol" / "pages-rights-release-receipt-v2.schema.json").read_text(
         encoding="utf-8"
     )
 )
 ENDPOINT_SCHEMA = json.loads(
-    (
-        ROOT
-        / "protocol"
-        / "restricted-publication-endpoint-v1.schema.json"
-    ).read_text(encoding="utf-8")
+    (ROOT / "protocol" / "restricted-publication-endpoint-v1.schema.json").read_text(
+        encoding="utf-8"
+    )
+)
+FRESHNESS_ATTESTATION_SCHEMA = json.loads(
+    (ROOT / "protocol" / "publication-freshness-attestation-v1.schema.json").read_text(
+        encoding="utf-8"
+    )
 )
 
 
@@ -96,9 +99,7 @@ def _materialize_git_archive_universe(destination: Path) -> None:
         capture_output=True,
     )
     relative_paths = [
-        Path(raw.decode("utf-8"))
-        for raw in completed.stdout.split(b"\0")
-        if raw
+        Path(raw.decode("utf-8")) for raw in completed.stdout.split(b"\0") if raw
     ]
     assert len(relative_paths) > 35_000
     for relative in relative_paths:
@@ -129,6 +130,30 @@ def _write_minimal_denied_tree(destination: Path) -> None:
         + "\n",
         encoding="utf-8",
     )
+    _write_pre_quarantine_sources(destination)
+
+
+def _compact_canonical_sha256(document: dict) -> str:
+    payload = (
+        json.dumps(
+            document,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _write_pre_quarantine_sources(destination: Path) -> None:
+    readings = destination / "readings"
+    readings.mkdir(parents=True, exist_ok=True)
+    for relative in (
+        stage_pages_rights.NEWSWIRE_RELATIVE_PATH,
+        stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH,
+    ):
+        (destination / relative).write_bytes((ROOT / relative).read_bytes())
 
 
 def _validator() -> Draft202012Validator:
@@ -138,9 +163,19 @@ def _validator() -> Draft202012Validator:
 
 def _endpoint_validator() -> Draft202012Validator:
     Draft202012Validator.check_schema(ENDPOINT_SCHEMA)
+    return Draft202012Validator(ENDPOINT_SCHEMA, format_checker=FormatChecker())
+
+
+def _freshness_attestation_validator() -> Draft202012Validator:
+    Draft202012Validator.check_schema(FRESHNESS_ATTESTATION_SCHEMA)
     return Draft202012Validator(
-        ENDPOINT_SCHEMA, format_checker=FormatChecker()
+        FRESHNESS_ATTESTATION_SCHEMA, format_checker=FormatChecker()
     )
+
+
+def _receipt_validator() -> Draft202012Validator:
+    Draft202012Validator.check_schema(RECEIPT_SCHEMA)
+    return Draft202012Validator(RECEIPT_SCHEMA, format_checker=FormatChecker())
 
 
 def _decision(status: dict, source_id: str) -> dict:
@@ -180,10 +215,9 @@ def _contains_independent_denied_derivative(value: object) -> bool:
             for key, nested in child.items():
                 if key in DENIED_VALUE_KEYS and nested is not None:
                     return True
-                if (
-                    str(key).lower() in {"cfets_benchmarks", "chinamoney"}
-                    and type(nested) in {int, float}
-                ):
+                if str(key).lower() in {"cfets_benchmarks", "chinamoney"} and type(
+                    nested
+                ) in {int, float}:
                     return True
                 if walk(nested):
                     return True
@@ -198,7 +232,9 @@ def _assert_independent_archive_is_clean(
     root: Path, *, denied_sentinels: set[bytes]
 ) -> None:
     failures = []
-    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
+    for path in sorted(
+        candidate for candidate in root.rglob("*") if candidate.is_file()
+    ):
         raw = path.read_bytes()
         if any(sentinel in raw for sentinel in denied_sentinels):
             failures.append(f"sentinel:{path.relative_to(root)}")
@@ -214,9 +250,8 @@ def _assert_independent_archive_is_clean(
                     break
         elif path.suffix == ".html":
             text = raw.decode("utf-8").lower()
-            if (
-                ("cfets" in text or "chinamoney" in text or "shibor" in text)
-                and ("metric-card__value" in text or "cn-num" in text)
+            if ("cfets" in text or "chinamoney" in text or "shibor" in text) and (
+                "metric-card__value" in text or "cn-num" in text
             ):
                 failures.append(f"html-value:{path.relative_to(root)}")
     assert failures == []
@@ -225,7 +260,9 @@ def _assert_independent_archive_is_clean(
 def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
     _materialize_git_archive_universe(tmp_path)
     ledger_path = tmp_path / "readings/china-econ-observations.jsonl"
-    first_observation = json.loads(ledger_path.read_text(encoding="utf-8").splitlines()[0])
+    first_observation = json.loads(
+        ledger_path.read_text(encoding="utf-8").splitlines()[0]
+    )
     denied_sentinels = {
         first_observation["observation_id"].encode(),
         first_observation["raw_sha256"].encode(),
@@ -250,23 +287,15 @@ def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
         "news/economy/index.html",
     }.issubset(before)
 
-    status = _stage(
-        tmp_path, evaluated_at=RIGHTS_CLOCK
-    )
-    verified = _verify(
-        tmp_path, evaluated_at=RIGHTS_CLOCK
-    )
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    verified = _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
     assert verified == status
     assert (
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
         == []
     )
-    _assert_independent_archive_is_clean(
-        tmp_path, denied_sentinels=denied_sentinels
-    )
+    _assert_independent_archive_is_clean(tmp_path, denied_sentinels=denied_sentinels)
     assert status["status"] == "restricted"
     assert status["availability"] == "unavailable"
     assert status["publication_allowed"] is False
@@ -288,9 +317,7 @@ def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
     }.issubset(status["quarantined_paths"])
     assert "readings/catalog.json" in status["quarantined_paths"]
     assert ".well-known/ai-catalog.json" not in status["quarantined_paths"]
-    assert any(
-        "co-located" in limitation for limitation in status["limitations"]
-    )
+    assert any("co-located" in limitation for limitation in status["limitations"])
     _validator().validate(status)
 
     for relative in status["quarantined_paths"]:
@@ -313,17 +340,11 @@ def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
             _endpoint_validator().validate(documents[0])
             assert documents[0]["master_status"] == {
                 "bytes": len(
-                    (
-                        tmp_path
-                        / stage_pages_rights.STATUS_RELATIVE_PATH
-                    ).read_bytes()
+                    (tmp_path / stage_pages_rights.STATUS_RELATIVE_PATH).read_bytes()
                 ),
                 "path": "/readings/china-publication-rights-latest.json",
                 "sha256": hashlib.sha256(
-                    (
-                        tmp_path
-                        / stage_pages_rights.STATUS_RELATIVE_PATH
-                    ).read_bytes()
+                    (tmp_path / stage_pages_rights.STATUS_RELATIVE_PATH).read_bytes()
                 ).hexdigest(),
             }
             assert len(text.encode("utf-8")) < 16_384
@@ -335,9 +356,7 @@ def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
 
 def test_denied_cfets_and_allowed_empty_wdi_remain_distinct(tmp_path: Path):
     _write_minimal_denied_tree(tmp_path)
-    status = _stage(
-        tmp_path, evaluated_at=RIGHTS_CLOCK
-    )
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
     cfets = _decision(status, "cfets_benchmarks")
     assert cfets["decision"] == "deny"
@@ -360,9 +379,7 @@ def test_denied_cfets_and_allowed_empty_wdi_remain_distinct(tmp_path: Path):
 
 def test_restricted_status_never_infers_zero_calm_or_a_carrier(tmp_path: Path):
     _write_minimal_denied_tree(tmp_path)
-    status = _stage(
-        tmp_path, evaluated_at=RIGHTS_CLOCK
-    )
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
     encoded = json.dumps(status, sort_keys=True).lower()
 
     assert "unavailable or restricted evidence is not zero, calm, healthy" in encoded
@@ -373,6 +390,269 @@ def test_restricted_status_never_infers_zero_calm_or_a_carrier(tmp_path: Path):
     assert "composite" not in status
     assert "authority" not in status
     assert status["counts"]["published_records"] == 0
+
+
+def test_pre_quarantine_freshness_attestation_is_compact_and_lineage_bound(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    newswire_path = tmp_path / stage_pages_rights.NEWSWIRE_RELATIVE_PATH
+    situation_path = tmp_path / stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH
+    original_newswire = json.loads(newswire_path.read_text(encoding="utf-8"))
+    original_situation = json.loads(situation_path.read_text(encoding="utf-8"))
+
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    attestation_path = tmp_path / stage_pages_rights.FRESHNESS_ATTESTATION_RELATIVE_PATH
+    attestation_raw = attestation_path.read_bytes()
+    attestation = json.loads(attestation_raw)
+    rights_raw = (tmp_path / stage_pages_rights.STATUS_RELATIVE_PATH).read_bytes()
+
+    _freshness_attestation_validator().validate(attestation)
+    assert len(attestation_raw) < 4096
+    assert set(attestation) == {
+        "schema_version",
+        "publication_sha",
+        "attested_at",
+        "mode",
+        "publication_allowed",
+        "artifacts",
+        "rights_status",
+        "limitations",
+    }
+    assert attestation["publication_sha"] == PUBLICATION_SHA
+    assert attestation["attested_at"] == "2026-08-26T00:00:00Z"
+    assert attestation["mode"] == "rights-suppressed"
+    assert attestation["publication_allowed"] is False
+    assert attestation["artifacts"] == {
+        "newswire": {
+            "path": "readings/newswire-latest.json",
+            "schema_version": "palimpsest-newswire.v1",
+            "generated_at": original_newswire["generated_at"],
+            "canonical_sha256": _compact_canonical_sha256(original_newswire),
+        },
+        "china_situation": {
+            "path": "readings/china-situation-latest.json",
+            "schema_version": "palimpsest-china-situation.v1",
+            "generated_at": original_situation["generated_at"],
+            "canonical_sha256": _compact_canonical_sha256(original_situation),
+            "inputs": {
+                "newswire_generated_at": original_newswire["generated_at"],
+                "newswire_canonical_sha256": _compact_canonical_sha256(
+                    original_newswire
+                ),
+            },
+        },
+    }
+    assert attestation["rights_status"] == {
+        "path": "readings/china-publication-rights-latest.json",
+        "sha256": hashlib.sha256(rights_raw).hexdigest(),
+        "bytes": len(rights_raw),
+    }
+    encoded = json.dumps(attestation, sort_keys=True)
+    for forbidden_key in (
+        "events",
+        "situations",
+        "source_id",
+        "observations",
+        "record_count",
+        "title",
+        "url",
+        "value",
+    ):
+        assert f'"{forbidden_key}":' not in encoded
+    assert "readings/china-situation-latest.json" in status["quarantined_paths"]
+    assert "readings/china-situation-latest.json" in stage_pages_rights.ALWAYS_RESTRICT
+    assert json.loads(newswire_path.read_text())["schema_version"] == (
+        "palimpsest-restricted-publication-endpoint.v1"
+    )
+    assert json.loads(situation_path.read_text())["schema_version"] == (
+        "palimpsest-restricted-publication-endpoint.v1"
+    )
+    assert _verify(tmp_path, evaluated_at=RIGHTS_CLOCK) == status
+
+
+def test_release_receipt_v2_rejects_attested_identity_tamper_during_check(
+    tmp_path: Path,
+    capsys,
+):
+    _write_minimal_denied_tree(tmp_path)
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    receipt_path = tmp_path.parent / f"{tmp_path.name}-rights-receipt.json"
+    receipt = stage_pages_rights.write_release_receipt(
+        receipt_path,
+        root=tmp_path,
+        status=status,
+        publication_sha=PUBLICATION_SHA,
+        evaluated_at=RIGHTS_CLOCK,
+        admission_at=RIGHTS_CLOCK,
+    )
+    _receipt_validator().validate(receipt)
+    attestation_path = tmp_path / stage_pages_rights.FRESHNESS_ATTESTATION_RELATIVE_PATH
+    attestation_raw = attestation_path.read_bytes()
+    assert receipt["schema_version"] == "palimpsest.pages-rights-release-receipt.v2"
+    assert receipt["freshness_attestation"] == {
+        "path": "readings/publication-freshness-attestation-latest.json",
+        "sha256": hashlib.sha256(attestation_raw).hexdigest(),
+        "bytes": len(attestation_raw),
+    }
+
+    forged = json.loads(attestation_raw)
+    forged["artifacts"]["newswire"]["generated_at"] = "2026-08-25T23:00:00Z"
+    forged["artifacts"]["newswire"]["canonical_sha256"] = "0" * 64
+    forged["artifacts"]["china_situation"]["inputs"] = {
+        "newswire_generated_at": "2026-08-25T23:00:00Z",
+        "newswire_canonical_sha256": "0" * 64,
+    }
+    attestation_path.write_bytes(stage_pages_rights._canonical_json(forged))
+    _freshness_attestation_validator().validate(forged)
+    assert _verify(tmp_path, evaluated_at=RIGHTS_CLOCK) == status
+
+    result = stage_pages_rights.main(
+        [
+            "--root",
+            str(tmp_path),
+            "--publication-sha",
+            PUBLICATION_SHA,
+            "--evaluated-at",
+            "2026-08-26T00:00:00Z",
+            "--admission-at",
+            "2026-08-26T00:00:00Z",
+            "--receipt",
+            str(receipt_path),
+            "--check",
+        ]
+    )
+    assert result == 2
+    assert "Pages rights release receipt has drifted" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    ("identity", "forged_path"),
+    [
+        ("status", "readings/other-status.json"),
+        ("policy", "config/other-policy.json"),
+        ("freshness_attestation", "readings/other-attestation.json"),
+    ],
+)
+def test_release_receipt_v2_pins_every_artifact_path(
+    tmp_path: Path,
+    identity: str,
+    forged_path: str,
+):
+    _write_minimal_denied_tree(tmp_path)
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    receipt = stage_pages_rights.build_release_receipt(
+        root=tmp_path,
+        status=status,
+        publication_sha=PUBLICATION_SHA,
+        evaluated_at=RIGHTS_CLOCK,
+        admission_at=RIGHTS_CLOCK,
+    )
+    receipt[identity]["path"] = forged_path
+
+    errors = sorted(
+        _receipt_validator().iter_errors(receipt), key=lambda error: list(error.path)
+    )
+
+    assert errors
+
+
+def test_freshness_attestation_refuses_mismatched_situation_lineage(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    situation_path = tmp_path / stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH
+    situation = json.loads(situation_path.read_text(encoding="utf-8"))
+    situation["inputs"]["newswire_sha256"] = "0" * 64
+    situation_path.write_text(
+        json.dumps(situation, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="does not bind the exact newswire input",
+    ):
+        _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+
+@pytest.mark.parametrize(
+    ("relative", "required_field"),
+    [
+        (stage_pages_rights.NEWSWIRE_RELATIVE_PATH, "scope"),
+        (stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH, "coverage"),
+    ],
+)
+def test_freshness_attestation_requires_complete_source_contracts(
+    tmp_path: Path,
+    relative: Path,
+    required_field: str,
+):
+    _write_minimal_denied_tree(tmp_path)
+    source_path = tmp_path / relative
+    document = json.loads(source_path.read_text(encoding="utf-8"))
+    del document[required_field]
+    source_path.write_text(
+        json.dumps(document, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="fails its source contract",
+    ):
+        _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+
+@pytest.mark.parametrize(
+    "forged_member", ['"duplicate":1,"duplicate":2,', '"nan":NaN,']
+)
+def test_freshness_attestation_rejects_non_strict_source_json(
+    tmp_path: Path,
+    forged_member: str,
+):
+    _write_minimal_denied_tree(tmp_path)
+    newswire_path = tmp_path / stage_pages_rights.NEWSWIRE_RELATIVE_PATH
+    original = newswire_path.read_text(encoding="utf-8")
+    newswire_path.write_text(
+        "{" + forged_member + original.lstrip()[1:],
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="invalid public JSON artifact",
+    ):
+        _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+
+def test_sanitized_osint_is_always_quarantined_by_designation(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    osint_path = tmp_path / "readings" / "osint-china-latest.json"
+    osint_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "osint-china.v1",
+                "generated_at": "2026-08-25T23:59:59Z",
+                "input_commit": "b" * 40,
+                "signals": [],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    stub = json.loads(osint_path.read_text(encoding="utf-8"))
+
+    assert "readings/osint-china-latest.json" in stage_pages_rights.ALWAYS_RESTRICT
+    assert "readings/osint-china-latest.json" in status["quarantined_paths"]
+    assert stub["schema_version"] == ("palimpsest-restricted-publication-endpoint.v1")
+    assert stub["artifact"] == {
+        "path": "readings/osint-china-latest.json",
+        "media_type": "application/json",
+    }
 
 
 def test_future_denied_values_and_derivatives_are_detected_then_removed(
@@ -396,16 +676,13 @@ def test_future_denied_values_and_derivatives_are_detected_then_removed(
         tmp_path, evaluated_at=RIGHTS_CLOCK
     ) == [
         "readings/china-econ-observations.jsonl",
+        "readings/china-situation-latest.json",
         "readings/new-derived-surface.json",
     ]
-    status = _stage(
-        tmp_path, evaluated_at=RIGHTS_CLOCK
-    )
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
     assert (
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
         == []
     )
     assert status["counts"]["input_records"] == 1
@@ -419,8 +696,7 @@ def test_future_denied_values_and_derivatives_are_detected_then_removed(
     [
         (
             "archive/rows.csv",
-            b"source_id,series_id,value\r\n"
-            b"cfets_benchmarks,cn.cfets.synthetic,0\r\n",
+            b"source_id,series_id,value\r\ncfets_benchmarks,cn.cfets.synthetic,0\r\n",
         ),
         (
             "archive/rows.tsv",
@@ -429,16 +705,17 @@ def test_future_denied_values_and_derivatives_are_detected_then_removed(
         ),
         (
             "archive/rows.data",
-            b"source_id;score\r\ncfets_benchmarks;\"987654.321\"\r\n",
+            b'source_id;score\r\ncfets_benchmarks;"987654.321"\r\n',
         ),
         (
             "archive/quoted",
-            "\ufeff\"source_id\",\"previous_value\"\r\n"
-            "\"cfets_benchmarks\",\"0\"\r\n".encode("utf-8"),
+            '\ufeff"source_id","previous_value"\r\n"cfets_benchmarks","0"\r\n'.encode(
+                "utf-8"
+            ),
         ),
         (
             "archive/direct.csv",
-            b"field,value\nfdr007,\"987654.321\"\n",
+            b'field,value\nfdr007,"987654.321"\n',
         ),
     ],
 )
@@ -460,9 +737,7 @@ def test_large_single_line_html_never_enters_csv_materialization(
 ):
     payload = (
         "<!doctype html><html data-source_id='documentation' "
-        "data-value='metadata'>"
-        + "x" * (4 * 1024 * 1024)
-        + "</html>"
+        "data-value='metadata'>" + "x" * (4 * 1024 * 1024) + "</html>"
     )
 
     def unexpected_dict_reader(*args, **kwargs):
@@ -520,25 +795,19 @@ def test_common_text_encodings_cannot_conceal_a_derivative(
         separators=(",", ":"),
     )
     if encoding == "base64":
-        payload = json.dumps(
-            {"payload": base64.b64encode(denied.encode()).decode()}
-        )
+        payload = json.dumps({"payload": base64.b64encode(denied.encode()).decode()})
     elif encoding == "percent":
         payload = quote(denied, safe="")
     else:
         payload = (
-            denied.replace("&", "&amp;")
-            .replace('"', "&quot;")
-            .replace(":", "&#58;")
+            denied.replace("&", "&amp;").replace('"', "&quot;").replace(":", "&#58;")
         )
     path = tmp_path / "archive" / f"encoded-{encoding}.txt"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(payload, encoding="utf-8")
 
     assert path.relative_to(tmp_path).as_posix() in (
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
     )
 
 
@@ -547,26 +816,18 @@ def test_encoded_token_and_expansion_caps_fail_closed(tmp_path: Path, monkeypatc
     token = base64.b64encode(b'{"source_id":"world_bank_wdi","value":1}')
     many = tmp_path / "archive" / "many-encoded.txt"
     many.parent.mkdir(parents=True, exist_ok=True)
-    many.write_bytes(
-        b"\n".join(b'"payload":"' + token + b'"' for _ in range(3))
-    )
+    many.write_bytes(b"\n".join(b'"payload":"' + token + b'"' for _ in range(3)))
     monkeypatch.setattr(stage_pages_rights, "MAX_ENCODED_TOKENS", 2)
     with pytest.raises(stage_pages_rights.PagesRightsError, match="token scan cap"):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
     many.unlink()
     monkeypatch.setattr(stage_pages_rights, "MAX_ENCODED_TOKENS", 4096)
     oversized = tmp_path / "archive" / "oversized-encoded.txt"
-    oversized.write_bytes(
-        b'"payload":"' + base64.b64encode(b"x" * 65) + b'"'
-    )
+    oversized.write_bytes(b'"payload":"' + base64.b64encode(b"x" * 65) + b'"')
     monkeypatch.setattr(stage_pages_rights, "MAX_DECODED_BYTES", 64)
     with pytest.raises(stage_pages_rights.PagesRightsError, match="expansion cap"):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
 
 def _zip_payload(name: str, payload: bytes) -> bytes:
@@ -592,9 +853,7 @@ def _mark_zip_encrypted(raw: bytes) -> bytes:
 
 def test_nested_and_unsafe_containers_fail_closed(tmp_path: Path, monkeypatch):
     _write_minimal_denied_tree(tmp_path)
-    denied = json.dumps(
-        {"source_id": "cfets_benchmarks", "value": 987654.321}
-    ).encode()
+    denied = json.dumps({"source_id": "cfets_benchmarks", "value": 987654.321}).encode()
     archive_dir = tmp_path / "archive"
     archive_dir.mkdir(parents=True, exist_ok=True)
 
@@ -603,9 +862,7 @@ def test_nested_and_unsafe_containers_fail_closed(tmp_path: Path, monkeypatch):
         stage_pages_rights.PagesRightsError,
         match="encoded container contains a denied derivative",
     ):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
     (archive_dir / "denied.json.gz").unlink()
 
     (archive_dir / "denied.zip").write_bytes(_zip_payload("nested/data.json", denied))
@@ -613,32 +870,24 @@ def test_nested_and_unsafe_containers_fail_closed(tmp_path: Path, monkeypatch):
         stage_pages_rights.PagesRightsError,
         match="encoded container contains a denied derivative",
     ):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
     (archive_dir / "denied.zip").unlink()
 
     (archive_dir / "traversal.zip").write_bytes(_zip_payload("../data.json", denied))
     with pytest.raises(stage_pages_rights.PagesRightsError, match="unsafe member"):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
     (archive_dir / "traversal.zip").unlink()
 
     encrypted = _mark_zip_encrypted(_zip_payload("data.json", denied))
     (archive_dir / "encrypted.zip").write_bytes(encrypted)
     with pytest.raises(stage_pages_rights.PagesRightsError, match="unsafe member"):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
     (archive_dir / "encrypted.zip").unlink()
 
     monkeypatch.setattr(stage_pages_rights, "MAX_DECODED_BYTES", 1024)
     (archive_dir / "expansion.gz").write_bytes(gzip.compress(b"x" * 2048))
     with pytest.raises(stage_pages_rights.PagesRightsError, match="expansion cap"):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
 
 @pytest.mark.parametrize(
@@ -646,9 +895,9 @@ def test_nested_and_unsafe_containers_fail_closed(tmp_path: Path, monkeypatch):
     [
         (
             "utf16.data",
-            json.dumps(
-                {"source_id": "cfets_benchmarks", "value": 987654.321}
-            ).encode("utf-16"),
+            json.dumps({"source_id": "cfets_benchmarks", "value": 987654.321}).encode(
+                "utf-16"
+            ),
         ),
         (
             "nul.data",
@@ -689,9 +938,7 @@ def test_utf16_nul_and_opaque_derivatives_never_silently_pass(
 
 def test_xlsx_style_container_with_derivative_is_refused(tmp_path: Path):
     _write_minimal_denied_tree(tmp_path)
-    denied = json.dumps(
-        {"source_id": "cfets_benchmarks", "value": 987654.321}
-    ).encode()
+    denied = json.dumps({"source_id": "cfets_benchmarks", "value": 987654.321}).encode()
     path = tmp_path / "archive" / "derivative.xlsx"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(_zip_payload("xl/sharedStrings.xml", denied))
@@ -699,9 +946,7 @@ def test_xlsx_style_container_with_derivative_is_refused(tmp_path: Path):
         stage_pages_rights.PagesRightsError,
         match="encoded container contains a denied derivative",
     ):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
 
 def test_exact_reviewed_binary_is_allowed_and_digest_drift_is_refused(tmp_path: Path):
@@ -726,15 +971,16 @@ def test_exact_reviewed_binary_is_allowed_and_digest_drift_is_refused(tmp_path: 
 
     assert stage_pages_rights.find_denied_value_paths(
         tmp_path, evaluated_at=RIGHTS_CLOCK
-    ) == ["readings/china-econ-observations.jsonl"]
+    ) == [
+        "readings/china-econ-observations.jsonl",
+        "readings/china-situation-latest.json",
+    ]
     binary.write_bytes(raw + b"drift")
     with pytest.raises(
         stage_pages_rights.PagesRightsError,
         match="opaque public artifact lacks exact path-and-digest review",
     ):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
 
 def test_markers_unknown_sources_and_transitive_lineage_cannot_bypass_gate(
@@ -774,21 +1020,15 @@ def test_markers_unknown_sources_and_transitive_lineage_cannot_bypass_gate(
     )
 
     before = set(
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
     )
     assert set(fixtures) | {"china/forged-restricted.html"} <= before
 
-    status = _stage(
-        tmp_path, evaluated_at=RIGHTS_CLOCK
-    )
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
     assert set(fixtures) | {"china/forged-restricted.html"} <= set(
         status["quarantined_paths"]
     )
-    _verify(
-        tmp_path, evaluated_at=RIGHTS_CLOCK
-    )
+    _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
     assert all(
         "987654.321" not in (tmp_path / relative).read_text(encoding="utf-8")
         for relative in set(fixtures) | {"china/forged-restricted.html"}
@@ -815,9 +1055,7 @@ def test_policy_clock_expires_allow_decisions_and_rejects_stale_status(
     at_expiry = datetime(2027, 8, 24, 0, 0, tzinfo=UTC)
 
     assert "readings/china-econ-wdi-observations.jsonl" not in (
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=before_expiry
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=before_expiry)
     )
     _stage(tmp_path, evaluated_at=before_expiry)
     with pytest.raises(
@@ -834,9 +1072,7 @@ def test_policy_clock_expires_allow_decisions_and_rejects_stale_status(
     _write_minimal_denied_tree(expired_root)
     expired_wdi = expired_root / "readings/china-econ-wdi-observations.jsonl"
     expired_wdi.write_text(wdi.read_text(encoding="utf-8"), encoding="utf-8")
-    expired = _stage(
-        expired_root, evaluated_at=at_expiry
-    )
+    expired = _stage(expired_root, evaluated_at=at_expiry)
     decision = _decision(expired, "world_bank_wdi")
     assert decision["decision"] == "expired"
     assert decision["configured_decision"] == "allow"
@@ -844,9 +1080,7 @@ def test_policy_clock_expires_allow_decisions_and_rejects_stale_status(
     assert decision["values_allowed"] is False
     assert decision["seiche_export_allowed"] is False
     assert expired["rights_evaluated_at"] == "2027-08-24T00:00:00Z"
-    assert "readings/china-econ-wdi-observations.jsonl" in expired[
-        "quarantined_paths"
-    ]
+    assert "readings/china-econ-wdi-observations.jsonl" in expired["quarantined_paths"]
 
 
 def test_exact_status_and_policy_receipt_are_verified_not_self_attested(
@@ -863,10 +1097,9 @@ def test_exact_status_and_policy_receipt_are_verified_not_self_attested(
         stage_pages_rights.PagesRightsError,
         match="not exact",
     ):
-        _verify(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
+    _write_pre_quarantine_sources(tmp_path)
     _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
     master = tmp_path / stage_pages_rights.STATUS_RELATIVE_PATH
     forged_master = json.loads(master.read_text(encoding="utf-8"))
@@ -879,10 +1112,9 @@ def test_exact_status_and_policy_receipt_are_verified_not_self_attested(
         stage_pages_rights.PagesRightsError,
         match="exact policy-derived stub",
     ):
-        _verify(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
+    _write_pre_quarantine_sources(tmp_path)
     _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
     forged_master = json.loads(master.read_text(encoding="utf-8"))
     forged_master["rights_evaluated_at"] = "2026-08-27T00:00:00Z"
@@ -894,9 +1126,7 @@ def test_exact_status_and_policy_receipt_are_verified_not_self_attested(
         stage_pages_rights.PagesRightsError,
         match="evaluation clock is in the future",
     ):
-        _verify(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        _verify(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
 
 def test_compact_endpoint_stub_is_bounded_and_master_digest_bound(tmp_path: Path):
@@ -960,7 +1190,9 @@ def test_ephemeral_stage_skips_fsync_but_receipt_remains_durable(
     _write_minimal_denied_tree(tmp_path)
     fsync_calls = []
     monkeypatch.setattr(
-        stage_pages_rights.os, "fsync", lambda descriptor: fsync_calls.append(descriptor)
+        stage_pages_rights.os,
+        "fsync",
+        lambda descriptor: fsync_calls.append(descriptor),
     )
     status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
     assert fsync_calls == []
@@ -987,7 +1219,9 @@ def test_pages_workflow_stages_and_verifies_rights_before_upload():
     sentinel_scan = "Pages artifact retained denied CFETS source bytes"
 
     assert workflow.count(stage_call) == 2
-    assert workflow.index(stage_call) < workflow.index(check_call) < workflow.index(upload)
+    assert (
+        workflow.index(stage_call) < workflow.index(check_call) < workflow.index(upload)
+    )
     assert '--publication-sha "$PUBLICATION_SHA"' in workflow
     assert '--evaluated-at "$rights_edition_at"' in workflow
     assert '--admission-at "$rights_admission_at"' in workflow
@@ -1000,7 +1234,11 @@ def test_pages_workflow_stages_and_verifies_rights_before_upload():
     assert "denied-ledger sentinel set is empty" in workflow
     assert "command -v rg >/dev/null" in workflow
     assert sentinel_scan in workflow
-    assert workflow.index(check_call) < workflow.index(sentinel_scan) < workflow.index(upload)
+    assert (
+        workflow.index(check_call)
+        < workflow.index(sentinel_scan)
+        < workflow.index(upload)
+    )
 
 
 def test_public_discovery_describes_restriction_instead_of_denied_values():
@@ -1022,8 +1260,7 @@ def test_public_discovery_describes_restriction_instead_of_denied_values():
     openapi = next(
         item
         for item in catalog["entries"]
-        if item["identifier"]
-        == "urn:air:palimpsest.info:openapi:public-readings"
+        if item["identifier"] == "urn:air:palimpsest.info:openapi:public-readings"
     )
     index = next(
         item
@@ -1034,8 +1271,7 @@ def test_public_discovery_describes_restriction_instead_of_denied_values():
     mcp = next(
         item
         for item in catalog["entries"]
-        if item["identifier"]
-        == "urn:air:palimpsest.info:mcp:evidence-observatory"
+        if item["identifier"] == "urn:air:palimpsest.info:mcp:evidence-observatory"
     )
     assert "download economic observation ledger" not in openapi["capabilities"]
     assert index["metadata"]["access"] == "metadata-only-restricted"

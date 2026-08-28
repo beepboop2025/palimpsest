@@ -8,6 +8,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -78,6 +79,13 @@ class RunResult:
 
 class TransactionHarness:
     def __init__(self, root: Path) -> None:
+        fixture_now = datetime.now(UTC).replace(microsecond=0)
+        self.fresh_deployment_created_at = fixture_now.isoformat().replace(
+            "+00:00", "Z"
+        )
+        self.old_predecessor_created_at = (
+            fixture_now - timedelta(days=30)
+        ).isoformat().replace("+00:00", "Z")
         self.root = root
         self.repo = root / "repo"
         self.bin = root / "bin"
@@ -438,9 +446,9 @@ if [[ "$command_name" == status ]]; then
     exit 19
   fi
   id="{PREVIOUS_DEPLOYMENT_ID}" digest="{PREVIOUS_DIGEST}" reason=deploy status=SUCCESS
-  created_at=2026-08-27T00:00:00Z
+  created_at={self.fresh_deployment_created_at}
   if [[ "${{FAKE_SCENARIO:-}}" == old_predecessor && ! -e "$FAKE_STATE/submitted" ]]; then
-    created_at=2026-01-01T00:00:00Z
+    created_at={self.old_predecessor_created_at}
   fi
   if [[ "${{FAKE_SCENARIO:-}}" == missing_reason ]]; then reason=""; fi
   if [[ -e "$FAKE_STATE/submitted" && ! -e "$FAKE_STATE/rolled-back" ]]; then
@@ -463,7 +471,7 @@ if [[ "$command_name" == status ]]; then
     id="{ROLLBACK_DEPLOYMENT_ID}"
     digest="{PREVIOUS_DIGEST}"
     reason=deploymentRollback
-    created_at=2026-08-27T00:00:00Z
+    created_at={self.fresh_deployment_created_at}
   fi
   printf '{{"id":"{PROJECT_ID}","environments":{{"edges":[{{"node":{{"id":"{ENVIRONMENT_ID}","serviceInstances":{{"edges":[{{"node":{{"serviceId":"{SERVICE_ID}","latestDeployment":{{"id":"%s","status":"%s","createdAt":"%s","meta":{{"imageDigest":"%s","reason":"%s"}}}}}}}}]}}}}}}]}}}}\n' \
     "$id" "$status" "$created_at" "$digest" "$reason"
@@ -484,7 +492,7 @@ if [[ "$command_name" == deployment && "${{1:-}}" == list ]]; then
     missing_candidate_reason) reason="" ;;
     sleeping) status=SLEEPING ;;
   esac
-  printf '[{{"id":"{CANDIDATE_DEPLOYMENT_ID}","status":"%s","createdAt":"2026-08-27T00:00:00Z","meta":{{"cliMessage":"%s","imageDigest":"%s","reason":"%s","buildOnly":false}}}}]\n' \
+  printf '[{{"id":"{CANDIDATE_DEPLOYMENT_ID}","status":"%s","createdAt":"{self.fresh_deployment_created_at}","meta":{{"cliMessage":"%s","imageDigest":"%s","reason":"%s","buildOnly":false}}}}]\n' \
     "$status" "$message" "$digest" "$reason"
   exit 0
 fi

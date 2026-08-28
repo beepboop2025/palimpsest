@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/publication-freshness-attestation-v1.schema.json",
+  "title": "Palimpsest rights-suppressed publication freshness attestation v1",
+  "description": "Aggregate-only identity and clock metadata captured before rights quarantine. It contains no source values, observations, or per-record identifiers and conveys no observation or publication authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "publication_sha",
+    "attested_at",
+    "mode",
+    "publication_allowed",
+    "artifacts",
+    "rights_status",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "palimpsest.publication-freshness-attestation.v1"
+    },
+    "publication_sha": {
+      "$ref": "#/$defs/commitSha"
+    },
+    "attested_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "mode": {
+      "const": "rights-suppressed"
+    },
+    "publication_allowed": {
+      "const": false
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["newswire", "china_situation"],
+      "properties": {
+        "newswire": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "schema_version",
+            "generated_at",
+            "canonical_sha256"
+          ],
+          "properties": {
+            "path": {
+              "const": "readings/newswire-latest.json"
+            },
+            "schema_version": {
+              "const": "palimpsest-newswire.v1"
+            },
+            "generated_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "canonical_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          }
+        },
+        "china_situation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path",
+            "schema_version",
+            "generated_at",
+            "canonical_sha256",
+            "inputs"
+          ],
+          "properties": {
+            "path": {
+              "const": "readings/china-situation-latest.json"
+            },
+            "schema_version": {
+              "const": "palimpsest-china-situation.v1"
+            },
+            "generated_at": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "canonical_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "inputs": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "newswire_generated_at",
+                "newswire_canonical_sha256"
+              ],
+              "properties": {
+                "newswire_generated_at": {
+                  "$ref": "#/$defs/timestamp"
+                },
+                "newswire_canonical_sha256": {
+                  "$ref": "#/$defs/sha256"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "rights_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "bytes"],
+      "properties": {
+        "path": {
+          "const": "readings/china-publication-rights-latest.json"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "bytes": {
+          "$ref": "#/$defs/positiveInteger"
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {
+          "const": "Metadata only; quarantined source artifacts are not republished here."
+        },
+        {
+          "const": "No source values, observations, or per-record identifiers are included."
+        },
+        {
+          "const": "This attestation conveys no observation or publication authority."
+        },
+        {
+          "const": "Unavailable or restricted evidence is not a directional signal."
+        }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    }
+  }
+}

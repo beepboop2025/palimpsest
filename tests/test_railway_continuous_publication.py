@@ -23,8 +23,21 @@ def test_hourly_controller_is_level_triggered_disabled_and_anti_downgrade() -> N
     dispatch = workflow["jobs"]["dispatch"]
 
     assert 'cron: "13 * * * *"' in text
-    assert dispatch["if"] == "${{ vars.RAILWAY_PUBLICATION_ENABLED == 'true' }}"
-    assert workflow["permissions"] == {"contents": "write"}
+    assert dispatch["if"] == (
+        "${{ vars.RAILWAY_PUBLICATION_ENABLED == 'true' || "
+        "(github.event_name == 'workflow_dispatch' && "
+        "inputs.activation_canary == true) }}"
+    )
+    assert workflow[True]["workflow_dispatch"]["inputs"]["activation_canary"] == {
+        "description": (
+            "Run one protected pre-activation canary while the hourly gate "
+            "remains closed"
+        ),
+        "required": False,
+        "type": "boolean",
+        "default": False,
+    }
+    assert workflow["permissions"] == {"actions": "read", "contents": "write"}
     assert workflow["concurrency"] == {
         "group": "railway-publication-controller",
         "cancel-in-progress": False,
@@ -34,6 +47,10 @@ def test_hourly_controller_is_level_triggered_disabled_and_anti_downgrade() -> N
     assert 'git merge-base --is-ancestor "$live_sha" "$main_sha"' in text
     assert 'test "$remote_main" = "$PUBLICATION_SHA"' in text
     assert "deploy_railway: true" in text
+    assert '"schema_version": "palimpsest.railway-publication-request.v2"' in text
+    assert '"activation_canary": activation_canary' in text
+    assert '--argjson activation_canary "$ACTIVATION_CANARY"' in text
+    assert "activation_canary: $activation_canary" in text
     assert 'scope: "complete"' in text
     assert "--argjson controller_run_id" in text
     assert "--argjson controller_run_attempt" in text
@@ -64,6 +81,7 @@ def test_dispatch_identity_gate_enforces_both_closed_payload_schemas(
     script = identity["run"]
     revision = "a" * 40
     railway_payload = {
+        "activation_canary": False,
         "sha": revision,
         "scope": "complete",
         "deploy_railway": True,
@@ -78,6 +96,13 @@ def test_dispatch_identity_gate_enforces_both_closed_payload_schemas(
     cases = (
         ({"sha": revision, "scope": "complete"}, True),
         (railway_payload, True),
+        (
+            {
+                **railway_payload,
+                "activation_canary": "false",
+            },
+            False,
+        ),
         (
             {
                 **railway_payload,
@@ -142,8 +167,15 @@ def test_railway_job_is_protected_serialized_pinned_and_exact() -> None:
         "github.event_name == 'repository_dispatch'",
         "github.event.client_payload.deploy_railway == true",
         "vars.RAILWAY_PUBLICATION_ENABLED == 'true'",
+        "needs.contract.outputs.activation_canary == 'true'",
     ):
         assert gate in railway["if"]
+    normalized_gate = " ".join(railway["if"].split())
+    assert (
+        "(vars.RAILWAY_PUBLICATION_ENABLED == 'true' || "
+        "needs.contract.outputs.activation_canary == 'true')" in normalized_gate
+    )
+    assert "github.event.client_payload.activation_canary" not in railway["if"]
     assert railway["concurrency"] == {
         "group": "palimpsest-railway-production",
         "cancel-in-progress": False,
@@ -212,6 +244,7 @@ def test_railway_job_is_protected_serialized_pinned_and_exact() -> None:
     final_rights = jobs["verify-live-rights-closure"]
     assert "github.event.client_payload.deploy_railway != true" in final_rights["if"]
     assert "vars.RAILWAY_PUBLICATION_ENABLED != 'true'" in final_rights["if"]
+    assert "needs.contract.outputs.activation_canary != 'true'" in final_rights["if"]
 
 
 def test_predeployment_mcp_probe_defers_only_new_sha_identity() -> None:
@@ -300,8 +333,9 @@ def test_transaction_orders_authority_gates_and_has_bounded_rollback() -> None:
     assert "mutation_deadline_epoch" in text
     assert "trap 'on_signal TERM' TERM" in text
     assert "railway down" not in text
-    assert "RAILWAY_TOKEN" not in (
-        text[text.index("document = {") : text.index("payload = (json.dumps")]
+    assert (
+        "RAILWAY_TOKEN"
+        not in (text[text.index("document = {") : text.index("payload = (json.dumps")])
     )
 
 
