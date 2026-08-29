@@ -811,6 +811,40 @@ def test_common_text_encodings_cannot_conceal_a_derivative(
     )
 
 
+def test_mixed_public_url_encodings_do_not_exhaust_decode_depth(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    path = tmp_path / "archive" / "mixed-encoded-metadata.html"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        '<a href="/evidence?source_id=cfets_benchmarks&amp;amp;path=%252Fmetadata">'
+        "Metadata only; values unavailable."
+        "</a>",
+        encoding="utf-8",
+    )
+
+    assert path.relative_to(tmp_path).as_posix() not in (
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    )
+
+
+def test_four_nested_encoding_layers_still_fail_closed(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    payload = json.dumps(
+        {"source_id": "cfets_benchmarks", "value": 987654.321},
+        separators=(",", ":"),
+    )
+    for _ in range(4):
+        payload = quote(payload, safe="")
+    path = tmp_path / "archive" / "too-deep-percent.txt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(payload, encoding="utf-8")
+
+    with pytest.raises(stage_pages_rights.PagesRightsError, match="decode depth"):
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+
+
 def test_encoded_token_and_expansion_caps_fail_closed(tmp_path: Path, monkeypatch):
     _write_minimal_denied_tree(tmp_path)
     token = base64.b64encode(b'{"source_id":"world_bank_wdi","value":1}')
