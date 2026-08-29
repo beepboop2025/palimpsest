@@ -405,7 +405,7 @@ def _validate_rights_payload(
         not isinstance(artifact, dict)
         or artifact.get("integrity") != expected_integrity
         or artifact.get("url") != (
-            "https://palimpsest.info/readings/china-publication-rights-latest.json"
+            "https://www.palimpsest.info/readings/china-publication-rights-latest.json"
         )
     ):
         raise SmokeError("publication-rights status artifact is not verified")

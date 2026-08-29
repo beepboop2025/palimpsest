@@ -43,8 +43,8 @@ from urllib.parse import urlsplit
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = frozenset({"2025-03-26", PROTOCOL_VERSION})
 SERVER_NAME = "palimpsest"
-SERVER_VERSION = "1.9.2"
-SITE = "https://palimpsest.info"
+SERVER_VERSION = "1.9.3"
+SITE = "https://www.palimpsest.info"
 PORT = 8793
 CACHE_TTL_S = 600
 # Browser access exists only for the first-party developer console. Normal MCP
@@ -111,7 +111,7 @@ ECON_RIGHTS_EXPECTED_INPUT_RECORDS = 2259
 ECON_RIGHTS_EXPECTED_ALLOWED_RECORDS = 0
 ECON_RIGHTS_EXPECTED_RESTRICTED_RECORDS = 2259
 ECON_RIGHTS_EXPECTED_QUARANTINED_ARTIFACTS = 153
-# The exact values above are the 1.9.2 deployment-preflight contract. Runtime
+# The exact values above are the 1.9.3 deployment-preflight contract. Runtime
 # validation is deliberately one-way: denied-only coverage may grow after the
 # release, but a reviewed source's input floor may not shrink unnoticed.
 _ECON_RIGHTS_MIN_INPUT_RECORDS_BY_SOURCE = {
@@ -542,8 +542,8 @@ def _pinned_urlopen(request, timeout=15):
         raise OSError("fixed publication URL is invalid") from exc
     if (
         parts.scheme != "https"
-        or parts.netloc != "palimpsest.info"
-        or parts.hostname != "palimpsest.info"
+        or parts.netloc != "www.palimpsest.info"
+        or parts.hostname != "www.palimpsest.info"
         or port != 443
         or parts.username is not None
         or parts.password is not None
