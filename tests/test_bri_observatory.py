@@ -17,13 +17,18 @@ from processors.bri_observatory import (
     ground_level_priority_adjustment,
     load_registry,
 )
-from scripts.build_bri_observatory import _render_region_section, build
+from scripts.build_bri_observatory import (
+    _render_gwadar_html,
+    _render_region_section,
+    build,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "config" / "bri_observatory.json"
 READING = ROOT / "readings" / "belt-and-road-observatory-latest.json"
 PAGE = ROOT / "belt-and-road" / "index.html"
+GWADAR_PAGE = ROOT / "belt-and-road" / "gwadar" / "index.html"
 RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
 RECEIPT_SHA256 = "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
 RECEIPT_VERIFIED_AT = "2026-08-26T15:55:34Z"
@@ -179,6 +184,7 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
     assert READING.read_bytes() == expected_json
     assert PAGE.read_bytes() == expected_html
     artifact = json.loads(expected_json)
+    assert GWADAR_PAGE.read_bytes() == _render_gwadar_html(artifact)
     schema = json.loads((ROOT / "protocol" / "belt-and-road-observatory-v2.schema.json").read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(artifact)
     assert artifact["schema_version"] == "palimpsest.belt-and-road-observatory.v2"
