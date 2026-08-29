@@ -9,10 +9,10 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 79,
+    "datasets": 82,
     "states": {
       "disabled": 1,
-      "fresh": 11,
+      "fresh": 14,
       "gated": 17,
       "private-node": 1,
       "stale": 37,
@@ -20,7 +20,7 @@
     },
     "layers": {
       "content": 15,
-      "cross-layer": 23,
+      "cross-layer": 26,
       "economy": 6,
       "integrity": 2,
       "model": 7,
@@ -29,8 +29,8 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 20577900,
-    "history_rows": 9129
+    "published_bytes": 20528460,
+    "history_rows": 9158
   },
   "datasets": [
     {
@@ -85,6 +85,169 @@
         "latest": "https://palimpsest.info/readings/belt-and-road-observatory-latest.json",
         "landing_page": "https://palimpsest.info/belt-and-road/",
         "method": "https://palimpsest.info/protocol/belt-and-road-observatory-v2.schema.json"
+      }
+    },
+    {
+      "id": "gwadar-regional-analysis",
+      "name": "Recurring Gwadar and CPEC evidence analysis",
+      "description": "Content-addressed analytical edition built from the sealed regional newswire, named-source and independence-group counts, World Bank national context and UCDP annual uncertainty. Publisher claims remain attributed; topical overlap cannot establish delivery, coordination, responsibility, benefit, harm or causation.",
+      "layer": "cross-layer",
+      "stage": "publication",
+      "collection_mode": "deterministic-evidence-analysis",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
+      "latest": "belt-and-road/gwadar/analysis/article.json",
+      "landing_page": "belt-and-road/gwadar/analysis/",
+      "method": "scripts/build_bri_observatory.py",
+      "count_fields": [
+        "coverage.event_count",
+        "coverage.source_count",
+        "coverage.independence_group_count",
+        "coverage.relation_event_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-29T18:41:40Z",
+        "age_seconds": 0,
+        "counts": {
+          "coverage.event_count": 5,
+          "coverage.source_count": 1,
+          "coverage.independence_group_count": 1,
+          "coverage.relation_event_count": 5
+        },
+        "latest_bytes": 18176,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/belt-and-road/gwadar/analysis/article.json",
+        "landing_page": "https://palimpsest.info/belt-and-road/gwadar/analysis/",
+        "method": "https://palimpsest.info/scripts/build_bri_observatory.py"
+      }
+    },
+    {
+      "id": "balochistan-regional-analysis",
+      "name": "Recurring Balochistan rights and political-economy analysis",
+      "description": "Content-addressed analytical edition connecting attributed rights documentation, civic and state reporting, resource governance, Gwadar and CPEC political economy without upgrading allegations into findings or topical overlap into proof of Pakistan-China coordination.",
+      "layer": "cross-layer",
+      "stage": "publication",
+      "collection_mode": "deterministic-evidence-analysis",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": [
+        "PK",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "regional media and documentation sources",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
+      "latest": "belt-and-road/balochistan/analysis/article.json",
+      "landing_page": "belt-and-road/balochistan/analysis/",
+      "method": "scripts/build_bri_observatory.py",
+      "count_fields": [
+        "coverage.event_count",
+        "coverage.source_count",
+        "coverage.independence_group_count",
+        "coverage.documentation_event_count",
+        "coverage.relation_event_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-29T18:41:40Z",
+        "age_seconds": 0,
+        "counts": {
+          "coverage.event_count": 2,
+          "coverage.source_count": 1,
+          "coverage.independence_group_count": 1,
+          "coverage.documentation_event_count": 0,
+          "coverage.relation_event_count": 2
+        },
+        "latest_bytes": 14020,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/belt-and-road/balochistan/analysis/article.json",
+        "landing_page": "https://palimpsest.info/belt-and-road/balochistan/analysis/",
+        "method": "https://palimpsest.info/scripts/build_bri_observatory.py"
+      }
+    },
+    {
+      "id": "myanmar-regional-analysis",
+      "name": "Recurring Myanmar corridor, conflict and rights analysis",
+      "description": "Content-addressed analytical edition built from attributed national and regional Myanmar reporting, including Rakhine, Kachin and Shan, with CMEC and Kyaukpyu overlap measured but never treated as project, actor or causal proof.",
+      "layer": "cross-layer",
+      "stage": "publication",
+      "collection_mode": "deterministic-evidence-analysis",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": [
+        "MM",
+        "CN"
+      ],
+      "sources": [
+        "Palimpsest Evidence Wire",
+        "regional Myanmar media",
+        "World Bank World Development Indicators",
+        "UCDP annual aggregates"
+      ],
+      "latest": "belt-and-road/myanmar/analysis/article.json",
+      "landing_page": "belt-and-road/myanmar/analysis/",
+      "method": "scripts/build_bri_observatory.py",
+      "count_fields": [
+        "coverage.event_count",
+        "coverage.source_count",
+        "coverage.independence_group_count",
+        "coverage.relation_event_count"
+      ],
+      "license": {
+        "name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "fresh",
+        "observed_at": "2026-08-29T18:41:40Z",
+        "age_seconds": 0,
+        "counts": {
+          "coverage.event_count": 1,
+          "coverage.source_count": 1,
+          "coverage.independence_group_count": 1,
+          "coverage.relation_event_count": 0
+        },
+        "latest_bytes": 11477,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/belt-and-road/myanmar/analysis/article.json",
+        "landing_page": "https://palimpsest.info/belt-and-road/myanmar/analysis/",
+        "method": "https://palimpsest.info/scripts/build_bri_observatory.py"
       }
     },
     {
@@ -2487,6 +2650,8 @@
       "cadence": "PT1H",
       "geography": [
         "CN",
+        "PK",
+        "MM",
         "GLOBAL"
       ],
       "sources": [
@@ -2508,17 +2673,17 @@
       },
       "artifacts": {
         "evidence_state": "fresh",
-        "observed_at": "2026-08-29T16:32:12Z",
-        "age_seconds": 976,
+        "observed_at": "2026-08-29T18:41:40Z",
+        "age_seconds": 0,
         "counts": {
-          "n_items": 570,
-          "n_events": 534,
-          "coverage.registry_sources": 47,
-          "coverage.successful_sources": 47
+          "n_items": 537,
+          "n_events": 501,
+          "coverage.registry_sources": 54,
+          "coverage.successful_sources": 53
         },
-        "latest_bytes": 2360096,
-        "history_bytes": 1280464,
-        "history_rows": 3535,
+        "latest_bytes": 2256450,
+        "history_bytes": 1290997,
+        "history_rows": 3564,
         "latest_available": true,
         "history_available": true
       },

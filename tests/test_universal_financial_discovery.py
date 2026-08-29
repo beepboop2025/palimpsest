@@ -351,6 +351,24 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
             "https://palimpsest.info/research/"
             "china-pakistan-myanmar-bri-2026/publication-receipt.json"
         ),
+        "gwadarAnalysis": (
+            "https://palimpsest.info/belt-and-road/gwadar/analysis/"
+        ),
+        "gwadarAnalysisData": (
+            "https://palimpsest.info/belt-and-road/gwadar/analysis/article.json"
+        ),
+        "balochistanAnalysis": (
+            "https://palimpsest.info/belt-and-road/balochistan/analysis/"
+        ),
+        "balochistanAnalysisData": (
+            "https://palimpsest.info/belt-and-road/balochistan/analysis/article.json"
+        ),
+        "myanmarAnalysis": (
+            "https://palimpsest.info/belt-and-road/myanmar/analysis/"
+        ),
+        "myanmarAnalysisData": (
+            "https://palimpsest.info/belt-and-road/myanmar/analysis/article.json"
+        ),
         "humanLandingPage": "https://palimpsest.info/belt-and-road/",
         "coverageBoundary": (
             "Source discovery and adapter readiness are not ingestion, and unlike "

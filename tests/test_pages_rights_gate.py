@@ -325,7 +325,14 @@ def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
         if path.suffix == ".html":
             text = path.read_text(encoding="utf-8")
             assert 'data-palimpsest-publication-status="restricted"' in text
-            assert "Values unavailable: publication restricted" in text
+            if relative == "china/index.html":
+                assert "Public evidence remains online" in text
+                assert 'href="/news/china/situation/"' in text
+                assert 'href="/readings/ddti-latest.json"' in text
+                assert 'href="/belt-and-road/"' in text
+                assert 'href="/belt-and-road/balochistan/analysis/"' in text
+            else:
+                assert "Values unavailable: publication restricted" in text
         elif path.suffix in {".json", ".jsonl"}:
             text = path.read_text(encoding="utf-8")
             documents = (

@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
 import json
 import os
 import re
 import tempfile
 from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 
+from core import newswire as newswire_model
+from core import ucdp_aggregate
 from processors.bri_observatory import (
     PUBLIC_BUILD_STATES,
     WDI_ARTIFACT_PATH,
@@ -19,6 +23,7 @@ from processors.bri_observatory import (
     WDI_SERIES_REGISTRY_PATH,
     build_public_artifact,
     build_wdi_observation_descriptor,
+    load_wdi_bundle,
     load_registry,
 )
 from scripts import site_nav
@@ -29,6 +34,29 @@ DEFAULT_REGISTRY = ROOT / "config" / "bri_observatory.json"
 DEFAULT_JSON = ROOT / "readings" / "belt-and-road-observatory-latest.json"
 DEFAULT_HTML = ROOT / "belt-and-road" / "index.html"
 DEFAULT_GWADAR_HTML = ROOT / "belt-and-road" / "gwadar" / "index.html"
+DEFAULT_BALOCHISTAN_HTML = ROOT / "belt-and-road" / "balochistan" / "index.html"
+DEFAULT_MYANMAR_HTML = ROOT / "belt-and-road" / "myanmar" / "index.html"
+DEFAULT_GWADAR_ANALYSIS_HTML = (
+    ROOT / "belt-and-road" / "gwadar" / "analysis" / "index.html"
+)
+DEFAULT_GWADAR_ANALYSIS_JSON = (
+    ROOT / "belt-and-road" / "gwadar" / "analysis" / "article.json"
+)
+DEFAULT_BALOCHISTAN_ANALYSIS_HTML = (
+    ROOT / "belt-and-road" / "balochistan" / "analysis" / "index.html"
+)
+DEFAULT_BALOCHISTAN_ANALYSIS_JSON = (
+    ROOT / "belt-and-road" / "balochistan" / "analysis" / "article.json"
+)
+DEFAULT_MYANMAR_ANALYSIS_HTML = (
+    ROOT / "belt-and-road" / "myanmar" / "analysis" / "index.html"
+)
+DEFAULT_MYANMAR_ANALYSIS_JSON = (
+    ROOT / "belt-and-road" / "myanmar" / "analysis" / "article.json"
+)
+DEFAULT_NEWSWIRE = ROOT / "readings" / "newswire-latest.json"
+DEFAULT_UCDP_AGGREGATE = ROOT / "readings" / "ucdp-aggregate-latest.json"
+DEFAULT_UCDP_SCHEMA = ROOT / "protocol" / "ucdp-aggregate-v1.schema.json"
 DEFAULT_WDI_BUNDLE = ROOT / WDI_ARTIFACT_PATH
 DEFAULT_WDI_SCHEMA = ROOT / WDI_OBSERVATION_SCHEMA_PATH
 DEFAULT_WDI_SERIES_REGISTRY = ROOT / WDI_SERIES_REGISTRY_PATH
@@ -43,6 +71,113 @@ _PAKISTAN_GWADAR_TARGETS = (
     "gwadar_public_services",
     "balochistan_resources_revenue",
 )
+_REGIONAL_NEWS = {
+    "gwadar": {
+        "dedicated_source_ids": frozenset(
+            {
+                "arab-news-pakistan-gwadar-port",
+                "daily-cpec-gwadar",
+            }
+        ),
+        "terms": (
+            "belt and road",
+            "bri",
+            "china-pakistan",
+            "cpec",
+            "gwadar",
+        ),
+    },
+    "balochistan": {
+        "dedicated_source_ids": frozenset(
+            {
+                "express-tribune-balochistan",
+                "hrc-balochistan",
+            }
+        ),
+        "terms": ("baloch", "balochistan", "gwadar", "quetta"),
+    },
+    "myanmar": {
+        "dedicated_source_ids": frozenset(
+            {
+                "kachin-news-group",
+                "shan-news-english",
+            }
+        ),
+        "terms": (
+            "burma",
+            "cmec",
+            "kachin",
+            "kyaukpyu",
+            "myanmar",
+            "rakhine",
+            "rohingya",
+            "shan",
+        ),
+    },
+}
+_REGIONAL_ANALYSIS = {
+    "gwadar": {
+        "label": "Gwadar and CPEC",
+        "country_code": "PAK",
+        "canonical_path": "/belt-and-road/gwadar/analysis/",
+        "title": "Gwadar's development story is also a test of whose evidence counts",
+        "dek": (
+            "A recurring analysis of CPEC and Gwadar reporting, source balance, "
+            "economic context, and the gap between development claims and locally "
+            "documented effects."
+        ),
+        "relation_terms": ("baloch", "china", "cpec", "gwadar"),
+        "relation_heading": "Development claims and local effects must share the page",
+        "position": (
+            "Port, corridor and investment announcements deserve measurement against "
+            "employment, land, water, fisheries, public services and grievance records. "
+            "An announcement is evidence of a claim, not proof of delivery."
+        ),
+    },
+    "balochistan": {
+        "label": "Balochistan",
+        "country_code": "PAK",
+        "canonical_path": "/belt-and-road/balochistan/analysis/",
+        "title": "Balochistan's rights record cannot be edited out of the CPEC story",
+        "dek": (
+            "A recurring, attributed analysis of reported abuses, civic and state "
+            "actions, resource governance, Gwadar, and Pakistan-China political economy."
+        ),
+        "relation_terms": ("china", "cpec", "gwadar"),
+        "relation_heading": "The Pakistan-China relationship is a question for evidence, not insinuation",
+        "position": (
+            "Reports of disappearance, detention, killing, intimidation or collective "
+            "punishment require prominent scrutiny and precise attribution. Development "
+            "announcements do not rebut rights allegations, and allegations are not "
+            "silently upgraded into adjudicated findings."
+        ),
+    },
+    "myanmar": {
+        "label": "Myanmar",
+        "country_code": "MMR",
+        "canonical_path": "/belt-and-road/myanmar/analysis/",
+        "title": "Myanmar's corridor politics cannot be separated from conflict and rights",
+        "dek": (
+            "A recurring analysis of Myanmar reporting across CMEC, Kyaukpyu, conflict, "
+            "rights, and regional voices from Rakhine, Kachin and Shan."
+        ),
+        "relation_terms": ("china", "cmec", "kyaukpyu", "pipeline", "rail"),
+        "relation_heading": "Infrastructure exposure sits inside a conflict-affected polity",
+        "position": (
+            "Infrastructure and investment claims must be read beside conflict, "
+            "displacement, consent and distributional evidence. National aggregates "
+            "cannot substitute for affected-community records."
+        ),
+    },
+}
+_ANALYSIS_INDICATORS = {
+    "NY.GDP.MKTP.KD.ZG": "Real GDP growth",
+    "NE.TRD.GNFS.ZS": "Trade share of GDP",
+    "BX.KLT.DINV.WD.GD.ZS": "FDI net inflows",
+    "SL.UEM.TOTL.ZS": "Unemployment rate",
+    "EG.ELC.ACCS.ZS": "Electricity access",
+    "IS.SHP.GOOD.TU": "Container port traffic",
+}
 
 
 def _resolve_wdi_publication_receipts(
@@ -105,8 +240,599 @@ def _atomic_write(path: Path, payload: bytes) -> None:
             pass
 
 
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
+
 def _esc(value: object) -> str:
     return html.escape(str(value), quote=True)
+
+
+def _load_newswire(path: Path = DEFAULT_NEWSWIRE) -> dict:
+    document = newswire_model.strict_json_loads(path.read_bytes(), label=str(path))
+    newswire_model.validate_prior_newswire_document(document)
+    return document
+
+
+def _load_ucdp_aggregate(path: Path = DEFAULT_UCDP_AGGREGATE) -> dict:
+    return ucdp_aggregate.validate_public_bytes(
+        path.read_bytes(),
+        schema_path=DEFAULT_UCDP_SCHEMA,
+    )
+
+
+def _event_content_text(event: Mapping[str, object]) -> str:
+    return " ".join(
+        [str(event["headline"]), str(event["dek"])]
+        + [
+            str(reference["title"])
+            for reference in event["evidence_refs"]
+        ]
+    ).casefold()
+
+
+def _text_has_term(text: str, term: str) -> bool:
+    return (
+        re.search(
+            rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])",
+            text,
+        )
+        is not None
+    )
+
+
+def _regional_events(wire: Mapping[str, object], region: str) -> list[dict]:
+    """Select current regional wire events without fetching article bodies."""
+
+    config = _REGIONAL_NEWS.get(region)
+    if config is None:
+        raise ValueError(f"unknown regional news lane: {region}")
+    selected = []
+    for event in wire["events"]:
+        source_ids = {
+            reference["source_id"] for reference in event["evidence_refs"]
+        }
+        text = _event_content_text(event)
+        term_match = any(_text_has_term(text, term) for term in config["terms"])
+        if source_ids.intersection(config["dedicated_source_ids"]) or term_match:
+            selected.append(event)
+    return sorted(
+        selected,
+        key=lambda event: (event["published_at"], event["event_id"]),
+        reverse=True,
+    )[:48]
+
+
+def _latest_wdi_context(bundle: Mapping[str, object], country_code: str) -> list[dict]:
+    """Project a small, exact national context panel from validated WDI rows."""
+
+    latest: dict[str, dict] = {}
+    for row in bundle["observations"]:
+        indicator_id = row["indicator_id"]
+        if (
+            row["country_code"] != country_code
+            or indicator_id not in _ANALYSIS_INDICATORS
+            or row["evidence_state"] != "observed"
+            or row["value"] is None
+        ):
+            continue
+        prior = latest.get(indicator_id)
+        if prior is None or row["period_end"] > prior["period_end"]:
+            latest[indicator_id] = row
+
+    rows = []
+    for indicator_id, label in _ANALYSIS_INDICATORS.items():
+        source = latest.get(indicator_id)
+        if source is None:
+            continue
+        rows.append(
+            {
+                "indicator_id": indicator_id,
+                "label": label,
+                "period_end": source["period_end"],
+                "value": source["value"],
+                "unit": source["unit"],
+                "evidence_state": source["evidence_state"],
+                "obs_status": source["obs_status"],
+                "source_dataset_last_updated": source["source_dataset_last_updated"],
+                "retrieved_at": source["retrieved_at"],
+                "evidence_url": source["evidence_url"],
+            }
+        )
+    return rows
+
+
+def _latest_ucdp_context(
+    bundle: Mapping[str, object], country_code: str
+) -> dict | None:
+    rows = [
+        row for row in bundle["country_years"] if row["country_code"] == country_code
+    ]
+    if not rows:
+        return None
+    row = max(rows, key=lambda item: item["year"])
+    return {
+        "country_code": country_code,
+        "year": row["year"],
+        "dataset_version": row["dataset_version"],
+        "evidence_state": row["evidence_state"],
+        "unit": row["unit"],
+        "total": row["total"],
+        "state_based": row["state_based"],
+        "one_sided": row["one_sided"],
+        "non_state": row["non_state"],
+        "source_period_end_year": bundle["source"]["source_period_end_year"],
+        "source_url": "/readings/ucdp-aggregate-latest.json",
+        "scope": "annual national historical context only",
+    }
+
+
+def _counter_dict(counter: Counter[str]) -> dict[str, int]:
+    return {key: counter[key] for key in sorted(counter)}
+
+
+def _analysis_evidence(event: Mapping[str, object]) -> dict:
+    seen: set[tuple[str, str]] = set()
+    sources = []
+    for reference in event["evidence_refs"]:
+        key = (reference["source_id"], reference["url"])
+        if key in seen:
+            continue
+        seen.add(key)
+        sources.append(
+            {
+                "source_id": reference["source_id"],
+                "source_name": reference["source_name"],
+                "role": reference["role"],
+                "independence_group": reference["independence_group"],
+                "title": reference["title"],
+                "url": reference["url"],
+            }
+        )
+    return {
+        "event_id": event["event_id"],
+        "event_url": event["url"],
+        "headline": event["headline"],
+        "dek": event["dek"],
+        "published_at": event["published_at"],
+        "updated_at": event["updated_at"],
+        "desk": event["desk"],
+        "topics": event["topics"],
+        "evidence_strength": event["evidence_strength"],
+        "independent_group_count": len(event["evidence_groups"]),
+        "sources": sources,
+    }
+
+
+def _regional_analysis_projection(
+    wire: Mapping[str, object], region: str
+) -> dict[str, object]:
+    events = _regional_events(wire, region)
+    source_names: dict[str, str] = {}
+    groups: set[str] = set()
+    topic_counts: Counter[str] = Counter()
+    role_counts: Counter[str] = Counter()
+    strength_counts: Counter[str] = Counter()
+    documentation_events = 0
+    multi_group_events = 0
+    for event in events:
+        topic_counts.update(event["topics"])
+        strength_counts[event["evidence_strength"]] += 1
+        event_roles = set()
+        for reference in event["evidence_refs"]:
+            source_names[reference["source_id"]] = reference["source_name"]
+            groups.add(reference["independence_group"])
+            event_roles.add(reference["role"])
+        role_counts.update(event_roles)
+        documentation_events += "documentation" in event_roles
+        multi_group_events += len(event["evidence_groups"]) > 1
+
+    relation_terms = _REGIONAL_ANALYSIS[region]["relation_terms"]
+    relation_events = [
+        event
+        for event in events
+        if any(
+            _text_has_term(_event_content_text(event), term)
+            for term in relation_terms
+        )
+    ]
+    return {
+        "event_count": len(events),
+        "source_count": len(source_names),
+        "source_names": [source_names[key] for key in sorted(source_names)],
+        "independence_group_count": len(groups),
+        "topic_counts": _counter_dict(topic_counts),
+        "role_counts": _counter_dict(role_counts),
+        "evidence_strength_counts": _counter_dict(strength_counts),
+        "documentation_event_count": documentation_events,
+        "multi_group_event_count": multi_group_events,
+        "single_group_event_count": len(events) - multi_group_events,
+        "relation_event_count": len(relation_events),
+        "relation_event_ids": [event["event_id"] for event in relation_events],
+        "latest_event_at": events[0]["published_at"] if events else None,
+        "earliest_event_at": events[-1]["published_at"] if events else None,
+        "events": events,
+    }
+
+
+def _analysis_claims(region: str, projection: Mapping[str, object]) -> list[dict]:
+    config = _REGIONAL_ANALYSIS[region]
+    events = projection["events"]
+    event_ids = [event["event_id"] for event in events]
+    if events:
+        current_record = (
+            f'The current wire contains {projection["event_count"]} attributed event '
+            f'dossiers from {projection["source_count"]} named sources across '
+            f'{projection["independence_group_count"]} declared independence groups. '
+            "That is a publication-structure count, not a count of verified incidents."
+        )
+    else:
+        current_record = (
+            "No event metadata fell inside this region's current wire window. This is "
+            "a coverage result for the exact feed window, not evidence that nothing happened."
+        )
+    source_structure = (
+        f'{projection["single_group_event_count"]} dossiers currently rely on one '
+        f'independent source group; {projection["multi_group_event_count"]} contain more '
+        "than one. Repetition inside one publisher group is not treated as corroboration."
+    )
+    if region == "balochistan":
+        source_structure += (
+            f' {projection["documentation_event_count"]} dossiers include a source '
+            "classified as documentation, whose allegations remain attributed to that source."
+        )
+    relation = (
+        f'{projection["relation_event_count"]} of the current '
+        f'{projection["event_count"]} dossiers contain at least one retained '
+        f'{"/".join(config["relation_terms"])} term. This measures topical overlap in '
+        "publisher metadata; it does not establish coordination, responsibility, benefit, "
+        "harm, or causation."
+    )
+    return [
+        {
+            "section_id": "current-record",
+            "heading": "What changed in the current evidence window",
+            "paragraph": current_record,
+            "evidence_event_ids": event_ids[:12],
+        },
+        {
+            "section_id": "source-structure",
+            "heading": "How strong is the publication structure?",
+            "paragraph": source_structure,
+            "evidence_event_ids": event_ids[:12],
+        },
+        {
+            "section_id": "relationship",
+            "heading": config["relation_heading"],
+            "paragraph": relation,
+            "evidence_event_ids": projection["relation_event_ids"][:12],
+        },
+        {
+            "section_id": "editorial-position",
+            "heading": "Palimpsest's editorial reading",
+            "paragraph": config["position"],
+            "evidence_event_ids": event_ids[:12],
+        },
+    ]
+
+
+def _build_regional_analysis(
+    artifact: Mapping[str, object],
+    wire: Mapping[str, object],
+    *,
+    region: str,
+    wdi_bundle: Mapping[str, object],
+    ucdp_bundle: Mapping[str, object],
+) -> dict:
+    config = _REGIONAL_ANALYSIS[region]
+    projection = _regional_analysis_projection(wire, region)
+    events = projection.pop("events")
+    claims = _analysis_claims(region, {**projection, "events": events})
+    country_code = config["country_code"]
+    document = {
+        "schema_version": "palimpsest.regional-analysis.v1",
+        "article_id": f"palimpsest-regional-analysis-{region}",
+        "region": region,
+        "label": config["label"],
+        "title": config["title"],
+        "dek": config["dek"],
+        "url": config["canonical_path"],
+        "generated_at": wire["generated_at"],
+        "status": "current-analysis" if events else "coverage-gap-analysis",
+        "authorship": {
+            "byline": "Palimpsest Evidence Desk",
+            "mode": "deterministic evidence analysis",
+            "freeform_model_generation": "none",
+            "human_interviews": "none",
+        },
+        "wire": {
+            "generated_at": wire["generated_at"],
+            "window": wire["window"],
+            "total_event_count": wire["n_events"],
+            "source_registry_sha256": wire["source_registry_sha256"],
+        },
+        "coverage": projection,
+        "claims": claims,
+        "national_context": {
+            "country_code": country_code,
+            "wdi": _latest_wdi_context(wdi_bundle, country_code),
+            "ucdp": _latest_ucdp_context(ucdp_bundle, country_code),
+            "boundary": (
+                "National context only. These values cannot establish a provincial, "
+                "project, actor, incident, attribution, or causal claim."
+            ),
+        },
+        "source_readiness": {
+            "artifact_as_of": artifact["as_of"],
+            "contract_url": "/readings/belt-and-road-observatory-latest.json",
+            "meaning": (
+                "The contract records source routes and build states; registration is "
+                "not evidence that a project claim or rights allegation is true."
+            ),
+        },
+        "evidence": [_analysis_evidence(event) for event in events],
+        "method": [
+            "Select events from the sealed seven-day newswire by reviewed source ID or bounded regional term.",
+            "Count named sources and declared independence groups before writing any source-strength sentence.",
+            "Retain publisher titles, links, timestamps and bounded feed excerpts; do not fetch or republish article bodies.",
+            "Attach validated World Bank WDI and UCDP annual aggregates as national context only.",
+            "Regenerate the stable article URL whenever the sealed input bytes change.",
+        ],
+        "limitations": [
+            "Publisher metadata may be incomplete, mistaken, partisan, translated, revised, or later removed.",
+            "Source-group counts measure publication structure, not truth or legal proof.",
+            "A documentation group's allegation is attributed reporting unless a separately cited adjudicative finding says otherwise.",
+            "Topic overlap cannot prove that Pakistan and China coordinated a reported abuse or that a BRI project caused it.",
+            "National economic and conflict aggregates cannot describe a specific province, community, project, actor, or incident.",
+            "An empty or thin feed window is a coverage limitation, not a zero for events, harm, conflict, opposition, or public concern.",
+        ],
+        "disclosure": (
+            "This recurring article is assembled automatically from validated public "
+            "metadata and aggregate datasets. It contains deterministic editorial "
+            "synthesis, no free-form model generation, no article-body scraping, and no "
+            "claim of human eyewitness reporting."
+        ),
+        "correction_url": "/challenge.html",
+    }
+    content = json.dumps(
+        document,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    digest = hashlib.sha256(content).hexdigest()
+    document["content_sha256"] = digest
+    document["revision_id"] = f"regional-analysisv-{digest[:24]}"
+    return document
+
+
+def _format_context_value(value: object, unit: str) -> str:
+    number = float(value)
+    if unit in {
+        "annual percent",
+        "percent of GDP",
+        "percent of labor force",
+        "percent of population",
+    }:
+        return f"{number:,.2f}%"
+    if abs(number) >= 1_000_000_000:
+        return f"{number / 1_000_000_000:,.2f} billion"
+    if abs(number) >= 1_000_000:
+        return f"{number / 1_000_000:,.2f} million"
+    return f"{number:,.2f}"
+
+
+def _render_analysis_html(article: Mapping[str, object]) -> bytes:
+    canonical_path = article["url"]
+    dossier_path = canonical_path.removesuffix("analysis/")
+    coverage = article["coverage"]
+    citation_numbers = {
+        event["event_id"]: position
+        for position, event in enumerate(article["evidence"], 1)
+    }
+    claim_sections = []
+    for claim in article["claims"]:
+        citations = " ".join(
+            f'<a href="#evidence-{_esc(event_id)}">[{citation_numbers[event_id]}]</a>'
+            for event_id in claim["evidence_event_ids"]
+        )
+        claim_sections.append(
+            f'<section id="{_esc(claim["section_id"])}" class="bri-analysis-section">'
+            f'<h2>{_esc(claim["heading"])}</h2><p>{_esc(claim["paragraph"])}</p>'
+            f'<p class="bri-citations">{citations}</p></section>'
+        )
+    evidence_rows = []
+    for position, event in enumerate(article["evidence"], 1):
+        sources = "; ".join(
+            f'<a href="{_esc(source["url"])}" target="_blank" rel="noopener">'
+            f'{_esc(source["source_name"])}</a> ({_esc(source["role"])})'
+            for source in event["sources"]
+        )
+        evidence_rows.append(
+            f'<article id="evidence-{_esc(event["event_id"])}" class="bri-evidence-row">'
+            f'<p class="bri-eyebrow">[{position}] <time datetime="{_esc(event["published_at"])}">'
+            f'{_esc(event["published_at"])}</time> · {_esc(event["evidence_strength"])}</p>'
+            f'<h3><a href="{_esc(event["event_url"])}">{_esc(event["headline"])}</a></h3>'
+            f'<p>{_esc(event["dek"])}</p><p><b>Attributed sources:</b> {sources}. '
+            f'<b>Independent groups:</b> {event["independent_group_count"]}.</p></article>'
+        )
+    if not evidence_rows:
+        evidence_rows.append(
+            '<p class="bri-empty">No regional event metadata is present in this exact '
+            'wire window. The article remains online to expose that coverage gap.</p>'
+        )
+    wdi_rows = "".join(
+        '<article class="bri-context-card">'
+        f'<p class="bri-eyebrow">{_esc(row["indicator_id"])}</p>'
+        f'<h3>{_esc(row["label"])}</h3>'
+        f'<strong>{_esc(_format_context_value(row["value"], row["unit"]))}</strong>'
+        f'<p>{_esc(row["period_end"][:4])} · {_esc(row["unit"])} · '
+        f'{_esc(row["evidence_state"])} · source updated '
+        f'{_esc(row["source_dataset_last_updated"])}</p>'
+        f'<a href="{_esc(row["evidence_url"])}">World Bank API evidence</a></article>'
+        for row in article["national_context"]["wdi"]
+    )
+    ucdp = article["national_context"]["ucdp"]
+    if ucdp is None:
+        ucdp_panel = '<p class="bri-empty">No validated annual conflict aggregate is available.</p>'
+    else:
+        total = ucdp["total"]
+        ucdp_panel = (
+            '<article class="bri-context-card bri-context-card--wide">'
+            f'<p class="bri-eyebrow">UCDP {ucdp["dataset_version"]} · {ucdp["year"]}</p>'
+            '<h3>National annual organized-violence context</h3>'
+            f'<strong>{total["best"]:,} best estimate</strong>'
+            f'<p>{total["low"]:,}–{total["high"]:,} uncertainty range, '
+            f'{_esc(ucdp["unit"])}. State-based: {ucdp["state_based"]["best"]:,}; '
+            f'one-sided: {ucdp["one_sided"]["best"]:,}; non-state: '
+            f'{ucdp["non_state"]["best"]:,}.</p>'
+            f'<p><b>Boundary:</b> {_esc(ucdp["scope"])}; this is not a provincial or '
+            'incident-level rights measure.</p>'
+            f'<a href="{_esc(ucdp["source_url"])}">Inspect the aggregate and uncertainty bounds</a>'
+            '</article>'
+        )
+    topic_rows = "".join(
+        f'<div><dt>{_esc(topic)}</dt><dd>{count}</dd></div>'
+        for topic, count in sorted(
+            coverage["topic_counts"].items(), key=lambda item: (-item[1], item[0])
+        )
+    ) or '<div><dt>Current topics</dt><dd>no observed rows</dd></div>'
+    method = "".join(f'<li>{_esc(item)}</li>' for item in article["method"])
+    limitations = "".join(
+        f'<li>{_esc(item)}</li>' for item in article["limitations"]
+    )
+    json_ld = json.dumps(
+        {
+            "@context": "https://schema.org",
+            "@type": "AnalysisNewsArticle",
+            "headline": article["title"],
+            "description": article["dek"],
+            "datePublished": article["generated_at"],
+            "dateModified": article["generated_at"],
+            "mainEntityOfPage": f"https://palimpsest.info{canonical_path}",
+            "author": {"@type": "Organization", "name": "Palimpsest Evidence Desk"},
+            "publisher": {"@type": "Organization", "name": "Palimpsest"},
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).replace("</", "<\\/")
+    document = f'''<!doctype html>
+<html lang="en" data-tk-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{_esc(article["title"])} · Palimpsest analysis</title>
+<meta name="description" content="{_esc(article["dek"])}">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info{_esc(canonical_path)}">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<meta name="theme-color" content="#edf2ec">
+<script type="application/ld+json">{json_ld}</script>
+{site_nav.HEAD}
+<link rel="stylesheet" href="/assets/bri.css">
+</head>
+<body class="ps tk bri-page bri-analysis-page" data-bri-analysis="{_esc(article["region"])}">
+<!-- GENERATED BY scripts/build_bri_observatory.py -->
+{site_nav.render(canonical_path)}
+<main id="main">
+  <article>
+    <header class="bri-hero bri-analysis-hero">
+      <p class="bri-eyebrow">Recurring regional analysis · {_esc(article["label"])} · <time datetime="{_esc(article["generated_at"])}">{_esc(article["generated_at"])}</time></p>
+      <h1>{_esc(article["title"])}</h1>
+      <p class="bri-dek">{_esc(article["dek"])}</p>
+      <p class="bri-byline">By <strong>{_esc(article["authorship"]["byline"])}</strong> · {_esc(article["authorship"]["mode"])} · revision <code>{_esc(article["revision_id"])}</code></p>
+      <dl class="bri-stats"><div><strong>{coverage["event_count"]}</strong><span>current event dossiers</span></div><div><strong>{coverage["source_count"]}</strong><span>named sources</span></div><div><strong>{coverage["independence_group_count"]}</strong><span>independence groups</span></div><div><strong>{coverage["relation_event_count"]}</strong><span>relationship-term overlaps</span></div></dl>
+      <p class="bri-actions"><a href="{_esc(dossier_path)}">Open the regional dossier</a><a href="article.json">Download article JSON</a><a href="/news/">Open the live wire</a></p>
+    </header>
+
+    <section class="bri-analysis-layout">
+      <div class="bri-analysis-copy">{''.join(claim_sections)}</div>
+      <aside class="bri-analysis-aside"><p class="bri-eyebrow">Exact window</p><p><code>{_esc(article["wire"]["window"]["from"])}</code><br>through<br><code>{_esc(article["wire"]["window"]["to"])}</code></p><p><b>Source structure</b><br>{coverage["single_group_event_count"]} single-group · {coverage["multi_group_event_count"]} multi-group</p><p><b>Automated disclosure</b><br>No free-form model generation and no article-body scraping.</p></aside>
+    </section>
+
+    <section class="bri-section" id="topic-shape"><p class="bri-eyebrow">Observed topic shape</p><h2>What publishers placed in the current window</h2><p>These are retained wire labels, not a semantic verdict or a measure of social importance.</p><dl class="bri-contract bri-topic-contract">{topic_rows}</dl></section>
+
+    <section class="bri-section" id="national-context"><p class="bri-eyebrow">Measured context · national grain only</p><h2>Economic and conflict context without a causal shortcut</h2><p>{_esc(article["national_context"]["boundary"])}</p><div class="bri-context-grid">{wdi_rows}{ucdp_panel}</div></section>
+
+    <section class="bri-section" id="evidence"><p class="bri-eyebrow">Evidence ledger</p><h2>Every current event used by this edition</h2><p>Publisher claims remain attributed. Follow the Palimpsest event route for the bounded dossier or the original publisher link for the source record.</p><div class="bri-evidence-ledger">{''.join(evidence_rows)}</div></section>
+
+    <section class="bri-section bri-limit" id="method"><p class="bri-eyebrow">Method and limits</p><h2>How this recurring article is allowed to say what it says</h2><div class="bri-columns"><div><h3>Method</h3><ol>{method}</ol></div><div><h3>What this cannot establish</h3><ul>{limitations}</ul></div></div><p><b>Disclosure:</b> {_esc(article["disclosure"])}</p><p><b>Content receipt:</b> <code>sha256:{_esc(article["content_sha256"])}</code></p><p><a href="{_esc(article["correction_url"])}">Challenge a source, claim, method, rights decision, or interpretation</a></p></section>
+  </article>
+</main>
+<footer class="bri-footer"><p><strong>Palimpsest regional analysis</strong> · Stable URL, content-addressed revision, visible evidence and limitations.</p></footer>
+{site_nav.FOOT}
+</body></html>
+'''
+    return document.encode("utf-8")
+
+
+def _render_analysis_callout(article: Mapping[str, object]) -> str:
+    coverage = article["coverage"]
+    return f'''<section class="bri-section bri-analysis-callout" aria-labelledby="analysis-title">
+    <p class="bri-eyebrow">Current analytical edition · {_esc(article["generated_at"])}</p>
+    <h2 id="analysis-title">{_esc(article["title"])}</h2>
+    <p>{_esc(article["dek"])}</p>
+    <dl class="bri-contract"><div><dt>Event dossiers</dt><dd>{coverage["event_count"]}</dd></div><div><dt>Named sources</dt><dd>{coverage["source_count"]}</dd></div><div><dt>Independent groups</dt><dd>{coverage["independence_group_count"]}</dd></div></dl>
+    <p class="bri-actions"><a href="{_esc(article["url"])}">Read the full analysis</a><a href="{_esc(article["url"])}article.json">Download structured article</a></p>
+  </section>'''
+
+
+def _regional_event_card(event: Mapping[str, object]) -> str:
+    seen_sources: set[tuple[str, str]] = set()
+    source_links = []
+    for reference in event["evidence_refs"]:
+        key = (reference["source_name"], reference["url"])
+        if key in seen_sources:
+            continue
+        seen_sources.add(key)
+        source_links.append(
+            f'<a href="{_esc(reference["url"])}" target="_blank" '
+            f'rel="noopener">{_esc(reference["source_name"])}</a>'
+        )
+    source_line = "; ".join(source_links)
+    group_count = len(event["evidence_groups"])
+    return (
+        '<article class="bri-card bri-news-card" data-bri-regional-event>'
+        f'<p class="bri-eyebrow"><time datetime="{_esc(event["published_at"])}">'
+        f'{_esc(event["published_at"])}</time> · '
+        f'{_esc(event["evidence_strength"].replace("-", " "))}</p>'
+        f'<h3><a href="{_esc(event["url"])}">{_esc(event["headline"])}</a></h3>'
+        f'<p>{_esc(event["dek"])}</p>'
+        f'<p><b>Attributed sources:</b> {source_line}. '
+        f'<b>Independent evidence groups:</b> {group_count}.</p>'
+        f'<ul class="bri-chips">{_chips(event["topics"])}</ul>'
+        '</article>'
+    )
+
+
+def _render_regional_news_section(
+    wire: Mapping[str, object],
+    *,
+    region: str,
+    title: str,
+    introduction: str,
+    dedicated_path: str,
+    limit: int = 16,
+) -> str:
+    events = _regional_events(wire, region)
+    visible = events[:limit]
+    cards = "".join(_regional_event_card(event) for event in visible)
+    if not cards:
+        cards = (
+            '<p class="bri-empty">No event metadata fell inside the current '
+            'seven-day wire window. This is an observed zero for the feed window, '
+            'not evidence that nothing happened.</p>'
+        )
+    return f'''<section class="bri-section bri-regional-news" id="{_esc(region)}-news" aria-labelledby="{_esc(region)}-news-title">
+    <p class="bri-eyebrow">Current regional wire · {_esc(wire["generated_at"])}</p>
+    <h2 id="{_esc(region)}-news-title">{_esc(title)}</h2>
+    <p>{_esc(introduction)} Titles, links, timestamps and bounded feed excerpts are retained; article bodies are neither fetched nor republished.</p>
+    <dl class="bri-contract"><div><dt>Current events</dt><dd>{len(events)}</dd></div><div><dt>Visible here</dt><dd>{len(visible)}</dd></div><div><dt>Evidence rule</dt><dd>attributed reports, not automatic findings</dd></div></dl>
+    <div class="bri-grid">{cards}</div>
+    <p class="bri-actions"><a href="{_esc(dedicated_path)}">Open the complete regional dossier</a><a href="{_esc(_REGIONAL_ANALYSIS[region]["canonical_path"])}">Read the current analysis</a><a href="/news/">Open the complete live wire</a></p>
+  </section>'''
 
 
 def _chips(values: list[str]) -> str:
@@ -245,8 +971,14 @@ def _render_region_section(
   </section>"""
 
 
-def _render_gwadar_html(artifact: dict) -> bytes:
+def _render_gwadar_html(
+    artifact: dict,
+    wire: Mapping[str, object] | None = None,
+    analysis: Mapping[str, object] | None = None,
+) -> bytes:
     """Render the durable Gwadar route from the public BRI artifact only."""
+
+    wire = _load_newswire() if wire is None else wire
 
     region = _render_region_section(
         artifact,
@@ -261,6 +993,18 @@ def _render_gwadar_html(artifact: dict) -> bytes:
         target_ids=_PAKISTAN_GWADAR_TARGETS,
     )
     as_of = _esc(artifact["as_of"])
+    current_news = _render_regional_news_section(
+        wire,
+        region="gwadar",
+        title="Current CPEC and Gwadar reporting",
+        introduction=(
+            "This lane keeps official-position reporting, local reporting and "
+            "independent media records attributed to their publishers."
+        ),
+        dedicated_path="/belt-and-road/gwadar/",
+        limit=24,
+    )
+    analysis_callout = _render_analysis_callout(analysis) if analysis else ""
     document = f"""<!doctype html>
 <html lang="en" data-tk-theme="light">
 <head>
@@ -286,6 +1030,10 @@ def _render_gwadar_html(artifact: dict) -> bytes:
     <p class="bri-actions"><a href="/belt-and-road/">Open the complete BRI observatory</a><a href="/readings/belt-and-road-observatory-latest.json">Download the machine contract</a><a href="/news/">Read live news</a></p>
   </header>
 
+  {analysis_callout}
+
+  {current_news}
+
   {region}
 </main>
 <footer class="bri-footer"><p><strong>Palimpsest Gwadar dossier</strong> · Project status, finance, logistics, employment, land, livelihood and environment remain separate evidence fields.</p><p><a href="/belt-and-road/">BRI observatory</a> · <a href="/readings/belt-and-road-observatory-latest.json">JSON</a> · <a href="/challenge.html">Challenge a source or method</a></p></footer>
@@ -293,6 +1041,76 @@ def _render_gwadar_html(artifact: dict) -> bytes:
 </body>
 </html>
 """
+    return document.encode("utf-8")
+
+
+def _render_regional_dossier_html(
+    artifact: dict,
+    wire: Mapping[str, object],
+    analysis: Mapping[str, object],
+    *,
+    region: str,
+    canonical_path: str,
+    label: str,
+    headline: str,
+    introduction: str,
+    geography_codes: tuple[str, ...],
+    target_ids: tuple[str, ...],
+) -> bytes:
+    readiness = _render_region_section(
+        artifact,
+        anchor=f"{region}-readiness",
+        eyebrow=f"{label} · exact source readiness",
+        title="What is live, linked, pending, or unavailable",
+        introduction=introduction,
+        geography_codes=geography_codes,
+        target_ids=target_ids,
+    )
+    current_news = _render_regional_news_section(
+        wire,
+        region=region,
+        title=f"Current {label} reporting",
+        introduction=introduction,
+        dedicated_path=canonical_path,
+        limit=48,
+    )
+    analysis_callout = _render_analysis_callout(analysis)
+    document = f'''<!doctype html>
+<html lang="en" data-tk-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{_esc(label)} evidence · Palimpsest</title>
+<meta name="description" content="A current, provenance-first {_esc(label)} evidence dossier with attributed regional reporting and exact source readiness.">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://palimpsest.info{_esc(canonical_path)}">
+<link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
+<meta name="theme-color" content="#edf2ec">
+{site_nav.HEAD}
+<link rel="stylesheet" href="/assets/bri.css">
+</head>
+<body class="ps tk bri-page">
+<!-- GENERATED BY scripts/build_bri_observatory.py -->
+{site_nav.render(canonical_path)}
+<main id="main">
+  <header class="bri-hero">
+    <p class="bri-eyebrow">{_esc(label)} evidence dossier · artifact as of {_esc(artifact["as_of"])}</p>
+    <h1>{_esc(headline)}</h1>
+    <p class="bri-dek">{_esc(introduction)} Claims remain attributed; source agreement, legal findings and causal responsibility are not inferred from repetition.</p>
+    <p class="bri-actions"><a href="/belt-and-road/">Open the complete BRI observatory</a><a href="/news/">Open live news</a></p>
+  </header>
+
+  {analysis_callout}
+
+  {current_news}
+
+  {readiness}
+</main>
+<footer class="bri-footer"><p><strong>Palimpsest { _esc(label) } dossier</strong> · Current public evidence, exact clocks and visible limitations.</p><p><a href="/belt-and-road/">BRI observatory</a> · <a href="/challenge.html">Challenge a source or method</a></p></footer>
+{site_nav.FOOT}
+</body>
+</html>
+'''
     return document.encode("utf-8")
 
 
@@ -325,7 +1143,10 @@ def _render_observation_datasets(artifact: dict) -> str:
   </section>"""
 
 
-def _render_html(artifact: dict) -> bytes:
+def _render_html(
+    artifact: dict, wire: Mapping[str, object] | None = None
+) -> bytes:
+    wire = _load_newswire() if wire is None else wire
     report = artifact["coverage_report"]
     states = report["implementation_states"]
     workstreams = "".join(
@@ -413,6 +1234,40 @@ def _render_html(artifact: dict) -> bytes:
             "china_myanmar_pipelines",
             "mandalay_muse_rail",
         ),
+    )
+    regional_news = "\n\n".join(
+        (
+            _render_regional_news_section(
+                wire,
+                region="gwadar",
+                title="Current BRI, CPEC and Gwadar reporting",
+                introduction=(
+                    "Current feed metadata is separated from the project-readiness "
+                    "ledger below."
+                ),
+                dedicated_path="/belt-and-road/gwadar/",
+            ),
+            _render_regional_news_section(
+                wire,
+                region="balochistan",
+                title="Current Balochistan rights, civic and political reporting",
+                introduction=(
+                    "Documentation-group allegations, state positions and media "
+                    "reports remain visibly distinct."
+                ),
+                dedicated_path="/belt-and-road/balochistan/",
+            ),
+            _render_regional_news_section(
+                wire,
+                region="myanmar",
+                title="Current Myanmar, Rakhine, Kachin and Shan reporting",
+                introduction=(
+                    "The stream preserves publisher attribution across national "
+                    "and regional Myanmar reporting."
+                ),
+                dedicated_path="/belt-and-road/myanmar/",
+            ),
+        )
     )
     schema_org_document = {
         "@context": "https://schema.org",
@@ -507,6 +1362,8 @@ def _render_html(artifact: dict) -> bytes:
     <ul class="bri-targets" data-bri-targets>{targets}</ul>
   </section>
 
+  {regional_news}
+
   <section class="bri-section bri-dark" id="balochistan" aria-labelledby="balochistan-title">
     <p class="bri-eyebrow">Balochistan: plural record, never one label</p><h2 id="balochistan-title">The umbrella term is a research concept, not a database actor.</h2>
     <p>{_esc(artifact["movement_taxonomy"]["identity_rule"])}</p>
@@ -568,6 +1425,7 @@ def build(
     wdi_series_registry_repository_path: str = WDI_SERIES_REGISTRY_PATH,
     wdi_publication_receipt_path: Path | None | object = _AUTO_WDI_PUBLICATION_RECEIPT,
     wdi_archived_size_receipt_path: Path | None = None,
+    newswire_path: Path = DEFAULT_NEWSWIRE,
 ) -> tuple[bytes, bytes]:
     registry = load_registry(registry_path)
     observation_datasets = None
@@ -606,7 +1464,8 @@ def build(
         registry,
         observation_datasets=observation_datasets,
     )
-    return _json_bytes(artifact), _render_html(artifact)
+    wire = _load_newswire(newswire_path)
+    return _json_bytes(artifact), _render_html(artifact, wire)
 
 
 def main() -> int:
@@ -616,6 +1475,46 @@ def main() -> int:
     parser.add_argument("--html-output", type=Path, default=DEFAULT_HTML)
     parser.add_argument(
         "--gwadar-html-output", type=Path, default=DEFAULT_GWADAR_HTML
+    )
+    parser.add_argument(
+        "--balochistan-html-output", type=Path, default=DEFAULT_BALOCHISTAN_HTML
+    )
+    parser.add_argument(
+        "--myanmar-html-output", type=Path, default=DEFAULT_MYANMAR_HTML
+    )
+    parser.add_argument(
+        "--gwadar-analysis-html-output",
+        type=Path,
+        default=DEFAULT_GWADAR_ANALYSIS_HTML,
+    )
+    parser.add_argument(
+        "--gwadar-analysis-json-output",
+        type=Path,
+        default=DEFAULT_GWADAR_ANALYSIS_JSON,
+    )
+    parser.add_argument(
+        "--balochistan-analysis-html-output",
+        type=Path,
+        default=DEFAULT_BALOCHISTAN_ANALYSIS_HTML,
+    )
+    parser.add_argument(
+        "--balochistan-analysis-json-output",
+        type=Path,
+        default=DEFAULT_BALOCHISTAN_ANALYSIS_JSON,
+    )
+    parser.add_argument(
+        "--myanmar-analysis-html-output",
+        type=Path,
+        default=DEFAULT_MYANMAR_ANALYSIS_HTML,
+    )
+    parser.add_argument(
+        "--myanmar-analysis-json-output",
+        type=Path,
+        default=DEFAULT_MYANMAR_ANALYSIS_JSON,
+    )
+    parser.add_argument("--newswire", type=Path, default=DEFAULT_NEWSWIRE)
+    parser.add_argument(
+        "--ucdp-aggregate", type=Path, default=DEFAULT_UCDP_AGGREGATE
     )
     parser.add_argument(
         "--wdi-bundle",
@@ -665,12 +1564,91 @@ def main() -> int:
         wdi_series_registry_path=args.wdi_series_registry,
         wdi_publication_receipt_path=args.wdi_publication_receipt,
         wdi_archived_size_receipt_path=args.wdi_archived_size_receipt,
+        newswire_path=args.newswire,
     )
-    gwadar_payload = _render_gwadar_html(json.loads(json_payload))
+    artifact = json.loads(json_payload)
+    wire = _load_newswire(args.newswire)
+    wdi_bundle, _ = load_wdi_bundle(
+        args.wdi_bundle,
+        series_registry_path=args.wdi_series_registry,
+    )
+    ucdp_bundle = _load_ucdp_aggregate(args.ucdp_aggregate)
+    analyses = {
+        region: _build_regional_analysis(
+            artifact,
+            wire,
+            region=region,
+            wdi_bundle=wdi_bundle,
+            ucdp_bundle=ucdp_bundle,
+        )
+        for region in ("gwadar", "balochistan", "myanmar")
+    }
+    gwadar_payload = _render_gwadar_html(artifact, wire, analyses["gwadar"])
+    balochistan_payload = _render_regional_dossier_html(
+        artifact,
+        wire,
+        analyses["balochistan"],
+        region="balochistan",
+        canonical_path="/belt-and-road/balochistan/",
+        label="Balochistan",
+        headline="Rights claims, political economy and public records—source by source.",
+        introduction=(
+            "This lane keeps reported abuses, civic activity, state actions, "
+            "resource governance and CPEC-linked political economy separate."
+        ),
+        geography_codes=("PAK-BAL", "PAK-GWD"),
+        target_ids=("balochistan_resources_revenue", "balochistan_movement_history"),
+    )
+    myanmar_payload = _render_regional_dossier_html(
+        artifact,
+        wire,
+        analyses["myanmar"],
+        region="myanmar",
+        canonical_path="/belt-and-road/myanmar/",
+        label="Myanmar",
+        headline="CMEC, conflict, rights and local effects—without flattening the record.",
+        introduction=(
+            "This lane keeps official project claims, independent reporting, "
+            "humanitarian evidence and local political economy distinct."
+        ),
+        geography_codes=("MMR", "MMR-RKH"),
+        target_ids=(
+            "cmec_portfolio",
+            "kyaukpyu_port_sez",
+            "china_myanmar_pipelines",
+            "mandalay_muse_rail",
+        ),
+    )
     outputs = (
         (args.json_output, json_payload),
         (args.html_output, html_payload),
         (args.gwadar_html_output, gwadar_payload),
+        (args.balochistan_html_output, balochistan_payload),
+        (args.myanmar_html_output, myanmar_payload),
+        (
+            args.gwadar_analysis_html_output,
+            _render_analysis_html(analyses["gwadar"]),
+        ),
+        (
+            args.gwadar_analysis_json_output,
+            _json_bytes(analyses["gwadar"]),
+        ),
+        (
+            args.balochistan_analysis_html_output,
+            _render_analysis_html(analyses["balochistan"]),
+        ),
+        (
+            args.balochistan_analysis_json_output,
+            _json_bytes(analyses["balochistan"]),
+        ),
+        (
+            args.myanmar_analysis_html_output,
+            _render_analysis_html(analyses["myanmar"]),
+        ),
+        (
+            args.myanmar_analysis_json_output,
+            _json_bytes(analyses["myanmar"]),
+        ),
     )
     if args.check:
         drift = [str(path.relative_to(ROOT)) for path, payload in outputs if not path.is_file() or path.read_bytes() != payload]
@@ -681,7 +1659,7 @@ def main() -> int:
         return 0
     for path, payload in outputs:
         _atomic_write(path, payload)
-        print(f"wrote {path.relative_to(ROOT)} ({len(payload)} bytes)")
+        print(f"wrote {_display_path(path)} ({len(payload)} bytes)")
     return 0
 
 

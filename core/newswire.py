@@ -419,6 +419,42 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         "media",
         "business-recorder-editorial",
     ),
+    "myanmar-now": (
+        "https://myanmar-now.org/en/feed/",
+        ("myanmar-now.org",),
+        "media",
+        "myanmar-now-editorial",
+    ),
+    "dvb-english": (
+        "https://english.dvb.no/feed/",
+        ("english.dvb.no",),
+        "media",
+        "dvb-english-editorial",
+    ),
+    "kachin-news-group": (
+        "https://kachinnews.com/feed/",
+        ("kachinnews.com",),
+        "media",
+        "kachin-news-group-editorial",
+    ),
+    "shan-news-english": (
+        "https://english.shannews.org/feed",
+        ("english.shannews.org",),
+        "media",
+        "shan-news-editorial",
+    ),
+    "hrc-balochistan": (
+        "https://hrcbalochistan.com/category/news-reports/feed/",
+        ("hrcbalochistan.com",),
+        "documentation",
+        "hrc-balochistan-documentation",
+    ),
+    "hrcp-pakistan": (
+        "https://hrcp-web.org/hrcpweb/feed/",
+        ("hrcp-web.org",),
+        "documentation",
+        "hrcp-pakistan-documentation",
+    ),
 }
 
 _SOURCE_FIELDS = frozenset(
@@ -514,9 +550,9 @@ _STOPWORDS = frozenset(
 )
 
 # A source can be topically related to a Palimpsest surface without every item in
-# that source being China evidence. These exact feeds are intrinsically scoped to
-# China/Hong Kong; global research, platform, and media feeds must say so in the
-# item metadata before a topical link can affect editorial promotion.
+# that source being regional evidence. These exact feeds are intrinsically scoped
+# to China/Hong Kong, Myanmar, or Balochistan; broad feeds must say so in the item
+# metadata before a topical link can affect editorial promotion.
 _CHINA_SCOPED_SOURCE_IDS = frozenset(
     {
         "china-digital-times",
@@ -551,6 +587,11 @@ _CHINA_SCOPED_SOURCE_IDS = frozenset(
         "arab-news-pakistan-gwadar-port",
         "daily-cpec-china-pakistan",
         "daily-cpec-gwadar",
+        "dvb-english",
+        "hrc-balochistan",
+        "kachin-news-group",
+        "myanmar-now",
+        "shan-news-english",
     }
 )
 _CHINA_FILTERED_SOURCE_IDS = frozenset(
@@ -558,13 +599,15 @@ _CHINA_FILTERED_SOURCE_IDS = frozenset(
         "business-recorder-pakistan",
         "dawn-pakistan",
         "express-tribune-balochistan",
+        "hrcp-pakistan",
     }
 )
 _CHINA_TERMS = (
     "china", "chinese", "prc", "beijing", "shanghai", "hong kong",
     "xinjiang", "tibet", "uyghur", "taiwan", "polyu", "great firewall", "gfw",
     "belt and road", "belt and road initiative", "cpec",
-    "china-pakistan economic corridor", "gwadar",
+    "china-pakistan economic corridor", "gwadar", "balochistan", "baloch",
+    "quetta", "myanmar", "burma", "rakhine", "kyaukpyu", "cmec",
     "中国", "中國", "中国大陆", "中國大陸", "北京", "上海", "香港", "新疆",
     "西藏", "维吾尔", "維吾爾", "台湾", "台灣",
 )
@@ -1704,7 +1747,8 @@ def collect_newswire(
             + over_cap
         )
         detail = (
-            "feed parsed; only current China, BRI, CPEC, or Gwadar metadata retained"
+            "feed parsed; only current China, BRI, CPEC, Balochistan, or Myanmar "
+            "metadata retained"
             if source.id in _CHINA_FILTERED_SOURCE_IDS
             else "feed parsed; only current-window metadata retained"
         )

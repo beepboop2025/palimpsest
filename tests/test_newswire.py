@@ -115,7 +115,7 @@ def _all_live_mapping(registry: SourceRegistry, *, title_prefix: str = "Source u
 def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
     registry = load_source_registry()
 
-    assert len(registry.sources) == 54
+    assert len(registry.sources) == 60
     assert {source.id for source in registry.sources} == set(nw._CLOSED_SOURCES)
     assert all(source.feed_url.startswith("https://") for source in registry.sources)
     assert all(source.rights_policy == "metadata-link-only" for source in registry.sources)
@@ -150,6 +150,10 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "dawn-pakistan",
         "express-tribune-balochistan",
         "business-recorder-pakistan",
+        "myanmar-now",
+        "dvb-english",
+        "kachin-news-group",
+        "shan-news-english",
     }
     assert all(_source(source_id).role == "media" for source_id in secondary_ids)
     assert all(_source(source_id).rights_policy == "metadata-link-only" for source_id in secondary_ids)
@@ -213,6 +217,12 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         _source("dawn-pakistan").feed_url,
         _source("express-tribune-balochistan").feed_url,
         _source("business-recorder-pakistan").feed_url,
+        _source("myanmar-now").feed_url,
+        _source("dvb-english").feed_url,
+        _source("kachin-news-group").feed_url,
+        _source("shan-news-english").feed_url,
+        _source("hrc-balochistan").feed_url,
+        _source("hrcp-pakistan").feed_url,
     } == {
         "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml",
         "https://hongkongfp.com/feed/",
@@ -251,6 +261,12 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "https://www.dawn.com/feeds/pakistan/",
         "https://tribune.com.pk/feed/balochistan",
         "https://www.brecorder.com/feeds/pakistan/",
+        "https://myanmar-now.org/en/feed/",
+        "https://english.dvb.no/feed/",
+        "https://kachinnews.com/feed/",
+        "https://english.shannews.org/feed",
+        "https://hrcbalochistan.com/category/news-reports/feed/",
+        "https://hrcp-web.org/hrcpweb/feed/",
     }
 
 
@@ -279,6 +295,12 @@ def test_new_china_source_desks_topics_and_publisher_groups_are_locked():
         "dawn-pakistan": ("media", "dawn-editorial", "politics", ("politics", "economy", "rights")),
         "express-tribune-balochistan": ("media", "express-tribune-editorial", "politics", ("politics", "security", "economy")),
         "business-recorder-pakistan": ("media", "business-recorder-editorial", "economy", ("economy", "politics")),
+        "myanmar-now": ("media", "myanmar-now-editorial", "politics", ("politics", "rights", "security")),
+        "dvb-english": ("media", "dvb-english-editorial", "politics", ("politics", "rights", "security")),
+        "kachin-news-group": ("media", "kachin-news-group-editorial", "rights", ("rights", "politics", "security", "economy")),
+        "shan-news-english": ("media", "shan-news-editorial", "rights", ("rights", "politics", "security")),
+        "hrc-balochistan": ("documentation", "hrc-balochistan-documentation", "rights", ("rights", "politics", "security")),
+        "hrcp-pakistan": ("documentation", "hrcp-pakistan-documentation", "rights", ("rights", "politics", "security")),
     }
 
     assert {

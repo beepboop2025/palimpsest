@@ -52,6 +52,11 @@ GENERATED = {
     "readings/generative-firewall-index.html",
     "belt-and-road/index.html",
     "belt-and-road/gwadar/index.html",
+    "belt-and-road/gwadar/analysis/index.html",
+    "belt-and-road/balochistan/index.html",
+    "belt-and-road/balochistan/analysis/index.html",
+    "belt-and-road/myanmar/index.html",
+    "belt-and-road/myanmar/analysis/index.html",
 } | {
     str(path.relative_to(ROOT))
     for path in (ROOT / "journal").glob("**/index.html")

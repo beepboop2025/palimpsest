@@ -18,6 +18,10 @@ from processors.bri_observatory import (
     load_registry,
 )
 from scripts.build_bri_observatory import (
+    _build_regional_analysis,
+    _display_path,
+    _regional_events,
+    _render_analysis_html,
     _render_gwadar_html,
     _render_region_section,
     build,
@@ -29,6 +33,18 @@ REGISTRY = ROOT / "config" / "bri_observatory.json"
 READING = ROOT / "readings" / "belt-and-road-observatory-latest.json"
 PAGE = ROOT / "belt-and-road" / "index.html"
 GWADAR_PAGE = ROOT / "belt-and-road" / "gwadar" / "index.html"
+BALOCHISTAN_PAGE = ROOT / "belt-and-road" / "balochistan" / "index.html"
+MYANMAR_PAGE = ROOT / "belt-and-road" / "myanmar" / "index.html"
+GWADAR_ANALYSIS_PAGE = ROOT / "belt-and-road" / "gwadar" / "analysis" / "index.html"
+GWADAR_ANALYSIS_JSON = ROOT / "belt-and-road" / "gwadar" / "analysis" / "article.json"
+BALOCHISTAN_ANALYSIS_PAGE = (
+    ROOT / "belt-and-road" / "balochistan" / "analysis" / "index.html"
+)
+BALOCHISTAN_ANALYSIS_JSON = (
+    ROOT / "belt-and-road" / "balochistan" / "analysis" / "article.json"
+)
+MYANMAR_ANALYSIS_PAGE = ROOT / "belt-and-road" / "myanmar" / "analysis" / "index.html"
+MYANMAR_ANALYSIS_JSON = ROOT / "belt-and-road" / "myanmar" / "analysis" / "article.json"
 RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
 RECEIPT_SHA256 = "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
 RECEIPT_VERIFIED_AT = "2026-08-26T15:55:34Z"
@@ -55,12 +71,259 @@ def _contrast(foreground: str, background: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def _synthetic_regional_wire() -> dict:
+    wire = json.loads((ROOT / "readings" / "newswire-latest.json").read_text())
+    template = wire["events"][0]
+
+    documentation = copy.deepcopy(template)
+    documentation.update(
+        {
+            "event_id": "event-balochistan-rights-test",
+            "version_id": "eventv-balochistan-rights-test",
+            "headline": "HRC Balochistan reports disappearances and killings",
+            "dek": (
+                "The Human Rights Council of Balochistan reported alleged enforced "
+                "disappearances and killings in its current documentation bulletin."
+            ),
+            "desk": "rights",
+            "published_at": "2026-08-29T10:00:00Z",
+            "updated_at": "2026-08-29T10:00:00Z",
+            "url": (
+                "https://palimpsest.info/news/wire/"
+                "event-balochistan-rights-test/"
+            ),
+            "topics": ["rights", "politics", "security"],
+            "evidence_strength": "single-source",
+            "evidence_groups": [
+                {
+                    "group_id": "hrc-balochistan-documentation",
+                    "roles": ["documentation"],
+                    "source_ids": ["hrc-balochistan"],
+                }
+            ],
+            "evidence_refs": [
+                {
+                    "independence_group": "hrc-balochistan-documentation",
+                    "item_id": "item-balochistan-rights-test",
+                    "published_at": "2026-08-29T10:00:00Z",
+                    "role": "documentation",
+                    "source_id": "hrc-balochistan",
+                    "source_name": "Human Rights Council of Balochistan",
+                    "title": "Balochistan human rights documentation bulletin",
+                    "url": "https://hrcbalochistan.com/example-report/",
+                    "version_id": "itemv-balochistan-rights-test",
+                }
+            ],
+        }
+    )
+
+    cpec = copy.deepcopy(template)
+    cpec.update(
+        {
+            "event_id": "event-cpec-gwadar-test",
+            "version_id": "eventv-cpec-gwadar-test",
+            "headline": "CPEC officials review the Gwadar port programme",
+            "dek": (
+                "A publisher report described a Pakistan-China working-group review "
+                "of current Gwadar projects and proposed development priorities."
+            ),
+            "desk": "economy",
+            "published_at": "2026-08-29T11:00:00Z",
+            "updated_at": "2026-08-29T11:00:00Z",
+            "url": "https://palimpsest.info/news/wire/event-cpec-gwadar-test/",
+            "topics": ["economy", "politics"],
+            "evidence_strength": "single-source",
+            "evidence_groups": [
+                {
+                    "group_id": "daily-cpec-editorial",
+                    "roles": ["media"],
+                    "source_ids": ["daily-cpec-gwadar"],
+                }
+            ],
+            "evidence_refs": [
+                {
+                    "independence_group": "daily-cpec-editorial",
+                    "item_id": "item-cpec-gwadar-test",
+                    "published_at": "2026-08-29T11:00:00Z",
+                    "role": "media",
+                    "source_id": "daily-cpec-gwadar",
+                    "source_name": "The Daily CPEC — Gwadar",
+                    "title": "CPEC officials review the Gwadar port programme",
+                    "url": "https://thedailycpec.com/example-gwadar-report/",
+                    "version_id": "itemv-cpec-gwadar-test",
+                }
+            ],
+        }
+    )
+    wire["events"] = [cpec, documentation]
+    wire["n_events"] = 2
+    wire["generated_at"] = "2026-08-29T12:00:00Z"
+    wire["window"] = {
+        "from": "2026-08-22T12:00:00Z",
+        "to": "2026-08-29T12:00:00Z",
+        "hours": 168,
+    }
+    return wire
+
+
 def test_dark_balochistan_eyebrows_clear_normal_text_contrast() -> None:
     css = (ROOT / "assets" / "bri.css").read_text(encoding="utf-8")
     assert "--bri-accent-dark: #d98c70" in css
     assert ".bri-dark .bri-eyebrow { color: var(--bri-accent-dark); }" in css
     assert _contrast("#d98c70", "#14231f") >= 4.5
     assert _contrast("#d98c70", "#1a2e28") >= 4.5
+
+
+def test_builder_displays_external_recovery_outputs_without_crashing(
+    tmp_path: Path,
+) -> None:
+    assert _display_path(ROOT / "belt-and-road" / "index.html") == (
+        "belt-and-road/index.html"
+    )
+    external = tmp_path / "regional-analysis.html"
+    assert _display_path(external) == str(external)
+
+
+def test_recurring_balochistan_analysis_is_attributed_dense_and_non_causal() -> None:
+    artifact = json.loads(READING.read_text(encoding="utf-8"))
+    wire = _synthetic_regional_wire()
+    wdi = json.loads(
+        (ROOT / "readings" / "bri-economic-observations-latest.json").read_text()
+    )
+    ucdp = json.loads((ROOT / "readings" / "ucdp-aggregate-latest.json").read_text())
+
+    article = _build_regional_analysis(
+        artifact,
+        wire,
+        region="balochistan",
+        wdi_bundle=wdi,
+        ucdp_bundle=ucdp,
+    )
+    repeated = _build_regional_analysis(
+        artifact,
+        wire,
+        region="balochistan",
+        wdi_bundle=wdi,
+        ucdp_bundle=ucdp,
+    )
+
+    assert article == repeated
+    assert article["coverage"]["event_count"] == 2
+    assert article["coverage"]["source_count"] == 2
+    assert article["coverage"]["independence_group_count"] == 2
+    assert article["coverage"]["documentation_event_count"] == 1
+    assert article["coverage"]["relation_event_count"] == 1
+    assert article["authorship"] == {
+        "byline": "Palimpsest Evidence Desk",
+        "mode": "deterministic evidence analysis",
+        "freeform_model_generation": "none",
+        "human_interviews": "none",
+    }
+    assert article["national_context"]["country_code"] == "PAK"
+    assert len(article["national_context"]["wdi"]) >= 5
+    assert article["national_context"]["ucdp"]["year"] == 2025
+    claim_text = " ".join(claim["paragraph"] for claim in article["claims"])
+    assert "1 of the current 2 dossiers" in claim_text
+    assert "does not establish coordination" in claim_text
+    assert "whose allegations remain attributed to that source" in claim_text
+
+    page = _render_analysis_html(article).decode("utf-8")
+    assert "Balochistan&#x27;s rights record cannot be edited out" in page
+    assert "Human Rights Council of Balochistan" in page
+    assert "https://hrcbalochistan.com/example-report/" in page
+    assert "National annual organized-violence context" in page
+    assert "no free-form model generation" in page.casefold()
+    assert "proves that pakistan and china" not in page.casefold()
+    assert "coordinated the reported abuse" not in page.casefold()
+
+
+def test_recurring_analysis_keeps_an_empty_window_visible_without_inference() -> None:
+    artifact = json.loads(READING.read_text(encoding="utf-8"))
+    wire = _synthetic_regional_wire()
+    wire["events"] = []
+    wire["n_events"] = 0
+    wdi = json.loads(
+        (ROOT / "readings" / "bri-economic-observations-latest.json").read_text()
+    )
+    ucdp = json.loads((ROOT / "readings" / "ucdp-aggregate-latest.json").read_text())
+    article = _build_regional_analysis(
+        artifact,
+        wire,
+        region="myanmar",
+        wdi_bundle=wdi,
+        ucdp_bundle=ucdp,
+    )
+    assert article["status"] == "coverage-gap-analysis"
+    assert article["coverage"]["event_count"] == 0
+    assert article["evidence"] == []
+    page = _render_analysis_html(article).decode("utf-8")
+    assert "article remains online to expose that coverage gap" in page
+    assert "not evidence that nothing happened" in page
+
+
+def test_regional_projection_rejects_unrelated_items_from_broad_publishers() -> None:
+    wire = _synthetic_regional_wire()
+    template = copy.deepcopy(wire["events"][0])
+
+    unrelated_myanmar_source = copy.deepcopy(template)
+    unrelated_myanmar_source.update(
+        {
+            "event_id": "event-dvb-nepal-test",
+            "headline": "More than 1,400 people missing after Nepal flood disaster",
+            "dek": "A flood report concerning Nepal and regional relief operations.",
+            "published_at": "2026-08-29T11:30:00Z",
+        }
+    )
+    unrelated_myanmar_source["evidence_refs"] = [
+        {
+            **unrelated_myanmar_source["evidence_refs"][0],
+            "source_id": "dvb-english",
+            "source_name": "DVB English",
+            "independence_group": "dvb-english-editorial",
+            "title": "More than 1,400 people missing after Nepal flood disaster",
+        }
+    ]
+    unrelated_myanmar_source["evidence_groups"] = [
+        {
+            "group_id": "dvb-english-editorial",
+            "roles": ["media"],
+            "source_ids": ["dvb-english"],
+        }
+    ]
+
+    unrelated_cpec_source = copy.deepcopy(template)
+    unrelated_cpec_source.update(
+        {
+            "event_id": "event-daily-cpec-mango-test",
+            "headline": "Pakistani mangoes reach Xinjiang by land",
+            "dek": "A publisher item about a commercial fruit shipment.",
+            "published_at": "2026-08-29T11:45:00Z",
+        }
+    )
+    unrelated_cpec_source["evidence_refs"] = [
+        {
+            **unrelated_cpec_source["evidence_refs"][0],
+            "source_id": "daily-cpec-china-pakistan",
+            "source_name": "The Daily CPEC — China-Pakistan",
+            "independence_group": "daily-cpec-editorial",
+            "title": "Pakistani mangoes reach Xinjiang by land",
+        }
+    ]
+    unrelated_cpec_source["evidence_groups"] = [
+        {
+            "group_id": "daily-cpec-editorial",
+            "roles": ["media"],
+            "source_ids": ["daily-cpec-china-pakistan"],
+        }
+    ]
+
+    wire["events"].extend((unrelated_myanmar_source, unrelated_cpec_source))
+    assert "event-dvb-nepal-test" not in {
+        event["event_id"] for event in _regional_events(wire, "myanmar")
+    }
+    assert "event-daily-cpec-mango-test" not in {
+        event["event_id"] for event in _regional_events(wire, "gwadar")
+    }
 
 
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
@@ -184,7 +447,25 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
     assert READING.read_bytes() == expected_json
     assert PAGE.read_bytes() == expected_html
     artifact = json.loads(expected_json)
-    assert GWADAR_PAGE.read_bytes() == _render_gwadar_html(artifact)
+    gwadar_analysis = json.loads(GWADAR_ANALYSIS_JSON.read_text(encoding="utf-8"))
+    assert GWADAR_PAGE.read_bytes() == _render_gwadar_html(
+        artifact,
+        analysis=gwadar_analysis,
+    )
+    assert BALOCHISTAN_PAGE.is_file()
+    assert MYANMAR_PAGE.is_file()
+    for html_path, json_path in (
+        (GWADAR_ANALYSIS_PAGE, GWADAR_ANALYSIS_JSON),
+        (BALOCHISTAN_ANALYSIS_PAGE, BALOCHISTAN_ANALYSIS_JSON),
+        (MYANMAR_ANALYSIS_PAGE, MYANMAR_ANALYSIS_JSON),
+    ):
+        article = json.loads(json_path.read_text(encoding="utf-8"))
+        assert html_path.read_bytes() == _render_analysis_html(article)
+        assert article["schema_version"] == "palimpsest.regional-analysis.v1"
+        assert article["authorship"]["freeform_model_generation"] == "none"
+    assert "Current Balochistan reporting" in BALOCHISTAN_PAGE.read_text(encoding="utf-8")
+    assert "Current Myanmar reporting" in MYANMAR_PAGE.read_text(encoding="utf-8")
+    assert "Current BRI, CPEC and Gwadar reporting" in expected_html.decode("utf-8")
     schema = json.loads((ROOT / "protocol" / "belt-and-road-observatory-v2.schema.json").read_text(encoding="utf-8"))
     Draft202012Validator(schema).validate(artifact)
     assert artifact["schema_version"] == "palimpsest.belt-and-road-observatory.v2"
@@ -377,6 +658,10 @@ def test_public_discovery_is_explicit_without_claiming_complete_ingestion() -> N
     assert "Evidence coverage contract" in page
     assert "Publication is not a claim that every registered source has been ingested" in page
     assert "https://palimpsest.info/belt-and-road/" in sitemap
+    for region in ("gwadar", "balochistan", "myanmar"):
+        assert (
+            f"https://palimpsest.info/belt-and-road/{region}/analysis/" in sitemap
+        )
     assert "https://palimpsest.info/readings/ucdp-aggregate-latest.json" in sitemap
     assert (
         "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
@@ -390,6 +675,17 @@ def test_public_discovery_is_explicit_without_claiming_complete_ingestion() -> N
     assert entry["method"] == "protocol/belt-and-road-observatory-v2.schema.json"
     assert "does not claim every registered source has been ingested" in entry["description"]
     assert "project-finance adapters remain pending" in entry["description"]
+    catalog_by_id = {item["id"]: item for item in catalog["datasets"]}
+    for region in ("gwadar", "balochistan", "myanmar"):
+        analysis = catalog_by_id[f"{region}-regional-analysis"]
+        assert analysis["status"] == "live"
+        assert analysis["collection_mode"] == "deterministic-evidence-analysis"
+        assert analysis["latest"] == (
+            f"belt-and-road/{region}/analysis/article.json"
+        )
+        assert analysis["landing_page"] == f"belt-and-road/{region}/analysis/"
+        assert "coverage.independence_group_count" in analysis["count_fields"]
+    assert {"PK", "MM"} <= set(catalog_by_id["newswire"]["geography"])
 
 
 def test_coverage_contract_is_context_not_independent_evidence() -> None:
