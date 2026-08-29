@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 
 from collectors.news_wire_live import observation_from_event, observations_from_events
 
@@ -65,6 +66,23 @@ def test_resolver_prefers_the_live_timer_wire(tmp_path, monkeypatch):
     live.write_text("{}", encoding="utf-8")
     monkeypatch.setattr(live_paths, "LIVE_NEWSWIRE_PATH", live)
     assert live_paths.resolve_newswire_path(preferred=tmp_path / "repo.json") == live
+
+
+def test_optional_json_loader_treats_inaccessible_context_as_absent(
+    tmp_path, monkeypatch
+):
+    from core import live_paths
+
+    context = tmp_path / "private-archive-context.json"
+    original_is_file = Path.is_file
+    monkeypatch.setattr(
+        Path,
+        "is_file",
+        lambda candidate: (_ for _ in ()).throw(PermissionError())
+        if candidate == context
+        else original_is_file(candidate),
+    )
+    assert live_paths.load_json_if_present(context) is None
 
 
 def test_pull_projects_the_live_timer_wire_when_present(tmp_path, monkeypatch):

@@ -74,9 +74,9 @@ def load_json_if_present(path: Path | str | None) -> dict[str, Any] | None:
     if path is None:
         return None
     candidate = Path(path)
-    if not candidate.is_file():
-        return None
     try:
+        if not candidate.is_file():
+            return None
         value = json.loads(candidate.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError):
         return None
