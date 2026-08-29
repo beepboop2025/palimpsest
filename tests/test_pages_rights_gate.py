@@ -1276,6 +1276,12 @@ def test_public_discovery_describes_restriction_instead_of_denied_values():
     assert "download economic observation ledger" not in openapi["capabilities"]
     assert index["metadata"]["access"] == "metadata-only-restricted"
     assert "separate deployment" in mcp["description"]
+    assert mcp["resources"] == [
+        "palimpsest://china-economic/publication-rights"
+    ]
+    assert mcp["metadata"]["publicToolCount"] == 6
+    assert mcp["metadata"]["publicPromptCount"] == 4
+    assert mcp["metadata"]["publicResourceCount"] == 1
     llms = (ROOT / "llms.txt").read_text(encoding="utf-8").lower()
     assert "metadata-only restricted stubs" in llms
     assert "tool availability does not" in llms
