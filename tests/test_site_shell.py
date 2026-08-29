@@ -51,6 +51,7 @@ GENERATED = {
     "news/china/rumour/index.html",
     "readings/generative-firewall-index.html",
     "belt-and-road/index.html",
+    "belt-and-road/gwadar/index.html",
 } | {
     str(path.relative_to(ROOT))
     for path in (ROOT / "journal").glob("**/index.html")
@@ -319,8 +320,13 @@ def test_bri_regions_are_an_always_visible_semantic_link_rail():
     assert site_nav.REGIONAL_EVIDENCE == (
         ("/belt-and-road/#bri-corridors", "BRI & Corridors"),
         ("/belt-and-road/#balochistan", "Balochistan"),
-        ("/belt-and-road/#pakistan-gwadar", "Pakistan & Gwadar"),
+        ("/belt-and-road/gwadar/", "Pakistan & Gwadar"),
         ("/belt-and-road/#myanmar", "Myanmar"),
+    )
+
+    assert any(
+        item.get("label") == "Live news" and item.get("href") == "/news/"
+        for item in site_nav.NAV
     )
 
     rendered = site_nav.render("/")

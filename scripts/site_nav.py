@@ -32,7 +32,7 @@ END = "<!--/PS_NAV-->"
 REGIONAL_EVIDENCE = (
     ("/belt-and-road/#bri-corridors", "BRI & Corridors"),
     ("/belt-and-road/#balochistan", "Balochistan"),
-    ("/belt-and-road/#pakistan-gwadar", "Pakistan & Gwadar"),
+    ("/belt-and-road/gwadar/", "Pakistan & Gwadar"),
     ("/belt-and-road/#myanmar", "Myanmar"),
 )
 
@@ -41,7 +41,7 @@ REGIONAL_EVIDENCE = (
 # stops being true rather than letting it rot into furniture.
 NAV = [
     {"label": "Findings", "href": "/journal/"},
-    {"label": "Source index", "href": "/news/"},
+    {"label": "Live news", "href": "/news/"},
     {
         "label": "Observatory",
         "lede": "Open a current measurement. Each page shows the result, source receipt, freshness and limit.",
