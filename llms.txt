@@ -23,7 +23,7 @@ linked according to those catalogued rights.
 ## Agent and financial-evidence discovery
 
 The machine-readable [AI catalog](https://palimpsest.info/.well-known/ai-catalog.json)
-describes the public MCP `1.9.1` release boundary, the independently versioned
+describes the public MCP `1.9.3` release boundary, the independently versioned
 OpenAPI `2.0.1` contract, the restricted China publication-rights status, the
 gated China Observatory index, the BRI observatory, its frozen v1 snapshot and
 reviewed WDI national-context bundle, and the canonical Financial Evidence Agent
@@ -486,12 +486,12 @@ one score or imply that temporal co-movement is corroboration.
 
 ## For agents (MCP)
 
-The deployed MCP 1.9.1 server exposes the tool names below. Tool availability is not
+The deployed MCP 1.9.3 server exposes the tool names below. Tool availability is not
 publication authorization: native fail-closed China restriction semantics require a
 separate MCP release and live deployment proof, while this Pages release gates static
 artifacts independently.
 
-- MCP server v1.9.1 (stateless streamable HTTP, no auth, no key): https://api.seiche.info/palimpsest/mcp
+- MCP server v1.9.3 (stateless streamable HTTP, no auth, no key): https://api.seiche.info/palimpsest/mcp
 - Tools: `list_signals` (discover every published signal and its source URL),
   `get_signal` (one signal's full payload; `max_rows` caps long row arrays and
   any cap applied is reported with the true total), `get_newsroom` (read the

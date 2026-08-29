@@ -1751,8 +1751,8 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
     live_version = card["access"]["mcp_version"]
 
     assert mcp.SERVER_VERSION == "1.9.3"
-    assert live_version == "1.9.1"
-    assert mcp.SERVER_VERSION != live_version  # held candidate, not deployment proof
+    assert live_version == "1.9.3"
+    assert mcp.SERVER_VERSION == live_version
     # The static REST contract has its own release authority and is not
     # version-coupled to the independently deployed MCP server.
     assert openapi["info"]["version"] == "2.0.1"

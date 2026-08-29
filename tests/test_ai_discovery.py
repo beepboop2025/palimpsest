@@ -151,7 +151,7 @@ def test_product_card_exposes_production_verified_bri_v2_wdi_context():
         "causal_inference": "prohibited",
     }
     assert access["openapi_version"] == "2.0.1"
-    assert access["mcp_version"] == "1.9.1"
+    assert access["mcp_version"] == "1.9.3"
     assert access["bri_economic_observations"] == (
         "https://palimpsest.info/readings/bri-economic-observations-latest.json"
     )
