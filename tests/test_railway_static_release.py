@@ -132,6 +132,7 @@ EVIDENCE_LAKE_CRITICAL_PATHS = {
     "protocol/evidence-lake-metrics-producer-receipt-v1.schema.json",
     "protocol/evidence-lake-metrics-v1.schema.json",
     "readings/evidence-lake-metrics-latest.json",
+    "readings/evidence-lake-metrics-producer-receipt.json",
 }
 
 
@@ -169,7 +170,7 @@ def test_manifest_binds_every_rights_critical_file(tmp_path: Path) -> None:
     assert "pages-rights-release-receipt.json" not in manifest["critical_files"]
 
 
-def test_manifest_binds_evidence_lake_page_schemas_and_projection(
+def test_manifest_binds_evidence_lake_page_schemas_projection_and_receipt(
     tmp_path: Path,
 ) -> None:
     root = _publication_root(tmp_path)
@@ -348,7 +349,7 @@ def test_server_serves_manifest_bound_publication(tmp_path: Path) -> None:
         thread.join(timeout=5)
 
 
-def test_server_never_caches_mutable_evidence_lake_metrics_head(
+def test_server_never_caches_mutable_evidence_lake_pair(
     tmp_path: Path,
 ) -> None:
     root = _publication_root(tmp_path)
@@ -359,6 +360,12 @@ def test_server_never_caches_mutable_evidence_lake_metrics_head(
         base = f"http://127.0.0.1:{server.server_port}"
         with urllib.request.urlopen(
             base + "/readings/evidence-lake-metrics-latest.json", timeout=5
+        ) as response:
+            assert response.status == 200
+            assert response.headers["Cache-Control"] == "no-store"
+
+        with urllib.request.urlopen(
+            base + "/readings/evidence-lake-metrics-producer-receipt.json", timeout=5
         ) as response:
             assert response.status == 200
             assert response.headers["Cache-Control"] == "no-store"

@@ -51,7 +51,7 @@ EVIDENCE_LAKE_RECEIPT_KEY_ID = "neo-public-metrics-2026-08"
 EVIDENCE_LAKE_RECEIPT_KEY_ENV = "EVIDENCE_LAKE_METRICS_HMAC_KEY"
 EVIDENCE_LAKE_PRODUCER_ID = "palimpsest-bulk-data-plane"
 EVIDENCE_LAKE_PRODUCER_RELEASE_ID = (
-    "a8c8856395cbe4e1121dc06480a42fcb855c05b0d494fe3aacd274178c49c927"
+    "f7a422c13521ab6b21325c9eac04ef1799c94f0c9ee71d2116a3c8aedca89f41"
 )
 EVIDENCE_LAKE_MIN_KEY_BYTES = 32
 EVIDENCE_LAKE_MAX_KEY_BYTES = 4 * 1024
@@ -95,9 +95,10 @@ class ImportOutcome:
         return asdict(self)
 
 
-# Code-pinned now, but deliberately not fetched by the recurring workflow until the
-# exact Caddy route is deployed and independently verified. Activation is the one-line
-# replacement of ``+ ()`` below with ``+ PENDING_SNAPSHOTS``; 404 semantics stay strict.
+# The Evidence Lake route is code-pinned and activated only through the reviewed
+# ``PENDING_SNAPSHOTS`` tuple below. Keeping the activation tuple explicit preserves a
+# one-line audit trail while the normal strict 404 and shared-secret gates remain in
+# force.
 EVIDENCE_LAKE_SNAPSHOT = HostSnapshot(
     snapshot_id="evidence-lake-metrics",
     url=(
@@ -127,7 +128,7 @@ PENDING_SNAPSHOTS: tuple[HostSnapshot, ...] = (EVIDENCE_LAKE_SNAPSHOT,)
 
 
 # Deliberately not environment or CLI. Changing or activating a trust origin is a
-# code review. The empty tuple is the closed activation gate documented above.
+# code review; this explicit tuple append is the reviewed activation gate.
 SNAPSHOTS: tuple[HostSnapshot, ...] = (
     HostSnapshot(
         snapshot_id="baike-public-snapshot",
@@ -174,7 +175,7 @@ SNAPSHOTS: tuple[HostSnapshot, ...] = (
         max_bytes=512 * 1024,
         required_fields=("generated_at", "source", "method", "scope", "n_observations"),
     ),
-) + ()
+) + PENDING_SNAPSHOTS
 
 
 def _reject_duplicate_keys(

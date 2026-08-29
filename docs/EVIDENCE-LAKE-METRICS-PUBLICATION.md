@@ -24,17 +24,19 @@ only Neo's blocked large-corpus lane, not Palimpsest's separate bounded,
 privacy-reviewed public-channel observations.
 
 The HMAC receipt contract is versioned at
-`protocol/evidence-lake-metrics-producer-receipt-v1.schema.json`, but no production
-receipt is committed yet. The owner-controlled host key and matching GitHub secret
-have not been provisioned. A placeholder or test signature would weaken the boundary,
-so the route remains pending instead.
+`protocol/evidence-lake-metrics-producer-receipt-v1.schema.json`. The admitted
+production receipt is stored at
+`readings/evidence-lake-metrics-producer-receipt.json` and is a release-critical
+artifact: a Railway bundle missing it fails before deployment. The owner-controlled
+host key and matching GitHub secret remain outside the repository; a placeholder or
+test signature is never an acceptable substitute.
 
-The future host origin is code-pinned as `EVIDENCE_LAKE_SNAPSHOT` in
+The host origin is code-pinned as `EVIDENCE_LAKE_SNAPSHOT` in
 `scripts/import_host_snapshot.py`, and its exact Caddy handler is declared in
-`ops/caddy/palimpsest-host-snapshots.caddy`. The spec is deliberately held in
-`PENDING_SNAPSHOTS`; normal refreshes do not request it. This prevents an unproven
-host route from breaking the existing publication workflow or being described as
-live.
+`ops/caddy/palimpsest-host-snapshots.caddy`. The reviewed activation appends the
+explicit `PENDING_SNAPSHOTS` tuple to `SNAPSHOTS`, so normal refreshes now request the
+signed pair. There is still no environment variable or CLI flag that can add another
+origin or bypass receipt verification.
 
 The intended flow is:
 
@@ -131,14 +133,15 @@ Do not activate import from repository intent alone. Complete these steps in ord
    `ops/railway/build_release_manifest.py` `CRITICAL_PATHS` and the matching static
    release contract test. Add the receipt path to the static server's exact `no-store`
    set and response-header regression as well, so caches cannot serve a receipt from a
-   different release than the mutable projection. The Railway manifest must bind the
-   receipt bytes; do not make the path critical while the production receipt is still
-   absent.
-8. In `scripts/import_host_snapshot.py`, change the single active-tuple suffix
-   `+ ()` to `+ PENDING_SNAPSHOTS`.
+   different release than the mutable projection. The Railway manifest binds the
+   receipt bytes and therefore fails closed if the pair is incomplete.
+8. In `scripts/import_host_snapshot.py`, activate the reviewed route only through the
+   explicit `+ PENDING_SNAPSHOTS` tuple append.
 9. Let the existing GitHub refresh verify, import, test, scrub, seal and commit
    the pair. Verify the resulting Railway release and served bytes separately before
    describing continuous publication as active.
 
-Until step 8, tests require that normal refreshes never request the pending route.
-No environment variable or CLI flag can bypass this activation gate.
+The checked-in importer includes the reviewed tuple append. Tests require every
+normal refresh to request receipt / projection / receipt, and require the key gate to
+fail before any Evidence Lake request. The separate release manifest and static
+server tests bind the receipt bytes and exact `no-store` response.

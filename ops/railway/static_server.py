@@ -73,6 +73,7 @@ class PalimpsestStaticHandler(SimpleHTTPRequestHandler):
             "/readyz",
             "/railway-release.json",
             "/readings/evidence-lake-metrics-latest.json",
+            "/readings/evidence-lake-metrics-producer-receipt.json",
             "/mcp",
             "/mcp/",
         }:
