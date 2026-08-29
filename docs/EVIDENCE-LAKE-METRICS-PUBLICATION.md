@@ -118,7 +118,7 @@ Do not activate import from repository intent alone. Complete these steps in ord
    commit, print, or transmit that key through a receipt.
 3. Generate the closed producer receipt with key ID
    `neo-public-metrics-2026-08`; publish the projection and receipt as regular,
-   single-link files under `/var/lib/palimpsest/readings`.
+   single-link files under `/var/lib/palimpsest/evidence-lake-metrics/current`.
 4. Deploy the two exact Caddy paths. Do not add a wildcard or directory browser.
 5. Independently fetch receipt / projection / receipt with redirects disabled.
    Confirm byte-stable receipts, `Content-Type`, `Cache-Control: no-store,

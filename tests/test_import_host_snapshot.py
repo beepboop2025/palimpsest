@@ -1494,7 +1494,7 @@ def test_cli_exposes_structured_outcomes_and_reviewed_stale_flag(
     assert capsys.readouterr().err == ""
 
 
-def test_caddy_exposes_only_the_five_exact_no_store_files():
+def test_caddy_exposes_only_exact_no_store_snapshot_files():
     text = CADDY.read_text(encoding="utf-8")
     assert (
         text.count(
@@ -1518,12 +1518,64 @@ def test_caddy_exposes_only_the_five_exact_no_store_files():
         )
         == 1
     )
+    assert (
+        text.count(
+            "/palimpsest/evidence-lake-metrics/"
+            "evidence-lake-metrics-producer-receipt.json"
+        )
+        == 1
+    )
     assert "/palimpsest/baike-public-snapshot/*" not in text
     assert "/palimpsest/evidence-lake-metrics/*" not in text
     assert "root * /var/lib/palimpsest/readings" in text
     assert 'header Cache-Control "no-store, no-transform"' in text
     assert "file_server browse" not in text
     assert "/undertext" not in text
+
+
+def test_caddy_evidence_lake_route_is_exact_read_only_atomic_pair():
+    text = CADDY.read_text(encoding="utf-8")
+    matcher_name = "palimpsest_evidence_lake_metrics"
+    matcher_start = text.index(f"    @{matcher_name} {{")
+    handler_start = text.index(f"    handle @{matcher_name} {{", matcher_start)
+    handler_end = text.index("\n    }", handler_start) + len("\n    }")
+    matcher = text[matcher_start:handler_start]
+    handler = text[handler_start:handler_end]
+
+    method_lines = [
+        line.strip()
+        for line in matcher.splitlines()
+        if line.strip().startswith("method ")
+    ]
+    assert method_lines == ["method GET HEAD"]
+
+    paths = [
+        line.strip().removesuffix("\\").strip()
+        for line in matcher.splitlines()
+        if line.strip().startswith("/palimpsest/")
+    ]
+    assert paths == [
+        "/palimpsest/evidence-lake-metrics/evidence-lake-metrics-latest.json",
+        "/palimpsest/evidence-lake-metrics/"
+        "evidence-lake-metrics-producer-receipt.json",
+    ]
+    assert all("*" not in path for path in paths)
+
+    assert handler.count(
+        "root * /var/lib/palimpsest/evidence-lake-metrics/current"
+    ) == 1
+    assert "root * /var/lib/palimpsest/readings" not in handler
+    assert "uri strip_prefix /palimpsest/evidence-lake-metrics" in handler
+    for header in (
+        'header Access-Control-Allow-Origin "https://palimpsest.info"',
+        'header Cache-Control "no-store, no-transform"',
+        'header Content-Disposition "inline"',
+        'header X-Content-Type-Options "nosniff"',
+    ):
+        assert handler.count(header) == 1
+    assert "\n        file_server\n" in handler
+    assert "file_server browse" not in handler
+    assert "reverse_proxy" not in handler
 
 
 def test_workflow_imports_tests_and_stages_host_snapshots_on_every_race_path():
