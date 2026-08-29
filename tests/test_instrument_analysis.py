@@ -144,6 +144,20 @@ def test_private_signal_with_live_status_still_withholds_the_metric():
     assert analysis["key_numbers"][0]["value"] == "withheld"
 
 
+def test_reading_analysis_injection_is_idempotent_at_legacy_main_boundary():
+    feed = _feed()
+    story = feed["stories"][0]
+    analysis = instrument_analysis.build_instrument_analysis(story, feed)
+    legacy = "<html><body><main><p>Legacy dashboard</p></main></body></html>"
+
+    injected = build_newsroom.inject_reading_analysis(legacy, analysis)
+
+    assert build_newsroom.inject_reading_analysis(injected, analysis) == injected
+    assert injected.count('id="instrument-analysis"') == 1
+    assert "<p>Legacy dashboard</p>\n\n<aside" in injected
+    assert injected.endswith("</main></body></html>")
+
+
 def test_newsroom_build_emits_story_and_reading_companions():
     feed = _feed()
     outputs = build_newsroom.build_outputs(feed)

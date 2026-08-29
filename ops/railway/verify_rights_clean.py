@@ -19,17 +19,18 @@ from pathlib import Path
 LEDGER_PATH = Path("readings/china-econ-observations.jsonl")
 SENTINEL_FIELDS = ("observation_id", "raw_sha256")
 SENTINEL_RE = re.compile(rb"[0-9a-f]{32,128}\Z")
+HEX_RUN_RE = re.compile(rb"[0-9a-f]{32,}")
 MAX_PUBLIC_FILE_BYTES = 64 * 1024 * 1024
 MAX_FAILURES = 64
 DIRECT_VALUE_RE = re.compile(
-    rb'''["'](?:fdr001|fdr007|fdr014|fr001|fr007|fr014|'''
-    rb'''shibor_(?:on|1w|2w|1m|3m|6m|9m|1y)|usdcny_parity)["']'''
-    rb'''\s*(?::|=)\s*["']?[+-]?(?:\d+(?:\.\d*)?|\.\d+)''',
+    rb"""["'](?:fdr001|fdr007|fdr014|fr001|fr007|fr014|"""
+    rb"""shibor_(?:on|1w|2w|1m|3m|6m|9m|1y)|usdcny_parity)["']"""
+    rb"""\s*(?::|=)\s*["']?[+-]?(?:\d+(?:\.\d*)?|\.\d+)""",
     re.IGNORECASE,
 )
 MAPPING_VALUE_RE = re.compile(
-    rb'''["'](?:cfets_benchmarks|chinamoney)["']\s*:\s*'''
-    rb'''["']?[+-]?(?:\d+(?:\.\d*)?|\.\d+)''',
+    rb"""["'](?:cfets_benchmarks|chinamoney)["']\s*:\s*"""
+    rb"""["']?[+-]?(?:\d+(?:\.\d*)?|\.\d+)""",
     re.IGNORECASE,
 )
 
@@ -93,9 +94,7 @@ def capture_sentinels(root: Path, output: Path) -> dict[str, int]:
         for field in SENTINEL_FIELDS:
             value = row.get(field)
             if not isinstance(value, str):
-                raise RightsScanError(
-                    f"denied ledger line {line_number} lacks {field}"
-                )
+                raise RightsScanError(f"denied ledger line {line_number} lacks {field}")
             encoded = value.encode("ascii", errors="strict")
             if SENTINEL_RE.fullmatch(encoded) is None:
                 raise RightsScanError(
@@ -127,12 +126,45 @@ def _load_sentinels(path: Path) -> tuple[bytes, ...]:
     return values
 
 
+def _sentinels_by_length(
+    sentinels: tuple[bytes, ...],
+) -> tuple[tuple[int, frozenset[bytes]], ...]:
+    grouped: dict[int, set[bytes]] = {}
+    for sentinel in sentinels:
+        grouped.setdefault(len(sentinel), set()).add(sentinel)
+    return tuple(
+        (length, frozenset(values)) for length, values in sorted(grouped.items())
+    )
+
+
+def _contains_denied_sentinel(
+    raw: bytes,
+    grouped_sentinels: tuple[tuple[int, frozenset[bytes]], ...],
+) -> bool:
+    """Find exact sentinel bytes by scanning only candidate hexadecimal runs."""
+
+    for match in HEX_RUN_RE.finditer(raw):
+        candidate = match.group()
+        for length, sentinels in grouped_sentinels:
+            if len(candidate) < length:
+                continue
+            if len(candidate) == length:
+                if candidate in sentinels:
+                    return True
+                continue
+            for offset in range(len(candidate) - length + 1):
+                if candidate[offset : offset + length] in sentinels:
+                    return True
+    return False
+
+
 def verify_clean(root: Path, sentinel_path: Path) -> dict[str, int]:
     root = root.resolve(strict=True)
     sentinel_path = sentinel_path.resolve(strict=True)
     if _inside(root, sentinel_path):
         raise RightsScanError("denied sentinels must remain outside the public tree")
     sentinels = _load_sentinels(sentinel_path)
+    grouped_sentinels = _sentinels_by_length(sentinels)
     failures: list[str] = []
     scanned_bytes = 0
     files = _public_files(root)
@@ -140,7 +172,7 @@ def verify_clean(root: Path, sentinel_path: Path) -> dict[str, int]:
         raw = _regular_bytes(path)
         scanned_bytes += len(raw)
         relative = path.relative_to(root).as_posix()
-        if any(sentinel in raw for sentinel in sentinels):
+        if _contains_denied_sentinel(raw, grouped_sentinels):
             failures.append(f"sentinel:{relative}")
         if DIRECT_VALUE_RE.search(raw) or MAPPING_VALUE_RE.search(raw):
             failures.append(f"forbidden-value:{relative}")
@@ -148,8 +180,7 @@ def verify_clean(root: Path, sentinel_path: Path) -> dict[str, int]:
             break
     if failures:
         raise RightsScanError(
-            "Railway artifact retained denied China evidence: "
-            + ", ".join(failures)
+            "Railway artifact retained denied China evidence: " + ", ".join(failures)
         )
     return {
         "files": len(files),

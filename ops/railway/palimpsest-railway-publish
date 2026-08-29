@@ -1,0 +1,350 @@
+#!/usr/bin/env bash
+# Build and publish one rights-clean Palimpsest edition from the newest
+# Hetzner evidence wire. This path deliberately does not use GitHub Actions.
+
+set -Eeuo pipefail
+umask 077
+
+readonly SOURCE_REPOSITORY="${PALIMPSEST_SOURCE_REPOSITORY:-/home/palimpsest/palimpsest}"
+readonly HOST_READINGS="${PALIMPSEST_HOST_READINGS:-/var/lib/palimpsest/readings}"
+readonly LIVE_WIRE_ROOT="${PALIMPSEST_LIVE_WIRE_ROOT:-/var/lib/palimpsest/newswire}"
+readonly STATE_ROOT="${PALIMPSEST_RAILWAY_STATE_ROOT:-/var/lib/palimpsest/railway-publication}"
+readonly DATA_LOCK_FILE="${PALIMPSEST_DATA_LOCK_FILE:-/var/lib/palimpsest/railway-publication/data.lock}"
+readonly DEPLOYED_COMMIT_FILE="${PALIMPSEST_DEPLOYED_COMMIT_FILE:-/etc/palimpsest/deployed-commit}"
+readonly PROJECT_ID="${RAILWAY_PROJECT_ID:?RAILWAY_PROJECT_ID is required}"
+readonly ENVIRONMENT_ID="${RAILWAY_ENVIRONMENT_ID:?RAILWAY_ENVIRONMENT_ID is required}"
+readonly SERVICE_ID="${RAILWAY_SERVICE_ID:?RAILWAY_SERVICE_ID is required}"
+readonly PROVIDER_ORIGIN="${PALIMPSEST_RAILWAY_PROVIDER_ORIGIN:-https://palimpsest-publication-production.up.railway.app}"
+readonly PUBLIC_ORIGIN="${PALIMPSEST_PUBLIC_ORIGIN:-https://www.palimpsest.info}"
+readonly RAILWAY_BIN="${PALIMPSEST_RAILWAY_BIN:-/usr/bin/railway}"
+readonly RAILWAY_NODE_OPTIONS="${PALIMPSEST_RAILWAY_NODE_OPTIONS:---jitless}"
+readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
+
+readonly WIRE_FILE="$LIVE_WIRE_ROOT/newswire-latest.json"
+readonly LEDGER_FILE="$LIVE_WIRE_ROOT/newswire-versions.jsonl"
+readonly ANALYSIS_FILE="$LIVE_WIRE_ROOT/event-analysis-latest.json"
+readonly SUCCESS_RECEIPT="$STATE_ROOT/latest-success.json"
+
+declare -ar PUBLIC_COMPANION_PATHS=(
+  "readings/public-deletion-ledgers-history.jsonl"
+  "readings/greatfire-context-history.jsonl"
+  "readings/peer-context-history.jsonl"
+  "readings/peer-context-features.jsonl"
+  "readings/ooni-peer-context-latest.json"
+  "readings/ooni-peer-context-history.jsonl"
+  "readings/cdt-context-latest.json"
+  "readings/cdt-context-history.jsonl"
+  "readings/weiboscope-context-latest.json"
+)
+
+work_root=""
+
+log() {
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+}
+
+origin_release_sha() {
+  local origin="$1" cache_buster
+  cache_buster="$(date +%s%N)"
+  curl -fsSL --max-time 30 \
+    "$origin/railway-release.json?edition=$cache_buster" \
+    | jq -r '.source_commit // empty' 2>/dev/null \
+    || true
+}
+
+cleanup() {
+  local status=$?
+  trap - EXIT HUP INT TERM
+  if [[ -n "$work_root" && "$work_root" == "$STATE_ROOT"/work.* && -d "$work_root" ]]; then
+    chmod -R u+w "$work_root" 2>/dev/null || true
+    rm -rf --one-file-system -- "$work_root"
+  fi
+  exit "$status"
+}
+
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+mkdir -p "$STATE_ROOT"
+chmod 0700 "$STATE_ROOT"
+exec 9>"$STATE_ROOT/publish.lock"
+if ! flock -n 9; then
+  log "publisher already active; coalescing this capture"
+  exit 0
+fi
+
+for required in \
+  "$SOURCE_REPOSITORY/.git" \
+  "$DEPLOYED_COMMIT_FILE" \
+  "$WIRE_FILE" \
+  "$LEDGER_FILE" \
+  "$ANALYSIS_FILE" \
+  "$RAILWAY_BIN" \
+  "$PYTHON_BIN"; do
+  [[ -e "$required" ]] || { log "required path missing: $required" >&2; exit 1; }
+done
+
+if [[ -z "${RAILWAY_TOKEN:-}" && -z "${RAILWAY_API_TOKEN:-}" ]]; then
+  log "one Railway automation token is required" >&2
+  exit 1
+fi
+if [[ -n "${RAILWAY_TOKEN:-}" && -n "${RAILWAY_API_TOKEN:-}" ]]; then
+  log "only one Railway automation token may be configured" >&2
+  exit 1
+fi
+
+base_sha="$(tr -d '[:space:]' < "$DEPLOYED_COMMIT_FILE")"
+[[ "$base_sha" =~ ^[0-9a-f]{40}$ ]] || { log "invalid deployed commit" >&2; exit 1; }
+[[ "$(git -C "$SOURCE_REPOSITORY" rev-parse HEAD)" == "$base_sha" ]] || {
+  log "canonical checkout does not match deployed commit" >&2
+  exit 1
+}
+[[ -z "$(git -C "$SOURCE_REPOSITORY" status --porcelain=v1 --untracked-files=all)" ]] || {
+  log "canonical checkout is not clean" >&2
+  exit 1
+}
+
+receipt_input_sha=""
+receipt_release_sha=""
+provider_receipt_sha=""
+public_receipt_sha=""
+if [[ -f "$SUCCESS_RECEIPT" ]]; then
+  receipt_input_sha="$(jq -r '.input_sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_release_sha="$(jq -r '.release_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]]; then
+    provider_receipt_sha="$(origin_release_sha "$PROVIDER_ORIGIN")"
+    public_receipt_sha="$(origin_release_sha "$PUBLIC_ORIGIN")"
+  fi
+fi
+
+exec 8>"$DATA_LOCK_FILE"
+flock -s 8
+readings_sha256="$({
+  find "$HOST_READINGS" -maxdepth 1 -type f ! -name '.*' -print0
+  if [[ -d "$HOST_READINGS/anchors" && ! -L "$HOST_READINGS/anchors" ]]; then
+    while IFS= read -r -d '' anchor; do
+      filename="${anchor##*/}"
+      [[ "$filename" =~ ^roots-[0-9]{8}T[0-9]{6}Z\.txt(\.ots)?$ ]] || continue
+      printf '%s\0' "$anchor"
+    done < <(find "$HOST_READINGS/anchors" -maxdepth 1 -type f -print0)
+  fi
+} | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')"
+input_sha256="$({
+  sha256sum "$WIRE_FILE" "$LEDGER_FILE" "$ANALYSIS_FILE"
+  printf '%s  host-readings\n' "$readings_sha256"
+} | sha256sum | awk '{print $1}')"
+[[ "$input_sha256" =~ ^[0-9a-f]{64}$ ]] || { log "cannot hash live inputs" >&2; exit 1; }
+wire_generated_at="$(jq -er '.generated_at | select(type == "string")' "$WIRE_FILE")"
+
+if [[ "$receipt_input_sha" == "$input_sha256" ]]; then
+  if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]] \
+    && [[ "$provider_receipt_sha" == "$receipt_release_sha" ]] \
+    && [[ "$public_receipt_sha" == "$receipt_release_sha" ]]; then
+    flock -u 8
+    log "capture $wire_generated_at is already live at $receipt_release_sha; skipping duplicate deployment"
+    exit 0
+  fi
+  log "unchanged capture is not proven on both origins; rebuilding for self-healing"
+fi
+
+work_root="$(mktemp -d "$STATE_ROOT/work.XXXXXX")"
+checkout="$work_root/source"
+release="$work_root/release"
+
+log "building capture $wire_generated_at from base $base_sha"
+git clone --quiet --shared --no-checkout "$SOURCE_REPOSITORY" "$checkout"
+git -C "$checkout" checkout --quiet --detach "$base_sha"
+
+if find "$HOST_READINGS" -type l -print -quit | grep -q .; then
+  log "host readings contain a symbolic link; refusing overlay" >&2
+  exit 1
+fi
+
+copy_host_public_file() {
+  local relative="$1" source destination
+  [[ "$relative" == readings/* && "$relative" != *'/../'* ]] || return 1
+  source="$HOST_READINGS/${relative#readings/}"
+  destination="$checkout/$relative"
+  if [[ -f "$source" ]]; then
+    mkdir -p "${destination%/*}"
+    cp -p "$source" "$destination"
+  fi
+}
+
+while IFS= read -r -d '' tracked_path; do
+  relative="${tracked_path#readings/}"
+  if [[ "$relative" != */* ]]; then
+    copy_host_public_file "$tracked_path"
+  fi
+done < <(git -C "$checkout" ls-files -z 'readings/*')
+for tracked_path in "${PUBLIC_COMPANION_PATHS[@]}"; do
+  copy_host_public_file "$tracked_path"
+done
+if [[ -d "$HOST_READINGS/anchors" && ! -L "$HOST_READINGS/anchors" ]]; then
+  while IFS= read -r -d '' anchor; do
+    filename="${anchor##*/}"
+    [[ "$filename" =~ ^roots-[0-9]{8}T[0-9]{6}Z\.txt(\.ots)?$ ]] || continue
+    copy_host_public_file "readings/anchors/$filename"
+  done < <(find "$HOST_READINGS/anchors" -maxdepth 1 -type f -print0)
+fi
+
+cp -p "$WIRE_FILE" "$checkout/readings/newswire-latest.json"
+cp -p "$LEDGER_FILE" "$checkout/readings/newswire-versions.jsonl"
+flock -u 8
+
+export PYTHONPATH="$checkout"
+export PYTHONDONTWRITEBYTECODE=1
+export PALIMPSEST_PUBLICATION_SNAPSHOT_ROOT="$checkout"
+cd "$checkout"
+
+"$PYTHON_BIN" -c \
+  'import json; from pathlib import Path; from inject_ddti import DASHBOARDS, inject_dashboard; root = Path("."); index = json.loads((root / "readings/ddti-latest.json").read_text(encoding="utf-8")); [inject_dashboard(root / relative, index) for relative in DASHBOARDS]'
+
+"$PYTHON_BIN" -m scripts.conformal_events_pull
+"$PYTHON_BIN" -m scripts.board_alarm_pull
+"$PYTHON_BIN" -m scripts.coverage_guard_pull
+"$PYTHON_BIN" -m scripts.forecast_ledger_pull
+"$PYTHON_BIN" -m scripts.cross_layer_pull
+"$PYTHON_BIN" -m scripts.weekly_situation_pull
+"$PYTHON_BIN" -m scripts.collector_health_pull
+"$PYTHON_BIN" -m scripts.gazetteer_phylogeny_pull
+
+publish_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+"$PYTHON_BIN" -m scripts.build_economic_pulse --as-of "$publish_clock"
+"$PYTHON_BIN" -m scripts.build_china_econ_manifest
+"$PYTHON_BIN" -m scripts.build_china_econ_forecast
+"$PYTHON_BIN" -m scripts.build_china_site
+"$PYTHON_BIN" -m scripts.undertext_pull
+"$PYTHON_BIN" -m scripts.build_erasure_trail
+"$PYTHON_BIN" -m scripts.build_erasure_trail --check
+"$PYTHON_BIN" -m scripts.build_osint_china --now "$publish_clock" --input-commit "$base_sha"
+"$PYTHON_BIN" -m scripts.build_investigations --as-of "$publish_clock"
+"$PYTHON_BIN" -m scripts.build_network_rounds
+"$PYTHON_BIN" -m scripts.build_corroboration
+"$PYTHON_BIN" -m scripts.build_editorial_readiness
+"$PYTHON_BIN" -m scripts.sync_narcoscope --check
+
+# Some upstream builders record their own completion clock. Use a new ceiling
+# for aggregators so no observation can appear to come from the future.
+aggregate_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+"$PYTHON_BIN" -m core.evidence_mesh --now "$aggregate_clock"
+"$PYTHON_BIN" -m core.machine_investigations --as-of "$aggregate_clock"
+"$PYTHON_BIN" -m scripts.build_newsroom
+"$PYTHON_BIN" -m scripts.build_newsroom --check
+"$PYTHON_BIN" -m scripts.build_china_situation
+"$PYTHON_BIN" -m scripts.build_china_situation --check
+"$PYTHON_BIN" -m scripts.build_bri_observatory
+"$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
+"$PYTHON_BIN" -m scripts.build_data_catalog --check
+"$PYTHON_BIN" -m scripts.sync_nav
+"$PYTHON_BIN" -m scripts.sync_nav --check
+"$PYTHON_BIN" scripts/seal_readings.py
+"$PYTHON_BIN" scripts/seal_readings.py --check
+
+git config user.name 'palimpsest-hetzner-publisher'
+git config user.email 'publisher@palimpsest.info'
+git add -A
+git commit --quiet -m "data: Hetzner live edition $wire_generated_at"
+release_sha="$(git rev-parse HEAD)"
+[[ "$release_sha" =~ ^[0-9a-f]{40}$ ]] || { log "invalid local release SHA" >&2; exit 1; }
+[[ -z "$(git status --porcelain=v1 --untracked-files=all)" ]] || {
+  log "local release checkout is not clean" >&2
+  exit 1
+}
+
+log "rights-scrubbing local release $release_sha"
+PALIMPSEST_RAILWAY_PYTHON="$PYTHON_BIN" \
+  /usr/bin/bash "$checkout/ops/railway/build-static-bundle.sh" "$release_sha" "$release"
+
+message="palimpsest-hetzner-${release_sha:0:12}-${input_sha256:0:12}"
+upload_log="$STATE_ROOT/last-upload.json"
+upload_error_log="$STATE_ROOT/last-upload.stderr"
+log "submitting one Railway deployment: $message"
+(
+  cd "$release"
+  env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+    "$RAILWAY_BIN" up --detach --json --yes --no-gitignore \
+    --project "$PROJECT_ID" \
+    --environment "$ENVIRONMENT_ID" \
+    --service "$SERVICE_ID" \
+    --message "$message"
+) >"$upload_log" 2>"$upload_error_log"
+chmod 0600 "$upload_log" "$upload_error_log"
+
+deployment_id=""
+deployment_status=""
+for _ in $(seq 1 120); do
+  inventory="$(env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+    "$RAILWAY_BIN" deployment list --json --limit 30 \
+    --project "$PROJECT_ID" \
+    --environment "$ENVIRONMENT_ID" \
+    --service "$SERVICE_ID")"
+  match_count="$(jq --arg message "$message" '[.[] | select(.meta.cliMessage == $message)] | length' <<<"$inventory")"
+  if [[ "$match_count" == 1 ]]; then
+    deployment_id="$(jq -r --arg message "$message" '.[] | select(.meta.cliMessage == $message) | .id' <<<"$inventory")"
+    deployment_status="$(jq -r --arg message "$message" '.[] | select(.meta.cliMessage == $message) | .status' <<<"$inventory")"
+    case "$deployment_status" in
+      SUCCESS) break ;;
+      FAILED|CRASHED|REMOVED|CANCELLED|CANCELED|SKIPPED)
+        log "Railway deployment $deployment_id ended as $deployment_status" >&2
+        exit 1
+        ;;
+    esac
+  elif [[ "$match_count" != 0 ]]; then
+    log "Railway returned more than one deployment for the unique message" >&2
+    exit 1
+  fi
+  sleep 10
+done
+
+[[ "$deployment_status" == SUCCESS && -n "$deployment_id" ]] || {
+  log "Railway deployment did not become successful before timeout" >&2
+  exit 1
+}
+
+live_sha=""
+for _ in $(seq 1 36); do
+  provider_sha="$(origin_release_sha "$PROVIDER_ORIGIN")"
+  public_sha="$(origin_release_sha "$PUBLIC_ORIGIN")"
+  if [[ "$provider_sha" == "$release_sha" && "$public_sha" == "$release_sha" ]]; then
+    live_sha="$public_sha"
+    break
+  fi
+  sleep 10
+done
+
+[[ "$live_sha" == "$release_sha" ]] || {
+  log "Railway succeeded but both live origins do not yet prove $release_sha" >&2
+  exit 1
+}
+
+cache_buster="$(date +%s)"
+news_html="$(curl -fsSL --max-time 45 "$PUBLIC_ORIGIN/news/?edition=$cache_buster")"
+grep -Eq '<strong>[1-9][0-9]*/39</strong> measurements live' <<<"$news_html" || {
+  log "live newsroom is missing the rebuilt measurement counter" >&2
+  exit 1
+}
+grep -q 'The Board · Current evidence' <<<"$news_html" || {
+  log "live newsroom is missing the current Board" >&2
+  exit 1
+}
+
+receipt_tmp="$(mktemp "$STATE_ROOT/.latest-success.XXXXXX")"
+jq -n \
+  --arg recorded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg input_sha256 "$input_sha256" \
+  --arg wire_generated_at "$wire_generated_at" \
+  --arg base_sha "$base_sha" \
+  --arg release_sha "$release_sha" \
+  --arg deployment_id "$deployment_id" \
+  --arg deployment_status "$deployment_status" \
+  --arg provider_origin "$PROVIDER_ORIGIN" \
+  --arg public_origin "$PUBLIC_ORIGIN" \
+  '{schema_version:"palimpsest.hetzner-railway-publication.v1",status:"verified",recorded_at:$recorded_at,input_sha256:$input_sha256,wire_generated_at:$wire_generated_at,base_sha:$base_sha,release_sha:$release_sha,railway:{deployment_id:$deployment_id,status:$deployment_status},origins:{provider:$provider_origin,public:$public_origin},github_actions_used:false}' \
+  >"$receipt_tmp"
+chmod 0600 "$receipt_tmp"
+mv -f "$receipt_tmp" "$SUCCESS_RECEIPT"
+
+log "verified live deployment $deployment_id at $release_sha"

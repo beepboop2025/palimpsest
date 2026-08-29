@@ -3168,7 +3168,8 @@ def inject_reading_analysis(html: str, analysis: Mapping[str, Any]) -> str:
     fragment = render_reading_analysis_embed(analysis)
     close = "</main>"
     if close in cleaned:
-        return cleaned.replace(close, "\n" + fragment + close, 1)
+        before_close, after_close = cleaned.split(close, 1)
+        return before_close.rstrip() + "\n\n" + fragment + close + after_close
     open_main = re.search(r"<main\b[^>]*>", cleaned)
     if open_main:
         at = open_main.end()

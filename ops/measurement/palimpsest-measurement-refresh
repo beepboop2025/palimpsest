@@ -1,0 +1,366 @@
+#!/usr/bin/env bash
+# Refresh Palimpsest's keyless public measurements on Hetzner. Each collector
+# is isolated: a failed source preserves its last-good files and cannot block
+# successful collectors from being published.
+
+set -Eeuo pipefail
+umask 027
+
+readonly SOURCE_REPOSITORY="${PALIMPSEST_SOURCE_REPOSITORY:-/home/palimpsest/palimpsest}"
+readonly HOST_READINGS="${PALIMPSEST_HOST_READINGS:-/var/lib/palimpsest/readings}"
+readonly LIVE_WIRE_ROOT="${PALIMPSEST_LIVE_WIRE_ROOT:-/var/lib/palimpsest/newswire}"
+readonly STATE_ROOT="${PALIMPSEST_MEASUREMENT_STATE_ROOT:-/var/lib/palimpsest/measurement-refresh}"
+readonly DATA_LOCK_FILE="${PALIMPSEST_DATA_LOCK_FILE:-/var/lib/palimpsest/railway-publication/data.lock}"
+readonly DEPLOYED_COMMIT_FILE="${PALIMPSEST_DEPLOYED_COMMIT_FILE:-/etc/palimpsest/deployed-commit}"
+readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
+readonly JOB_TIMEOUT="${PALIMPSEST_COLLECTOR_TIMEOUT:-12m}"
+
+work_root=""
+checkout=""
+base_sha=""
+succeeded=0
+failed=0
+changed=0
+
+declare -ar PUBLIC_COMPANION_PATHS=(
+  "readings/public-deletion-ledgers-history.jsonl"
+  "readings/greatfire-context-history.jsonl"
+  "readings/peer-context-history.jsonl"
+  "readings/peer-context-features.jsonl"
+  "readings/ooni-peer-context-latest.json"
+  "readings/ooni-peer-context-history.jsonl"
+  "readings/cdt-context-latest.json"
+  "readings/cdt-context-history.jsonl"
+  "readings/weiboscope-context-latest.json"
+)
+
+log() {
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
+}
+
+cleanup() {
+  local status=$?
+  trap - EXIT HUP INT TERM
+  if [[ -n "$work_root" && "$work_root" == "$STATE_ROOT"/work.* && -d "$work_root" ]]; then
+    chmod -R u+w "$work_root" 2>/dev/null || true
+    rm -rf --one-file-system -- "$work_root"
+  fi
+  exit "$status"
+}
+
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+mkdir -p "$STATE_ROOT" "$STATE_ROOT/jobs"
+chmod 0700 "$STATE_ROOT" "$STATE_ROOT/jobs"
+exec 9>"$STATE_ROOT/refresh.lock"
+if ! flock -n 9; then
+  log "measurement refresh already active; coalescing"
+  exit 0
+fi
+
+base_sha="$(tr -d '[:space:]' < "$DEPLOYED_COMMIT_FILE")"
+[[ "$base_sha" =~ ^[0-9a-f]{40}$ ]] || { log "invalid deployed commit" >&2; exit 1; }
+[[ "$(git -C "$SOURCE_REPOSITORY" rev-parse HEAD)" == "$base_sha" ]] || {
+  log "canonical checkout does not match deployed commit" >&2
+  exit 1
+}
+
+work_root="$(mktemp -d "$STATE_ROOT/work.XXXXXX")"
+checkout="$work_root/source"
+git clone --quiet --shared --no-checkout "$SOURCE_REPOSITORY" "$checkout"
+git -C "$checkout" checkout --quiet --detach "$base_sha"
+
+public_outputs_for_job() {
+  case "$1" in
+    ddti) printf '%s\n' readings/ddti-latest.json readings/ddti-history.jsonl ;;
+    gdelt) printf '%s\n' readings/gdelt-latest.json readings/gdelt-history.jsonl ;;
+    weibo-hotsearch) printf '%s\n' readings/weibo-hotsearch-latest.json readings/weibo-hotsearch-history.jsonl readings/weibo-hotsearch-terms-latest.json readings/weibo-hotsearch-terms-history.jsonl ;;
+    silence-index) printf '%s\n' readings/silence-index-latest.json readings/silence-index-history.jsonl ;;
+    net4people) printf '%s\n' readings/net4people-latest.json readings/net4people-history.jsonl ;;
+    public-deletion-ledgers) printf '%s\n' readings/public-deletion-ledgers-latest.json readings/public-deletion-ledgers-history.jsonl ;;
+    greatfire-context) printf '%s\n' readings/greatfire-context-latest.json readings/greatfire-context-history.jsonl ;;
+    peer-context) printf '%s\n' readings/peer-context-latest.json readings/peer-context-history.jsonl readings/peer-context-features.jsonl readings/ooni-peer-context-latest.json readings/ooni-peer-context-history.jsonl readings/cdt-context-latest.json readings/cdt-context-history.jsonl readings/weiboscope-context-latest.json ;;
+    research-corpus) printf '%s\n' readings/research-corpus-latest.json readings/research-corpus-history.jsonl ;;
+    ooni-gfw) printf '%s\n' readings/ooni-gfw-latest.json readings/ooni-gfw-history.jsonl ;;
+    in-path-interference) printf '%s\n' readings/in-path-interference-latest.json readings/in-path-interference-history.jsonl ;;
+    censored-planet) printf '%s\n' readings/censored-planet-latest.json readings/censored-planet-history.jsonl ;;
+    inside-view) printf '%s\n' readings/inside-view-latest.json readings/inside-view-history.jsonl ;;
+    ioda-outages) printf '%s\n' readings/ioda-outages-latest.json readings/ioda-outages-history.jsonl ;;
+    circumvention-demand) printf '%s\n' readings/circumvention-demand-latest.json readings/circumvention-demand-history.jsonl ;;
+    vantage-fusion) printf '%s\n' readings/vantage-fusion-latest.json readings/vantage-fusion-history.jsonl ;;
+    erasure-observatory) printf '%s\n' readings/erasure-observatory-latest.json readings/erasure-observatory-history.jsonl readings/erasure-ledger.jsonl ;;
+    wayback) printf '%s\n' readings/wayback-latest.json readings/wayback-history.jsonl ;;
+    baike-redaction) printf '%s\n' readings/baike-redaction-latest.json readings/baike-redaction-history.jsonl ;;
+    baike-public-snapshot) printf '%s\n' readings/baike-public-snapshot-latest.json readings/baike-public-snapshot-history.jsonl ;;
+    github-refuge) printf '%s\n' readings/github-refuge-baselines.json readings/github-refuge-latest.json readings/github-refuge-history.jsonl ;;
+    app-storefront) printf '%s\n' readings/app-storefront-latest.json readings/app-storefront-history.jsonl ;;
+    apple-censorship) printf '%s\n' readings/apple-censorship-latest.json readings/apple-censorship-history.jsonl ;;
+    china-econ) printf '%s\n' readings/china-econ-latest.json readings/china-econ-history.jsonl readings/china-econ-observations.jsonl readings/china-econ-observations-latest.json ;;
+    cny-fix-gap) printf '%s\n' readings/cny-fix-gap-latest.json readings/cny-fix-gap-history.jsonl ;;
+    stock-connect) printf '%s\n' readings/stock-connect-latest.json readings/stock-connect-history.jsonl ;;
+    data-darkness) printf '%s\n' readings/data-darkness-latest.json readings/data-darkness-history.jsonl ;;
+    believability) printf '%s\n' readings/believability-latest.json readings/believability-history.jsonl ;;
+    blocklist) printf '%s\n' readings/blocklist-latest.json readings/blocklist-history.jsonl ;;
+    generative-firewall) printf '%s\n' readings/history.jsonl readings/latest.json readings/generative-firewall-index.html readings/gfi-transcripts-latest.json readings/eval-registry.jsonl readings/eval-registry-latest.json ;;
+    anchors) printf '%s\n' readings/anchors.jsonl readings/anchors-latest.json ;;
+    *) log "unknown measurement job output contract: $1" >&2; return 1 ;;
+  esac
+}
+
+copy_last_good_public_file() {
+  local relative="$1" host_relative source destination
+  [[ "$relative" == readings/* && "$relative" != *'/../'* ]] || return 1
+  host_relative="${relative#readings/}"
+  source="$HOST_READINGS/$host_relative"
+  destination="$checkout/$relative"
+  if [[ -L "$source" ]]; then
+    log "public last-good path is a symbolic link: $source" >&2
+    return 1
+  fi
+  if [[ -f "$source" ]]; then
+    mkdir -p "${destination%/*}"
+    cp -p "$source" "$destination"
+  fi
+}
+
+overlay_last_good() {
+  local tracked_path relative anchor filename
+  git -C "$checkout" reset --quiet --hard "$base_sha"
+  git -C "$checkout" clean -fdq
+  while IFS= read -r -d '' tracked_path; do
+    relative="${tracked_path#readings/}"
+    if [[ "$relative" != */* ]]; then
+      copy_last_good_public_file "$tracked_path"
+    fi
+  done < <(git -C "$checkout" ls-files -z 'readings/*')
+  for tracked_path in "${PUBLIC_COMPANION_PATHS[@]}"; do
+    copy_last_good_public_file "$tracked_path"
+  done
+  if [[ -d "$HOST_READINGS/anchors" && ! -L "$HOST_READINGS/anchors" ]]; then
+    while IFS= read -r -d '' anchor; do
+      filename="${anchor##*/}"
+      if [[ "$filename" =~ ^roots-[0-9]{8}T[0-9]{6}Z\.txt(\.ots)?$ ]]; then
+        copy_last_good_public_file "readings/anchors/$filename"
+      fi
+    done < <(find "$HOST_READINGS/anchors" -maxdepth 1 -type f -print0)
+  fi
+  if [[ -f "$LIVE_WIRE_ROOT/newswire-latest.json" ]]; then
+    cp -p "$LIVE_WIRE_ROOT/newswire-latest.json" "$checkout/readings/newswire-latest.json"
+  fi
+  if [[ -f "$LIVE_WIRE_ROOT/newswire-versions.jsonl" ]]; then
+    cp -p "$LIVE_WIRE_ROOT/newswire-versions.jsonl" "$checkout/readings/newswire-versions.jsonl"
+  fi
+}
+
+overlay_private_state() {
+  local name="$1" source destination filename source_file
+  case "$name" in
+    baike-public-snapshot)
+      source="$STATE_ROOT/private/baike-public-snapshot/state.json"
+      destination="$checkout/data/baike-public-snapshot/state.json"
+      if [[ -L "$source" ]]; then
+        log "private last-good state is a symbolic link: $source" >&2
+        return 1
+      fi
+      if [[ -f "$source" ]]; then
+        mkdir -p "${destination%/*}"
+        cp -p "$source" "$destination"
+      fi
+      ;;
+    blocklist)
+      source="$STATE_ROOT/private/citizenlab/line"
+      destination="$checkout/data/citizenlab/line"
+      if [[ -L "$source" ]]; then
+        log "private last-good directory is a symbolic link: $source" >&2
+        return 1
+      fi
+      if [[ -d "$source" ]]; then
+        if find "$source" -maxdepth 1 -type l -print -quit | grep -q .; then
+          log "private last-good directory contains a symbolic link: $source" >&2
+          return 1
+        fi
+        mkdir -p "$destination"
+        if [[ -f "$source/manifest.json" ]]; then
+          cp -p "$source/manifest.json" "$destination/manifest.json"
+        fi
+        while IFS= read -r -d '' source_file; do
+          filename="${source_file##*/}"
+          [[ "$filename" =~ ^line-v[0-9]{1,6}\.txt$ ]] || continue
+          cp -p "$source_file" "$destination/$filename"
+        done < <(find "$source" -maxdepth 1 -type f -name 'line-v*.txt' -print0)
+      fi
+      ;;
+  esac
+}
+
+promote_private_file() {
+  local source="$1" destination="$2" marker="$3" temporary
+  if [[ -L "$source" ]]; then
+    log "generated private state is a symbolic link: $source" >&2
+    return 1
+  fi
+  [[ -f "$source" && "$source" -nt "$marker" ]] || return 0
+  mkdir -p "${destination%/*}"
+  chmod 0700 "${destination%/*}"
+  temporary="${destination%/*}/.${destination##*/}.measurement-refresh.$$"
+  cp "$source" "$temporary"
+  chmod 0600 "$temporary"
+  mv -f "$temporary" "$destination"
+}
+
+promote_private_state() {
+  local name="$1" marker="$2" source filename
+  case "$name" in
+    baike-public-snapshot)
+      promote_private_file \
+        "$checkout/data/baike-public-snapshot/state.json" \
+        "$STATE_ROOT/private/baike-public-snapshot/state.json" "$marker"
+      ;;
+    blocklist)
+      promote_private_file \
+        "$checkout/data/citizenlab/line/manifest.json" \
+        "$STATE_ROOT/private/citizenlab/line/manifest.json" "$marker"
+      if [[ -d "$checkout/data/citizenlab/line" ]]; then
+        while IFS= read -r -d '' source; do
+          filename="${source##*/}"
+          [[ "$filename" =~ ^line-v[0-9]{1,6}\.txt$ ]] || continue
+          promote_private_file "$source" \
+            "$STATE_ROOT/private/citizenlab/line/$filename" "$marker"
+        done < <(find "$checkout/data/citizenlab/line" -maxdepth 1 -type f -name 'line-v*.txt' -print0)
+      fi
+      ;;
+  esac
+}
+
+promote_public_file() {
+  local relative="$1" source_file destination temporary
+  source_file="$checkout/$relative"
+  [[ -f "$source_file" && ! -L "$source_file" ]] || return 1
+  destination="$HOST_READINGS/${relative#readings/}"
+  mkdir -p "${destination%/*}"
+  temporary="${destination%/*}/.${destination##*/}.measurement-refresh.$$"
+  cp "$source_file" "$temporary"
+  chmod 0640 "$temporary"
+  mv -f "$temporary" "$destination"
+}
+
+promote_changed_readings() {
+  local marker="$1" name="$2" promoted=0 relative source_file filename
+  exec 8>"$DATA_LOCK_FILE"
+  flock -x 8
+  while IFS= read -r relative; do
+    source_file="$checkout/$relative"
+    [[ -f "$source_file" && "$source_file" -nt "$marker" ]] || continue
+    promote_public_file "$relative"
+    promoted=$((promoted + 1))
+  done < <(public_outputs_for_job "$name")
+  if [[ "$name" == anchors && -d "$checkout/readings/anchors" ]]; then
+    while IFS= read -r -d '' source_file; do
+      filename="${source_file##*/}"
+      [[ "$filename" =~ ^roots-[0-9]{8}T[0-9]{6}Z\.txt(\.ots)?$ ]] || continue
+      promote_public_file "readings/anchors/$filename"
+      promoted=$((promoted + 1))
+    done < <(find "$checkout/readings/anchors" -maxdepth 1 -type f -newer "$marker" -print0)
+  fi
+  flock -u 8
+  printf '%s\n' "$promoted"
+}
+
+job_due() {
+  local name="$1" interval_minutes="$2"
+  local stamp="$STATE_ROOT/jobs/$name.success"
+  [[ ! -f "$stamp" ]] && return 0
+  local last now
+  last="$(cat "$stamp" 2>/dev/null || printf '0')"
+  now="$(date +%s)"
+  [[ "$last" =~ ^[0-9]+$ ]] || return 0
+  (( now - last >= interval_minutes * 60 ))
+}
+
+run_job() {
+  local name="$1" interval_minutes="$2"
+  shift 2
+  if ! job_due "$name" "$interval_minutes"; then
+    log "skip $name; cadence not due"
+    return 0
+  fi
+
+  overlay_last_good
+  overlay_private_state "$name"
+  marker="$work_root/$name.marker"
+  touch "$marker"
+  log "refresh $name"
+  if (
+    cd "$checkout"
+    env PYTHONPATH="$checkout" PYTHONDONTWRITEBYTECODE=1 \
+      timeout --signal=TERM --kill-after=10s "$JOB_TIMEOUT" "$@"
+  ); then
+    promote_private_state "$name" "$marker"
+    promoted="$(promote_changed_readings "$marker" "$name")"
+    if (( promoted > 0 )); then
+      changed=$((changed + promoted))
+      date +%s >"$STATE_ROOT/jobs/$name.success"
+      log "refreshed $name; promoted $promoted file(s)"
+    else
+      log "$name returned without new public bytes; retrying next cycle"
+    fi
+    succeeded=$((succeeded + 1))
+  else
+    failed=$((failed + 1))
+    log "$name failed; retained last-good files" >&2
+  fi
+}
+
+overlay_last_good
+
+# Fast public-source and deterministic measurement lanes.
+run_job ddti 180 "$PYTHON_BIN" -c \
+  'import json, sys; from core.collector_fleet import run_snapshot_job; result = run_snapshot_job("ddti"); print(json.dumps(result, sort_keys=True)); sys.exit(0 if result.get("status") == "success" else 1)'
+run_job gdelt 360 "$PYTHON_BIN" -m scripts.gdelt_cross_pull
+run_job weibo-hotsearch 60 "$PYTHON_BIN" -m scripts.weibo_hotsearch_pull
+run_job silence-index 60 "$PYTHON_BIN" -m scripts.silence_index_pull
+run_job net4people 720 "$PYTHON_BIN" -m scripts.net4people_pull
+run_job public-deletion-ledgers 180 "$PYTHON_BIN" -m scripts.public_deletion_ledgers_pull
+run_job greatfire-context 720 "$PYTHON_BIN" -m scripts.greatfire_context_pull
+run_job peer-context 360 "$PYTHON_BIN" -m scripts.peer_context_pull
+run_job research-corpus 720 "$PYTHON_BIN" -m scripts.research_corpus_ingest
+run_job ooni-gfw 360 "$PYTHON_BIN" -m scripts.ooni_gfw_pull
+run_job in-path-interference 360 "$PYTHON_BIN" -m scripts.in_path_interference_pull
+run_job censored-planet 1440 "$PYTHON_BIN" -m scripts.censored_planet_pull
+run_job inside-view 360 "$PYTHON_BIN" -m scripts.inside_view_pull
+run_job ioda-outages 360 "$PYTHON_BIN" -m scripts.ioda_outages_pull
+run_job circumvention-demand 1440 "$PYTHON_BIN" -m scripts.circumvention_demand_pull
+run_job vantage-fusion 360 "$PYTHON_BIN" -m scripts.vantage_fusion_pull
+run_job erasure-observatory 360 "$PYTHON_BIN" -m scripts.erasure_pull
+run_job wayback 720 "$PYTHON_BIN" -m scripts.wayback_reconstruct_pull
+run_job baike-redaction 360 "$PYTHON_BIN" -m scripts.baike_redaction_pull
+run_job baike-public-snapshot 360 "$PYTHON_BIN" -m scripts.baike_public_snapshot_pull
+run_job github-refuge 720 "$PYTHON_BIN" -m scripts.github_refuge_pull
+run_job app-storefront 360 "$PYTHON_BIN" -m scripts.app_storefront_pull
+run_job apple-censorship 1440 "$PYTHON_BIN" -m scripts.apple_censorship_pull
+run_job china-econ 360 "$PYTHON_BIN" -m scripts.china_econ_pull
+run_job cny-fix-gap 1440 "$PYTHON_BIN" -m scripts.cny_fix_gap_pull
+run_job stock-connect 1440 "$PYTHON_BIN" -m scripts.stock_connect_pull
+run_job data-darkness 1440 "$PYTHON_BIN" -m scripts.data_darkness_pull
+run_job believability 720 "$PYTHON_BIN" -m scripts.believability_pull
+run_job blocklist 10080 /bin/bash -c '"$1" -m scripts.fetch_citizenlab_blocklists && "$1" -m scripts.blocklist_pull' _ "$PYTHON_BIN"
+run_job generative-firewall 1440 "$PYTHON_BIN" scripts/generative_firewall_reading.py
+run_job anchors 360 "$PYTHON_BIN" -m scripts.anchor_roots
+
+receipt_tmp="$(mktemp "$STATE_ROOT/.latest-run.XXXXXX")"
+jq -n \
+  --arg recorded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg base_sha "$base_sha" \
+  --argjson succeeded "$succeeded" \
+  --argjson failed "$failed" \
+  --argjson promoted_files "$changed" \
+  '{schema_version:"palimpsest.measurement-refresh.v1",recorded_at:$recorded_at,base_sha:$base_sha,succeeded:$succeeded,failed:$failed,promoted_files:$promoted_files}' \
+  >"$receipt_tmp"
+chmod 0600 "$receipt_tmp"
+mv -f "$receipt_tmp" "$STATE_ROOT/latest-run.json"
+
+log "measurement refresh complete: $succeeded succeeded, $failed failed, $changed files promoted"
+exit 0

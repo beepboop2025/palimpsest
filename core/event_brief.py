@@ -470,7 +470,7 @@ def load_optional_archive_context(
     candidates: list[Path] = []
     if readings_dir is not None:
         candidates.append(Path(readings_dir) / "archive-news-context-latest.json")
-    candidates.extend(live_paths.LIVE_ARCHIVE_CONTEXT_PATHS)
+    candidates.extend(live_paths.archive_context_paths())
     seen: set[Path] = set()
     for path in candidates:
         if path in seen:

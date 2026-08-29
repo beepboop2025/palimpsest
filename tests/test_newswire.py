@@ -115,7 +115,7 @@ def _all_live_mapping(registry: SourceRegistry, *, title_prefix: str = "Source u
 def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
     registry = load_source_registry()
 
-    assert len(registry.sources) == 47
+    assert len(registry.sources) == 54
     assert {source.id for source in registry.sources} == set(nw._CLOSED_SOURCES)
     assert all(source.feed_url.startswith("https://") for source in registry.sources)
     assert all(source.rights_policy == "metadata-link-only" for source in registry.sources)
@@ -143,6 +143,13 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "pandaily",
         "new-bloom",
         "taipei-times",
+        "arab-news-pakistan-cpec",
+        "arab-news-pakistan-gwadar-port",
+        "daily-cpec-china-pakistan",
+        "daily-cpec-gwadar",
+        "dawn-pakistan",
+        "express-tribune-balochistan",
+        "business-recorder-pakistan",
     }
     assert all(_source(source_id).role == "media" for source_id in secondary_ids)
     assert all(_source(source_id).rights_policy == "metadata-link-only" for source_id in secondary_ids)
@@ -199,6 +206,13 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         _source("cecc").feed_url,
         _source("made-in-china-journal").feed_url,
         _source("chrd").feed_url,
+        _source("arab-news-pakistan-cpec").feed_url,
+        _source("arab-news-pakistan-gwadar-port").feed_url,
+        _source("daily-cpec-china-pakistan").feed_url,
+        _source("daily-cpec-gwadar").feed_url,
+        _source("dawn-pakistan").feed_url,
+        _source("express-tribune-balochistan").feed_url,
+        _source("business-recorder-pakistan").feed_url,
     } == {
         "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml",
         "https://hongkongfp.com/feed/",
@@ -230,6 +244,13 @@ def test_closed_registry_contains_only_the_exact_reviewed_v1_sources():
         "https://www.cecc.gov/rss.xml",
         "https://madeinchinajournal.com/feed/",
         "https://www.nchrd.org/feed/",
+        "https://www.arabnews.pk/taxonomy/term/20166/feed",
+        "https://www.arabnews.pk/taxonomy/term/314116/feed",
+        "https://thedailycpec.com/category/china-pakistan/feed/",
+        "https://thedailycpec.com/category/gwadar/feed/",
+        "https://www.dawn.com/feeds/pakistan/",
+        "https://tribune.com.pk/feed/balochistan",
+        "https://www.brecorder.com/feeds/pakistan/",
     }
 
 
@@ -251,6 +272,13 @@ def test_new_china_source_desks_topics_and_publisher_groups_are_locked():
         "cecc": ("documentation", "us-cecc-government", "rights", ("rights", "censorship", "politics")),
         "made-in-china-journal": ("research", "made-in-china-journal-editorial", "rights", ("rights", "politics", "economy")),
         "chrd": ("documentation", "chrd-documentation", "rights", ("rights", "censorship", "politics")),
+        "arab-news-pakistan-cpec": ("media", "arab-news-pakistan-editorial", "economy", ("economy", "politics")),
+        "arab-news-pakistan-gwadar-port": ("media", "arab-news-pakistan-editorial", "economy", ("economy", "politics", "security")),
+        "daily-cpec-china-pakistan": ("media", "daily-cpec-editorial", "economy", ("economy", "politics")),
+        "daily-cpec-gwadar": ("media", "daily-cpec-editorial", "economy", ("economy", "politics")),
+        "dawn-pakistan": ("media", "dawn-editorial", "politics", ("politics", "economy", "rights")),
+        "express-tribune-balochistan": ("media", "express-tribune-editorial", "politics", ("politics", "security", "economy")),
+        "business-recorder-pakistan": ("media", "business-recorder-editorial", "economy", ("economy", "politics")),
     }
 
     assert {
@@ -262,6 +290,43 @@ def test_new_china_source_desks_topics_and_publisher_groups_are_locked():
         )
         for source_id in expected
     } == expected
+
+
+def test_broad_pakistan_feeds_retain_only_china_bri_cpec_or_gwadar_items():
+    source = _source("dawn-pakistan")
+    registry = _registry(source)
+
+    unrelated = collect_newswire(
+        registry,
+        fetcher=_fetch_map(
+            {
+                source.feed_url: _rss(
+                    source,
+                    title="Provincial health department publishes routine notice",
+                )
+            }
+        ),
+        now=NOW,
+    )
+    assert unrelated["n_items"] == 0
+    assert unrelated["coverage"]["sources"][0]["accepted_items"] == 0
+    assert unrelated["coverage"]["sources"][0]["rejected_items"] == 1
+
+    corridor = collect_newswire(
+        registry,
+        fetcher=_fetch_map(
+            {
+                source.feed_url: _rss(
+                    source,
+                    title="CPEC port work reviewed at Gwadar",
+                )
+            }
+        ),
+        now=NOW,
+    )
+    assert corridor["n_items"] == 1
+    assert corridor["items"][0]["declared_scan_ids"] == []
+    assert corridor["items"][0]["declared_economic_ids"] == []
 
 
 def test_registry_rejects_duplicate_json_keys_and_nonfinite_numbers():
@@ -930,7 +995,10 @@ def test_every_accepted_item_is_partitioned_into_exactly_one_event():
     document = collect_newswire(registry, _fetch_map(_all_live_mapping(registry)), now=NOW)
     refs = [ref["item_id"] for event in document["events"] for ref in event["evidence_refs"]]
 
-    assert len(refs) == document["n_items"] == len(registry.sources)
+    accepted_items = sum(
+        receipt["accepted_items"] for receipt in document["coverage"]["sources"]
+    )
+    assert len(refs) == document["n_items"] == accepted_items
     assert len(refs) == len(set(refs))
     assert set(refs) == {item["item_id"] for item in document["items"]}
     assert "confidence" not in json.dumps(document).casefold()

@@ -377,6 +377,48 @@ _CLOSED_SOURCES: dict[str, tuple[str, tuple[str, ...], str, str]] = {
         "documentation",
         "chrd-documentation",
     ),
+    "arab-news-pakistan-cpec": (
+        "https://www.arabnews.pk/taxonomy/term/20166/feed",
+        ("www.arabnews.pk",),
+        "media",
+        "arab-news-pakistan-editorial",
+    ),
+    "arab-news-pakistan-gwadar-port": (
+        "https://www.arabnews.pk/taxonomy/term/314116/feed",
+        ("www.arabnews.pk",),
+        "media",
+        "arab-news-pakistan-editorial",
+    ),
+    "daily-cpec-china-pakistan": (
+        "https://thedailycpec.com/category/china-pakistan/feed/",
+        ("thedailycpec.com",),
+        "media",
+        "daily-cpec-editorial",
+    ),
+    "daily-cpec-gwadar": (
+        "https://thedailycpec.com/category/gwadar/feed/",
+        ("thedailycpec.com",),
+        "media",
+        "daily-cpec-editorial",
+    ),
+    "dawn-pakistan": (
+        "https://www.dawn.com/feeds/pakistan/",
+        ("www.dawn.com",),
+        "media",
+        "dawn-editorial",
+    ),
+    "express-tribune-balochistan": (
+        "https://tribune.com.pk/feed/balochistan",
+        ("tribune.com.pk",),
+        "media",
+        "express-tribune-editorial",
+    ),
+    "business-recorder-pakistan": (
+        "https://www.brecorder.com/feeds/pakistan/",
+        ("www.brecorder.com",),
+        "media",
+        "business-recorder-editorial",
+    ),
 }
 
 _SOURCE_FIELDS = frozenset(
@@ -425,8 +467,9 @@ _TOPIC_KEYWORDS: dict[str, tuple[str, ...]] = {
     "economy": (
         "economy", "economic", "gdp", "inflation", "deflation", "trade", "tariff",
         "export", "import", "property", "housing", "unemployment", "employment", "yuan",
-        "renminbi", "market", "finance", "bank", "财政", "经济", "贸易", "出口", "进口",
-        "房地产", "失业", "就业", "人民币", "金融", "银行",
+        "renminbi", "market", "finance", "bank", "infrastructure", "economic corridor",
+        "cpec", "belt and road", "port", "财政", "经济", "贸易", "出口", "进口", "房地产",
+        "失业", "就业", "人民币", "金融", "银行",
     ),
     "politics": (
         "election", "legislature", "parliament", "party", "minister", "president",
@@ -504,11 +547,24 @@ _CHINA_SCOPED_SOURCE_IDS = frozenset(
         "cecc",
         "made-in-china-journal",
         "chrd",
+        "arab-news-pakistan-cpec",
+        "arab-news-pakistan-gwadar-port",
+        "daily-cpec-china-pakistan",
+        "daily-cpec-gwadar",
+    }
+)
+_CHINA_FILTERED_SOURCE_IDS = frozenset(
+    {
+        "business-recorder-pakistan",
+        "dawn-pakistan",
+        "express-tribune-balochistan",
     }
 )
 _CHINA_TERMS = (
     "china", "chinese", "prc", "beijing", "shanghai", "hong kong",
     "xinjiang", "tibet", "uyghur", "taiwan", "polyu", "great firewall", "gfw",
+    "belt and road", "belt and road initiative", "cpec",
+    "china-pakistan economic corridor", "gwadar",
     "中国", "中國", "中国大陆", "中國大陸", "北京", "上海", "香港", "新疆",
     "西藏", "维吾尔", "維吾爾", "台湾", "台灣",
 )
@@ -1604,7 +1660,19 @@ def collect_newswire(
             )
             continue
         endpoint_successes += 1
-        ordered = sorted(parsed.items, key=lambda item: (-_epoch(item["published_at"]), item["item_id"]))
+        ordered_all = sorted(
+            parsed.items,
+            key=lambda item: (-_epoch(item["published_at"]), item["item_id"]),
+        )
+        if source.id in _CHINA_FILTERED_SOURCE_IDS:
+            scoped_items = [
+                item for item in ordered_all if is_china_relevant_item(item)
+            ]
+            scope_filtered_count = len(ordered_all) - len(scoped_items)
+        else:
+            scoped_items = ordered_all
+            scope_filtered_count = 0
+        ordered = scoped_items
         unique: list[dict[str, Any]] = []
         duplicate_count = 0
         seen_item_ids: set[str] = set()
@@ -1623,12 +1691,23 @@ def collect_newswire(
         out_of_window = len(unique) - len(in_window)
         accepted = in_window[: registry.max_items_per_source]
         over_cap = max(0, len(in_window) - len(accepted))
-        latest_at = ordered[0]["published_at"]
+        latest_at = ordered_all[0]["published_at"]
         latest_dt = datetime.strptime(latest_at, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
         status = "stale" if now - latest_dt > timedelta(hours=source.stale_after_hours) else "success"
-        if status == "success":
+        if status == "success" and accepted:
             lead_eligible_source_ids.add(source.id)
-        rejected = parsed.rejected_items + duplicate_count + out_of_window + over_cap
+        rejected = (
+            parsed.rejected_items
+            + scope_filtered_count
+            + duplicate_count
+            + out_of_window
+            + over_cap
+        )
+        detail = (
+            "feed parsed; only current China, BRI, CPEC, or Gwadar metadata retained"
+            if source.id in _CHINA_FILTERED_SOURCE_IDS
+            else "feed parsed; only current-window metadata retained"
+        )
         receipts.append(
             _source_receipt(
                 source,
@@ -1639,7 +1718,7 @@ def collect_newswire(
                 out_of_window,
                 latest_at,
                 document_sha,
-                "feed parsed; only current-window metadata retained",
+                detail,
             )
         )
         all_items.extend(accepted)

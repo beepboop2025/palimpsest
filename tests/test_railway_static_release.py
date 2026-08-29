@@ -628,9 +628,23 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
     assert not (public_root / wire_archive.RECEIPT_RELATIVE_PATH).exists()
 
     leaked = public_root / "leaked-identity.txt"
-    leaked.write_bytes(sentinels.read_bytes().splitlines()[0] + b"\n")
+    leaked_sentinel = sentinels.read_bytes().splitlines()[0]
+    leaked.write_bytes(b"feed" + leaked_sentinel + b"cafe\n")
     with pytest.raises(rights_scan_module.RightsScanError, match="retained denied"):
         rights_scan_module.verify_clean(public_root, sentinels)
+
+
+def test_independent_rights_scan_matches_only_exact_hex_sentinel_windows() -> None:
+    sentinel = b"0123456789abcdef" * 4
+    grouped = rights_scan_module._sentinels_by_length((sentinel,))
+
+    assert rights_scan_module._contains_denied_sentinel(sentinel, grouped)
+    assert rights_scan_module._contains_denied_sentinel(
+        b"prefix-aa" + sentinel + b"bb-suffix", grouped
+    )
+    assert not rights_scan_module._contains_denied_sentinel(
+        sentinel[:-1] + b"0", grouped
+    )
 
 
 def test_static_mcp_topology_preserves_the_canonical_external_remote() -> None:

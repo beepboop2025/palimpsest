@@ -1,9 +1,11 @@
 # Hetzner evidence-wire intake
 
-This timer collects the closed, reviewed RSS/Atom registry every thirty minutes
-and retains a bounded private revision ledger on the always-on Hetzner node. It
-is a redundancy and observation plane: the race-safe GitHub workflow remains
-the public website's publication boundary.
+The base timer collects the closed, reviewed RSS/Atom registry every thirty
+minutes; production installs the reviewed five-minute override. The always-on
+Hetzner node retains a bounded private revision ledger, builds event analysis,
+and triggers the direct Railway publisher. GitHub Actions is not part of this
+publication path. An independent fifteen-minute publisher timer reconciles the
+two live origins even if the normal success trigger is interrupted.
 
 The collector stores feed metadata and links only. It never downloads article
 bodies, never executes fetched content, and treats each source as a receipt—not
@@ -15,7 +17,7 @@ successful receipt records the fresh-source count and binds the run to the
 exact latest-document timestamp and SHA-256. This keeps “the collector ran”
 separate from “current evidence exists.”
 
-The live 30-minute file is `/var/lib/palimpsest/newswire/newswire-latest.json`.
+The live timer file is `/var/lib/palimpsest/newswire/newswire-latest.json`.
 Fleet collectors and the site builder resolve that path before the repo
 `readings/newswire-latest.json` publish freeze. A successful wire refresh
 starts `palimpsest-event-analysis-live.service`, which writes
@@ -36,8 +38,8 @@ terminal publication. The node backup takes a shared lease on the same inode,
 so it cannot mix latest, lineage, and status files from different attempts.
 
 The systemd unit retries a failed attempt after two minutes, but permits only
-three starts in ten minutes. The half-hour timer remains the long-term recovery
-boundary after that bounded retry budget is exhausted.
+three starts in ten minutes. The five-minute production timer remains the
+long-term recovery boundary after that bounded retry budget is exhausted.
 
 ## Install
 
@@ -52,6 +54,11 @@ sudo install -o root -g root -m 0644 \
 sudo install -o root -g root -m 0644 \
   /home/palimpsest/palimpsest/ops/systemd/palimpsest-evidence-wire.timer \
   /etc/systemd/system/palimpsest-evidence-wire.timer
+sudo install -d -o root -g root -m 0755 \
+  /etc/systemd/system/palimpsest-evidence-wire.timer.d
+sudo install -o root -g root -m 0644 \
+  /home/palimpsest/palimpsest/ops/systemd/palimpsest-evidence-wire.5-minute-live.conf \
+  /etc/systemd/system/palimpsest-evidence-wire.timer.d/90-five-minute-live.conf
 sudo systemd-analyze verify \
   /etc/systemd/system/palimpsest-evidence-wire.service \
   /etc/systemd/system/palimpsest-evidence-wire.timer

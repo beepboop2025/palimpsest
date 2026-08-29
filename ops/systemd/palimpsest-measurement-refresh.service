@@ -1,0 +1,50 @@
+[Unit]
+Description=Refresh all keyless Palimpsest public measurements on Hetzner
+Wants=network-online.target
+After=network-online.target
+OnSuccess=palimpsest-railway-publish.service
+ConditionPathExists=/home/palimpsest/palimpsest/.git
+ConditionPathIsDirectory=/var/lib/palimpsest/readings
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+WorkingDirectory=/home/palimpsest/palimpsest
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PALIMPSEST_PYTHON_BIN=/opt/palimpsest/collector-venv/bin/python
+ExecStart=/usr/local/sbin/palimpsest-measurement-refresh
+TimeoutStartSec=4h
+UMask=0027
+Nice=12
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TasksMax=128
+MemoryMax=3G
+
+ProtectSystem=strict
+ProtectHome=read-only
+ReadOnlyPaths=/home/palimpsest/palimpsest /var/lib/palimpsest/newswire /etc/palimpsest/deployed-commit
+ReadWritePaths=/var/lib/palimpsest/readings /var/lib/palimpsest/measurement-refresh /var/lib/palimpsest/railway-publication
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

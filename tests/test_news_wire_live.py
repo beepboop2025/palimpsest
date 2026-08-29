@@ -6,6 +6,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from collectors.news_wire_live import observation_from_event, observations_from_events
 
 
@@ -68,6 +70,56 @@ def test_resolver_prefers_the_live_timer_wire(tmp_path, monkeypatch):
     assert live_paths.resolve_newswire_path(preferred=tmp_path / "repo.json") == live
 
 
+def test_publication_snapshot_excludes_changing_host_paths(tmp_path, monkeypatch):
+    from core import live_paths
+
+    snapshot = tmp_path / "snapshot"
+    readings = snapshot / "readings"
+    readings.mkdir(parents=True)
+    wire = readings / "newswire-latest.json"
+    wire.write_text("{}", encoding="utf-8")
+    (readings / "archive-news-context.last-attempt.json").write_text(
+        json.dumps({"revision_pin": "match"}), encoding="utf-8"
+    )
+    changing_live = tmp_path / "changing-live.json"
+    changing_live.write_text('{"newer":true}', encoding="utf-8")
+    monkeypatch.setattr(live_paths, "LIVE_NEWSWIRE_PATH", changing_live)
+    monkeypatch.setenv(live_paths.PUBLICATION_SNAPSHOT_ROOT_ENV, str(snapshot))
+
+    assert live_paths.resolve_newswire_path() == wire
+    assert live_paths.resolve_readings_dir() == readings
+    assert live_paths.readings_search_dirs(preferred=tmp_path / "other") == [readings]
+    assert (
+        live_paths.resolve_live_analysis_path()
+        == readings / "event-analysis-latest.json"
+    )
+    assert live_paths.archive_context_paths() == (
+        readings / "archive-news-context-latest.json",
+    )
+    assert live_paths.load_archive_refresh_status() == "ok"
+
+
+def test_publication_snapshot_refuses_a_missing_wire(tmp_path, monkeypatch):
+    from core import live_paths
+
+    snapshot = tmp_path / "snapshot"
+    (snapshot / "readings").mkdir(parents=True)
+    monkeypatch.setenv(live_paths.PUBLICATION_SNAPSHOT_ROOT_ENV, str(snapshot))
+
+    with pytest.raises(live_paths.LivePathError, match="lacks newswire-latest.json"):
+        live_paths.resolve_newswire_path()
+
+
+def test_publication_snapshot_root_must_be_absolute(tmp_path, monkeypatch):
+    from core import live_paths
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv(live_paths.PUBLICATION_SNAPSHOT_ROOT_ENV, "snapshot")
+
+    with pytest.raises(live_paths.LivePathError, match="must be absolute"):
+        live_paths.resolve_readings_dir()
+
+
 def test_optional_json_loader_treats_inaccessible_context_as_absent(
     tmp_path, monkeypatch
 ):
@@ -78,9 +130,11 @@ def test_optional_json_loader_treats_inaccessible_context_as_absent(
     monkeypatch.setattr(
         Path,
         "is_file",
-        lambda candidate: (_ for _ in ()).throw(PermissionError())
-        if candidate == context
-        else original_is_file(candidate),
+        lambda candidate: (
+            (_ for _ in ()).throw(PermissionError())
+            if candidate == context
+            else original_is_file(candidate)
+        ),
     )
     assert live_paths.load_json_if_present(context) is None
 
