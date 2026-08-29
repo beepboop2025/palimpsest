@@ -12,50 +12,49 @@ CATALOG_PATH = ROOT / ".well-known" / "ai-catalog.json"
 MANIFEST_SERVER_VERSION = json.loads(
     (ROOT / "server.json").read_text(encoding="utf-8")
 )["version"]
-# The immutable receipts below prove the currently deployed release.  The
-# checked-in manifest may describe the next candidate before deployment and
-# must not be retroactively equated with these live-release receipts.
-SERVER_VERSION = "1.9.1"
-CANDIDATE_SERVER_VERSION = "1.9.2"
-MCP_RELEASE_SHA = "9b3d71422b01252907a02530708e45682a2320b4"
+# The immutable receipts below prove the currently deployed release. Keep the
+# checked-in manifest aligned only after deployment and independent live smoke
+# have established the release boundary.
+SERVER_VERSION = "1.9.3"
+MCP_RELEASE_SHA = "1b71dd2bb2dcdec0b99691f7d4caaa13c4857574"
 MCP_DEPLOY_RUN_URL = (
-    "https://github.com/beepboop2025/palimpsest/actions/runs/32889866464"
+    "https://github.com/beepboop2025/palimpsest/actions/runs/33258332928"
 )
 MCP_DEPLOY_RECEIPT_PATH = (
-    ROOT / ".well-known" / "receipts" / "mcp-deployment-1.9.1.json"
+    ROOT / ".well-known" / "receipts" / "mcp-deployment-1.9.3.json"
 )
 MCP_DEPLOY_RECEIPT_URL = (
-    "https://palimpsest.info/.well-known/receipts/mcp-deployment-1.9.1.json"
+    "https://palimpsest.info/.well-known/receipts/mcp-deployment-1.9.3.json"
 )
 MCP_DEPLOY_RECEIPT_SHA256 = (
-    "sha256:ce70a88f6d91fb4178ebec33601f35068814e9c715da77673847f6f0266524bf"
+    "sha256:db370a46897b58d32e31561f1e664d68ea053ac38454caa58b52dd4c9ba5e834"
 )
 MCP_REGISTRY_RUN_URL = (
-    "https://github.com/beepboop2025/palimpsest/actions/runs/32890131146"
+    "https://github.com/beepboop2025/palimpsest/actions/runs/33258465637"
 )
 MCP_REGISTRY_RECEIPT_PATH = (
-    ROOT / ".well-known" / "receipts" / "mcp-registry-publication-1.9.1.json"
+    ROOT / ".well-known" / "receipts" / "mcp-registry-publication-1.9.3.json"
 )
 MCP_REGISTRY_RECEIPT_URL = (
-    "https://palimpsest.info/.well-known/receipts/mcp-registry-publication-1.9.1.json"
+    "https://palimpsest.info/.well-known/receipts/mcp-registry-publication-1.9.3.json"
 )
 MCP_REGISTRY_RECEIPT_SHA256 = (
-    "sha256:45d73064331da36a6156af487046bdc5acd42c01b247ff10982b08c545bd8e85"
+    "sha256:d9f153a99b52b686995e22e378fcd1383335d0f74c175932d4dfd6d70147b4f5"
 )
 MCP_REGISTRY_SNAPSHOT_PATH = (
-    ROOT / ".well-known" / "receipts" / "mcp-registry-latest-1.9.1.json"
+    ROOT / ".well-known" / "receipts" / "mcp-registry-latest-1.9.3.json"
 )
 MCP_REGISTRY_SNAPSHOT_URL = (
-    "https://palimpsest.info/.well-known/receipts/mcp-registry-latest-1.9.1.json"
+    "https://palimpsest.info/.well-known/receipts/mcp-registry-latest-1.9.3.json"
 )
 MCP_REGISTRY_SNAPSHOT_SHA256 = (
-    "sha256:2c5f605168fd41556532c6fffb3384af00277a7c66f3d23a164730b90167d93a"
+    "sha256:b242bf50ef87441222ac2b3b9103b99d4fad44d52dd5b119a500ee13d4508287"
 )
 MCP_REGISTRY_VERSION_URL = (
     "https://registry.modelcontextprotocol.io/v0.1/servers/"
-    "io.github.beepboop2025%2Fpalimpsest/versions/1.9.1"
+    "io.github.beepboop2025%2Fpalimpsest/versions/1.9.3"
 )
-MCP_REGISTRY_PUBLISHED_AT = "2026-08-25T19:33:43.311753Z"
+MCP_REGISTRY_PUBLISHED_AT = "2026-08-29T14:47:02.39659Z"
 BRI_WDI_RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
 BRI_WDI_RUN_URL = (
     "https://github.com/beepboop2025/palimpsest/actions/runs/32984946320"
@@ -127,8 +126,8 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
         "Palimpsest — censorship, China economy and model-eval observatory"
     )
     assert mcp["data"]["description"] == (
-        "Live censorship, China economic, and tamper-evident AI evaluation "
-        "tools with bounded analysis."
+        "Rights-aware censorship, China-economic status, and tamper-evident "
+        "AI evaluation tools."
     )
     registry_snapshot = json.loads(
         MCP_REGISTRY_SNAPSHOT_PATH.read_text(encoding="utf-8")
@@ -169,10 +168,9 @@ def test_ai_catalog_describes_the_exact_mcp_release_boundary():
     assert SERVER_VERSION in mcp["description"]
 
 
-def test_candidate_manifest_does_not_rewrite_the_proven_live_release():
-    assert SERVER_VERSION == "1.9.1"
-    assert MANIFEST_SERVER_VERSION == CANDIDATE_SERVER_VERSION
-    assert MANIFEST_SERVER_VERSION != SERVER_VERSION
+def test_manifest_matches_the_proven_live_release():
+    assert SERVER_VERSION == "1.9.3"
+    assert MANIFEST_SERVER_VERSION == SERVER_VERSION
 
 
 def test_mcp_release_receipts_are_durable_exact_bytes():
@@ -204,13 +202,13 @@ def test_mcp_release_receipts_are_durable_exact_bytes():
         "target_sha": MCP_RELEASE_SHA,
         "workflow": ".github/workflows/deploy-mcp.yml",
         "workflow_run_attempt": 1,
-        "workflow_run_id": 32889866464,
+        "workflow_run_id": 33258332928,
     }
     assert registry["schema"] == "palimpsest.mcp-registry-publication-receipt.v2"
     assert registry["target_sha"] == MCP_RELEASE_SHA
     assert registry["server_version"] == SERVER_VERSION
     assert registry["deploy_run_id"] == deployment["workflow_run_id"]
-    assert registry["workflow_run_id"] == 32890131146
+    assert registry["workflow_run_id"] == 33258465637
     assert registry["workflow_run_attempt"] == 1
     assert registry["publication_mode"] == "published"
     assert registry["official_status"] == "active"
@@ -225,7 +223,7 @@ def test_mcp_release_receipts_are_durable_exact_bytes():
     ]["data"]
     assert deployed_manifest == catalog_manifest
     assert deployed_manifest["version"] == SERVER_VERSION
-    assert MANIFEST_SERVER_VERSION == CANDIDATE_SERVER_VERSION
+    assert MANIFEST_SERVER_VERSION == SERVER_VERSION
     official = registry_snapshot["_meta"]["io.modelcontextprotocol.registry/official"]
     assert official["status"] == "active"
     assert official["isLatest"] is True
@@ -258,9 +256,11 @@ def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
     assert index["metadata"]["freshnessAuthority"].startswith(
         "Read rights_evaluated_at"
     )
-    assert "separate deployment" in entries[
+    mcp_description = entries[
         "urn:air:palimpsest.info:mcp:evidence-observatory"
     ]["description"]
+    assert "native fail-closed" in mcp_description
+    assert "cannot be promoted" in mcp_description
     assert "download economic observation ledger" not in openapi["capabilities"]
     assert "metadata-only China publication-rights status" in openapi["description"]
     assert "updatedAt" not in index

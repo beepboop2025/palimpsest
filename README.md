@@ -52,7 +52,7 @@ clocks. Its [capital-market guide](https://palimpsest.info/china/capital-markets
 deliberately narrower: official HKEX Stock Connect aggregate observations, not general
 equity, bond, derivatives or investor-level coverage. The
 [China economy API guide](https://palimpsest.info/china-economy-api/) shows keyless REST
-and release-bound MCP `1.9.1` examples while keeping revisions, rights, coverage and
+and release-bound MCP `1.9.3` examples while keeping revisions, rights, coverage and
 abstentions attached.
 
 At the 24 August 2026 publication snapshot, the broad China read and named-series

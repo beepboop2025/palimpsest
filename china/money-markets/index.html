@@ -46,7 +46,7 @@
       "@type": "FAQPage",
       "@id": "https://palimpsest.info/china/money-markets/#faq",
       "mainEntity": [
-        {"@type": "Question", "name": "Does Palimpsest provide a China money-market API?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The public OpenAPI document links the manifest and JSONL ledger, and the release-bound MCP 1.9.1 server exposes query_economic_observations. Both are read-only and keyless."}},
+        {"@type": "Question", "name": "Does Palimpsest provide a China money-market API?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. The public OpenAPI document links the manifest and JSONL ledger, and the release-bound MCP 1.9.3 server exposes query_economic_observations. Both are read-only and keyless."}},
         {"@type": "Question", "name": "Does a CFETS fixing prove funding stress?", "acceptedAnswer": {"@type": "Answer", "text": "No. Each print is an official observation for a named benchmark and tenor. A level alone does not establish system-wide stress, causation, or an economy-wide direction."}},
         {"@type": "Question", "name": "Are Palimpsest China economic forecasts validated?", "acceptedAnswer": {"@type": "Answer", "text": "No. At the 24 August 2026 publication snapshot, all named targets abstained and the broad China Observatory also abstained from an economy-wide direction. Re-read the current forecast and index artifacts before citing status."}}
       ]
@@ -115,7 +115,7 @@
     <p>Start with the manifest so scope and limitations travel with the data:</p>
     <pre><code>curl -sS https://palimpsest.info/readings/china-econ-observations-latest.json \
   | python3 -m json.tool</code></pre>
-    <p>For a bounded point-in-time MCP query, call the release-bound <code>1.9.1</code> server:</p>
+    <p>For a bounded point-in-time MCP query, call the release-bound <code>1.9.3</code> server:</p>
     <pre><code>curl -sS https://api.seiche.info/palimpsest/mcp \
   -H 'Content-Type: application/json' \
   -d '{
@@ -154,7 +154,7 @@
   <section class="cd-section cd-faq" aria-labelledby="faq">
     <p class="cd-kicker">FAQ</p>
     <h2 id="faq">Questions agents should answer before citing</h2>
-    <details open><summary>Does Palimpsest provide a China money-market API?</summary><p>Yes. The public OpenAPI document links the manifest and JSONL ledger, and the release-bound MCP 1.9.1 server exposes <code>query_economic_observations</code>. Both are read-only and keyless.</p></details>
+    <details open><summary>Does Palimpsest provide a China money-market API?</summary><p>Yes. The public OpenAPI document links the manifest and JSONL ledger, and the release-bound MCP 1.9.3 server exposes <code>query_economic_observations</code>. Both are read-only and keyless.</p></details>
     <details><summary>Does a CFETS fixing prove funding stress?</summary><p>No. Each print is an official observation for a named benchmark and tenor. A level alone does not establish system-wide stress, causation, or an economy-wide direction.</p></details>
     <details><summary>Are Palimpsest China economic forecasts validated?</summary><p>No. At the 24 August 2026 publication snapshot, all named targets abstained and the broad China Observatory also abstained from an economy-wide direction. Re-read the current forecast and index artifacts before citing status.</p></details>
   </section>
