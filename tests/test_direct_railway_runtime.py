@@ -22,6 +22,10 @@ def test_direct_runtimes_are_executable_and_share_the_snapshot_lock() -> None:
     assert shared_lock in publisher
     assert shared_lock in measurement
     assert 'export PALIMPSEST_PUBLICATION_SNAPSHOT_ROOT="$checkout"' in publisher
+    assert (
+        'cp -p "$ANALYSIS_FILE" "$checkout/readings/event-analysis-latest.json"'
+        in publisher
+    )
 
 
 def test_publisher_keeps_systemd_wx_protection_and_self_heals_origin_drift() -> None:

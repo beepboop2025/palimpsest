@@ -192,6 +192,7 @@ fi
 
 cp -p "$WIRE_FILE" "$checkout/readings/newswire-latest.json"
 cp -p "$LEDGER_FILE" "$checkout/readings/newswire-versions.jsonl"
+cp -p "$ANALYSIS_FILE" "$checkout/readings/event-analysis-latest.json"
 flock -u 8
 
 export PYTHONPATH="$checkout"
