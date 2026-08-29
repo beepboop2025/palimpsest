@@ -114,7 +114,7 @@ def test_current_candidate_satisfies_release_contract() -> None:
         ROOT / "server.json",
     )
     assert contract == {
-        "version": "1.9.2",
+        "version": "1.9.3",
         "server_name": "palimpsest",
         "tools": [
             "get_newsroom",
@@ -136,7 +136,7 @@ def test_current_candidate_satisfies_release_contract() -> None:
 
 def test_verifier_rejects_manifest_version_drift(tmp_path: Path) -> None:
     manifest = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
-    manifest["version"] = "1.9.3"
+    manifest["version"] = "1.9.4"
     path = tmp_path / "server.json"
     path.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(verifier.VerificationError, match="SERVER_VERSION"):

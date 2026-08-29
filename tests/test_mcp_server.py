@@ -344,7 +344,7 @@ def test_generic_signal_fetch_is_bounded_validated_and_cached(monkeypatch):
         ),
         (
             _BytesResponse(
-                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                "https://www.palimpsest.info/readings/ooni-gfw-latest.json",
                 b"{}",
                 9,
             ),
@@ -352,27 +352,27 @@ def test_generic_signal_fetch_is_bounded_validated_and_cached(monkeypatch):
         ),
         (
             _BytesResponse(
-                "https://palimpsest.info/readings/ooni-gfw-latest.json", b"[]"
+                "https://www.palimpsest.info/readings/ooni-gfw-latest.json", b"[]"
             ),
             "JSON object",
         ),
         (
             _BytesResponse(
-                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                "https://www.palimpsest.info/readings/ooni-gfw-latest.json",
                 b'{"x":1,"x":2}',
             ),
             "duplicate",
         ),
         (
             _BytesResponse(
-                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                "https://www.palimpsest.info/readings/ooni-gfw-latest.json",
                 b'{"x":NaN}',
             ),
             "non-finite",
         ),
         (
             _BytesResponse(
-                "https://palimpsest.info/readings/ooni-gfw-latest.json",
+                "https://www.palimpsest.info/readings/ooni-gfw-latest.json",
                 b"{}",
                 headers={"Content-Encoding": "gzip"},
             ),
@@ -563,7 +563,7 @@ def test_signal_catalog_exposes_the_reporting_and_investigation_surfaces():
         "machine-investigations",
     ):
         assert name in listed
-        assert listed[name]["url"].startswith("https://palimpsest.info/readings/")
+        assert listed[name]["url"].startswith("https://www.palimpsest.info/readings/")
 
 
 def test_mcp_copy_discloses_that_labelled_stale_evidence_is_served():
@@ -1036,7 +1036,7 @@ def test_named_series_economic_forecast_is_discoverable_as_a_signal():
     }
     forecast = signals["china-econ-forecast"]
     assert forecast["url"] == (
-        "https://palimpsest.info/readings/china-econ-forecast-latest.json"
+        "https://www.palimpsest.info/readings/china-econ-forecast-latest.json"
     )
     assert "metadata-only restricted" in forecast["description"]
 
@@ -1070,7 +1070,7 @@ def test_economic_query_enforces_both_clocks_and_selects_latest_revision(monkeyp
     assert body["observations"][0]["raw_sha256"] == revised["raw_sha256"]
     assert body["observations"][0]["observation_id"] == revised["observation_id"]
     assert body["source_url"] == (
-        "https://palimpsest.info/readings/china-econ-observations.jsonl"
+        "https://www.palimpsest.info/readings/china-econ-observations.jsonl"
     )
     assert body["manifest_url"] == mcp.ECON_OBSERVATIONS_MANIFEST_URL
     assert body["manifest"]["scope"] == "Aggregate test observations only."
@@ -1750,7 +1750,7 @@ def test_release_metadata_matches_live_mcp_without_reversioning_rest():
 
     live_version = card["access"]["mcp_version"]
 
-    assert mcp.SERVER_VERSION == "1.9.2"
+    assert mcp.SERVER_VERSION == "1.9.3"
     assert live_version == "1.9.1"
     assert mcp.SERVER_VERSION != live_version  # held candidate, not deployment proof
     # The static REST contract has its own release authority and is not
