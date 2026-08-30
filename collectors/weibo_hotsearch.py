@@ -229,7 +229,8 @@ _SENSE_RULES: dict[str, dict[str, tuple[str, ...]]] = {
         "ordinary": ("搜救", "救援", "遇难", "获救", "找到", "残骸", "坠",
                      "沉没", "翻船", "中巴", "大巴", "客车", "货车", "渔船",
                      "航班", "登山", "驴友", "游客", "男孩", "女孩", "儿童",
-                     "老人", "台风", "洪水", "泥石流", "地震"),
+                     "老人", "台风", "洪水", "山洪", "泥石流", "冰崩", "雪崩",
+                     "地震", "灾害"),
     },
     # 散步 "taking a walk": coded sense is the collective protest walk;
     # ordinary sense is exercise, leisure and lifestyle prose.

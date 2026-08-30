@@ -20,6 +20,7 @@ from pathlib import Path
 from collectors.weibo_hotsearch import (
     collect_range, join_ddti, pinned_series, term_presence,
     withdrawal_candidates)
+from core.china_event_lens import build_declared_event_lenses
 from core.weibo_hotsearch_terms import write_weibo_hotsearch_terms
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,7 +42,10 @@ HIST = os.path.join(READINGS, "weibo-hotsearch-history.jsonl")
 #      artifacts, so a fall in the count across this boundary is the method
 #      moving and not the board getting cleaner. The breakthrough series closes
 #      here rather than being re-baselined.
-METHOD_VERSION = 2
+#   3: disaster vocabulary is included in the ordinary-sense gate for 失联,
+#      and declared event lenses check exact-headline exits against later event
+#      headlines. A changing casualty count is continuity, not a takedown.
+METHOD_VERSION = 3
 
 DDTI = os.path.join(READINGS, "ddti-latest.json")
 GAZETTEER = os.path.join(ROOT, "config", "zh_censorship_gazetteer.json")
@@ -179,6 +183,16 @@ def main() -> None:
         | {t["term"] for t in ddti_terms},
     )
 
+    terms_document = write_weibo_hotsearch_terms(
+        days,
+        generated_at=now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        readings=Path(READINGS),
+        ddti_terms=ddti_terms,
+        sensitive_terms={g["term"] for g in _load_gazetteer_terms()}
+        | {t["term"] for t in ddti_terms},
+    )
+    event_lenses = build_declared_event_lenses(terms_document, evaluated_at=now)
+
     latest = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "method_version": METHOD_VERSION,
@@ -195,6 +209,7 @@ def main() -> None:
         "join": joined,
         "gazetteer_breakthroughs": breakthroughs,
         "withdrawal_watch": withdrawal_watch,
+        "event_lenses": event_lenses,
         "observation_records": _observation_records(
             now, joined, breakthroughs, days,
             withdrawals=withdrawal_watch.get("candidates"),
@@ -209,21 +224,14 @@ def main() -> None:
             "deletion stream is SUPPRESSED_INVISIBLE (deleted AND denied "
             "attention) — the content-layer sibling of the Silence Index. "
             "attention_ratio is threat share over permitted-attention share, "
-            "published with both parts."
+            "published with both parts. Declared event lenses group revised "
+            "headlines before interpreting an exact-title exit, so changing "
+            "casualty counts do not become takedown claims."
         ),
     }
     os.makedirs(READINGS, exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(latest, f, ensure_ascii=False, indent=1, sort_keys=True)
-    write_weibo_hotsearch_terms(
-        days,
-        generated_at=latest["generated_at"],
-        readings=Path(READINGS),
-        ddti_terms=ddti_terms,
-        sensitive_terms={g["term"] for g in _load_gazetteer_terms()}
-        | {t["term"] for t in ddti_terms},
-    )
-
     hist_row = {
         "date": max(days),
         "generated_at": latest["generated_at"],

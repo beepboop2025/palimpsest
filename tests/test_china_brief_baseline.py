@@ -14,6 +14,9 @@ import json
 import os
 import sys
 import tempfile
+from datetime import datetime, timezone
+
+from core.china_event_lens import build_declared_event_lenses
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -99,3 +102,60 @@ def test_survives_a_missing_or_corrupt_baseline():
             fh.write("{not json")
         mod._canonicalise_history()               # corrupt file
         assert json.load(open(p, encoding="utf-8")) == {}
+
+
+def test_event_lens_panel_is_visible_and_escapes_public_title_text():
+    mod = _load()
+    document = {
+        "status": "live",
+        "generated_at": "2026-08-30T09:00:00Z",
+        "window_days": ["2026-08-29", "2026-08-30"],
+        "terms": [
+            {
+                "title": "尼泊尔山洪<script>alert(1)</script>",
+                "best_rank": 2,
+                "first_seen": "2026-08-30",
+                "last_seen": "2026-08-30",
+                "appearances": 1,
+                "pinned": False,
+            },
+            {
+                "title": "吉隆泥石流救援",
+                "best_rank": 1,
+                "first_seen": "2026-08-30",
+                "last_seen": "2026-08-30",
+                "appearances": 1,
+                "pinned": False,
+            },
+        ],
+        "pinned_headlines": [],
+        "withdrawal_watch": {
+            "baseline_persist_rate": 0.2,
+            "candidates": [],
+            "sense_filtered": [],
+        },
+        "ddti_join": [],
+    }
+    lenses = build_declared_event_lenses(
+        document,
+        evaluated_at=datetime(2026, 8, 30, 10, 0, tzinfo=timezone.utc),
+    )
+    lenses["retrieval_state"] = "test_fixture"
+
+    page = mod._event_panel(lenses)
+
+    assert "What the censorship instruments indicate" in page
+    assert "No topic-level blackout detected" in page
+    assert "<script>alert(1)</script>" not in page
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in page
+    assert 'id="event-lens-state"' in page
+    assert "weibo-hotsearch-terms-latest.json" in page
+
+
+def test_live_event_refresh_treats_json_as_text_not_markup():
+    mod = _load()
+
+    assert ".textContent" in mod.EVENT_LENS_JS
+    assert "innerHTML" not in mod.EVENT_LENS_JS
+    assert "replaceChildren" in mod.EVENT_LENS_JS
+    assert "Preserve the sealed static reading" in mod.EVENT_LENS_JS

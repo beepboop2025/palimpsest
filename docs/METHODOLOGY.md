@@ -100,6 +100,28 @@ Containment requires *both* sides to fire (global salience × a bounded domestic
 factor), so neither alone produces a false positive. If GDELT is unreachable the term is
 scored as an explicit **abstention**, never a false zero.
 
+### Event lens — visibility, framing, and withdrawal are different claims
+
+For a declared current event, Palimpsest joins the public Weibo hot-search title
+archive across headline revisions before interpreting an exit. The event definition
+requires both reviewed geography and disaster-context terms; a model does not discover
+the event or decide whether it was censored at publication time.
+
+The lens keeps three observations separate:
+
+1. **Permitted visibility:** matching headlines reached the curated board, with exact
+   dates and best observed ranks.
+2. **State-pinned framing:** linked headlines occupied the board's editorially pinned
+   slot. This is selected attention, not neutral popularity.
+3. **Withdrawal watch:** an exact headline left after one observed day. A later matching
+   event headline resolves that flag as headline continuity; without a deletion trail,
+   an unresolved exit remains a review trigger rather than proof of a takedown.
+
+This means a changing casualty count cannot manufacture censorship by changing the
+headline string. High and continuing visibility can contradict a topic-level blackout
+reading, but it does not prove that discussion was uncensored. Headline casualty figures
+remain unverified source text, not Palimpsest estimates.
+
 ## 4. Term extraction
 
 Terms come from three deterministic, auditable sources, unioned (`extract_terms()`):
