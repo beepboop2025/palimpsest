@@ -96,6 +96,15 @@ def test_railway_publisher_is_model_free_and_fails_before_deploy() -> None:
     assert 'scripts.build_chinese_translations --check' not in script
     assert 'translation_publication_state="$(jq -r' in script
     assert 'translation retention status does not satisfy its closed release contract' in script
+    assert 'if [[ "$translation_publication_state" == "retained-last-good" ]]' in script
+    assert 'bri_translation_args=(--omit-unbound-chinese-translations)' in script
+    assert (
+        'scripts.build_bri_observatory "${bri_translation_args[@]}"' in script
+    )
+    assert (
+        'scripts.build_bri_observatory --check "${bri_translation_args[@]}"'
+        in script
+    )
     assert '"$PYTHON_BIN" -m scripts.build_chinese_translations\n' not in script
     _assert_order(
         script,

@@ -1204,8 +1204,13 @@ translation_pending_records="$(jq -r '.pending_records' <<<"$translation_status"
 log "translation publication state=$translation_publication_state pending_records=$translation_pending_records"
 "$PYTHON_BIN" -m scripts.build_chinese_translation_pages
 "$PYTHON_BIN" -m scripts.build_chinese_translation_pages --check
-"$PYTHON_BIN" -m scripts.build_bri_observatory
-"$PYTHON_BIN" -m scripts.build_bri_observatory --check
+bri_translation_args=()
+if [[ "$translation_publication_state" == "retained-last-good" ]]; then
+  bri_translation_args=(--omit-unbound-chinese-translations)
+  log "BRI archive omits translations not sealed to its current event-version ledger"
+fi
+"$PYTHON_BIN" -m scripts.build_bri_observatory "${bri_translation_args[@]}"
+"$PYTHON_BIN" -m scripts.build_bri_observatory --check "${bri_translation_args[@]}"
 "$PYTHON_BIN" -m scripts.build_china_situation
 "$PYTHON_BIN" -m scripts.build_china_situation --check
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"

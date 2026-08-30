@@ -851,6 +851,19 @@ def _build_captured_index(
         )
 
     event_version_count = sum(event["version_count"] for event in events)
+    limitations = [
+        "This is the complete retained Palimpsest capture ledger for the declared classifier, not every article ever published on the internet.",
+        "Feed metadata can be incomplete, partisan, mistaken, translated, revised or removed; a listing is attribution, not endorsement or adjudication.",
+        "Historical ledger entries may lack a retained excerpt or publisher URL; the event page is linked only when a generated public page remains present.",
+        "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
+        "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump.",
+    ]
+    if translations is None:
+        limitations.append(
+            "English translation fields are omitted because no translation sidecar "
+            "sealed to this exact event-version ledger was supplied."
+        )
+
     document = {
         "schema_version": "palimpsest.regional-captured-index.v1",
         "region": region,
@@ -937,13 +950,7 @@ def _build_captured_index(
         },
         "sources": sources,
         "events": events,
-        "limitations": [
-            "This is the complete retained Palimpsest capture ledger for the declared classifier, not every article ever published on the internet.",
-            "Feed metadata can be incomplete, partisan, mistaken, translated, revised or removed; a listing is attribution, not endorsement or adjudication.",
-            "Historical ledger entries may lack a retained excerpt or publisher URL; the event page is linked only when a generated public page remains present.",
-            "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
-            "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump.",
-        ],
+        "limitations": limitations,
     }
     digest = hashlib.sha256(
         json.dumps(
@@ -2055,10 +2062,18 @@ def _render_captured_archive_section(
             "that nothing happened.</p>"
         )
     region = index["region"]
+    translation_notice = ""
+    if index["inputs"]["chinese_translation_sidecar"] is None:
+        translation_notice = (
+            '\n    <p class="bri-limit" data-bri-translation-withheld>'
+            "<b>Translation layer withheld:</b> The English translation layer is "
+            "withheld because it does not bind the current event-version ledger; "
+            "original publisher metadata remains visible.</p>"
+        )
     return f'''<section class="bri-section bri-captured-archive" id="{_esc(region)}-captured-archive" aria-labelledby="{_esc(region)}-captured-title">
     <p class="bri-eyebrow">Complete retained capture archive · {_esc(index["generated_at"])}</p>
     <h2 id="{_esc(region)}-captured-title">{_esc(title)}</h2>
-    <p>{_esc(introduction)} This archive is cumulative: a record remains here after it leaves the seven-day current wire. The same record can appear in more than one regional lane when its metadata genuinely overlaps.</p>
+    <p>{_esc(introduction)} This archive is cumulative: a record remains here after it leaves the seven-day current wire. The same record can appear in more than one regional lane when its metadata genuinely overlaps.</p>{translation_notice}
     <dl class="bri-contract"><div><dt>Unique captured events</dt><dd>{counts["unique_events"]}</dd></div><div><dt>Retained event versions</dt><dd>{counts["event_versions"]}</dd></div><div><dt>Current / historical</dt><dd>{counts["current_events"]} / {counts["historical_events"]}</dd></div><div><dt>Named sources</dt><dd>{counts["sources"]}</dd></div><div><dt>Published range</dt><dd><code>{_esc(coverage["earliest_published_at"] or "unavailable")}</code><br>to <code>{_esc(coverage["latest_published_at"] or "unavailable")}</code></dd></div></dl>
     <p class="bri-actions"><a href="{_esc(_regional_data_href(region, "captured-index.json"))}">Complete JSON index</a><a href="{_esc(_regional_data_href(region, "captured-index.jsonl"))}">JSONL dump</a><a href="{_esc(_regional_data_href(region, "captured-index.csv"))}">CSV dump</a><a href="{_esc(_regional_data_href(region, "regional-data.json"))}">Full regional data dump</a></p>
     <div class="bri-grid bri-captured-grid">{cards}</div>
@@ -2721,7 +2736,7 @@ def build(
     newswire_versions_path: Path = DEFAULT_NEWSWIRE_VERSIONS,
     news_source_registry_path: Path = DEFAULT_NEWS_SOURCE_REGISTRY,
     editorial_evidence_path: Path = DEFAULT_EDITORIAL_EVIDENCE,
-    chinese_translations_path: Path = DEFAULT_CHINESE_TRANSLATIONS,
+    chinese_translations_path: Path | None = DEFAULT_CHINESE_TRANSLATIONS,
     chinese_translation_schema_path: Path = DEFAULT_CHINESE_TRANSLATION_SCHEMA,
 ) -> tuple[bytes, bytes]:
     registry = load_registry(registry_path)
@@ -2766,9 +2781,13 @@ def build(
     source_specs, source_registry_sha256 = _source_registry_projection(
         news_source_registry_path
     )
-    translations = chinese_translation_pages.load_translations(
-        chinese_translations_path,
-        schema_path=chinese_translation_schema_path,
+    translations = (
+        chinese_translation_pages.load_translations(
+            chinese_translations_path,
+            schema_path=chinese_translation_schema_path,
+        )
+        if chinese_translations_path is not None
+        else None
     )
     captured_index = _build_captured_index(
         wire,
@@ -2855,10 +2874,19 @@ def main() -> int:
         type=Path,
         default=DEFAULT_EDITORIAL_EVIDENCE,
     )
-    parser.add_argument(
+    translation_input = parser.add_mutually_exclusive_group()
+    translation_input.add_argument(
         "--chinese-translations",
         type=Path,
         default=DEFAULT_CHINESE_TRANSLATIONS,
+    )
+    translation_input.add_argument(
+        "--omit-unbound-chinese-translations",
+        action="store_true",
+        help=(
+            "publish the current regional archive without English translations "
+            "when no sidecar is sealed to its exact event-version ledger"
+        ),
     )
     parser.add_argument(
         "--chinese-translation-schema",
@@ -2908,6 +2936,11 @@ def main() -> int:
     )
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
+    chinese_translations_path = (
+        None
+        if args.omit_unbound_chinese_translations
+        else args.chinese_translations
+    )
     json_payload, html_payload = build(
         args.registry,
         wdi_bundle_path=args.wdi_bundle,
@@ -2920,7 +2953,7 @@ def main() -> int:
         newswire_versions_path=args.newswire_versions,
         news_source_registry_path=args.news_source_registry,
         editorial_evidence_path=args.editorial_evidence,
-        chinese_translations_path=args.chinese_translations,
+        chinese_translations_path=chinese_translations_path,
         chinese_translation_schema_path=args.chinese_translation_schema,
     )
     artifact = json.loads(json_payload)
@@ -2932,9 +2965,13 @@ def main() -> int:
     editorial_evidence, editorial_evidence_sha256 = _load_editorial_evidence(
         args.editorial_evidence
     )
-    translations = chinese_translation_pages.load_translations(
-        args.chinese_translations,
-        schema_path=args.chinese_translation_schema,
+    translations = (
+        chinese_translation_pages.load_translations(
+            chinese_translations_path,
+            schema_path=args.chinese_translation_schema,
+        )
+        if chinese_translations_path is not None
+        else None
     )
     captured_indices = {
         region: _build_captured_index(
