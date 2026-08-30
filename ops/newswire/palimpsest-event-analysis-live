@@ -1,0 +1,997 @@
+#!/usr/bin/python3
+"""Run live event analysis from the incident-scoped publication base.
+
+The protected host checkout deliberately remains on the pre-transition commit.
+This wrapper reads the root-controlled publication-base pin, proves that exact
+commit against the local public-main ref, materializes only the analyzer's
+runtime paths with ``git archive``, and never checks out or updates a Git ref.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import io
+import json
+import os
+import re
+import secrets
+import shutil
+import stat
+import subprocess
+import sys
+import tarfile
+import tempfile
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any
+
+
+# This pin closes one reviewed incident. A new transition must ship a reviewed
+# wrapper with new constants; it must not silently broaden this authority.
+PIN_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
+PIN_SHA256 = "255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97"
+PIN_TARGET_SHA = "4957595735fd86fa57217309749961e1a1e0f05d"
+INCIDENT_ID = "palimpsest-direct-lineage-2026-08-30"
+INCIDENT_BASE_SHA = "b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
+INCIDENT_LIVE_SHA = "ae5ecacd2e151d15af3fe06a7cd1219aa51573e7"
+INCIDENT_RECEIPT_SHA256 = (
+    "150d4d4314c1a1239f19c29747ce1a69c574cfc01f73fda2020cd51f1c1868b1"
+)
+INCIDENT_INPUT_SHA256 = (
+    "7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede38b2dc68a549413e"
+)
+INCIDENT_MANIFEST_SHA256 = (
+    "1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
+)
+INCIDENT_TREE_SHA256 = (
+    "6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
+)
+INCIDENT_DEPLOYMENT_ID = "505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+PROVIDER_ORIGIN = "https://palimpsest-publication-production.up.railway.app"
+PUBLIC_ORIGIN = "https://www.palimpsest.info"
+EXPECTED_REMOTE = "https://github.com/beepboop2025/palimpsest.git"
+
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
+    r"[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
+
+RUNTIME_PATHS = ("collectors", "config", "core", "protocol", "scripts")
+REQUIRED_FILES = frozenset(
+    {
+        "collectors/__init__.py",
+        "core/__init__.py",
+        "scripts/event_analysis_live.py",
+    }
+)
+MAX_PIN_BYTES = 64 * 1024
+MAX_ARCHIVE_BYTES = 32 * 1024 * 1024
+MAX_MATERIALIZED_BYTES = 32 * 1024 * 1024
+MAX_MEMBER_BYTES = 4 * 1024 * 1024
+MAX_FILES = 2048
+MAX_WIRE_BYTES = 64 * 1024 * 1024
+MAX_OUTPUT_BYTES = 64 * 1024 * 1024
+OUTPUT_SCHEMA = "palimpsest-event-analysis-live/v1"
+OUTPUT_KEYS = {
+    "analyses",
+    "automatic_publication",
+    "generated_at",
+    "n_events",
+    "newsroom_feed",
+    "schema",
+    "wire_generated_at",
+    "wire_path",
+}
+
+
+class LiveAnalysisError(RuntimeError):
+    """The pinned live-analysis runtime cannot be proved safe."""
+
+
+@dataclass(frozen=True)
+class RuntimeConfig:
+    repository: Path
+    base_pin: Path
+    deployed_commit: Path
+    wire: Path
+    readings: Path
+    output: Path
+    python: Path
+    temporary_parent: Path | None = None
+    expected_pin_sha256: str = PIN_SHA256
+    expected_target_sha: str = PIN_TARGET_SHA
+    expected_predecessor_sha: str = INCIDENT_BASE_SHA
+    expected_remote: str = EXPECTED_REMOTE
+    pin_uid: int = 0
+    pin_gid: int = -1
+    deployed_uid: int = 0
+    deployed_gid: int = 0
+    python_uid: int = 0
+
+
+def _exact(document: dict[str, Any], keys: set[str], label: str) -> None:
+    if set(document) != keys:
+        raise LiveAnalysisError(f"{label} does not match its closed schema")
+
+
+def _strict_object(raw: bytes, label: str) -> dict[str, Any]:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        document: dict[str, Any] = {}
+        for key, value in rows:
+            if key in document:
+                raise LiveAnalysisError(f"{label} contains a duplicate key")
+            document[key] = value
+        return document
+
+    try:
+        parsed = json.loads(
+            raw,
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                LiveAnalysisError(f"{label} contains {value}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise LiveAnalysisError(f"{label} is not strict JSON") from exc
+    if type(parsed) is not dict:
+        raise LiveAnalysisError(f"{label} must be an object")
+    return parsed
+
+
+def _read_regular(
+    path: Path,
+    *,
+    label: str,
+    uid: int,
+    gid: int | None,
+    mode: int | None,
+    maximum: int,
+    forbid_group_other_write: bool = False,
+) -> bytes:
+    flags = os.O_RDONLY | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise LiveAnalysisError(f"cannot open {label}") from exc
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != uid
+            or (gid is not None and before.st_gid != gid)
+            or (mode is not None and stat.S_IMODE(before.st_mode) != mode)
+            or (
+                forbid_group_other_write
+                and bool(stat.S_IMODE(before.st_mode) & 0o022)
+            )
+            or before.st_nlink != 1
+            or before.st_size <= 0
+            or before.st_size > maximum
+        ):
+            raise LiveAnalysisError(f"{label} metadata is unsafe")
+        chunks: list[bytes] = []
+        remaining = maximum + 1
+        while remaining:
+            chunk = os.read(descriptor, min(65536, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        after = os.fstat(descriptor)
+        def identity(item: os.stat_result) -> tuple[int, ...]:
+            return (
+                item.st_dev,
+                item.st_ino,
+                item.st_mode,
+                item.st_uid,
+                item.st_gid,
+                item.st_nlink,
+                item.st_size,
+                item.st_mtime_ns,
+            )
+        if len(raw) > maximum or identity(before) != identity(after):
+            raise LiveAnalysisError(f"{label} changed while reading")
+        return raw
+    finally:
+        os.close(descriptor)
+
+
+def _read_pin(path: Path, *, uid: int, gid: int) -> bytes:
+    return _read_regular(
+        path,
+        label="publication-base pin",
+        uid=uid,
+        gid=gid,
+        mode=0o640,
+        maximum=MAX_PIN_BYTES,
+    )
+
+
+def _sha(value: Any, label: str) -> str:
+    if type(value) is not str or SHA256.fullmatch(value) is None:
+        raise LiveAnalysisError(f"{label} is not a SHA-256 digest")
+    return value
+
+
+def _sha40(value: Any, label: str) -> str:
+    if type(value) is not str or SHA40.fullmatch(value) is None:
+        raise LiveAnalysisError(f"{label} is not a commit SHA")
+    return value
+
+
+def _validate_pin(
+    raw: bytes, *, expected_sha256: str, expected_target_sha: str
+) -> dict[str, Any]:
+    if hashlib.sha256(raw).hexdigest() != expected_sha256:
+        raise LiveAnalysisError("publication-base pin hash is not the reviewed hash")
+    pin = _strict_object(raw, "publication-base pin")
+    _exact(
+        pin,
+        {
+            "incident_id",
+            "installed",
+            "origins",
+            "previous",
+            "recorded_at",
+            "schema_version",
+            "status",
+            "target",
+        },
+        "publication-base pin",
+    )
+    if (
+        pin["schema_version"] != PIN_SCHEMA
+        or pin["status"] != "verified"
+        or pin["incident_id"] != INCIDENT_ID
+        or type(pin["recorded_at"]) is not str
+        or TIMESTAMP.fullmatch(pin["recorded_at"]) is None
+    ):
+        raise LiveAnalysisError("publication-base pin identity is invalid")
+
+    installed = pin.get("installed")
+    origins = pin.get("origins")
+    previous = pin.get("previous")
+    target = pin.get("target")
+    if not all(type(value) is dict for value in (installed, origins, previous, target)):
+        raise LiveAnalysisError("publication-base pin proof objects are invalid")
+    assert isinstance(installed, dict)
+    assert isinstance(origins, dict)
+    assert isinstance(previous, dict)
+    assert isinstance(target, dict)
+
+    installed_keys = {
+        "publisher_service_sha256",
+        "publisher_sha256",
+        "reconciler_sha256",
+        "transition_helper_sha256",
+        "watchdog_service_sha256",
+        "watchdog_sha256",
+        "watchdog_timer_sha256",
+    }
+    _exact(installed, installed_keys, "publication-base installed proof")
+    for key in installed_keys:
+        _sha(installed[key], f"publication-base installed {key}")
+    _exact(origins, {"provider", "public"}, "publication-base origins")
+    if origins != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+        raise LiveAnalysisError("publication-base origins are not canonical")
+
+    _exact(
+        previous,
+        {
+            "canonical_head",
+            "deployed_commit",
+            "live_manifest_sha256",
+            "live_release_sha",
+            "live_tree_sha256",
+            "publication_input_sha256",
+            "publication_receipt_sha256",
+            "railway_deployment_id",
+        },
+        "publication-base predecessor",
+    )
+    expected_previous = {
+        "canonical_head": INCIDENT_BASE_SHA,
+        "deployed_commit": INCIDENT_BASE_SHA,
+        "live_manifest_sha256": INCIDENT_MANIFEST_SHA256,
+        "live_release_sha": INCIDENT_LIVE_SHA,
+        "live_tree_sha256": INCIDENT_TREE_SHA256,
+        "publication_input_sha256": INCIDENT_INPUT_SHA256,
+        "publication_receipt_sha256": INCIDENT_RECEIPT_SHA256,
+        "railway_deployment_id": INCIDENT_DEPLOYMENT_ID,
+    }
+    if previous != expected_previous:
+        raise LiveAnalysisError("publication-base predecessor is not the incident")
+    _exact(target, {"base_sha", "public_main_sha"}, "publication-base target")
+    target_sha = _sha40(target.get("base_sha"), "publication-base target")
+    if (
+        target_sha != expected_target_sha
+        or target.get("public_main_sha") != target_sha
+    ):
+        raise LiveAnalysisError("publication-base target is not the reviewed public main")
+    return pin
+
+
+def _validate_deployed_commit(config: RuntimeConfig) -> None:
+    raw = _read_regular(
+        config.deployed_commit,
+        label="deployed-commit retirement guard",
+        uid=config.deployed_uid,
+        gid=config.deployed_gid,
+        mode=0o644,
+        maximum=41,
+    )
+    expected = (config.expected_predecessor_sha + "\n").encode("ascii")
+    if raw != expected:
+        raise LiveAnalysisError(
+            "deployed-commit no longer names the incident predecessor"
+        )
+
+
+def _git_environment() -> dict[str, str]:
+    return {
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
+        "GIT_LITERAL_PATHSPECS": "1",
+        "GIT_NO_REPLACE_OBJECTS": "1",
+        "GIT_OPTIONAL_LOCKS": "0",
+        "HOME": "/nonexistent",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PATH": "/usr/bin:/bin",
+    }
+
+
+def _git(
+    repository: Path, arguments: list[str], *, text: bool = True
+) -> subprocess.CompletedProcess[Any]:
+    try:
+        return subprocess.run(
+            ["/usr/bin/git", "-C", str(repository), *arguments],
+            check=True,
+            capture_output=True,
+            env=_git_environment(),
+            text=text,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        detail = ""
+        if isinstance(exc, subprocess.CalledProcessError):
+            stderr = exc.stderr
+            if isinstance(stderr, bytes):
+                stderr = stderr.decode("utf-8", "replace")
+            detail = str(stderr).strip()[:500]
+        raise LiveAnalysisError(
+            f"read-only Git proof failed: {' '.join(arguments)}"
+            + (f": {detail}" if detail else "")
+        ) from exc
+
+
+def _validate_repository(config: RuntimeConfig, target_sha: str) -> dict[str, int]:
+    repository = config.repository
+    try:
+        metadata = repository.lstat()
+        git_metadata = (repository / ".git").lstat()
+    except OSError as exc:
+        raise LiveAnalysisError("canonical repository is unavailable") from exc
+    if (
+        not repository.is_absolute()
+        or repository.is_symlink()
+        or not stat.S_ISDIR(metadata.st_mode)
+        or metadata.st_uid != os.geteuid()
+        or metadata.st_gid != os.getegid()
+        or stat.S_IMODE(metadata.st_mode) & 0o022
+        or not stat.S_ISDIR(git_metadata.st_mode)
+        or (repository / ".git").is_symlink()
+        or git_metadata.st_uid != os.geteuid()
+        or git_metadata.st_gid != os.getegid()
+        or stat.S_IMODE(git_metadata.st_mode) & 0o022
+    ):
+        raise LiveAnalysisError("canonical repository metadata is unsafe")
+    for relative in ("shallow", "info/grafts", "objects/info/alternates"):
+        path = repository / ".git" / relative
+        if path.exists() or path.is_symlink():
+            raise LiveAnalysisError("canonical repository has noncanonical object history")
+    if _git(repository, ["for-each-ref", "--format=%(refname)", "refs/replace"]).stdout:
+        raise LiveAnalysisError("canonical repository has replacement refs")
+    remote = _git(repository, ["remote", "get-url", "origin"]).stdout.strip()
+    if remote != config.expected_remote:
+        raise LiveAnalysisError("origin is not the reviewed public repository")
+    canonical_head = _git(
+        repository, ["rev-parse", "--verify", "HEAD^{commit}"]
+    ).stdout.strip()
+    if canonical_head != config.expected_predecessor_sha:
+        raise LiveAnalysisError(
+            "canonical HEAD no longer names the incident predecessor"
+        )
+    local_target = _git(
+        repository, ["rev-parse", "--verify", f"{target_sha}^{{commit}}"]
+    ).stdout.strip()
+    if local_target != target_sha:
+        raise LiveAnalysisError("publication-base target is not a local commit")
+    public_main = _git(
+        repository, ["rev-parse", "--verify", "refs/remotes/origin/main^{commit}"]
+    ).stdout.strip()
+    _sha40(public_main, "local origin/main")
+    _git(
+        repository,
+        ["merge-base", "--is-ancestor", target_sha, "refs/remotes/origin/main"],
+    )
+    _git(
+        repository,
+        ["merge-base", "--is-ancestor", config.expected_predecessor_sha, target_sha],
+    )
+
+    rows = _git(
+        repository,
+        ["ls-tree", "-rlz", "--full-tree", target_sha, "--", *RUNTIME_PATHS],
+        text=False,
+    ).stdout
+    expected: dict[str, int] = {}
+    total = 0
+    for raw_row in rows.split(b"\0"):
+        if not raw_row:
+            continue
+        try:
+            header, raw_path = raw_row.split(b"\t", 1)
+            mode, kind, _object, raw_size = header.split(b" ", 3)
+            path = raw_path.decode("utf-8", "strict")
+            size = int(raw_size)
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise LiveAnalysisError("target runtime tree is malformed") from exc
+        if (
+            mode not in {b"100644", b"100755"}
+            or kind != b"blob"
+            or not _safe_relative(path)
+            or path in expected
+            or size < 0
+            or size > MAX_MEMBER_BYTES
+        ):
+            raise LiveAnalysisError("target runtime tree contains an unsafe entry")
+        expected[path] = int(mode, 8)
+        total += size
+    if (
+        not REQUIRED_FILES.issubset(expected)
+        or len(expected) > MAX_FILES
+        or total > MAX_MATERIALIZED_BYTES
+    ):
+        raise LiveAnalysisError("target runtime tree exceeds its closed bounds")
+    return expected
+
+
+def _safe_relative(value: str) -> bool:
+    path = PurePosixPath(value)
+    return (
+        value == path.as_posix()
+        and not path.is_absolute()
+        and len(path.parts) >= 1
+        and path.parts[0] in RUNTIME_PATHS
+        and all(part not in {"", ".", ".."} for part in path.parts)
+    )
+
+
+def _archive_bytes(repository: Path, target_sha: str) -> bytes:
+    raw = _git(
+        repository,
+        ["archive", "--format=tar", target_sha, "--", *RUNTIME_PATHS],
+        text=False,
+    ).stdout
+    if not raw or len(raw) > MAX_ARCHIVE_BYTES:
+        raise LiveAnalysisError("target runtime archive exceeds its closed bound")
+    return raw
+
+
+def _extract_archive(
+    raw: bytes, destination: Path, expected: dict[str, int]
+) -> None:
+    metadata = destination.lstat()
+    if (
+        destination.is_symlink()
+        or not stat.S_ISDIR(metadata.st_mode)
+        or metadata.st_uid != os.geteuid()
+        or stat.S_IMODE(metadata.st_mode) != 0o700
+    ):
+        raise LiveAnalysisError("private materialization directory is unsafe")
+    extracted: set[str] = set()
+    total = 0
+    try:
+        archive = tarfile.open(fileobj=io.BytesIO(raw), mode="r:")
+    except (tarfile.TarError, OSError) as exc:
+        raise LiveAnalysisError("target runtime archive is invalid") from exc
+    with archive:
+        for member in archive:
+            name = member.name.removesuffix("/")
+            if not name or not _safe_relative(name):
+                raise LiveAnalysisError("target runtime archive contains an unsafe path")
+            relative = PurePosixPath(name)
+            target = destination.joinpath(*relative.parts)
+            if member.isdir():
+                target.mkdir(mode=0o700, parents=True, exist_ok=True)
+                target.chmod(0o700)
+                continue
+            if not member.isreg() or name not in expected or name in extracted:
+                raise LiveAnalysisError("target runtime archive contains an unsafe member")
+            expected_executable = bool(expected[name] & 0o111)
+            if bool(member.mode & 0o111) != expected_executable:
+                raise LiveAnalysisError("target runtime archive mode differs from Git")
+            if member.size < 0 or member.size > MAX_MEMBER_BYTES:
+                raise LiveAnalysisError("target runtime archive member is too large")
+            total += member.size
+            if total > MAX_MATERIALIZED_BYTES:
+                raise LiveAnalysisError("target runtime archive expands beyond its bound")
+            target.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            source = archive.extractfile(member)
+            if source is None:
+                raise LiveAnalysisError("target runtime archive member cannot be read")
+            try:
+                with target.open("xb") as output:
+                    shutil.copyfileobj(source, output, length=65536)
+            except OSError as exc:
+                raise LiveAnalysisError("cannot materialize target runtime") from exc
+            target.chmod(0o600)
+            extracted.add(name)
+    if extracted != set(expected):
+        raise LiveAnalysisError("target runtime archive differs from the Git tree")
+
+
+def _file_identity(item: os.stat_result) -> tuple[int, ...]:
+    return (
+        item.st_dev,
+        item.st_ino,
+        item.st_mode,
+        item.st_uid,
+        item.st_gid,
+        item.st_nlink,
+        item.st_size,
+        item.st_mtime_ns,
+        item.st_ctime_ns,
+    )
+
+
+def _read_wire_clock(config: RuntimeConfig) -> str:
+    raw = _read_regular(
+        config.wire,
+        label="live evidence wire",
+        uid=os.geteuid(),
+        gid=None,
+        mode=None,
+        maximum=MAX_WIRE_BYTES,
+        forbid_group_other_write=True,
+    )
+    wire = _strict_object(raw, "live evidence wire")
+    generated_at = wire.get("generated_at")
+    if type(generated_at) is not str or TIMESTAMP.fullmatch(generated_at) is None:
+        raise LiveAnalysisError("live evidence wire has no valid generated_at clock")
+    return generated_at
+
+
+def _validate_runtime_paths(
+    config: RuntimeConfig,
+) -> tuple[str, tuple[int, ...] | None]:
+    for path, label in (
+        (config.wire, "wire"),
+        (config.readings, "readings"),
+        (config.output, "output"),
+        (config.python, "Python interpreter"),
+    ):
+        if not path.is_absolute():
+            raise LiveAnalysisError(f"{label} path is not absolute")
+    try:
+        wire = config.wire.lstat()
+        readings = config.readings.lstat()
+        output_parent = config.output.parent.lstat()
+        python = config.python.resolve(strict=True).stat()
+    except OSError as exc:
+        raise LiveAnalysisError("live-analysis runtime path is unavailable") from exc
+    if (
+        config.wire.is_symlink()
+        or not stat.S_ISREG(wire.st_mode)
+        or wire.st_uid != os.geteuid()
+        or stat.S_IMODE(wire.st_mode) & 0o022
+        or config.readings.is_symlink()
+        or not stat.S_ISDIR(readings.st_mode)
+        or config.readings.stat().st_uid != os.geteuid()
+        or config.output.parent.is_symlink()
+        or not stat.S_ISDIR(output_parent.st_mode)
+        or output_parent.st_uid != os.geteuid()
+        or stat.S_IMODE(output_parent.st_mode) & 0o022
+        or config.python.resolve(strict=True).is_symlink()
+        or not stat.S_ISREG(python.st_mode)
+        or python.st_uid != config.python_uid
+        or stat.S_IMODE(python.st_mode) & 0o022
+        or not os.access(config.python, os.X_OK)
+    ):
+        raise LiveAnalysisError("live-analysis runtime path metadata is unsafe")
+    output_identity: tuple[int, ...] | None = None
+    if config.output.exists() or config.output.is_symlink():
+        output = config.output.lstat()
+        if (
+            config.output.is_symlink()
+            or not stat.S_ISREG(output.st_mode)
+            or output.st_uid != os.geteuid()
+            or output.st_nlink != 1
+            or stat.S_IMODE(output.st_mode) & 0o022
+        ):
+            raise LiveAnalysisError("live-analysis output metadata is unsafe")
+        output_identity = _file_identity(output)
+    return _read_wire_clock(config), output_identity
+
+
+@dataclass
+class OutputStage:
+    parent_descriptor: int
+    descriptor: int
+    name: str
+    path: Path
+    device: int
+    inode: int
+
+
+def _create_output_stage(config: RuntimeConfig) -> OutputStage:
+    parent_flags = os.O_RDONLY | os.O_CLOEXEC
+    if hasattr(os, "O_DIRECTORY"):
+        parent_flags |= os.O_DIRECTORY
+    if hasattr(os, "O_NOFOLLOW"):
+        parent_flags |= os.O_NOFOLLOW
+    try:
+        parent_descriptor = os.open(config.output.parent, parent_flags)
+    except OSError as exc:
+        raise LiveAnalysisError("cannot open live-analysis output directory") from exc
+    try:
+        parent = os.fstat(parent_descriptor)
+        named_parent = config.output.parent.lstat()
+        if (
+            not stat.S_ISDIR(parent.st_mode)
+            or parent.st_dev != named_parent.st_dev
+            or parent.st_ino != named_parent.st_ino
+            or parent.st_uid != os.geteuid()
+            or stat.S_IMODE(parent.st_mode) & 0o022
+        ):
+            raise LiveAnalysisError("live-analysis output directory changed")
+        stage_flags = os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC
+        if hasattr(os, "O_NOFOLLOW"):
+            stage_flags |= os.O_NOFOLLOW
+        descriptor = -1
+        name = ""
+        for _attempt in range(16):
+            name = f".{config.output.name}.stage-{secrets.token_hex(16)}"
+            try:
+                descriptor = os.open(
+                    name,
+                    stage_flags,
+                    0o600,
+                    dir_fd=parent_descriptor,
+                )
+                break
+            except FileExistsError:
+                continue
+        if descriptor < 0:
+            raise LiveAnalysisError("cannot allocate an exclusive output stage")
+        try:
+            os.fchmod(descriptor, 0o600)
+            metadata = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_uid != os.geteuid()
+                or metadata.st_gid != os.getegid()
+                or stat.S_IMODE(metadata.st_mode) != 0o600
+                or metadata.st_nlink != 1
+                or metadata.st_size != 0
+            ):
+                raise LiveAnalysisError("exclusive output stage metadata is unsafe")
+            return OutputStage(
+                parent_descriptor=parent_descriptor,
+                descriptor=descriptor,
+                name=name,
+                path=config.output.parent / name,
+                device=metadata.st_dev,
+                inode=metadata.st_ino,
+            )
+        except Exception:
+            created = os.fstat(descriptor)
+            os.close(descriptor)
+            try:
+                named = os.stat(
+                    name,
+                    dir_fd=parent_descriptor,
+                    follow_symlinks=False,
+                )
+                if named.st_dev == created.st_dev and named.st_ino == created.st_ino:
+                    os.unlink(name, dir_fd=parent_descriptor)
+            except OSError:
+                pass
+            raise
+    except Exception:
+        os.close(parent_descriptor)
+        raise
+
+
+def _stage_path_matches(stage: OutputStage) -> bool:
+    try:
+        metadata = os.stat(
+            stage.name,
+            dir_fd=stage.parent_descriptor,
+            follow_symlinks=False,
+        )
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise LiveAnalysisError("cannot inspect the exclusive output stage") from exc
+    return metadata.st_dev == stage.device and metadata.st_ino == stage.inode
+
+
+def _remove_owned_stage(stage: OutputStage) -> None:
+    if not _stage_path_matches(stage):
+        return
+    try:
+        os.unlink(stage.name, dir_fd=stage.parent_descriptor)
+        os.fsync(stage.parent_descriptor)
+    except OSError as exc:
+        raise LiveAnalysisError("cannot remove the owned output stage") from exc
+
+
+def _read_stage(stage: OutputStage) -> bytes:
+    if not _stage_path_matches(stage):
+        raise LiveAnalysisError("exclusive output stage pathname changed")
+    before = os.fstat(stage.descriptor)
+    if (
+        not stat.S_ISREG(before.st_mode)
+        or before.st_dev != stage.device
+        or before.st_ino != stage.inode
+        or before.st_uid != os.geteuid()
+        or before.st_gid != os.getegid()
+        or stat.S_IMODE(before.st_mode) != 0o600
+        or before.st_nlink != 1
+        or before.st_size <= 0
+        or before.st_size > MAX_OUTPUT_BYTES
+    ):
+        raise LiveAnalysisError("event-analysis output stage metadata is unsafe")
+    try:
+        os.lseek(stage.descriptor, 0, os.SEEK_SET)
+        chunks: list[bytes] = []
+        remaining = MAX_OUTPUT_BYTES + 1
+        while remaining:
+            chunk = os.read(stage.descriptor, min(65536, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+    except OSError as exc:
+        raise LiveAnalysisError("cannot read event-analysis output stage") from exc
+    raw = b"".join(chunks)
+    after = os.fstat(stage.descriptor)
+    if (
+        len(raw) > MAX_OUTPUT_BYTES
+        or _file_identity(before) != _file_identity(after)
+        or not _stage_path_matches(stage)
+    ):
+        raise LiveAnalysisError("event-analysis output stage changed while reading")
+    return raw
+
+
+def _validate_output_bundle(
+    raw: bytes, *, config: RuntimeConfig, wire_clock: str
+) -> None:
+    bundle = _strict_object(raw, "event-analysis output stage")
+    _exact(bundle, OUTPUT_KEYS, "event-analysis output stage")
+    analyses = bundle.get("analyses")
+    n_events = bundle.get("n_events")
+    if (
+        bundle.get("schema") != OUTPUT_SCHEMA
+        or bundle.get("generated_at") != wire_clock
+        or bundle.get("wire_generated_at") != wire_clock
+        or bundle.get("wire_path") != str(config.wire)
+        or type(n_events) is not int
+        or n_events < 0
+        or type(analyses) is not dict
+        or len(analyses) != n_events
+        or not all(
+            type(event_id) is str
+            and bool(event_id)
+            and type(analysis) is dict
+            for event_id, analysis in analyses.items()
+        )
+        or bundle.get("newsroom_feed") not in {"missing", "present"}
+        or bundle.get("automatic_publication") is not False
+    ):
+        raise LiveAnalysisError(
+            "event-analysis output does not bind to the admitted wire"
+        )
+
+
+def _assert_output_unchanged(
+    stage: OutputStage,
+    *,
+    output_name: str,
+    expected_identity: tuple[int, ...] | None,
+) -> None:
+    try:
+        current = os.stat(
+            output_name,
+            dir_fd=stage.parent_descriptor,
+            follow_symlinks=False,
+        )
+    except FileNotFoundError:
+        current = None
+    except OSError as exc:
+        raise LiveAnalysisError("cannot recheck live-analysis output") from exc
+    if expected_identity is None:
+        if current is not None:
+            raise LiveAnalysisError("live-analysis output appeared during the run")
+    elif current is None or _file_identity(current) != expected_identity:
+        raise LiveAnalysisError("live-analysis output changed during the run")
+
+
+def _publish_stage(
+    stage: OutputStage,
+    *,
+    config: RuntimeConfig,
+    wire_clock: str,
+    expected_output_identity: tuple[int, ...] | None,
+) -> None:
+    raw = _read_stage(stage)
+    _validate_output_bundle(raw, config=config, wire_clock=wire_clock)
+    _assert_output_unchanged(
+        stage,
+        output_name=config.output.name,
+        expected_identity=expected_output_identity,
+    )
+    try:
+        os.fchmod(stage.descriptor, 0o640)
+        admitted = os.fstat(stage.descriptor)
+        if (
+            admitted.st_dev != stage.device
+            or admitted.st_ino != stage.inode
+            or admitted.st_uid != os.geteuid()
+            or admitted.st_gid != os.getegid()
+            or admitted.st_nlink != 1
+            or stat.S_IMODE(admitted.st_mode) != 0o640
+        ):
+            raise LiveAnalysisError("admitted event-analysis output metadata is unsafe")
+        os.fsync(stage.descriptor)
+        os.replace(
+            stage.name,
+            config.output.name,
+            src_dir_fd=stage.parent_descriptor,
+            dst_dir_fd=stage.parent_descriptor,
+        )
+        os.fsync(stage.parent_descriptor)
+    except OSError as exc:
+        raise LiveAnalysisError("cannot atomically publish event-analysis output") from exc
+
+
+def _invoke_analysis(
+    config: RuntimeConfig, materialized: Path, output: Path
+) -> None:
+    environment = {
+        "HOME": "/nonexistent",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "PATH": "/usr/bin:/bin",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONPATH": str(materialized),
+    }
+    command = [
+        str(config.python),
+        "-B",
+        "-m",
+        "scripts.event_analysis_live",
+        "--wire",
+        str(config.wire),
+        "--readings",
+        str(config.readings),
+        "--output",
+        str(output),
+    ]
+    try:
+        subprocess.run(
+            command,
+            check=True,
+            cwd=materialized,
+            env=environment,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise LiveAnalysisError("pinned event analysis failed") from exc
+
+
+def run(config: RuntimeConfig) -> str:
+    if os.geteuid() == 0:
+        raise LiveAnalysisError("live event analysis must not run as root")
+    pin_gid = os.getegid() if config.pin_gid < 0 else config.pin_gid
+    raw_pin = _read_pin(config.base_pin, uid=config.pin_uid, gid=pin_gid)
+    pin = _validate_pin(
+        raw_pin,
+        expected_sha256=config.expected_pin_sha256,
+        expected_target_sha=config.expected_target_sha,
+    )
+    _validate_deployed_commit(config)
+    target_sha = str(pin["target"]["base_sha"])
+    expected = _validate_repository(config, target_sha)
+    wire_clock, output_identity = _validate_runtime_paths(config)
+    archive = _archive_bytes(config.repository, target_sha)
+    temporary_parent = (
+        str(config.temporary_parent) if config.temporary_parent is not None else None
+    )
+    with tempfile.TemporaryDirectory(
+        prefix="palimpsest-event-analysis-live-", dir=temporary_parent
+    ) as name:
+        materialized = Path(name)
+        materialized.chmod(0o700)
+        _extract_archive(archive, materialized, expected)
+        stage = _create_output_stage(config)
+        try:
+            _invoke_analysis(config, materialized, stage.path)
+            _publish_stage(
+                stage,
+                config=config,
+                wire_clock=wire_clock,
+                expected_output_identity=output_identity,
+            )
+        finally:
+            try:
+                _remove_owned_stage(stage)
+            finally:
+                os.close(stage.descriptor)
+                os.close(stage.parent_descriptor)
+    return target_sha
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--repository", type=Path, default=Path("/home/palimpsest/palimpsest")
+    )
+    parser.add_argument(
+        "--base-pin",
+        type=Path,
+        default=Path("/etc/palimpsest/railway-publication-base.json"),
+    )
+    parser.add_argument(
+        "--deployed-commit",
+        type=Path,
+        default=Path("/etc/palimpsest/deployed-commit"),
+    )
+    parser.add_argument(
+        "--wire",
+        type=Path,
+        default=Path("/var/lib/palimpsest/newswire/newswire-latest.json"),
+    )
+    parser.add_argument(
+        "--readings", type=Path, default=Path("/var/lib/palimpsest/readings")
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("/var/lib/palimpsest/newswire/event-analysis-latest.json"),
+    )
+    parser.add_argument("--python", type=Path, default=Path("/usr/bin/python3"))
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    config = RuntimeConfig(
+        repository=args.repository,
+        base_pin=args.base_pin,
+        deployed_commit=args.deployed_commit,
+        wire=args.wire,
+        readings=args.readings,
+        output=args.output,
+        python=args.python,
+    )
+    try:
+        target = run(config)
+    except LiveAnalysisError as exc:
+        print(f"event-analysis-live wrapper refused: {exc}", file=sys.stderr)
+        return 1
+    print(f"event-analysis-live wrapper: completed with pinned target {target}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

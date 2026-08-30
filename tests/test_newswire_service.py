@@ -161,11 +161,51 @@ def test_live_event_analysis_reads_the_same_timer_wire() -> None:
     unit = (
         ROOT / "ops/systemd/palimpsest-event-analysis-live.service"
     ).read_text(encoding="utf-8")
+    assert (
+        "ConditionFileIsExecutable=/usr/local/sbin/palimpsest-event-analysis-live"
+        in unit
+    )
+    assert "WorkingDirectory=/" in unit
+    assert "ExecStart=/usr/local/sbin/palimpsest-event-analysis-live" in unit
+    assert "ConditionPathExists=/etc/palimpsest/deployed-commit" in unit
+    assert "--repository /home/palimpsest/palimpsest" in unit
+    assert "--base-pin /etc/palimpsest/railway-publication-base.json" in unit
+    assert "--deployed-commit /etc/palimpsest/deployed-commit" in unit
     assert "--wire /var/lib/palimpsest/newswire/newswire-latest.json" in unit
+    assert "--readings /var/lib/palimpsest/readings" in unit
     assert "--output /var/lib/palimpsest/newswire/event-analysis-latest.json" in unit
+    assert "--python /usr/bin/python3" in unit
+    assert "/etc/palimpsest/railway-publication-base.json" in unit
+    assert "/etc/palimpsest/deployed-commit" in unit
+    assert "NoExecPaths=/tmp /var/tmp /var/lib/palimpsest/newswire" in unit
     assert "ReadWritePaths=/var/lib/palimpsest/newswire" in unit
     assert "IPAddressDeny=any" in unit
     assert "CapabilityBoundingSet=\n" in unit
+    assert "OnSuccess=" not in unit
+
+
+def test_live_event_analysis_installs_and_proves_railway_success_trigger() -> None:
+    drop_in = ROOT / (
+        "ops/systemd/palimpsest-event-analysis-live.railway-publish.conf"
+    )
+    assert (
+        drop_in.read_bytes()
+        == b"[Unit]\nOnSuccess=palimpsest-railway-publish.service\n"
+    )
+    readme = (ROOT / "ops/newswire/README.md").read_text(encoding="utf-8")
+    assert (
+        "ops/systemd/palimpsest-event-analysis-live.railway-publish.conf"
+        in readme
+    )
+    assert (
+        "/etc/systemd/system/palimpsest-event-analysis-live.service.d/"
+        "90-railway-publish.conf" in readme
+    )
+    assert "rev-parse --verify" in readme
+    assert "hash-object" in readme
+    assert "PALIMPSEST_REVIEWED_RUNTIME_COMMIT" in readme
+    assert "systemctl show --property=OnSuccess --value" in readme
+    assert 'test "$event_analysis_on_success" = "palimpsest-railway-publish.service"' in readme
 
 
 def test_node_newswire_has_a_non_overlapping_half_hour_timer() -> None:
