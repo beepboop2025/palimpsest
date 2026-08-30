@@ -31,7 +31,10 @@ def test_renderer_emits_one_html_and_json_document_per_story():
             / build_newsroom.instrument_analysis_model.READING_HTML[story["signal_id"]]
         ).is_file()
     )
-    assert len(outputs) == 9 + (4 * feed["n_stories"]) + reading_html
+    # Every story owns one content-addressed 1200x630 card. The edition and
+    # China-analysis pages each add a contextual card; one strict renderer
+    # manifest closes those dynamic binaries for the Pages rights gate.
+    assert len(outputs) == 12 + (5 * feed["n_stories"]) + reading_html
     assert Path("readings/newsroom-latest.json") in outputs
     assert Path("readings/china-censorship-analysis-latest.json") in outputs
     assert Path("news/index.html") in outputs

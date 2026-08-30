@@ -37,11 +37,13 @@ from urllib.parse import unquote
 from core import china_situation as china_situation_model
 from core import newswire as newswire_model
 from core.china_econ_export import SourcePolicy, load_source_policy
+from scripts import share_cards
 
 
 ROOT = Path(__file__).resolve().parents[1]
 POLICY_RELATIVE_PATH = Path("config/china_econ_source_policy.json")
 BINARY_ALLOWLIST_RELATIVE_PATH = Path("config/pages_public_binary_allowlist.json")
+SHARE_CARD_MANIFEST_RELATIVE_PATH = share_cards.MANIFEST_PATH
 STATUS_RELATIVE_PATH = Path("readings/china-publication-rights-latest.json")
 STATUS_SCHEMA = "palimpsest-restricted-publication.v1"
 STATUS_SCHEMA_PATH = "protocol/restricted-publication-v1.schema.json"
@@ -387,6 +389,45 @@ def _is_reviewed_binary(
     relative = path.relative_to(root).as_posix()
     expected = allowed.get(relative)
     return expected == (hashlib.sha256(raw).hexdigest(), len(raw))
+
+
+def _load_generated_share_cards(root: Path) -> dict[str, bytes]:
+    """Reproduce and bind every dynamic card; never grant a PNG prefix wildcard."""
+
+    manifest_path = root / SHARE_CARD_MANIFEST_RELATIVE_PATH
+    if not manifest_path.is_file() or not _within_root(root, manifest_path):
+        return {}
+    raw = _read_bounded(manifest_path)
+    try:
+        rows = share_cards.parse_manifest(raw)
+    except share_cards.ShareCardError as exc:
+        raise PagesRightsError(f"invalid generated share-card manifest: {exc}") from exc
+    generated: dict[str, bytes] = {}
+    for row, card in rows:
+        relative = row["path"]
+        path = root / relative
+        if not path.is_file() or not _within_root(root, path):
+            raise PagesRightsError(
+                f"generated share-card manifest names a missing file: {relative}"
+            )
+        card_raw = _read_bounded(path)
+        if card_raw != card.png:
+            raise PagesRightsError(
+                f"generated share card does not reproduce from its spec: {relative}"
+            )
+        generated[relative] = card.png
+    return generated
+
+
+def _is_generated_share_card(
+    root: Path,
+    path: Path,
+    raw: bytes,
+    *,
+    generated: Mapping[str, bytes],
+) -> bool:
+    relative = path.relative_to(root).as_posix()
+    return generated.get(relative) == raw
 
 
 def _public_candidates(root: Path) -> list[Path]:
@@ -1257,6 +1298,7 @@ def find_denied_value_paths(
         }
     )
     binary_allowlist = _load_binary_allowlist(root)
+    generated_share_cards = _load_generated_share_cards(root)
     lineage_pattern = _lineage_pattern(denied_source_ids)
     violations = []
     for path in _public_candidates(root):
@@ -1268,16 +1310,31 @@ def find_denied_value_paths(
             continue
         raw = _read_bounded(path)
         decoded_text = _decode_public_text(raw)
+        generated_share_card = _is_generated_share_card(
+            root,
+            path,
+            raw,
+            generated=generated_share_cards,
+        )
+        if (
+            path.relative_to(root).parent == share_cards.OUTPUT_ROOT
+            and path.suffix.lower() == ".png"
+            and not generated_share_card
+        ):
+            raise PagesRightsError(
+                "generated share card lacks a reproducing manifest row: " + relative
+            )
         reviewed_binary = _is_reviewed_binary(root, path, raw, allowed=binary_allowlist)
         if (
             decoded_text is None
             and not raw.startswith((b"\x1f\x8b", b"PK\x03\x04"))
             and not reviewed_binary
+            and not generated_share_card
         ):
             raise PagesRightsError(
                 "opaque public artifact lacks exact path-and-digest review: " + relative
             )
-        if reviewed_binary:
+        if reviewed_binary or generated_share_card:
             continue
         if _contains_denied_value(
             root,
