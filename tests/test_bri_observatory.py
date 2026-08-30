@@ -28,8 +28,13 @@ from scripts.build_bri_observatory import (
     _regional_events,
     _render_analysis_html,
     _render_gwadar_html,
+    _render_captured_archive_section,
     _render_region_section,
     _translation_index,
+    _build_captured_index,
+    _load_newswire,
+    _load_newswire_versions,
+    _source_registry_projection,
     build,
 )
 
@@ -466,6 +471,46 @@ def test_translation_index_keeps_duplicate_version_ids_across_event_dossiers() -
         ("event-a", "eventv-shared"),
         ("event-b", "eventv-shared"),
     }
+
+
+def test_regional_capture_can_honestly_omit_unsealed_translations() -> None:
+    wire = _load_newswire(ROOT / "readings" / "newswire-latest.json")
+    versions, versions_sha256 = _load_newswire_versions(
+        ROOT / "readings" / "newswire-versions.jsonl"
+    )
+    source_specs, source_registry_sha256 = _source_registry_projection(
+        ROOT / "config" / "news_sources.json"
+    )
+
+    index = _build_captured_index(
+        wire,
+        versions,
+        versions_sha256=versions_sha256,
+        source_specs=source_specs,
+        source_registry_sha256=source_registry_sha256,
+        region="bri",
+        translations=None,
+    )
+
+    assert index["inputs"]["chinese_translation_sidecar"] is None
+    assert index["counts"]["events_with_english_translation"] == 0
+    assert all(event["english_translation"] is None for event in index["events"])
+    assert any(
+        "no translation sidecar sealed to this exact event-version ledger"
+        in limitation
+        for limitation in index["limitations"]
+    )
+    rendered = _render_captured_archive_section(
+        index,
+        title="Retained fixture archive",
+        introduction="Fixture introduction.",
+    )
+    assert "data-bri-translation-withheld" in rendered
+    assert (
+        "The English translation layer is withheld because it does not bind the "
+        "current event-version ledger; original publisher metadata remains visible."
+        in rendered
+    )
 
 
 def test_complete_regional_capture_exports_are_loss_aware_and_machine_readable() -> None:
