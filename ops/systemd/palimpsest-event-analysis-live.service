@@ -2,15 +2,17 @@
 Description=Build live per-event analysis from the 30-minute evidence wire
 Documentation=file:///home/palimpsest/palimpsest/ops/newswire/README.md
 After=palimpsest-evidence-wire.service
-ConditionFileIsExecutable=/usr/bin/python3
+ConditionFileIsExecutable=/usr/local/sbin/palimpsest-event-analysis-live
 ConditionPathExists=/var/lib/palimpsest/newswire/newswire-latest.json
+ConditionPathExists=/etc/palimpsest/railway-publication-base.json
+ConditionPathExists=/etc/palimpsest/deployed-commit
 
 [Service]
 Type=oneshot
 User=palimpsest
 Group=palimpsest
-WorkingDirectory=/home/palimpsest/palimpsest
-ExecStart=/usr/bin/python3 -m scripts.event_analysis_live --wire /var/lib/palimpsest/newswire/newswire-latest.json --readings /var/lib/palimpsest/readings --output /var/lib/palimpsest/newswire/event-analysis-latest.json
+WorkingDirectory=/
+ExecStart=/usr/local/sbin/palimpsest-event-analysis-live --repository /home/palimpsest/palimpsest --base-pin /etc/palimpsest/railway-publication-base.json --deployed-commit /etc/palimpsest/deployed-commit --wire /var/lib/palimpsest/newswire/newswire-latest.json --readings /var/lib/palimpsest/readings --output /var/lib/palimpsest/newswire/event-analysis-latest.json --python /usr/bin/python3
 TimeoutStartSec=20m
 UMask=0027
 Nice=10
@@ -19,9 +21,9 @@ MemoryMax=1G
 
 ProtectSystem=strict
 ProtectHome=read-only
-ReadOnlyPaths=/home/palimpsest/palimpsest /var/lib/palimpsest/readings /var/lib/palimpsest/common-crawl/derived
+ReadOnlyPaths=/home/palimpsest/palimpsest /etc/palimpsest/railway-publication-base.json /etc/palimpsest/deployed-commit /var/lib/palimpsest/readings /var/lib/palimpsest/common-crawl/derived
 ReadWritePaths=/var/lib/palimpsest/newswire
-NoExecPaths=/var/lib/palimpsest/newswire
+NoExecPaths=/tmp /var/tmp /var/lib/palimpsest/newswire
 PrivateTmp=true
 PrivateDevices=true
 PrivateMounts=true

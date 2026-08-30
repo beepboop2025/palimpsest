@@ -25,6 +25,18 @@ starts `palimpsest-event-analysis-live.service`, which writes
 Missing official-first-seen, deletion-ledger, undertext, or newsroom readings
 cause those layers to abstain.
 
+During the 2026-08-30 direct-publication transition, the protected canonical
+checkout intentionally remains on its predecessor. Live event analysis must
+therefore enter through `/usr/local/sbin/palimpsest-event-analysis-live`. The
+wrapper accepts only the closed root-controlled publication-base pin with
+SHA-256
+`255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97` and
+target `4957595735fd86fa57217309749961e1a1e0f05d`. It proves that commit is a
+local ancestor of the reviewed `origin/main`, creates a bounded private
+`git archive` materialization, and runs the analyzer from those exact bytes.
+It never fetches, changes a ref, checks out a tree, or writes Git metadata.
+The materialization is removed after every success or failure.
+
 The Common Crawl context timer can fire and still leave
 `archive-news-context.json` untouched: `ExecStartPre` `cmp -s REVISION
 /etc/palimpsest/deployed-commit` is fail-closed. The unit now stamps
@@ -42,6 +54,76 @@ three starts in ten minutes. The five-minute production timer remains the
 long-term recovery boundary after that bounded retry budget is exhausted.
 
 ## Install
+
+For this incident, install the wrapper, unit, and exact Railway success-trigger
+drop-in from a separately verified clean release worktree—not from the stale
+protected checkout. Bind every staged byte to an explicitly reviewed commit
+before installation. `git hash-object` does not write an object unless `-w` is
+passed. These steps do not change `/home/palimpsest/palimpsest` or
+`/etc/palimpsest/deployed-commit`:
+
+```bash
+reviewed_release=/srv/palimpsest/reviewed-event-analysis-runtime
+reviewed_runtime_commit="${PALIMPSEST_REVIEWED_RUNTIME_COMMIT:?set the exact reviewed 40-character fix commit}"
+case "$reviewed_runtime_commit" in
+  *[!0-9a-f]*|'') exit 1 ;;
+esac
+test "${#reviewed_runtime_commit}" -eq 40
+test "$(git -C "$reviewed_release" rev-parse --verify 'HEAD^{commit}')" = \
+  "$reviewed_runtime_commit"
+test -z "$(git -C "$reviewed_release" status --porcelain=v1 --untracked-files=no)"
+for reviewed_path in \
+  ops/newswire/palimpsest-event-analysis-live \
+  ops/systemd/palimpsest-event-analysis-live.service \
+  ops/systemd/palimpsest-event-analysis-live.railway-publish.conf; do
+  expected_blob="$(git -C "$reviewed_release" rev-parse --verify \
+    "$reviewed_runtime_commit:$reviewed_path")"
+  actual_blob="$(git -C "$reviewed_release" hash-object \
+    "$reviewed_release/$reviewed_path")"
+  test "$actual_blob" = "$expected_blob"
+done
+sudo install -o root -g root -m 0755 \
+  "$reviewed_release/ops/newswire/palimpsest-event-analysis-live" \
+  /usr/local/sbin/palimpsest-event-analysis-live
+sudo install -o root -g root -m 0644 \
+  "$reviewed_release/ops/systemd/palimpsest-event-analysis-live.service" \
+  /etc/systemd/system/palimpsest-event-analysis-live.service
+sudo install -d -o root -g root -m 0755 \
+  /etc/systemd/system/palimpsest-event-analysis-live.service.d
+sudo install -o root -g root -m 0644 \
+  "$reviewed_release/ops/systemd/palimpsest-event-analysis-live.railway-publish.conf" \
+  /etc/systemd/system/palimpsest-event-analysis-live.service.d/90-railway-publish.conf
+sudo cmp "$reviewed_release/ops/newswire/palimpsest-event-analysis-live" \
+  /usr/local/sbin/palimpsest-event-analysis-live
+sudo cmp "$reviewed_release/ops/systemd/palimpsest-event-analysis-live.service" \
+  /etc/systemd/system/palimpsest-event-analysis-live.service
+sudo cmp \
+  "$reviewed_release/ops/systemd/palimpsest-event-analysis-live.railway-publish.conf" \
+  /etc/systemd/system/palimpsest-event-analysis-live.service.d/90-railway-publish.conf
+sudo systemd-analyze verify \
+  /etc/systemd/system/palimpsest-event-analysis-live.service
+sudo systemctl daemon-reload
+event_analysis_on_success="$(systemctl show --property=OnSuccess --value \
+  palimpsest-event-analysis-live.service)"
+test "$event_analysis_on_success" = "palimpsest-railway-publish.service"
+```
+
+The wrapper also requires the reviewed pin at
+`/etc/palimpsest/railway-publication-base.json` to be a single regular
+`root:palimpsest` file with mode `0640`; a full, unmodified local repository
+with the reviewed HTTPS `origin`; and the target commit reachable from the
+local `refs/remotes/origin/main`. It fails closed rather than fetching or
+repairing any prerequisite. The incident lane is also self-retiring: both the
+root-owned mode-`0644` `/etc/palimpsest/deployed-commit` file (exactly the
+40-character predecessor SHA plus LF) and canonical repository `HEAD` must
+still equal `b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9`.
+
+The analyzer receives only an exclusive mode-`0600` stage path. The wrapper
+admits a bounded, nonempty, closed-schema bundle only when its wire path and
+clock match the input and it contains at least one event. It then changes the
+stage to mode `0640`, fsyncs it, atomically replaces the public latest file,
+and fsyncs the containing directory. Analyzer errors or invalid partial output
+remove only that owned stage and preserve the prior latest file.
 
 ```bash
 sudo install -d -o palimpsest -g palimpsest -m 0750 /var/lib/palimpsest/newswire
