@@ -6,12 +6,14 @@ import copy
 import hashlib
 import html
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
 from core import newsroom
-from scripts import build_newsroom, share_cards
+from core.china_econ_export import load_source_policy
+from scripts import build_newsroom, share_cards, stage_pages_rights
 
 
 def _spec(**overrides):
@@ -87,6 +89,146 @@ def test_missing_state_cannot_render_zero_or_any_retained_metric():
     assert spec["metric"] is None
     assert "Source missing" in card.alt
     assert " 0 " not in f" {card.alt} "
+
+
+def test_policy_denied_economic_values_render_contextual_withheld_cards() -> None:
+    assert (
+        frozenset(build_newsroom._PUBLIC_VALUE_WITHHELD_SHARE_CARDS)
+        == stage_pages_rights.DERIVED_INSTRUMENTS
+    )
+    feed = newsroom.build_news_feed()
+    sections = {row["id"]: row for row in feed["sections"]}
+    stories = {row["signal_id"]: copy.deepcopy(row) for row in feed["stories"]}
+    fixtures = {
+        "china-econ": {
+            "headline": "3 official money-market benchmark families are reporting",
+            "public_value": "3 count",
+            "metric": {
+                "label": "benchmark families reporting",
+                "value": 3,
+                "unit": "count",
+                "denominator": {"label": None, "value": None},
+            },
+        },
+        "cny-fix-gap": {
+            "headline": (
+                "The official yuan fix gap is -0.8883% against the independent "
+                "reference"
+            ),
+            "public_value": "-0.8883%",
+            "metric": {
+                "label": "fix gap",
+                "value": -0.8883,
+                "unit": "percent",
+                "denominator": {"label": None, "value": None},
+            },
+        },
+    }
+    clock = datetime(2026, 8, 30, 16, 0, tzinfo=UTC)
+    policy = load_source_policy(
+        build_newsroom.ROOT / stage_pages_rights.POLICY_RELATIVE_PATH
+    )
+    allowed = frozenset(
+        source_id
+        for source_id, decision in policy.decisions.items()
+        if stage_pages_rights._effective_decision(decision, evaluated_at=clock)
+        == "allow"
+    )
+    denied = frozenset(set(policy.decisions) - set(allowed))
+    lineage_pattern = stage_pages_rights._lineage_pattern(denied)
+
+    for signal_id, fixture in fixtures.items():
+        story = stories[signal_id]
+        story["status"] = "live"
+        story.update(fixture)
+        source_filename = f"{signal_id}-forbidden-value-sentinel.json"
+        source_digest = "fedcba9876543210" * 4
+        source_timestamp = "2099-12-31T23:59:58Z"
+        story["evidence"] = copy.deepcopy(story["evidence"])
+        story["evidence"]["source_timestamp"] = source_timestamp
+        story["evidence"]["input"] = {
+            "filename": source_filename,
+            "sha256": source_digest,
+        }
+        spec = build_newsroom._story_share_card_spec(
+            story,
+            section=sections[story["section"]],
+        )
+        card = share_cards.render_card(spec)
+        serialized = json.dumps(spec, sort_keys=True)
+
+        assert spec["status"] == "restricted"
+        assert spec["metric"] is None
+        assert "withheld under public source policy" in spec["title"]
+        assert spec["as_of"] is None
+        assert spec["source"] == "china-publication-rights-latest.json"
+        assert spec["receipt"] is None
+        assert fixture["headline"] not in card.alt
+        assert fixture["public_value"] not in card.alt
+        assert source_filename not in serialized
+        assert source_digest not in serialized
+        assert source_timestamp not in serialized
+        target_path = stage_pages_rights._share_card_target_path(
+            build_newsroom.ROOT, spec
+        )
+        assert not stage_pages_rights._contains_denied_payload(
+            build_newsroom.ROOT,
+            target_path,
+            stage_pages_rights._canonical_json(spec),
+            denied_source_ids=denied,
+            allowed_source_ids=allowed,
+            lineage_pattern=lineage_pattern,
+        )
+
+
+def test_edition_card_never_promotes_a_policy_withheld_instrument() -> None:
+    feed = copy.deepcopy(newsroom.build_news_feed())
+    cny_story = next(
+        story for story in feed["stories"] if story["signal_id"] == "cny-fix-gap"
+    )
+    safe_story = next(
+        story
+        for story in feed["stories"]
+        if story["signal_id"] not in build_newsroom._PUBLIC_VALUE_WITHHELD_SHARE_CARDS
+    )
+    for story in feed["stories"]:
+        story["status"] = "stale"
+        story["priority"] = "standard"
+    cny_story.update(
+        status="live",
+        priority="lead",
+        headline="The official yuan fix gap is -0.8883%",
+        metric={
+            "label": "fix gap",
+            "value": -0.8883,
+            "unit": "percent",
+            "denominator": {"label": None, "value": None},
+        },
+    )
+    safe_story.update(
+        status="live",
+        headline="An unrestricted current evidence reading",
+    )
+
+    spec = build_newsroom._edition_share_card_spec(feed)
+
+    assert spec["title"] == safe_story["headline"]
+    assert "-0.8883" not in json.dumps(spec)
+
+
+def test_edition_card_refuses_an_all_policy_withheld_feed() -> None:
+    feed = copy.deepcopy(newsroom.build_news_feed())
+    feed["stories"] = [
+        story
+        for story in feed["stories"]
+        if story["signal_id"] in build_newsroom._PUBLIC_VALUE_WITHHELD_SHARE_CARDS
+    ]
+
+    with pytest.raises(
+        newsroom.NewsroomError,
+        match="no public-value-safe share-card lead",
+    ):
+        build_newsroom._edition_share_card_spec(feed)
 
 
 def test_hostile_text_is_bounded_direction_safe_and_html_escaped():

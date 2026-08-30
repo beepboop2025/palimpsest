@@ -77,6 +77,19 @@ DESCRIPTION = (
 )
 OG_IMAGE = f"{SITE}/brand/palimpsest-og2.png"
 
+# These instrument values descend from source families whose public value
+# publication is denied by config/china_econ_source_policy.json. Their routes
+# remain useful, but social previews must describe the restriction rather than
+# turn a restricted number into a separately shareable artifact.
+_PUBLIC_VALUE_WITHHELD_SHARE_CARDS = {
+    "china-econ": (
+        "Money-market benchmark values are withheld under public source policy"
+    ),
+    "cny-fix-gap": (
+        "The yuan-fix comparison is withheld under public source policy"
+    ),
+}
+
 DRAGON_DEN_TELEGRAM_CHANNELS = (
     (
         "all",
@@ -1128,27 +1141,41 @@ def _story_share_card_spec(
 ) -> dict[str, Any]:
     """Bind one instrument card to the same state and metric shown on its page."""
 
-    status = story["status"]
+    withheld_title = _PUBLIC_VALUE_WITHHELD_SHARE_CARDS.get(story["signal_id"])
+    status = "restricted" if withheld_title is not None else story["status"]
     evidence = story["evidence"]
     source_input = evidence["input"]
     metric = None
-    if status == "live" and story["metric"]["value"] is not None:
+    if withheld_title is None and status == "live" and story["metric"]["value"] is not None:
         metric = {
             "value": _metric_value(story),
             "label": _metric_caption(story),
-        }
+    }
     digest = source_input.get("sha256")
+    restricted = withheld_title is not None
     return {
         "schema_version": share_cards.SPEC_VERSION,
         "kind": "instrument-reading",
         "kicker": f"{section['title']} / EVIDENCE READING",
-        "title": story["headline"],
+        "title": withheld_title or story["headline"],
         "status": status,
-        "status_label": _status_label(status),
+        "status_label": (
+            "PUBLIC VALUE WITHHELD / SOURCE POLICY"
+            if restricted
+            else _status_label(status)
+        ),
         "metric": metric,
-        "as_of": evidence.get("source_timestamp"),
-        "source": source_input.get("filename"),
-        "receipt": f"SHA256 {digest[:16]}" if isinstance(digest, str) else None,
+        "as_of": None if restricted else evidence.get("source_timestamp"),
+        "source": (
+            "china-publication-rights-latest.json"
+            if restricted
+            else source_input.get("filename")
+        ),
+        "receipt": (
+            None
+            if restricted
+            else f"SHA256 {digest[:16]}" if isinstance(digest, str) else None
+        ),
         "target_url": story["url"],
     }
 
@@ -1189,7 +1216,16 @@ def _event_share_card_spec(
 
 
 def _edition_share_card_spec(feed: Mapping[str, Any]) -> dict[str, Any]:
-    lead = _select_lead(feed["stories"])
+    unrestricted = [
+        story
+        for story in feed["stories"]
+        if story["signal_id"] not in _PUBLIC_VALUE_WITHHELD_SHARE_CARDS
+    ]
+    if not unrestricted:
+        raise newsroom.NewsroomError(
+            "newsroom edition has no public-value-safe share-card lead"
+        )
+    lead = _select_lead(unrestricted)
     metric = None
     if lead["status"] == "live" and lead["metric"]["value"] is not None:
         metric = {"value": _metric_value(lead), "label": _metric_caption(lead)}
