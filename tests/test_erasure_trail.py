@@ -245,7 +245,7 @@ def test_desk_is_discoverable():
     llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
     openapi = json.loads((ROOT / "openapi.json").read_text(encoding="utf-8"))
     researchers = (ROOT / "for-researchers.html").read_text(encoding="utf-8")
-    assert '("/news/china/erasure/", "Censorship dossiers"' in nav
+    assert '("/news/china/erasure/", "Find a deleted post"' in nav
     assert "https://palimpsest.info/news/china/erasure/" in sitemap
     assert "https://palimpsest.info/news/china/erasure/" in news_sitemap
     assert "https://palimpsest.info/news/china/erasure/" in llms
@@ -259,5 +259,6 @@ def test_desk_is_discoverable():
     assert "/readings/censorship-practice-dossiers-latest.json" in openapi["paths"]
     assert "/readings/erasure-trail.csv" in openapi["paths"]
     assert "/readings/undertext-latest.json" in openapi["paths"]
+    assert 'href="/news/china/erasure/">Censorship dossiers</a>' in researchers
     assert "Censorship practice, piece by piece" in researchers
     assert (ROOT / "docs" / "FOR-JOURNALISTS.md").is_file()
