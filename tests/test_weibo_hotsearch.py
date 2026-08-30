@@ -118,6 +118,7 @@ PUBLISHED_FALSE_POSITIVES = [
     ("维权", "虞书欣名誉维权案胜诉"),                 # celebrity reputation suit
     ("维权", "瑞幸泰国商标维权再胜创赔偿纪录"),       # Luckin trademark case
     ("屏蔽", "找工作屏蔽原公司的重要性"),             # job-hunt privacy advice
+    ("失联", "尼泊尔山洪已致579死1924失联"),          # disaster casualty update
 ]
 
 # The coded sense the gazetteer actually lists the terms for. Every one of
@@ -252,6 +253,25 @@ def test_withdrawal_candidates_keeps_the_coded_sense_exit():
     assert [c["title"] for c in got["candidates"]] == ["维权律师被带走"]
     assert got["candidates"][0]["matched_terms"] == ["维权"]
     assert got["sense_filtered"] == []
+
+
+def test_nepal_flood_casualty_update_is_not_a_withdrawal_candidate():
+    days = {
+        "2026-08-29": _day([
+            ("持续话题", 3),
+            ("尼泊尔山洪已致579死1924失联", 8),
+        ]),
+        "2026-08-30": _day([("持续话题", 5)]),
+        "2026-08-31": _day([("持续话题", 8)]),
+    }
+
+    got = withdrawal_candidates(days, top_rank=10, sensitive_terms={"失联"})
+
+    assert got["candidates"] == []
+    assert got["sense_filtered"][0]["title"] == "尼泊尔山洪已致579死1924失联"
+    assert got["sense_filtered"][0]["sense_filtered_terms"] == [
+        {"term": "失联", "cue": "山洪"}
+    ]
 
 
 def test_withdrawal_baseline_states_its_pooling_bias():

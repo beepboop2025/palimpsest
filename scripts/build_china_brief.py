@@ -23,6 +23,7 @@ without that persisted history every term reads as new on every run.
 """
 from __future__ import annotations
 
+import html
 import json
 import os
 import sys
@@ -41,6 +42,14 @@ import palimpsest_demo as demo  # noqa: E402  (standalone by design; path set ab
 # rewritten wholesale every six hours, so a nav hand-copied into this file would quietly
 # revert the rest of the site's chrome on the next cron run. Import it instead.
 import site_nav  # noqa: E402
+from core.china_event_lens import (  # noqa: E402
+    SOURCE_URL as WEIBO_TERMS_URL,
+    build_declared_event_lenses,
+)
+from core.safe_fetch import FetchError, safe_fetch_bytes  # noqa: E402
+from core.weibo_hotsearch_terms import (  # noqa: E402
+    validate_weibo_hotsearch_terms,
+)
 
 OUT = os.path.join(ROOT, "china-brief.html")
 META = os.path.join(ROOT, "readings", "china-brief.json")
@@ -49,8 +58,8 @@ CANONICAL = "https://palimpsest.info/china-brief.html"
 TITLE = "China brief — live censor attention · Palimpsest"
 DESCRIPTION = (
     "A live read of what the Chinese censor is working on right now: ranked censor attention, "
-    "newly sensitive terms, and the share of that attention which is economic. Built from the "
-    "public China Digital Times feed and refreshed automatically."
+    "newly sensitive terms, event-level permitted attention, and the share of censor attention "
+    "which is economic. Built from public China Digital Times and Weibo-board archives."
 )
 
 HEAD = f"""<meta name="viewport" content="width=device-width,initial-scale=1">
@@ -75,7 +84,9 @@ PROVENANCE = """<div class="prov ps-p1" role="note">
   <a href="https://chinadigitaltimes.net/">China Digital Times</a> feed of documented
   censorship directives and scrubbed material. Terms are ranked by censor attention and by
   novelty — how recently a term became sensitive — against a persisted history, so a term
-  marked new really is new to this instrument.</p>
+  marked new really is new to this instrument. The declared event lens separately reads the
+  public Weibo hot-search archive as permitted attention, checks revised headlines for event
+  continuity, and keeps state-pinned framing distinct from deletion evidence.</p>
   <p><strong>What it is not.</strong> This page carries no deletion <em>velocity</em>: that
   component cannot be measured from outside the wall and is suppressed across the platform
   rather than estimated. Attention and novelty are reachable and are what you see here.
@@ -101,6 +112,23 @@ EXTRA_CSS = """
 .prov strong{color:#e9e4d8}
 .prov__links{color:#8a8472;font-size:12.5px}
 .prov a{color:#4dd0e1}
+.event-lens{margin:20px clamp(12px,3vw,34px);padding:22px;max-width:1120px;border:1px solid #4dd0e155}
+.event-lens__head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.event-lens__eyebrow{margin:0 0 7px;color:#8a8472;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.event-lens h2{margin:0;color:#f4efe3;font-size:clamp(20px,3vw,31px);line-height:1.15}
+.event-lens__state{display:inline-flex;align-items:center;white-space:nowrap;padding:6px 9px;border:1px solid #4dd0e177;color:#4dd0e1;font-size:11px;letter-spacing:.08em}
+.event-lens__headline{margin:18px 0 5px;color:#f0cb74;font-size:14px;font-weight:700}
+.event-lens__reading{max-width:980px;margin:0;color:#d6d9da;font-size:15px;line-height:1.65}
+.event-lens__metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:19px 0}
+.event-lens__metric{padding:12px;border:1px solid #ffffff18;background:#05080d66}
+.event-lens__metric b{display:block;color:#f4efe3;font-size:20px;line-height:1.2}
+.event-lens__metric span{display:block;margin-top:5px;color:#8f9ba7;font-size:11px;line-height:1.35}
+.event-lens__evidence{margin:12px 0 0;padding-left:20px;color:#aeb8c2;font-size:12px;line-height:1.55}
+.event-lens__evidence li{margin:5px 0}
+.event-lens__foot{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:15px;color:#7f8a95;font-size:11px}
+.event-lens__foot a{color:#4dd0e1}
+.event-lens details{margin-top:13px;color:#8f9ba7;font-size:12px}
+.event-lens details p{max-width:960px;line-height:1.55}
 table{max-width:100%}
 .panel{overflow-x:auto}
 .ps-p1>h2,.ps-p2>h2,.ps-p3>h2{background:transparent}
@@ -110,8 +138,174 @@ table{max-width:100%}
 @media(max-width:640px){
   header,.tabnav,.pane,footer{padding-left:16px;padding-right:16px}
   .rank{gap:10px}
+  .event-lens{box-sizing:border-box;width:calc(100vw - 24px);max-width:calc(100vw - 24px);margin-left:12px;margin-right:12px;padding:17px;overflow-wrap:anywhere}
+  .event-lens__head{display:block}
+  .event-lens__state{margin-top:12px;white-space:normal}
+  .event-lens__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 """
+
+EVENT_LENS_JS = r"""<script>
+(() => {
+  const EVENT_ID = "nepal-flood-tibet-jilong-2026-08";
+  const set = (id, value) => {
+    const node = document.getElementById(id);
+    if (node && (typeof value === "string" || typeof value === "number")) {
+      node.textContent = String(value).slice(0, 1200);
+    }
+  };
+  const number = value => Number.isInteger(value) && value >= 0 ? value : "—";
+  const render = event => {
+    if (!event || typeof event !== "object" || event.event_id !== EVENT_ID) return;
+    const assessment = event.assessment || {};
+    const attention = event.attention || {};
+    const cross = attention.cross_border || {};
+    const pins = attention.state_pins || {};
+    const watch = event.withdrawal_watch || {};
+    const clocks = event.clocks || {};
+    set("event-lens-state", assessment.label || "EVENT LENS · UNAVAILABLE");
+    set("event-lens-headline", assessment.headline || "No current censorship inference");
+    set("event-lens-reading", assessment.reading || "Current event evidence is unavailable.");
+    set("event-lens-headlines", number(cross.distinct_headlines));
+    set("event-lens-rank", Number.isInteger(cross.best_rank) ? `#${cross.best_rank}` : "—");
+    set("event-lens-pins", number(Array.isArray(pins.days) ? pins.days.length : 0));
+    const resolved = number(watch.resolved_by_later_attention);
+    const rejected = number(watch.ordinary_sense_rejections);
+    const unresolved = number(watch.unresolved);
+    set("event-lens-withdrawal", `${resolved} resolved · ${rejected} rejected · ${unresolved} open`);
+    set("event-lens-clock", clocks.source_generated_at || "unknown source clock");
+    const list = document.getElementById("event-lens-evidence");
+    if (list && Array.isArray(event.evidence)) {
+      const rows = event.evidence.slice(0, 5).filter(row => row && typeof row.title === "string");
+      if (rows.length) {
+        list.replaceChildren(...rows.map(row => {
+          const item = document.createElement("li");
+          const rank = Number.isInteger(row.best_rank) ? ` · best rank #${row.best_rank}` : "";
+          item.textContent = `${String(row.date || "unknown date").slice(0, 10)} · ${row.title.slice(0, 180)}${rank}`;
+          return item;
+        }));
+      }
+    }
+  };
+  fetch("/readings/weibo-hotsearch-latest.json", {cache: "no-store", credentials: "omit"})
+    .then(response => response.ok ? response.json() : Promise.reject(new Error("event source unavailable")))
+    .then(document => {
+      const events = document && document.event_lenses && document.event_lenses.events;
+      if (!Array.isArray(events)) return;
+      render(events.find(event => event && event.event_id === EVENT_ID));
+    })
+    .catch(() => {}); // Preserve the sealed static reading; never replace it with a false zero.
+})();
+</script>"""
+
+
+def _h(value: object) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def _load_event_lenses(now: datetime) -> dict:
+    """Prefer the live fixed route; stale local fallback remains unavailable."""
+
+    document = None
+    retrieval_state = "unavailable"
+
+    def exact_route(candidate: str) -> None:
+        if candidate != WEIBO_TERMS_URL:
+            raise FetchError("Weibo event-lens route changed")
+
+    try:
+        payload = safe_fetch_bytes(
+            WEIBO_TERMS_URL,
+            timeout=20,
+            max_bytes=2 * 1024 * 1024,
+            max_redirects=0,
+            headers={
+                "Accept": "application/json",
+                "User-Agent": "palimpsest.info China event lens (desk@palimpsest.info)",
+            },
+            url_policy=exact_route,
+        )
+        document = json.loads(payload.decode("utf-8"))
+        validate_weibo_hotsearch_terms(document)
+        retrieval_state = "live_fixed_route"
+    except (FetchError, UnicodeDecodeError, json.JSONDecodeError, ValueError, OSError):
+        local = os.path.join(ROOT, "readings", "weibo-hotsearch-terms-latest.json")
+        try:
+            with open(local, encoding="utf-8") as fh:
+                document = json.load(fh)
+            validate_weibo_hotsearch_terms(document)
+            retrieval_state = "local_fallback"
+        except (OSError, json.JSONDecodeError, ValueError):
+            document = None
+
+    result = build_declared_event_lenses(document, evaluated_at=now)
+    result["retrieval_state"] = retrieval_state
+    return result
+
+
+def _event_panel(document: dict) -> str:
+    events = document.get("events") if isinstance(document, dict) else []
+    event = next(
+        (
+            item
+            for item in (events or [])
+            if isinstance(item, dict)
+            and item.get("event_id") == "nepal-flood-tibet-jilong-2026-08"
+        ),
+        None,
+    )
+    if not event:
+        event = build_declared_event_lenses(None)["events"][0]
+
+    assessment = event.get("assessment") or {}
+    attention = event.get("attention") or {}
+    cross = attention.get("cross_border") or {}
+    pins = attention.get("state_pins") or {}
+    watch = event.get("withdrawal_watch") or {}
+    clocks = event.get("clocks") or {}
+    evidence = [row for row in (event.get("evidence") or []) if isinstance(row, dict)][:5]
+
+    def count(value: object) -> str:
+        return str(value) if type(value) is int and value >= 0 else "—"
+
+    best_rank = cross.get("best_rank")
+    rank_text = f"#{best_rank}" if type(best_rank) is int else "—"
+    pin_days = pins.get("days") if isinstance(pins.get("days"), list) else []
+    withdrawal_text = (
+        f"{count(watch.get('resolved_by_later_attention'))} resolved · "
+        f"{count(watch.get('ordinary_sense_rejections'))} rejected · "
+        f"{count(watch.get('unresolved'))} open"
+    )
+    evidence_html = "".join(
+        "<li>"
+        f"{_h(row.get('date') or 'unknown date')} · "
+        f"<span lang=zh>{_h(row.get('title') or '')}</span>"
+        + (
+            f" · best rank #{_h(row['best_rank'])}"
+            if type(row.get("best_rank")) is int
+            else ""
+        )
+        + "</li>"
+        for row in evidence
+    ) or "<li>No current event evidence is publishable.</li>"
+
+    return f"""<section class="event-lens ps-p3" id="event-lens" aria-labelledby="event-lens-title">
+  <div class="event-lens__head"><div>
+    <p class="event-lens__eyebrow">Declared event lens · Nepal flood / Tibet–Jilong · public board</p>
+    <h2 id="event-lens-title">What the censorship instruments indicate</h2>
+  </div><span class="event-lens__state" id="event-lens-state">{_h(assessment.get("label") or "EVENT LENS · UNAVAILABLE")}</span></div>
+  <p class="event-lens__headline" id="event-lens-headline">{_h(assessment.get("headline") or "No current censorship inference")}</p>
+  <p class="event-lens__reading" id="event-lens-reading">{_h(assessment.get("reading") or "Current event evidence is unavailable.")}</p>
+  <div class="event-lens__metrics" aria-label="Event-lens evidence summary">
+    <div class="event-lens__metric"><b id="event-lens-headlines">{count(cross.get("distinct_headlines"))}</b><span>Nepal-linked distinct headlines in the bounded window</span></div>
+    <div class="event-lens__metric"><b id="event-lens-rank">{_h(rank_text)}</b><span>best observed permitted-board rank</span></div>
+    <div class="event-lens__metric"><b id="event-lens-pins">{len(pin_days)}</b><span>days with a linked Tibet–Jilong state-pinned headline</span></div>
+    <div class="event-lens__metric"><b id="event-lens-withdrawal">{_h(withdrawal_text)}</b><span>exact-headline exit flags: continuity-resolved · sense-rejected · open</span></div>
+  </div>
+  <ol class="event-lens__evidence" id="event-lens-evidence">{evidence_html}</ol>
+  <details><summary>How to read this</summary><p>The hot-search board is a curated permitted-attention surface. High rank and continued presence can contradict a topic-blackout reading, while pinned headlines reveal selected framing. Neither proves free discussion. Headline casualty figures are displayed only as unverified source text.</p></details>
+  <div class="event-lens__foot"><span>source clock <b id="event-lens-clock">{_h(clocks.get("source_generated_at") or "unknown")}</b></span><span>retrieval {_h(document.get("retrieval_state") or "embedded")}</span><a href="{_h(WEIBO_TERMS_URL)}">Open every board title and rank</a></div>
+</section>"""
 
 
 def _swap(page: str, old: str, new: str, *, what: str, required: bool = True) -> str:
@@ -174,6 +368,7 @@ def _canonicalise_history() -> bool:
 
 
 def build() -> dict:
+    built_at = datetime.now(timezone.utc)
     items, reachable = [], 0
     for url in demo.CDT_FEEDS:
         got = demo.fetch_feed(url)
@@ -195,6 +390,7 @@ def build() -> dict:
     demo.save_history(history, ranked)
     baseline_changed = _canonicalise_history()
     econ = demo.economic_stress(articles)
+    event_lenses = _load_event_lenses(built_at)
 
     with tempfile.TemporaryDirectory() as td:
         tmp = os.path.join(td, "report.html")
@@ -215,7 +411,12 @@ def build() -> dict:
     page = _swap(page, "<body>",
                  '<body class="ps">\n' + site_nav.render("/china-brief.html") + '\n<main id="main">',
                  what="body open")
-    page = _swap(page, "<footer>", PROVENANCE + "</main>\n<footer>", what="footer")
+    page = _swap(
+        page,
+        "<footer>",
+        _event_panel(event_lenses) + PROVENANCE + EVENT_LENS_JS + "</main>\n<footer>",
+        what="footer",
+    )
     page = _swap(page, "</body>", site_nav.FOOT + "</body>", what="body close")
 
     # Depth encodes epistemic distance. The state read is the sentence a reader may quote,
@@ -243,7 +444,7 @@ def build() -> dict:
         fh.write(page)
 
     meta = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": built_at.isoformat(),
         "page": "china-brief.html",
         "source": "China Digital Times (public feed)",
         "feeds_reachable": reachable,
@@ -256,6 +457,7 @@ def build() -> dict:
         "top_terms": [{"term": r["term"], "domain": r["domain"],
                        "threat": round(r["threat"], 2), "is_new": bool(r["is_new"])}
                       for r in ranked[:10]],
+        "event_lenses": event_lenses,
         "velocity": None,
         "velocity_note": ("not measurable from outside the wall — suppressed, never estimated"),
     }

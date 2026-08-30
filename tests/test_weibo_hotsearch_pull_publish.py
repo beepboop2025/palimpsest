@@ -127,12 +127,25 @@ def _history(tmp_path):
     path = tmp_path / "weibo-hotsearch-history.jsonl"
     if not path.exists():
         return []
-    return [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
 def _substance(row):
     """The row minus its clock — what the round actually claims."""
-    return {k: v for k, v in row.items() if k != "generated_at"}
+    clock_fields = {"generated_at", "evaluated_at", "source_generated_at", "age_seconds"}
+
+    def without_clocks(value):
+        if isinstance(value, dict):
+            return {
+                key: without_clocks(child)
+                for key, child in value.items()
+                if key not in clock_fields
+            }
+        if isinstance(value, list):
+            return [without_clocks(child) for child in value]
+        return value
+
+    return without_clocks(row)
 
 
 def test_an_unchanged_round_still_refreshes_the_observation_time(publish):
@@ -230,6 +243,9 @@ def test_the_join_reports_both_regimes_so_a_moved_split_would_show(publish):
     # The English CDT label is filtered before the join: matching it against
     # Chinese board titles would manufacture an absence.
     assert reading["ddti_terms_joined"] == 2
+    lens = reading["event_lenses"]
+    assert lens["schema_version"] == "palimpsest.china-event-lenses.v1"
+    assert lens["events"][0]["assessment"]["code"] == "not_observed"
 
 
 def test_an_unparseable_archive_abstains_and_writes_nothing(publish):
