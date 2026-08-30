@@ -109,3 +109,22 @@ def test_railway_publisher_is_model_free_and_fails_before_deploy() -> None:
             '"$RAILWAY_BIN" up',
         ),
     )
+
+
+def test_railway_publisher_keeps_translation_and_selects_a_monotonic_ledger() -> None:
+    script = PUBLISHER_PATH.read_text(encoding="utf-8")
+    start = script.index("copy_host_public_file() {")
+    end = script.index("\n}\n\nwhile IFS= read", start)
+    overlay_functions = script[start:end]
+
+    assert "readings/chinese-translations-latest.json" in overlay_functions
+    assert "readings/readings-ledger.jsonl" in overlay_functions
+    assert overlay_functions.index('case "$relative" in') < overlay_functions.index(
+        'source="$HOST_READINGS/'
+    )
+    assert 'cmp -n "$destination_bytes" "$destination" "$source"' in overlay_functions
+    assert 'cmp -n "$source_bytes" "$source" "$destination"' in overlay_functions
+    assert "readings ledger overlay diverges" in overlay_functions
+    assert script.index("overlay_monotonic_readings_ledger\n") < script.index(
+        "scripts.build_chinese_translations --retain-last-good"
+    )

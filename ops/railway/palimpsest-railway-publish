@@ -1046,11 +1046,51 @@ fi
 copy_host_public_file() {
   local relative="$1" source destination
   [[ "$relative" == readings/* && "$relative" != *'/../'* ]] || return 1
+  # The model-free publisher cannot admit a different translation sidecar.
+  # The ledger is selected separately by exact monotonic-prefix proof below.
+  case "$relative" in
+    readings/chinese-translations-latest.json|readings/readings-ledger.jsonl)
+      return 0
+      ;;
+  esac
   source="$HOST_READINGS/${relative#readings/}"
   destination="$checkout/$relative"
   if [[ -f "$source" ]]; then
     mkdir -p "${destination%/*}"
     cp -p "$source" "$destination"
+  fi
+}
+
+overlay_monotonic_readings_ledger() {
+  local source="$HOST_READINGS/readings-ledger.jsonl"
+  local destination="$checkout/readings/readings-ledger.jsonl"
+  local source_bytes destination_bytes
+
+  [[ -e "$source" || -L "$source" ]] || return 0
+  [[ -f "$source" && ! -L "$source" \
+    && -f "$destination" && ! -L "$destination" ]] || {
+    log "readings ledger overlay is not a regular-file pair" >&2
+    return 1
+  }
+  source_bytes="$(stat -c '%s' "$source")"
+  destination_bytes="$(stat -c '%s' "$destination")"
+  [[ "$source_bytes" =~ ^[1-9][0-9]*$ \
+    && "$destination_bytes" =~ ^[1-9][0-9]*$ ]] || {
+    log "readings ledger overlay contains an empty or invalid file" >&2
+    return 1
+  }
+  if cmp -s "$source" "$destination"; then
+    log "readings ledger overlay is already byte-identical"
+  elif (( source_bytes > destination_bytes )) \
+    && cmp -n "$destination_bytes" "$destination" "$source"; then
+    cp -p "$source" "$destination"
+    log "admitted the host readings-ledger strict extension"
+  elif (( destination_bytes > source_bytes )) \
+    && cmp -n "$source_bytes" "$source" "$destination"; then
+    log "retained the target readings-ledger over its host strict prefix"
+  else
+    log "readings ledger overlay diverges from the reviewed target chain" >&2
+    return 1
   fi
 }
 
@@ -1060,6 +1100,7 @@ while IFS= read -r -d '' tracked_path; do
     copy_host_public_file "$tracked_path"
   fi
 done < <(git -C "$checkout" ls-files -z 'readings/*')
+overlay_monotonic_readings_ledger
 for tracked_path in "${PUBLIC_COMPANION_PATHS[@]}"; do
   copy_host_public_file "$tracked_path"
 done
