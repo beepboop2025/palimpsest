@@ -32,7 +32,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 
 from core import china_situation as china_situation_model
 from core import newswire as newswire_model
@@ -391,8 +391,34 @@ def _is_reviewed_binary(
     return expected == (hashlib.sha256(raw).hexdigest(), len(raw))
 
 
-def _load_generated_share_cards(root: Path) -> dict[str, bytes]:
-    """Reproduce and bind every dynamic card; never grant a PNG prefix wildcard."""
+def _share_card_target_path(root: Path, spec: Mapping[str, Any]) -> Path:
+    """Map one validated public card target to an in-root semantic scan path."""
+
+    target = urlsplit(spec["target_url"])
+    if (
+        target.scheme != "https"
+        or target.netloc != "palimpsest.info"
+        or not target.path.startswith("/")
+    ):
+        raise PagesRightsError("generated share card has an invalid public target")
+    decoded = unquote(target.path)
+    relative = Path(decoded.removeprefix("/"))
+    if not relative.parts or decoded.endswith("/"):
+        relative /= "index.html"
+    path = root / relative
+    if not _within_root(root, path):
+        raise PagesRightsError("generated share card target escaped the staged root")
+    return path
+
+
+def _load_generated_share_cards(
+    root: Path,
+    *,
+    denied_source_ids: frozenset[str],
+    allowed_source_ids: frozenset[str],
+    lineage_pattern: re.Pattern[bytes],
+) -> dict[str, bytes]:
+    """Reproduce and rights-check each dynamic card as one semantic unit."""
 
     manifest_path = root / SHARE_CARD_MANIFEST_RELATIVE_PATH
     if not manifest_path.is_file() or not _within_root(root, manifest_path):
@@ -405,6 +431,18 @@ def _load_generated_share_cards(root: Path) -> dict[str, bytes]:
     generated: dict[str, bytes] = {}
     for row, card in rows:
         relative = row["path"]
+        target_path = _share_card_target_path(root, card.spec)
+        if _contains_denied_payload(
+            root,
+            target_path,
+            _canonical_json(card.spec),
+            denied_source_ids=denied_source_ids,
+            allowed_source_ids=allowed_source_ids,
+            lineage_pattern=lineage_pattern,
+        ):
+            raise PagesRightsError(
+                "generated share card contains a denied value: " + relative
+            )
         path = root / relative
         if not path.is_file() or not _within_root(root, path):
             raise PagesRightsError(
@@ -1297,9 +1335,14 @@ def find_denied_value_paths(
             or not policy.decisions[source_id].values_allowed
         }
     )
-    binary_allowlist = _load_binary_allowlist(root)
-    generated_share_cards = _load_generated_share_cards(root)
     lineage_pattern = _lineage_pattern(denied_source_ids)
+    binary_allowlist = _load_binary_allowlist(root)
+    generated_share_cards = _load_generated_share_cards(
+        root,
+        denied_source_ids=denied_source_ids,
+        allowed_source_ids=allowed_source_ids,
+        lineage_pattern=lineage_pattern,
+    )
     violations = []
     for path in _public_candidates(root):
         relative = path.relative_to(root).as_posix()
@@ -1307,6 +1350,12 @@ def find_denied_value_paths(
             POLICY_RELATIVE_PATH.as_posix(),
             BINARY_ALLOWLIST_RELATIVE_PATH.as_posix(),
         }:
+            continue
+        if relative == SHARE_CARD_MANIFEST_RELATIVE_PATH.as_posix():
+            # The loader above already parsed the exact canonical shape,
+            # re-rendered every PNG, and rights-scanned each spec independently.
+            # Scanning the aggregate would let lineage from one safe no-metric
+            # card combine with a value from an unrelated card.
             continue
         raw = _read_bounded(path)
         decoded_text = _decode_public_text(raw)
