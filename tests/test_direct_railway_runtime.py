@@ -181,6 +181,20 @@ def test_generated_release_is_durably_bundled_before_any_railway_mutation() -> N
     assert "clone --quiet --shared" not in publisher
 
 
+def test_publisher_unlinks_each_private_temporary_file_separately() -> None:
+    publisher = PUBLISHER.read_text(encoding="utf-8")
+    unlink_lines = [
+        line.strip()
+        for line in publisher.splitlines()
+        if line.strip().startswith("unlink ")
+    ]
+
+    assert unlink_lines
+    assert all(len(line.split()) == 2 for line in unlink_lines)
+    for temporary in ("provider_tmp", "public_tmp", "topology_tmp"):
+        assert f'unlink "${temporary}"' in unlink_lines
+
+
 def test_repository_builders_cannot_inherit_railway_or_ambient_git_authority() -> None:
     publisher = PUBLISHER.read_text(encoding="utf-8")
 
