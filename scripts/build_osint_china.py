@@ -725,8 +725,10 @@ SIGNALS: tuple[SignalSpec, ...] = (
 # rumour-board are public-vantage coverage receipts, not OSINT China measurements;
 # weekly-situation, collector-health and gazetteer-phylogeny are derived fusion and
 # ops surfaces over inputs already counted here; weibo-hotsearch-terms is the
-# title-union dump of the already-counted hot-search board; and the remaining files are generic
-# model evaluation surfaces. The Belt and Road observatory is a planning/source-coverage
+# title-union dump of the already-counted hot-search board; chinese-translations is a
+# derived language projection over retained Newswire metadata, not a new observation; and
+# the remaining files are generic model evaluation surfaces. The Belt and Road observatory
+# is a planning/source-coverage
 # contract rather than a live China signal; its normalized WDI bundle is national economic
 # context and is likewise excluded so it cannot be promoted into an event signal. The UCDP
 # aggregate is a separately licensed, delayed historical conflict publication for the
@@ -746,6 +748,7 @@ EXCLUDED_LATEST_FILES = frozenset(
         "china-economic-pulse-latest.json",
         "china-index-latest.json",
         "china-situation-latest.json",
+        "chinese-translations-latest.json",
         "dragon-whispers-latest.json",
         "live-watch-latest.json",
         "rumour-board-latest.json",

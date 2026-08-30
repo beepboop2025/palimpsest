@@ -922,15 +922,19 @@ def build_v2_blocks(
         if first_item and first_item.get("feed_sha256")
         else None
     )
-    source_claim = (
+    source_evidence_claim = (
         f"{publisher} published “{event['headline']}” at {event['published_at']}."
+    )
+    source_lead_claim = (
+        f"{publisher} published the attributed source item at "
+        f"{event['published_at']}."
     )
     source_evidence = _evidence_row(
         kind="event-source",
         surface_id="newswire",
         status="live",
         headline=event["headline"],
-        claim=source_claim,
+        claim=source_evidence_claim,
         reading_url=event["url"],
         source_timestamp=event["published_at"],
         input_sha256=feed_sha
@@ -1530,7 +1534,7 @@ def build_v2_blocks(
     lead = {
         "status": "present",
         "sentences": [
-            _sentence(source_claim, eid["newswire"]),
+            _sentence(source_lead_claim, eid["newswire"]),
             _sentence(
                 f"Evidence strength is {strength} across {groups} independent source "
                 f"group{'s' if groups != 1 else ''} and {sources} attributed source "

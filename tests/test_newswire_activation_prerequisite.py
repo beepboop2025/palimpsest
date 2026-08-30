@@ -501,7 +501,12 @@ def test_acquisition_artifact_is_run_bound_and_archive_digest_checked(
 def test_raw_git_documents_are_validated_fresh_and_lineage_bound(
     tmp_path: Path,
 ) -> None:
-    source = _python_heredoc_after('python3 - "$NEWSWIRE_JSON" "$SITUATION_JSON"')
+    source = _python_heredoc_after(
+        'python3 - "$NEWSWIRE_JSON" "$SITUATION_JSON"'
+    ).replace(
+        "now = datetime.now(timezone.utc)",
+        'now = strict_utc(sys.argv[14], "test validation clock")',
+    )
     newswire_path = tmp_path / "newswire.json"
     situation_path = tmp_path / "situation.json"
     receipt_path = tmp_path / "receipt.json"
@@ -513,16 +518,13 @@ def test_raw_git_documents_are_validated_fresh_and_lineage_bound(
     situation = json.loads(
         (ROOT / "readings" / "china-situation-latest.json").read_text(encoding="utf-8")
     )
-    now = datetime.now(timezone.utc).replace(microsecond=0)
     original_generated = datetime.strptime(
         newswire["generated_at"], "%Y-%m-%dT%H:%M:%SZ"
     ).replace(tzinfo=timezone.utc)
-    fresh_offset_hours = int((now - original_generated).total_seconds() // 3600)
-    fresh = original_generated + timedelta(hours=fresh_offset_hours)
+    fresh = original_generated
     fresh_text = fresh.strftime("%Y-%m-%dT%H:%M:%SZ")
     newswire["generated_at"] = fresh_text
     newswire["window"]["to"] = fresh_text
-    newswire["window"]["hours"] += fresh_offset_hours
     for item in newswire["items"]:
         item["collected_at"] = fresh_text
     situation["generated_at"] = fresh_text
@@ -569,7 +571,8 @@ def test_raw_git_documents_are_validated_fresh_and_lineage_bound(
         commit_proof_path,
         artifact_proof_path,
     )
-    valid = _run_python(source, *arguments)
+    validation_now = (fresh + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    valid = _run_python(source, *arguments, validation_now)
     assert valid.returncode == 0, valid.stderr
     receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
     assert receipt["base_sha"] == "d" * 40
@@ -592,24 +595,16 @@ def test_raw_git_documents_are_validated_fresh_and_lineage_bound(
     situation["inputs"]["newswire_sha256"] = "0" * 64
     _write_json(situation_path, situation)
     receipt_path.unlink()
-    tampered = _run_python(source, *arguments)
+    tampered = _run_python(source, *arguments, validation_now)
     assert tampered.returncode != 0
     assert "digest does not match" in tampered.stderr
 
-    stale = fresh - timedelta(hours=3)
-    stale_text = stale.strftime("%Y-%m-%dT%H:%M:%SZ")
-    newswire["generated_at"] = stale_text
-    newswire["window"]["to"] = stale_text
-    newswire["window"]["hours"] -= 3
-    for item in newswire["items"]:
-        item["collected_at"] = stale_text
-    situation["generated_at"] = stale_text
-    situation["inputs"]["newswire_generated_at"] = stale_text
     situation["inputs"]["newswire_sha256"] = hashlib.sha256(
         canonical_json_bytes(newswire)
     ).hexdigest()
     _write_json(newswire_path, newswire)
     _write_json(situation_path, situation)
-    stale_result = _run_python(source, *arguments)
+    stale_now = (fresh + timedelta(hours=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    stale_result = _run_python(source, *arguments, stale_now)
     assert stale_result.returncode != 0
     assert "two-hour activation window" in stale_result.stderr

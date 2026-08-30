@@ -1,0 +1,2593 @@
+#!/usr/bin/python3
+"""Watch the direct Hetzner-to-Railway Palimpsest publication path.
+
+The v2 receipt deliberately separates the host deployment from the publication
+base.  This observer proves both identities, walks the immutable predecessor
+receipt chain, fully reconstructs the current incremental Git bundle, preserves
+checkpointed integrity for historical bundles, and compares the provider and
+public release manifests byte-for-byte.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import Any, Callable
+
+
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+SUBMISSION_ID = re.compile(r"^[0-9a-f]{32}$")
+UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-"
+    r"[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
+UTC_TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+UTC_TIMESTAMP_FRACTIONAL = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$"
+)
+UTC_TIMESTAMP_MICROSECONDS = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$"
+)
+MAX_JSON_BYTES = 8 * 1024 * 1024
+MAX_RECEIPT_BYTES = 256 * 1024
+MAX_BUNDLE_METADATA_BYTES = 64 * 1024
+CHAIN_CHECKPOINT_SCHEMA = "palimpsest.direct-publication-chain-checkpoint.v1"
+CHAIN_VALIDATION_BUDGET_SECONDS = 45.0
+
+V1_SCHEMA = "palimpsest.hetzner-railway-publication.v1"
+V2_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
+PIN_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
+PIN_INCIDENT = "palimpsest-direct-lineage-2026-08-30"
+BUNDLE_SCHEMA = "palimpsest.incremental-release-bundle.v1"
+CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v1"
+ROLLBACK_EVIDENCE_SCHEMA = "palimpsest.direct-publication-rollback-evidence.v1"
+DATA_HOLD_SCHEMA = "palimpsest.direct-publication-data-hold.v1"
+ROLLBACK_ATTEMPT_SCHEMA = "palimpsest.direct-publication-rollback-attempt.v1"
+
+INCIDENT_BASE_SHA = "b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
+INCIDENT_RELEASE_SHA = "ae5ecacd2e151d15af3fe06a7cd1219aa51573e7"
+INCIDENT_RECEIPT_SHA256 = (
+    "150d4d4314c1a1239f19c29747ce1a69c574cfc01f73fda2020cd51f1c1868b1"
+)
+INCIDENT_INPUT_SHA256 = (
+    "7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede38b2dc68a549413e"
+)
+INCIDENT_MANIFEST_SHA256 = (
+    "1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
+)
+INCIDENT_TREE_SHA256 = (
+    "6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
+)
+INCIDENT_DEPLOYMENT_ID = "505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+
+DEFAULT_PROVIDER_ORIGIN = (
+    "https://palimpsest-publication-production.up.railway.app"
+)
+DEFAULT_PUBLIC_ORIGIN = "https://www.palimpsest.info"
+
+TIMERS = (
+    "palimpsest-evidence-wire.timer",
+    "palimpsest-measurement-refresh.timer",
+    "palimpsest-railway-publish.timer",
+)
+SERVICES = (
+    "palimpsest-evidence-wire.service",
+    "palimpsest-measurement-refresh.service",
+    "palimpsest-railway-publish.service",
+)
+ANALYSIS_ROUTES = (
+    "/belt-and-road/gwadar/analysis/article.json",
+    "/belt-and-road/balochistan/analysis/article.json",
+    "/belt-and-road/myanmar/analysis/article.json",
+)
+
+
+class WatchdogError(RuntimeError):
+    """Raised when a publication proof is malformed or inconsistent."""
+
+
+@dataclass(frozen=True)
+class LineageConfig:
+    state_root: Path
+    source_repository: Path
+    publication_receipt: Path
+    deployed_commit: Path
+    base_pin: Path
+    pending_candidate: Path
+    data_hold: Path
+    installed_publisher: Path
+    installed_transition_helper: Path
+    installed_reconciler: Path
+    installed_watchdog: Path
+    installed_publisher_service: Path
+    installed_watchdog_service: Path
+    installed_watchdog_timer: Path
+    provider_origin: str
+    public_origin: str
+    state_uid: int
+    state_gid: int
+    pin_uid: int
+    pin_gid: int
+    installed_uid: int
+    installed_gid: int
+
+
+def _environment_path(name: str, default: str) -> Path:
+    return Path(os.environ.get(name, default))
+
+
+STATE_ROOT = _environment_path(
+    "PALIMPSEST_RAILWAY_STATE_ROOT",
+    "/var/lib/palimpsest/railway-publication",
+)
+WIRE_PATH = _environment_path(
+    "PALIMPSEST_WIRE_PATH",
+    "/var/lib/palimpsest/newswire/newswire-latest.json",
+)
+MEASUREMENT_RECEIPT = _environment_path(
+    "PALIMPSEST_MEASUREMENT_RECEIPT",
+    "/var/lib/palimpsest/measurement-refresh/latest-run.json",
+)
+PUBLICATION_RECEIPT = _environment_path(
+    "PALIMPSEST_PUBLICATION_RECEIPT",
+    str(STATE_ROOT / "latest-success.json"),
+)
+DEPLOYED_COMMIT = _environment_path(
+    "PALIMPSEST_DEPLOYED_COMMIT",
+    "/etc/palimpsest/deployed-commit",
+)
+BASE_PIN = _environment_path(
+    "PALIMPSEST_RAILWAY_BASE_FILE",
+    "/etc/palimpsest/railway-publication-base.json",
+)
+SOURCE_REPOSITORY = _environment_path(
+    "PALIMPSEST_SOURCE_REPOSITORY",
+    "/home/palimpsest/palimpsest",
+)
+OUTPUT_PATH = _environment_path(
+    "PALIMPSEST_WATCHDOG_OUTPUT",
+    "/var/lib/palimpsest-direct-watchdog/status.json",
+)
+PROVIDER_ORIGIN = os.environ.get(
+    "PALIMPSEST_PROVIDER_ORIGIN", DEFAULT_PROVIDER_ORIGIN
+).rstrip("/")
+PUBLIC_ORIGIN = os.environ.get(
+    "PALIMPSEST_PUBLIC_ORIGIN", DEFAULT_PUBLIC_ORIGIN
+).rstrip("/")
+
+WIRE_MAX_AGE_SECONDS = int(
+    os.environ.get("PALIMPSEST_WIRE_MAX_AGE_SECONDS", "1800")
+)
+MEASUREMENT_MAX_AGE_SECONDS = int(
+    os.environ.get("PALIMPSEST_MEASUREMENT_MAX_AGE_SECONDS", "10800")
+)
+PUBLICATION_MAX_AGE_SECONDS = int(
+    os.environ.get("PALIMPSEST_PUBLICATION_MAX_AGE_SECONDS", "3600")
+)
+
+
+def default_lineage_config() -> LineageConfig:
+    """Return the production identity boundary for the unprivileged observer."""
+
+    return LineageConfig(
+        state_root=STATE_ROOT,
+        source_repository=SOURCE_REPOSITORY,
+        publication_receipt=PUBLICATION_RECEIPT,
+        deployed_commit=DEPLOYED_COMMIT,
+        base_pin=BASE_PIN,
+        pending_candidate=STATE_ROOT / "pending-candidate.json",
+        data_hold=_environment_path(
+            "PALIMPSEST_RAILWAY_DATA_HOLD_FILE",
+            "/etc/palimpsest/railway-publication-data-hold.json",
+        ),
+        installed_publisher=_environment_path(
+            "PALIMPSEST_INSTALLED_PUBLISHER",
+            "/usr/local/sbin/palimpsest-railway-publish",
+        ),
+        installed_transition_helper=_environment_path(
+            "PALIMPSEST_INSTALLED_TRANSITION_HELPER",
+            "/usr/local/sbin/palimpsest-advance-direct-publication-base",
+        ),
+        installed_reconciler=_environment_path(
+            "PALIMPSEST_INSTALLED_RECONCILER",
+            "/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate",
+        ),
+        installed_watchdog=_environment_path(
+            "PALIMPSEST_INSTALLED_WATCHDOG",
+            "/usr/local/sbin/palimpsest-direct-watchdog",
+        ),
+        installed_publisher_service=_environment_path(
+            "PALIMPSEST_INSTALLED_PUBLISHER_SERVICE",
+            "/etc/systemd/system/palimpsest-railway-publish.service",
+        ),
+        installed_watchdog_service=_environment_path(
+            "PALIMPSEST_INSTALLED_WATCHDOG_SERVICE",
+            "/etc/systemd/system/palimpsest-direct-watchdog.service",
+        ),
+        installed_watchdog_timer=_environment_path(
+            "PALIMPSEST_INSTALLED_WATCHDOG_TIMER",
+            "/etc/systemd/system/palimpsest-direct-watchdog.timer",
+        ),
+        provider_origin=PROVIDER_ORIGIN,
+        public_origin=PUBLIC_ORIGIN,
+        state_uid=os.geteuid(),
+        state_gid=os.getegid(),
+        pin_uid=0,
+        pin_gid=os.getegid(),
+        installed_uid=0,
+        installed_gid=0,
+    )
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def parse_timestamp(value: Any) -> datetime:
+    if not isinstance(value, str) or UTC_TIMESTAMP.fullmatch(value) is None:
+        raise ValueError("timestamp is not whole-second UTC")
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+        timezone.utc
+    )
+
+
+def parse_fractional_timestamp(value: Any, *, microseconds: bool = False) -> datetime:
+    pattern = UTC_TIMESTAMP_MICROSECONDS if microseconds else UTC_TIMESTAMP_FRACTIONAL
+    if not isinstance(value, str) or pattern.fullmatch(value) is None:
+        precision = "six-digit microsecond" if microseconds else "ISO UTC"
+        raise ValueError(f"timestamp is not {precision}")
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+        timezone.utc
+    )
+
+
+def _sha256(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _canonical_json_bytes(document: dict[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _expect_keys(
+    document: dict[str, Any], expected: set[str], *, label: str
+) -> None:
+    if set(document) != expected:
+        raise WatchdogError(f"{label} does not match its closed schema")
+
+
+def _strict_json(raw: bytes, *, label: str) -> dict[str, Any]:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        document: dict[str, Any] = {}
+        for key, value in rows:
+            if key in document:
+                raise WatchdogError(f"{label} contains duplicate key {key!r}")
+            document[key] = value
+        return document
+
+    try:
+        parsed = json.loads(
+            raw,
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                WatchdogError(f"{label} contains non-finite number {value}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise WatchdogError(f"{label} is not strict JSON") from exc
+    if not isinstance(parsed, dict):
+        raise WatchdogError(f"{label} must be a JSON object")
+    return parsed
+
+
+def _read_regular(
+    path: Path,
+    *,
+    label: str,
+    maximum: int,
+    uid: int | None = None,
+    gid: int | None = None,
+    mode: int | None = None,
+) -> bytes:
+    flags = os.O_RDONLY | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise WatchdogError(f"cannot open {label}: {path}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise WatchdogError(f"{label} is not a regular file")
+        if uid is not None and metadata.st_uid != uid:
+            raise WatchdogError(f"{label} has unsafe owner")
+        if gid is not None and metadata.st_gid != gid:
+            raise WatchdogError(f"{label} has unsafe group")
+        if mode is not None and stat.S_IMODE(metadata.st_mode) != mode:
+            raise WatchdogError(f"{label} has unsafe mode")
+        if metadata.st_size > maximum:
+            raise WatchdogError(f"{label} exceeds {maximum} bytes")
+        chunks: list[bytes] = []
+        remaining = maximum + 1
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 1024 * 1024))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        if len(raw) > maximum:
+            raise WatchdogError(f"{label} exceeds {maximum} bytes")
+        return raw
+    finally:
+        os.close(descriptor)
+
+
+def _validate_directory(
+    path: Path, *, label: str, uid: int, gid: int, mode: int
+) -> None:
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise WatchdogError(f"cannot inspect {label}: {path}") from exc
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or path.is_symlink()
+        or metadata.st_uid != uid
+        or metadata.st_gid != gid
+        or stat.S_IMODE(metadata.st_mode) != mode
+    ):
+        raise WatchdogError(f"{label} ownership or mode is unsafe")
+
+
+def _sha40(value: Any, *, label: str) -> str:
+    if not isinstance(value, str) or SHA40.fullmatch(value) is None:
+        raise WatchdogError(f"{label} is not a lowercase commit SHA")
+    return value
+
+
+def _digest(value: Any, *, label: str) -> str:
+    if not isinstance(value, str) or SHA256.fullmatch(value) is None:
+        raise WatchdogError(f"{label} is not a SHA-256 digest")
+    return value
+
+
+def _positive_integer(value: Any, *, label: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise WatchdogError(f"{label} is not a positive integer")
+    return value
+
+
+def _validate_pin(config: LineageConfig) -> tuple[dict[str, Any], bytes]:
+    raw = _read_regular(
+        config.base_pin,
+        label="publication base pin",
+        maximum=MAX_RECEIPT_BYTES,
+        uid=config.pin_uid,
+        gid=config.pin_gid,
+        mode=0o640,
+    )
+    pin = _strict_json(raw, label="publication base pin")
+    _expect_keys(
+        pin,
+        {
+            "incident_id",
+            "installed",
+            "origins",
+            "previous",
+            "recorded_at",
+            "schema_version",
+            "status",
+            "target",
+        },
+        label="publication base pin",
+    )
+    if (
+        pin["schema_version"] != PIN_SCHEMA
+        or pin["status"] != "verified"
+        or pin["incident_id"] != PIN_INCIDENT
+    ):
+        raise WatchdogError("publication base pin identity is invalid")
+    parse_timestamp(pin["recorded_at"])
+
+    installed = pin.get("installed")
+    origins = pin.get("origins")
+    previous = pin.get("previous")
+    target = pin.get("target")
+    if not all(isinstance(value, dict) for value in (installed, origins, previous, target)):
+        raise WatchdogError("publication base pin contains invalid proof objects")
+    assert isinstance(installed, dict)
+    assert isinstance(origins, dict)
+    assert isinstance(previous, dict)
+    assert isinstance(target, dict)
+
+    installed_paths = {
+        "publisher_sha256": (config.installed_publisher, 0o755),
+        "transition_helper_sha256": (config.installed_transition_helper, 0o755),
+        "reconciler_sha256": (config.installed_reconciler, 0o755),
+        "watchdog_sha256": (config.installed_watchdog, 0o755),
+        "publisher_service_sha256": (config.installed_publisher_service, 0o644),
+        "watchdog_service_sha256": (config.installed_watchdog_service, 0o644),
+        "watchdog_timer_sha256": (config.installed_watchdog_timer, 0o644),
+    }
+    _expect_keys(installed, set(installed_paths), label="installed transition proof")
+    for key, (path, expected_mode) in installed_paths.items():
+        expected = _digest(installed[key], label=f"installed.{key}")
+        actual_raw = _read_regular(
+            path,
+            label=f"installed transition artifact {path}",
+            maximum=4 * 1024 * 1024,
+            uid=config.installed_uid,
+            gid=config.installed_gid,
+            mode=expected_mode,
+        )
+        if _sha256(actual_raw) != expected:
+            raise WatchdogError(f"installed transition artifact changed: {path}")
+
+    _expect_keys(origins, {"provider", "public"}, label="pin origins")
+    if origins != {
+        "provider": config.provider_origin,
+        "public": config.public_origin,
+    }:
+        raise WatchdogError("publication base pin names different origins")
+
+    _expect_keys(
+        previous,
+        {
+            "canonical_head",
+            "deployed_commit",
+            "live_manifest_sha256",
+            "live_release_sha",
+            "live_tree_sha256",
+            "publication_input_sha256",
+            "publication_receipt_sha256",
+            "railway_deployment_id",
+        },
+        label="pin predecessor",
+    )
+    if (
+        previous["canonical_head"] != INCIDENT_BASE_SHA
+        or previous["deployed_commit"] != INCIDENT_BASE_SHA
+        or previous["live_release_sha"] != INCIDENT_RELEASE_SHA
+        or previous["publication_receipt_sha256"]
+        != INCIDENT_RECEIPT_SHA256
+        or previous["publication_input_sha256"] != INCIDENT_INPUT_SHA256
+        or previous["live_manifest_sha256"] != INCIDENT_MANIFEST_SHA256
+        or previous["live_tree_sha256"] != INCIDENT_TREE_SHA256
+        or previous["railway_deployment_id"] != INCIDENT_DEPLOYMENT_ID
+    ):
+        raise WatchdogError("publication base pin does not close the recorded incident")
+
+    _expect_keys(target, {"base_sha", "public_main_sha"}, label="pin target")
+    target_sha = _sha40(target["base_sha"], label="pin target base")
+    if target["public_main_sha"] != target_sha:
+        raise WatchdogError("publication base is not the pinned public main")
+    return pin, raw
+
+
+def _validate_v1_receipt(
+    raw: bytes,
+    receipt: dict[str, Any],
+    *,
+    pin: dict[str, Any] | None,
+    allow_current_pre_transition: bool,
+) -> None:
+    _expect_keys(
+        receipt,
+        {
+            "schema_version",
+            "status",
+            "recorded_at",
+            "input_sha256",
+            "wire_generated_at",
+            "base_sha",
+            "release_sha",
+            "railway",
+            "origins",
+            "github_actions_used",
+        },
+        label="v1 publication receipt",
+    )
+    if allow_current_pre_transition:
+        if pin is not None:
+            raise WatchdogError("v1 pre-transition receipt cannot coexist with a pin")
+        if _sha256(raw) != INCIDENT_RECEIPT_SHA256:
+            raise WatchdogError("v1 receipt is not the exact pre-transition receipt")
+    elif pin is None or _sha256(raw) != INCIDENT_RECEIPT_SHA256:
+        raise WatchdogError("archived v1 receipt is not the transition predecessor")
+    if (
+        receipt["schema_version"] != V1_SCHEMA
+        or receipt["status"] != "verified"
+        or receipt["input_sha256"] != INCIDENT_INPUT_SHA256
+        or receipt["base_sha"] != INCIDENT_BASE_SHA
+        or receipt["release_sha"] != INCIDENT_RELEASE_SHA
+        or receipt["github_actions_used"] is not False
+    ):
+        raise WatchdogError("v1 receipt identity does not match the incident")
+    parse_timestamp(receipt["recorded_at"])
+    parse_timestamp(receipt["wire_generated_at"])
+    railway = receipt.get("railway")
+    origins = receipt.get("origins")
+    if not isinstance(railway, dict) or not isinstance(origins, dict):
+        raise WatchdogError("v1 receipt proof objects are invalid")
+    _expect_keys(railway, {"deployment_id", "status"}, label="v1 Railway proof")
+    _expect_keys(origins, {"provider", "public"}, label="v1 origin proof")
+    if railway != {"deployment_id": INCIDENT_DEPLOYMENT_ID, "status": "SUCCESS"}:
+        raise WatchdogError("v1 receipt names a different deployment")
+
+
+def _run_git(repository: Path, *arguments: str) -> str:
+    environment = {
+        "PATH": "/usr/bin:/bin",
+        "HOME": "/nonexistent",
+        "LANG": "C.UTF-8",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
+        "GIT_NO_REPLACE_OBJECTS": "1",
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+    try:
+        result = subprocess.run(
+            ["/usr/bin/git", "-C", str(repository), *arguments],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            env=environment,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        detail = ""
+        if isinstance(exc, subprocess.CalledProcessError):
+            detail = exc.stderr.strip()
+        suffix = f": {detail}" if detail else ""
+        raise WatchdogError(f"Git proof failed ({' '.join(arguments)}){suffix}") from exc
+    return result.stdout.strip()
+
+
+def _validate_bundle(
+    config: LineageConfig,
+    bundle: dict[str, Any],
+    *,
+    base_sha: str,
+    release_sha: str,
+    verify_git: bool,
+) -> None:
+    _expect_keys(
+        bundle,
+        {
+            "schema_version",
+            "path",
+            "sha256",
+            "bytes",
+            "base_sha",
+            "release_sha",
+            "metadata_path",
+            "metadata_sha256",
+        },
+        label="release bundle receipt",
+    )
+    expected_root = config.state_root / "release-bundles"
+    _validate_directory(
+        expected_root,
+        label="release bundle directory",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    expected_bundle = expected_root / f"{release_sha}.bundle"
+    expected_metadata = expected_root / f"{release_sha}.json"
+    if bundle["path"] != str(expected_bundle) or bundle["metadata_path"] != str(
+        expected_metadata
+    ):
+        raise WatchdogError("release bundle path escapes its private identity path")
+    if (
+        bundle["schema_version"] != BUNDLE_SCHEMA
+        or bundle["base_sha"] != base_sha
+        or bundle["release_sha"] != release_sha
+    ):
+        raise WatchdogError("release bundle receipt identity is inconsistent")
+    expected_bytes = _positive_integer(bundle["bytes"], label="release bundle bytes")
+    expected_digest = _digest(bundle["sha256"], label="release bundle digest")
+    metadata_digest = _digest(
+        bundle["metadata_sha256"], label="release bundle metadata digest"
+    )
+
+    raw_bundle = _read_regular(
+        expected_bundle,
+        label="release bundle",
+        maximum=1024 * 1024 * 1024,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if len(raw_bundle) != expected_bytes or _sha256(raw_bundle) != expected_digest:
+        raise WatchdogError("release bundle bytes do not match the receipt")
+    raw_metadata = _read_regular(
+        expected_metadata,
+        label="release bundle metadata",
+        maximum=MAX_BUNDLE_METADATA_BYTES,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if _sha256(raw_metadata) != metadata_digest:
+        raise WatchdogError("release bundle metadata digest is invalid")
+    metadata = _strict_json(raw_metadata, label="release bundle metadata")
+    _expect_keys(
+        metadata,
+        {
+            "schema_version",
+            "status",
+            "created_at",
+            "path",
+            "sha256",
+            "bytes",
+            "base_sha",
+            "release_sha",
+        },
+        label="release bundle metadata",
+    )
+    parse_timestamp(metadata["created_at"])
+    if metadata != {
+        "schema_version": BUNDLE_SCHEMA,
+        "status": "verified",
+        "created_at": metadata["created_at"],
+        "path": str(expected_bundle),
+        "sha256": expected_digest,
+        "bytes": expected_bytes,
+        "base_sha": base_sha,
+        "release_sha": release_sha,
+    }:
+        raise WatchdogError("release bundle metadata does not match its bundle")
+
+    if not verify_git:
+        return
+
+    repository = config.source_repository
+    if (repository / ".git" / "shallow").exists() or (
+        repository / ".git" / "info" / "grafts"
+    ).exists():
+        raise WatchdogError("bundle base repository uses shallow or grafted history")
+    if _run_git(repository, "for-each-ref", "--format=%(refname)", "refs/replace"):
+        raise WatchdogError("bundle base repository uses replacement objects")
+    _run_git(repository, "cat-file", "-e", f"{base_sha}^{{commit}}")
+
+    release_ref = f"refs/palimpsest/releases/{release_sha}"
+    heads = _run_git(repository, "bundle", "list-heads", str(expected_bundle))
+    if heads != f"{release_sha} {release_ref}":
+        raise WatchdogError("release bundle exposes an unexpected head")
+    with tempfile.TemporaryDirectory(prefix="palimpsest-watchdog-bundle-") as raw:
+        verifier = Path(raw) / "verifier.git"
+        verifier.mkdir()
+        _run_git(verifier, "init", "--bare")
+        base_ref = f"refs/palimpsest/verification-base/{base_sha}"
+        _run_git(
+            verifier,
+            "fetch",
+            "--quiet",
+            str(repository),
+            f"{base_sha}:{base_ref}",
+        )
+        if (verifier / "objects" / "info" / "alternates").exists():
+            raise WatchdogError("bundle verifier unexpectedly uses alternates")
+        _run_git(verifier, "bundle", "verify", str(expected_bundle))
+        _run_git(
+            verifier,
+            "fetch",
+            "--quiet",
+            str(expected_bundle),
+            f"{release_ref}:{release_ref}",
+        )
+        parents = _run_git(verifier, "rev-list", "--parents", "-n", "1", release_ref)
+        if parents != f"{release_sha} {base_sha}":
+            raise WatchdogError("release bundle is not the exact successor of its base")
+
+
+def _receipt_manifest_identity(
+    receipt: dict[str, Any], *, pin: dict[str, Any]
+) -> tuple[str, str]:
+    if receipt.get("schema_version") == V1_SCHEMA:
+        previous = pin["previous"]
+        return previous["live_manifest_sha256"], previous["live_tree_sha256"]
+    manifest = receipt.get("live_manifest")
+    if not isinstance(manifest, dict):
+        raise WatchdogError("v2 receipt has no live manifest proof")
+    return (
+        _digest(manifest.get("sha256"), label="receipt manifest digest"),
+        _digest(manifest.get("tree_sha256"), label="receipt tree digest"),
+    )
+
+
+def _validate_predecessor_reference(
+    config: LineageConfig,
+    predecessor: dict[str, Any],
+) -> tuple[str, Path]:
+    _expect_keys(
+        predecessor,
+        {
+            "archive_path",
+            "base_sha",
+            "deployment_id",
+            "input_sha256",
+            "manifest_sha256",
+            "receipt_sha256",
+            "release_sha",
+            "schema_version",
+            "tree_sha256",
+            "wire_generated_at",
+        },
+        label="publication predecessor",
+    )
+    receipt_digest = _digest(
+        predecessor["receipt_sha256"], label="predecessor receipt digest"
+    )
+    _sha40(predecessor["base_sha"], label="predecessor base")
+    _sha40(predecessor["release_sha"], label="predecessor release")
+    _digest(predecessor["input_sha256"], label="predecessor input digest")
+    _digest(predecessor["manifest_sha256"], label="predecessor manifest digest")
+    _digest(predecessor["tree_sha256"], label="predecessor tree digest")
+    parse_timestamp(predecessor["wire_generated_at"])
+    if predecessor["schema_version"] not in {V1_SCHEMA, V2_SCHEMA}:
+        raise WatchdogError("predecessor receipt schema is unsupported")
+    if (
+        not isinstance(predecessor["deployment_id"], str)
+        or UUID.fullmatch(predecessor["deployment_id"]) is None
+    ):
+        raise WatchdogError("predecessor deployment ID is invalid")
+    archive_root = config.state_root / "receipts"
+    _validate_directory(
+        archive_root,
+        label="receipt archive directory",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    archive_path = archive_root / f"{receipt_digest}.json"
+    if predecessor["archive_path"] != str(archive_path):
+        raise WatchdogError("predecessor receipt path escapes its digest path")
+    return receipt_digest, archive_path
+
+
+def _read_predecessor_archive(
+    config: LineageConfig,
+    predecessor: dict[str, Any],
+    *,
+    pin: dict[str, Any],
+) -> tuple[str, bytes, dict[str, Any]]:
+    receipt_digest, archive_path = _validate_predecessor_reference(
+        config, predecessor
+    )
+    raw = _read_regular(
+        archive_path,
+        label="predecessor receipt archive",
+        maximum=MAX_RECEIPT_BYTES,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if _sha256(raw) != receipt_digest:
+        raise WatchdogError("predecessor archive does not match its digest")
+    archived = _strict_json(raw, label="predecessor receipt archive")
+    schema = predecessor["schema_version"]
+    if archived.get("schema_version") != schema or schema not in {V1_SCHEMA, V2_SCHEMA}:
+        raise WatchdogError("predecessor schema does not match its archive")
+
+    railway = archived.get("railway")
+    if not isinstance(railway, dict):
+        raise WatchdogError("predecessor archive has no Railway proof")
+    manifest_sha256, tree_sha256 = _receipt_manifest_identity(archived, pin=pin)
+    expected = {
+        "archive_path": str(archive_path),
+        "base_sha": archived.get("base_sha"),
+        "deployment_id": railway.get("deployment_id"),
+        "input_sha256": archived.get("input_sha256"),
+        "manifest_sha256": manifest_sha256,
+        "receipt_sha256": receipt_digest,
+        "release_sha": archived.get("release_sha"),
+        "schema_version": schema,
+        "tree_sha256": tree_sha256,
+        "wire_generated_at": archived.get("wire_generated_at"),
+    }
+    if predecessor != expected:
+        raise WatchdogError("predecessor fields do not match the immutable archive")
+    return receipt_digest, raw, archived
+
+
+def _validate_transition_anchor(
+    config: LineageConfig,
+    *,
+    pin: dict[str, Any],
+) -> None:
+    previous = pin["previous"]
+    digest = previous["publication_receipt_sha256"]
+    predecessor = {
+        "archive_path": str(config.state_root / "receipts" / f"{digest}.json"),
+        "base_sha": previous["deployed_commit"],
+        "deployment_id": previous["railway_deployment_id"],
+        "input_sha256": previous["publication_input_sha256"],
+        "manifest_sha256": previous["live_manifest_sha256"],
+        "receipt_sha256": digest,
+        "release_sha": previous["live_release_sha"],
+        "schema_version": V1_SCHEMA,
+        "tree_sha256": previous["live_tree_sha256"],
+        "wire_generated_at": "2026-08-30T08:45:26Z",
+    }
+    receipt_digest, raw, archived = _read_predecessor_archive(
+        config,
+        predecessor,
+        pin=pin,
+    )
+    _validate_v1_receipt(
+        raw,
+        archived,
+        pin=pin,
+        allow_current_pre_transition=False,
+    )
+    if receipt_digest != INCIDENT_RECEIPT_SHA256:
+        raise WatchdogError("transition anchor is not the incident receipt")
+
+
+def _validate_chain_checkpoint(
+    checkpoint: dict[str, Any] | None,
+    *,
+    pin_sha256: str,
+) -> dict[str, Any] | None:
+    if checkpoint is None:
+        return None
+    _expect_keys(
+        checkpoint,
+        {
+            "anchor_receipt_sha256",
+            "generation_count",
+            "head_receipt_sha256",
+            "head_release_sha",
+            "pin_sha256",
+            "schema_version",
+            "validation_mode",
+            "verified_at",
+        },
+        label="publication chain checkpoint",
+    )
+    if (
+        checkpoint["schema_version"] != CHAIN_CHECKPOINT_SCHEMA
+        or checkpoint["anchor_receipt_sha256"] != INCIDENT_RECEIPT_SHA256
+        or checkpoint["pin_sha256"] != pin_sha256
+    ):
+        raise WatchdogError("publication chain checkpoint has a different anchor")
+    _digest(checkpoint["head_receipt_sha256"], label="checkpoint head digest")
+    _sha40(checkpoint["head_release_sha"], label="checkpoint release")
+    _positive_integer(checkpoint["generation_count"], label="checkpoint generation")
+    if checkpoint["validation_mode"] not in {
+        "bootstrap",
+        "checkpoint_extension",
+        "checkpoint_same_head",
+    }:
+        raise WatchdogError("publication chain checkpoint mode is invalid")
+    parse_timestamp(checkpoint["verified_at"])
+    return checkpoint
+
+
+def _validate_v2_receipt(
+    config: LineageConfig,
+    receipt: dict[str, Any],
+    *,
+    pin: dict[str, Any],
+    pin_sha256: str,
+    current: bool,
+    verify_bundle_git: bool,
+) -> None:
+    _expect_keys(
+        receipt,
+        {
+            "base_sha",
+            "candidate",
+            "github_actions_used",
+            "host_deployed_sha",
+            "input_sha256",
+            "live_manifest",
+            "origins",
+            "predecessor",
+            "publication_base",
+            "railway",
+            "recorded_at",
+            "release_bundle",
+            "release_sha",
+            "schema_version",
+            "status",
+            "wire_generated_at",
+        },
+        label="v2 publication receipt",
+    )
+    if (
+        receipt["schema_version"] != V2_SCHEMA
+        or receipt["status"] != "verified"
+        or receipt["github_actions_used"] is not False
+    ):
+        raise WatchdogError("v2 receipt identity is invalid")
+    parse_timestamp(receipt["recorded_at"])
+    parse_timestamp(receipt["wire_generated_at"])
+    _digest(receipt["input_sha256"], label="publication input digest")
+    base_sha = _sha40(receipt["base_sha"], label="publication base")
+    release_sha = _sha40(receipt["release_sha"], label="release commit")
+    host_deployed_sha = _sha40(
+        receipt["host_deployed_sha"], label="host deployed commit"
+    )
+    if base_sha != pin["target"]["base_sha"]:
+        raise WatchdogError("receipt publication base differs from the transition pin")
+    if current:
+        deployed_raw = _read_regular(
+            config.deployed_commit,
+            label="host deployed commit",
+            maximum=256,
+            uid=config.pin_uid,
+            gid=config.installed_gid,
+            mode=0o644,
+        )
+        try:
+            deployed = deployed_raw.decode("ascii").strip()
+        except UnicodeDecodeError as exc:
+            raise WatchdogError("host deployed commit is not ASCII") from exc
+        if host_deployed_sha != deployed:
+            raise WatchdogError("receipt host deployment differs from deployed-commit")
+
+    publication_base = receipt.get("publication_base")
+    bundle = receipt.get("release_bundle")
+    predecessor = receipt.get("predecessor")
+    candidate = receipt.get("candidate")
+    manifest = receipt.get("live_manifest")
+    railway = receipt.get("railway")
+    origins = receipt.get("origins")
+    if not all(
+        isinstance(value, dict)
+        for value in (
+            publication_base,
+            bundle,
+            predecessor,
+            candidate,
+            manifest,
+            railway,
+            origins,
+        )
+    ):
+        raise WatchdogError("v2 receipt contains invalid proof objects")
+    assert isinstance(publication_base, dict)
+    assert isinstance(bundle, dict)
+    assert isinstance(predecessor, dict)
+    assert isinstance(candidate, dict)
+    assert isinstance(manifest, dict)
+    assert isinstance(railway, dict)
+    assert isinstance(origins, dict)
+
+    _expect_keys(
+        publication_base,
+        {"kind", "path", "sha256", "target_sha"},
+        label="publication base proof",
+    )
+    if publication_base != {
+        "kind": "verified_transition",
+        "path": str(config.base_pin),
+        "sha256": pin_sha256,
+        "target_sha": base_sha,
+    }:
+        raise WatchdogError("publication base proof does not match the root-owned pin")
+
+    _validate_bundle(
+        config,
+        bundle,
+        base_sha=base_sha,
+        release_sha=release_sha,
+        verify_git=verify_bundle_git,
+    )
+    _validate_predecessor_reference(config, predecessor)
+    _validate_candidate_archive(
+        config,
+        candidate,
+        receipt=receipt,
+        pin=pin,
+        pin_sha256=pin_sha256,
+    )
+
+    _expect_keys(
+        manifest,
+        {
+            "bytes",
+            "file_count",
+            "path",
+            "sha256",
+            "total_bytes",
+            "tree_sha256",
+        },
+        label="live manifest proof",
+    )
+    _validate_release_manifest_anchor(
+        config,
+        manifest,
+        release_sha=release_sha,
+    )
+
+    _expect_keys(railway, {"deployment_id", "status"}, label="Railway proof")
+    if (
+        not isinstance(railway["deployment_id"], str)
+        or UUID.fullmatch(railway["deployment_id"]) is None
+        or railway["status"] != "SUCCESS"
+    ):
+        raise WatchdogError("Railway proof is invalid")
+    _expect_keys(origins, {"provider", "public"}, label="origin proof")
+    if origins != {
+        "provider": config.provider_origin,
+        "public": config.public_origin,
+    }:
+        raise WatchdogError("receipt names different live origins")
+
+
+def _validate_receipt_chain(
+    config: LineageConfig,
+    current_raw: bytes,
+    current_receipt: dict[str, Any],
+    *,
+    pin: dict[str, Any],
+    pin_sha256: str,
+    checkpoint: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Prove the append-only receipt chain without a generation-count expiry.
+
+    The checkpoint is an optimization, not release authority: every invocation
+    still validates the root-owned transition pin, exact v1 anchor, current
+    receipt, current Git bundle, candidate archive, and live bytes.  A new tip
+    must reach the prior checkpoint by immutable receipt digests.  During the
+    initial bootstrap, ancestor bundles receive byte/metadata verification but
+    only the current bundle is reconstructed in a fresh Git object database.
+    """
+
+    started = time.monotonic()
+    checkpoint = _validate_chain_checkpoint(checkpoint, pin_sha256=pin_sha256)
+    current_digest = _sha256(current_raw)
+    current_release = current_receipt["release_sha"]
+    if checkpoint is not None and checkpoint["head_receipt_sha256"] == current_digest:
+        if checkpoint["head_release_sha"] != current_release:
+            raise WatchdogError("chain checkpoint head release changed")
+        generation_count = checkpoint["generation_count"]
+        validation_mode = "checkpoint_same_head"
+    else:
+        document = current_receipt
+        seen = {current_digest}
+        new_generations = 1
+        validation_mode = "bootstrap" if checkpoint is None else "checkpoint_extension"
+        while True:
+            if time.monotonic() - started > CHAIN_VALIDATION_BUDGET_SECONDS:
+                raise WatchdogError("receipt-chain validation exceeded its 45s budget")
+            predecessor = document["predecessor"]
+            receipt_digest, raw, archived = _read_predecessor_archive(
+                config,
+                predecessor,
+                pin=pin,
+            )
+            if receipt_digest in seen:
+                raise WatchdogError("publication predecessor chain contains a loop")
+            seen.add(receipt_digest)
+
+            if (
+                checkpoint is not None
+                and receipt_digest == checkpoint["head_receipt_sha256"]
+            ):
+                if archived.get("schema_version") != V2_SCHEMA:
+                    raise WatchdogError("chain checkpoint does not name a v2 receipt")
+                if archived.get("release_sha") != checkpoint["head_release_sha"]:
+                    raise WatchdogError("chain checkpoint archive release changed")
+                _validate_v2_receipt(
+                    config,
+                    archived,
+                    pin=pin,
+                    pin_sha256=pin_sha256,
+                    current=False,
+                    verify_bundle_git=False,
+                )
+                generation_count = checkpoint["generation_count"] + new_generations
+                break
+
+            schema = archived.get("schema_version")
+            if schema == V1_SCHEMA:
+                if checkpoint is not None:
+                    raise WatchdogError("chain does not extend the saved checkpoint")
+                _validate_v1_receipt(
+                    raw,
+                    archived,
+                    pin=pin,
+                    allow_current_pre_transition=False,
+                )
+                if receipt_digest != INCIDENT_RECEIPT_SHA256:
+                    raise WatchdogError("receipt chain ends at a different v1 anchor")
+                generation_count = new_generations
+                break
+            if schema != V2_SCHEMA:
+                raise WatchdogError("receipt chain contains an unsupported schema")
+            _validate_v2_receipt(
+                config,
+                archived,
+                pin=pin,
+                pin_sha256=pin_sha256,
+                current=False,
+                verify_bundle_git=False,
+            )
+            document = archived
+            new_generations += 1
+
+    verified_at = utc_now().replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return {
+        "anchor_receipt_sha256": INCIDENT_RECEIPT_SHA256,
+        "generation_count": generation_count,
+        "head_receipt_sha256": current_digest,
+        "head_release_sha": current_release,
+        "pin_sha256": pin_sha256,
+        "schema_version": CHAIN_CHECKPOINT_SCHEMA,
+        "verified_at": verified_at,
+        "validation_mode": validation_mode,
+    }
+
+
+def _validate_live_manifest(
+    config: LineageConfig,
+    raw: bytes,
+    receipt: dict[str, Any],
+    *,
+    pin: dict[str, Any] | None,
+) -> dict[str, Any]:
+    manifest = _strict_json(raw, label="live release manifest")
+    release_sha = receipt.get("release_sha")
+    if (
+        manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or manifest.get("state") != "artifact_ready"
+        or manifest.get("source_commit") != release_sha
+    ):
+        raise WatchdogError("live release manifest identity is invalid")
+    tree_sha256 = _digest(manifest.get("tree_sha256"), label="live tree digest")
+    file_count = _positive_integer(manifest.get("file_count"), label="live file count")
+    total_bytes = _positive_integer(
+        manifest.get("total_bytes"), label="live total bytes"
+    )
+    if receipt.get("schema_version") == V1_SCHEMA:
+        if pin is not None or _sha256(raw) != INCIDENT_MANIFEST_SHA256:
+            raise WatchdogError("live v1 manifest is not the exact pre-transition artifact")
+        if tree_sha256 != INCIDENT_TREE_SHA256:
+            raise WatchdogError("live v1 tree differs from the incident tree")
+    else:
+        proof = receipt.get("live_manifest")
+        if not isinstance(proof, dict):
+            raise WatchdogError("v2 receipt has no live manifest anchor")
+        anchor_raw, _anchor = _validate_release_manifest_anchor(
+            config,
+            proof,
+            release_sha=_sha40(release_sha, label="live release commit"),
+        )
+        if raw != anchor_raw:
+            raise WatchdogError(
+                "live manifest bytes do not match the pre-mutation anchor"
+            )
+    return {
+        "release_sha": release_sha,
+        "tree_sha256": tree_sha256,
+        "manifest_sha256": _sha256(raw),
+        "file_count": file_count,
+        "total_bytes": total_bytes,
+    }
+
+
+def _validate_private_artifact(
+    config: LineageConfig,
+    proof: dict[str, Any],
+    *,
+    expected_path: Path,
+    label: str,
+    maximum: int,
+) -> bytes:
+    _expect_keys(proof, {"bytes", "path", "sha256"}, label=label)
+    if proof["path"] != str(expected_path):
+        raise WatchdogError(f"{label} path is outside its evidence directory")
+    expected_bytes = _positive_integer(proof["bytes"], label=f"{label} bytes")
+    expected_sha256 = _digest(proof["sha256"], label=f"{label} digest")
+    raw = _read_regular(
+        expected_path,
+        label=label,
+        maximum=maximum,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if len(raw) != expected_bytes or _sha256(raw) != expected_sha256:
+        raise WatchdogError(f"{label} bytes do not match their candidate proof")
+    return raw
+
+
+def _validate_release_manifest_anchor(
+    config: LineageConfig,
+    proof: dict[str, Any],
+    *,
+    release_sha: str,
+) -> tuple[bytes, dict[str, Any]]:
+    _expect_keys(
+        proof,
+        {
+            "bytes",
+            "file_count",
+            "path",
+            "sha256",
+            "total_bytes",
+            "tree_sha256",
+        },
+        label="release manifest anchor",
+    )
+    anchor_root = config.state_root / "release-manifests"
+    _validate_directory(
+        anchor_root,
+        label="release manifest anchor directory",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    anchor_path = anchor_root / f"{release_sha}.json"
+    if proof["path"] != str(anchor_path):
+        raise WatchdogError("release manifest anchor path is not canonical")
+    expected_bytes = _positive_integer(
+        proof["bytes"], label="release manifest anchor bytes"
+    )
+    expected_digest = _digest(
+        proof["sha256"], label="release manifest anchor digest"
+    )
+    expected_tree = _digest(
+        proof["tree_sha256"], label="release manifest anchor tree"
+    )
+    expected_files = _positive_integer(
+        proof["file_count"], label="release manifest anchor file count"
+    )
+    expected_total = _positive_integer(
+        proof["total_bytes"], label="release manifest anchor total bytes"
+    )
+    raw = _read_regular(
+        anchor_path,
+        label="release manifest anchor",
+        maximum=MAX_JSON_BYTES,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if len(raw) != expected_bytes or _sha256(raw) != expected_digest:
+        raise WatchdogError("release manifest anchor bytes changed")
+    manifest = _strict_json(raw, label="release manifest anchor")
+    _expect_keys(
+        manifest,
+        {
+            "built_at",
+            "critical_files",
+            "deployment_source",
+            "file_count",
+            "github_required",
+            "schema_version",
+            "source_commit",
+            "state",
+            "total_bytes",
+            "tree_sha256",
+        },
+        label="release manifest anchor document",
+    )
+    parse_timestamp(manifest["built_at"])
+    if (
+        manifest["schema_version"] != "palimpsest.railway-static-release.v1"
+        or manifest["source_commit"] != release_sha
+        or manifest["deployment_source"] != "local-git-archive"
+        or manifest["github_required"] is not False
+        or manifest["state"] != "artifact_ready"
+        or manifest["tree_sha256"] != expected_tree
+        or manifest["file_count"] != expected_files
+        or manifest["total_bytes"] != expected_total
+        or not isinstance(manifest["critical_files"], dict)
+        or not manifest["critical_files"]
+    ):
+        raise WatchdogError("release manifest anchor identity is invalid")
+    return raw, manifest
+
+
+def _edges(document: Any, *, label: str) -> list[dict[str, Any]]:
+    if not isinstance(document, dict) or set(document) != {"edges"}:
+        raise WatchdogError(f"rollback topology {label} inventory is invalid")
+    rows = document["edges"]
+    if not isinstance(rows, list) or len(rows) > 100:
+        raise WatchdogError(f"rollback topology {label} inventory is invalid")
+    nodes: list[dict[str, Any]] = []
+    for row in rows:
+        node = row.get("node") if isinstance(row, dict) else None
+        if not isinstance(node, dict):
+            raise WatchdogError(f"rollback topology {label} edge is invalid")
+        nodes.append(node)
+    return nodes
+
+
+def _one(
+    rows: list[dict[str, Any]],
+    *,
+    key: str,
+    expected: str,
+    label: str,
+) -> dict[str, Any]:
+    matches = [row for row in rows if row.get(key) == expected]
+    if len(matches) != 1:
+        raise WatchdogError(f"rollback topology {label} is not singular")
+    return matches[0]
+
+
+def _validate_rollback_evidence(
+    config: LineageConfig,
+    evidence: dict[str, Any],
+    *,
+    candidate_release_sha: str,
+    predecessor: dict[str, Any],
+) -> None:
+    _expect_keys(
+        evidence,
+        {
+            "captured_at",
+            "provider_manifest",
+            "public_manifest",
+            "schema_version",
+            "topology",
+        },
+        label="candidate rollback evidence",
+    )
+    if evidence["schema_version"] != ROLLBACK_EVIDENCE_SCHEMA:
+        raise WatchdogError("candidate rollback evidence schema is invalid")
+    parse_timestamp(evidence["captured_at"])
+    provider = evidence.get("provider_manifest")
+    public = evidence.get("public_manifest")
+    topology = evidence.get("topology")
+    if not all(isinstance(value, dict) for value in (provider, public, topology)):
+        raise WatchdogError("candidate rollback evidence objects are invalid")
+    assert isinstance(provider, dict)
+    assert isinstance(public, dict)
+    assert isinstance(topology, dict)
+
+    evidence_root = config.state_root / "predecessors"
+    release_root = evidence_root / candidate_release_sha
+    _validate_directory(
+        evidence_root,
+        label="predecessor evidence root",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    _validate_directory(
+        release_root,
+        label="candidate predecessor evidence directory",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    provider_raw = _validate_private_artifact(
+        config,
+        provider,
+        expected_path=release_root / "provider-railway-release.json",
+        label="provider rollback manifest",
+        maximum=MAX_JSON_BYTES,
+    )
+    public_raw = _validate_private_artifact(
+        config,
+        public,
+        expected_path=release_root / "public-railway-release.json",
+        label="public rollback manifest",
+        maximum=MAX_JSON_BYTES,
+    )
+    if provider_raw != public_raw:
+        raise WatchdogError("rollback provider and public manifests differ")
+    if _sha256(provider_raw) != predecessor["manifest_sha256"]:
+        raise WatchdogError("rollback manifests do not match the predecessor receipt")
+    manifest = _strict_json(provider_raw, label="rollback live manifest")
+    if (
+        manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or manifest.get("source_commit") != predecessor["release_sha"]
+        or manifest.get("tree_sha256") != predecessor["tree_sha256"]
+        or manifest.get("deployment_source") != "local-git-archive"
+        or manifest.get("github_required") is not False
+        or manifest.get("state") != "artifact_ready"
+    ):
+        raise WatchdogError("rollback live manifest identity is invalid")
+    _positive_integer(manifest.get("file_count"), label="rollback file count")
+    _positive_integer(manifest.get("total_bytes"), label="rollback total bytes")
+
+    _expect_keys(
+        topology,
+        {
+            "bytes",
+            "created_at",
+            "deployment_id",
+            "environment_id",
+            "image_digest",
+            "path",
+            "project_id",
+            "reason",
+            "service_id",
+            "sha256",
+        },
+        label="rollback topology proof",
+    )
+    topology_path = release_root / "railway-status.json"
+    topology_raw = _read_regular(
+        topology_path,
+        label="rollback Railway topology",
+        maximum=2 * 1024 * 1024,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if (
+        topology["path"] != str(topology_path)
+        or len(topology_raw)
+        != _positive_integer(topology["bytes"], label="rollback topology bytes")
+        or _sha256(topology_raw)
+        != _digest(topology["sha256"], label="rollback topology digest")
+    ):
+        raise WatchdogError("rollback topology bytes do not match their proof")
+    for key in ("project_id", "environment_id", "service_id", "deployment_id"):
+        if not isinstance(topology[key], str) or UUID.fullmatch(topology[key]) is None:
+            raise WatchdogError(f"rollback topology {key} is invalid")
+    if topology["deployment_id"] != predecessor["deployment_id"]:
+        raise WatchdogError("rollback topology names a different predecessor")
+    if (
+        not isinstance(topology["image_digest"], str)
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", topology["image_digest"]) is None
+        or topology["reason"] not in {"deploy", "deploymentRollback"}
+        or not isinstance(topology["created_at"], str)
+        or len(topology["created_at"]) > 64
+    ):
+        raise WatchdogError("rollback topology deployment metadata is invalid")
+
+    document = _strict_json(topology_raw, label="rollback Railway topology")
+    if document.get("id") != topology["project_id"]:
+        raise WatchdogError("rollback topology project identity changed")
+    service = _one(
+        _edges(document.get("services"), label="services"),
+        key="id",
+        expected=topology["service_id"],
+        label="service",
+    )
+    if service.get("name") != "palimpsest-publication":
+        raise WatchdogError("rollback topology service name changed")
+    environment = _one(
+        _edges(document.get("environments"), label="environments"),
+        key="id",
+        expected=topology["environment_id"],
+        label="environment",
+    )
+    instance = _one(
+        _edges(environment.get("serviceInstances"), label="service instances"),
+        key="serviceId",
+        expected=topology["service_id"],
+        label="service instance",
+    )
+    latest = instance.get("latestDeployment")
+    metadata = latest.get("meta") if isinstance(latest, dict) else None
+    if (
+        not isinstance(latest, dict)
+        or latest.get("id") != predecessor["deployment_id"]
+        or latest.get("status") != "SUCCESS"
+        or latest.get("createdAt") != topology["created_at"]
+        or not isinstance(metadata, dict)
+        or metadata.get("imageDigest") != topology["image_digest"]
+        or metadata.get("reason") != topology["reason"]
+    ):
+        raise WatchdogError("rollback topology deployment identity changed")
+
+
+def _validate_candidate_document(
+    config: LineageConfig,
+    raw: bytes,
+    candidate: dict[str, Any],
+    *,
+    pin: dict[str, Any],
+    pin_sha256: str,
+) -> tuple[str, str, dict[str, Any]]:
+    required = {
+        "base_sha",
+        "host_deployed_sha",
+        "input_sha256",
+        "message",
+        "predecessor",
+        "prepared_at",
+        "publication_base",
+        "release_bundle",
+        "release_manifest",
+        "release_sha",
+        "rollback_evidence",
+        "schema_version",
+        "status",
+        "submission_id",
+        "wire_generated_at",
+    }
+    _expect_keys(candidate, required, label="candidate journal")
+    if (
+        candidate["schema_version"] != CANDIDATE_SCHEMA
+        or candidate["status"] != "mutation_unresolved"
+    ):
+        raise WatchdogError("candidate journal status is invalid")
+    parse_timestamp(candidate["prepared_at"])
+    parse_timestamp(candidate["wire_generated_at"])
+    input_sha256 = _digest(candidate["input_sha256"], label="candidate input digest")
+    base_sha = _sha40(candidate["base_sha"], label="candidate publication base")
+    release_sha = _sha40(candidate["release_sha"], label="candidate release")
+    host_deployed_sha = _sha40(
+        candidate["host_deployed_sha"], label="candidate host deployment"
+    )
+    submission_id = candidate["submission_id"]
+    if not isinstance(submission_id, str) or SUBMISSION_ID.fullmatch(submission_id) is None:
+        raise WatchdogError("candidate submission ID is invalid")
+    expected_message = (
+        f"palimpsest-hetzner-{release_sha[:12]}-{input_sha256[:12]}-"
+        f"{submission_id}"
+    )
+    if candidate["message"] != expected_message:
+        raise WatchdogError("candidate mutation message is not identity-bound")
+    if base_sha != pin["target"]["base_sha"]:
+        raise WatchdogError("candidate publication base is not transition-pinned")
+    deployed_raw = _read_regular(
+        config.deployed_commit,
+        label="host deployed commit",
+        maximum=256,
+        uid=config.pin_uid,
+        gid=config.installed_gid,
+        mode=0o644,
+    )
+    if deployed_raw.decode("ascii").strip() != host_deployed_sha:
+        raise WatchdogError("candidate host deployment differs from deployed-commit")
+
+    publication_base = candidate.get("publication_base")
+    bundle = candidate.get("release_bundle")
+    release_manifest = candidate.get("release_manifest")
+    predecessor = candidate.get("predecessor")
+    rollback = candidate.get("rollback_evidence")
+    if not all(
+        isinstance(value, dict)
+        for value in (
+            publication_base,
+            bundle,
+            release_manifest,
+            predecessor,
+            rollback,
+        )
+    ):
+        raise WatchdogError("candidate journal contains invalid proof objects")
+    assert isinstance(publication_base, dict)
+    assert isinstance(bundle, dict)
+    assert isinstance(release_manifest, dict)
+    assert isinstance(predecessor, dict)
+    assert isinstance(rollback, dict)
+    _expect_keys(
+        publication_base,
+        {"kind", "path", "sha256"},
+        label="candidate publication base",
+    )
+    if publication_base != {
+        "kind": "verified_transition",
+        "path": str(config.base_pin),
+        "sha256": pin_sha256,
+    }:
+        raise WatchdogError("candidate publication base proof is invalid")
+    _expect_keys(
+        bundle,
+        {"bytes", "metadata_path", "metadata_sha256", "path", "sha256"},
+        label="candidate release bundle",
+    )
+    _validate_bundle(
+        config,
+        {
+            "schema_version": BUNDLE_SCHEMA,
+            "path": bundle["path"],
+            "sha256": bundle["sha256"],
+            "bytes": bundle["bytes"],
+            "base_sha": base_sha,
+            "release_sha": release_sha,
+            "metadata_path": bundle["metadata_path"],
+            "metadata_sha256": bundle["metadata_sha256"],
+        },
+        base_sha=base_sha,
+        release_sha=release_sha,
+        verify_git=False,
+    )
+    _validate_release_manifest_anchor(
+        config,
+        release_manifest,
+        release_sha=release_sha,
+    )
+    _read_predecessor_archive(config, predecessor, pin=pin)
+    _validate_rollback_evidence(
+        config,
+        rollback,
+        candidate_release_sha=release_sha,
+        predecessor=predecessor,
+    )
+    return _sha256(raw), release_sha, bundle
+
+
+def _validate_candidate_archive(
+    config: LineageConfig,
+    proof: dict[str, Any],
+    *,
+    receipt: dict[str, Any],
+    pin: dict[str, Any],
+    pin_sha256: str,
+) -> None:
+    _expect_keys(
+        proof,
+        {"archive_path", "journal_sha256", "message"},
+        label="verified candidate proof",
+    )
+    digest = _digest(proof["journal_sha256"], label="candidate journal digest")
+    archive_root = config.state_root / "candidates"
+    _validate_directory(
+        archive_root,
+        label="candidate archive directory",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    archive_path = archive_root / f"{digest}.json"
+    if proof["archive_path"] != str(archive_path):
+        raise WatchdogError("candidate archive path escapes its digest path")
+    raw = _read_regular(
+        archive_path,
+        label="candidate journal archive",
+        maximum=MAX_RECEIPT_BYTES,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if _sha256(raw) != digest:
+        raise WatchdogError("candidate journal archive digest changed")
+    candidate = _strict_json(raw, label="candidate journal archive")
+    _digest_value, release_sha, bundle = _validate_candidate_document(
+        config,
+        raw,
+        candidate,
+        pin=pin,
+        pin_sha256=pin_sha256,
+    )
+    publication_base = receipt["publication_base"]
+    receipt_bundle = receipt["release_bundle"]
+    if (
+        proof["message"] != candidate["message"]
+        or release_sha != receipt["release_sha"]
+        or candidate["input_sha256"] != receipt["input_sha256"]
+        or candidate["wire_generated_at"] != receipt["wire_generated_at"]
+        or candidate["host_deployed_sha"] != receipt["host_deployed_sha"]
+        or candidate["base_sha"] != receipt["base_sha"]
+        or candidate["release_manifest"] != receipt["live_manifest"]
+        or candidate["predecessor"] != receipt["predecessor"]
+        or candidate["publication_base"]
+        != {
+            "kind": publication_base["kind"],
+            "path": publication_base["path"],
+            "sha256": publication_base["sha256"],
+        }
+        or bundle["path"] != receipt_bundle["path"]
+        or bundle["sha256"] != receipt_bundle["sha256"]
+        or bundle["metadata_sha256"] != receipt_bundle["metadata_sha256"]
+    ):
+        raise WatchdogError("candidate archive does not bind the verified receipt")
+
+
+def _candidate_status(
+    config: LineageConfig,
+    receipt: dict[str, Any],
+    *,
+    pin: dict[str, Any] | None,
+    pin_sha256: str,
+) -> dict[str, Any]:
+    try:
+        config.pending_candidate.lstat()
+    except FileNotFoundError:
+        return {"status": "none"}
+    except OSError as exc:
+        raise WatchdogError("cannot inspect pending candidate journal") from exc
+
+    raw = _read_regular(
+        config.pending_candidate,
+        label="pending candidate journal",
+        maximum=MAX_RECEIPT_BYTES,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    candidate = _strict_json(raw, label="pending candidate journal")
+    if pin is None:
+        raise WatchdogError("pending candidate cannot exist before transition")
+    digest, release_sha, bundle = _validate_candidate_document(
+        config,
+        raw,
+        candidate,
+        pin=pin,
+        pin_sha256=pin_sha256,
+    )
+    receipt_candidate = receipt.get("candidate")
+    consumed = (
+        isinstance(receipt_candidate, dict)
+        and receipt_candidate.get("journal_sha256") == digest
+        and receipt_candidate.get("archive_path")
+        == str(config.state_root / "candidates" / f"{digest}.json")
+        and receipt.get("release_sha") == release_sha
+        and receipt.get("base_sha") == candidate.get("base_sha")
+        and receipt.get("input_sha256") == candidate.get("input_sha256")
+        and isinstance(receipt.get("release_bundle"), dict)
+        and receipt["release_bundle"].get("sha256") == bundle["sha256"]
+    )
+    return {
+        "status": "consumed_pending_cleanup" if consumed else "mutation_unresolved",
+        "data_hold": True,
+        "journal_sha256": digest,
+        "release_sha": release_sha,
+    }
+
+
+def validate_data_hold(config: LineageConfig) -> dict[str, Any]:
+    raw = _read_regular(
+        config.data_hold,
+        label="root DATA HOLD marker",
+        maximum=MAX_RECEIPT_BYTES,
+        uid=config.pin_uid,
+        gid=config.pin_gid,
+        mode=0o640,
+    )
+    document = _strict_json(raw, label="root DATA HOLD marker")
+    if raw != _canonical_json_bytes(document):
+        raise WatchdogError("root DATA HOLD marker is not canonical JSON")
+    _expect_keys(
+        document,
+        {
+            "candidate",
+            "predecessor",
+            "reason_code",
+            "recorded_at",
+            "rollback",
+            "schema_version",
+            "status",
+        },
+        label="root DATA HOLD marker",
+    )
+    reason_codes = {
+        "active_topology_unrelated",
+        "candidate_identity_ambiguous",
+        "evidence_invalid",
+        "reconciliation_failed",
+        "rollback_restore_unproven",
+    }
+    if (
+        document["schema_version"] != DATA_HOLD_SCHEMA
+        or document["status"] != "DATA HOLD"
+        or document["reason_code"] not in reason_codes
+    ):
+        raise WatchdogError("root DATA HOLD marker identity is invalid")
+    parse_timestamp(document["recorded_at"])
+    candidate_proof = document.get("candidate")
+    predecessor_proof = document.get("predecessor")
+    rollback = document.get("rollback")
+    if not all(
+        isinstance(value, dict)
+        for value in (candidate_proof, predecessor_proof, rollback)
+    ):
+        raise WatchdogError("root DATA HOLD marker proof objects are invalid")
+    assert isinstance(candidate_proof, dict)
+    assert isinstance(predecessor_proof, dict)
+    assert isinstance(rollback, dict)
+
+    _expect_keys(
+        candidate_proof,
+        {"archive_path", "journal_sha256", "message", "release_sha"},
+        label="DATA HOLD candidate",
+    )
+    candidate_digest = _digest(
+        candidate_proof["journal_sha256"], label="DATA HOLD candidate digest"
+    )
+    candidate_release = _sha40(
+        candidate_proof["release_sha"], label="DATA HOLD candidate release"
+    )
+    candidate_path = (
+        config.state_root / "candidates" / f"{candidate_digest}.json"
+    )
+    if candidate_proof["archive_path"] != str(candidate_path):
+        raise WatchdogError("DATA HOLD candidate archive path is not canonical")
+    _validate_directory(
+        candidate_path.parent,
+        label="DATA HOLD candidate archive directory",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    candidate_raw = _read_regular(
+        candidate_path,
+        label="DATA HOLD candidate archive",
+        maximum=MAX_RECEIPT_BYTES,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    if _sha256(candidate_raw) != candidate_digest:
+        raise WatchdogError("DATA HOLD candidate archive digest changed")
+    candidate = _strict_json(candidate_raw, label="DATA HOLD candidate archive")
+    pin, pin_raw = _validate_pin(config)
+    validated_digest, validated_release, _bundle = _validate_candidate_document(
+        config,
+        candidate_raw,
+        candidate,
+        pin=pin,
+        pin_sha256=_sha256(pin_raw),
+    )
+    if (
+        validated_digest != candidate_digest
+        or validated_release != candidate_release
+        or candidate.get("message") != candidate_proof["message"]
+        or candidate.get("release_sha") != candidate_release
+    ):
+        raise WatchdogError("DATA HOLD candidate identity changed")
+
+    _expect_keys(
+        predecessor_proof,
+        {
+            "deployment_id",
+            "image_digest",
+            "manifest_sha256",
+            "receipt_sha256",
+            "topology_sha256",
+        },
+        label="DATA HOLD predecessor",
+    )
+    predecessor = candidate.get("predecessor")
+    evidence = candidate.get("rollback_evidence")
+    topology = evidence.get("topology") if isinstance(evidence, dict) else None
+    if not isinstance(predecessor, dict) or not isinstance(topology, dict):
+        raise WatchdogError("DATA HOLD candidate has no predecessor rollback proof")
+    for key in ("manifest_sha256", "receipt_sha256", "topology_sha256"):
+        _digest(predecessor_proof[key], label=f"DATA HOLD predecessor {key}")
+    if (
+        not isinstance(predecessor_proof["deployment_id"], str)
+        or UUID.fullmatch(predecessor_proof["deployment_id"]) is None
+        or not isinstance(predecessor_proof["image_digest"], str)
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", predecessor_proof["image_digest"])
+        is None
+        or predecessor_proof["receipt_sha256"]
+        != predecessor.get("receipt_sha256")
+        or predecessor_proof["deployment_id"] != predecessor.get("deployment_id")
+        or predecessor_proof["manifest_sha256"]
+        != predecessor.get("manifest_sha256")
+        or predecessor_proof["topology_sha256"] != topology.get("sha256")
+        or predecessor_proof["image_digest"] != topology.get("image_digest")
+    ):
+        raise WatchdogError("DATA HOLD predecessor proof changed")
+
+    _expect_keys(
+        rollback,
+        {"attempt_path", "attempt_sha256", "attempted"},
+        label="DATA HOLD rollback",
+    )
+    if not isinstance(rollback["attempted"], bool):
+        raise WatchdogError("DATA HOLD rollback attempted flag is invalid")
+    attempt_root = config.state_root / "rollback-attempts"
+    attempt_path = attempt_root / f"{candidate_digest}.json"
+    if rollback["attempted"] is False:
+        if (
+            rollback["attempt_path"] is not None
+            or rollback["attempt_sha256"] is not None
+        ):
+            raise WatchdogError("unattempted DATA HOLD rollback names an attempt")
+        try:
+            attempt_path.lstat()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            raise WatchdogError(
+                "cannot inspect canonical DATA HOLD rollback attempt"
+            ) from exc
+        else:
+            raise WatchdogError(
+                "DATA HOLD claims no rollback attempt but its durable artifact exists"
+            )
+    else:
+        if not isinstance(rollback["attempt_path"], str):
+            raise WatchdogError("DATA HOLD rollback attempt path is invalid")
+        _validate_directory(
+            attempt_root,
+            label="DATA HOLD rollback attempt directory",
+            uid=config.state_uid,
+            gid=config.state_gid,
+            mode=0o700,
+        )
+        if rollback["attempt_path"] != str(attempt_path):
+            raise WatchdogError("DATA HOLD rollback attempt path is not canonical")
+        attempt_digest = _digest(
+            rollback["attempt_sha256"], label="DATA HOLD rollback attempt digest"
+        )
+        attempt_raw = _read_regular(
+            attempt_path,
+            label="DATA HOLD rollback attempt",
+            maximum=MAX_RECEIPT_BYTES,
+            uid=config.state_uid,
+            gid=config.state_gid,
+            mode=0o600,
+        )
+        if _sha256(attempt_raw) != attempt_digest:
+            raise WatchdogError("DATA HOLD rollback attempt digest changed")
+        attempt = _strict_json(attempt_raw, label="DATA HOLD rollback attempt")
+        if attempt_raw != _canonical_json_bytes(attempt):
+            raise WatchdogError("DATA HOLD rollback attempt is not canonical JSON")
+        _expect_keys(
+            attempt,
+            {
+                "candidate_deployment_id",
+                "candidate_journal_sha256",
+                "candidate_topology_path",
+                "created_at",
+                "predecessor_deployment_id",
+                "schema_version",
+                "status",
+                "topology_sha256",
+            },
+            label="DATA HOLD rollback attempt",
+        )
+        candidate_deployment = attempt["candidate_deployment_id"]
+        if (
+            attempt["schema_version"] != ROLLBACK_ATTEMPT_SCHEMA
+            or attempt["status"] != "mutation_may_execute"
+            or attempt["candidate_journal_sha256"] != candidate_digest
+            or attempt["predecessor_deployment_id"]
+            != predecessor_proof["deployment_id"]
+            or not isinstance(candidate_deployment, str)
+            or UUID.fullmatch(candidate_deployment) is None
+        ):
+            raise WatchdogError("DATA HOLD rollback attempt identity is invalid")
+        topology_digest = _digest(
+            attempt["topology_sha256"],
+            label="DATA HOLD rollback attempt topology digest",
+        )
+        attempt_recorded_at = parse_fractional_timestamp(
+            attempt["created_at"],
+            microseconds=True,
+        )
+
+        topology_root = config.state_root / "rollback-attempt-topologies"
+        topology_path = topology_root / f"{candidate_digest}.json"
+        _validate_directory(
+            topology_root,
+            label="DATA HOLD rollback attempt topology directory",
+            uid=config.state_uid,
+            gid=config.state_gid,
+            mode=0o700,
+        )
+        if attempt["candidate_topology_path"] != str(topology_path):
+            raise WatchdogError(
+                "DATA HOLD rollback attempt topology path is not canonical"
+            )
+        topology_raw = _read_regular(
+            topology_path,
+            label="DATA HOLD rollback attempt topology",
+            maximum=2 * 1024 * 1024,
+            uid=config.state_uid,
+            gid=config.state_gid,
+            mode=0o600,
+        )
+        if _sha256(topology_raw) != topology_digest:
+            raise WatchdogError(
+                "DATA HOLD rollback attempt topology digest changed"
+            )
+        attempt_topology = _strict_json(
+            topology_raw,
+            label="DATA HOLD rollback attempt topology",
+        )
+        rollback_topology = candidate["rollback_evidence"]["topology"]
+        project_id = rollback_topology["project_id"]
+        environment_id = rollback_topology["environment_id"]
+        service_id = rollback_topology["service_id"]
+        if attempt_topology.get("id") != project_id:
+            raise WatchdogError(
+                "DATA HOLD rollback attempt topology project changed"
+            )
+        service = _one(
+            _edges(attempt_topology.get("services"), label="services"),
+            key="id",
+            expected=service_id,
+            label="service",
+        )
+        if service.get("name") != "palimpsest-publication":
+            raise WatchdogError(
+                "DATA HOLD rollback attempt topology service changed"
+            )
+        environment = _one(
+            _edges(attempt_topology.get("environments"), label="environments"),
+            key="id",
+            expected=environment_id,
+            label="environment",
+        )
+        instance = _one(
+            _edges(
+                environment.get("serviceInstances"),
+                label="service instances",
+            ),
+            key="serviceId",
+            expected=service_id,
+            label="service instance",
+        )
+        latest = instance.get("latestDeployment")
+        metadata = latest.get("meta") if isinstance(latest, dict) else None
+        created_at = latest.get("createdAt") if isinstance(latest, dict) else None
+        if (
+            not isinstance(latest, dict)
+            or latest.get("id") != candidate_deployment
+            or candidate_deployment == predecessor_proof["deployment_id"]
+            or latest.get("status") != "SUCCESS"
+            or not isinstance(metadata, dict)
+            or not isinstance(metadata.get("imageDigest"), str)
+            or re.fullmatch(r"sha256:[0-9a-f]{64}", metadata["imageDigest"])
+            is None
+            or metadata.get("reason") != "deploy"
+        ):
+            raise WatchdogError(
+                "DATA HOLD rollback attempt topology identity is invalid"
+            )
+        deployment_created_at = parse_fractional_timestamp(created_at)
+        prepared_at = parse_timestamp(candidate["prepared_at"])
+        if (
+            deployment_created_at < prepared_at - timedelta(seconds=120)
+            or deployment_created_at > attempt_recorded_at + timedelta(seconds=120)
+        ):
+            raise WatchdogError(
+                "DATA HOLD rollback attempt topology time is not candidate-bound"
+            )
+
+    return {
+        "status": "DATA HOLD",
+        "reason_code": document["reason_code"],
+        "recorded_at": document["recorded_at"],
+        "candidate_release_sha": candidate_release,
+        "candidate_journal_sha256": candidate_digest,
+        "rollback_attempted": rollback["attempted"],
+    }
+
+
+ManifestFetcher = Callable[[str], bytes]
+
+
+def validate_lineage(
+    config: LineageConfig,
+    *,
+    fetch_manifest: ManifestFetcher,
+    chain_checkpoint: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Validate the complete direct-publication lineage and live byte proof."""
+
+    _validate_directory(
+        config.state_root,
+        label="publication state root",
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o700,
+    )
+    receipt_raw = _read_regular(
+        config.publication_receipt,
+        label="publication receipt",
+        maximum=MAX_RECEIPT_BYTES,
+        uid=config.state_uid,
+        gid=config.state_gid,
+        mode=0o600,
+    )
+    receipt = _strict_json(receipt_raw, label="publication receipt")
+    schema = receipt.get("schema_version")
+    pin: dict[str, Any] | None = None
+    pin_sha256 = ""
+    verified_chain: dict[str, Any] | None = None
+    if schema == V1_SCHEMA:
+        if config.base_pin.exists() or config.base_pin.is_symlink():
+            raise WatchdogError("v1 receipt is forbidden after transition pin creation")
+        if config.pending_candidate.exists() or config.pending_candidate.is_symlink():
+            raise WatchdogError("v1 receipt is not accepted with a candidate journal")
+        _validate_v1_receipt(
+            receipt_raw,
+            receipt,
+            pin=None,
+            allow_current_pre_transition=True,
+        )
+        deployed_raw = _read_regular(
+            config.deployed_commit,
+            label="host deployed commit",
+            maximum=256,
+            uid=config.pin_uid,
+            gid=config.installed_gid,
+            mode=0o644,
+        )
+        if deployed_raw.decode("ascii").strip() != INCIDENT_BASE_SHA:
+            raise WatchdogError("v1 receipt is outside the exact pre-transition state")
+    elif schema == V2_SCHEMA:
+        pin, pin_raw = _validate_pin(config)
+        pin_sha256 = _sha256(pin_raw)
+        _validate_transition_anchor(config, pin=pin)
+        _validate_v2_receipt(
+            config,
+            receipt,
+            pin=pin,
+            pin_sha256=pin_sha256,
+            current=True,
+            verify_bundle_git=True,
+        )
+        verified_chain = _validate_receipt_chain(
+            config,
+            receipt_raw,
+            receipt,
+            pin=pin,
+            pin_sha256=pin_sha256,
+            checkpoint=chain_checkpoint,
+        )
+    else:
+        raise WatchdogError(f"unsupported publication receipt schema {schema!r}")
+
+    provider_raw = fetch_manifest(config.provider_origin)
+    public_raw = fetch_manifest(config.public_origin)
+    if provider_raw != public_raw:
+        raise WatchdogError("provider and public live manifests are not byte-identical")
+    live = _validate_live_manifest(config, provider_raw, receipt, pin=pin)
+    candidate = _candidate_status(
+        config,
+        receipt,
+        pin=pin,
+        pin_sha256=pin_sha256,
+    )
+    return (
+        {
+            "schema_version": schema,
+            "receipt_sha256": _sha256(receipt_raw),
+            "host_deployed_sha": receipt.get("host_deployed_sha", INCIDENT_BASE_SHA),
+            "publication_base_sha": receipt.get("base_sha"),
+            "publication_base_pin_sha256": pin_sha256 or None,
+            "release_sha": receipt.get("release_sha"),
+            "deployment_id": receipt.get("railway", {}).get("deployment_id"),
+            "chain_checkpoint": verified_chain,
+            "live": live,
+        },
+        candidate,
+    )
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
+def fetch_manifest(origin: str) -> bytes:
+    parsed = urllib.parse.urlsplit(origin)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        raise WatchdogError("live manifest origin is not an exact HTTPS origin")
+    nonce = time.time_ns()
+    url = origin.rstrip("/") + f"/railway-release.json?watchdog={nonce}"
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache, no-store",
+            "User-Agent": "palimpsest-direct-watchdog/2",
+        },
+    )
+    try:
+        with urllib.request.build_opener(_NoRedirect()).open(
+            request, timeout=12
+        ) as response:
+            if response.status != 200 or response.geturl() != url:
+                raise WatchdogError("live manifest response is not exact")
+            declared = response.headers.get("Content-Length")
+            if declared is not None and int(declared) > MAX_JSON_BYTES:
+                raise WatchdogError("live manifest is too large")
+            raw = response.read(MAX_JSON_BYTES + 1)
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        if isinstance(exc, WatchdogError):
+            raise
+        raise WatchdogError(f"cannot fetch live manifest from {origin}") from exc
+    if len(raw) > MAX_JSON_BYTES:
+        raise WatchdogError("live manifest is too large")
+    return raw
+
+
+def fetch_json_url(url: str) -> dict[str, Any]:
+    parsed = urllib.parse.urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+    ):
+        raise WatchdogError("JSON endpoint is not an exact HTTPS URL")
+    separator = "&" if parsed.query else "?"
+    exact_url = f"{url}{separator}watchdog={time.time_ns()}"
+    request = urllib.request.Request(
+        exact_url,
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache, no-store",
+            "User-Agent": "palimpsest-direct-watchdog/2",
+        },
+    )
+    try:
+        with urllib.request.build_opener(_NoRedirect()).open(
+            request, timeout=12
+        ) as response:
+            if response.status != 200 or response.geturl() != exact_url:
+                raise WatchdogError("JSON endpoint response is not exact")
+            raw = response.read(MAX_JSON_BYTES + 1)
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        if isinstance(exc, WatchdogError):
+            raise
+        raise WatchdogError(f"cannot fetch JSON endpoint {url}") from exc
+    if len(raw) > MAX_JSON_BYTES:
+        raise WatchdogError("JSON endpoint response is too large")
+    return _strict_json(raw, label=f"JSON endpoint {url}")
+
+
+def load_json(path: Path) -> dict[str, Any]:
+    return _strict_json(
+        _read_regular(path, label=str(path), maximum=MAX_JSON_BYTES),
+        label=str(path),
+    )
+
+
+def command(*args: str) -> str:
+    result = subprocess.run(
+        args,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    return result.stdout.strip()
+
+
+def add_problem(problems: list[dict[str, Any]], check: str, detail: str) -> None:
+    problems.append({"check": check, "detail": detail})
+
+
+def check_age(
+    problems: list[dict[str, Any]],
+    check: str,
+    payload: dict[str, Any],
+    field: str,
+    maximum: int,
+    now: datetime,
+) -> float | None:
+    try:
+        age = max(0.0, (now - parse_timestamp(payload.get(field))).total_seconds())
+    except (TypeError, ValueError) as exc:
+        add_problem(problems, check, f"invalid {field}: {exc}")
+        return None
+    if age > maximum:
+        add_problem(
+            problems,
+            check,
+            f"{field} is {int(age)}s old; maximum is {maximum}s",
+        )
+    return age
+
+
+def unit_property(unit: str, name: str) -> str:
+    return command("systemctl", "show", unit, f"--property={name}", "--value")
+
+
+def _write_status(document: dict[str, Any]) -> None:
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=OUTPUT_PATH.parent,
+        prefix=f".{OUTPUT_PATH.name}.",
+        delete=False,
+    ) as handle:
+        json.dump(document, handle, ensure_ascii=False, indent=2, sort_keys=True)
+        handle.write("\n")
+        temporary = Path(handle.name)
+    os.chmod(temporary, 0o600)
+    os.replace(temporary, OUTPUT_PATH)
+
+
+def _outcome_status(*, problems: list[dict[str, Any]], data_hold: bool) -> str:
+    if data_hold:
+        return "DATA HOLD"
+    return "healthy" if not problems else "degraded"
+
+
+def _load_prior_chain_checkpoint() -> dict[str, Any] | None:
+    try:
+        OUTPUT_PATH.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise WatchdogError("cannot inspect prior watchdog status") from exc
+    raw = _read_regular(
+        OUTPUT_PATH,
+        label="prior watchdog status",
+        maximum=4 * 1024 * 1024,
+        uid=os.geteuid(),
+        gid=os.getegid(),
+        mode=0o600,
+    )
+    prior = _strict_json(raw, label="prior watchdog status")
+    if prior.get("schema_version") != "palimpsest.direct-watchdog.v2":
+        return None
+    checks = prior.get("checks")
+    publication = checks.get("publication") if isinstance(checks, dict) else None
+    checkpoint = (
+        publication.get("chain_checkpoint")
+        if isinstance(publication, dict)
+        else None
+    )
+    if checkpoint is None:
+        return None
+    if not isinstance(checkpoint, dict):
+        raise WatchdogError("prior publication chain checkpoint is not an object")
+    return checkpoint
+
+
+def main() -> int:
+    now = utc_now()
+    problems: list[dict[str, Any]] = []
+    checks: dict[str, Any] = {}
+    lineage_config = default_lineage_config()
+    data_hold_active = (
+        lineage_config.pending_candidate.exists()
+        or lineage_config.pending_candidate.is_symlink()
+        or lineage_config.data_hold.exists()
+        or lineage_config.data_hold.is_symlink()
+    )
+    try:
+        prior_chain_checkpoint = _load_prior_chain_checkpoint()
+    except WatchdogError as exc:
+        prior_chain_checkpoint = None
+        add_problem(problems, "publication/checkpoint", str(exc))
+
+    try:
+        wire = load_json(WIRE_PATH)
+        wire_age = check_age(
+            problems,
+            "wire/freshness",
+            wire,
+            "generated_at",
+            WIRE_MAX_AGE_SECONDS,
+            now,
+        )
+        events = wire.get("events")
+        event_count = len(events) if isinstance(events, list) else 0
+        if event_count < 1:
+            add_problem(problems, "wire/events", "wire contains no events")
+        checks["wire"] = {
+            "generated_at": wire.get("generated_at"),
+            "age_seconds": round(wire_age, 3) if wire_age is not None else None,
+            "event_count": event_count,
+        }
+    except (OSError, ValueError, WatchdogError) as exc:
+        add_problem(problems, "wire/document", str(exc))
+
+    try:
+        measurement = load_json(MEASUREMENT_RECEIPT)
+        measurement_age = check_age(
+            problems,
+            "measurements/freshness",
+            measurement,
+            "recorded_at",
+            MEASUREMENT_MAX_AGE_SECONDS,
+            now,
+        )
+        if int(measurement.get("succeeded", 0)) < 1:
+            add_problem(
+                problems,
+                "measurements/result",
+                "no measurement collector succeeded",
+            )
+        checks["measurements"] = {
+            "recorded_at": measurement.get("recorded_at"),
+            "age_seconds": (
+                round(measurement_age, 3) if measurement_age is not None else None
+            ),
+            "succeeded": measurement.get("succeeded"),
+            "failed": measurement.get("failed"),
+            "promoted_files": measurement.get("promoted_files"),
+        }
+    except (OSError, TypeError, ValueError, WatchdogError) as exc:
+        add_problem(problems, "measurements/document", str(exc))
+
+    publication: dict[str, Any] = {}
+    try:
+        publication = load_json(PUBLICATION_RECEIPT)
+        publication_age = check_age(
+            problems,
+            "publication/freshness",
+            publication,
+            "recorded_at",
+            PUBLICATION_MAX_AGE_SECONDS,
+            now,
+        )
+        lineage, candidate = validate_lineage(
+            lineage_config,
+            fetch_manifest=fetch_manifest,
+            chain_checkpoint=prior_chain_checkpoint,
+        )
+        lineage["recorded_at"] = publication.get("recorded_at")
+        lineage["age_seconds"] = (
+            round(publication_age, 3) if publication_age is not None else None
+        )
+        lineage["candidate"] = candidate
+        checks["publication"] = lineage
+        if candidate["status"] != "none":
+            data_hold_active = True
+            add_problem(
+                problems,
+                "publication/candidate",
+                f"candidate journal status is {candidate['status']}",
+            )
+    except (OSError, ValueError, WatchdogError) as exc:
+        add_problem(problems, "publication/lineage", str(exc))
+        if prior_chain_checkpoint is not None:
+            checks["publication"] = {
+                "chain_checkpoint": prior_chain_checkpoint,
+                "status": "validation_failed; prior checkpoint retained",
+            }
+
+    try:
+        lineage_config.data_hold.lstat()
+    except FileNotFoundError:
+        checks["data_hold"] = {"status": "none"}
+    except OSError as exc:
+        data_hold_active = True
+        checks["data_hold"] = {
+            "status": "DATA HOLD",
+            "validation": "invalid",
+        }
+        add_problem(problems, "publication/data_hold", str(exc))
+    else:
+        data_hold_active = True
+        try:
+            hold = validate_data_hold(lineage_config)
+            checks["data_hold"] = hold
+            add_problem(
+                problems,
+                "publication/data_hold",
+                "DATA HOLD reason="
+                f"{hold['reason_code']} candidate={hold['candidate_release_sha']}",
+            )
+        except (OSError, ValueError, WatchdogError) as exc:
+            checks["data_hold"] = {
+                "status": "DATA HOLD",
+                "validation": "invalid",
+            }
+            add_problem(
+                problems,
+                "publication/data_hold",
+                f"invalid root DATA HOLD marker: {exc}",
+            )
+
+    unit_states: dict[str, Any] = {}
+    for timer in TIMERS:
+        try:
+            enabled = command("systemctl", "is-enabled", timer)
+            active = command("systemctl", "is-active", timer)
+            unit_states[timer] = {"enabled": enabled, "active": active}
+            if enabled != "enabled" or active != "active":
+                add_problem(
+                    problems,
+                    f"timer/{timer}",
+                    f"enabled={enabled}, active={active}",
+                )
+        except (OSError, subprocess.SubprocessError) as exc:
+            add_problem(problems, f"timer/{timer}", str(exc))
+
+    for service in SERVICES:
+        try:
+            active = unit_property(service, "ActiveState")
+            result = unit_property(service, "Result")
+            unit_states[service] = {"active": active, "result": result}
+            if active == "failed" or result == "failed":
+                add_problem(
+                    problems,
+                    f"service/{service}",
+                    f"active={active}, result={result}",
+                )
+        except (OSError, subprocess.SubprocessError) as exc:
+            add_problem(problems, f"service/{service}", str(exc))
+    checks["systemd"] = unit_states
+
+    analysis_results: dict[str, Any] = {}
+    for route in ANALYSIS_ROUTES:
+        try:
+            article = fetch_json_url(f"{PUBLIC_ORIGIN}{route}")
+            coverage = (
+                article.get("coverage")
+                if isinstance(article.get("coverage"), dict)
+                else {}
+            )
+            wire_info = (
+                article.get("wire") if isinstance(article.get("wire"), dict) else {}
+            )
+            result = {
+                "region": article.get("region"),
+                "revision_id": article.get("revision_id"),
+                "wire_generated_at": wire_info.get("generated_at"),
+                "event_count": coverage.get("event_count"),
+                "source_count": coverage.get("source_count"),
+            }
+            analysis_results[route] = result
+            if article.get("schema_version") != "palimpsest.regional-analysis.v1":
+                add_problem(problems, f"analysis/{route}", "unexpected schema")
+            if not article.get("revision_id"):
+                add_problem(problems, f"analysis/{route}", "missing revision ID")
+            if int(coverage.get("event_count", 0)) < 1:
+                add_problem(
+                    problems,
+                    f"analysis/{route}",
+                    "analysis contains no evidence events",
+                )
+        except (OSError, TypeError, ValueError, WatchdogError) as exc:
+            add_problem(problems, f"analysis/{route}", str(exc))
+    checks["analysis"] = analysis_results
+
+    status_value = _outcome_status(
+        problems=problems,
+        data_hold=data_hold_active,
+    )
+    document = {
+        "schema_version": "palimpsest.direct-watchdog.v2",
+        "generated_at": now.isoformat().replace("+00:00", "Z"),
+        "status": status_value,
+        "data_hold": data_hold_active,
+        "problem_count": len(problems),
+        "problems": problems,
+        "checks": checks,
+    }
+    _write_status(document)
+    print(
+        f"palimpsest-direct-watchdog status={status_value} "
+        f"problems={len(problems)} "
+        f"wire_events={checks.get('wire', {}).get('event_count', 0)}"
+    )
+    return 2 if data_hold_active or problems else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

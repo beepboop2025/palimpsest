@@ -1,0 +1,1481 @@
+#!/usr/bin/env python3
+"""Reconcile one direct Railway candidate without ever resubmitting it."""
+
+from __future__ import annotations
+
+import fcntl
+import grp
+import hashlib
+import json
+import os
+import pwd
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.request
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+STATE_ROOT = Path(os.environ.get("PALIMPSEST_RAILWAY_STATE_ROOT", "/var/lib/palimpsest/railway-publication"))
+SUCCESS_RECEIPT = STATE_ROOT / "latest-success.json"
+CANDIDATE_JOURNAL = STATE_ROOT / "pending-candidate.json"
+BASE_PIN = Path(os.environ.get("PALIMPSEST_RAILWAY_BASE_FILE", "/etc/palimpsest/railway-publication-base.json"))
+DATA_HOLD = Path(os.environ.get("PALIMPSEST_RAILWAY_DATA_HOLD_FILE", "/etc/palimpsest/railway-publication-data-hold.json"))
+DEPLOYED_COMMIT = Path(os.environ.get("PALIMPSEST_DEPLOYED_COMMIT_FILE", "/etc/palimpsest/deployed-commit"))
+RAILWAY_BIN = Path(os.environ.get("PALIMPSEST_RAILWAY_BIN", "/usr/bin/railway"))
+PROJECT_ID = os.environ.get("RAILWAY_PROJECT_ID", "")
+ENVIRONMENT_ID = os.environ.get("RAILWAY_ENVIRONMENT_ID", "")
+SERVICE_ID = os.environ.get("RAILWAY_SERVICE_ID", "")
+PROVIDER_ORIGIN = os.environ.get("PALIMPSEST_RAILWAY_PROVIDER_ORIGIN", "https://palimpsest-publication-production.up.railway.app").rstrip("/")
+PUBLIC_ORIGIN = os.environ.get("PALIMPSEST_PUBLIC_ORIGIN", "https://www.palimpsest.info").rstrip("/")
+NODE_OPTIONS = os.environ.get("PALIMPSEST_RAILWAY_NODE_OPTIONS", "--jitless")
+ROLLBACK_TIMEOUT = int(os.environ.get("PALIMPSEST_RAILWAY_ROLLBACK_TIMEOUT_SECONDS", "300"))
+ROLLBACK_POLL = float(os.environ.get("PALIMPSEST_RAILWAY_ROLLBACK_POLL_SECONDS", "10"))
+
+PIN_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
+PIN_INCIDENT = "palimpsest-direct-lineage-2026-08-30"
+CANDIDATE_SCHEMA = "palimpsest.direct-publication-candidate.v1"
+ROLLBACK_EVIDENCE_SCHEMA = "palimpsest.direct-publication-rollback-evidence.v1"
+RECOVERY_SCHEMA = "palimpsest.direct-publication-recovery.v1"
+ATTEMPT_SCHEMA = "palimpsest.direct-publication-rollback-attempt.v1"
+HOLD_SCHEMA = "palimpsest.direct-publication-data-hold.v1"
+V1_SCHEMA = "palimpsest.hetzner-railway-publication.v1"
+V2_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
+BUNDLE_SCHEMA = "palimpsest.incremental-release-bundle.v1"
+ROOT_UID = 0
+
+INCIDENT_BASE = "b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
+INCIDENT_RELEASE = "ae5ecacd2e151d15af3fe06a7cd1219aa51573e7"
+INCIDENT_RECEIPT = "150d4d4314c1a1239f19c29747ce1a69c574cfc01f73fda2020cd51f1c1868b1"
+INCIDENT_INPUT = "7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede38b2dc68a549413e"
+INCIDENT_MANIFEST = "1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
+INCIDENT_TREE = "6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
+INCIDENT_DEPLOYMENT = "505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+IMAGE = re.compile(r"^sha256:[0-9a-f]{64}$")
+UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
+MAX_JSON = 8 * 1024 * 1024
+MAX_TOPOLOGY = 2 * 1024 * 1024
+TERMINAL_NONACTIVATING = {"CANCELED", "CANCELLED", "CRASHED", "FAILED", "REMOVED", "SKIPPED"}
+
+
+class ReconciliationError(RuntimeError):
+    def __init__(self, message: str, *, code: str = "reconciliation_failed") -> None:
+        super().__init__(message)
+        self.code = code
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
+def _digest(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _decode(raw: bytes, label: str) -> Any:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for key, value in rows:
+            if key in result:
+                raise ReconciliationError(f"{label} contains a duplicate key")
+            result[key] = value
+        return result
+
+    try:
+        return json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(ReconciliationError(f"{label} contains {value}")),
+        )
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ReconciliationError(f"{label} is not strict JSON") from exc
+
+
+def _object(raw: bytes, label: str) -> dict[str, Any]:
+    value = _decode(raw, label)
+    if not isinstance(value, dict):
+        raise ReconciliationError(f"{label} is not an object")
+    return value
+
+
+def _keys(value: dict[str, Any], expected: set[str], label: str) -> None:
+    if set(value) != expected:
+        raise ReconciliationError(f"{label} does not match its closed schema")
+
+
+def _sha40(value: Any, label: str) -> str:
+    if not isinstance(value, str) or SHA40.fullmatch(value) is None:
+        raise ReconciliationError(f"{label} is invalid")
+    return value
+
+
+def _sha256(value: Any, label: str) -> str:
+    if not isinstance(value, str) or SHA256.fullmatch(value) is None:
+        raise ReconciliationError(f"{label} is invalid")
+    return value
+
+
+def _uuid(value: Any, label: str) -> str:
+    if not isinstance(value, str) or UUID.fullmatch(value) is None:
+        raise ReconciliationError(f"{label} is invalid")
+    return value
+
+
+def _positive(value: Any, label: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
+        raise ReconciliationError(f"{label} is invalid")
+    return value
+
+
+def _timestamp(value: Any, label: str) -> datetime:
+    if not isinstance(value, str) or not 1 <= len(value) <= 64:
+        raise ReconciliationError(f"{label} is invalid")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ReconciliationError(f"{label} is invalid") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ReconciliationError(f"{label} has no timezone")
+    parsed = parsed.astimezone(UTC)
+    if parsed > datetime.now(UTC) + timedelta(seconds=120):
+        raise ReconciliationError(f"{label} is in the future")
+    return parsed
+
+
+def _stable_metadata(metadata: os.stat_result) -> tuple[int, ...]:
+    """Return fields that cannot legitimately change as a side effect of read(2)."""
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_mode,
+        metadata.st_nlink,
+        metadata.st_uid,
+        metadata.st_gid,
+        metadata.st_size,
+        metadata.st_mtime_ns,
+        metadata.st_ctime_ns,
+    )
+
+
+def _read(path: Path, *, uid: int, gid: int, mode: int, maximum: int = MAX_JSON, empty: bool = False) -> bytes:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise ReconciliationError(f"cannot open {path} without following links") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != uid
+            or metadata.st_gid != gid
+            or stat.S_IMODE(metadata.st_mode) != mode
+            or metadata.st_size > maximum
+            or (metadata.st_size == 0 and not empty)
+        ):
+            raise ReconciliationError(f"unsafe metadata for {path}")
+        chunks: list[bytes] = []
+        remaining = maximum + 1
+        while remaining:
+            chunk = os.read(descriptor, min(65536, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        if len(raw) > maximum or (not raw and not empty):
+            raise ReconciliationError(f"unsafe byte size for {path}")
+        if _stable_metadata(os.fstat(descriptor)) != _stable_metadata(metadata):
+            raise ReconciliationError(f"metadata changed while reading {path}")
+        return raw
+    finally:
+        os.close(descriptor)
+
+
+def _directory(path: Path, *, uid: int, gid: int, mode: int = 0o700) -> None:
+    metadata = path.lstat()
+    if not stat.S_ISDIR(metadata.st_mode) or path.is_symlink() or metadata.st_uid != uid or metadata.st_gid != gid or stat.S_IMODE(metadata.st_mode) != mode:
+        raise ReconciliationError(f"unsafe directory metadata for {path}")
+
+
+def _ensure_directory(path: Path, *, uid: int, gid: int) -> None:
+    try:
+        path.mkdir(mode=0o700)
+        os.chown(path, uid, gid)
+        parent = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.fsync(parent)
+        finally:
+            os.close(parent)
+    except FileExistsError:
+        pass
+    _directory(path, uid=uid, gid=gid)
+
+
+def _canonical(value: dict[str, Any]) -> bytes:
+    return json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"), sort_keys=True).encode() + b"\n"
+
+
+def _atomic(path: Path, raw: bytes, *, uid: int, gid: int, mode: int, replace: bool) -> None:
+    directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    temporary: str | None = None
+    descriptor: int | None = None
+    try:
+        descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+        os.fchmod(descriptor, mode)
+        os.fchown(descriptor, uid, gid)
+        with os.fdopen(descriptor, "wb", closefd=False) as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        staged = os.fstat(descriptor)
+        staged_name = Path(temporary).name
+        named = os.stat(staged_name, dir_fd=directory, follow_symlinks=False)
+        if (named.st_dev, named.st_ino) != (staged.st_dev, staged.st_ino):
+            raise ReconciliationError("atomic staging inode changed before promotion")
+        if replace:
+            os.replace(staged_name, path.name, src_dir_fd=directory, dst_dir_fd=directory)
+        else:
+            os.link(staged_name, path.name, src_dir_fd=directory, dst_dir_fd=directory, follow_symlinks=False)
+            os.unlink(staged_name, dir_fd=directory)
+        promoted = os.open(path.name, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory)
+        try:
+            promoted_metadata = os.fstat(promoted)
+            if (promoted_metadata.st_dev, promoted_metadata.st_ino) != (
+                staged.st_dev,
+                staged.st_ino,
+            ):
+                raise ReconciliationError("atomic destination is not the staged inode")
+            chunks: list[bytes] = []
+            remaining = len(raw) + 1
+            while remaining:
+                chunk = os.read(promoted, min(65536, remaining))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            if b"".join(chunks) != raw:
+                raise ReconciliationError("atomic destination bytes changed during promotion")
+        finally:
+            os.close(promoted)
+        os.fsync(directory)
+        temporary = None
+    except FileExistsError as exc:
+        raise ReconciliationError(f"durable proof already exists: {path}") from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+        if temporary is not None:
+            try:
+                os.unlink(Path(temporary).name, dir_fd=directory)
+            except FileNotFoundError:
+                pass
+        os.close(directory)
+
+
+def _unlink(path: Path) -> None:
+    directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        try:
+            os.unlink(path.name, dir_fd=directory)
+        except FileNotFoundError:
+            pass
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
+def _validate_pin(pin: dict[str, Any]) -> None:
+    _keys(pin, {"incident_id", "installed", "origins", "previous", "recorded_at", "schema_version", "status", "target"}, "publication base pin")
+    if pin["schema_version"] != PIN_SCHEMA or pin["incident_id"] != PIN_INCIDENT or pin["status"] != "verified":
+        raise ReconciliationError("publication base pin identity is invalid")
+    _timestamp(pin["recorded_at"], "publication base recorded_at")
+    installed, origins, previous, target = (pin.get(key) for key in ("installed", "origins", "previous", "target"))
+    if not all(isinstance(value, dict) for value in (installed, origins, previous, target)):
+        raise ReconciliationError("publication base proof objects are invalid")
+    _keys(installed, {"publisher_service_sha256", "publisher_sha256", "reconciler_sha256", "transition_helper_sha256", "watchdog_service_sha256", "watchdog_sha256", "watchdog_timer_sha256"}, "publication base installed proof")
+    for key, value in installed.items():
+        _sha256(value, f"installed.{key}")
+    if origins != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+        raise ReconciliationError("publication base origins changed")
+    expected_previous = {
+        "canonical_head": INCIDENT_BASE,
+        "deployed_commit": INCIDENT_BASE,
+        "live_manifest_sha256": INCIDENT_MANIFEST,
+        "live_release_sha": INCIDENT_RELEASE,
+        "live_tree_sha256": INCIDENT_TREE,
+        "publication_input_sha256": INCIDENT_INPUT,
+        "publication_receipt_sha256": INCIDENT_RECEIPT,
+        "railway_deployment_id": INCIDENT_DEPLOYMENT,
+    }
+    if previous != expected_previous:
+        raise ReconciliationError("publication base predecessor is not the exact incident")
+    _keys(target, {"base_sha", "public_main_sha"}, "publication base target")
+    if _sha40(target["base_sha"], "publication base target") != target["public_main_sha"]:
+        raise ReconciliationError("publication base is not exact public main")
+
+
+def _validate_candidate(candidate: dict[str, Any]) -> None:
+    _keys(candidate, {"base_sha", "host_deployed_sha", "input_sha256", "message", "predecessor", "prepared_at", "publication_base", "release_bundle", "release_manifest", "release_sha", "rollback_evidence", "schema_version", "status", "submission_id", "wire_generated_at"}, "candidate journal")
+    if candidate["schema_version"] != CANDIDATE_SCHEMA or candidate["status"] != "mutation_unresolved":
+        raise ReconciliationError("candidate identity is invalid")
+    prepared = _timestamp(candidate["prepared_at"], "candidate prepared_at")
+    wire = _timestamp(candidate["wire_generated_at"], "candidate wire_generated_at")
+    if wire > prepared + timedelta(seconds=120):
+        raise ReconciliationError("candidate wire timestamp follows preparation")
+    _sha256(candidate["input_sha256"], "candidate input")
+    _sha40(candidate["host_deployed_sha"], "candidate host deployment")
+    _sha40(candidate["base_sha"], "candidate base")
+    release = _sha40(candidate["release_sha"], "candidate release")
+    submission_id = candidate.get("submission_id")
+    if not isinstance(submission_id, str) or re.fullmatch(r"[0-9a-f]{32}", submission_id) is None:
+        raise ReconciliationError("candidate submission identity is invalid")
+    if candidate["message"] != f"palimpsest-hetzner-{release[:12]}-{candidate['input_sha256'][:12]}-{submission_id}":
+        raise ReconciliationError("candidate message is not deterministic")
+
+    base = candidate.get("publication_base")
+    bundle = candidate.get("release_bundle")
+    release_manifest = candidate.get("release_manifest")
+    predecessor = candidate.get("predecessor")
+    evidence = candidate.get("rollback_evidence")
+    if not all(isinstance(value, dict) for value in (base, bundle, release_manifest, predecessor, evidence)):
+        raise ReconciliationError("candidate proof objects are invalid")
+    _keys(base, {"kind", "path", "sha256"}, "candidate publication base")
+    if base["kind"] != "verified_transition":
+        raise ReconciliationError("candidate is not transition-pinned")
+    _sha256(base["sha256"], "candidate base pin")
+    _keys(bundle, {"bytes", "metadata_path", "metadata_sha256", "path", "sha256"}, "candidate bundle")
+    _positive(bundle["bytes"], "candidate bundle bytes")
+    _sha256(bundle["sha256"], "candidate bundle digest")
+    _sha256(bundle["metadata_sha256"], "candidate bundle metadata digest")
+    if any(not isinstance(bundle[key], str) or not bundle[key] for key in ("path", "metadata_path")):
+        raise ReconciliationError("candidate bundle path is invalid")
+    _keys(release_manifest, {"bytes", "file_count", "path", "sha256", "total_bytes", "tree_sha256"}, "candidate release manifest")
+    _positive(release_manifest["bytes"], "candidate release manifest bytes")
+    _positive(release_manifest["file_count"], "candidate release manifest file_count")
+    _positive(release_manifest["total_bytes"], "candidate release manifest total_bytes")
+    _sha256(release_manifest["sha256"], "candidate release manifest digest")
+    _sha256(release_manifest["tree_sha256"], "candidate release manifest tree")
+    if not isinstance(release_manifest["path"], str) or not release_manifest["path"]:
+        raise ReconciliationError("candidate release manifest path is invalid")
+
+    _keys(predecessor, {"archive_path", "base_sha", "deployment_id", "input_sha256", "manifest_sha256", "receipt_sha256", "release_sha", "schema_version", "tree_sha256", "wire_generated_at"}, "candidate predecessor")
+    if predecessor["schema_version"] not in {V1_SCHEMA, V2_SCHEMA}:
+        raise ReconciliationError("predecessor schema is invalid")
+    _timestamp(predecessor["wire_generated_at"], "predecessor wire_generated_at")
+    for key in ("input_sha256", "manifest_sha256", "receipt_sha256", "tree_sha256"):
+        _sha256(predecessor[key], f"predecessor {key}")
+    _sha40(predecessor["base_sha"], "predecessor base")
+    _sha40(predecessor["release_sha"], "predecessor release")
+    _uuid(predecessor["deployment_id"], "predecessor deployment")
+
+    _keys(evidence, {"captured_at", "provider_manifest", "public_manifest", "schema_version", "topology"}, "rollback evidence")
+    if evidence["schema_version"] != ROLLBACK_EVIDENCE_SCHEMA:
+        raise ReconciliationError("rollback evidence schema is invalid")
+    if _timestamp(evidence["captured_at"], "rollback captured_at") > prepared + timedelta(seconds=120):
+        raise ReconciliationError("rollback evidence follows candidate preparation")
+    for label in ("provider_manifest", "public_manifest"):
+        proof = evidence.get(label)
+        if not isinstance(proof, dict):
+            raise ReconciliationError(f"rollback {label} is invalid")
+        _keys(proof, {"bytes", "path", "sha256"}, f"rollback {label}")
+        _positive(proof["bytes"], f"rollback {label} bytes")
+        _sha256(proof["sha256"], f"rollback {label} digest")
+        if not isinstance(proof["path"], str) or not proof["path"]:
+            raise ReconciliationError(f"rollback {label} path is invalid")
+    topology = evidence.get("topology")
+    if not isinstance(topology, dict):
+        raise ReconciliationError("rollback topology is invalid")
+    _keys(topology, {"bytes", "created_at", "deployment_id", "environment_id", "image_digest", "path", "project_id", "reason", "service_id", "sha256"}, "rollback topology")
+    _positive(topology["bytes"], "rollback topology bytes")
+    _sha256(topology["sha256"], "rollback topology digest")
+    _timestamp(topology["created_at"], "rollback topology created_at")
+    for key in ("project_id", "environment_id", "service_id", "deployment_id"):
+        _uuid(topology[key], f"rollback topology {key}")
+    if not isinstance(topology["image_digest"], str) or IMAGE.fullmatch(topology["image_digest"]) is None or topology["reason"] not in {"deploy", "deploymentRollback"}:
+        raise ReconciliationError("rollback topology deployment identity is invalid")
+    if not isinstance(topology["path"], str) or not topology["path"]:
+        raise ReconciliationError("rollback topology path is invalid")
+
+
+def _validate_manifest(raw: bytes, *, release: str, tree: str | None = None, digest: str | None = None) -> dict[str, Any]:
+    if digest is not None and _digest(raw) != digest:
+        raise ReconciliationError("manifest digest differs from durable proof")
+    document = _object(raw, "Railway release manifest")
+    _keys(
+        document,
+        {
+            "built_at",
+            "critical_files",
+            "deployment_source",
+            "file_count",
+            "github_required",
+            "schema_version",
+            "source_commit",
+            "state",
+            "total_bytes",
+            "tree_sha256",
+        },
+        "Railway release manifest",
+    )
+    if (
+        document.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or document.get("source_commit") != release
+        or document.get("deployment_source") != "local-git-archive"
+        or document.get("github_required") is not False
+        or document.get("state") != "artifact_ready"
+        or SHA256.fullmatch(str(document.get("tree_sha256"))) is None
+        or not isinstance(document.get("critical_files"), dict)
+        or not document["critical_files"]
+    ):
+        raise ReconciliationError("Railway release manifest identity is invalid")
+    _positive(document.get("file_count"), "Railway manifest file_count")
+    _positive(document.get("total_bytes"), "Railway manifest total_bytes")
+    _timestamp(document.get("built_at"), "Railway manifest built_at")
+    if tree is not None and document["tree_sha256"] != tree:
+        raise ReconciliationError("manifest tree differs from durable proof")
+    return document
+
+
+def _edges(value: Any, label: str) -> list[dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) != {"edges"} or not isinstance(value["edges"], list) or len(value["edges"]) > 100:
+        raise ReconciliationError(f"Railway {label} edge inventory is invalid")
+    if any(not isinstance(row, dict) or not isinstance(row.get("node"), dict) for row in value["edges"]):
+        raise ReconciliationError(f"Railway {label} edge is invalid")
+    return [row["node"] for row in value["edges"]]
+
+
+def _one(rows: list[dict[str, Any]], key: str, expected: str, label: str) -> dict[str, Any]:
+    matches = [row for row in rows if row.get(key) == expected]
+    if len(matches) != 1:
+        raise ReconciliationError(f"Railway {label} is not singular")
+    return matches[0]
+
+
+def _topology(raw: bytes, *, deployment: str | None = None, image: str | None = None, reason: str | None = None) -> dict[str, Any]:
+    if not 1 <= len(raw) <= MAX_TOPOLOGY:
+        raise ReconciliationError("Railway topology byte size is invalid")
+    document = _object(raw, "Railway topology")
+    if document.get("id") != _uuid(PROJECT_ID, "configured project"):
+        raise ReconciliationError("Railway topology project differs")
+    service = _one(_edges(document.get("services"), "services"), "id", SERVICE_ID, "service")
+    if service.get("name") != "palimpsest-publication":
+        raise ReconciliationError("Railway topology service name differs")
+    environment = _one(_edges(document.get("environments"), "environments"), "id", ENVIRONMENT_ID, "environment")
+    if environment.get("deletedAt") is not None or environment.get("canAccess") is not True or _edges(environment.get("volumeInstances"), "volumes"):
+        raise ReconciliationError("Railway environment topology is unsafe")
+    instance = _one(_edges(environment.get("serviceInstances"), "service instances"), "serviceId", SERVICE_ID, "service instance")
+    if instance.get("environmentId") != ENVIRONMENT_ID or instance.get("serviceName") != "palimpsest-publication":
+        raise ReconciliationError("Railway service instance differs")
+    if "source" not in instance or instance["source"] not in (None, {"image": None, "repo": None}):
+        raise ReconciliationError("Railway service has an attached source")
+    if "cronSchedule" not in instance or instance["cronSchedule"] is not None or "nextCronRunAt" not in instance or instance["nextCronRunAt"] is not None:
+        raise ReconciliationError("Railway service scheduling is unsafe")
+    latest = instance.get("latestDeployment")
+    if not isinstance(latest, dict) or latest.get("status") != "SUCCESS" or latest.get("deploymentStopped") is not False:
+        raise ReconciliationError("Railway latest deployment is not successful")
+    deployment_id = _uuid(latest.get("id"), "Railway latest deployment")
+    instances = latest.get("instances")
+    if not isinstance(instances, list) or len(instances) != 1 or not isinstance(instances[0], dict) or instances[0].get("status") != "RUNNING":
+        raise ReconciliationError("Railway latest deployment is not singular and running")
+    meta = latest.get("meta")
+    if not isinstance(meta, dict) or meta.get("buildOnly") is not False or meta.get("reason") not in {"deploy", "deploymentRollback"}:
+        raise ReconciliationError("Railway deployment metadata is unsafe")
+    image_digest = meta.get("imageDigest")
+    if not isinstance(image_digest, str) or IMAGE.fullmatch(image_digest) is None or meta.get("volumeMounts") != []:
+        raise ReconciliationError("Railway deployment image or mounts are unsafe")
+    service_manifest = meta.get("serviceManifest")
+    if not isinstance(service_manifest, dict) or not isinstance(service_manifest.get("build"), dict) or not isinstance(service_manifest.get("deploy"), dict):
+        raise ReconciliationError("Railway service manifest is invalid")
+    build, deploy = service_manifest["build"], service_manifest["deploy"]
+    if build.get("builder") != "DOCKERFILE" or build.get("dockerfilePath") != "ops/railway/Dockerfile.static":
+        raise ReconciliationError("Railway static builder differs")
+    if deploy.get("healthcheckPath") != "/healthz" or deploy.get("numReplicas") != 1 or "cronSchedule" not in deploy or deploy["cronSchedule"] is not None or "requiredMountPath" not in deploy or deploy["requiredMountPath"] is not None:
+        raise ReconciliationError("Railway static deployment topology differs")
+    created_at = latest.get("createdAt")
+    _timestamp(created_at, "Railway deployment created_at")
+    if deployment is not None and deployment_id != deployment:
+        raise ReconciliationError("Railway active deployment differs")
+    if image is not None and image_digest != image:
+        raise ReconciliationError("Railway active image differs")
+    if reason is not None and meta["reason"] != reason:
+        raise ReconciliationError("Railway active reason differs")
+    return {"created_at": created_at, "deployment_id": deployment_id, "image_digest": image_digest, "reason": meta["reason"]}
+
+
+def _fetch(url: str, *, maximum: int = MAX_JSON) -> bytes:
+    request = urllib.request.Request(url, headers={"Accept": "application/json", "Cache-Control": "no-cache, no-store", "User-Agent": "palimpsest-candidate-reconciler/2"})
+    try:
+        with urllib.request.build_opener(_NoRedirect()).open(request, timeout=30) as response:
+            if response.status != 200 or response.geturl() != url:
+                raise ReconciliationError("live response is not exact")
+            raw = response.read(maximum + 1)
+    except (OSError, urllib.error.URLError) as exc:
+        if isinstance(exc, ReconciliationError):
+            raise
+        raise ReconciliationError(f"cannot fetch {url}") from exc
+    if not raw or len(raw) > maximum:
+        raise ReconciliationError(f"live response byte size is invalid: {url}")
+    return raw
+
+
+def _railway_env(token_name: str, token_value: str) -> dict[str, str]:
+    if token_name not in {"RAILWAY_TOKEN", "RAILWAY_API_TOKEN"} or not token_value:
+        raise ReconciliationError("Railway token identity is invalid")
+    return {"HOME": "/nonexistent", "LANG": "C.UTF-8", "NODE_OPTIONS": NODE_OPTIONS, "PATH": "/usr/bin:/bin", token_name: token_value}
+
+
+def _railway(arguments: list[str], token_name: str, token_value: str, *, timeout: int = 60) -> bytes:
+    try:
+        completed = subprocess.run([str(RAILWAY_BIN), *arguments], check=True, capture_output=True, timeout=timeout, env=_railway_env(token_name, token_value))
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ReconciliationError(f"Railway command failed: {' '.join(arguments[:2])}") from exc
+    return completed.stdout
+
+
+def _inventory(token_name: str, token_value: str) -> list[dict[str, Any]]:
+    raw = _railway(["deployment", "list", "--json", "--limit", "30", "--project", PROJECT_ID, "--environment", ENVIRONMENT_ID, "--service", SERVICE_ID], token_name, token_value)
+    rows = _decode(raw, "Railway deployment inventory")
+    if not isinstance(rows, list) or len(rows) > 30 or any(not isinstance(row, dict) for row in rows):
+        raise ReconciliationError("Railway deployment inventory is invalid")
+    return rows
+
+
+def _status(token_name: str, token_value: str) -> bytes:
+    raw = _railway(["status", "--project", PROJECT_ID, "--environment", ENVIRONMENT_ID, "--json"], token_name, token_value)
+    if not 1 <= len(raw) <= MAX_TOPOLOGY:
+        raise ReconciliationError("Railway status response byte size is invalid")
+    return raw
+
+
+def _graphql(query: str, deployment_id: str, token_name: str, token_value: str) -> bytes:
+    return _railway(["api", query, "--raw-var", f"id={deployment_id}", "--compact"], token_name, token_value, timeout=30)
+
+
+def _validate_query(raw: bytes, deployment_id: str) -> None:
+    document = _object(raw, "Railway rollback query")
+    if set(document) - {"data", "errors"} or document.get("errors") not in (None, []):
+        raise ReconciliationError("Railway rollback query returned errors")
+    data = document.get("data")
+    if not isinstance(data, dict) or set(data) != {"deployment"}:
+        raise ReconciliationError("Railway rollback query data is invalid")
+    if data["deployment"] != {"canRollback": True, "id": deployment_id}:
+        raise ReconciliationError("captured predecessor cannot be rolled back")
+
+
+def _valid_mutation(raw: bytes) -> bool:
+    try:
+        document = _object(raw, "Railway rollback mutation")
+    except ReconciliationError:
+        return False
+    return not (set(document) - {"data", "errors"}) and document.get("errors") in (None, []) and document.get("data") == {"deploymentRollback": True}
+
+
+def _live_manifests(label: str) -> tuple[bytes, bytes]:
+    nonce = f"{time.time_ns()}-{label}"
+    return (
+        _fetch(f"{PROVIDER_ORIGIN}/railway-release.json?reconcile={nonce}"),
+        _fetch(f"{PUBLIC_ORIGIN}/railway-release.json?reconcile={nonce}"),
+    )
+
+
+def _validate_bundle(candidate: dict[str, Any], *, uid: int, gid: int) -> None:
+    bundle = candidate["release_bundle"]
+    release = candidate["release_sha"]
+    expected_bundle = STATE_ROOT / "release-bundles" / f"{release}.bundle"
+    expected_metadata = STATE_ROOT / "release-bundles" / f"{release}.json"
+    if Path(bundle["path"]) != expected_bundle or Path(bundle["metadata_path"]) != expected_metadata:
+        raise ReconciliationError("candidate bundle paths are not canonical")
+    raw = _read(expected_bundle, uid=uid, gid=gid, mode=0o600, maximum=2 * 1024 * 1024 * 1024)
+    metadata_raw = _read(expected_metadata, uid=uid, gid=gid, mode=0o600)
+    if len(raw) != bundle["bytes"] or _digest(raw) != bundle["sha256"] or _digest(metadata_raw) != bundle["metadata_sha256"]:
+        raise ReconciliationError("candidate bundle identity changed")
+    metadata = _object(metadata_raw, "release bundle metadata")
+    _keys(metadata, {"base_sha", "bytes", "created_at", "path", "release_sha", "schema_version", "sha256", "status"}, "release bundle metadata")
+    _timestamp(metadata["created_at"], "release bundle created_at")
+    if metadata != {"base_sha": candidate["base_sha"], "bytes": bundle["bytes"], "created_at": metadata["created_at"], "path": bundle["path"], "release_sha": release, "schema_version": BUNDLE_SCHEMA, "sha256": bundle["sha256"], "status": "verified"}:
+        raise ReconciliationError("release bundle metadata fields changed")
+
+
+def _validate_release_manifest_anchor(candidate: dict[str, Any], *, uid: int, gid: int) -> bytes:
+    proof = candidate["release_manifest"]
+    expected = STATE_ROOT / "release-manifests" / f"{candidate['release_sha']}.json"
+    if Path(proof["path"]) != expected:
+        raise ReconciliationError("release manifest anchor path is not canonical")
+    raw = _read(expected, uid=uid, gid=gid, mode=0o600)
+    if len(raw) != proof["bytes"] or _digest(raw) != proof["sha256"]:
+        raise ReconciliationError("release manifest anchor bytes changed")
+    manifest = _validate_manifest(raw, release=candidate["release_sha"], tree=proof["tree_sha256"], digest=proof["sha256"])
+    if manifest["file_count"] != proof["file_count"] or manifest["total_bytes"] != proof["total_bytes"]:
+        raise ReconciliationError("release manifest anchor inventory changed")
+    return raw
+
+
+def _predecessor_from_receipt(raw: bytes, receipt: dict[str, Any], pin: dict[str, Any]) -> dict[str, Any]:
+    schema = receipt.get("schema_version")
+    if schema == V1_SCHEMA:
+        _keys(receipt, {"base_sha", "github_actions_used", "input_sha256", "origins", "railway", "recorded_at", "release_sha", "schema_version", "status", "wire_generated_at"}, "v1 receipt")
+        previous = pin["previous"]
+        if _digest(raw) != INCIDENT_RECEIPT or receipt != {
+            "base_sha": previous["deployed_commit"],
+            "github_actions_used": False,
+            "input_sha256": previous["publication_input_sha256"],
+            "origins": {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN},
+            "railway": {"deployment_id": previous["railway_deployment_id"], "status": "SUCCESS"},
+            "recorded_at": receipt["recorded_at"],
+            "release_sha": previous["live_release_sha"],
+            "schema_version": V1_SCHEMA,
+            "status": "verified",
+            "wire_generated_at": receipt["wire_generated_at"],
+        }:
+            raise ReconciliationError("v1 receipt is not the exact pin predecessor")
+        manifest_digest, tree_digest = previous["live_manifest_sha256"], previous["live_tree_sha256"]
+    elif schema == V2_SCHEMA:
+        _keys(receipt, {"base_sha", "candidate", "github_actions_used", "host_deployed_sha", "input_sha256", "live_manifest", "origins", "predecessor", "publication_base", "railway", "recorded_at", "release_bundle", "release_sha", "schema_version", "status", "wire_generated_at"}, "v2 receipt")
+        manifest, railway = receipt.get("live_manifest"), receipt.get("railway")
+        candidate_proof = receipt.get("candidate")
+        publication_base = receipt.get("publication_base")
+        release_bundle = receipt.get("release_bundle")
+        predecessor = receipt.get("predecessor")
+        origins = receipt.get("origins")
+        if not all(isinstance(value, dict) for value in (manifest, railway, candidate_proof, publication_base, release_bundle, predecessor, origins)):
+            raise ReconciliationError("v2 receipt proof objects are invalid")
+        _keys(manifest, {"bytes", "file_count", "path", "sha256", "total_bytes", "tree_sha256"}, "v2 receipt manifest")
+        _keys(railway, {"deployment_id", "status"}, "v2 receipt Railway proof")
+        _keys(candidate_proof, {"archive_path", "journal_sha256", "message"}, "v2 receipt candidate")
+        _keys(publication_base, {"kind", "path", "sha256", "target_sha"}, "v2 receipt publication base")
+        _keys(release_bundle, {"base_sha", "bytes", "metadata_path", "metadata_sha256", "path", "release_sha", "schema_version", "sha256"}, "v2 receipt bundle")
+        _keys(predecessor, {"archive_path", "base_sha", "deployment_id", "input_sha256", "manifest_sha256", "receipt_sha256", "release_sha", "schema_version", "tree_sha256", "wire_generated_at"}, "v2 receipt predecessor")
+        _keys(origins, {"provider", "public"}, "v2 receipt origins")
+        _positive(manifest["file_count"], "v2 receipt file_count")
+        _positive(manifest["bytes"], "v2 receipt manifest bytes")
+        _positive(manifest["total_bytes"], "v2 receipt total_bytes")
+        _positive(release_bundle["bytes"], "v2 receipt bundle bytes")
+        _sha256(candidate_proof["journal_sha256"], "v2 receipt candidate journal")
+        for key in ("sha256", "metadata_sha256"):
+            _sha256(release_bundle[key], f"v2 receipt bundle {key}")
+        for key in ("input_sha256", "manifest_sha256", "receipt_sha256", "tree_sha256"):
+            _sha256(predecessor[key], f"v2 receipt predecessor {key}")
+        _uuid(predecessor["deployment_id"], "v2 receipt predecessor deployment")
+        _sha40(predecessor["base_sha"], "v2 receipt predecessor base")
+        _sha40(predecessor["release_sha"], "v2 receipt predecessor release")
+        _timestamp(predecessor["wire_generated_at"], "v2 receipt predecessor wire_generated_at")
+        _sha256(publication_base["sha256"], "v2 receipt publication base digest")
+        if receipt["status"] != "verified" or receipt["github_actions_used"] is not False or railway["status"] != "SUCCESS" or receipt.get("origins") != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+            raise ReconciliationError("v2 receipt status is invalid")
+        if publication_base["kind"] != "verified_transition" or publication_base["path"] != str(BASE_PIN) or publication_base["target_sha"] != receipt["base_sha"]:
+            raise ReconciliationError("v2 receipt publication base proof is invalid")
+        if release_bundle["schema_version"] != BUNDLE_SCHEMA or release_bundle["base_sha"] != receipt["base_sha"] or release_bundle["release_sha"] != receipt["release_sha"]:
+            raise ReconciliationError("v2 receipt bundle identity is inconsistent")
+        if predecessor["schema_version"] not in {V1_SCHEMA, V2_SCHEMA} or not isinstance(candidate_proof["message"], str) or not candidate_proof["message"]:
+            raise ReconciliationError("v2 receipt chain identity is invalid")
+        if manifest["path"] != str(STATE_ROOT / "release-manifests" / f"{receipt['release_sha']}.json"):
+            raise ReconciliationError("v2 receipt manifest anchor path is invalid")
+        manifest_digest, tree_digest = _sha256(manifest["sha256"], "v2 manifest"), _sha256(manifest["tree_sha256"], "v2 tree")
+    else:
+        raise ReconciliationError("publication receipt schema is invalid")
+    _timestamp(receipt["recorded_at"], "receipt recorded_at")
+    _timestamp(receipt["wire_generated_at"], "receipt wire_generated_at")
+    railway = receipt["railway"]
+    digest = _digest(raw)
+    return {
+        "archive_path": str(STATE_ROOT / "receipts" / f"{digest}.json"),
+        "base_sha": _sha40(receipt["base_sha"], "receipt base"),
+        "deployment_id": _uuid(railway["deployment_id"], "receipt deployment"),
+        "input_sha256": _sha256(receipt["input_sha256"], "receipt input"),
+        "manifest_sha256": manifest_digest,
+        "receipt_sha256": digest,
+        "release_sha": _sha40(receipt["release_sha"], "receipt release"),
+        "schema_version": schema,
+        "tree_sha256": tree_digest,
+        "wire_generated_at": receipt["wire_generated_at"],
+    }
+
+
+def _validate_evidence(candidate: dict[str, Any], *, uid: int, gid: int) -> tuple[bytes, bytes]:
+    directory = STATE_ROOT / "predecessors" / candidate["release_sha"]
+    _directory(directory, uid=uid, gid=gid)
+    evidence = candidate["rollback_evidence"]
+    expected = {
+        "provider_manifest": directory / "provider-railway-release.json",
+        "public_manifest": directory / "public-railway-release.json",
+        "topology": directory / "railway-status.json",
+    }
+    bodies: dict[str, bytes] = {}
+    for key, path in expected.items():
+        proof = evidence[key]
+        if Path(proof["path"]) != path:
+            raise ReconciliationError(f"rollback {key} path is not canonical")
+        raw = _read(path, uid=uid, gid=gid, mode=0o600, maximum=MAX_TOPOLOGY if key == "topology" else MAX_JSON)
+        if len(raw) != proof["bytes"] or _digest(raw) != proof["sha256"]:
+            raise ReconciliationError(f"rollback {key} identity changed")
+        bodies[key] = raw
+    provider, public = bodies["provider_manifest"], bodies["public_manifest"]
+    predecessor, proof = candidate["predecessor"], evidence["topology"]
+    if provider != public:
+        raise ReconciliationError("captured predecessor manifests differ")
+    _validate_manifest(provider, release=predecessor["release_sha"], tree=predecessor["tree_sha256"], digest=predecessor["manifest_sha256"])
+    if proof["project_id"] != PROJECT_ID or proof["environment_id"] != ENVIRONMENT_ID or proof["service_id"] != SERVICE_ID or proof["deployment_id"] != predecessor["deployment_id"]:
+        raise ReconciliationError("captured topology IDs differ")
+    topology = _topology(bodies["topology"], deployment=predecessor["deployment_id"], image=proof["image_digest"], reason=proof["reason"])
+    if topology["created_at"] != proof["created_at"]:
+        raise ReconciliationError("captured topology clock differs")
+    return provider, public
+
+
+def _candidate_deployment(rows: list[dict[str, Any]], candidate: dict[str, Any]) -> dict[str, Any] | None:
+    matches = [row for row in rows if isinstance(row.get("meta"), dict) and row["meta"].get("cliMessage") == candidate["message"]]
+    if len(matches) > 1:
+        raise ReconciliationError("candidate has multiple Railway deployments", code="candidate_identity_ambiguous")
+    if not matches:
+        return None
+    deployment = matches[0]
+    _uuid(deployment.get("id"), "candidate deployment")
+    if not isinstance(deployment.get("status"), str) or not 1 <= len(deployment["status"]) <= 64:
+        raise ReconciliationError("candidate status is invalid")
+    created_at = _timestamp(deployment.get("createdAt"), "candidate deployment created_at")
+    prepared_at = _timestamp(candidate["prepared_at"], "candidate prepared_at")
+    if created_at < prepared_at - timedelta(seconds=120):
+        raise ReconciliationError("candidate deployment predates its journal boundary")
+    meta = deployment["meta"]
+    if meta.get("reason") != "deploy":
+        raise ReconciliationError("candidate reason is invalid")
+    image = meta.get("imageDigest")
+    if image is not None and (not isinstance(image, str) or IMAGE.fullmatch(image) is None):
+        raise ReconciliationError("candidate image is invalid")
+    return deployment
+
+
+def _terminal_nonactivating(deployment: dict[str, Any] | None) -> bool:
+    return deployment is not None and deployment.get("status") in TERMINAL_NONACTIVATING
+
+
+def _can_close_predecessor_without_mutation(
+    deployment: dict[str, Any] | None, *, preparation_proves_pre_mutation: bool
+) -> bool:
+    return _terminal_nonactivating(deployment) or (
+        preparation_proves_pre_mutation and deployment is None
+    )
+
+
+def _candidate_archive(raw: bytes, digest: str, *, uid: int, gid: int) -> Path:
+    root = STATE_ROOT / "candidates"
+    _ensure_directory(root, uid=uid, gid=gid)
+    path = root / f"{digest}.json"
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        # A crash may occur after the fsynced pending journal is linked but
+        # before its immutable archive hard link. Root repairs only that exact
+        # no-copy link; it never invents or mutates candidate bytes.
+        directory = os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            os.link(CANDIDATE_JOURNAL, path.name, dst_dir_fd=directory, follow_symlinks=False)
+            os.fsync(directory)
+        except OSError as exc:
+            raise ReconciliationError("cannot repair missing candidate archive") from exc
+        finally:
+            os.close(directory)
+    if _read(path, uid=uid, gid=gid, mode=0o600) != raw:
+        raise ReconciliationError("candidate archive differs from pending journal")
+    return path
+
+
+def _prove_predecessor(candidate: dict[str, Any], provider_saved: bytes, public_saved: bytes, active: dict[str, Any], token_name: str, token_value: str) -> bool:
+    expected = candidate["rollback_evidence"]["topology"]
+    if active != {"created_at": expected["created_at"], "deployment_id": expected["deployment_id"], "image_digest": expected["image_digest"], "reason": expected["reason"]}:
+        return False
+    try:
+        provider, public = _live_manifests("predecessor")
+    except ReconciliationError:
+        return False
+    if provider != provider_saved or public != public_saved:
+        return False
+    try:
+        final = _topology(_status(token_name, token_value))
+    except ReconciliationError:
+        return False
+    return final == active
+
+
+def _prove_candidate(candidate: dict[str, Any], deployment: dict[str, Any] | None, active: dict[str, Any], anchor_raw: bytes, token_name: str, token_value: str) -> tuple[dict[str, Any], bytes] | None:
+    if deployment is None:
+        return None
+    image = deployment["meta"].get("imageDigest")
+    if deployment.get("status") != "SUCCESS" or not isinstance(image, str) or IMAGE.fullmatch(image) is None or active["deployment_id"] != deployment["id"] or active["image_digest"] != image or active["reason"] != "deploy":
+        return None
+    try:
+        provider, public = _live_manifests("candidate")
+        if provider != public or provider != anchor_raw:
+            return None
+        manifest = _validate_manifest(provider, release=candidate["release_sha"], tree=candidate["release_manifest"]["tree_sha256"], digest=candidate["release_manifest"]["sha256"])
+        news = _fetch(f"{PUBLIC_ORIGIN}/news/?reconcile={time.time_ns()}", maximum=16 * 1024 * 1024)
+    except ReconciliationError:
+        return None
+    if b"measurements live" not in news or b"The Board \xc2\xb7 Current evidence" not in news:
+        return None
+    try:
+        final = _topology(
+            _status(token_name, token_value),
+            deployment=deployment["id"],
+            image=image,
+            reason="deploy",
+        )
+    except ReconciliationError:
+        return None
+    if final != active:
+        return None
+    return manifest, provider
+
+
+def _build_success(candidate: dict[str, Any], *, journal: str, archive: Path, deployment_id: str, manifest: dict[str, Any], manifest_raw: bytes) -> dict[str, Any]:
+    bundle = candidate["release_bundle"]
+    return {
+        "base_sha": candidate["base_sha"],
+        "candidate": {"archive_path": str(archive), "journal_sha256": journal, "message": candidate["message"]},
+        "github_actions_used": False,
+        "host_deployed_sha": candidate["host_deployed_sha"],
+        "input_sha256": candidate["input_sha256"],
+        "live_manifest": {"bytes": candidate["release_manifest"]["bytes"], "file_count": manifest["file_count"], "path": candidate["release_manifest"]["path"], "sha256": _digest(manifest_raw), "total_bytes": manifest["total_bytes"], "tree_sha256": manifest["tree_sha256"]},
+        "origins": {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN},
+        "predecessor": candidate["predecessor"],
+        "publication_base": {**candidate["publication_base"], "target_sha": candidate["base_sha"]},
+        "railway": {"deployment_id": deployment_id, "status": "SUCCESS"},
+        "recorded_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "release_bundle": {"base_sha": candidate["base_sha"], **bundle, "release_sha": candidate["release_sha"], "schema_version": BUNDLE_SCHEMA},
+        "release_sha": candidate["release_sha"],
+        "schema_version": V2_SCHEMA,
+        "status": "verified",
+        "wire_generated_at": candidate["wire_generated_at"],
+    }
+
+
+def _consumes(receipt: dict[str, Any], candidate: dict[str, Any], journal: str, archive: Path) -> bool:
+    return (
+        receipt.get("schema_version") == V2_SCHEMA
+        and receipt.get("status") == "verified"
+        and receipt.get("candidate") == {"archive_path": str(archive), "journal_sha256": journal, "message": candidate["message"]}
+        and receipt.get("release_sha") == candidate["release_sha"]
+        and receipt.get("base_sha") == candidate["base_sha"]
+        and receipt.get("host_deployed_sha") == candidate["host_deployed_sha"]
+        and receipt.get("input_sha256") == candidate["input_sha256"]
+        and receipt.get("live_manifest") == candidate["release_manifest"]
+        and receipt.get("predecessor") == candidate["predecessor"]
+        and isinstance(receipt.get("release_bundle"), dict)
+        and receipt["release_bundle"].get("sha256") == candidate["release_bundle"]["sha256"]
+        and isinstance(receipt.get("publication_base"), dict)
+        and receipt["publication_base"].get("sha256") == candidate["publication_base"]["sha256"]
+        and receipt.get("origins") == {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}
+    )
+
+
+def _matching_preparation(candidate: dict[str, Any], *, uid: int, gid: int) -> bool:
+    path = STATE_ROOT / "pending-preparation.json"
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    raw = _read(path, uid=uid, gid=gid, mode=0o600)
+    document = _object(raw, "preparation journal")
+    _keys(document, {"base_sha", "bundle_metadata_path", "bundle_path", "evidence_directory", "input_sha256", "prepared_at", "release_manifest_path", "release_sha", "schema_version", "status", "submission_id"}, "preparation journal")
+    _timestamp(document["prepared_at"], "preparation prepared_at")
+    if document != {
+        "base_sha": candidate["base_sha"],
+        "bundle_metadata_path": candidate["release_bundle"]["metadata_path"],
+        "bundle_path": candidate["release_bundle"]["path"],
+        "evidence_directory": str(STATE_ROOT / "predecessors" / candidate["release_sha"]),
+        "input_sha256": candidate["input_sha256"],
+        "prepared_at": document["prepared_at"],
+        "release_manifest_path": candidate["release_manifest"]["path"],
+        "release_sha": candidate["release_sha"],
+        "schema_version": "palimpsest.direct-publication-preparation.v1",
+        "status": "pre_mutation",
+        "submission_id": candidate["submission_id"],
+    }:
+        raise ReconciliationError("preparation journal differs from candidate")
+    return True
+
+
+def _clear_preparation(candidate: dict[str, Any], *, uid: int, gid: int) -> None:
+    path = STATE_ROOT / "pending-preparation.json"
+    if not _matching_preparation(candidate, uid=uid, gid=gid):
+        return
+    _unlink(path)
+
+
+def _consume_success(document: dict[str, Any], candidate: dict[str, Any], *, uid: int, gid: int) -> None:
+    _atomic(SUCCESS_RECEIPT, _canonical(document), uid=uid, gid=gid, mode=0o600, replace=True)
+    _clear_preparation(candidate, uid=uid, gid=gid)
+    proof = document["candidate"]
+    _clear_hold(candidate, journal=proof["journal_sha256"], archive=Path(proof["archive_path"]), gid=gid)
+    _unlink(CANDIDATE_JOURNAL)
+
+
+def _existing_recovery(journal: str, *, uid: int, gid: int) -> dict[str, Any] | None:
+    path = STATE_ROOT / "reconciliations" / f"{journal}.json"
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return None
+    receipt = _object(_read(path, uid=uid, gid=gid, mode=0o600), "recovery receipt")
+    _keys(receipt, {"candidate", "observed_topology", "outcome", "predecessor", "recorded_at", "rollback_attempt_sha256", "rollback_response_sha256", "schema_version", "status"}, "recovery receipt")
+    _timestamp(receipt["recorded_at"], "recovery recorded_at")
+    if receipt["schema_version"] != RECOVERY_SCHEMA or receipt["status"] != "verified" or not isinstance(receipt.get("outcome"), str):
+        raise ReconciliationError("recovery receipt identity is invalid")
+    return receipt
+
+
+def _write_recovery(candidate: dict[str, Any], *, journal: str, archive: Path, outcome: str, topology: dict[str, Any], uid: int, gid: int, attempt_digest: str | None = None, response_digest: str | None = None) -> dict[str, Any]:
+    root = STATE_ROOT / "reconciliations"
+    _ensure_directory(root, uid=uid, gid=gid)
+    document = {
+        "candidate": {"archive_path": str(archive), "journal_sha256": journal, "message": candidate["message"], "release_sha": candidate["release_sha"]},
+        "observed_topology": topology,
+        "outcome": outcome,
+        "predecessor": {"deployment_id": candidate["predecessor"]["deployment_id"], "image_digest": candidate["rollback_evidence"]["topology"]["image_digest"], "manifest_sha256": candidate["predecessor"]["manifest_sha256"], "receipt_sha256": candidate["predecessor"]["receipt_sha256"], "topology_sha256": candidate["rollback_evidence"]["topology"]["sha256"]},
+        "recorded_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "rollback_attempt_sha256": attempt_digest,
+        "rollback_response_sha256": response_digest,
+        "schema_version": RECOVERY_SCHEMA,
+        "status": "verified",
+    }
+    destination = root / f"{journal}.json"
+    try:
+        destination.lstat()
+    except FileNotFoundError:
+        _atomic(destination, _canonical(document), uid=uid, gid=gid, mode=0o600, replace=False)
+    else:
+        existing = _object(_read(destination, uid=uid, gid=gid, mode=0o600), "recovery receipt")
+        _keys(existing, {"candidate", "observed_topology", "outcome", "predecessor", "recorded_at", "rollback_attempt_sha256", "rollback_response_sha256", "schema_version", "status"}, "recovery receipt")
+        _timestamp(existing["recorded_at"], "recovery recorded_at")
+        if (
+            existing["schema_version"] != RECOVERY_SCHEMA
+            or existing["status"] != "verified"
+            or existing["candidate"] != document["candidate"]
+            or existing["predecessor"] != document["predecessor"]
+            or existing["observed_topology"] != topology
+            or existing["outcome"] not in {outcome, "predecessor_rolled_back", "predecessor_rollback_reconciled"}
+            or (attempt_digest is not None and existing["rollback_attempt_sha256"] != attempt_digest)
+        ):
+            raise ReconciliationError("existing recovery receipt differs from re-proved recovery")
+        document = existing
+    _clear_preparation(candidate, uid=uid, gid=gid)
+    _clear_hold(candidate, journal=journal, archive=archive, gid=gid)
+    _unlink(CANDIDATE_JOURNAL)
+    return document
+
+
+def _attempt_path(journal: str) -> Path:
+    return STATE_ROOT / "rollback-attempts" / f"{journal}.json"
+
+
+def _attempt_topology_path(journal: str) -> Path:
+    return STATE_ROOT / "rollback-attempt-topologies" / f"{journal}.json"
+
+
+def _read_attempt(
+    journal: str,
+    *,
+    candidate: dict[str, Any],
+    deployment: dict[str, Any] | None,
+    uid: int,
+    gid: int,
+) -> tuple[Path, str, dict[str, Any]] | None:
+    path = _attempt_path(journal)
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return None
+    _directory(path.parent, uid=uid, gid=gid)
+    raw = _read(path, uid=uid, gid=gid, mode=0o600)
+    document = _object(raw, "rollback attempt")
+    _keys(document, {"candidate_deployment_id", "candidate_journal_sha256", "candidate_topology_path", "created_at", "predecessor_deployment_id", "schema_version", "status", "topology_sha256"}, "rollback attempt")
+    _timestamp(document["created_at"], "rollback attempt created_at")
+    _uuid(document["candidate_deployment_id"], "rollback attempt candidate")
+    _uuid(document["predecessor_deployment_id"], "rollback attempt predecessor")
+    _sha256(document["topology_sha256"], "rollback attempt topology")
+    topology_path = _attempt_topology_path(journal)
+    if (
+        document["schema_version"] != ATTEMPT_SCHEMA
+        or document["status"] != "mutation_may_execute"
+        or document["candidate_journal_sha256"] != journal
+        or document["predecessor_deployment_id"]
+        != candidate["predecessor"]["deployment_id"]
+        or document["candidate_topology_path"] != str(topology_path)
+    ):
+        raise ReconciliationError("rollback attempt identity is invalid")
+    _directory(topology_path.parent, uid=uid, gid=gid)
+    topology_raw = _read(
+        topology_path, uid=uid, gid=gid, mode=0o600, maximum=MAX_TOPOLOGY
+    )
+    if _digest(topology_raw) != document["topology_sha256"]:
+        raise ReconciliationError("rollback attempt topology bytes changed")
+    topology = _topology(
+        topology_raw,
+        deployment=document["candidate_deployment_id"],
+        reason="deploy",
+    )
+    if deployment is not None:
+        image = deployment.get("meta", {}).get("imageDigest")
+        if (
+            deployment.get("id") != document["candidate_deployment_id"]
+            or deployment.get("status") != "SUCCESS"
+            or not isinstance(image, str)
+            or IMAGE.fullmatch(image) is None
+            or topology["image_digest"] != image
+        ):
+            raise ReconciliationError(
+                "rollback attempt is not bound to the unique candidate deployment"
+            )
+    return path, _digest(raw), document
+
+
+def _write_attempt(candidate: dict[str, Any], journal: str, topology_raw: bytes, active: dict[str, Any], *, uid: int, gid: int) -> tuple[Path, str, dict[str, Any]]:
+    root = STATE_ROOT / "rollback-attempts"
+    topology_root = STATE_ROOT / "rollback-attempt-topologies"
+    _ensure_directory(root, uid=uid, gid=gid)
+    _ensure_directory(topology_root, uid=uid, gid=gid)
+    if _topology(
+        topology_raw,
+        deployment=active["deployment_id"],
+        image=active["image_digest"],
+        reason="deploy",
+    ) != active:
+        raise ReconciliationError("rollback candidate topology changed before anchoring")
+    topology_path = _attempt_topology_path(journal)
+    try:
+        existing_topology = _read(
+            topology_path,
+            uid=uid,
+            gid=gid,
+            mode=0o600,
+            maximum=MAX_TOPOLOGY,
+        )
+    except ReconciliationError:
+        try:
+            topology_path.lstat()
+        except FileNotFoundError:
+            _atomic(
+                topology_path,
+                topology_raw,
+                uid=uid,
+                gid=gid,
+                mode=0o600,
+                replace=False,
+            )
+        else:
+            raise
+    else:
+        if existing_topology != topology_raw:
+            raise ReconciliationError(
+                "durable rollback candidate topology differs on retry"
+            )
+    document = {
+        "candidate_deployment_id": active["deployment_id"],
+        "candidate_journal_sha256": journal,
+        "candidate_topology_path": str(topology_path),
+        "created_at": datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z"),
+        "predecessor_deployment_id": candidate["predecessor"]["deployment_id"],
+        "schema_version": ATTEMPT_SCHEMA,
+        "status": "mutation_may_execute",
+        "topology_sha256": _digest(topology_raw),
+    }
+    raw = _canonical(document)
+    path = root / f"{journal}.json"
+    _atomic(path, raw, uid=uid, gid=gid, mode=0o600, replace=False)
+    return path, _digest(raw), document
+
+
+def _write_response(raw: bytes, journal: str, *, uid: int, gid: int) -> str:
+    root = STATE_ROOT / "rollback-responses"
+    _ensure_directory(root, uid=uid, gid=gid)
+    document = {"raw_response_sha256": _digest(raw), "recorded_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"), "schema_version": "palimpsest.direct-publication-rollback-response.v1", "validated": _valid_mutation(raw)}
+    canonical = _canonical(document)
+    _atomic(root / f"{journal}.json", canonical, uid=uid, gid=gid, mode=0o600, replace=False)
+    return _digest(canonical)
+
+
+def _is_fresh_rollback(
+    active: dict[str, Any],
+    attempt: dict[str, Any],
+    expected_image_digest: str,
+) -> bool:
+    return (
+        active["deployment_id"]
+        not in {
+            attempt["candidate_deployment_id"],
+            attempt["predecessor_deployment_id"],
+        }
+        and active["image_digest"] == expected_image_digest
+        and active["reason"] == "deploymentRollback"
+        and _timestamp(active["created_at"], "restored deployment created_at")
+        > _timestamp(attempt["created_at"], "rollback attempt created_at")
+    )
+
+
+def _hold_identity(candidate: dict[str, Any], journal: str, archive: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    return (
+        {"archive_path": str(archive), "journal_sha256": journal, "message": candidate["message"], "release_sha": candidate["release_sha"]},
+        {"deployment_id": candidate["predecessor"]["deployment_id"], "image_digest": candidate["rollback_evidence"]["topology"]["image_digest"], "manifest_sha256": candidate["predecessor"]["manifest_sha256"], "receipt_sha256": candidate["predecessor"]["receipt_sha256"], "topology_sha256": candidate["rollback_evidence"]["topology"]["sha256"]},
+    )
+
+
+def _read_hold(candidate: dict[str, Any], *, journal: str, archive: Path, gid: int) -> dict[str, Any] | None:
+    try:
+        DATA_HOLD.lstat()
+    except FileNotFoundError:
+        return None
+    hold = _object(_read(DATA_HOLD, uid=ROOT_UID, gid=gid, mode=0o640), "DATA HOLD")
+    _keys(hold, {"candidate", "predecessor", "reason_code", "recorded_at", "rollback", "schema_version", "status"}, "DATA HOLD")
+    _timestamp(hold["recorded_at"], "DATA HOLD recorded_at")
+    expected_candidate, expected_predecessor = _hold_identity(candidate, journal, archive)
+    if hold["schema_version"] != HOLD_SCHEMA or hold["status"] != "DATA HOLD" or hold["candidate"] != expected_candidate or hold["predecessor"] != expected_predecessor:
+        raise ReconciliationError("DATA HOLD identity differs from candidate")
+    if hold["reason_code"] not in {"active_topology_unrelated", "candidate_identity_ambiguous", "evidence_invalid", "reconciliation_failed", "rollback_restore_unproven"}:
+        raise ReconciliationError("DATA HOLD reason is invalid")
+    rollback = hold.get("rollback")
+    if not isinstance(rollback, dict):
+        raise ReconciliationError("DATA HOLD rollback proof is invalid")
+    _keys(rollback, {"attempt_path", "attempt_sha256", "attempted"}, "DATA HOLD rollback proof")
+    if rollback["attempted"] is False:
+        if rollback["attempt_path"] is not None or rollback["attempt_sha256"] is not None:
+            raise ReconciliationError("DATA HOLD false attempt has proof fields")
+    elif rollback["attempted"] is True:
+        if rollback["attempt_path"] != str(_attempt_path(journal)):
+            raise ReconciliationError("DATA HOLD attempt path is not canonical")
+        _sha256(rollback["attempt_sha256"], "DATA HOLD attempt digest")
+    else:
+        raise ReconciliationError("DATA HOLD attempted flag is invalid")
+    return hold
+
+
+def _clear_hold(candidate: dict[str, Any], *, journal: str, archive: Path, gid: int) -> None:
+    if _read_hold(candidate, journal=journal, archive=archive, gid=gid) is not None:
+        _unlink(DATA_HOLD)
+
+
+def _write_hold(candidate: dict[str, Any], *, journal: str, archive: Path, reason: str, attempt: tuple[Path, str, dict[str, Any]] | None, gid: int) -> dict[str, Any]:
+    allowed = {"active_topology_unrelated", "candidate_identity_ambiguous", "evidence_invalid", "reconciliation_failed", "rollback_restore_unproven"}
+    reason = reason if reason in allowed else "reconciliation_failed"
+    hold_candidate, hold_predecessor = _hold_identity(candidate, journal, archive)
+    document = {
+        "candidate": hold_candidate,
+        "predecessor": hold_predecessor,
+        "reason_code": reason,
+        "recorded_at": datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+        "rollback": {"attempt_path": str(attempt[0]) if attempt else None, "attempt_sha256": attempt[1] if attempt else None, "attempted": attempt is not None},
+        "schema_version": HOLD_SCHEMA,
+        "status": "DATA HOLD",
+    }
+    raw = _canonical(document)
+    existing = _read_hold(candidate, journal=journal, archive=archive, gid=gid)
+    if existing is None:
+        _atomic(DATA_HOLD, raw, uid=ROOT_UID, gid=gid, mode=0o640, replace=False)
+        return document
+    old_attempted = existing["rollback"]["attempted"]
+    new_attempted = document["rollback"]["attempted"]
+    if old_attempted and not new_attempted:
+        return existing
+    if old_attempted and new_attempted:
+        if existing["rollback"] != document["rollback"]:
+            raise ReconciliationError("DATA HOLD names a different rollback attempt")
+        return existing
+    if not old_attempted and new_attempted:
+        _atomic(DATA_HOLD, raw, uid=ROOT_UID, gid=gid, mode=0o640, replace=True)
+        return document
+    return existing
+
+
+def _reconcile_locked(*, uid: int, gid: int, token_name: str, token_value: str) -> dict[str, Any]:
+    candidate_raw = _read(CANDIDATE_JOURNAL, uid=uid, gid=gid, mode=0o600)
+    candidate = _object(candidate_raw, "candidate journal")
+    _validate_candidate(candidate)
+    journal = _digest(candidate_raw)
+    archive = _candidate_archive(candidate_raw, journal, uid=uid, gid=gid)
+    root_hold = _read_hold(candidate, journal=journal, archive=archive, gid=gid)
+
+    pin_raw = _read(BASE_PIN, uid=0, gid=gid, mode=0o640)
+    pin = _object(pin_raw, "publication base pin")
+    _validate_pin(pin)
+    if str(BASE_PIN) != candidate["publication_base"]["path"] or _digest(pin_raw) != candidate["publication_base"]["sha256"] or pin["target"]["base_sha"] != candidate["base_sha"]:
+        raise ReconciliationError("publication base pin changed")
+    if _read(DEPLOYED_COMMIT, uid=0, gid=0, mode=0o644, maximum=256).decode("ascii").strip() != candidate["host_deployed_sha"]:
+        raise ReconciliationError("host deployed identity changed")
+    _validate_bundle(candidate, uid=uid, gid=gid)
+    release_manifest_anchor = _validate_release_manifest_anchor(candidate, uid=uid, gid=gid)
+    preparation_proves_pre_mutation = _matching_preparation(
+        candidate, uid=uid, gid=gid
+    )
+
+    current_raw = _read(SUCCESS_RECEIPT, uid=uid, gid=gid, mode=0o600)
+    current = _object(current_raw, "latest success receipt")
+    current_predecessor = _predecessor_from_receipt(current_raw, current, pin)
+    if _digest(current_raw) == candidate["predecessor"]["receipt_sha256"]:
+        if current_predecessor != candidate["predecessor"]:
+            raise ReconciliationError("latest success fields differ from candidate predecessor")
+    elif not _consumes(current, candidate, journal, archive):
+        raise ReconciliationError("latest success is neither predecessor nor candidate")
+
+    expected_archive = STATE_ROOT / "receipts" / f"{candidate['predecessor']['receipt_sha256']}.json"
+    if Path(candidate["predecessor"]["archive_path"]) != expected_archive:
+        raise ReconciliationError("predecessor archive path is not canonical")
+    predecessor_raw = _read(expected_archive, uid=uid, gid=gid, mode=0o600)
+    if _digest(predecessor_raw) != candidate["predecessor"]["receipt_sha256"] or _predecessor_from_receipt(predecessor_raw, _object(predecessor_raw, "predecessor archive"), pin) != candidate["predecessor"]:
+        raise ReconciliationError("predecessor archive identity changed")
+    saved_provider, saved_public = _validate_evidence(candidate, uid=uid, gid=gid)
+
+    deployment = _candidate_deployment(_inventory(token_name, token_value), candidate)
+    active_raw = _status(token_name, token_value)
+    active = _topology(active_raw)
+    expected = candidate["rollback_evidence"]["topology"]
+    attempt = _read_attempt(
+        journal,
+        candidate=candidate,
+        deployment=deployment,
+        uid=uid,
+        gid=gid,
+    )
+    if root_hold is not None and root_hold["rollback"]["attempted"] is True:
+        if (
+            attempt is None
+            or root_hold["rollback"]["attempt_path"] != str(attempt[0])
+            or root_hold["rollback"]["attempt_sha256"] != attempt[1]
+        ):
+            raise ReconciliationError(
+                "DATA HOLD rollback attempt is missing or changed",
+                code="rollback_restore_unproven",
+            )
+    if attempt is not None:
+        if deployment is None:
+            raise ReconciliationError(
+                "rollback attempt candidate deployment is absent from exact inventory",
+                code="candidate_identity_ambiguous",
+            )
+        # The root marker is the cross-UID no-repeat authority. A crash after
+        # the private attempt but before marker promotion is repaired by
+        # durably creating/upgrading that exact marker before any decision.
+        _write_hold(
+            candidate,
+            journal=journal,
+            archive=archive,
+            reason="rollback_restore_unproven",
+            attempt=attempt,
+            gid=gid,
+        )
+        # A prior attempt is an absolute no-second-mutation guard. Only exact
+        # fresh rollback deployment plus restored bytes may close it; an
+        # ordinary same-image deploy is not restoration evidence.
+        attempt_document = attempt[2]
+        if _is_fresh_rollback(active, attempt_document, expected["image_digest"]):
+            provider, public = _live_manifests("rollback-reentry")
+            final = _topology(_status(token_name, token_value))
+            if provider == saved_provider and public == saved_public and final == active:
+                return _write_recovery(candidate, journal=journal, archive=archive, outcome="predecessor_rollback_reconciled", topology=active, uid=uid, gid=gid, attempt_digest=attempt[1])
+        raise ReconciliationError("prior rollback attempt has not proved restoration", code="rollback_restore_unproven")
+
+    # Crash after receipt replacement but before journal removal: re-prove the
+    # exact live candidate before consuming the leftover journal.
+    if _consumes(current, candidate, journal, archive):
+        railway = current.get("railway")
+        matching = deployment if isinstance(railway, dict) and deployment is not None and deployment.get("id") == railway.get("deployment_id") else None
+        if _prove_candidate(candidate, matching, active, release_manifest_anchor, token_name, token_value) is None:
+            raise ReconciliationError("consuming receipt no longer proves the candidate")
+        _clear_preparation(candidate, uid=uid, gid=gid)
+        _clear_hold(candidate, journal=journal, archive=archive, gid=gid)
+        _unlink(CANDIDATE_JOURNAL)
+        return current
+
+    prior_recovery = _existing_recovery(journal, uid=uid, gid=gid)
+    if (
+        prior_recovery is not None
+        and prior_recovery["outcome"]
+        in {"pre_mutation_aborted", "predecessor_already_live"}
+        and _prove_predecessor(
+            candidate,
+            saved_provider,
+            saved_public,
+            active,
+            token_name,
+            token_value,
+        )
+    ):
+        return _write_recovery(
+            candidate,
+            journal=journal,
+            archive=archive,
+            outcome=prior_recovery["outcome"],
+            topology=active,
+            uid=uid,
+            gid=gid,
+        )
+
+    proof = _prove_candidate(candidate, deployment, active, release_manifest_anchor, token_name, token_value)
+    if proof is not None:
+        manifest, manifest_raw = proof
+        document = _build_success(candidate, journal=journal, archive=archive, deployment_id=deployment["id"], manifest=manifest, manifest_raw=manifest_raw)
+        if _digest(_read(CANDIDATE_JOURNAL, uid=uid, gid=gid, mode=0o600)) != journal:
+            raise ReconciliationError("candidate journal changed during adoption")
+        _consume_success(document, candidate, uid=uid, gid=gid)
+        return document
+
+    # A terminal non-activating candidate can close as already preserved. An
+    # absent row can do so only when the matching fsynced preparation remains:
+    # its deletion is fsynced before `railway up`, making it positive evidence
+    # that the provider mutation boundary was never crossed. Without that
+    # proof, absence and QUEUED/BUILDING remain ambiguous.
+    if (
+        _can_close_predecessor_without_mutation(
+            deployment,
+            preparation_proves_pre_mutation=preparation_proves_pre_mutation,
+        )
+        and _prove_predecessor(candidate, saved_provider, saved_public, active, token_name, token_value)
+    ):
+        outcome = (
+            "pre_mutation_aborted"
+            if deployment is None
+            else "predecessor_already_live"
+        )
+        return _write_recovery(candidate, journal=journal, archive=archive, outcome=outcome, topology=active, uid=uid, gid=gid)
+
+    if deployment is None or deployment.get("status") != "SUCCESS":
+        raise ReconciliationError("candidate is not active and predecessor is unproved", code="active_topology_unrelated")
+    candidate_image = deployment["meta"].get("imageDigest")
+    if active["deployment_id"] != deployment["id"] or active["image_digest"] != candidate_image or active["reason"] != "deploy":
+        raise ReconciliationError("active topology is not the exact candidate", code="active_topology_unrelated")
+
+    # Existing reviewed mechanics: prove canRollback on the captured predecessor,
+    # re-read the active candidate, fsync the no-repeat guard, mutate once.
+    query = _graphql("query PalimpsestRollbackTarget($id: String!) { deployment(id: $id) { id canRollback } }", candidate["predecessor"]["deployment_id"], token_name, token_value)
+    _validate_query(query, candidate["predecessor"]["deployment_id"])
+    final_raw = _status(token_name, token_value)
+    final = _topology(final_raw, deployment=deployment["id"], image=candidate_image, reason="deploy")
+    if final != active:
+        raise ReconciliationError("active candidate changed before rollback", code="active_topology_unrelated")
+    attempt = _write_attempt(candidate, journal, final_raw, final, uid=uid, gid=gid)
+    _write_hold(
+        candidate,
+        journal=journal,
+        archive=archive,
+        reason="rollback_restore_unproven",
+        attempt=attempt,
+        gid=gid,
+    )
+    # The private attempt and root guard may take time to fsync. Re-prove the
+    # exact candidate after both durable writes, immediately before the sole
+    # mutation, so topology movement can only leave a guarded DATA HOLD.
+    guarded_raw = _status(token_name, token_value)
+    guarded = _topology(
+        guarded_raw,
+        deployment=deployment["id"],
+        image=candidate_image,
+        reason="deploy",
+    )
+    if guarded != final:
+        raise ReconciliationError(
+            "active candidate changed after rollback guard",
+            code="active_topology_unrelated",
+        )
+    try:
+        response = _graphql("mutation PalimpsestRollback($id: String!) { deploymentRollback(id: $id) }", candidate["predecessor"]["deployment_id"], token_name, token_value)
+    except ReconciliationError:
+        response = b""
+    response_digest = _write_response(response, journal, uid=uid, gid=gid)
+
+    deadline = time.monotonic() + ROLLBACK_TIMEOUT
+    while True:
+        try:
+            observed = _topology(_status(token_name, token_value))
+            if _is_fresh_rollback(observed, attempt[2], expected["image_digest"]):
+                provider, public = _live_manifests("rollback")
+                final_observed = _topology(_status(token_name, token_value))
+                if provider == saved_provider and public == saved_public and final_observed == observed:
+                    return _write_recovery(candidate, journal=journal, archive=archive, outcome="predecessor_rolled_back", topology=observed, uid=uid, gid=gid, attempt_digest=attempt[1], response_digest=response_digest)
+        except ReconciliationError:
+            pass
+        if time.monotonic() >= deadline:
+            break
+        time.sleep(max(0.0, ROLLBACK_POLL))
+    raise ReconciliationError("rollback restoration could not be proved", code="rollback_restore_unproven")
+
+
+def reconcile() -> dict[str, Any]:
+    if os.geteuid() != 0:
+        raise ReconciliationError("reconciliation must run as root")
+    publisher = pwd.getpwnam("palimpsest")
+    group = grp.getgrnam("palimpsest")
+    if publisher.pw_gid != group.gr_gid:
+        raise ReconciliationError("publisher user/group identity is inconsistent")
+    uid, gid = publisher.pw_uid, group.gr_gid
+    _directory(STATE_ROOT, uid=uid, gid=gid)
+    lock_path = STATE_ROOT / "publish.lock"
+    _read(lock_path, uid=uid, gid=gid, mode=0o600, maximum=64, empty=True)
+    tokens = [(name, os.environ.get(name, "")) for name in ("RAILWAY_TOKEN", "RAILWAY_API_TOKEN") if os.environ.get(name)]
+    if len(tokens) != 1:
+        raise ReconciliationError("exactly one Railway automation token is required")
+    token_name, token_value = tokens[0]
+    os.environ.pop("RAILWAY_TOKEN", None)
+    os.environ.pop("RAILWAY_API_TOKEN", None)
+
+    lock = os.open(lock_path, os.O_RDWR | os.O_NOFOLLOW)
+    try:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ReconciliationError("direct publisher is active") from exc
+        candidate: dict[str, Any] | None = None
+        archive: Path | None = None
+        journal = ""
+        attempt: tuple[Path, str, dict[str, Any]] | None = None
+        try:
+            candidate_raw = _read(CANDIDATE_JOURNAL, uid=uid, gid=gid, mode=0o600)
+            candidate = _object(candidate_raw, "candidate journal")
+            _validate_candidate(candidate)
+            journal = _digest(candidate_raw)
+            archive = _candidate_archive(candidate_raw, journal, uid=uid, gid=gid)
+            attempt = _read_attempt(
+                journal,
+                candidate=candidate,
+                deployment=None,
+                uid=uid,
+                gid=gid,
+            )
+            return _reconcile_locked(uid=uid, gid=gid, token_name=token_name, token_value=token_value)
+        except ReconciliationError as exc:
+            if candidate is not None and archive is not None and journal:
+                try:
+                    attempt = _read_attempt(
+                        journal,
+                        candidate=candidate,
+                        deployment=None,
+                        uid=uid,
+                        gid=gid,
+                    )
+                    _write_hold(candidate, journal=journal, archive=archive, reason=exc.code, attempt=attempt, gid=gid)
+                except ReconciliationError as hold_exc:
+                    raise ReconciliationError(f"{exc}; DATA HOLD persistence failed: {hold_exc}") from exc
+            raise
+    finally:
+        os.close(lock)
+
+
+def main() -> int:
+    try:
+        document = reconcile()
+    except ReconciliationError as exc:
+        print(f"candidate reconciliation refused: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(document, sort_keys=True, separators=(",", ":")))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

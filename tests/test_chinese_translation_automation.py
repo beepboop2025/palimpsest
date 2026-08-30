@@ -91,14 +91,17 @@ def test_railway_publisher_is_model_free_and_fails_before_deploy() -> None:
     script = PUBLISHER_PATH.read_text(encoding="utf-8")
     assert "GOOGLE_AI_STUDIO_API_KEY" not in script
     assert "OPENROUTER_API_KEY" not in script
-    assert 'scripts.build_chinese_translations --offline' in script
-    assert 'scripts.build_chinese_translations --check' in script
+    assert 'scripts.build_chinese_translations --retain-last-good' in script
+    assert 'scripts.build_chinese_translations --offline' not in script
+    assert 'scripts.build_chinese_translations --check' not in script
+    assert 'translation_publication_state="$(jq -r' in script
+    assert 'translation retention status does not satisfy its closed release contract' in script
     assert '"$PYTHON_BIN" -m scripts.build_chinese_translations\n' not in script
     _assert_order(
         script,
         (
             '"$PYTHON_BIN" -m scripts.build_newsroom --check',
-            'scripts.build_chinese_translations --offline',
+            'scripts.build_chinese_translations --retain-last-good',
             'scripts.build_chinese_translation_pages',
             'scripts.build_bri_observatory',
             'scripts.build_data_catalog',

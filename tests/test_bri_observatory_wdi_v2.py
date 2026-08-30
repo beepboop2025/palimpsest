@@ -367,7 +367,7 @@ def test_collector_projection_keeps_one_request_receipt_and_separate_states(
     }
 
 
-def _copy_mesh_inputs(target: Path) -> None:
+def _copy_mesh_inputs(target: Path, *, mesh_now: datetime) -> None:
     config = json.loads((ROOT / "config" / "evidence_mesh.json").read_text())
     paths = ["config/evidence_mesh.json"]
     paths.extend(
@@ -387,6 +387,34 @@ def _copy_mesh_inputs(target: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, destination)
 
+    # This integration test fixes the mesh clock to the WDI receipt epoch. Keep
+    # unrelated rolling OSINT observations inside that synthetic epoch instead
+    # of letting today's checked-in snapshot make yesterday's fixture "future".
+    osint_path = target / "readings" / "osint-china-latest.json"
+    osint = json.loads(osint_path.read_text(encoding="utf-8"))
+    clock_text = mesh_now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    osint["generated_at"] = clock_text
+    for signal in osint["signals"]:
+        source_text = signal["source_timestamp"]
+        if source_text is None:
+            continue
+        source_time = datetime.fromisoformat(source_text.replace("Z", "+00:00"))
+        if source_time <= mesh_now:
+            continue
+        shift = source_time - mesh_now
+        signal["source_timestamp"] = clock_text
+        if signal["freshness_deadline"] is not None:
+            deadline = datetime.fromisoformat(
+                signal["freshness_deadline"].replace("Z", "+00:00")
+            )
+            signal["freshness_deadline"] = (deadline - shift).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+    osint_path.write_text(
+        json.dumps(osint, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
 
 def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publication_clock(
     tmp_path: Path,
@@ -398,7 +426,8 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
         wdi_publication_receipt_path=None,
     )
     mesh_root = tmp_path / "mesh"
-    _copy_mesh_inputs(mesh_root)
+    mesh_now = datetime(2026, 8, 26, 20, 0, 0, tzinfo=UTC)
+    _copy_mesh_inputs(mesh_root, mesh_now=mesh_now)
     reading = mesh_root / "readings" / "belt-and-road-observatory-latest.json"
     reading.parent.mkdir(parents=True, exist_ok=True)
     reading.write_bytes(v2_json)
@@ -407,7 +436,7 @@ def test_evidence_mesh_projects_wdi_as_nonindependent_context_with_null_publicat
 
     mesh = build_evidence_mesh(
         mesh_root,
-        now=datetime(2026, 8, 26, 20, 0, 0, tzinfo=UTC),
+        now=mesh_now,
     )
     resource = next(
         row

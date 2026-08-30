@@ -74,6 +74,8 @@ def test_translation_pages_publish_every_receipt_once_with_context_separate() ->
     assert b"not part of the publisher's Chinese text" in first_page
     assert b'<div lang="zh">' in first_page
     assert b"Machine-reviewed does not mean human-certified perfection" in first_page
+    assert b"latest fully translated, admitted snapshot" in first_page
+    assert b"Newer Evidence Wire records may await translation" in first_page
 
 
 def test_translation_feeds_and_manifest_are_exact_public_outputs() -> None:
@@ -85,6 +87,8 @@ def test_translation_feeds_and_manifest_are_exact_public_outputs() -> None:
 
     assert feed["language"] == "en"
     assert feed["items"]
+    assert "latest fully translated, admitted snapshot" in feed["description"].lower()
+    assert "newer Evidence Wire records may await translation" in feed["description"]
     assert all(
         item["url"].startswith("https://palimpsest.info/news/china/english/")
         for item in feed["items"]
