@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+  "title": "Palimpsest regional research data dump v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "region",
+    "label",
+    "generated_at",
+    "publication_boundary",
+    "captured_news",
+    "editorial_evidence",
+    "coverage_contract",
+    "economic_context",
+    "conflict_context",
+    "movement_taxonomy",
+    "limitations",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest.regional-data-dump.v1"},
+    "region": {"enum": ["bri", "gwadar", "balochistan", "myanmar"]},
+    "label": {"type": "string", "minLength": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "publication_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "cross_lane_causality", "missing_value_policy", "article_body_fetching", "person_or_tactical_records"],
+      "properties": {
+        "role": {"const": "public research context"},
+        "cross_lane_causality": {"const": "prohibited"},
+        "missing_value_policy": {"const": "unavailable_not_zero"},
+        "article_body_fetching": {"const": "prohibited"},
+        "person_or_tactical_records": {"const": "excluded"}
+      }
+    },
+    "captured_news": {"$ref": "regional-captured-index-v1.schema.json"},
+    "editorial_evidence": {"$ref": "#/$defs/editorial_evidence"},
+    "coverage_contract": {"$ref": "#/$defs/coverage_contract"},
+    "economic_context": {"$ref": "#/$defs/economic_context"},
+    "conflict_context": {"$ref": "#/$defs/conflict_context"},
+    "movement_taxonomy": {"type": ["object", "null"]},
+    "limitations": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "content_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "editorial_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "as_of", "source_sha256", "title", "dek", "sections", "evidence", "method", "limitations"],
+      "properties": {
+        "schema_version": {"const": "palimpsest.regional-editorial-evidence.v1"},
+        "as_of": {"type": "string", "format": "date"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "title": {"type": "string", "minLength": 1},
+        "dek": {"type": "string", "minLength": 1},
+        "sections": {"type": "array", "items": {"type": "object"}},
+        "evidence": {"type": "array", "items": {"type": "object"}},
+        "method": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "limitations": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "coverage_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_as_of", "targets", "sources", "source_registration_is_observation"],
+      "properties": {
+        "artifact_as_of": {"type": "string", "format": "date-time"},
+        "targets": {"type": "array", "items": {"type": "object"}},
+        "sources": {"type": "array", "items": {"type": "object"}},
+        "source_registration_is_observation": {"const": false}
+      }
+    },
+    "economic_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "generated_at", "observations_sha256", "source", "context_policy", "country_codes", "observation_count", "observations"],
+      "properties": {
+        "schema_version": {"type": "string", "minLength": 1},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "observations_sha256": {"$ref": "#/$defs/sha256"},
+        "source": {"type": "object"},
+        "context_policy": {"type": "object"},
+        "country_codes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z]{3}$"}},
+        "observation_count": {"type": "integer", "minimum": 0},
+        "observations": {"type": "array", "items": {"type": "object"}}
+      }
+    },
+    "conflict_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "generated_at", "source", "scope_policy", "country_years_sha256", "conflict_years_sha256", "country_year_count", "conflict_year_count", "country_years", "conflict_years"],
+      "properties": {
+        "schema_version": {"type": "string", "minLength": 1},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "source": {"type": "object"},
+        "scope_policy": {"type": "object"},
+        "country_years_sha256": {"$ref": "#/$defs/sha256"},
+        "conflict_years_sha256": {"$ref": "#/$defs/sha256"},
+        "country_year_count": {"type": "integer", "minimum": 0},
+        "conflict_year_count": {"type": "integer", "minimum": 0},
+        "country_years": {"type": "array", "items": {"type": "object"}},
+        "conflict_years": {"type": "array", "items": {"type": "object"}}
+      }
+    }
+  }
+}

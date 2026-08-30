@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-e87b12559a597f195ee32650",
+  "analysis_id": "instrumentv-459f11f5f7929e3fae3d6644",
   "signal_id": "wayback",
   "story_url": "https://palimpsest.info/news/wayback-reconstruction/",
   "url": "https://palimpsest.info/news/wayback-reconstruction/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: none.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard.",
           "citation_ids": [
             "instrumentevidence-18265a44f8d2a2a9d02f"
           ]
@@ -107,7 +107,26 @@
       ]
     }
   ],
-  "elevated_peers": [],
+  "elevated_peers": [
+    {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "event-flags",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "coverage-guard",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    }
+  ],
   "review_rank": {
     "editorial_priority": null,
     "editorial_priority_role": "review-rank-only",

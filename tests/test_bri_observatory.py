@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import copy
+import csv
 import html as html_lib
+import io
 import json
+import hashlib
 from collections import Counter
 from pathlib import Path
 
@@ -19,11 +22,14 @@ from processors.bri_observatory import (
 )
 from scripts.build_bri_observatory import (
     _build_regional_analysis,
+    _csv_bytes,
     _display_path,
+    _is_chinese_dominant_metadata,
     _regional_events,
     _render_analysis_html,
     _render_gwadar_html,
     _render_region_section,
+    _translation_index,
     build,
 )
 
@@ -45,6 +51,12 @@ BALOCHISTAN_ANALYSIS_JSON = (
 )
 MYANMAR_ANALYSIS_PAGE = ROOT / "belt-and-road" / "myanmar" / "analysis" / "index.html"
 MYANMAR_ANALYSIS_JSON = ROOT / "belt-and-road" / "myanmar" / "analysis" / "article.json"
+REGIONAL_DATA_ROOTS = {
+    "bri": ROOT / "belt-and-road" / "data",
+    "gwadar": ROOT / "belt-and-road" / "gwadar" / "data",
+    "balochistan": ROOT / "belt-and-road" / "balochistan" / "data",
+    "myanmar": ROOT / "belt-and-road" / "myanmar" / "data",
+}
 RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
 RECEIPT_SHA256 = "239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
 RECEIPT_VERIFIED_AT = "2026-08-26T15:55:34Z"
@@ -215,8 +227,11 @@ def test_recurring_balochistan_analysis_is_attributed_dense_and_non_causal() -> 
     assert article["coverage"]["relation_event_count"] == 1
     assert article["authorship"] == {
         "byline": "Palimpsest Evidence Desk",
-        "mode": "deterministic evidence analysis",
-        "freeform_model_generation": "none",
+        "mode": "source-bounded desk editorial plus deterministic evidence refresh",
+        "assistance_disclosure": (
+            "AI-assisted synthesis with explicit evidence states, source links "
+            "and interpretation limits"
+        ),
         "human_interviews": "none",
     }
     assert article["national_context"]["country_code"] == "PAK"
@@ -228,11 +243,12 @@ def test_recurring_balochistan_analysis_is_attributed_dense_and_non_causal() -> 
     assert "whose allegations remain attributed to that source" in claim_text
 
     page = _render_analysis_html(article).decode("utf-8")
-    assert "Balochistan&#x27;s rights record cannot be edited out" in page
+    assert "Balochistan&#x27;s crisis is a rights record" in page
     assert "Human Rights Council of Balochistan" in page
     assert "https://hrcbalochistan.com/example-report/" in page
     assert "National annual organized-violence context" in page
-    assert "no free-form model generation" in page.casefold()
+    assert "ai-assisted synthesis" in page.casefold()
+    assert "editorial evidence ledger" in page.casefold()
     assert "proves that pakistan and china" not in page.casefold()
     assert "coordinated the reported abuse" not in page.casefold()
 
@@ -324,6 +340,277 @@ def test_regional_projection_rejects_unrelated_items_from_broad_publishers() -> 
     assert "event-daily-cpec-mango-test" not in {
         event["event_id"] for event in _regional_events(wire, "gwadar")
     }
+
+
+def test_myanmar_classifier_rejects_ma_on_shan_and_accepts_chinese_place_terms() -> None:
+    wire = _synthetic_regional_wire()
+    template = copy.deepcopy(wire["events"][0])
+    false_positive = copy.deepcopy(template)
+    false_positive.update(
+        {
+            "event_id": "event-ma-on-shan-regression",
+            "headline": "Police station in Ma On Shan changes opening hours",
+            "dek": "A Hong Kong district service notice.",
+        }
+    )
+    false_positive["evidence_refs"][0].update(
+        {
+            "source_id": "hksar-releases",
+            "source_name": "HKSAR releases",
+            "title": false_positive["headline"],
+        }
+    )
+    chinese_myanmar = copy.deepcopy(template)
+    chinese_myanmar.update(
+        {
+            "event_id": "event-chinese-myanmar-regression",
+            "headline": "联合国警告缅甸人权状况恶化",
+            "dek": "若开与克钦的冲突及流离失所情况受到关注。",
+        }
+    )
+    chinese_myanmar["evidence_refs"][0].update(
+        {
+            "source_id": "rfi-chinese",
+            "source_name": "RFI Chinese",
+            "title": chinese_myanmar["headline"],
+        }
+    )
+    wire["events"].extend((false_positive, chinese_myanmar))
+    selected = {event["event_id"] for event in _regional_events(wire, "myanmar")}
+    assert "event-ma-on-shan-regression" not in selected
+    assert "event-chinese-myanmar-regression" in selected
+
+
+def test_chinese_bri_terms_do_not_leak_generic_bri_items_into_gwadar() -> None:
+    wire = _synthetic_regional_wire()
+    template = copy.deepcopy(wire["events"][0])
+    generic_bri = copy.deepcopy(template)
+    generic_bri.update(
+        {
+            "event_id": "event-chinese-generic-bri",
+            "headline": "中国拟在“一带一路”框架下成立能源工作组",
+            "dek": "一项关于伙伴国家能源合作的公告。",
+        }
+    )
+    generic_bri["evidence_refs"][0].update(
+        {
+            "source_id": "china-news-service-politics",
+            "source_name": "China News Service",
+            "title": generic_bri["headline"],
+        }
+    )
+    wire["events"].append(generic_bri)
+    assert generic_bri["event_id"] in {
+        event["event_id"] for event in _regional_events(wire, "bri")
+    }
+    assert generic_bri["event_id"] not in {
+        event["event_id"] for event in _regional_events(wire, "gwadar")
+    }
+
+
+def test_regional_csv_neutralizes_formula_cells_without_mutating_json() -> None:
+    event = {
+        "event_id": "event-safe-csv",
+        "event_url": "https://palimpsest.info/news/wire/event-safe-csv/",
+        "event_page_available": True,
+        "headline": " =HYPERLINK(\"https://attacker.invalid\")",
+        "published_at": "2026-08-30T00:00:00Z",
+        "first_recorded_at": "2026-08-30T00:00:00Z",
+        "last_recorded_at": "2026-08-30T00:00:00Z",
+        "source_ids": ["fixture"],
+        "source_names": ["@hostile-publisher"],
+        "evidence_strength": "single-source",
+        "version_count": 1,
+        "current_in_wire": True,
+        "region_tags": ["bri"],
+        "english_translation": {
+            "title_en": "+SUM(1,1)",
+            "context_en": "Ordinary context",
+            "translation_id": "zhtr-fixture",
+            "status": "machine-draft-not-human-certified",
+            "background_en": "-1+2",
+            "public_url": "/news/china/english/#translation-zhtr-fixture",
+        },
+    }
+    index = {"events": [event]}
+    [row] = list(csv.DictReader(io.StringIO(_csv_bytes(index).decode("utf-8"))))
+
+    assert event["headline"].startswith(" =")
+    assert row["headline"].startswith("' =")
+    assert row["source_names"].startswith("'@")
+    assert row["english_headline"].startswith("'+")
+    assert row["background_en"].startswith("'-")
+
+
+def test_translation_index_keeps_duplicate_version_ids_across_event_dossiers() -> None:
+    """A retained revision may be cited by more than one canonical event dossier."""
+
+    translations = []
+    for suffix in ("a", "b"):
+        translations.append(
+            {
+                "translation_id": f"zhtr-{suffix}",
+                "record_sha256": suffix * 64,
+                "record_kind": "retained_event_revision",
+                "identity": {
+                    "event_id": f"event-{suffix}",
+                    "event_version_id": "eventv-shared",
+                },
+                "source_clocks": {"updated_at": "2026-08-30T00:00:00Z"},
+            }
+        )
+
+    index = _translation_index({"translations": translations})
+
+    assert set(index["by_event_and_version"]) == {
+        ("event-a", "eventv-shared"),
+        ("event-b", "eventv-shared"),
+    }
+
+
+def test_complete_regional_capture_exports_are_loss_aware_and_machine_readable() -> None:
+    captured_schema = json.loads(
+        (ROOT / "protocol" / "regional-captured-index-v1.schema.json").read_text()
+    )
+    indices = {}
+    for region, root in REGIONAL_DATA_ROOTS.items():
+        index = json.loads((root / "captured-index.json").read_text(encoding="utf-8"))
+        indices[region] = index
+        assert index["schema_version"] == "palimpsest.regional-captured-index.v1"
+        assert index["region"] == region
+        assert index["rights"]["publication_mode"] == "metadata-link-only"
+        assert index["rights"]["article_bodies_included"] is False
+        Draft202012Validator(captured_schema).validate(index)
+        assert index["inputs"]["chinese_translation_sidecar"]["missing_records"] == 0
+        assert index["inputs"]["chinese_translation_sidecar"][
+            "newswire_ledger_sha256"
+        ] == index["inputs"]["newswire_versions_sha256"]
+        assert index["inputs"]["chinese_translation_sidecar"][
+            "newswire_ledger_rows"
+        ] == index["capture_universe"]["event_versions"]
+        assert index["counts"]["unique_events"] == len(index["events"])
+        assert index["counts"]["event_versions"] == sum(
+            event["version_count"] for event in index["events"]
+        )
+        assert len({event["event_id"] for event in index["events"]}) == len(
+            index["events"]
+        )
+        translated = [
+            event["english_translation"]
+            for event in index["events"]
+            if event["english_translation"] is not None
+        ]
+        assert index["counts"]["events_with_english_translation"] == len(translated)
+        for translation in translated:
+            assert translation["title_en"]
+            assert translation["background_en"]
+            assert translation["original_title_zh"]
+            assert translation["status"] == "machine-draft-not-human-certified"
+            assert translation["public_url"].startswith(
+                "/news/china/english/"
+            )
+        assert all(
+            event["version_count"] == len(event["version_ids"])
+            for event in index["events"]
+        )
+        digest_document = copy.deepcopy(index)
+        expected_digest = digest_document.pop("content_sha256")
+        actual_digest = hashlib.sha256(
+            json.dumps(
+                digest_document,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        assert actual_digest == expected_digest
+
+        jsonl_rows = [
+            json.loads(line)
+            for line in (root / "captured-index.jsonl").read_text().splitlines()
+            if line
+        ]
+        assert len(jsonl_rows) == index["counts"]["unique_events"]
+        assert [row["event_id"] for row in jsonl_rows] == [
+            event["event_id"] for event in index["events"]
+        ]
+        csv_rows = list(
+            csv.DictReader(io.StringIO((root / "captured-index.csv").read_text()))
+        )
+        assert len(csv_rows) == index["counts"]["unique_events"]
+        assert [row["event_id"] for row in csv_rows] == [
+            event["event_id"] for event in index["events"]
+        ]
+        for csv_row, event in zip(csv_rows, index["events"], strict=True):
+            translation = event["english_translation"]
+            assert csv_row["english_headline"] == (
+                translation["title_en"] if translation else ""
+            )
+            assert csv_row["translation_id"] == (
+                translation["translation_id"] if translation else ""
+            )
+            assert csv_row["background_en"] == (
+                translation["background_en"] if translation else ""
+            )
+
+    bri_ids = {event["event_id"] for event in indices["bri"]["events"]}
+    for region in ("gwadar", "balochistan", "myanmar"):
+        assert {
+            event["event_id"] for event in indices[region]["events"]
+        } <= bri_ids
+    chinese_myanmar = [
+        event
+        for event in indices["myanmar"]["events"]
+        if _is_chinese_dominant_metadata(event["headline"], event["dek"])
+    ]
+    assert chinese_myanmar
+    assert all(
+        event["english_translation"] is not None for event in chinese_myanmar
+    )
+
+
+def test_regional_data_dumps_preserve_economic_conflict_and_editorial_boundaries() -> None:
+    expected_countries = {
+        "bri": {"CHN", "PAK", "MMR"},
+        "gwadar": {"PAK"},
+        "balochistan": {"PAK"},
+        "myanmar": {"MMR"},
+    }
+    expected_conflict_countries = {
+        "bri": {"PAK", "MMR"},
+        "gwadar": {"PAK"},
+        "balochistan": {"PAK"},
+        "myanmar": {"MMR"},
+    }
+    for region, root in REGIONAL_DATA_ROOTS.items():
+        dump = json.loads((root / "regional-data.json").read_text())
+        assert dump["schema_version"] == "palimpsest.regional-data-dump.v1"
+        assert dump["publication_boundary"]["cross_lane_causality"] == "prohibited"
+        assert dump["publication_boundary"]["article_body_fetching"] == "prohibited"
+        assert set(dump["economic_context"]["country_codes"]) == expected_countries[region]
+        assert {
+            row["country_code"] for row in dump["economic_context"]["observations"]
+        } == expected_countries[region]
+        assert {
+            row["country_code"] for row in dump["conflict_context"]["country_years"]
+        } == expected_conflict_countries[region]
+        editorial = dump["editorial_evidence"]
+        assert editorial["sections"]
+        assert editorial["evidence"]
+        assert len(editorial["source_sha256"]) == 64
+        assert all(
+            row["interpretation_limit"] for row in editorial["evidence"]
+        )
+        digest_document = copy.deepcopy(dump)
+        expected_digest = digest_document.pop("content_sha256")
+        assert hashlib.sha256(
+            json.dumps(
+                digest_document,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest() == expected_digest
 
 
 def test_registry_is_global_and_has_deep_priority_geographies() -> None:
@@ -462,7 +749,11 @@ def test_generated_artifact_and_page_are_exact_and_schema_valid() -> None:
         article = json.loads(json_path.read_text(encoding="utf-8"))
         assert html_path.read_bytes() == _render_analysis_html(article)
         assert article["schema_version"] == "palimpsest.regional-analysis.v1"
-        assert article["authorship"]["freeform_model_generation"] == "none"
+        assert article["authorship"]["assistance_disclosure"].startswith(
+            "AI-assisted synthesis"
+        )
+        assert article["editorial"]["sections"]
+        assert article["editorial"]["evidence"]
     assert "Current Balochistan reporting" in BALOCHISTAN_PAGE.read_text(encoding="utf-8")
     assert "Current Myanmar reporting" in MYANMAR_PAGE.read_text(encoding="utf-8")
     assert "Current BRI, CPEC and Gwadar reporting" in expected_html.decode("utf-8")

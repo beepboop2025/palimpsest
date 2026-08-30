@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import html
+import io
 import json
 import os
 import re
@@ -27,6 +29,7 @@ from processors.bri_observatory import (
     load_registry,
 )
 from scripts import site_nav
+from scripts import build_chinese_translation_pages as chinese_translation_pages
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +58,11 @@ DEFAULT_MYANMAR_ANALYSIS_JSON = (
     ROOT / "belt-and-road" / "myanmar" / "analysis" / "article.json"
 )
 DEFAULT_NEWSWIRE = ROOT / "readings" / "newswire-latest.json"
+DEFAULT_NEWSWIRE_VERSIONS = ROOT / "readings" / "newswire-versions.jsonl"
+DEFAULT_NEWS_SOURCE_REGISTRY = ROOT / "config" / "news_sources.json"
+DEFAULT_EDITORIAL_EVIDENCE = ROOT / "config" / "regional_editorials.json"
+DEFAULT_CHINESE_TRANSLATIONS = ROOT / "readings" / "chinese-translations-latest.json"
+DEFAULT_CHINESE_TRANSLATION_SCHEMA = ROOT / "protocol" / "chinese-translations-v1.schema.json"
 DEFAULT_UCDP_AGGREGATE = ROOT / "readings" / "ucdp-aggregate-latest.json"
 DEFAULT_UCDP_SCHEMA = ROOT / "protocol" / "ucdp-aggregate-v1.schema.json"
 DEFAULT_WDI_BUNDLE = ROOT / WDI_ARTIFACT_PATH
@@ -71,38 +79,88 @@ _PAKISTAN_GWADAR_TARGETS = (
     "gwadar_public_services",
     "balochistan_resources_revenue",
 )
+_REGIONAL_OUTPUT_ROOTS = {
+    "bri": ROOT / "belt-and-road" / "data",
+    "gwadar": ROOT / "belt-and-road" / "gwadar" / "data",
+    "balochistan": ROOT / "belt-and-road" / "balochistan" / "data",
+    "myanmar": ROOT / "belt-and-road" / "myanmar" / "data",
+}
+_REGIONAL_LABELS = {
+    "bri": "BRI and regional corridors",
+    "gwadar": "CPEC and Gwadar",
+    "balochistan": "Balochistan",
+    "myanmar": "Myanmar",
+}
+_REGIONAL_GEOGRAPHIES = {
+    "bri": ("CHN", "PAK", "MMR"),
+    "gwadar": ("PAK",),
+    "balochistan": ("PAK",),
+    "myanmar": ("MMR",),
+}
+_REGIONAL_TARGETS = {
+    "bri": (),
+    "gwadar": _PAKISTAN_GWADAR_TARGETS,
+    "balochistan": (
+        "balochistan_resources_revenue",
+        "balochistan_movement_history",
+    ),
+    "myanmar": (
+        "cmec_portfolio",
+        "kyaukpyu_port_sez",
+        "china_myanmar_pipelines",
+        "mandalay_muse_rail",
+    ),
+}
+_REGIONAL_DEDICATED_SOURCE_IDS = {
+    "gwadar": frozenset(
+        {
+            "arab-news-pakistan-gwadar-port",
+            "daily-cpec-gwadar",
+        }
+    ),
+    "balochistan": frozenset(
+        {
+            "express-tribune-balochistan",
+            "hrc-balochistan",
+        }
+    ),
+    "myanmar": frozenset(
+        {
+            "kachin-news-group",
+            "myanmar-now",
+            "shan-news-english",
+        }
+    ),
+}
 _REGIONAL_NEWS = {
     "gwadar": {
-        "dedicated_source_ids": frozenset(
-            {
-                "arab-news-pakistan-gwadar-port",
-                "daily-cpec-gwadar",
-            }
-        ),
+        "dedicated_source_ids": _REGIONAL_DEDICATED_SOURCE_IDS["gwadar"],
         "terms": (
-            "belt and road",
-            "bri",
-            "china-pakistan",
+            "china-pakistan economic corridor",
             "cpec",
             "gwadar",
+            "中巴经济走廊",
+            "中巴經濟走廊",
+            "瓜达尔",
+            "瓜達爾",
         ),
     },
     "balochistan": {
-        "dedicated_source_ids": frozenset(
-            {
-                "express-tribune-balochistan",
-                "hrc-balochistan",
-            }
+        "dedicated_source_ids": _REGIONAL_DEDICATED_SOURCE_IDS["balochistan"],
+        "terms": (
+            "baloch",
+            "balochistan",
+            "gwadar",
+            "quetta",
+            "俾路支",
+            "俾路支斯坦",
+            "巴洛奇",
+            "瓜达尔",
+            "瓜達爾",
         ),
-        "terms": ("baloch", "balochistan", "gwadar", "quetta"),
     },
     "myanmar": {
-        "dedicated_source_ids": frozenset(
-            {
-                "kachin-news-group",
-                "shan-news-english",
-            }
-        ),
+        "dedicated_source_ids": _REGIONAL_DEDICATED_SOURCE_IDS["myanmar"],
         "terms": (
             "burma",
             "cmec",
@@ -111,7 +169,18 @@ _REGIONAL_NEWS = {
             "myanmar",
             "rakhine",
             "rohingya",
-            "shan",
+            "shan state",
+            "缅甸",
+            "緬甸",
+            "中缅经济走廊",
+            "中緬經濟走廊",
+            "皎漂",
+            "掸邦",
+            "撣邦",
+            "克钦",
+            "克欽",
+            "若开",
+            "若開",
         ),
     },
 }
@@ -264,6 +333,833 @@ def _load_ucdp_aggregate(path: Path = DEFAULT_UCDP_AGGREGATE) -> dict:
     )
 
 
+def _load_editorial_evidence(
+    path: Path = DEFAULT_EDITORIAL_EVIDENCE,
+) -> tuple[dict, str]:
+    """Load the human-authored, claim-classed evidence used by stable editorials."""
+
+    raw = path.read_bytes()
+    document = newswire_model.strict_json_loads(raw, label=str(path))
+    if type(document) is not dict or set(document) != {
+        "schema_version",
+        "as_of",
+        "evidence",
+        "editorials",
+        "method",
+        "limitations",
+    }:
+        raise ValueError(f"{path} does not match the editorial-evidence contract")
+    if document["schema_version"] != "palimpsest.regional-editorial-evidence.v1":
+        raise ValueError(f"{path}.schema_version is unsupported")
+    if type(document["as_of"]) is not str or not re.fullmatch(
+        r"20[0-9]{2}-[0-9]{2}-[0-9]{2}", document["as_of"]
+    ):
+        raise ValueError(f"{path}.as_of must be an ISO date")
+
+    evidence_by_id = {}
+    valid_regions = set(_REGIONAL_LABELS)
+    required_evidence_fields = {
+        "evidence_id",
+        "regions",
+        "source_name",
+        "source_title",
+        "url",
+        "published_at",
+        "source_role",
+        "evidence_state",
+        "statement",
+        "interpretation_limit",
+    }
+    if type(document["evidence"]) is not list or not document["evidence"]:
+        raise ValueError(f"{path}.evidence must be a non-empty list")
+    for position, row in enumerate(document["evidence"]):
+        label = f"{path}.evidence[{position}]"
+        if type(row) is not dict or set(row) != required_evidence_fields:
+            raise ValueError(f"{label} does not match the evidence-row contract")
+        evidence_id = row["evidence_id"]
+        if (
+            type(evidence_id) is not str
+            or not re.fullmatch(r"[a-z0-9][a-z0-9-]{2,95}", evidence_id)
+            or evidence_id in evidence_by_id
+        ):
+            raise ValueError(f"{label}.evidence_id is invalid or duplicated")
+        regions = row["regions"]
+        if (
+            type(regions) is not list
+            or not regions
+            or any(type(region) is not str for region in regions)
+            or not set(regions).issubset(valid_regions)
+            or len(regions) != len(set(regions))
+        ):
+            raise ValueError(f"{label}.regions is invalid")
+        if type(row["url"]) is not str or not row["url"].startswith("https://"):
+            raise ValueError(f"{label}.url must be HTTPS")
+        if type(row["published_at"]) is not str or not re.fullmatch(
+            r"20[0-9]{2}-[0-9]{2}-[0-9]{2}", row["published_at"]
+        ):
+            raise ValueError(f"{label}.published_at must be an ISO date")
+        for field in (
+            "source_name",
+            "source_title",
+            "source_role",
+            "evidence_state",
+            "statement",
+            "interpretation_limit",
+        ):
+            value = row[field]
+            if type(value) is not str or not value.strip() or len(value) > 2400:
+                raise ValueError(f"{label}.{field} is invalid")
+        evidence_by_id[evidence_id] = row
+
+    editorials = document["editorials"]
+    if type(editorials) is not dict or set(editorials) != valid_regions:
+        raise ValueError(f"{path}.editorials must cover every regional lane")
+    used_evidence = set()
+    for region, editorial in editorials.items():
+        label = f"{path}.editorials.{region}"
+        if type(editorial) is not dict or set(editorial) != {
+            "title",
+            "dek",
+            "sections",
+        }:
+            raise ValueError(f"{label} does not match the editorial contract")
+        for field in ("title", "dek"):
+            if type(editorial[field]) is not str or not editorial[field].strip():
+                raise ValueError(f"{label}.{field} is invalid")
+        sections = editorial["sections"]
+        if type(sections) is not list or not sections:
+            raise ValueError(f"{label}.sections must be non-empty")
+        section_ids = set()
+        for section_position, section in enumerate(sections):
+            section_label = f"{label}.sections[{section_position}]"
+            if type(section) is not dict or set(section) != {
+                "section_id",
+                "heading",
+                "paragraphs",
+                "evidence_ids",
+            }:
+                raise ValueError(
+                    f"{section_label} does not match the editorial-section contract"
+                )
+            section_id = section["section_id"]
+            if (
+                type(section_id) is not str
+                or not re.fullmatch(r"[a-z0-9][a-z0-9-]{2,95}", section_id)
+                or section_id in section_ids
+            ):
+                raise ValueError(f"{section_label}.section_id is invalid or duplicated")
+            section_ids.add(section_id)
+            if type(section["heading"]) is not str or not section["heading"].strip():
+                raise ValueError(f"{section_label}.heading is invalid")
+            paragraphs = section["paragraphs"]
+            if (
+                type(paragraphs) is not list
+                or not paragraphs
+                or any(type(paragraph) is not str or not paragraph.strip() for paragraph in paragraphs)
+            ):
+                raise ValueError(f"{section_label}.paragraphs is invalid")
+            evidence_ids = section["evidence_ids"]
+            if (
+                type(evidence_ids) is not list
+                or not evidence_ids
+                or len(evidence_ids) != len(set(evidence_ids))
+                or any(evidence_id not in evidence_by_id for evidence_id in evidence_ids)
+                or any(region not in evidence_by_id[evidence_id]["regions"] for evidence_id in evidence_ids)
+            ):
+                raise ValueError(f"{section_label}.evidence_ids is invalid for {region}")
+            used_evidence.update(evidence_ids)
+
+    for field in ("method", "limitations"):
+        values = document[field]
+        if (
+            type(values) is not list
+            or not values
+            or any(type(value) is not str or not value.strip() for value in values)
+        ):
+            raise ValueError(f"{path}.{field} is invalid")
+    unused = set(evidence_by_id).difference(used_evidence)
+    if unused:
+        raise ValueError(f"{path} has uncited editorial evidence: {sorted(unused)}")
+    return document, hashlib.sha256(raw).hexdigest()
+
+
+def _load_newswire_versions(
+    path: Path = DEFAULT_NEWSWIRE_VERSIONS,
+) -> tuple[list[dict], str]:
+    """Load the append-only event-version ledger with a strict public shape."""
+
+    raw = path.read_bytes()
+    rows = []
+    required = {
+        "event_id",
+        "evidence_strength",
+        "headline",
+        "previous_version_id",
+        "published_at",
+        "recorded_at",
+        "source_ids",
+        "version_id",
+    }
+    for line_number, line in enumerate(raw.splitlines(), 1):
+        if not line.strip():
+            continue
+        row = newswire_model.strict_json_loads(
+            line,
+            label=f"{path}:{line_number}",
+        )
+        if type(row) is not dict or set(row) != required:
+            raise ValueError(
+                f"{path}:{line_number} does not match the event-version ledger contract"
+            )
+        for field, maximum in (
+            ("event_id", 96),
+            ("version_id", 96),
+            ("evidence_strength", 64),
+            ("headline", 600),
+            ("published_at", 32),
+            ("recorded_at", 32),
+        ):
+            value = row[field]
+            if type(value) is not str or not value or len(value) > maximum:
+                raise ValueError(f"{path}:{line_number}.{field} is invalid")
+        previous = row["previous_version_id"]
+        if previous is not None and (
+            type(previous) is not str or not previous or len(previous) > 96
+        ):
+            raise ValueError(
+                f"{path}:{line_number}.previous_version_id is invalid"
+            )
+        source_ids = row["source_ids"]
+        if (
+            type(source_ids) is not list
+            or not source_ids
+            or len(source_ids) > 32
+            or any(type(source_id) is not str or not source_id for source_id in source_ids)
+            or len(source_ids) != len(set(source_ids))
+        ):
+            raise ValueError(f"{path}:{line_number}.source_ids is invalid")
+        rows.append(row)
+    if not rows:
+        raise ValueError(f"{path} contains no event versions")
+    return rows, hashlib.sha256(raw).hexdigest()
+
+
+def _source_registry_projection(
+    path: Path = DEFAULT_NEWS_SOURCE_REGISTRY,
+) -> tuple[dict[str, object], str]:
+    registry = newswire_model.load_source_registry(path)
+    return {source.id: source for source in registry.sources}, registry.sha256
+
+
+def _captured_event_seed(row: Mapping[str, object]) -> dict:
+    return {
+        "event_id": row["event_id"],
+        "versions": {},
+        "source_ids": set(),
+        "region_tags": set(),
+        "current": None,
+    }
+
+
+def _translation_index(document: Mapping[str, object] | None) -> dict:
+    """Index immutable translation records without mutating publisher evidence."""
+
+    if document is None:
+        return {"by_event_and_version": {}, "by_event": {}, "public_paths": {}}
+    by_event_and_version = {}
+    by_event: dict[str, list[dict]] = {}
+    for row in document["translations"]:
+        identity = row["identity"]
+        event_version_id = identity.get("event_version_id")
+        event_id = identity.get("event_id")
+        if event_id and event_version_id:
+            event_version_key = (event_id, event_version_id)
+            prior = by_event_and_version.get(event_version_key)
+            if prior is not None and prior["record_sha256"] != row["record_sha256"]:
+                raise ValueError(
+                    "translation sidecar has conflicting event identity "
+                    f"{event_id}/{event_version_id}"
+                )
+            by_event_and_version[event_version_key] = row
+        if event_id:
+            by_event.setdefault(event_id, []).append(row)
+    return {
+        "by_event_and_version": by_event_and_version,
+        "by_event": by_event,
+        "public_paths": chinese_translation_pages.translation_public_paths(document),
+    }
+
+
+def _translation_projection(
+    translation_index: Mapping[str, object],
+    *,
+    event_id: str,
+    event_version_id: str,
+    headline: str,
+) -> dict | None:
+    row = translation_index["by_event_and_version"].get(
+        (event_id, event_version_id)
+    )
+    if row is None:
+        candidates = translation_index["by_event"].get(event_id, [])
+        if candidates:
+            priority = {
+                "current_wire_event": 4,
+                "retained_current_story": 3,
+                "retained_event_revision": 2,
+                "current_wire_item": 1,
+            }
+            row = max(
+                candidates,
+                key=lambda candidate: (
+                    candidate["original_zh"]["title"].strip() == headline.strip(),
+                    priority.get(candidate["record_kind"], 0),
+                    candidate["source_clocks"].get("updated_at") or "",
+                    candidate["translation_id"],
+                ),
+            )
+    if row is None:
+        return None
+    translated = row["english"]
+    original = row["original_zh"]
+    provenance = row["translation_provenance"]
+    return {
+        "translation_id": row["translation_id"],
+        "public_url": translation_index["public_paths"][row["translation_id"]],
+        "title_en": translated["title_en"],
+        "context_en": translated["context_en"],
+        "translation_notes_en": translated["translation_notes_en"],
+        "status": translated["status"],
+        "background_en": translated["background_en"],
+        "background_basis": translated["background_basis"],
+        "background_status": translated["background_status"],
+        "original_title_zh": original["title"],
+        "original_context_zh": original["context"],
+        "original_content_sha256": original["content_sha256"],
+        "provider": provenance["provider"],
+        "model_id": provenance["model_id"],
+        "prompt_revision": provenance["prompt_revision"],
+    }
+
+
+def _is_chinese_dominant_metadata(*values: object) -> bool:
+    """Mirror the translation-sidecar admission rule for regional completeness."""
+
+    text = "\n".join(str(value) for value in values if value)
+    han_characters = sum(
+        1
+        for character in text
+        if (
+            0x3400 <= ord(character) <= 0x4DBF
+            or 0x4E00 <= ord(character) <= 0x9FFF
+            or 0xF900 <= ord(character) <= 0xFAFF
+            or 0x20000 <= ord(character) <= 0x2FA1F
+        )
+    )
+    letter_characters = sum(character.isalpha() for character in text)
+    return bool(
+        han_characters >= 4
+        and letter_characters
+        and han_characters / letter_characters >= 0.35
+    )
+
+
+def _historical_event_page_text(event_id: str) -> str:
+    """Recover bounded public dossier text without admitting shell/navigation labels."""
+
+    path = ROOT / "news" / "wire" / event_id / "index.html"
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return ""
+    if not raw or len(raw) > 2 * 1024 * 1024:
+        return ""
+    try:
+        document = raw.decode("utf-8", "strict")
+    except UnicodeDecodeError:
+        return ""
+    marker = '<main id="main"'
+    if document.count(marker) != 1:
+        return ""
+    main = document.split(marker, 1)[1].split("</main>", 1)[0]
+    main = re.sub(r"<(?:script|style)\b[^>]*>.*?</(?:script|style)>", " ", main, flags=re.I | re.S)
+    return html.unescape(re.sub(r"<[^>]+>", " ", main)).casefold()
+
+
+def _build_captured_index(
+    wire: Mapping[str, object],
+    versions: list[dict],
+    *,
+    versions_sha256: str,
+    source_specs: Mapping[str, object],
+    source_registry_sha256: str,
+    region: str,
+    translations: Mapping[str, object] | None = None,
+) -> dict:
+    """Build one loss-aware regional index from every retained event version."""
+
+    if region not in _REGIONAL_LABELS:
+        raise ValueError(f"unknown captured-index region: {region}")
+    if wire["source_registry_sha256"] != source_registry_sha256:
+        raise ValueError(
+            "current newswire does not bind the exact configured source registry"
+        )
+    if translations is not None:
+        translated_ledger_sha256 = translations["source_snapshot"][
+            "newswire_ledger_sha256"
+        ]
+        if translated_ledger_sha256 != versions_sha256:
+            raise ValueError(
+                "Chinese translation sidecar does not bind the exact event-version "
+                "ledger used by the regional archive"
+            )
+
+    grouped: dict[str, dict] = {}
+    unknown_sources: set[str] = set()
+    for row in versions:
+        unknown_sources.update(
+            source_id for source_id in row["source_ids"] if source_id not in source_specs
+        )
+        group = grouped.setdefault(row["event_id"], _captured_event_seed(row))
+        group["versions"][row["version_id"]] = row
+        group["source_ids"].update(row["source_ids"])
+        group["region_tags"].update(
+            _regional_tags(set(row["source_ids"]), row["headline"].casefold())
+        )
+    if unknown_sources:
+        raise ValueError(
+            f"event-version ledger contains unknown source ids: {sorted(unknown_sources)}"
+        )
+    for event_id, group in grouped.items():
+        page_text = _historical_event_page_text(event_id)
+        if page_text:
+            group["region_tags"].update(
+                _regional_tags(set(group["source_ids"]), page_text)
+            )
+
+    current_by_id = {event["event_id"]: event for event in wire["events"]}
+    for event in wire["events"]:
+        synthetic = {
+            "event_id": event["event_id"],
+            "evidence_strength": event["evidence_strength"],
+            "headline": event["headline"],
+            "previous_version_id": None,
+            "published_at": event["published_at"],
+            "recorded_at": wire["generated_at"],
+            "source_ids": sorted(
+                {reference["source_id"] for reference in event["evidence_refs"]}
+            ),
+            "version_id": event["version_id"],
+        }
+        group = grouped.setdefault(event["event_id"], _captured_event_seed(synthetic))
+        group["versions"].setdefault(event["version_id"], synthetic)
+        group["source_ids"].update(synthetic["source_ids"])
+        group["region_tags"].update(
+            _regional_tags(set(synthetic["source_ids"]), _event_content_text(event))
+        )
+        group["current"] = event
+
+    events = []
+    translations_by_event = _translation_index(translations)
+    for event_id, group in grouped.items():
+        if region not in group["region_tags"]:
+            continue
+        event_versions = sorted(
+            group["versions"].values(),
+            key=lambda row: (row["recorded_at"], row["version_id"]),
+        )
+        latest = event_versions[-1]
+        source_ids = sorted(group["source_ids"])
+        current = group["current"] or current_by_id.get(event_id)
+        publisher_links = []
+        if current is not None:
+            seen_links: set[tuple[str, str]] = set()
+            for reference in current["evidence_refs"]:
+                key = (reference["source_id"], reference["url"])
+                if key in seen_links:
+                    continue
+                seen_links.add(key)
+                publisher_links.append(
+                    {
+                        "source_id": reference["source_id"],
+                        "title": reference["title"],
+                        "url": reference["url"],
+                    }
+                )
+        page_path = ROOT / "news" / "wire" / event_id / "index.html"
+        english_translation = _translation_projection(
+            translations_by_event,
+            event_id=event_id,
+            event_version_id=latest["version_id"],
+            headline=latest["headline"],
+        )
+        if translations is not None and _is_chinese_dominant_metadata(
+            latest["headline"],
+            current["dek"] if current is not None else None,
+        ) and english_translation is None:
+            raise ValueError(
+                "regional Chinese publisher metadata has no English translation: "
+                f"{region}/{event_id}/{latest['version_id']}"
+            )
+        events.append(
+            {
+                "event_id": event_id,
+                "event_url": f"https://palimpsest.info/news/wire/{event_id}/",
+                "event_page_available": current is not None or page_path.is_file(),
+                "headline": latest["headline"],
+                "dek": current["dek"] if current is not None else None,
+                "published_at": latest["published_at"],
+                "first_recorded_at": event_versions[0]["recorded_at"],
+                "last_recorded_at": event_versions[-1]["recorded_at"],
+                "source_ids": source_ids,
+                "source_names": [source_specs[source_id].name for source_id in source_ids],
+                "evidence_strength": latest["evidence_strength"],
+                "version_count": len(event_versions),
+                "version_ids": [row["version_id"] for row in event_versions],
+                "current_in_wire": current is not None,
+                "topics": current["topics"] if current is not None else [],
+                "region_tags": [
+                    tag
+                    for tag in ("bri", "gwadar", "balochistan", "myanmar")
+                    if tag in group["region_tags"]
+                ],
+                "publisher_links": publisher_links,
+                "english_translation": english_translation,
+            }
+        )
+    events.sort(
+        key=lambda event: (event["published_at"], event["event_id"]),
+        reverse=True,
+    )
+
+    source_counts = Counter(
+        source_id for event in events for source_id in event["source_ids"]
+    )
+    sources = []
+    for source_id in sorted(source_counts):
+        source = source_specs[source_id]
+        sources.append(
+            {
+                "source_id": source_id,
+                "source_name": source.name,
+                "feed_url": source.feed_url,
+                "role": source.role,
+                "independence_group": source.independence_group,
+                "rights_policy": source.rights_policy,
+                "captured_event_count": source_counts[source_id],
+            }
+        )
+
+    event_version_count = sum(event["version_count"] for event in events)
+    document = {
+        "schema_version": "palimpsest.regional-captured-index.v1",
+        "region": region,
+        "label": _REGIONAL_LABELS[region],
+        "generated_at": wire["generated_at"],
+        "scope": (
+            "Every unique event retained in the append-only Palimpsest event-version "
+            "ledger that matches this regional lane by reviewed source identity or "
+            "bounded title metadata, plus every matching event in the current wire."
+        ),
+        "classification": {
+            "overlap_allowed": True,
+            "method": "reviewed dedicated source ids plus bounded metadata terms",
+            "article_body_fetching": "prohibited",
+            "bri_lane": "combined index of all three regional lanes plus explicit BRI terms",
+            "csv_formula_neutralization": (
+                "CSV text cells whose first non-whitespace character is =, +, -, "
+                "or @ receive a leading apostrophe; JSON and JSONL preserve the "
+                "exact captured text."
+            ),
+        },
+        "rights": {
+            "publication_mode": "metadata-link-only",
+            "article_bodies_included": False,
+            "publisher_copyright_retained": True,
+            "source_policy": "config/news_sources.json",
+        },
+        "inputs": {
+            "newswire_generated_at": wire["generated_at"],
+            "newswire_window": wire["window"],
+            "newswire_versions_sha256": versions_sha256,
+            "source_registry_sha256": source_registry_sha256,
+            "chinese_translation_sidecar": (
+                {
+                    "schema_version": translations["schema_version"],
+                    "generated_at": translations["generated_at"],
+                    "newswire_sha256": translations["source_snapshot"][
+                        "newswire_sha256"
+                    ],
+                    "newswire_ledger_sha256": translations["source_snapshot"][
+                        "newswire_ledger_sha256"
+                    ],
+                    "newswire_ledger_rows": translations["source_snapshot"][
+                        "newswire_ledger_rows"
+                    ],
+                    "translated_records": translations["coverage"][
+                        "translated_records"
+                    ],
+                    "missing_records": translations["coverage"]["missing_records"],
+                }
+                if translations is not None
+                else None
+            ),
+        },
+        "capture_universe": {
+            "event_versions": len(versions),
+            "unique_events": len(grouped),
+            "current_wire_events": wire["n_events"],
+        },
+        "counts": {
+            "event_versions": event_version_count,
+            "unique_events": len(events),
+            "current_events": sum(event["current_in_wire"] for event in events),
+            "historical_events": sum(not event["current_in_wire"] for event in events),
+            "event_pages_available": sum(
+                event["event_page_available"] for event in events
+            ),
+            "sources": len(sources),
+            "events_with_english_translation": sum(
+                event["english_translation"] is not None for event in events
+            ),
+        },
+        "coverage": {
+            "earliest_published_at": events[-1]["published_at"] if events else None,
+            "latest_published_at": events[0]["published_at"] if events else None,
+            "earliest_recorded_at": min(
+                (event["first_recorded_at"] for event in events),
+                default=None,
+            ),
+            "latest_recorded_at": max(
+                (event["last_recorded_at"] for event in events),
+                default=None,
+            ),
+        },
+        "sources": sources,
+        "events": events,
+        "limitations": [
+            "This is the complete retained Palimpsest capture ledger for the declared classifier, not every article ever published on the internet.",
+            "Feed metadata can be incomplete, partisan, mistaken, translated, revised or removed; a listing is attribution, not endorsement or adjudication.",
+            "Historical ledger entries may lack a retained excerpt or publisher URL; the event page is linked only when a generated public page remains present.",
+            "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
+            "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump.",
+        ],
+    }
+    digest = hashlib.sha256(
+        json.dumps(
+            document,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    document["content_sha256"] = digest
+    return document
+
+
+def _jsonl_bytes(index: Mapping[str, object]) -> bytes:
+    return b"".join(
+        json.dumps(
+            {
+                "schema_version": index["schema_version"],
+                "region": index["region"],
+                **event,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        + b"\n"
+        for event in index["events"]
+    )
+
+
+def _csv_safe(value: object) -> object:
+    """Neutralize spreadsheet formulas while leaving typed numeric cells intact."""
+
+    if not isinstance(value, str):
+        return value
+    significant = value.lstrip(" \t\r\n")
+    if significant.startswith(("=", "+", "-", "@")):
+        return "'" + value
+    return value
+
+
+def _csv_bytes(index: Mapping[str, object]) -> bytes:
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(
+        (
+            "event_id",
+            "event_url",
+            "event_page_available",
+            "headline",
+            "published_at",
+            "first_recorded_at",
+            "last_recorded_at",
+            "source_ids",
+            "source_names",
+            "evidence_strength",
+            "version_count",
+            "current_in_wire",
+            "region_tags",
+            "english_headline",
+            "english_excerpt",
+            "translation_id",
+            "translation_status",
+            "background_en",
+            "translation_public_url",
+        )
+    )
+    for event in index["events"]:
+        translation = event["english_translation"] or {}
+        writer.writerow(
+            tuple(
+                _csv_safe(value)
+                for value in (
+                event["event_id"],
+                event["event_url"],
+                str(event["event_page_available"]).lower(),
+                event["headline"],
+                event["published_at"],
+                event["first_recorded_at"],
+                event["last_recorded_at"],
+                "|".join(event["source_ids"]),
+                "|".join(event["source_names"]),
+                event["evidence_strength"],
+                event["version_count"],
+                str(event["current_in_wire"]).lower(),
+                "|".join(event["region_tags"]),
+                translation.get("title_en", ""),
+                translation.get("context_en", ""),
+                translation.get("translation_id", ""),
+                translation.get("status", ""),
+                translation.get("background_en", ""),
+                translation.get("public_url", ""),
+                )
+            )
+        )
+    return output.getvalue().encode("utf-8")
+
+
+def _build_regional_data_dump(
+    artifact: Mapping[str, object],
+    captured_index: Mapping[str, object],
+    *,
+    region: str,
+    wdi_bundle: Mapping[str, object],
+    ucdp_bundle: Mapping[str, object],
+    editorial_evidence: Mapping[str, object],
+    editorial_evidence_sha256: str,
+) -> dict:
+    """Join only independently licensed public context into one regional dump."""
+
+    if region not in _REGIONAL_LABELS:
+        raise ValueError(f"unknown regional data-dump lane: {region}")
+    artifact_geographies = {
+        "bri": {"CHN", "PAK", "MMR", "PAK-BAL", "PAK-GWD", "MMR-RKH"},
+        "gwadar": {"PAK", "PAK-BAL", "PAK-GWD"},
+        "balochistan": {"PAK-BAL", "PAK-GWD"},
+        "myanmar": {"MMR", "MMR-RKH"},
+    }[region]
+    country_codes = set(_REGIONAL_GEOGRAPHIES[region])
+    target_ids = set(_REGIONAL_TARGETS[region])
+    targets = [
+        target
+        for target in artifact["watch_targets"]
+        if region == "bri" or target["target_id"] in target_ids
+    ]
+    sources = [
+        source
+        for source in artifact["sources"]
+        if region == "bri"
+        or artifact_geographies.intersection(source["geographies"])
+    ]
+    observations = [
+        row
+        for row in wdi_bundle["observations"]
+        if row["country_code"] in country_codes
+    ]
+    country_years = [
+        row
+        for row in ucdp_bundle["country_years"]
+        if row["country_code"] in country_codes
+    ]
+    conflict_years = [
+        row
+        for row in ucdp_bundle["conflict_years"]
+        if row["country_code"] in country_codes
+    ]
+    document = {
+        "schema_version": "palimpsest.regional-data-dump.v1",
+        "region": region,
+        "label": _REGIONAL_LABELS[region],
+        "generated_at": captured_index["generated_at"],
+        "publication_boundary": {
+            "role": "public research context",
+            "cross_lane_causality": "prohibited",
+            "missing_value_policy": "unavailable_not_zero",
+            "article_body_fetching": "prohibited",
+            "person_or_tactical_records": "excluded",
+        },
+        "captured_news": captured_index,
+        "editorial_evidence": _editorial_projection(
+            editorial_evidence,
+            editorial_evidence_sha256=editorial_evidence_sha256,
+            region=region,
+        ),
+        "coverage_contract": {
+            "artifact_as_of": artifact["as_of"],
+            "targets": targets,
+            "sources": sources,
+            "source_registration_is_observation": False,
+        },
+        "economic_context": {
+            "schema_version": wdi_bundle["schema_version"],
+            "generated_at": wdi_bundle["generated_at"],
+            "observations_sha256": wdi_bundle["observations_sha256"],
+            "source": wdi_bundle["source"],
+            "context_policy": wdi_bundle["context_policy"],
+            "country_codes": sorted(country_codes),
+            "observation_count": len(observations),
+            "observations": observations,
+        },
+        "conflict_context": {
+            "schema_version": ucdp_bundle["schema_version"],
+            "generated_at": ucdp_bundle["generated_at"],
+            "source": ucdp_bundle["source"],
+            "scope_policy": ucdp_bundle["scope_policy"],
+            "country_years_sha256": ucdp_bundle["country_years_sha256"],
+            "conflict_years_sha256": ucdp_bundle["conflict_years_sha256"],
+            "country_year_count": len(country_years),
+            "conflict_year_count": len(conflict_years),
+            "country_years": country_years,
+            "conflict_years": conflict_years,
+        },
+        "movement_taxonomy": (
+            artifact["movement_taxonomy"]
+            if region in {"bri", "balochistan"}
+            else None
+        ),
+        "limitations": [
+            "WDI values are national country-period context and cannot measure a province, corridor, project, community, actor or incident.",
+            "UCDP rows retain the dataset's armed-conflict definitions and are not a census of every abuse, grievance, protest or political movement.",
+            "The coverage contract includes registered, pending and unavailable routes; registration is not a captured observation.",
+            "No cross-lane join in this dump proves that a BRI project caused conflict, repression, benefit or harm.",
+        ],
+    }
+    digest = hashlib.sha256(
+        json.dumps(
+            document,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    document["content_sha256"] = digest
+    return document
+
+
 def _event_content_text(event: Mapping[str, object]) -> str:
     return " ".join(
         [str(event["headline"]), str(event["dek"])]
@@ -284,11 +1180,51 @@ def _text_has_term(text: str, term: str) -> bool:
     )
 
 
-def _regional_events(wire: Mapping[str, object], region: str) -> list[dict]:
-    """Select current regional wire events without fetching article bodies."""
+def _regional_tags(source_ids: set[str], text: str) -> tuple[str, ...]:
+    """Classify one captured publisher record into every applicable public lane.
 
-    config = _REGIONAL_NEWS.get(region)
-    if config is None:
+    The dedicated-source rule is intentionally explicit: a Balochistan or Myanmar
+    outlet can publish a relevant item whose title omits the place name. Broad
+    publishers still require a bounded textual match. A record may appear in more
+    than one lane because Gwadar is both a CPEC and Balochistan question.
+    """
+
+    tags = []
+    for region in ("gwadar", "balochistan", "myanmar"):
+        config = _REGIONAL_NEWS[region]
+        source_match = bool(source_ids.intersection(config["dedicated_source_ids"]))
+        term_match = any(_text_has_term(text, term) for term in config["terms"])
+        if source_match or term_match:
+            tags.append(region)
+    if tags or any(
+        _text_has_term(text, term)
+        for term in (
+            "belt and road",
+            "belt and road initiative",
+            "bri",
+            "china-pakistan economic corridor",
+            "cpec",
+            "cmec",
+            "一带一路",
+            "一帶一路",
+            "丝绸之路经济带",
+            "絲綢之路經濟帶",
+            "海上丝绸之路",
+            "海上絲綢之路",
+            "中巴经济走廊",
+            "中巴經濟走廊",
+            "中缅经济走廊",
+            "中緬經濟走廊",
+        )
+    ):
+        tags.insert(0, "bri")
+    return tuple(tags)
+
+
+def _regional_events(wire: Mapping[str, object], region: str) -> list[dict]:
+    """Select every current regional wire event without fetching article bodies."""
+
+    if region not in {"bri", *_REGIONAL_NEWS}:
         raise ValueError(f"unknown regional news lane: {region}")
     selected = []
     for event in wire["events"]:
@@ -296,14 +1232,13 @@ def _regional_events(wire: Mapping[str, object], region: str) -> list[dict]:
             reference["source_id"] for reference in event["evidence_refs"]
         }
         text = _event_content_text(event)
-        term_match = any(_text_has_term(text, term) for term in config["terms"])
-        if source_ids.intersection(config["dedicated_source_ids"]) or term_match:
+        if region in _regional_tags(source_ids, text):
             selected.append(event)
     return sorted(
         selected,
         key=lambda event: (event["published_at"], event["event_id"]),
         reverse=True,
-    )[:48]
+    )
 
 
 def _latest_wdi_context(bundle: Mapping[str, object], country_code: str) -> list[dict]:
@@ -374,7 +1309,11 @@ def _counter_dict(counter: Counter[str]) -> dict[str, int]:
     return {key: counter[key] for key in sorted(counter)}
 
 
-def _analysis_evidence(event: Mapping[str, object]) -> dict:
+def _analysis_evidence(
+    event: Mapping[str, object],
+    *,
+    english_translation: Mapping[str, object] | None = None,
+) -> dict:
     seen: set[tuple[str, str]] = set()
     sources = []
     for reference in event["evidence_refs"]:
@@ -404,6 +1343,7 @@ def _analysis_evidence(event: Mapping[str, object]) -> dict:
         "evidence_strength": event["evidence_strength"],
         "independent_group_count": len(event["evidence_groups"]),
         "sources": sources,
+        "english_translation": english_translation,
     }
 
 
@@ -467,7 +1407,10 @@ def _analysis_claims(region: str, projection: Mapping[str, object]) -> list[dict
             f'The current wire contains {projection["event_count"]} attributed event '
             f'dossiers from {projection["source_count"]} named sources across '
             f'{projection["independence_group_count"]} declared independence groups. '
-            "That is a publication-structure count, not a count of verified incidents."
+            f'The cumulative regional archive retains {projection["archive_unique_event_count"]} '
+            f'unique matching events, including {projection["archive_historical_event_count"]} '
+            "that have left the rolling wire. These are publication-structure counts, "
+            "not counts of verified incidents."
         )
     else:
         current_record = (
@@ -526,26 +1469,53 @@ def _build_regional_analysis(
     region: str,
     wdi_bundle: Mapping[str, object],
     ucdp_bundle: Mapping[str, object],
+    captured_index: Mapping[str, object] | None = None,
+    editorial_evidence: Mapping[str, object] | None = None,
+    editorial_evidence_sha256: str | None = None,
 ) -> dict:
     config = _REGIONAL_ANALYSIS[region]
     projection = _regional_analysis_projection(wire, region)
     events = projection.pop("events")
+    archive_counts = (
+        captured_index["counts"]
+        if captured_index is not None
+        else {
+            "unique_events": len(events),
+            "event_versions": len(events),
+            "current_events": len(events),
+            "historical_events": 0,
+        }
+    )
+    projection["archive_unique_event_count"] = archive_counts["unique_events"]
+    projection["archive_event_version_count"] = archive_counts["event_versions"]
+    projection["archive_current_event_count"] = archive_counts["current_events"]
+    projection["archive_historical_event_count"] = archive_counts["historical_events"]
     claims = _analysis_claims(region, {**projection, "events": events})
     country_code = config["country_code"]
+    if editorial_evidence is None:
+        editorial_evidence, loaded_sha256 = _load_editorial_evidence()
+        editorial_evidence_sha256 = loaded_sha256
+    if editorial_evidence_sha256 is None:
+        raise ValueError("editorial evidence sha256 is required")
+    editorial = _editorial_projection(
+        editorial_evidence,
+        editorial_evidence_sha256=editorial_evidence_sha256,
+        region=region,
+    )
     document = {
         "schema_version": "palimpsest.regional-analysis.v1",
         "article_id": f"palimpsest-regional-analysis-{region}",
         "region": region,
         "label": config["label"],
-        "title": config["title"],
-        "dek": config["dek"],
+        "title": editorial["title"],
+        "dek": editorial["dek"],
         "url": config["canonical_path"],
         "generated_at": wire["generated_at"],
         "status": "current-analysis" if events else "coverage-gap-analysis",
         "authorship": {
             "byline": "Palimpsest Evidence Desk",
-            "mode": "deterministic evidence analysis",
-            "freeform_model_generation": "none",
+            "mode": "source-bounded desk editorial plus deterministic evidence refresh",
+            "assistance_disclosure": "AI-assisted synthesis with explicit evidence states, source links and interpretation limits",
             "human_interviews": "none",
         },
         "wire": {
@@ -556,6 +1526,7 @@ def _build_regional_analysis(
         },
         "coverage": projection,
         "claims": claims,
+        "editorial": editorial,
         "national_context": {
             "country_code": country_code,
             "wdi": _latest_wdi_context(wdi_bundle, country_code),
@@ -573,8 +1544,26 @@ def _build_regional_analysis(
                 "not evidence that a project claim or rights allegation is true."
             ),
         },
-        "evidence": [_analysis_evidence(event) for event in events],
+        "evidence": [
+            _analysis_evidence(
+                event,
+                english_translation=(
+                    next(
+                        (
+                            row["english_translation"]
+                            for row in captured_index["events"]
+                            if row["event_id"] == event["event_id"]
+                        ),
+                        None,
+                    )
+                    if captured_index is not None
+                    else None
+                ),
+            )
+            for event in events
+        ],
         "method": [
+            *editorial_evidence["method"],
             "Select events from the sealed seven-day newswire by reviewed source ID or bounded regional term.",
             "Count named sources and declared independence groups before writing any source-strength sentence.",
             "Retain publisher titles, links, timestamps and bounded feed excerpts; do not fetch or republish article bodies.",
@@ -582,6 +1571,7 @@ def _build_regional_analysis(
             "Regenerate the stable article URL whenever the sealed input bytes change.",
         ],
         "limitations": [
+            *editorial_evidence["limitations"],
             "Publisher metadata may be incomplete, mistaken, partisan, translated, revised, or later removed.",
             "Source-group counts measure publication structure, not truth or legal proof.",
             "A documentation group's allegation is attributed reporting unless a separately cited adjudicative finding says otherwise.",
@@ -590,10 +1580,9 @@ def _build_regional_analysis(
             "An empty or thin feed window is a coverage limitation, not a zero for events, harm, conflict, opposition, or public concern.",
         ],
         "disclosure": (
-            "This recurring article is assembled automatically from validated public "
-            "metadata and aggregate datasets. It contains deterministic editorial "
-            "synthesis, no free-form model generation, no article-body scraping, and no "
-            "claim of human eyewitness reporting."
+            "This page combines a dated, source-bounded desk editorial with a recurring "
+            "deterministic refresh from validated public metadata and aggregate datasets. "
+            "It uses no article-body scraping and makes no claim of eyewitness reporting."
         ),
         "correction_url": "/challenge.html",
     }
@@ -607,6 +1596,40 @@ def _build_regional_analysis(
     document["content_sha256"] = digest
     document["revision_id"] = f"regional-analysisv-{digest[:24]}"
     return document
+
+
+def _editorial_projection(
+    document: Mapping[str, object],
+    *,
+    editorial_evidence_sha256: str,
+    region: str,
+) -> dict:
+    """Project one complete editorial and every cited evidence record."""
+
+    if region not in _REGIONAL_LABELS:
+        raise ValueError(f"unknown editorial region: {region}")
+    editorial = document["editorials"][region]
+    evidence_by_id = {
+        row["evidence_id"]: row for row in document["evidence"]
+    }
+    evidence_ids = list(
+        dict.fromkeys(
+            evidence_id
+            for section in editorial["sections"]
+            for evidence_id in section["evidence_ids"]
+        )
+    )
+    return {
+        "schema_version": document["schema_version"],
+        "as_of": document["as_of"],
+        "source_sha256": editorial_evidence_sha256,
+        "title": editorial["title"],
+        "dek": editorial["dek"],
+        "sections": editorial["sections"],
+        "evidence": [evidence_by_id[evidence_id] for evidence_id in evidence_ids],
+        "method": document["method"],
+        "limitations": document["limitations"],
+    }
 
 
 def _format_context_value(value: object, unit: str) -> str:
@@ -633,6 +1656,13 @@ def _render_analysis_html(article: Mapping[str, object]) -> bytes:
         event["event_id"]: position
         for position, event in enumerate(article["evidence"], 1)
     }
+    editorial_citation_numbers = {
+        row["evidence_id"]: position
+        for position, row in enumerate(
+            article["editorial"]["evidence"], len(article["evidence"]) + 1
+        )
+    }
+    citation_numbers.update(editorial_citation_numbers)
     claim_sections = []
     for claim in article["claims"]:
         citations = " ".join(
@@ -651,18 +1681,59 @@ def _render_analysis_html(article: Mapping[str, object]) -> bytes:
             f'{_esc(source["source_name"])}</a> ({_esc(source["role"])})'
             for source in event["sources"]
         )
+        translation = event.get("english_translation")
+        headline = event["headline"]
+        dek = event["dek"]
+        translation_markup = ""
+        if translation is not None:
+            headline = translation["title_en"]
+            dek = translation["context_en"] or dek
+            translation_markup = _translation_markup(translation)
         evidence_rows.append(
             f'<article id="evidence-{_esc(event["event_id"])}" class="bri-evidence-row">'
             f'<p class="bri-eyebrow">[{position}] <time datetime="{_esc(event["published_at"])}">'
             f'{_esc(event["published_at"])}</time> · {_esc(event["evidence_strength"])}</p>'
-            f'<h3><a href="{_esc(event["event_url"])}">{_esc(event["headline"])}</a></h3>'
-            f'<p>{_esc(event["dek"])}</p><p><b>Attributed sources:</b> {sources}. '
+            f'<h3><a href="{_esc(event["event_url"])}">{_esc(headline)}</a></h3>'
+            f'<p>{_esc(dek)}</p>{translation_markup}<p><b>Attributed sources:</b> {sources}. '
             f'<b>Independent groups:</b> {event["independent_group_count"]}.</p></article>'
         )
     if not evidence_rows:
         evidence_rows.append(
             '<p class="bri-empty">No regional event metadata is present in this exact '
             'wire window. The article remains online to expose that coverage gap.</p>'
+        )
+    editorial_sections = []
+    for section in article["editorial"]["sections"]:
+        paragraphs = "".join(
+            f"<p>{_esc(paragraph)}</p>" for paragraph in section["paragraphs"]
+        )
+        citations = " ".join(
+            f'<a href="#evidence-{_esc(evidence_id)}">'
+            f'[{editorial_citation_numbers[evidence_id]}]</a>'
+            for evidence_id in section["evidence_ids"]
+        )
+        editorial_sections.append(
+            f'<section id="{_esc(section["section_id"])}" '
+            'class="bri-analysis-section bri-editorial-section">'
+            f'<h2>{_esc(section["heading"])}</h2>{paragraphs}'
+            f'<p class="bri-citations">{citations}</p></section>'
+        )
+    editorial_evidence_rows = []
+    for row in article["editorial"]["evidence"]:
+        position = editorial_citation_numbers[row["evidence_id"]]
+        editorial_evidence_rows.append(
+            f'<article id="evidence-{_esc(row["evidence_id"])}" '
+            'class="bri-evidence-row bri-editorial-evidence-row">'
+            f'<p class="bri-eyebrow">[{position}] '
+            f'<time datetime="{_esc(row["published_at"])}">'
+            f'{_esc(row["published_at"])}</time> · '
+            f'{_esc(row["evidence_state"].replace("-", " "))}</p>'
+            f'<h3><a href="{_esc(row["url"])}" target="_blank" rel="noopener">'
+            f'{_esc(row["source_title"])}</a></h3>'
+            f'<p><b>{_esc(row["source_name"])}:</b> {_esc(row["statement"])}</p>'
+            f'<p><b>Interpretation limit:</b> {_esc(row["interpretation_limit"])}</p>'
+            f'<p><small>Source role: {_esc(row["source_role"].replace("-", " "))} · '
+            f'evidence key <code>{_esc(row["evidence_id"])}</code></small></p></article>'
         )
     wdi_rows = "".join(
         '<article class="bri-context-card">'
@@ -739,24 +1810,28 @@ def _render_analysis_html(article: Mapping[str, object]) -> bytes:
 <main id="main">
   <article>
     <header class="bri-hero bri-analysis-hero">
-      <p class="bri-eyebrow">Recurring regional analysis · {_esc(article["label"])} · <time datetime="{_esc(article["generated_at"])}">{_esc(article["generated_at"])}</time></p>
+      <p class="bri-eyebrow">Evidence-led regional editorial · {_esc(article["label"])} · source record as of <time datetime="{_esc(article["editorial"]["as_of"])}">{_esc(article["editorial"]["as_of"])}</time></p>
       <h1>{_esc(article["title"])}</h1>
       <p class="bri-dek">{_esc(article["dek"])}</p>
       <p class="bri-byline">By <strong>{_esc(article["authorship"]["byline"])}</strong> · {_esc(article["authorship"]["mode"])} · revision <code>{_esc(article["revision_id"])}</code></p>
-      <dl class="bri-stats"><div><strong>{coverage["event_count"]}</strong><span>current event dossiers</span></div><div><strong>{coverage["source_count"]}</strong><span>named sources</span></div><div><strong>{coverage["independence_group_count"]}</strong><span>independence groups</span></div><div><strong>{coverage["relation_event_count"]}</strong><span>relationship-term overlaps</span></div></dl>
+      <dl class="bri-stats"><div><strong>{coverage["archive_unique_event_count"]}</strong><span>retained regional events</span></div><div><strong>{coverage["event_count"]}</strong><span>current event dossiers</span></div><div><strong>{len(article["editorial"]["evidence"])}</strong><span>editorial evidence records</span></div><div><strong>{coverage["source_count"]}</strong><span>current named sources</span></div></dl>
       <p class="bri-actions"><a href="{_esc(dossier_path)}">Open the regional dossier</a><a href="article.json">Download article JSON</a><a href="/news/">Open the live wire</a></p>
     </header>
 
-    <section class="bri-analysis-layout">
-      <div class="bri-analysis-copy">{''.join(claim_sections)}</div>
-      <aside class="bri-analysis-aside"><p class="bri-eyebrow">Exact window</p><p><code>{_esc(article["wire"]["window"]["from"])}</code><br>through<br><code>{_esc(article["wire"]["window"]["to"])}</code></p><p><b>Source structure</b><br>{coverage["single_group_event_count"]} single-group · {coverage["multi_group_event_count"]} multi-group</p><p><b>Automated disclosure</b><br>No free-form model generation and no article-body scraping.</p></aside>
+    <section class="bri-analysis-layout" id="editorial">
+      <div class="bri-analysis-copy">{''.join(editorial_sections)}</div>
+      <aside class="bri-analysis-aside"><p class="bri-eyebrow">Editorial evidence receipt</p><p><code>sha256:{_esc(article["editorial"]["source_sha256"])}</code></p><p><b>Evidence states</b><br>Official statistics, official claims, modeled estimates, attributed allegations and documented findings remain distinct.</p><p><b>Assistance disclosure</b><br>{_esc(article["authorship"]["assistance_disclosure"])}.</p></aside>
     </section>
+
+    <section class="bri-section" id="editorial-evidence"><p class="bri-eyebrow">Editorial evidence ledger</p><h2>Every source used by the desk analysis</h2><p>Each record carries its source role, evidence state and interpretation limit. Official claims appear as official claims; allegations remain attributed; modeled values are not presented as observations.</p><div class="bri-evidence-ledger">{''.join(editorial_evidence_rows)}</div></section>
+
+    <section class="bri-section" id="current-window"><p class="bri-eyebrow">Recurring evidence-window update · {_esc(article["generated_at"])}</p><h2>What the latest captured reporting adds</h2><div class="bri-analysis-layout"><div class="bri-analysis-copy">{''.join(claim_sections)}</div><aside class="bri-analysis-aside"><p class="bri-eyebrow">Exact current window</p><p><code>{_esc(article["wire"]["window"]["from"])}</code><br>through<br><code>{_esc(article["wire"]["window"]["to"])}</code></p><p><b>Source structure</b><br>{coverage["single_group_event_count"]} single-group · {coverage["multi_group_event_count"]} multi-group</p><p><b>Cumulative archive</b><br>{coverage["archive_current_event_count"]} current · {coverage["archive_historical_event_count"]} historical.</p></aside></div></section>
 
     <section class="bri-section" id="topic-shape"><p class="bri-eyebrow">Observed topic shape</p><h2>What publishers placed in the current window</h2><p>These are retained wire labels, not a semantic verdict or a measure of social importance.</p><dl class="bri-contract bri-topic-contract">{topic_rows}</dl></section>
 
     <section class="bri-section" id="national-context"><p class="bri-eyebrow">Measured context · national grain only</p><h2>Economic and conflict context without a causal shortcut</h2><p>{_esc(article["national_context"]["boundary"])}</p><div class="bri-context-grid">{wdi_rows}{ucdp_panel}</div></section>
 
-    <section class="bri-section" id="evidence"><p class="bri-eyebrow">Evidence ledger</p><h2>Every current event used by this edition</h2><p>Publisher claims remain attributed. Follow the Palimpsest event route for the bounded dossier or the original publisher link for the source record.</p><div class="bri-evidence-ledger">{''.join(evidence_rows)}</div></section>
+    <section class="bri-section" id="evidence"><p class="bri-eyebrow">Current-wire evidence ledger</p><h2>Every current event used by this edition</h2><p>Publisher claims remain attributed. Follow the Palimpsest event route for the bounded dossier or the original publisher link for the source record.</p><div class="bri-evidence-ledger">{''.join(evidence_rows)}</div></section>
 
     <section class="bri-section bri-limit" id="method"><p class="bri-eyebrow">Method and limits</p><h2>How this recurring article is allowed to say what it says</h2><div class="bri-columns"><div><h3>Method</h3><ol>{method}</ol></div><div><h3>What this cannot establish</h3><ul>{limitations}</ul></div></div><p><b>Disclosure:</b> {_esc(article["disclosure"])}</p><p><b>Content receipt:</b> <code>sha256:{_esc(article["content_sha256"])}</code></p><p><a href="{_esc(article["correction_url"])}">Challenge a source, claim, method, rights decision, or interpretation</a></p></section>
   </article>
@@ -779,7 +1854,76 @@ def _render_analysis_callout(article: Mapping[str, object]) -> str:
   </section>'''
 
 
-def _regional_event_card(event: Mapping[str, object]) -> str:
+def _render_bri_overview_editorial(editorial: Mapping[str, object]) -> str:
+    """Render the stable BRI-level editorial and its complete citation ledger."""
+
+    citation_numbers = {
+        row["evidence_id"]: position
+        for position, row in enumerate(editorial["evidence"], 1)
+    }
+    sections = []
+    for section in editorial["sections"]:
+        paragraphs = "".join(
+            f"<p>{_esc(paragraph)}</p>" for paragraph in section["paragraphs"]
+        )
+        citations = " ".join(
+            f'<a href="#bri-editorial-evidence-{_esc(evidence_id)}">'
+            f'[{citation_numbers[evidence_id]}]</a>'
+            for evidence_id in section["evidence_ids"]
+        )
+        sections.append(
+            '<section class="bri-analysis-section bri-editorial-section">'
+            f'<h3>{_esc(section["heading"])}</h3>{paragraphs}'
+            f'<p class="bri-citations">{citations}</p></section>'
+        )
+    evidence_rows = []
+    for row in editorial["evidence"]:
+        position = citation_numbers[row["evidence_id"]]
+        evidence_rows.append(
+            f'<article id="bri-editorial-evidence-{_esc(row["evidence_id"])}" '
+            'class="bri-evidence-row bri-editorial-evidence-row">'
+            f'<p class="bri-eyebrow">[{position}] {_esc(row["evidence_state"].replace("-", " "))} · '
+            f'<time datetime="{_esc(row["published_at"])}">{_esc(row["published_at"])}</time></p>'
+            f'<h3><a href="{_esc(row["url"])}" target="_blank" rel="noopener">'
+            f'{_esc(row["source_title"])}</a></h3>'
+            f'<p><b>{_esc(row["source_name"])}:</b> {_esc(row["statement"])}</p>'
+            f'<p><b>Interpretation limit:</b> {_esc(row["interpretation_limit"])}</p>'
+            '</article>'
+        )
+    return f'''<section class="bri-section bri-overview-editorial" id="bri-editorial" aria-labelledby="bri-editorial-title">
+    <p class="bri-eyebrow">Palimpsest Evidence Desk editorial · source record as of {_esc(editorial["as_of"])}</p>
+    <h2 id="bri-editorial-title">{_esc(editorial["title"])}</h2>
+    <p>{_esc(editorial["dek"])}</p>
+    <div class="bri-analysis-layout"><div class="bri-analysis-copy">{''.join(sections)}</div><aside class="bri-analysis-aside"><p class="bri-eyebrow">Balance-sheet rule</p><p>Separate trade, investment, lending, construction revenue, project utilization, host-country fiscal cost and local welfare.</p><p><b>Evidence receipt</b><br><code>sha256:{_esc(editorial["source_sha256"])}</code></p><p><a href="/belt-and-road/data/regional-data.json">Download the complete BRI data dump</a></p></aside></div>
+    <details class="bri-editorial-ledger"><summary>Open all {len(evidence_rows)} cited evidence records</summary><div class="bri-evidence-ledger">{''.join(evidence_rows)}</div></details>
+  </section>'''
+
+
+def _translation_markup(translation: Mapping[str, object]) -> str:
+    notes = translation.get("translation_notes_en")
+    notes_markup = f'<p><b>Translation note:</b> {_esc(notes)}</p>' if notes else ""
+    return (
+        '<section class="bri-translation" aria-label="English translation receipt">'
+        '<p class="bri-eyebrow">English translation of captured Chinese metadata</p>'
+        f'<p>{_esc(translation["context_en"])}</p>{notes_markup}'
+        '<aside class="bri-translation-context"><b>Background / why this matters:</b> '
+        f'{_esc(translation["background_en"])} <small>This is Palimpsest context, not '
+        'part of the publisher translation.</small></aside>'
+        '<details><summary>Original Chinese and translation receipt</summary>'
+        f'<div lang="zh"><strong>{_esc(translation["original_title_zh"])}</strong>'
+        f'<p>{_esc(translation["original_context_zh"])}</p></div>'
+        f'<p><a href="{_esc(translation["public_url"])}">Open the English translation desk record</a> · '
+        f'<code>{_esc(translation["translation_id"])}</code> · '
+        f'<code>{_esc(translation["status"])}</code> · '
+        f'{_esc(translation["provider"])} / {_esc(translation["model_id"])}</p></details>'
+        '</section>'
+    )
+
+
+def _regional_event_card(
+    event: Mapping[str, object],
+    english_translation: Mapping[str, object] | None = None,
+) -> str:
     seen_sources: set[tuple[str, str]] = set()
     source_links = []
     for reference in event["evidence_refs"]:
@@ -793,13 +1937,20 @@ def _regional_event_card(event: Mapping[str, object]) -> str:
         )
     source_line = "; ".join(source_links)
     group_count = len(event["evidence_groups"])
+    headline = event["headline"]
+    dek = event["dek"]
+    translation_markup = ""
+    if english_translation is not None:
+        headline = english_translation["title_en"]
+        dek = english_translation["context_en"] or dek
+        translation_markup = _translation_markup(english_translation)
     return (
         '<article class="bri-card bri-news-card" data-bri-regional-event>'
         f'<p class="bri-eyebrow"><time datetime="{_esc(event["published_at"])}">'
         f'{_esc(event["published_at"])}</time> · '
         f'{_esc(event["evidence_strength"].replace("-", " "))}</p>'
-        f'<h3><a href="{_esc(event["url"])}">{_esc(event["headline"])}</a></h3>'
-        f'<p>{_esc(event["dek"])}</p>'
+        f'<h3><a href="{_esc(event["url"])}">{_esc(headline)}</a></h3>'
+        f'<p>{_esc(dek)}</p>{translation_markup}'
         f'<p><b>Attributed sources:</b> {source_line}. '
         f'<b>Independent evidence groups:</b> {group_count}.</p>'
         f'<ul class="bri-chips">{_chips(event["topics"])}</ul>'
@@ -815,10 +1966,19 @@ def _render_regional_news_section(
     introduction: str,
     dedicated_path: str,
     limit: int = 16,
+    captured_index: Mapping[str, object] | None = None,
 ) -> str:
     events = _regional_events(wire, region)
     visible = events[:limit]
-    cards = "".join(_regional_event_card(event) for event in visible)
+    translations = {
+        event["event_id"]: event["english_translation"]
+        for event in (captured_index["events"] if captured_index is not None else [])
+        if event["english_translation"] is not None
+    }
+    cards = "".join(
+        _regional_event_card(event, translations.get(event["event_id"]))
+        for event in visible
+    )
     if not cards:
         cards = (
             '<p class="bri-empty">No event metadata fell inside the current '
@@ -832,6 +1992,77 @@ def _render_regional_news_section(
     <dl class="bri-contract"><div><dt>Current events</dt><dd>{len(events)}</dd></div><div><dt>Visible here</dt><dd>{len(visible)}</dd></div><div><dt>Evidence rule</dt><dd>attributed reports, not automatic findings</dd></div></dl>
     <div class="bri-grid">{cards}</div>
     <p class="bri-actions"><a href="{_esc(dedicated_path)}">Open the complete regional dossier</a><a href="{_esc(_REGIONAL_ANALYSIS[region]["canonical_path"])}">Read the current analysis</a><a href="/news/">Open the complete live wire</a></p>
+  </section>'''
+
+
+def _regional_data_href(region: str, filename: str) -> str:
+    prefix = "/belt-and-road/data" if region == "bri" else f"/belt-and-road/{region}/data"
+    return f"{prefix}/{filename}"
+
+
+def _captured_archive_card(event: Mapping[str, object]) -> str:
+    translation = event.get("english_translation")
+    display_headline = translation["title_en"] if translation else event["headline"]
+    headline = _esc(display_headline)
+    if event["event_page_available"]:
+        headline = f'<a href="/news/wire/{_esc(event["event_id"])}/">{headline}</a>'
+    source_names = "; ".join(_esc(name) for name in event["source_names"])
+    status = "current wire" if event["current_in_wire"] else "historical capture"
+    display_dek = (
+        translation["context_en"]
+        if translation is not None and translation["context_en"]
+        else event["dek"]
+    )
+    excerpt = f'<p>{_esc(display_dek)}</p>' if display_dek is not None else ""
+    translation_markup = _translation_markup(translation) if translation else ""
+    publisher_links = ""
+    if event["publisher_links"]:
+        links = "; ".join(
+            f'<a href="{_esc(link["url"])}" target="_blank" rel="noopener">'
+            f'{_esc(link["title"])}</a>'
+            for link in event["publisher_links"]
+        )
+        publisher_links = f"<p><b>Publisher record:</b> {links}.</p>"
+    return (
+        '<article class="bri-card bri-captured-card" data-bri-captured-event>'
+        f'<p class="bri-eyebrow"><time datetime="{_esc(event["published_at"])}">'
+        f'{_esc(event["published_at"])}</time> · {_esc(status)}</p>'
+        f"<h3>{headline}</h3>{excerpt}{translation_markup}"
+        f'<p><b>Attributed sources:</b> {source_names}. '
+        f'<b>Evidence label:</b> {_esc(event["evidence_strength"].replace("-", " "))}. '
+        f'<b>Retained versions:</b> {_esc(event["version_count"])}.</p>'
+        f"{publisher_links}"
+        f'<p><small>First captured <code>{_esc(event["first_recorded_at"])}</code>; '
+        f'last retained <code>{_esc(event["last_recorded_at"])}</code>. '
+        'Bodies are not republished.</small></p>'
+        "</article>"
+    )
+
+
+def _render_captured_archive_section(
+    index: Mapping[str, object],
+    *,
+    title: str,
+    introduction: str,
+) -> str:
+    counts = index["counts"]
+    coverage = index["coverage"]
+    cards = "".join(_captured_archive_card(event) for event in index["events"])
+    if not cards:
+        cards = (
+            '<p class="bri-empty">The retained capture ledger has no matching '
+            "event metadata for this lane. That is a coverage gap, not evidence "
+            "that nothing happened.</p>"
+        )
+    region = index["region"]
+    return f'''<section class="bri-section bri-captured-archive" id="{_esc(region)}-captured-archive" aria-labelledby="{_esc(region)}-captured-title">
+    <p class="bri-eyebrow">Complete retained capture archive · {_esc(index["generated_at"])}</p>
+    <h2 id="{_esc(region)}-captured-title">{_esc(title)}</h2>
+    <p>{_esc(introduction)} This archive is cumulative: a record remains here after it leaves the seven-day current wire. The same record can appear in more than one regional lane when its metadata genuinely overlaps.</p>
+    <dl class="bri-contract"><div><dt>Unique captured events</dt><dd>{counts["unique_events"]}</dd></div><div><dt>Retained event versions</dt><dd>{counts["event_versions"]}</dd></div><div><dt>Current / historical</dt><dd>{counts["current_events"]} / {counts["historical_events"]}</dd></div><div><dt>Named sources</dt><dd>{counts["sources"]}</dd></div><div><dt>Published range</dt><dd><code>{_esc(coverage["earliest_published_at"] or "unavailable")}</code><br>to <code>{_esc(coverage["latest_published_at"] or "unavailable")}</code></dd></div></dl>
+    <p class="bri-actions"><a href="{_esc(_regional_data_href(region, "captured-index.json"))}">Complete JSON index</a><a href="{_esc(_regional_data_href(region, "captured-index.jsonl"))}">JSONL dump</a><a href="{_esc(_regional_data_href(region, "captured-index.csv"))}">CSV dump</a><a href="{_esc(_regional_data_href(region, "regional-data.json"))}">Full regional data dump</a></p>
+    <div class="bri-grid bri-captured-grid">{cards}</div>
+    <p class="bri-limit"><b>Boundary:</b> every matching event retained by Palimpsest is listed, but this is not every article ever published on the internet. Publisher bodies, restricted records, person-level data and tactical detail are excluded; listings remain attributed reports rather than findings.</p>
   </section>'''
 
 
@@ -975,10 +2206,17 @@ def _render_gwadar_html(
     artifact: dict,
     wire: Mapping[str, object] | None = None,
     analysis: Mapping[str, object] | None = None,
+    captured_index: Mapping[str, object] | None = None,
 ) -> bytes:
     """Render the durable Gwadar route from the public BRI artifact only."""
 
     wire = _load_newswire() if wire is None else wire
+    if captured_index is None:
+        captured_path = _REGIONAL_OUTPUT_ROOTS["gwadar"] / "captured-index.json"
+        if captured_path.is_file():
+            captured_index = newswire_model.strict_json_loads(
+                captured_path.read_bytes(), label=str(captured_path)
+            )
 
     region = _render_region_section(
         artifact,
@@ -1003,8 +2241,21 @@ def _render_gwadar_html(
         ),
         dedicated_path="/belt-and-road/gwadar/",
         limit=24,
+        captured_index=captured_index,
     )
     analysis_callout = _render_analysis_callout(analysis) if analysis else ""
+    captured_archive = (
+        _render_captured_archive_section(
+            captured_index,
+            title="Every retained CPEC and Gwadar publisher record",
+            introduction=(
+                "The archive combines the complete captured history for dedicated "
+                "CPEC/Gwadar feeds with bounded matches from broader publishers."
+            ),
+        )
+        if captured_index is not None
+        else ""
+    )
     document = f"""<!doctype html>
 <html lang="en" data-tk-theme="light">
 <head>
@@ -1034,6 +2285,8 @@ def _render_gwadar_html(
 
   {current_news}
 
+  {captured_archive}
+
   {region}
 </main>
 <footer class="bri-footer"><p><strong>Palimpsest Gwadar dossier</strong> · Project status, finance, logistics, employment, land, livelihood and environment remain separate evidence fields.</p><p><a href="/belt-and-road/">BRI observatory</a> · <a href="/readings/belt-and-road-observatory-latest.json">JSON</a> · <a href="/challenge.html">Challenge a source or method</a></p></footer>
@@ -1048,6 +2301,7 @@ def _render_regional_dossier_html(
     artifact: dict,
     wire: Mapping[str, object],
     analysis: Mapping[str, object],
+    captured_index: Mapping[str, object],
     *,
     region: str,
     canonical_path: str,
@@ -1073,8 +2327,17 @@ def _render_regional_dossier_html(
         introduction=introduction,
         dedicated_path=canonical_path,
         limit=48,
+        captured_index=captured_index,
     )
     analysis_callout = _render_analysis_callout(analysis)
+    captured_archive = _render_captured_archive_section(
+        captured_index,
+        title=f"Every retained {label} publisher record",
+        introduction=(
+            "The historical ledger keeps admitted publisher metadata visible after "
+            "it leaves the current rolling window."
+        ),
+    )
     document = f'''<!doctype html>
 <html lang="en" data-tk-theme="light">
 <head>
@@ -1103,6 +2366,8 @@ def _render_regional_dossier_html(
   {analysis_callout}
 
   {current_news}
+
+  {captured_archive}
 
   {readiness}
 </main>
@@ -1144,7 +2409,10 @@ def _render_observation_datasets(artifact: dict) -> str:
 
 
 def _render_html(
-    artifact: dict, wire: Mapping[str, object] | None = None
+    artifact: dict,
+    wire: Mapping[str, object] | None = None,
+    captured_index: Mapping[str, object] | None = None,
+    bri_editorial: Mapping[str, object] | None = None,
 ) -> bytes:
     wire = _load_newswire() if wire is None else wire
     report = artifact["coverage_report"]
@@ -1246,6 +2514,7 @@ def _render_html(
                     "ledger below."
                 ),
                 dedicated_path="/belt-and-road/gwadar/",
+                captured_index=captured_index,
             ),
             _render_regional_news_section(
                 wire,
@@ -1256,6 +2525,7 @@ def _render_html(
                     "reports remain visibly distinct."
                 ),
                 dedicated_path="/belt-and-road/balochistan/",
+                captured_index=captured_index,
             ),
             _render_regional_news_section(
                 wire,
@@ -1266,8 +2536,26 @@ def _render_html(
                     "and regional Myanmar reporting."
                 ),
                 dedicated_path="/belt-and-road/myanmar/",
+                captured_index=captured_index,
             ),
         )
+    )
+    captured_archive = (
+        _render_captured_archive_section(
+            captured_index,
+            title="Every retained BRI, CPEC, Balochistan and Myanmar publisher record",
+            introduction=(
+                "This combined index exposes the complete retained regional capture "
+                "universe, including overlap across the three dedicated dossiers."
+            ),
+        )
+        if captured_index is not None
+        else ""
+    )
+    overview_editorial = (
+        _render_bri_overview_editorial(bri_editorial)
+        if bri_editorial is not None
+        else ""
     )
     schema_org_document = {
         "@context": "https://schema.org",
@@ -1364,6 +2652,10 @@ def _render_html(
 
   {regional_news}
 
+  {captured_archive}
+
+  {overview_editorial}
+
   <section class="bri-section bri-dark" id="balochistan" aria-labelledby="balochistan-title">
     <p class="bri-eyebrow">Balochistan: plural record, never one label</p><h2 id="balochistan-title">The umbrella term is a research concept, not a database actor.</h2>
     <p>{_esc(artifact["movement_taxonomy"]["identity_rule"])}</p>
@@ -1426,6 +2718,11 @@ def build(
     wdi_publication_receipt_path: Path | None | object = _AUTO_WDI_PUBLICATION_RECEIPT,
     wdi_archived_size_receipt_path: Path | None = None,
     newswire_path: Path = DEFAULT_NEWSWIRE,
+    newswire_versions_path: Path = DEFAULT_NEWSWIRE_VERSIONS,
+    news_source_registry_path: Path = DEFAULT_NEWS_SOURCE_REGISTRY,
+    editorial_evidence_path: Path = DEFAULT_EDITORIAL_EVIDENCE,
+    chinese_translations_path: Path = DEFAULT_CHINESE_TRANSLATIONS,
+    chinese_translation_schema_path: Path = DEFAULT_CHINESE_TRANSLATION_SCHEMA,
 ) -> tuple[bytes, bytes]:
     registry = load_registry(registry_path)
     observation_datasets = None
@@ -1465,7 +2762,37 @@ def build(
         observation_datasets=observation_datasets,
     )
     wire = _load_newswire(newswire_path)
-    return _json_bytes(artifact), _render_html(artifact, wire)
+    versions, versions_sha256 = _load_newswire_versions(newswire_versions_path)
+    source_specs, source_registry_sha256 = _source_registry_projection(
+        news_source_registry_path
+    )
+    translations = chinese_translation_pages.load_translations(
+        chinese_translations_path,
+        schema_path=chinese_translation_schema_path,
+    )
+    captured_index = _build_captured_index(
+        wire,
+        versions,
+        versions_sha256=versions_sha256,
+        source_specs=source_specs,
+        source_registry_sha256=source_registry_sha256,
+        region="bri",
+        translations=translations,
+    )
+    editorial_evidence, editorial_evidence_sha256 = _load_editorial_evidence(
+        editorial_evidence_path
+    )
+    bri_editorial = _editorial_projection(
+        editorial_evidence,
+        editorial_evidence_sha256=editorial_evidence_sha256,
+        region="bri",
+    )
+    return _json_bytes(artifact), _render_html(
+        artifact,
+        wire,
+        captured_index,
+        bri_editorial,
+    )
 
 
 def main() -> int:
@@ -1513,6 +2840,31 @@ def main() -> int:
         default=DEFAULT_MYANMAR_ANALYSIS_JSON,
     )
     parser.add_argument("--newswire", type=Path, default=DEFAULT_NEWSWIRE)
+    parser.add_argument(
+        "--newswire-versions",
+        type=Path,
+        default=DEFAULT_NEWSWIRE_VERSIONS,
+    )
+    parser.add_argument(
+        "--news-source-registry",
+        type=Path,
+        default=DEFAULT_NEWS_SOURCE_REGISTRY,
+    )
+    parser.add_argument(
+        "--editorial-evidence",
+        type=Path,
+        default=DEFAULT_EDITORIAL_EVIDENCE,
+    )
+    parser.add_argument(
+        "--chinese-translations",
+        type=Path,
+        default=DEFAULT_CHINESE_TRANSLATIONS,
+    )
+    parser.add_argument(
+        "--chinese-translation-schema",
+        type=Path,
+        default=DEFAULT_CHINESE_TRANSLATION_SCHEMA,
+    )
     parser.add_argument(
         "--ucdp-aggregate", type=Path, default=DEFAULT_UCDP_AGGREGATE
     )
@@ -1565,9 +2917,37 @@ def main() -> int:
         wdi_publication_receipt_path=args.wdi_publication_receipt,
         wdi_archived_size_receipt_path=args.wdi_archived_size_receipt,
         newswire_path=args.newswire,
+        newswire_versions_path=args.newswire_versions,
+        news_source_registry_path=args.news_source_registry,
+        editorial_evidence_path=args.editorial_evidence,
+        chinese_translations_path=args.chinese_translations,
+        chinese_translation_schema_path=args.chinese_translation_schema,
     )
     artifact = json.loads(json_payload)
     wire = _load_newswire(args.newswire)
+    versions, versions_sha256 = _load_newswire_versions(args.newswire_versions)
+    source_specs, source_registry_sha256 = _source_registry_projection(
+        args.news_source_registry
+    )
+    editorial_evidence, editorial_evidence_sha256 = _load_editorial_evidence(
+        args.editorial_evidence
+    )
+    translations = chinese_translation_pages.load_translations(
+        args.chinese_translations,
+        schema_path=args.chinese_translation_schema,
+    )
+    captured_indices = {
+        region: _build_captured_index(
+            wire,
+            versions,
+            versions_sha256=versions_sha256,
+            source_specs=source_specs,
+            source_registry_sha256=source_registry_sha256,
+            region=region,
+            translations=translations,
+        )
+        for region in ("bri", "gwadar", "balochistan", "myanmar")
+    }
     wdi_bundle, _ = load_wdi_bundle(
         args.wdi_bundle,
         series_registry_path=args.wdi_series_registry,
@@ -1580,14 +2960,23 @@ def main() -> int:
             region=region,
             wdi_bundle=wdi_bundle,
             ucdp_bundle=ucdp_bundle,
+            captured_index=captured_indices[region],
+            editorial_evidence=editorial_evidence,
+            editorial_evidence_sha256=editorial_evidence_sha256,
         )
         for region in ("gwadar", "balochistan", "myanmar")
     }
-    gwadar_payload = _render_gwadar_html(artifact, wire, analyses["gwadar"])
+    gwadar_payload = _render_gwadar_html(
+        artifact,
+        wire,
+        analyses["gwadar"],
+        captured_indices["gwadar"],
+    )
     balochistan_payload = _render_regional_dossier_html(
         artifact,
         wire,
         analyses["balochistan"],
+        captured_indices["balochistan"],
         region="balochistan",
         canonical_path="/belt-and-road/balochistan/",
         label="Balochistan",
@@ -1603,6 +2992,7 @@ def main() -> int:
         artifact,
         wire,
         analyses["myanmar"],
+        captured_indices["myanmar"],
         region="myanmar",
         canonical_path="/belt-and-road/myanmar/",
         label="Myanmar",
@@ -1619,7 +3009,7 @@ def main() -> int:
             "mandalay_muse_rail",
         ),
     )
-    outputs = (
+    outputs = [
         (args.json_output, json_payload),
         (args.html_output, html_payload),
         (args.gwadar_html_output, gwadar_payload),
@@ -1649,7 +3039,26 @@ def main() -> int:
             args.myanmar_analysis_json_output,
             _json_bytes(analyses["myanmar"]),
         ),
-    )
+    ]
+    for region, captured_index in captured_indices.items():
+        output_root = _REGIONAL_OUTPUT_ROOTS[region]
+        regional_data = _build_regional_data_dump(
+            artifact,
+            captured_index,
+            region=region,
+            wdi_bundle=wdi_bundle,
+            ucdp_bundle=ucdp_bundle,
+            editorial_evidence=editorial_evidence,
+            editorial_evidence_sha256=editorial_evidence_sha256,
+        )
+        outputs.extend(
+            (
+                (output_root / "captured-index.json", _json_bytes(captured_index)),
+                (output_root / "captured-index.jsonl", _jsonl_bytes(captured_index)),
+                (output_root / "captured-index.csv", _csv_bytes(captured_index)),
+                (output_root / "regional-data.json", _json_bytes(regional_data)),
+            )
+        )
     if args.check:
         drift = [str(path.relative_to(ROOT)) for path, payload in outputs if not path.is_file() or path.read_bytes() != payload]
         if drift:

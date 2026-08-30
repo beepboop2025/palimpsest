@@ -3401,6 +3401,7 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
         if peer_items
         else ""
     )
+    peer_context_line = f"  {peer_context}\n" if peer_context else ""
     interconnection = (
         analysis.get("interconnection")
         if isinstance(analysis.get("interconnection"), dict)
@@ -3469,8 +3470,7 @@ def _event_analysis_html(analysis: Mapping[str, Any]) -> str:
   {_event_brief_html(analysis)}
   <h3 class="nw-assessment__subhead">Collector findings used</h3>
   {collector_context}
-  {peer_context}
-  {interconnection_html}
+{peer_context_line}  {interconnection_html}
   <p class="nw-assessment__receipt">Analysis <code>{_h(analysis["analysis_id"])}</code> · <a href="analysis.json">structured assessment</a> · <a href="analysis/revisions/{_h(analysis["analysis_id"])}.json">immutable revision</a></p>
 </section>"""
 
@@ -4030,7 +4030,7 @@ def render_china_article_stream(
     <div class="cs-hero__stats" aria-label="Current stream coverage"><span><strong>{coverage["china_entries"]}</strong> China entries</span><span><strong>{coverage["successful_sources"]}/{coverage["registered_sources"]}</strong> feeds answered</span><span><strong>{coverage["excluded_global_feed_items"]}</strong> off-remit items excluded</span><span><strong>{_h(_human_time(stream["generated_at"]))}</strong> rebuilt</span></div>
   </header>
   <div class="cs-shell">
-    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/rumour/">Public vantages</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
+    <nav class="cs-subnav" aria-label="China source index formats"><a href="/news/china/english/">English translations</a><a href="/news/china/situation/">Situation synthesis</a><a href="/news/china/analysis/">Palimpsest censorship analysis</a><a href="/news/">Evidence desk</a><a href="/news/wire/">Publisher source records</a><a href="/news/china/whispers/">Whispers · unverified context</a><a href="/news/china/rumour/">Public vantages</a><a href="/news/china/feed.xml">RSS</a><a href="/news/china/feed.json">JSON Feed</a><a href="/readings/china-article-stream-latest.json">Structured index</a></nav>
     {_china_stream_telegram_panel(stream)}
     <section class="cs-controls" aria-label="Filter this page">
       <label><span>Search this page</span><input id="china-stream-search" type="search" placeholder="publisher, topic, headline…" autocomplete="off"></label>

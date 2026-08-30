@@ -2,9 +2,9 @@
   "profile": "data-package",
   "name": "palimpsest-evidence-atlas",
   "title": "Palimpsest Evidence Atlas",
-  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, and model-evaluation datasets.",
+  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, complete retained regional news archives, Chinese-to-English captured-metadata translations, and model-evaluation datasets.",
   "homepage": "https://palimpsest.info/data.html",
-  "created": "2026-08-29T16:48:28.204916Z",
+  "created": "2026-08-30T08:06:05Z",
   "contributors": [
     {
       "title": "Palimpsest",
@@ -25,21 +25,168 @@
       "path": "belt-and-road/gwadar/analysis/article.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 18176
+      "bytes": 35384
     },
     {
       "name": "balochistan-regional-analysis-latest",
       "path": "belt-and-road/balochistan/analysis/article.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 14020
+      "bytes": 37606
     },
     {
       "name": "myanmar-regional-analysis-latest",
       "path": "belt-and-road/myanmar/analysis/article.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 11477
+      "bytes": 52911
+    },
+    {
+      "name": "bri-regional-archive-latest",
+      "path": "belt-and-road/data/regional-data.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 8780742
+    },
+    {
+      "name": "bri-captured-index-json",
+      "path": "belt-and-road/data/captured-index.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 83638
+    },
+    {
+      "name": "bri-captured-index-jsonl",
+      "path": "belt-and-road/data/captured-index.jsonl",
+      "format": "jsonl",
+      "mediatype": "application/x-ndjson",
+      "bytes": 62368
+    },
+    {
+      "name": "bri-captured-index-csv",
+      "path": "belt-and-road/data/captured-index.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "bytes": 19528
+    },
+    {
+      "name": "bri-regional-editorial-evidence-json",
+      "path": "config/regional_editorials.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 46561
+    },
+    {
+      "name": "gwadar-regional-archive-latest",
+      "path": "belt-and-road/gwadar/data/regional-data.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 2896726
+    },
+    {
+      "name": "gwadar-captured-index-json",
+      "path": "belt-and-road/gwadar/data/captured-index.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 19205
+    },
+    {
+      "name": "gwadar-captured-index-jsonl",
+      "path": "belt-and-road/gwadar/data/captured-index.jsonl",
+      "format": "jsonl",
+      "mediatype": "application/x-ndjson",
+      "bytes": 13046
+    },
+    {
+      "name": "gwadar-captured-index-csv",
+      "path": "belt-and-road/gwadar/data/captured-index.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "bytes": 3733
+    },
+    {
+      "name": "balochistan-regional-archive-latest",
+      "path": "belt-and-road/balochistan/data/regional-data.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 2880392
+    },
+    {
+      "name": "balochistan-captured-index-json",
+      "path": "belt-and-road/balochistan/data/captured-index.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 18164
+    },
+    {
+      "name": "balochistan-captured-index-jsonl",
+      "path": "belt-and-road/balochistan/data/captured-index.jsonl",
+      "format": "jsonl",
+      "mediatype": "application/x-ndjson",
+      "bytes": 11259
+    },
+    {
+      "name": "balochistan-captured-index-csv",
+      "path": "belt-and-road/balochistan/data/captured-index.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "bytes": 3944
+    },
+    {
+      "name": "myanmar-regional-archive-latest",
+      "path": "belt-and-road/myanmar/data/regional-data.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 3146448
+    },
+    {
+      "name": "myanmar-captured-index-json",
+      "path": "belt-and-road/myanmar/data/captured-index.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 44300
+    },
+    {
+      "name": "myanmar-captured-index-jsonl",
+      "path": "belt-and-road/myanmar/data/captured-index.jsonl",
+      "format": "jsonl",
+      "mediatype": "application/x-ndjson",
+      "bytes": 32610
+    },
+    {
+      "name": "myanmar-captured-index-csv",
+      "path": "belt-and-road/myanmar/data/captured-index.csv",
+      "format": "csv",
+      "mediatype": "text/csv",
+      "bytes": 9914
+    },
+    {
+      "name": "chinese-news-english-translations-latest",
+      "path": "readings/chinese-translations-latest.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 7240738
+    },
+    {
+      "name": "chinese-translations-json-feed",
+      "path": "news/china/english/feed.json",
+      "format": "jsonfeed",
+      "mediatype": "application/feed+json",
+      "bytes": 304724
+    },
+    {
+      "name": "chinese-translations-rss",
+      "path": "news/china/english/feed.xml",
+      "format": "rss",
+      "mediatype": "application/rss+xml",
+      "bytes": 177226
+    },
+    {
+      "name": "chinese-translations-generated-manifest",
+      "path": "news/china/english/generated-manifest.json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 5512
     },
     {
       "name": "bri-economic-observations-latest",
@@ -445,28 +592,28 @@
       "path": "readings/event-flags-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 6344
+      "bytes": 5861
     },
     {
       "name": "event-flags-history",
       "path": "readings/event-flags-history.jsonl",
       "format": "jsonl",
       "mediatype": "application/x-ndjson",
-      "bytes": 21940
+      "bytes": 22450
     },
     {
       "name": "board-alarm-latest",
       "path": "readings/board-alarm-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 10258
+      "bytes": 8275
     },
     {
       "name": "board-alarm-history",
       "path": "readings/board-alarm-history.jsonl",
       "format": "jsonl",
       "mediatype": "application/x-ndjson",
-      "bytes": 5568
+      "bytes": 5722
     },
     {
       "name": "coverage-guard-latest",
@@ -501,14 +648,14 @@
       "path": "readings/forecast-ledger-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 13968
+      "bytes": 13969
     },
     {
       "name": "forecast-ledger-history",
       "path": "readings/forecast-ledger-history.jsonl",
       "format": "jsonl",
       "mediatype": "application/x-ndjson",
-      "bytes": 110948
+      "bytes": 111863
     },
     {
       "name": "erasure-observatory-latest",
@@ -529,21 +676,21 @@
       "path": "readings/newsroom-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 86248
+      "bytes": 86128
     },
     {
       "name": "newswire-latest",
       "path": "readings/newswire-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 2256450
+      "bytes": 2487027
     },
     {
       "name": "newswire-history",
       "path": "readings/newswire-versions.jsonl",
       "format": "jsonl",
       "mediatype": "application/x-ndjson",
-      "bytes": 1290997
+      "bytes": 1542415
     },
     {
       "name": "social-observations-latest",
@@ -585,14 +732,14 @@
       "path": "readings/china-censorship-analysis-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 23766
+      "bytes": 24248
     },
     {
       "name": "investigations-latest",
       "path": "readings/investigations-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 34376
+      "bytes": 34382
     },
     {
       "name": "primary-documents-latest",
@@ -606,7 +753,7 @@
       "path": "readings/corroboration-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 175179
+      "bytes": 183719
     },
     {
       "name": "network-rounds-latest",
@@ -627,7 +774,7 @@
       "path": "readings/editorial-readiness-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 91838
+      "bytes": 95771
     },
     {
       "name": "generative-firewall-latest",
@@ -704,28 +851,28 @@
       "path": "readings/weekly-situation-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 28133
+      "bytes": 28119
     },
     {
       "name": "weekly-situation-history",
       "path": "readings/weekly-situation-history.jsonl",
       "format": "jsonl",
       "mediatype": "application/x-ndjson",
-      "bytes": 10278
+      "bytes": 10668
     },
     {
       "name": "collector-health-latest",
       "path": "readings/collector-health-latest.json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 40009
+      "bytes": 41935
     },
     {
       "name": "collector-health-history",
       "path": "readings/collector-health-history.jsonl",
       "format": "jsonl",
       "mediatype": "application/x-ndjson",
-      "bytes": 7201
+      "bytes": 7480
     },
     {
       "name": "gazetteer-phylogeny-latest",

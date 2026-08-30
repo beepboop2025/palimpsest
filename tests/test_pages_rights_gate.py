@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import csv
 import gzip
 import hashlib
 import io
@@ -17,6 +18,7 @@ from urllib.parse import quote
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
 
 from scripts import stage_pages_rights
 
@@ -54,6 +56,21 @@ ENDPOINT_SCHEMA = json.loads(
 )
 FRESHNESS_ATTESTATION_SCHEMA = json.loads(
     (ROOT / "protocol" / "publication-freshness-attestation-v1.schema.json").read_text(
+        encoding="utf-8"
+    )
+)
+REGIONAL_CAPTURED_INDEX_SCHEMA = json.loads(
+    (ROOT / "protocol" / "regional-captured-index-v1.schema.json").read_text(
+        encoding="utf-8"
+    )
+)
+REGIONAL_DATA_DUMP_SCHEMA = json.loads(
+    (ROOT / "protocol" / "regional-data-dump-v1.schema.json").read_text(
+        encoding="utf-8"
+    )
+)
+REGIONAL_EDITORIAL_SCHEMA = json.loads(
+    (ROOT / "protocol" / "regional-editorial-evidence-v1.schema.json").read_text(
         encoding="utf-8"
     )
 )
@@ -146,6 +163,17 @@ def _compact_canonical_sha256(document: dict) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _embedded_content_sha256(document: dict) -> str:
+    payload = {key: value for key, value in document.items() if key != "content_sha256"}
+    encoded = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _write_pre_quarantine_sources(destination: Path) -> None:
     readings = destination / "readings"
     readings.mkdir(parents=True, exist_ok=True)
@@ -176,6 +204,178 @@ def _freshness_attestation_validator() -> Draft202012Validator:
 def _receipt_validator() -> Draft202012Validator:
     Draft202012Validator.check_schema(RECEIPT_SCHEMA)
     return Draft202012Validator(RECEIPT_SCHEMA, format_checker=FormatChecker())
+
+
+def test_regional_archives_validate_and_keep_article_bodies_outside_publication() -> (
+    None
+):
+    for schema in (
+        REGIONAL_CAPTURED_INDEX_SCHEMA,
+        REGIONAL_DATA_DUMP_SCHEMA,
+        REGIONAL_EDITORIAL_SCHEMA,
+    ):
+        Draft202012Validator.check_schema(schema)
+
+    registry = Registry().with_resource(
+        REGIONAL_CAPTURED_INDEX_SCHEMA["$id"],
+        Resource.from_contents(REGIONAL_CAPTURED_INDEX_SCHEMA),
+    )
+    captured_validator = Draft202012Validator(
+        REGIONAL_CAPTURED_INDEX_SCHEMA,
+        format_checker=FormatChecker(),
+    )
+    dump_validator = Draft202012Validator(
+        REGIONAL_DATA_DUMP_SCHEMA,
+        registry=registry,
+        format_checker=FormatChecker(),
+    )
+    assert (
+        REGIONAL_CAPTURED_INDEX_SCHEMA["$defs"]["source"]["properties"]["feed_url"][
+            "format"
+        ]
+        == "iri"
+    )
+    assert (
+        REGIONAL_CAPTURED_INDEX_SCHEMA["$defs"]["publisher_link"]["properties"][
+            "url"
+        ]["format"]
+        == "iri"
+    )
+    Draft202012Validator(
+        {"type": "string", "format": "iri"},
+        format_checker=FormatChecker(),
+    ).validate("https://www.dw.com/zh/国际新闻/a-1")
+
+    for region in ("", "gwadar", "balochistan", "myanmar"):
+        directory = ROOT / "belt-and-road" / region / "data"
+        captured = json.loads(
+            (directory / "captured-index.json").read_text(encoding="utf-8")
+        )
+        regional = json.loads(
+            (directory / "regional-data.json").read_text(encoding="utf-8")
+        )
+        captured_validator.validate(captured)
+        dump_validator.validate(regional)
+
+        assert regional["captured_news"] == captured
+        assert captured["content_sha256"] == _embedded_content_sha256(captured)
+        assert regional["content_sha256"] == _embedded_content_sha256(regional)
+        assert captured["counts"]["unique_events"] == len(captured["events"])
+        assert captured["counts"]["event_versions"] == sum(
+            event["version_count"] for event in captured["events"]
+        )
+        assert captured["counts"]["current_events"] + captured["counts"][
+            "historical_events"
+        ] == captured["counts"]["unique_events"]
+        assert captured["counts"]["event_pages_available"] <= captured["counts"][
+            "unique_events"
+        ]
+        assert captured["counts"]["events_with_english_translation"] == sum(
+            event["english_translation"] is not None for event in captured["events"]
+        )
+        assert captured["counts"]["sources"] == len(captured["sources"])
+        source_counts = {
+            source["source_id"]: source["captured_event_count"]
+            for source in captured["sources"]
+        }
+        assert source_counts == {
+            source_id: sum(
+                source_id in event["source_ids"] for event in captured["events"]
+            )
+            for source_id in source_counts
+        }
+        for event in captured["events"]:
+            assert len(event["version_ids"]) == event["version_count"]
+            assert len(event["source_ids"]) == len(event["source_names"])
+            assert set(event["source_ids"]) <= set(source_counts)
+            assert captured["region"] in event["region_tags"]
+        translation_input = captured["inputs"]["chinese_translation_sidecar"]
+        assert translation_input is not None
+        assert translation_input["newswire_ledger_sha256"] == captured["inputs"][
+            "newswire_versions_sha256"
+        ]
+        assert translation_input["newswire_ledger_rows"] == captured[
+            "capture_universe"
+        ]["event_versions"]
+        assert translation_input["missing_records"] == 0
+        assert captured["rights"] == {
+            "publication_mode": "metadata-link-only",
+            "article_bodies_included": False,
+            "publisher_copyright_retained": True,
+            "source_policy": "config/news_sources.json",
+        }
+        assert regional["publication_boundary"]["article_body_fetching"] == (
+            "prohibited"
+        )
+        assert regional["publication_boundary"]["person_or_tactical_records"] == (
+            "excluded"
+        )
+        assert captured["classification"]["csv_formula_neutralization"] == (
+            "CSV text cells whose first non-whitespace character is =, +, -, or @ "
+            "receive a leading apostrophe; JSON and JSONL preserve the exact "
+            "captured text."
+        )
+
+        jsonl_rows = [
+            json.loads(line)
+            for line in (directory / "captured-index.jsonl")
+            .read_text(encoding="utf-8")
+            .splitlines()
+            if line.strip()
+        ]
+        with (directory / "captured-index.csv").open(
+            encoding="utf-8", newline=""
+        ) as handle:
+            csv_rows = list(csv.DictReader(handle))
+        assert len(jsonl_rows) == len(csv_rows) == captured["counts"]["unique_events"]
+        assert {row["event_id"] for row in jsonl_rows} == {
+            event["event_id"] for event in captured["events"]
+        }
+        assert {row["event_id"] for row in csv_rows} == {
+            event["event_id"] for event in captured["events"]
+        }
+        for jsonl_row, event in zip(jsonl_rows, captured["events"], strict=True):
+            assert jsonl_row == {
+                "schema_version": captured["schema_version"],
+                "region": captured["region"],
+                **event,
+            }
+        assert all(
+            not value.lstrip().startswith(("=", "+", "-", "@"))
+            for row in csv_rows
+            for value in row.values()
+            if value
+        )
+        assert all(
+            row["schema_version"] == captured["schema_version"] for row in jsonl_rows
+        )
+        assert all(row["region"] == captured["region"] for row in jsonl_rows)
+        assert all(
+            source["rights_policy"] == "metadata-link-only"
+            for source in captured["sources"]
+        )
+
+    editorial = json.loads(
+        (ROOT / "config" / "regional_editorials.json").read_text(encoding="utf-8")
+    )
+    Draft202012Validator(
+        REGIONAL_EDITORIAL_SCHEMA,
+        format_checker=FormatChecker(),
+    ).validate(editorial)
+    evidence_ids = {row["evidence_id"] for row in editorial["evidence"]}
+    assert len(evidence_ids) == len(editorial["evidence"])
+    for region, article in editorial["editorials"].items():
+        for section in article["sections"]:
+            assert set(section["evidence_ids"]) <= evidence_ids
+            assert all(
+                region
+                in next(
+                    row["regions"]
+                    for row in editorial["evidence"]
+                    if row["evidence_id"] == evidence_id
+                )
+                for evidence_id in section["evidence_ids"]
+            )
 
 
 def _decision(status: dict, source_id: str) -> dict:
@@ -847,9 +1047,7 @@ def test_four_nested_encoding_layers_still_fail_closed(tmp_path: Path):
     path.write_text(payload, encoding="utf-8")
 
     with pytest.raises(stage_pages_rights.PagesRightsError, match="decode depth"):
-        stage_pages_rights.find_denied_value_paths(
-            tmp_path, evaluated_at=RIGHTS_CLOCK
-        )
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
 
 def test_encoded_token_and_expansion_caps_fail_closed(tmp_path: Path, monkeypatch):

@@ -480,6 +480,27 @@ def test_broad_chinese_language_feeds_still_require_item_level_china_relevance()
     assert china["declared_economic_ids"]
 
 
+@pytest.mark.parametrize(
+    "title",
+    (
+        "联合国警告缅甸人权状况恶化",
+        "中缅经济走廊皎漂项目仍在评估",
+        "商务部介绍共建“一带一路”最新进展",
+        "中巴经济走廊与瓜达尔港项目更新",
+        "俾路支斯坦民众举行和平集会",
+    ),
+)
+def test_broad_chinese_feeds_admit_reviewed_regional_terms(title: str):
+    source = _source("dw-chinese")
+    item = parse_feed(
+        source,
+        _rss(source, title=title, excerpt="相关报道的有界元数据摘要。"),
+        now=NOW,
+    ).items[0]
+
+    assert nw.is_china_relevant_item(item)
+
+
 def test_article_body_elements_are_not_used_as_the_excerpt():
     source = _source("china-digital-times")
     raw = (

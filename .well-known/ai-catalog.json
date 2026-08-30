@@ -221,7 +221,9 @@
         "discover national economic context without inferring BRI causation",
         "inspect reviewed annual conflict context without tactical or actor joins",
         "read the report-only China Pakistan Myanmar deep research package",
-        "read recurring Gwadar, Balochistan and Myanmar evidence analysis with structured article JSON"
+        "read recurring Gwadar, Balochistan and Myanmar evidence analysis with structured article JSON",
+        "download the complete retained regional capture projection as JSON, JSONL or CSV",
+        "inspect cited editorial evidence separately from publisher reports and annual context"
       ],
       "representativeQueries": [
         "Which sources can verify a Gwadar project from announcement through operation?",
@@ -261,8 +263,134 @@
         "balochistanAnalysisData": "https://palimpsest.info/belt-and-road/balochistan/analysis/article.json",
         "myanmarAnalysis": "https://palimpsest.info/belt-and-road/myanmar/analysis/",
         "myanmarAnalysisData": "https://palimpsest.info/belt-and-road/myanmar/analysis/article.json",
+        "regionalCapturedIndexSchema": "https://palimpsest.info/protocol/regional-captured-index-v1.schema.json",
+        "regionalDataDumpSchema": "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+        "regionalEditorialEvidence": "https://palimpsest.info/config/regional_editorials.json",
+        "regionalEditorialEvidenceSchema": "https://palimpsest.info/protocol/regional-editorial-evidence-v1.schema.json",
+        "regionalArchives": {
+          "bri": {
+            "landingPage": "https://palimpsest.info/belt-and-road/",
+            "regionalData": "https://palimpsest.info/belt-and-road/data/regional-data.json",
+            "capturedJson": "https://palimpsest.info/belt-and-road/data/captured-index.json",
+            "capturedJsonl": "https://palimpsest.info/belt-and-road/data/captured-index.jsonl",
+            "capturedCsv": "https://palimpsest.info/belt-and-road/data/captured-index.csv"
+          },
+          "gwadar": {
+            "landingPage": "https://palimpsest.info/belt-and-road/gwadar/",
+            "regionalData": "https://palimpsest.info/belt-and-road/gwadar/data/regional-data.json",
+            "capturedJson": "https://palimpsest.info/belt-and-road/gwadar/data/captured-index.json",
+            "capturedJsonl": "https://palimpsest.info/belt-and-road/gwadar/data/captured-index.jsonl",
+            "capturedCsv": "https://palimpsest.info/belt-and-road/gwadar/data/captured-index.csv"
+          },
+          "balochistan": {
+            "landingPage": "https://palimpsest.info/belt-and-road/balochistan/",
+            "regionalData": "https://palimpsest.info/belt-and-road/balochistan/data/regional-data.json",
+            "capturedJson": "https://palimpsest.info/belt-and-road/balochistan/data/captured-index.json",
+            "capturedJsonl": "https://palimpsest.info/belt-and-road/balochistan/data/captured-index.jsonl",
+            "capturedCsv": "https://palimpsest.info/belt-and-road/balochistan/data/captured-index.csv"
+          },
+          "myanmar": {
+            "landingPage": "https://palimpsest.info/belt-and-road/myanmar/",
+            "regionalData": "https://palimpsest.info/belt-and-road/myanmar/data/regional-data.json",
+            "capturedJson": "https://palimpsest.info/belt-and-road/myanmar/data/captured-index.json",
+            "capturedJsonl": "https://palimpsest.info/belt-and-road/myanmar/data/captured-index.jsonl",
+            "capturedCsv": "https://palimpsest.info/belt-and-road/myanmar/data/captured-index.csv"
+          }
+        },
+        "csvSafety": "Formula-leading text is prefixed with an apostrophe in CSV only; JSON and JSONL preserve exact captured text.",
         "humanLandingPage": "https://palimpsest.info/belt-and-road/",
         "coverageBoundary": "Source discovery and adapter readiness are not ingestion, and unlike project lifecycle or claim states are never summed. WDI national series cannot establish BRI causation or project, actor or corridor facts. UCDP is annual historical aggregate context only, and report machine rows are withheld; neither surface supports actor, route, project, guilt, causal, tactical or person-level inference."
+      }
+    },
+    {
+      "identifier": "urn:air:palimpsest.info:dataset:regional-captured-news-archives",
+      "displayName": "Palimpsest BRI, Gwadar, Balochistan and Myanmar Captured-News Archives",
+      "type": "application/json",
+      "url": "https://palimpsest.info/belt-and-road/data/regional-data.json",
+      "description": "Complete retained event-version coverage for Palimpsest's reviewed BRI, CPEC/Gwadar, Balochistan and Myanmar classifiers. Each lane supplies a combined research dump and metadata-only captured-news indexes in JSON, JSONL and CSV. The boundary is everything Palimpsest retained under the declared classifier, not every article on the internet; article bodies, tactical records and person records remain outside the publication.",
+      "tags": [
+        "Belt and Road Initiative",
+        "CPEC",
+        "Gwadar",
+        "Balochistan",
+        "Myanmar",
+        "captured news",
+        "event-version archive",
+        "metadata-link-only"
+      ],
+      "capabilities": [
+        "download every retained matching event and version count",
+        "compare current and historical captured events",
+        "inspect source roles, independence groups and rights policies",
+        "join captured news to bounded national economic and annual conflict context",
+        "read cited editorial evidence without treating overlap as causation"
+      ],
+      "representativeQueries": [
+        "Which CPEC and Gwadar reports has Palimpsest retained, including historical versions?",
+        "Which Balochistan sources are documentation, media or official records?",
+        "What current and historical Myanmar corridor, conflict and rights reports are in the captured ledger?",
+        "Which fields are unavailable rather than zero in the regional data dumps?"
+      ],
+      "updatedAt": "2026-08-30T07:25:25Z",
+      "metadata": {
+        "authentication": "none",
+        "access": "public-read-only",
+        "publicationMode": "metadata-link-only",
+        "articleBodiesIncluded": false,
+        "classifierScope": "complete-retained-capture-not-global-publishing-universe",
+        "capturedIndexSchema": "https://palimpsest.info/protocol/regional-captured-index-v1.schema.json",
+        "regionalDataSchema": "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+        "editorialEvidence": "https://palimpsest.info/config/regional_editorials.json",
+        "editorialEvidenceSchema": "https://palimpsest.info/protocol/regional-editorial-evidence-v1.schema.json",
+        "csvSafety": "Formula-leading text is prefixed with an apostrophe in CSV only; JSON and JSONL preserve exact captured text.",
+        "archives": {
+          "bri": "https://palimpsest.info/belt-and-road/data/regional-data.json",
+          "gwadar": "https://palimpsest.info/belt-and-road/gwadar/data/regional-data.json",
+          "balochistan": "https://palimpsest.info/belt-and-road/balochistan/data/regional-data.json",
+          "myanmar": "https://palimpsest.info/belt-and-road/myanmar/data/regional-data.json"
+        },
+        "humanLandingPage": "https://palimpsest.info/belt-and-road/",
+        "coverageBoundary": "Listings preserve publisher attribution and source clocks. They are not endorsement, adjudication, proof of actor coordination, or evidence that infrastructure caused conflict, repression, benefit or harm."
+      }
+    },
+    {
+      "identifier": "urn:air:palimpsest.info:dataset:chinese-news-english-translations",
+      "displayName": "Palimpsest Chinese Captured-News English Translation Sidecar",
+      "type": "application/json",
+      "url": "https://palimpsest.info/readings/chinese-translations-latest.json",
+      "description": "Content-addressed machine-draft English translations for every current Chinese-dominant Palimpsest wire item, every Chinese-dominant revision in the append-only event-version ledger, and every eligible current event record not already represented by that ledger. Original Chinese metadata, immutable item/event version bindings, publisher links and source clocks remain visible. Translation and separately labeled background cover only captured headlines and bounded feed excerpts; article bodies are neither fetched nor republished.",
+      "tags": [
+        "Chinese",
+        "English translation",
+        "captured news",
+        "event versions",
+        "metadata-link-only",
+        "machine translation"
+      ],
+      "capabilities": [
+        "read English translations beside original Chinese metadata",
+        "verify content-addressed translation and event-version bindings",
+        "distinguish translated publisher metadata from Palimpsest background",
+        "inspect complete in-scope coverage and missing-record count"
+      ],
+      "representativeQueries": [
+        "Translate the Chinese reports Palimpsest captured into English while preserving attribution and certainty.",
+        "Why does this Chinese-language event matter, and which text is translation versus background?",
+        "Are any eligible retained Chinese event versions missing from the translation sidecar?"
+      ],
+      "updatedAt": "2026-08-30T07:25:25Z",
+      "metadata": {
+        "authentication": "none",
+        "access": "public-read-only",
+        "rightsStatus": "metadata-link-only-source-controlled",
+        "articleBodiesIncluded": false,
+        "reviewStatus": "machine-draft",
+        "schema": "https://palimpsest.info/protocol/chinese-translations-v1.schema.json",
+        "humanLandingPage": "https://palimpsest.info/news/china/english/",
+        "jsonFeed": "https://palimpsest.info/news/china/english/feed.json",
+        "rssFeed": "https://palimpsest.info/news/china/english/feed.xml",
+        "generatedManifest": "https://palimpsest.info/news/china/english/generated-manifest.json",
+        "coverageBoundary": "Completeness is measured against Chinese-dominant metadata retained by Palimpsest, not every Chinese-language article published globally. Background is separately labeled and cannot be read as publisher text."
       }
     },
     {

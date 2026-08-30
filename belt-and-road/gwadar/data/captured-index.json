@@ -1,0 +1,491 @@
+{
+  "schema_version": "palimpsest.regional-captured-index.v1",
+  "region": "gwadar",
+  "label": "CPEC and Gwadar",
+  "generated_at": "2026-08-30T07:25:25Z",
+  "scope": "Every unique event retained in the append-only Palimpsest event-version ledger that matches this regional lane by reviewed source identity or bounded title metadata, plus every matching event in the current wire.",
+  "classification": {
+    "overlap_allowed": true,
+    "method": "reviewed dedicated source ids plus bounded metadata terms",
+    "article_body_fetching": "prohibited",
+    "bri_lane": "combined index of all three regional lanes plus explicit BRI terms",
+    "csv_formula_neutralization": "CSV text cells whose first non-whitespace character is =, +, -, or @ receive a leading apostrophe; JSON and JSONL preserve the exact captured text."
+  },
+  "rights": {
+    "publication_mode": "metadata-link-only",
+    "article_bodies_included": false,
+    "publisher_copyright_retained": true,
+    "source_policy": "config/news_sources.json"
+  },
+  "inputs": {
+    "newswire_generated_at": "2026-08-30T07:25:25Z",
+    "newswire_window": {
+      "from": "2026-08-23T07:25:25Z",
+      "hours": 168,
+      "to": "2026-08-30T07:25:25Z"
+    },
+    "newswire_versions_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+    "source_registry_sha256": "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14",
+    "chinese_translation_sidecar": {
+      "schema_version": "chinese-translations-v1",
+      "generated_at": "2026-08-30T07:25:25Z",
+      "newswire_sha256": "fd12a19ae11362a9802ef3942938cb18698879fae5b2b936436085aa7d79083b",
+      "newswire_ledger_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+      "newswire_ledger_rows": 4320,
+      "translated_records": 2207,
+      "missing_records": 0
+    }
+  },
+  "capture_universe": {
+    "event_versions": 4320,
+    "unique_events": 3059,
+    "current_wire_events": 561
+  },
+  "counts": {
+    "event_versions": 12,
+    "unique_events": 11,
+    "current_events": 9,
+    "historical_events": 2,
+    "event_pages_available": 9,
+    "sources": 1,
+    "events_with_english_translation": 0
+  },
+  "coverage": {
+    "earliest_published_at": "2026-08-27T09:12:09Z",
+    "latest_published_at": "2026-08-30T02:15:57Z",
+    "earliest_recorded_at": "2026-08-29T19:00:35Z",
+    "latest_recorded_at": "2026-08-30T02:30:05Z"
+  },
+  "sources": [
+    {
+      "source_id": "daily-cpec-china-pakistan",
+      "source_name": "The Daily CPEC — China-Pakistan",
+      "feed_url": "https://thedailycpec.com/category/china-pakistan/feed/",
+      "role": "media",
+      "independence_group": "daily-cpec-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 11
+    }
+  ],
+  "events": [
+    {
+      "event_id": "event-b54e0137564a118182f80220",
+      "event_url": "https://palimpsest.info/news/wire/event-b54e0137564a118182f80220/",
+      "event_page_available": true,
+      "headline": "Putin, Xi to Hold Talks at SCO Summit",
+      "dek": "Russian President Vladimir Putin and Chinese President Xi Jinping are set to hold bilateral talks during the 25th-anniversary summit of the Shanghai Cooperation Organization (SCO) in Bishkek, Kyrgyzstan. The Kremlin confirmed the meeting on Friday. Foreign policy aide Yury Ushakov said the leaders will discuss bilatera",
+      "published_at": "2026-08-30T02:15:57Z",
+      "first_recorded_at": "2026-08-30T02:20:06Z",
+      "last_recorded_at": "2026-08-30T02:20:06Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-d52fa4ab15662b1ca55e2e7a"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "policy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Putin, Xi to Hold Talks at SCO Summit",
+          "url": "https://thedailycpec.com/putin-xi-to-hold-talks-at-sco-summit/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-cf2bbd8fcbd3163c799350f3",
+      "event_url": "https://palimpsest.info/news/wire/event-cf2bbd8fcbd3163c799350f3/",
+      "event_page_available": true,
+      "headline": "Gwadar University Adds Chinese to B.Ed. Courses",
+      "dek": "The University of Gwadar (UoG) has approved Chinese Language as an Arts and Humanities course in its Bachelor of Education (B.Ed.) programmes. The move aims to equip future teachers with skills for emerging regional and international opportunities. The university’s Department of Education approved the course during its",
+      "published_at": "2026-08-29T09:38:25Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-d08a3a818a3dc7898bd1061e"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Gwadar University Adds Chinese to B.Ed. Courses",
+          "url": "https://thedailycpec.com/gwadar-university-adds-chinese-to-b-ed-courses/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-e647d655058322e1a3a36c3a",
+      "event_url": "https://palimpsest.info/news/wire/event-e647d655058322e1a3a36c3a/",
+      "event_page_available": true,
+      "headline": "Pakistan-China Friendship Association Launched in Lahore",
+      "dek": "The Pakistan-China Friendship Association (PCFA) Lahore was formally established on August 20. Founding members held their first meeting at the University of Central Punjab (UCP) in Lahore. The new association aims to strengthen people-to-people ties between Pakistan and China. It will create opportunities for cooperat",
+      "published_at": "2026-08-29T09:21:44Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-8136975794ae4242e97c9fbd"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Pakistan-China Friendship Association Launched in Lahore",
+          "url": "https://thedailycpec.com/pakistan-china-friendship-association-launched-in-lahore/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-3b9dcdb8cc453ab9456c35ca",
+      "event_url": "https://palimpsest.info/news/wire/event-3b9dcdb8cc453ab9456c35ca/",
+      "event_page_available": true,
+      "headline": "Pakistan Targets China Retail Market for Kinnow",
+      "dek": "Pakistan is stepping up efforts to expand its Kinnow exports to China. The move aims to give the country’s horticulture sector stronger access to one of the world’s largest consumer markets. The Pakistan Horticulture Development & Export Company (PHDEC) recently facilitated a business-to-business meeting between Pakist",
+      "published_at": "2026-08-29T09:13:54Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-ed813a9698b81c00e0cbb46d"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Pakistan Targets China Retail Market for Kinnow",
+          "url": "https://thedailycpec.com/pakistan-targets-china-retail-market-for-kinnow/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-bd3f7a9a09430372de7de3d4",
+      "event_url": "https://palimpsest.info/news/wire/event-bd3f7a9a09430372de7de3d4/",
+      "event_page_available": true,
+      "headline": "Orange Line, UET Sign MoU for Rail Research",
+      "dek": "The CPEC Orange Line Metro Rail Transit System (OLMRTS) in Lahore and the University of Engineering and Technology (UET) Lahore have signed a Memorandum of Understanding (MoU). The agreement, signed on August 27, aims to strengthen cooperation between academia and the urban rail industry. Both institutions will work to",
+      "published_at": "2026-08-29T09:06:04Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-678f855550811b82b183e2b3"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "technology"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Orange Line, UET Sign MoU for Rail Research",
+          "url": "https://thedailycpec.com/orange-line-uet-sign-mou-for-rail-research/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-2395e41b3720914d10ca7bd2",
+      "event_url": "https://palimpsest.info/news/wire/event-2395e41b3720914d10ca7bd2/",
+      "event_page_available": true,
+      "headline": "China Mobilizes Forces for Xizang Mudslide Relief",
+      "dek": "Multiple emergency response teams have mobilized after a mudslide hit Gyirong County in Xigaze City, southwest China’s Xizang Autonomous Region. Rescue teams are working to restore transport links and support affected residents. Meanwhile, authorities are delivering food, shelter, and other essential supplies to the di",
+      "published_at": "2026-08-28T08:12:08Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-5670e95865ac8cd12a0080d8"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "China Mobilizes Forces for Xizang Mudslide Relief",
+          "url": "https://thedailycpec.com/china-mobilizes-forces-for-xizang-mudslide-relief/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-37fceba4cba6dcc4a86feba8",
+      "event_url": "https://palimpsest.info/news/wire/event-37fceba4cba6dcc4a86feba8/",
+      "event_page_available": true,
+      "headline": "Maryam Nawaz Seeks Stronger Punjab-Xinjiang Ties",
+      "dek": "Punjab Chief Minister Maryam Nawaz Sharif met senior officials in China’s Xinjiang region to expand cooperation between Punjab and Xinjiang. The discussions covered agriculture, industry, technology, healthcare, infrastructure, and people-to-people exchanges. Focus on Modern Agriculture Maryam Nawaz proposed joint proj",
+      "published_at": "2026-08-28T07:11:46Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-30T02:30:05Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-82e0f6d58eb21861c7128747",
+        "eventv-e6d71d36aa091d24a26f347e"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "technology"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Maryam Nawaz Seeks Stronger Punjab-Xinjiang Ties",
+          "url": "https://thedailycpec.com/maryam-nawaz-seeks-stronger-punjab-xinjiang-ties/"
+        },
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Maryam Nawaz Seeks Stronger China-Punjab Ties",
+          "url": "https://thedailycpec.com/maryam-nawaz-seeks-stronger-china-punjab-ties/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-f84c897c2d02dac4eef1dd64",
+      "event_url": "https://palimpsest.info/news/wire/event-f84c897c2d02dac4eef1dd64/",
+      "event_page_available": true,
+      "headline": "PM Shehbaz Condoles China Floods, Landslides",
+      "dek": "Prime Minister Shehbaz Sharif has expressed deep condolences to China following deadly flash floods and landslides in the country’s border region. The disaster caused loss of life and left several people missing. In a post on X, the prime minister expressed grief and solidarity with the Chinese people. Pakistan Offers",
+      "published_at": "2026-08-28T07:08:00Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-bdf4df9c0b2c8d34fc92c185"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "PM Shehbaz Condoles China Floods, Landslides",
+          "url": "https://thedailycpec.com/pm-shehbaz-condoles-china-floods-landslides/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-791edd0fa319214afe68c9c0",
+      "event_url": "https://palimpsest.info/news/wire/event-791edd0fa319214afe68c9c0/",
+      "event_page_available": true,
+      "headline": "Pakistani Mangoes Reach Xinjiang by Land",
+      "dek": "A 2-ton shipment of Pakistani mangoes has arrived in China’s Xinjiang region for the first time this year. The consignment cleared customs and entered markets in Kashgar and Korla. The mangoes entered Xinjiang through a China-Pakistan land port. Customs authorities used a dedicated clearance process to maintain fruit q",
+      "published_at": "2026-08-28T07:03:35Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-c584fa0a6a5640abc282479c"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Pakistani Mangoes Reach Xinjiang by Land",
+          "url": "https://thedailycpec.com/pakistani-mangoes-reach-xinjiang-by-land/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-2d7feae0d06052c668bb9594",
+      "event_url": "https://palimpsest.info/news/wire/event-2d7feae0d06052c668bb9594/",
+      "event_page_available": false,
+      "headline": "9th CPEC Gwadar Working Group Meeting Next Week",
+      "dek": null,
+      "published_at": "2026-08-28T06:58:04Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-3792f56c6842e7ea0a450375"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "gwadar",
+        "balochistan"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-ab92bc06ad836a40184dc4e2",
+      "event_url": "https://palimpsest.info/news/wire/event-ab92bc06ad836a40184dc4e2/",
+      "event_page_available": false,
+      "headline": "Fact Check: Old Shabbar Zaidi Video Misleads on CPEC",
+      "dek": null,
+      "published_at": "2026-08-27T09:12:09Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-7269511edbb859070433df9a"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    }
+  ],
+  "limitations": [
+    "This is the complete retained Palimpsest capture ledger for the declared classifier, not every article ever published on the internet.",
+    "Feed metadata can be incomplete, partisan, mistaken, translated, revised or removed; a listing is attribution, not endorsement or adjudication.",
+    "Historical ledger entries may lack a retained excerpt or publisher URL; the event page is linked only when a generated public page remains present.",
+    "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
+    "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump."
+  ],
+  "content_sha256": "f4a892ff35c331deca55d318e6ec707d024d044884458b5c85795e343062442b"
+}

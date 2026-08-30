@@ -234,9 +234,19 @@ aggregate_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 "$PYTHON_BIN" -m core.machine_investigations --as-of "$aggregate_clock"
 "$PYTHON_BIN" -m scripts.build_newsroom
 "$PYTHON_BIN" -m scripts.build_newsroom --check
+
+# Railway is a deterministic publisher, never a translation-model caller. The
+# offline rebuild admits only content digests already present in the checked-in
+# sidecar. A new Chinese regional record therefore exits here, before a release
+# commit or deployment can replace the last known-good public edition.
+"$PYTHON_BIN" -m scripts.build_chinese_translations --offline
+"$PYTHON_BIN" -m scripts.build_chinese_translations --check
+"$PYTHON_BIN" -m scripts.build_chinese_translation_pages
+"$PYTHON_BIN" -m scripts.build_chinese_translation_pages --check
+"$PYTHON_BIN" -m scripts.build_bri_observatory
+"$PYTHON_BIN" -m scripts.build_bri_observatory --check
 "$PYTHON_BIN" -m scripts.build_china_situation
 "$PYTHON_BIN" -m scripts.build_china_situation --check
-"$PYTHON_BIN" -m scripts.build_bri_observatory
 "$PYTHON_BIN" -m scripts.build_data_catalog --now "$aggregate_clock"
 "$PYTHON_BIN" -m scripts.build_data_catalog --check
 "$PYTHON_BIN" -m scripts.sync_nav

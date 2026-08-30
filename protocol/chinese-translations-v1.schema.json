@@ -1,0 +1,472 @@
+{
+  "$id": "https://palimpsest.info/protocol/chinese-translations-v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_records": { "minimum": 1, "type": "integer" },
+        "eligible_current_events": { "minimum": 0, "type": "integer" },
+        "eligible_current_items": { "minimum": 0, "type": "integer" },
+        "eligible_event_revisions": { "minimum": 0, "type": "integer" },
+        "eligible_ledger_event_revisions": { "minimum": 0, "type": "integer" },
+        "missing_records": { "const": 0 },
+        "record_kinds": {
+          "additionalProperties": { "minimum": 1, "type": "integer" },
+          "type": "object"
+        },
+        "translated_records": { "minimum": 1, "type": "integer" },
+        "translated_current_events": { "minimum": 0, "type": "integer" },
+        "translated_current_items": { "minimum": 0, "type": "integer" },
+        "translated_event_revisions": { "minimum": 0, "type": "integer" },
+        "translated_ledger_event_revisions": { "minimum": 0, "type": "integer" },
+        "unique_content_digests": { "minimum": 1, "type": "integer" }
+      },
+      "required": [
+        "candidate_records",
+        "translated_records",
+        "unique_content_digests",
+        "record_kinds",
+        "eligible_event_revisions",
+        "translated_event_revisions",
+        "eligible_ledger_event_revisions",
+        "translated_ledger_event_revisions",
+        "eligible_current_items",
+        "translated_current_items",
+        "eligible_current_events",
+        "translated_current_events",
+        "missing_records"
+      ],
+      "type": "object"
+    },
+    "generated_at": { "format": "date-time", "type": "string" },
+    "generation_usage": { "$ref": "#/$defs/usage" },
+    "language_pair": {
+      "additionalProperties": false,
+      "properties": {
+        "source": { "const": "zh" },
+        "target": { "const": "en" }
+      },
+      "required": ["source", "target"],
+      "type": "object"
+    },
+    "method": {
+      "additionalProperties": false,
+      "properties": {
+        "detector": { "minLength": 1, "type": "string" },
+        "max_context_characters": { "const": 400 },
+        "min_han_characters": { "const": 4 },
+        "min_han_share_of_letters": { "const": 0.35 },
+        "selection": { "minLength": 1, "type": "string" }
+      },
+      "required": [
+        "detector",
+        "min_han_characters",
+        "min_han_share_of_letters",
+        "max_context_characters",
+        "selection"
+      ],
+      "type": "object"
+    },
+    "model": {
+      "additionalProperties": false,
+      "properties": {
+        "api": { "const": "Interactions REST v1beta" },
+        "endpoint": { "const": "https://generativelanguage.googleapis.com/v1beta/interactions" },
+        "fallback": {
+          "additionalProperties": false,
+          "properties": {
+            "api": { "const": "Chat Completions REST v1" },
+            "endpoint": { "const": "https://openrouter.ai/api/v1/chat/completions" },
+            "model_id": { "const": "google/gemini-3.1-flash-lite" },
+            "provider": { "const": "OpenRouter" },
+            "store_control": { "const": "not-exposed-by-reviewed-client" }
+          },
+          "required": ["provider", "api", "endpoint", "model_id", "store_control"],
+          "type": "object"
+        },
+        "model_id": { "const": "gemini-3.1-flash-lite" },
+        "output_status": { "const": "machine-draft-not-human-certified" },
+        "prompt_revision": { "const": "palimpsest-zh-en-metadata-v1" },
+        "provider": { "const": "Google Gemini API" },
+        "store": { "const": false },
+        "transport_selection": { "minLength": 1, "type": "string" }
+      },
+      "required": [
+        "provider",
+        "api",
+        "endpoint",
+        "model_id",
+        "prompt_revision",
+        "store",
+        "transport_selection",
+        "fallback",
+        "output_status"
+      ],
+      "type": "object"
+    },
+    "rights": {
+      "additionalProperties": false,
+      "properties": {
+        "article_bodies_submitted": { "const": false },
+        "notice": { "minLength": 1, "type": "string" },
+        "originals_preserved": { "const": true },
+        "submitted_fields": {
+          "const": ["title/headline", "bounded feed excerpt/dek"]
+        }
+      },
+      "required": [
+        "notice",
+        "submitted_fields",
+        "article_bodies_submitted",
+        "originals_preserved"
+      ],
+      "type": "object"
+    },
+    "schema_version": { "const": "chinese-translations-v1" },
+    "source_snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "newswire_generated_at": { "format": "date-time", "type": "string" },
+        "newswire_ledger_bytes": { "minimum": 0, "type": "integer" },
+        "newswire_ledger_path": { "minLength": 1, "type": "string" },
+        "newswire_ledger_rows": { "minimum": 0, "type": "integer" },
+        "newswire_ledger_sha256": { "$ref": "#/$defs/sha256" },
+        "newswire_path": { "minLength": 1, "type": "string" },
+        "newswire_sha256": { "$ref": "#/$defs/sha256" },
+        "retained_revision_files": { "minimum": 0, "type": "integer" },
+        "retained_story_files": { "minimum": 0, "type": "integer" },
+        "revision_tree_path": { "minLength": 1, "type": "string" },
+        "revision_tree_sha256": { "$ref": "#/$defs/sha256" },
+        "source_registry_sha256": { "$ref": "#/$defs/sha256" }
+      },
+      "required": [
+        "newswire_path",
+        "newswire_sha256",
+        "newswire_generated_at",
+        "source_registry_sha256",
+        "newswire_ledger_path",
+        "newswire_ledger_sha256",
+        "newswire_ledger_rows",
+        "newswire_ledger_bytes",
+        "revision_tree_path",
+        "revision_tree_sha256",
+        "retained_revision_files",
+        "retained_story_files"
+      ],
+      "type": "object"
+    },
+    "translations": {
+      "items": { "$ref": "#/$defs/translation" },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "generated_at",
+    "language_pair",
+    "method",
+    "rights",
+    "model",
+    "source_snapshot",
+    "coverage",
+    "generation_usage",
+    "translations"
+  ],
+  "title": "Palimpsest Chinese-to-English translation sidecar v1",
+  "type": "object",
+  "$defs": {
+    "nullableDateTime": {
+      "oneOf": [
+        { "format": "date-time", "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "nullableString": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ]
+    },
+    "sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "sourceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": { "$ref": "#/$defs/nullableString" },
+        "item_version_id": { "$ref": "#/$defs/nullableString" },
+        "published_at": { "$ref": "#/$defs/nullableDateTime" },
+        "publisher_url": {
+          "oneOf": [
+            { "pattern": "^https?://[^\\s]+$", "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "source_id": { "$ref": "#/$defs/nullableString" },
+        "source_name": { "$ref": "#/$defs/nullableString" }
+      },
+      "required": [
+        "source_id",
+        "source_name",
+        "item_id",
+        "item_version_id",
+        "publisher_url",
+        "published_at"
+      ],
+      "type": "object"
+    },
+    "translation": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "record_kind": { "const": "ledger_event_revision" } },
+            "required": ["record_kind"]
+          },
+          "then": {
+            "properties": {
+              "english": {
+                "properties": { "context_en": { "const": "" } }
+              },
+              "identity": {
+                "properties": {
+                  "event_id": { "minLength": 1, "type": "string" },
+                  "event_version_id": { "minLength": 1, "type": "string" }
+                }
+              },
+              "original_zh": {
+                "properties": {
+                  "context": { "const": "" },
+                  "context_field": { "const": "headline_only" }
+                }
+              },
+              "source_clocks": {
+                "properties": {
+                  "recorded_at": { "format": "date-time", "type": "string" }
+                }
+              },
+              "source_path": { "pattern": "\\.jsonl#L[1-9][0-9]*$" }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "english": {
+          "additionalProperties": false,
+          "properties": {
+            "background_basis": { "minLength": 1, "type": "string" },
+            "background_en": { "minLength": 1, "type": "string" },
+            "background_status": { "const": "machine-generated-context-not-translation" },
+            "context_en": { "type": "string" },
+            "status": { "const": "machine-draft-not-human-certified" },
+            "title_en": { "minLength": 1, "type": "string" },
+            "translation_notes_en": { "type": "string" }
+          },
+          "required": [
+            "title_en",
+            "context_en",
+            "translation_notes_en",
+            "background_en",
+            "background_basis",
+            "background_status",
+            "status"
+          ],
+          "type": "object"
+        },
+        "identity": {
+          "additionalProperties": false,
+          "properties": {
+            "event_id": { "$ref": "#/$defs/nullableString" },
+            "event_version_id": { "$ref": "#/$defs/nullableString" },
+            "item_id": { "$ref": "#/$defs/nullableString" },
+            "item_version_id": { "$ref": "#/$defs/nullableString" }
+          },
+          "required": ["event_id", "event_version_id", "item_id", "item_version_id"],
+          "type": "object"
+        },
+        "original_zh": {
+          "additionalProperties": false,
+          "properties": {
+            "content_sha256": { "$ref": "#/$defs/sha256" },
+            "context": { "maxLength": 400, "type": "string" },
+            "context_field": { "enum": ["dek", "excerpt", "headline_only"] },
+            "script_profile": {
+              "additionalProperties": false,
+              "properties": {
+                "chinese_dominant": { "const": true },
+                "han_characters": { "minimum": 4, "type": "integer" },
+                "han_share_of_letters": { "minimum": 0.35, "maximum": 1, "type": "number" },
+                "letter_characters": { "minimum": 4, "type": "integer" }
+              },
+              "required": [
+                "han_characters",
+                "letter_characters",
+                "han_share_of_letters",
+                "chinese_dominant"
+              ],
+              "type": "object"
+            },
+            "title": { "minLength": 1, "type": "string" }
+          },
+          "required": ["title", "context", "context_field", "content_sha256", "script_profile"],
+          "type": "object"
+        },
+        "palimpsest_url": {
+          "oneOf": [
+            { "format": "uri", "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "record_kind": {
+          "enum": [
+            "retained_event_revision",
+            "retained_current_story",
+            "ledger_event_revision",
+            "current_wire_event",
+            "current_wire_item"
+          ]
+        },
+        "record_sha256": { "$ref": "#/$defs/sha256" },
+        "rights_policies": {
+          "items": { "type": "string" },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "source_clocks": {
+          "additionalProperties": false,
+          "properties": {
+            "collected_at": { "$ref": "#/$defs/nullableDateTime" },
+            "published_at": { "$ref": "#/$defs/nullableDateTime" },
+            "recorded_at": { "$ref": "#/$defs/nullableDateTime" },
+            "updated_at": { "$ref": "#/$defs/nullableDateTime" }
+          },
+          "required": ["published_at", "updated_at", "collected_at", "recorded_at"],
+          "type": "object"
+        },
+        "source_path": { "minLength": 1, "type": "string" },
+        "source_records": {
+          "items": { "$ref": "#/$defs/sourceRecord" },
+          "type": "array"
+        },
+        "topics": {
+          "items": { "type": "string" },
+          "type": "array",
+          "uniqueItems": true
+        },
+        "translation_id": { "pattern": "^zhtr-[0-9a-f]{24}$", "type": "string" },
+        "translation_provenance": {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": { "provider": { "const": "Google Gemini API" } },
+                "required": ["provider"]
+              },
+              "then": {
+                "properties": {
+                  "api": { "const": "Interactions REST v1beta" },
+                  "endpoint": { "const": "https://generativelanguage.googleapis.com/v1beta/interactions" },
+                  "model_id": { "const": "gemini-3.1-flash-lite" },
+                  "store": { "const": false }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": { "provider": { "const": "OpenRouter" } },
+                "required": ["provider"]
+              },
+              "then": {
+                "properties": {
+                  "api": { "const": "Chat Completions REST v1" },
+                  "endpoint": { "const": "https://openrouter.ai/api/v1/chat/completions" },
+                  "model_id": { "const": "google/gemini-3.1-flash-lite" },
+                  "store": { "type": "null" }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "api": { "enum": ["Interactions REST v1beta", "Chat Completions REST v1"] },
+            "base_model_id": { "const": "gemini-3.1-flash-lite" },
+            "endpoint": {
+              "enum": [
+                "https://generativelanguage.googleapis.com/v1beta/interactions",
+                "https://openrouter.ai/api/v1/chat/completions"
+              ]
+            },
+            "generated_at": { "$ref": "#/$defs/nullableDateTime" },
+            "model_id": {
+              "enum": ["gemini-3.1-flash-lite", "google/gemini-3.1-flash-lite"]
+            },
+            "prompt_revision": { "const": "palimpsest-zh-en-metadata-v1" },
+            "provider": { "enum": ["Google Gemini API", "OpenRouter"] },
+            "store": {
+              "oneOf": [
+                { "const": false },
+                { "type": "null" }
+              ]
+            }
+          },
+          "required": [
+            "provider",
+            "api",
+            "endpoint",
+            "model_id",
+            "base_model_id",
+            "prompt_revision",
+            "store",
+            "generated_at"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "translation_id",
+        "record_sha256",
+        "record_kind",
+        "source_path",
+        "identity",
+        "source_clocks",
+        "palimpsest_url",
+        "source_records",
+        "topics",
+        "rights_policies",
+        "original_zh",
+        "english",
+        "translation_provenance"
+      ],
+      "type": "object"
+    },
+    "usage": {
+      "additionalProperties": false,
+      "properties": {
+        "api_calls": { "minimum": 0, "type": "integer" },
+        "scope": { "minLength": 1, "type": "string" },
+        "total_cached_tokens": { "minimum": 0, "type": "integer" },
+        "total_input_tokens": { "minimum": 0, "type": "integer" },
+        "total_output_tokens": { "minimum": 0, "type": "integer" },
+        "total_thought_tokens": { "minimum": 0, "type": "integer" },
+        "total_tokens": { "minimum": 0, "type": "integer" },
+        "total_tool_use_tokens": { "minimum": 0, "type": "integer" },
+        "unreported_usage_calls": { "minimum": 0, "type": "integer" }
+      },
+      "required": [
+        "scope",
+        "api_calls",
+        "unreported_usage_calls",
+        "total_cached_tokens",
+        "total_input_tokens",
+        "total_output_tokens",
+        "total_thought_tokens",
+        "total_tokens",
+        "total_tool_use_tokens"
+      ],
+      "type": "object"
+    }
+  }
+}

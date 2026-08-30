@@ -134,6 +134,47 @@ EVIDENCE_LAKE_CRITICAL_PATHS = {
     "readings/evidence-lake-metrics-latest.json",
     "readings/evidence-lake-metrics-producer-receipt.json",
 }
+REGIONAL_ARCHIVE_CRITICAL_PATHS = {
+    "belt-and-road/index.html",
+    "config/regional_editorials.json",
+    "protocol/regional-captured-index-v1.schema.json",
+    "protocol/regional-data-dump-v1.schema.json",
+    "protocol/regional-editorial-evidence-v1.schema.json",
+    "scripts/build_bri_observatory.py",
+    "tests/test_bri_observatory.py",
+    *{
+        f"belt-and-road/{region + '/' if region else ''}data/{filename}"
+        for region in ("", "gwadar", "balochistan", "myanmar")
+        for filename in (
+            "captured-index.csv",
+            "captured-index.json",
+            "captured-index.jsonl",
+            "regional-data.json",
+        )
+    },
+    *{
+        f"belt-and-road/{region}/index.html"
+        for region in ("gwadar", "balochistan", "myanmar")
+    },
+    *{
+        f"belt-and-road/{region}/analysis/{filename}"
+        for region in ("gwadar", "balochistan", "myanmar")
+        for filename in ("article.json", "index.html")
+    },
+}
+CHINESE_TRANSLATION_CRITICAL_PATHS = {
+    "assets/chinese-translations.css",
+    "news/china/english/feed.json",
+    "news/china/english/feed.xml",
+    "news/china/english/generated-manifest.json",
+    "news/china/english/index.html",
+    "protocol/chinese-translations-v1.schema.json",
+    "readings/chinese-translations-latest.json",
+    "scripts/build_chinese_translation_pages.py",
+    "scripts/build_chinese_translations.py",
+    "tests/test_chinese_translation_automation.py",
+    "tests/test_chinese_translations.py",
+}
 
 
 def _publication_root(tmp_path: Path) -> Path:
@@ -183,6 +224,42 @@ def test_manifest_binds_evidence_lake_page_schemas_projection_and_receipt(
             "bytes": len(raw),
             "sha256": hashlib.sha256(raw).hexdigest(),
         }
+
+
+def test_manifest_binds_regional_archives_editorials_and_translation_sidecar(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    manifest = manifest_module.build_manifest(root, "b" * 40, "2026-08-30T07:00:00Z")
+
+    expected = REGIONAL_ARCHIVE_CRITICAL_PATHS | CHINESE_TRANSLATION_CRITICAL_PATHS
+    assert expected <= set(manifest_module.CRITICAL_PATHS)
+    for relative in expected:
+        raw = (root / relative).read_bytes()
+        assert manifest["critical_files"][relative] == {
+            "bytes": len(raw),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+
+
+@pytest.mark.parametrize(
+    "missing",
+    [
+        "belt-and-road/balochistan/data/regional-data.json",
+        "belt-and-road/myanmar/data/captured-index.csv",
+        "news/china/english/index.html",
+        "readings/chinese-translations-latest.json",
+    ],
+)
+def test_manifest_fails_closed_when_a_regional_or_translation_surface_is_missing(
+    tmp_path: Path,
+    missing: str,
+) -> None:
+    root = _publication_root(tmp_path)
+    (root / missing).unlink()
+
+    with pytest.raises(manifest_module.ManifestError, match=re.escape(missing)):
+        manifest_module.build_manifest(root, "b" * 40, "2026-08-30T07:00:00Z")
 
 
 def test_manifest_binds_reviewed_live_ucdp_release_without_claiming_upstream_signature(
@@ -323,6 +400,32 @@ def test_server_serves_manifest_bound_publication(tmp_path: Path) -> None:
         with urllib.request.urlopen(base + "/belt-and-road/", timeout=5) as response:
             assert response.status == 200
             assert response.read() == b"fixture:belt-and-road/index.html\n"
+        for route, relative in (
+            ("/belt-and-road/gwadar/", "belt-and-road/gwadar/index.html"),
+            (
+                "/belt-and-road/balochistan/data/captured-index.csv",
+                "belt-and-road/balochistan/data/captured-index.csv",
+            ),
+            (
+                "/belt-and-road/myanmar/data/regional-data.json",
+                "belt-and-road/myanmar/data/regional-data.json",
+            ),
+            (
+                "/readings/chinese-translations-latest.json",
+                "readings/chinese-translations-latest.json",
+            ),
+            (
+                "/news/china/english/",
+                "news/china/english/index.html",
+            ),
+            (
+                "/news/china/english/feed.json",
+                "news/china/english/feed.json",
+            ),
+        ):
+            with urllib.request.urlopen(base + route, timeout=5) as response:
+                assert response.status == 200
+                assert response.read() == f"fixture:{relative}\n".encode()
 
         with pytest.raises(urllib.error.HTTPError) as missing_mcp:
             urllib.request.urlopen(base + "/mcp", timeout=5)
@@ -539,6 +642,27 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
         "readings/bri-economic-observations-latest.json",
         "readings/ucdp-aggregate-latest.json",
         "readings/ucdp-aggregate-release-receipt.json",
+        "readings/chinese-translations-latest.json",
+        "news/china/english/index.html",
+        "news/china/english/feed.json",
+        "news/china/english/feed.xml",
+        "news/china/english/generated-manifest.json",
+        "belt-and-road/data/captured-index.csv",
+        "belt-and-road/data/captured-index.json",
+        "belt-and-road/data/captured-index.jsonl",
+        "belt-and-road/data/regional-data.json",
+        "belt-and-road/gwadar/data/captured-index.csv",
+        "belt-and-road/gwadar/data/captured-index.json",
+        "belt-and-road/gwadar/data/captured-index.jsonl",
+        "belt-and-road/gwadar/data/regional-data.json",
+        "belt-and-road/balochistan/data/captured-index.csv",
+        "belt-and-road/balochistan/data/captured-index.json",
+        "belt-and-road/balochistan/data/captured-index.jsonl",
+        "belt-and-road/balochistan/data/regional-data.json",
+        "belt-and-road/myanmar/data/captured-index.csv",
+        "belt-and-road/myanmar/data/captured-index.json",
+        "belt-and-road/myanmar/data/captured-index.jsonl",
+        "belt-and-road/myanmar/data/regional-data.json",
         "research/china-pakistan-myanmar-bri-2026/index.html",
         "research/china-pakistan-myanmar-bri-2026/publication-receipt.json",
         "research/china-pakistan-myanmar-bri-2026/report.pdf",
@@ -577,6 +701,27 @@ def test_railway_rights_stage_preserves_bri_and_closes_wire(tmp_path: Path) -> N
         "readings/bri-economic-observations-latest.json",
         "readings/ucdp-aggregate-latest.json",
         "readings/ucdp-aggregate-release-receipt.json",
+        "readings/chinese-translations-latest.json",
+        "news/china/english/index.html",
+        "news/china/english/feed.json",
+        "news/china/english/feed.xml",
+        "news/china/english/generated-manifest.json",
+        "belt-and-road/data/captured-index.csv",
+        "belt-and-road/data/captured-index.json",
+        "belt-and-road/data/captured-index.jsonl",
+        "belt-and-road/data/regional-data.json",
+        "belt-and-road/gwadar/data/captured-index.csv",
+        "belt-and-road/gwadar/data/captured-index.json",
+        "belt-and-road/gwadar/data/captured-index.jsonl",
+        "belt-and-road/gwadar/data/regional-data.json",
+        "belt-and-road/balochistan/data/captured-index.csv",
+        "belt-and-road/balochistan/data/captured-index.json",
+        "belt-and-road/balochistan/data/captured-index.jsonl",
+        "belt-and-road/balochistan/data/regional-data.json",
+        "belt-and-road/myanmar/data/captured-index.csv",
+        "belt-and-road/myanmar/data/captured-index.json",
+        "belt-and-road/myanmar/data/captured-index.jsonl",
+        "belt-and-road/myanmar/data/regional-data.json",
         "research/china-pakistan-myanmar-bri-2026/index.html",
         "research/china-pakistan-myanmar-bri-2026/publication-receipt.json",
         "research/china-pakistan-myanmar-bri-2026/report.pdf",

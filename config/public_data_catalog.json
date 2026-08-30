@@ -3,7 +3,7 @@
   "catalog": {
     "id": "palimpsest-evidence-atlas",
     "name": "Palimpsest Evidence Atlas",
-    "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, and model-evaluation datasets.",
+    "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, complete retained regional news archives, Chinese-to-English captured-metadata translations, and model-evaluation datasets.",
     "cadence_semantics": "Dataset cadence is the intended collection target, not a guaranteed website publication interval; artifact timestamps and evidence_state are authoritative.",
     "publisher": "Palimpsest",
     "homepage": "https://palimpsest.info/data.html",
@@ -77,6 +77,117 @@
       "method": "scripts/build_bri_observatory.py",
       "count_fields": ["coverage.event_count", "coverage.source_count", "coverage.independence_group_count", "coverage.relation_event_count"],
       "license": {"name": "MIT for Palimpsest analysis and metadata; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
+      "id": "bri-regional-archive",
+      "name": "BRI and regional-corridor captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed BRI, CPEC/Gwadar, Balochistan and Myanmar classifiers, bundled with source-registry coverage, World Bank national context, UCDP annual aggregate context and cited editorial evidence. Chinese-dominant records join to the content-addressed English translation sidecar while retaining the original text. It is a metadata-link-only archive of what Palimpsest captured, not every article published on the internet; article bodies, person records and tactical records are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "stage": "archive",
+      "collection_mode": "append-only-metadata-ledger-projection",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["GLOBAL", "CN", "PK", "MM"],
+      "sources": ["Palimpsest Evidence Wire event-version ledger", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official and multilateral editorial evidence"],
+      "latest": "belt-and-road/data/regional-data.json",
+      "landing_page": "belt-and-road/",
+      "method": "protocol/regional-data-dump-v1.schema.json",
+      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
+      "distributions": [
+        {"name": "bri-captured-index-json", "path": "belt-and-road/data/captured-index.json", "format": "json", "mediatype": "application/json"},
+        {"name": "bri-captured-index-jsonl", "path": "belt-and-road/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
+        {"name": "bri-captured-index-csv", "path": "belt-and-road/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"},
+        {"name": "bri-regional-editorial-evidence-json", "path": "config/regional_editorials.json", "format": "json", "mediatype": "application/json"}
+      ],
+      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
+      "id": "gwadar-regional-archive",
+      "name": "CPEC and Gwadar captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed CPEC and Gwadar classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Source reports and allegations remain attributed; overlap does not establish delivery, responsibility, benefit, harm, coordination or causation, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "stage": "archive",
+      "collection_mode": "append-only-metadata-ledger-projection",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["PK", "CN"],
+      "sources": ["Palimpsest Evidence Wire event-version ledger", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official and multilateral editorial evidence"],
+      "latest": "belt-and-road/gwadar/data/regional-data.json",
+      "landing_page": "belt-and-road/gwadar/",
+      "method": "protocol/regional-data-dump-v1.schema.json",
+      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
+      "distributions": [
+        {"name": "gwadar-captured-index-json", "path": "belt-and-road/gwadar/data/captured-index.json", "format": "json", "mediatype": "application/json"},
+        {"name": "gwadar-captured-index-jsonl", "path": "belt-and-road/gwadar/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
+        {"name": "gwadar-captured-index-csv", "path": "belt-and-road/gwadar/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"}
+      ],
+      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
+      "id": "balochistan-regional-archive",
+      "name": "Balochistan rights and political-economy captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed Balochistan classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Peaceful civic advocacy, rights documentation, parliamentary politics, armed groups and legal designations remain separate lanes; reports and allegations are attributed, not adjudicated, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "stage": "archive",
+      "collection_mode": "append-only-metadata-ledger-projection",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["PK", "CN"],
+      "sources": ["Palimpsest Evidence Wire event-version ledger", "regional media and documentation sources", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official, civic and multilateral editorial evidence"],
+      "latest": "belt-and-road/balochistan/data/regional-data.json",
+      "landing_page": "belt-and-road/balochistan/",
+      "method": "protocol/regional-data-dump-v1.schema.json",
+      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
+      "distributions": [
+        {"name": "balochistan-captured-index-json", "path": "belt-and-road/balochistan/data/captured-index.json", "format": "json", "mediatype": "application/json"},
+        {"name": "balochistan-captured-index-jsonl", "path": "belt-and-road/balochistan/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
+        {"name": "balochistan-captured-index-csv", "path": "belt-and-road/balochistan/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"}
+      ],
+      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
+      "id": "myanmar-regional-archive",
+      "name": "Myanmar corridor, conflict and rights captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed Myanmar, CMEC and Kyaukpyu classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Publisher accounts remain attributed, national and subnational evidence remain distinct, topical overlap is not causal proof, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "layer": "cross-layer",
+      "stage": "archive",
+      "collection_mode": "append-only-metadata-ledger-projection",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["MM", "CN"],
+      "sources": ["Palimpsest Evidence Wire event-version ledger", "regional Myanmar media", "World Bank World Development Indicators", "UCDP annual aggregates", "cited official, civic and multilateral editorial evidence"],
+      "latest": "belt-and-road/myanmar/data/regional-data.json",
+      "landing_page": "belt-and-road/myanmar/",
+      "method": "protocol/regional-data-dump-v1.schema.json",
+      "count_fields": ["captured_news.counts.event_versions", "captured_news.counts.unique_events", "captured_news.counts.sources", "captured_news.counts.events_with_english_translation", "economic_context.observation_count", "conflict_context.country_year_count", "conflict_context.conflict_year_count"],
+      "distributions": [
+        {"name": "myanmar-captured-index-json", "path": "belt-and-road/myanmar/data/captured-index.json", "format": "json", "mediatype": "application/json"},
+        {"name": "myanmar-captured-index-jsonl", "path": "belt-and-road/myanmar/data/captured-index.jsonl", "format": "jsonl", "mediatype": "application/x-ndjson"},
+        {"name": "myanmar-captured-index-csv", "path": "belt-and-road/myanmar/data/captured-index.csv", "format": "csv", "mediatype": "text/csv"}
+      ],
+      "license": {"name": "MIT for Palimpsest schema, metadata and analysis; each upstream source retains its recorded rights", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
+      "id": "chinese-news-english-translations",
+      "name": "Chinese-language captured-news English translations",
+      "description": "Content-addressed machine-draft English translations of every current Chinese-dominant Palimpsest wire item, every Chinese-dominant revision in the append-only event-version ledger, and every eligible current event record not already represented by that ledger. Each record preserves immutable item/event version bindings, original Chinese metadata, source and collection clocks, and separates bounded translation from clearly labeled background. Coverage is limited to captured headline and feed-excerpt metadata: Palimpsest does not fetch or republish article bodies, and original publishers retain their rights.",
+      "layer": "content",
+      "stage": "publication",
+      "collection_mode": "content-addressed-machine-translation-metadata-only",
+      "status": "live",
+      "cadence": "PT1H",
+      "geography": ["CN", "GLOBAL"],
+      "sources": ["Chinese-dominant Palimpsest Evidence Wire metadata", "publisher canonical links and source clocks"],
+      "latest": "readings/chinese-translations-latest.json",
+      "landing_page": "news/china/english/",
+      "method": "protocol/chinese-translations-v1.schema.json",
+      "count_fields": ["coverage.translated_records", "coverage.unique_content_digests", "coverage.record_kinds", "coverage.eligible_ledger_event_revisions", "coverage.translated_ledger_event_revisions", "coverage.missing_records"],
+      "distributions": [
+        {"name": "chinese-translations-json-feed", "path": "news/china/english/feed.json", "format": "jsonfeed", "mediatype": "application/feed+json"},
+        {"name": "chinese-translations-rss", "path": "news/china/english/feed.xml", "format": "rss", "mediatype": "application/rss+xml"},
+        {"name": "chinese-translations-generated-manifest", "path": "news/china/english/generated-manifest.json", "format": "json", "mediatype": "application/json"}
+      ],
+      "license": {"name": "Metadata-link-only and source-controlled; original publishers retain rights; Palimpsest method, schema and code use the repository license", "url": "https://palimpsest.info/data.html#rights"}
     },
     {
       "id": "bri-economic-observations",

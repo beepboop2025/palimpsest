@@ -2,7 +2,7 @@
   "@context": "https://schema.org",
   "@type": "DataCatalog",
   "name": "Palimpsest Evidence Atlas",
-  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, and model-evaluation datasets.",
+  "description": "Machine-readable catalog of Palimpsest censorship, information-control, network-health, state-telemetry, Belt and Road infrastructure and economic evidence, complete retained regional news archives, Chinese-to-English captured-metadata translations, and model-evaluation datasets.",
   "url": "https://palimpsest.info/data.html",
   "publisher": {
     "@type": "Organization",
@@ -10,7 +10,7 @@
     "name": "Palimpsest",
     "url": "https://palimpsest.info/"
   },
-  "dateModified": "2026-08-29T16:48:28.204916Z",
+  "dateModified": "2026-08-30T08:06:05Z",
   "dataset": [
     {
       "@type": "Dataset",
@@ -47,7 +47,7 @@
         "PK",
         "CN"
       ],
-      "dateModified": "2026-08-29T18:41:40Z",
+      "dateModified": "2026-08-30T07:25:25Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -69,7 +69,7 @@
         "PK",
         "CN"
       ],
-      "dateModified": "2026-08-29T18:41:40Z",
+      "dateModified": "2026-08-30T07:25:25Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -91,7 +91,7 @@
         "MM",
         "CN"
       ],
-      "dateModified": "2026-08-29T18:41:40Z",
+      "dateModified": "2026-08-30T07:25:25Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -99,6 +99,214 @@
           "name": "Recurring Myanmar corridor, conflict and rights analysis — latest",
           "encodingFormat": "application/json",
           "contentUrl": "https://palimpsest.info/belt-and-road/myanmar/analysis/article.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "bri-regional-archive",
+      "name": "BRI and regional-corridor captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed BRI, CPEC/Gwadar, Balochistan and Myanmar classifiers, bundled with source-registry coverage, World Bank national context, UCDP annual aggregate context and cited editorial evidence. Chinese-dominant records join to the content-addressed English translation sidecar while retaining the original text. It is a metadata-link-only archive of what Palimpsest captured, not every article published on the internet; article bodies, person records and tactical records are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "url": "https://palimpsest.info/belt-and-road/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "GLOBAL",
+        "CN",
+        "PK",
+        "MM"
+      ],
+      "dateModified": "2026-08-30T07:25:25Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "BRI and regional-corridor captured-news archive — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/data/regional-data.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "bri-captured-index-json",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/data/captured-index.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "bri-captured-index-jsonl",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/belt-and-road/data/captured-index.jsonl"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "bri-captured-index-csv",
+          "encodingFormat": "text/csv",
+          "contentUrl": "https://palimpsest.info/belt-and-road/data/captured-index.csv"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "bri-regional-editorial-evidence-json",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/config/regional_editorials.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "gwadar-regional-archive",
+      "name": "CPEC and Gwadar captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed CPEC and Gwadar classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Source reports and allegations remain attributed; overlap does not establish delivery, responsibility, benefit, harm, coordination or causation, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "url": "https://palimpsest.info/belt-and-road/gwadar/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "PK",
+        "CN"
+      ],
+      "dateModified": "2026-08-30T07:25:25Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "CPEC and Gwadar captured-news archive — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/gwadar/data/regional-data.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "gwadar-captured-index-json",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/gwadar/data/captured-index.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "gwadar-captured-index-jsonl",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/belt-and-road/gwadar/data/captured-index.jsonl"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "gwadar-captured-index-csv",
+          "encodingFormat": "text/csv",
+          "contentUrl": "https://palimpsest.info/belt-and-road/gwadar/data/captured-index.csv"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "balochistan-regional-archive",
+      "name": "Balochistan rights and political-economy captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed Balochistan classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Peaceful civic advocacy, rights documentation, parliamentary politics, armed groups and legal designations remain separate lanes; reports and allegations are attributed, not adjudicated, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "url": "https://palimpsest.info/belt-and-road/balochistan/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "PK",
+        "CN"
+      ],
+      "dateModified": "2026-08-30T07:25:25Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Balochistan rights and political-economy captured-news archive — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/balochistan/data/regional-data.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "balochistan-captured-index-json",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/balochistan/data/captured-index.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "balochistan-captured-index-jsonl",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/belt-and-road/balochistan/data/captured-index.jsonl"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "balochistan-captured-index-csv",
+          "encodingFormat": "text/csv",
+          "contentUrl": "https://palimpsest.info/belt-and-road/balochistan/data/captured-index.csv"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "myanmar-regional-archive",
+      "name": "Myanmar corridor, conflict and rights captured-news archive",
+      "description": "Complete retained Palimpsest event-version coverage for the reviewed Myanmar, CMEC and Kyaukpyu classifier, with downloadable JSON, JSONL and CSV metadata indexes plus joined English translations for Chinese-dominant records, national economic, annual conflict and cited editorial context. Publisher accounts remain attributed, national and subnational evidence remain distinct, topical overlap is not causal proof, and article bodies are excluded. CSV neutralizes formula-leading text cells; JSON and JSONL preserve exact captured text.",
+      "url": "https://palimpsest.info/belt-and-road/myanmar/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "MM",
+        "CN"
+      ],
+      "dateModified": "2026-08-30T07:25:25Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Myanmar corridor, conflict and rights captured-news archive — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/myanmar/data/regional-data.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "myanmar-captured-index-json",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/belt-and-road/myanmar/data/captured-index.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "myanmar-captured-index-jsonl",
+          "encodingFormat": "application/x-ndjson",
+          "contentUrl": "https://palimpsest.info/belt-and-road/myanmar/data/captured-index.jsonl"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "myanmar-captured-index-csv",
+          "encodingFormat": "text/csv",
+          "contentUrl": "https://palimpsest.info/belt-and-road/myanmar/data/captured-index.csv"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
+      "identifier": "chinese-news-english-translations",
+      "name": "Chinese-language captured-news English translations",
+      "description": "Content-addressed machine-draft English translations of every current Chinese-dominant Palimpsest wire item, every Chinese-dominant revision in the append-only event-version ledger, and every eligible current event record not already represented by that ledger. Each record preserves immutable item/event version bindings, original Chinese metadata, source and collection clocks, and separates bounded translation from clearly labeled background. Coverage is limited to captured headline and feed-excerpt metadata: Palimpsest does not fetch or republish article bodies, and original publishers retain their rights.",
+      "url": "https://palimpsest.info/news/china/english/",
+      "license": "https://palimpsest.info/data.html#rights",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "dateModified": "2026-08-30T07:26:31Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Chinese-language captured-news English translations — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/chinese-translations-latest.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "chinese-translations-json-feed",
+          "encodingFormat": "application/feed+json",
+          "contentUrl": "https://palimpsest.info/news/china/english/feed.json"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "chinese-translations-rss",
+          "encodingFormat": "application/rss+xml",
+          "contentUrl": "https://palimpsest.info/news/china/english/feed.xml"
+        },
+        {
+          "@type": "DataDownload",
+          "name": "chinese-translations-generated-manifest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/news/china/english/generated-manifest.json"
         }
       ]
     },
@@ -1109,7 +1317,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-24T02:21:11.447208Z",
+      "dateModified": "2026-08-30T07:32:12.140291Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1137,7 +1345,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-24T17:22:36.167843Z",
+      "dateModified": "2026-08-30T07:32:12.196824Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1165,7 +1373,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-24T17:22:36.277106Z",
+      "dateModified": "2026-08-30T07:32:12.233442Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1193,7 +1401,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-24T17:22:36.442298Z",
+      "dateModified": "2026-08-30T07:32:12.318667Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1221,7 +1429,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-24T17:22:36.343185Z",
+      "dateModified": "2026-08-30T07:32:12.265622Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1276,7 +1484,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-29T16:47:04Z",
+      "dateModified": "2026-08-30T07:32:14Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1300,7 +1508,7 @@
         "MM",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-29T18:41:40Z",
+      "dateModified": "2026-08-30T07:25:25Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1452,7 +1660,7 @@
         "CN",
         "HK"
       ],
-      "dateModified": "2026-08-29T16:47:04Z",
+      "dateModified": "2026-08-30T07:32:14Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1489,7 +1697,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-29T16:47:04Z",
+      "dateModified": "2026-08-30T07:32:14Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1565,7 +1773,7 @@
         "HK",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-29T16:32:12Z",
+      "dateModified": "2026-08-30T07:25:25Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1632,7 +1840,7 @@
         "CN",
         "GLOBAL"
       ],
-      "dateModified": "2026-08-29T16:47:04Z",
+      "dateModified": "2026-08-30T07:32:14Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1836,7 +2044,7 @@
       "spatialCoverage": [
         "CN"
       ],
-      "dateModified": "2026-08-24T17:22:36.625503Z",
+      "dateModified": "2026-08-30T07:32:12.407491Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1863,7 +2071,7 @@
       "spatialCoverage": [
         "GLOBAL"
       ],
-      "dateModified": "2026-08-26T13:36:23.836215Z",
+      "dateModified": "2026-08-30T07:32:14.168529Z",
       "isAccessibleForFree": true,
       "distribution": [
         {
@@ -1890,7 +2098,7 @@
       "spatialCoverage": [
         "CN"
       ],
-      "dateModified": "2026-08-24T17:22:36.938109Z",
+      "dateModified": "2026-08-30T07:32:14.219744Z",
       "isAccessibleForFree": true,
       "distribution": [
         {

@@ -323,10 +323,11 @@ def test_observatory_flyout_is_active_for_generated_china_routes():
 
 def test_bri_regions_are_an_always_visible_semantic_link_rail():
     assert site_nav.REGIONAL_EVIDENCE == (
-        ("/belt-and-road/#bri-corridors", "BRI & Corridors"),
-        ("/belt-and-road/#balochistan", "Balochistan"),
-        ("/belt-and-road/gwadar/", "Pakistan & Gwadar"),
-        ("/belt-and-road/#myanmar", "Myanmar"),
+        ("/belt-and-road/", "BRI & Corridors"),
+        ("/belt-and-road/gwadar/", "CPEC / Gwadar"),
+        ("/belt-and-road/balochistan/", "Balochistan"),
+        ("/belt-and-road/myanmar/", "Myanmar"),
+        ("/news/china/english/", "Chinese → English"),
     )
 
     assert any(

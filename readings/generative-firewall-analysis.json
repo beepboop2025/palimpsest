@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-instrument-analysis.v1",
-  "analysis_id": "instrumentv-0234f8f0796b68622ee74116",
+  "analysis_id": "instrumentv-74c93ff8300c795c598a7a09",
   "signal_id": "generative-firewall",
   "story_url": "https://palimpsest.info/news/generative-firewall-index/",
   "url": "https://palimpsest.info/news/generative-firewall-index/analysis.json",
@@ -42,7 +42,7 @@
       "status": "present",
       "sentences": [
         {
-          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: none.",
+          "text": "Same-edition elevated layers: none declared. Other live lead or high signal ids: board-alarm, event-flags, coverage-guard, forecast-ledger.",
           "citation_ids": [
             "instrumentevidence-4e1e08ba339863a82efa"
           ]
@@ -107,7 +107,32 @@
       ]
     }
   ],
-  "elevated_peers": [],
+  "elevated_peers": [
+    {
+      "signal_id": "board-alarm",
+      "section": "command",
+      "status": "live",
+      "priority": "lead"
+    },
+    {
+      "signal_id": "event-flags",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "coverage-guard",
+      "section": "command",
+      "status": "live",
+      "priority": "high"
+    },
+    {
+      "signal_id": "forecast-ledger",
+      "section": "command",
+      "status": "live",
+      "priority": "standard"
+    }
+  ],
   "review_rank": {
     "editorial_priority": null,
     "editorial_priority_role": "review-rank-only",

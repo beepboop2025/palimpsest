@@ -17,7 +17,7 @@ import re
 import stat
 import tempfile
 from datetime import date, datetime, time, timedelta, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Mapping, Sequence
 from urllib.parse import urlsplit
 
@@ -149,7 +149,22 @@ _CATALOG_DATASET_REQUIRED = frozenset({
 })
 _CATALOG_DATASET_ALLOWED = _CATALOG_DATASET_REQUIRED | {
     "history", "freshness_budget", "freshness_semantics", "publication_allowed",
+    "distributions",
 }
+_CATALOG_DISTRIBUTION_FIELDS = frozenset(
+    {"name", "path", "format", "mediatype"}
+)
+_CATALOG_DISTRIBUTION_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,63}$")
+_CATALOG_DISTRIBUTION_FORMAT_RE = re.compile(
+    r"^[a-z0-9][a-z0-9._+-]{0,31}$"
+)
+_CATALOG_DISTRIBUTION_MEDIA_TYPE_RE = re.compile(
+    r"^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$"
+)
+_CATALOG_DISTRIBUTION_PATH_RE = re.compile(
+    r"^[A-Za-z0-9._-][A-Za-z0-9._/-]{0,511}$"
+)
+MAX_CATALOG_DISTRIBUTIONS = 64
 
 _OSINT_TOP_FIELDS = frozenset({
     "alerts", "generated_at", "headline", "health", "input_commit", "layers",
@@ -569,7 +584,19 @@ def _validate_config(config: Any) -> dict[str, Any]:
     return config
 
 
-def _validate_catalog(value: Any) -> dict[str, Any]:
+def _catalog_distribution_path(root: Path, value: Any, path: str) -> Path:
+    text = _text(value, path, 512)
+    relative = PurePosixPath(text)
+    if (
+        not _CATALOG_DISTRIBUTION_PATH_RE.fullmatch(text)
+        or relative.as_posix() != text
+        or any(part in {".", ".."} for part in relative.parts)
+    ):
+        raise EvidenceMeshError(f"{path} must be a canonical repository-relative path")
+    return _repo_path(root, text, path)
+
+
+def _validate_catalog(value: Any, root: Path = ROOT) -> dict[str, Any]:
     value = _require_exact(value, _CATALOG_TOP_FIELDS, "catalog")
     if value["schema_version"] != "1.0.0":
         raise EvidenceMeshError("unknown public data catalog schema")
@@ -578,6 +605,7 @@ def _validate_catalog(value: Any) -> dict[str, Any]:
     if type(datasets) is not list or not datasets or len(datasets) > 256:
         raise EvidenceMeshError("catalog.datasets must be a bounded array")
     ids: set[str] = set()
+    distribution_names: set[str] = set()
     for index, dataset in enumerate(datasets):
         path = f"catalog.datasets[{index}]"
         dataset = _require_allowed(dataset, _CATALOG_DATASET_REQUIRED, _CATALOG_DATASET_ALLOWED, path)
@@ -612,6 +640,54 @@ def _validate_catalog(value: Any) -> dict[str, Any]:
                 _text(item, f"{path}.{field}[]", 256)
         if not dataset["sources"]:
             raise EvidenceMeshError(f"{path}.sources cannot be empty")
+        distributions = dataset.get("distributions", [])
+        if type(distributions) is not list or len(distributions) > MAX_CATALOG_DISTRIBUTIONS:
+            raise EvidenceMeshError(f"{path}.distributions must be a bounded array")
+        distribution_paths: set[str] = set()
+        reserved_paths = {dataset["latest"]}
+        if dataset.get("history"):
+            reserved_paths.add(dataset["history"])
+        for distribution_index, distribution in enumerate(distributions):
+            distribution_path = f"{path}.distributions[{distribution_index}]"
+            distribution = _require_exact(
+                distribution,
+                _CATALOG_DISTRIBUTION_FIELDS,
+                distribution_path,
+            )
+            name = _text(distribution["name"], f"{distribution_path}.name", 64)
+            if (
+                not _CATALOG_DISTRIBUTION_NAME_RE.fullmatch(name)
+                or name in distribution_names
+            ):
+                raise EvidenceMeshError(
+                    f"{distribution_path}.name must be a globally unique distribution identifier"
+                )
+            public_path = _text(
+                distribution["path"], f"{distribution_path}.path", 512
+            )
+            _catalog_distribution_path(
+                root, public_path, f"{distribution_path}.path"
+            )
+            if public_path in distribution_paths or public_path in reserved_paths:
+                raise EvidenceMeshError(
+                    f"{distribution_path}.path duplicates a dataset artifact path"
+                )
+            file_format = _text(
+                distribution["format"], f"{distribution_path}.format", 32
+            )
+            if not _CATALOG_DISTRIBUTION_FORMAT_RE.fullmatch(file_format):
+                raise EvidenceMeshError(
+                    f"{distribution_path}.format is not a bounded format token"
+                )
+            mediatype = _text(
+                distribution["mediatype"], f"{distribution_path}.mediatype", 128
+            )
+            if not _CATALOG_DISTRIBUTION_MEDIA_TYPE_RE.fullmatch(mediatype):
+                raise EvidenceMeshError(
+                    f"{distribution_path}.mediatype is not a bounded media type"
+                )
+            distribution_names.add(name)
+            distribution_paths.add(public_path)
         license_value = _require_exact(
             dataset["license"], frozenset({"name", "url"}), f"{path}.license"
         )
@@ -1089,7 +1165,7 @@ def build_evidence_mesh(
         return value, raw, contract
 
     catalog_value, catalog_raw, catalog_contract = load_contract("palimpsest-catalog")
-    catalog = _validate_catalog(catalog_value)
+    catalog = _validate_catalog(catalog_value, root)
     osint_value, osint_raw, osint_contract = load_contract("palimpsest-osint")
     osint = _validate_osint(osint_value)
     commons_value, commons_raw, commons_contract = load_contract("intelligence-commons")

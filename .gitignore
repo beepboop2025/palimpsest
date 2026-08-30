@@ -13,6 +13,14 @@ venv/
 
 # local scraped data cache (published output goes to readings/, not here)
 data/
+!belt-and-road/data/
+!belt-and-road/data/**
+!belt-and-road/gwadar/data/
+!belt-and-road/gwadar/data/**
+!belt-and-road/balochistan/data/
+!belt-and-road/balochistan/data/**
+!belt-and-road/myanmar/data/
+!belt-and-road/myanmar/data/**
 # ...except the China brief's novelty baseline, which is a published input, not a cache.
 # Novelty is scored against it, so if the refresh workflow cannot commit it every term
 # reads as new on every run. The directory must be re-included before the file can be:

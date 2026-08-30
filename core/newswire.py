@@ -588,6 +588,7 @@ _CHINA_SCOPED_SOURCE_IDS = frozenset(
         "daily-cpec-china-pakistan",
         "daily-cpec-gwadar",
         "dvb-english",
+        "express-tribune-balochistan",
         "hrc-balochistan",
         "kachin-news-group",
         "myanmar-now",
@@ -598,7 +599,6 @@ _CHINA_FILTERED_SOURCE_IDS = frozenset(
     {
         "business-recorder-pakistan",
         "dawn-pakistan",
-        "express-tribune-balochistan",
         "hrcp-pakistan",
     }
 )
@@ -610,6 +610,11 @@ _CHINA_TERMS = (
     "quetta", "myanmar", "burma", "rakhine", "kyaukpyu", "cmec",
     "中国", "中國", "中国大陆", "中國大陸", "北京", "上海", "香港", "新疆",
     "西藏", "维吾尔", "維吾爾", "台湾", "台灣",
+    "一带一路", "一帶一路", "丝绸之路经济带", "絲綢之路經濟帶",
+    "海上丝绸之路", "海上絲綢之路", "中巴经济走廊", "中巴經濟走廊",
+    "瓜达尔", "瓜達爾", "俾路支", "俾路支斯坦", "巴洛奇",
+    "缅甸", "緬甸", "中缅经济走廊", "中緬經濟走廊", "皎漂",
+    "掸邦", "撣邦", "克钦", "克欽", "若开", "若開",
 )
 _ECONOMIC_TITLE_TERMS = (
     "economy", "economic", "gdp", "gross domestic product", "inflation",

@@ -56,15 +56,12 @@ MCP_REGISTRY_VERSION_URL = (
 )
 MCP_REGISTRY_PUBLISHED_AT = "2026-08-29T14:47:02.39659Z"
 BRI_WDI_RELEASE_A_SHA = "14b06772dfed6cdc736279c9ab61b444e5846598"
-BRI_WDI_RUN_URL = (
-    "https://github.com/beepboop2025/palimpsest/actions/runs/32984946320"
-)
+BRI_WDI_RUN_URL = "https://github.com/beepboop2025/palimpsest/actions/runs/32984946320"
 BRI_WDI_RECEIPT_PATH = (
     ROOT / ".well-known" / "receipts" / "bri-wdi-pages-publication-v1.json"
 )
 BRI_WDI_RECEIPT_URL = (
-    "https://palimpsest.info/.well-known/receipts/"
-    "bri-wdi-pages-publication-v1.json"
+    "https://palimpsest.info/.well-known/receipts/bri-wdi-pages-publication-v1.json"
 )
 BRI_WDI_RECEIPT_SHA256 = (
     "sha256:239a6b5e1496eaf3f97d8d0502cbf1581f24b02ba386d7d806adc79a877d2a06"
@@ -256,9 +253,9 @@ def test_ai_catalog_routes_openapi_economic_evidence_and_agent_skill():
     assert index["metadata"]["freshnessAuthority"].startswith(
         "Read rights_evaluated_at"
     )
-    mcp_description = entries[
-        "urn:air:palimpsest.info:mcp:evidence-observatory"
-    ]["description"]
+    mcp_description = entries["urn:air:palimpsest.info:mcp:evidence-observatory"][
+        "description"
+    ]
     assert "native fail-closed" in mcp_description
     assert "cannot be promoted" in mcp_description
     assert "download economic observation ledger" not in openapi["capabilities"]
@@ -287,9 +284,7 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
         BRI_WDI_RECEIPT_SHA256
     )
     assert "not this OpenAPI document" in openapi["metadata"]["deploymentNote"]
-    assert "independent of the deployed MCP" in openapi["metadata"][
-        "versionAuthority"
-    ]
+    assert "independent of the deployed MCP" in openapi["metadata"]["versionAuthority"]
 
     assert bri["metadata"] == {
         "authentication": "none",
@@ -300,27 +295,22 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
         "wdiPublicationReceiptSchema": BRI_WDI_RECEIPT_SCHEMA_URL,
         "wdiServedVerifiedAt": BRI_WDI_VERIFIED_AT,
         "wdiServedVerificationFreshUntil": BRI_WDI_FRESH_UNTIL,
-        "wdiAvailabilitySemantics": (
-            "verified_at_release_not_continuous_monitoring"
-        ),
+        "wdiAvailabilitySemantics": ("verified_at_release_not_continuous_monitoring"),
         "wdiReceiptScope": (
             "The receipt binds only the WDI bundle, observation schema and series "
             "registry. It does not attest this current BRI reading."
         ),
         "schema": (
-            "https://palimpsest.info/protocol/"
-            "belt-and-road-observatory-v2.schema.json"
+            "https://palimpsest.info/protocol/belt-and-road-observatory-v2.schema.json"
         ),
         "v1Archive": (
             "https://palimpsest.info/readings/belt-and-road-observatory-v1.json"
         ),
         "v1ArchiveSchema": (
-            "https://palimpsest.info/protocol/"
-            "belt-and-road-observatory-v1.schema.json"
+            "https://palimpsest.info/protocol/belt-and-road-observatory-v1.schema.json"
         ),
         "economicContext": (
-            "https://palimpsest.info/readings/"
-            "bri-economic-observations-latest.json"
+            "https://palimpsest.info/readings/bri-economic-observations-latest.json"
         ),
         "ucdpAnnualAggregate": (
             "https://palimpsest.info/readings/ucdp-aggregate-latest.json"
@@ -329,8 +319,7 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
             "https://palimpsest.info/protocol/ucdp-aggregate-v1.schema.json"
         ),
         "ucdpReleaseReceipt": (
-            "https://palimpsest.info/readings/"
-            "ucdp-aggregate-release-receipt.json"
+            "https://palimpsest.info/readings/ucdp-aggregate-release-receipt.json"
         ),
         "ucdpReviewedLock": (
             "https://palimpsest.info/config/ucdp_acquisition_lock.json"
@@ -340,8 +329,7 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
         ),
         "ucdpRightsValidUntil": "2026-09-25T19:26:50Z",
         "deepResearchReport": (
-            "https://palimpsest.info/research/"
-            "china-pakistan-myanmar-bri-2026/"
+            "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
         ),
         "deepResearchPdf": (
             "https://palimpsest.info/research/"
@@ -351,9 +339,7 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
             "https://palimpsest.info/research/"
             "china-pakistan-myanmar-bri-2026/publication-receipt.json"
         ),
-        "gwadarAnalysis": (
-            "https://palimpsest.info/belt-and-road/gwadar/analysis/"
-        ),
+        "gwadarAnalysis": ("https://palimpsest.info/belt-and-road/gwadar/analysis/"),
         "gwadarAnalysisData": (
             "https://palimpsest.info/belt-and-road/gwadar/analysis/article.json"
         ),
@@ -363,11 +349,49 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
         "balochistanAnalysisData": (
             "https://palimpsest.info/belt-and-road/balochistan/analysis/article.json"
         ),
-        "myanmarAnalysis": (
-            "https://palimpsest.info/belt-and-road/myanmar/analysis/"
-        ),
+        "myanmarAnalysis": ("https://palimpsest.info/belt-and-road/myanmar/analysis/"),
         "myanmarAnalysisData": (
             "https://palimpsest.info/belt-and-road/myanmar/analysis/article.json"
+        ),
+        "regionalCapturedIndexSchema": (
+            "https://palimpsest.info/protocol/regional-captured-index-v1.schema.json"
+        ),
+        "regionalDataDumpSchema": (
+            "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json"
+        ),
+        "regionalEditorialEvidence": (
+            "https://palimpsest.info/config/regional_editorials.json"
+        ),
+        "regionalEditorialEvidenceSchema": (
+            "https://palimpsest.info/protocol/"
+            "regional-editorial-evidence-v1.schema.json"
+        ),
+        "regionalArchives": {
+            region: {
+                "landingPage": f"https://palimpsest.info/{prefix}",
+                "regionalData": (
+                    f"https://palimpsest.info/{prefix}data/regional-data.json"
+                ),
+                "capturedJson": (
+                    f"https://palimpsest.info/{prefix}data/captured-index.json"
+                ),
+                "capturedJsonl": (
+                    f"https://palimpsest.info/{prefix}data/captured-index.jsonl"
+                ),
+                "capturedCsv": (
+                    f"https://palimpsest.info/{prefix}data/captured-index.csv"
+                ),
+            }
+            for region, prefix in (
+                ("bri", "belt-and-road/"),
+                ("gwadar", "belt-and-road/gwadar/"),
+                ("balochistan", "belt-and-road/balochistan/"),
+                ("myanmar", "belt-and-road/myanmar/"),
+            )
+        },
+        "csvSafety": (
+            "Formula-leading text is prefixed with an apostrophe in CSV only; "
+            "JSON and JSONL preserve exact captured text."
         ),
         "humanLandingPage": "https://palimpsest.info/belt-and-road/",
         "coverageBoundary": (
@@ -432,6 +456,76 @@ def test_ai_catalog_exposes_bri_v2_archive_and_bounded_wdi_context():
     assert receipt["served_verification"]["verified_at"] == BRI_WDI_VERIFIED_AT
 
 
+def test_ai_catalog_exposes_complete_regional_archives_and_chinese_translation():
+    entries = _catalog_entries()
+    archives = entries[
+        "urn:air:palimpsest.info:dataset:regional-captured-news-archives"
+    ]
+    translations = entries[
+        "urn:air:palimpsest.info:dataset:chinese-news-english-translations"
+    ]
+
+    assert archives["metadata"]["publicationMode"] == "metadata-link-only"
+    assert archives["metadata"]["articleBodiesIncluded"] is False
+    assert archives["metadata"]["classifierScope"] == (
+        "complete-retained-capture-not-global-publishing-universe"
+    )
+    assert archives["metadata"]["capturedIndexSchema"].endswith(
+        "/protocol/regional-captured-index-v1.schema.json"
+    )
+    assert archives["metadata"]["regionalDataSchema"].endswith(
+        "/protocol/regional-data-dump-v1.schema.json"
+    )
+    assert archives["metadata"]["csvSafety"] == (
+        "Formula-leading text is prefixed with an apostrophe in CSV only; "
+        "JSON and JSONL preserve exact captured text."
+    )
+    assert archives["metadata"]["archives"] == {
+        region: f"https://palimpsest.info/{prefix}data/regional-data.json"
+        for region, prefix in (
+            ("bri", "belt-and-road/"),
+            ("gwadar", "belt-and-road/gwadar/"),
+            ("balochistan", "belt-and-road/balochistan/"),
+            ("myanmar", "belt-and-road/myanmar/"),
+        )
+    }
+    assert "not every article on the internet" in archives["description"]
+
+    assert translations["url"] == (
+        "https://palimpsest.info/readings/chinese-translations-latest.json"
+    )
+    assert translations["metadata"] == {
+        "authentication": "none",
+        "access": "public-read-only",
+        "rightsStatus": "metadata-link-only-source-controlled",
+        "articleBodiesIncluded": False,
+        "reviewStatus": "machine-draft",
+        "schema": (
+            "https://palimpsest.info/protocol/chinese-translations-v1.schema.json"
+        ),
+        "humanLandingPage": "https://palimpsest.info/news/china/english/",
+        "jsonFeed": "https://palimpsest.info/news/china/english/feed.json",
+        "rssFeed": "https://palimpsest.info/news/china/english/feed.xml",
+        "generatedManifest": (
+            "https://palimpsest.info/news/china/english/generated-manifest.json"
+        ),
+        "coverageBoundary": (
+            "Completeness is measured against Chinese-dominant metadata retained "
+            "by Palimpsest, not every Chinese-language article published globally. "
+            "Background is separately labeled and cannot be read as publisher text."
+        ),
+    }
+    assert (
+        "article bodies are neither fetched nor republished"
+        in translations["description"]
+    )
+    assert (
+        "every current Chinese-dominant Palimpsest wire item"
+        in translations["description"]
+    )
+    assert "append-only event-version ledger" in translations["description"]
+
+
 def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
     catalog_url = "https://palimpsest.info/.well-known/ai-catalog.json"
     robots = _read("robots.txt")
@@ -453,17 +547,43 @@ def test_agentmap_sitemap_llms_and_developer_discovery_are_connected():
     assert catalog_url in urls
     assert set(PAGES.values()) <= urls
     assert BRI_WDI_RECEIPT_URL in urls
-    assert "https://palimpsest.info/readings/bri-economic-observations-latest.json" in urls
+    assert (
+        "https://palimpsest.info/readings/bri-economic-observations-latest.json" in urls
+    )
     assert BRI_WDI_RECEIPT_SCHEMA_URL in urls
     assert "https://palimpsest.info/readings/ucdp-aggregate-latest.json" in urls
     assert (
-        "https://palimpsest.info/readings/ucdp-aggregate-release-receipt.json"
-        in urls
+        "https://palimpsest.info/readings/ucdp-aggregate-release-receipt.json" in urls
     )
-    assert (
-        "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/"
-        in urls
-    )
+    assert "https://palimpsest.info/research/china-pakistan-myanmar-bri-2026/" in urls
+    regional_urls = {
+        f"https://palimpsest.info/{prefix}data/{filename}"
+        for prefix in (
+            "belt-and-road/",
+            "belt-and-road/gwadar/",
+            "belt-and-road/balochistan/",
+            "belt-and-road/myanmar/",
+        )
+        for filename in (
+            "regional-data.json",
+            "captured-index.json",
+            "captured-index.jsonl",
+            "captured-index.csv",
+        )
+    }
+    assert regional_urls <= urls
+    assert {
+        "https://palimpsest.info/config/regional_editorials.json",
+        "https://palimpsest.info/protocol/regional-captured-index-v1.schema.json",
+        "https://palimpsest.info/protocol/regional-data-dump-v1.schema.json",
+        "https://palimpsest.info/protocol/regional-editorial-evidence-v1.schema.json",
+        "https://palimpsest.info/readings/chinese-translations-latest.json",
+        "https://palimpsest.info/protocol/chinese-translations-v1.schema.json",
+        "https://palimpsest.info/news/china/english/",
+        "https://palimpsest.info/news/china/english/feed.json",
+        "https://palimpsest.info/news/china/english/feed.xml",
+        "https://palimpsest.info/news/china/english/generated-manifest.json",
+    } <= urls
 
 
 def test_financial_landing_pages_have_canonical_metadata_and_visible_faqs():
