@@ -156,6 +156,7 @@ def test_manifest_covers_the_current_china_latest_feed_inventory(mod):
         "source-workflow-latest.json",
         "social-observations-latest.json",
         "erasure-trail-latest.json",
+        "censorship-practice-dossiers-latest.json",
         "common-crawl-china-joins-latest.json",
         "archive-news-context-latest.json",
         "official-first-seen-latest.json",

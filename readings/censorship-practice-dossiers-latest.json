@@ -1,0 +1,1732 @@
+{
+  "actor_attribution_policy": "Name CCP, a PRC authority, a platform, or another actor only when the retained evidence explicitly names that actor. Otherwise publish not_established.",
+  "counts": {
+    "captured_items_reviewed": 370,
+    "dossiers": 15,
+    "excluded_items": 57,
+    "observed_disappearances": 0,
+    "pattern_signals": 1,
+    "peer_reported": 11,
+    "review_required": 3
+  },
+  "coverage": {
+    "collector_receipts": [
+      {
+        "accepted": 0,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "cecc-instagram",
+        "status": "not-attempted"
+      },
+      {
+        "accepted": 22,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "cgtn-telegram",
+        "status": "success"
+      },
+      {
+        "accepted": 0,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "chrd-instagram",
+        "status": "not-attempted"
+      },
+      {
+        "accepted": 0,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "dw-chinese-instagram",
+        "status": "not-attempted"
+      },
+      {
+        "accepted": 0,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "global-voices-instagram",
+        "status": "not-attempted"
+      },
+      {
+        "accepted": 0,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "new-bloom-instagram",
+        "status": "not-attempted"
+      },
+      {
+        "accepted": 0,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "pandaily-instagram",
+        "status": "not-attempted"
+      },
+      {
+        "accepted": 0,
+        "family": "social",
+        "note": "A failed or not-attempted source is a coverage gap; it is not a zero-censorship result.",
+        "source_id": "rthk-instagram",
+        "status": "not-attempted"
+      },
+      {
+        "accepted": 15,
+        "family": "public_ledger",
+        "note": "A feed may contain reporting about censorship rather than items that were themselves removed. Qualification is item-level.",
+        "source_id": "cdt_english_root",
+        "status": "ok"
+      },
+      {
+        "accepted": 0,
+        "family": "public_ledger",
+        "note": "A feed may contain reporting about censorship rather than items that were themselves removed. Qualification is item-level.",
+        "source_id": "cdt_chinese_root",
+        "status": "unreachable"
+      },
+      {
+        "accepted": 0,
+        "family": "public_ledger",
+        "note": "A feed may contain reporting about censorship rather than items that were themselves removed. Qualification is item-level.",
+        "source_id": "greatfire_blog",
+        "status": "empty-feed"
+      },
+      {
+        "accepted": 0,
+        "family": "public_ledger",
+        "note": "A feed may contain reporting about censorship rather than items that were themselves removed. Qualification is item-level.",
+        "source_id": "freeweibo_public",
+        "status": "unreachable"
+      },
+      {
+        "accepted": 0,
+        "family": "public_ledger",
+        "note": "A feed may contain reporting about censorship rather than items that were themselves removed. Qualification is item-level.",
+        "source_id": "freewechat_public",
+        "status": "unreachable"
+      }
+    ],
+    "exclusions": [
+      {
+        "count": 7,
+        "reason": "archive_gap_or_unreachable_not_censorship"
+      },
+      {
+        "count": 4,
+        "reason": "ordinary_peer_coverage_without_explicit_information_control_basis"
+      },
+      {
+        "count": 22,
+        "reason": "social_published_or_edited_not_a_disappearance"
+      },
+      {
+        "count": 14,
+        "reason": "unmatched_archive_transition_not_piece_level_censorship"
+      },
+      {
+        "count": 10,
+        "reason": "visible_or_lexical_board_result_not_suppression"
+      }
+    ],
+    "inputs": [
+      {
+        "available": true,
+        "filename": "ddti-latest.json",
+        "generated_at": "2026-08-24T04:07:05Z",
+        "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+        "records_reviewed": 217
+      },
+      {
+        "available": true,
+        "filename": "public-deletion-ledgers-latest.json",
+        "generated_at": "2026-08-23T23:08:00Z",
+        "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+        "records_reviewed": 15
+      },
+      {
+        "available": true,
+        "filename": "social-observations-latest.json",
+        "generated_at": "2026-08-26T07:22:00Z",
+        "input_sha256": "7f5da9980cc8e90bbf193a53eb1bb6c3a83e1027b6e66c9b8c65c181c3e84554",
+        "records_reviewed": 22
+      },
+      {
+        "available": true,
+        "filename": "social-observations-versions.jsonl",
+        "generated_at": null,
+        "input_sha256": "97ed4b559462ed63beace07db27084df9ff0325b9bb405245bdcb2a41373105b",
+        "records_reviewed": 24
+      },
+      {
+        "available": true,
+        "filename": "undertext-latest.json",
+        "generated_at": "2026-08-25T00:57:18Z",
+        "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+        "records_reviewed": 57
+      },
+      {
+        "available": true,
+        "filename": "wayback-latest.json",
+        "generated_at": "2026-08-24T15:58:43Z",
+        "input_sha256": "f31ee3cb7f59ad4ba0189c4ef20a1a06211bd500dc5496dcef037c86fe464f75",
+        "records_reviewed": 21
+      },
+      {
+        "available": true,
+        "filename": "weibo-hotsearch-latest.json",
+        "generated_at": "2026-08-24T05:55:38Z",
+        "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+        "records_reviewed": 14
+      }
+    ],
+    "selection": "every-captured-qualifying-item"
+  },
+  "dossiers": [
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-86c275c5e6d4786858b12a09, “Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers”, evidence state peer_reported, source clock 2026-07-20T15:21:45Z. https://palimpsest.info/news/china/erasure/#censorpractice-86c275c5e6d4786858b12a09",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-86c275c5e6d4786858b12a09",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_publication_restriction; reported_legal_administrative_pressure.",
+          "evidence_id": "censorevidence-12b4da5d25a71a9c4440",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-07-20T15:21:45Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+        },
+        {
+          "claim": "The retained source names Hong Kong national security police with role reported_enforcement_actor.",
+          "evidence_id": "censorevidence-a4c3a82788345cf1c8c5",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-07-20T15:21:45Z",
+          "relation": "source_named_actor_relationship",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-ec83f0b61ce79eba576e",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-07-20T15:21:45Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_publication_restriction; reported_legal_administrative_pressure"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-83c0ab0dcaef800fcaaf",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-20T04:37:23Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-da3aec8c83cd70e57168",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "Culture & the Arts; Hong Kong; anti-sedition laws; arrests; banned books; book ban; book banning; discourse censorship; freedom of expression; freedom of information; hong kong censorship; hong kong national security law; hong kong publishing"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "peer_source_named",
+          "basis": "The retained excerpt explicitly says national security police conducted the raids and arrests. This is attributed reporting of the enforcement actor, not independent Palimpsest verification.",
+          "name": "Hong Kong national security police",
+          "role": "reported_enforcement_actor"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_publication_restriction",
+          "reported_legal_administrative_pressure"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "tags: censor",
+          "tags: freedom of expression",
+          "tags: freedom of information",
+          "tags: book ban",
+          "tags: book banning",
+          "tags: banned book",
+          "tags: discourse censorship",
+          "title: raid two more independent bookstores"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "0589b4922259aad3cf91f267c4cea7779e8661c13d0683f53e45092c5ec08b94",
+        "excerpt": "In yet another blow for book lovers and free thinkers in Hong Kong, national security police raided two independent bookstores (Have a Nice Stay and Greenfield, respectively) and arrested five individuals on suspicion of selling allegedly seditious publications, an offence punishable with up to seven years in prison under Hong Kong’s homegrown national security law […]",
+        "first_seen": "2026-07-20T15:21:45Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-07-20T15:21:45Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Amid Hong Kong Book Fair, Police Raid Two More Independent Bookstores, Arrest Five Booksellers",
+        "url": "https://chinadigitaltimes.net/2026/07/amid-hong-kong-book-fair-police-raid-two-more-independent-bookstores-arrest-five-booksellers/"
+      },
+      "timeline": [
+        {
+          "at": "2026-07-20T15:21:45Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-07-20T15:21:45Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-322c7d46f0580f7e5bc07291, “CDT’s “404 Deleted Content Archive” Summary for June 2026”, evidence state peer_reported, source clock 2026-07-31T21:15:07Z. https://palimpsest.info/news/china/erasure/#censorpractice-322c7d46f0580f7e5bc07291",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-322c7d46f0580f7e5bc07291",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_content_removal.",
+          "evidence_id": "censorevidence-bce2eeed2ae8651ee24f",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-07-31T21:15:07Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-a83ed548334e981f2104",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-07-31T21:15:07Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_content_removal"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-2ad1724eac76eb8369db",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-20T04:37:23Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-ac80e1eab44dab92e59a",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "404; 404 Deleted Content Archive; Censorship Vault; Douyin; Economics; Internet censorship; June 4th; WeChat; Weibo; World Cup; activism; activists; animal protection; animals; arrests; blue-collar workers; business; dogs; employment; extortion; legislation; local government; market-economy; nationalism"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_content_removal"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "text: censor",
+          "title: 404 deleted",
+          "title: deleted content"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "a2f81f5818d62bcdb1411a84848e566bae7e03ed01eb817b541d18a4c9fbbf09",
+        "excerpt": "CDT presents a monthly series of censored content that has been added to our “404 Deleted Content Archive.” Each month, we publish a summary of content blocked or deleted (often yielding the message “404: content not found”) from Chinese platforms such as WeChat, Weibo, Douyin (TikTok’s counterpart in the Chinese market), Xiaohongshu (RedNote), Bilibili, Zhihu, […]",
+        "first_seen": "2026-07-31T21:15:07Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-07-31T21:15:07Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "CDT’s “404 Deleted Content Archive” Summary for June 2026",
+        "url": "https://chinadigitaltimes.net/2026/07/cdts-404-deleted-content-archive-summary-for-june-2026/"
+      },
+      "timeline": [
+        {
+          "at": "2026-07-31T21:15:07Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-07-31T21:15:07Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-9b9d9ce0f94acf44afcc5cd5, “Freedom House – TNR Watch: Cyberattacks as a Tactic of Digital Transnational Repression”, evidence state peer_reported, source clock 2026-08-01T05:53:58Z. https://palimpsest.info/news/china/erasure/#censorpractice-9b9d9ce0f94acf44afcc5cd5",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-9b9d9ce0f94acf44afcc5cd5",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_digital_repression.",
+          "evidence_id": "censorevidence-0eaebac561489a0e5448",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-01T05:53:58Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://freedomhouse.org/article/tnr-watch-cyberattacks-tactic-digital-transnational-repression#new_tab"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-5df7762380be6138b9f7",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-08-01T05:53:58Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_digital_repression"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-1ad687cdf40c58e3b36b",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-19T05:20:06Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-4b45eceaaca715ceb5b4",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "CDT in the news; WeChat"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_digital_repression"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "title: digital transnational repression"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "b53ee75700fd2dde4997bd21f52e56b7c9464fbb184774cdfd440e59c85fd288",
+        "excerpt": "pa class=\"a2a_button_facebook\" href=\"https://www.addtoany.com/add_to/facebook?linkurl=https%3A%2F%2Ffreedomhouse.org%2Farticle%2Ftnr-watch-cyberattacks-tactic-digital-transnational-repression%23new_tab&linkname=Freedom%20House%20%E2%80%93%20TNR%20Watch%3A%20Cyberattacks%20as%20a%20Tactic%20of%20Digital%20Transnational%20Repression\" title=\"Facebook\" rel=\"nofollow noopener\" target=\"_blank\"/aa cl",
+        "first_seen": "2026-08-01T05:53:58Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-08-01T05:53:58Z",
+        "platform": "public-web",
+        "source": "ledger:cdt_english_root",
+        "title": "Freedom House – TNR Watch: Cyberattacks as a Tactic of Digital Transnational Repression",
+        "url": "https://freedomhouse.org/article/tnr-watch-cyberattacks-tactic-digital-transnational-repression#new_tab"
+      },
+      "timeline": [
+        {
+          "at": "2026-08-01T05:53:58Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-08-01T05:53:58Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-d8cb4bc3c0d4582395cc114f, “Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged””, evidence state peer_reported, source clock 2026-08-14T23:04:56Z. https://palimpsest.info/news/china/erasure/#censorpractice-d8cb4bc3c0d4582395cc114f",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-d8cb4bc3c0d4582395cc114f",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_information_control.",
+          "evidence_id": "censorevidence-63e3a2fed1d6a6df997c",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-14T23:04:56Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-77f364cd77c94bdb13be",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-08-14T23:04:56Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_information_control"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-c06ffaea643a48b33699",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-20T04:37:23Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-7afa34efb982f4b9852b",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "Academia; Discouraged; France; Peking University; U.S. universities; United States; Weibo censorship; academics; foreign universities; higher education; mathematics; nationalism; netizen comments; online public opinion; overseas Chinese; science education; translation excerpt; universities; women"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_information_control"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "tags: censor"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "0281e81323ba48fa3c382c76418c3c406b342e1480ba37addb54a925f73805df",
+        "excerpt": "The announcement that two Chinese mathematicians have won the Fields Medal, awarded every four years to outstanding mathematicians under 40, has been met with an outpouring of national pride on Chinese social media, as well as debate about the state of Chinese academia and whether there is enough domestic support and encouragement for emerging academic […]",
+        "first_seen": "2026-08-14T23:04:56Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-08-14T23:04:56Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Mathematicians Wang Hong and Deng Yu Win Fields Medal, Prompting Debate About National Pride, Chinese Academia, and Feeling “Discouraged”",
+        "url": "https://chinadigitaltimes.net/2026/08/mathematicians-wang-hong-and-deng-yu-win-fields-medal-prompting-debate-about-national-pride-chinese-academia-and-feeling-discouraged/"
+      },
+      "timeline": [
+        {
+          "at": "2026-08-14T23:04:56Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-08-14T23:04:56Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-1703e0daff6c2df1c5533e82, “Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended””, evidence state peer_reported, source clock 2026-08-20T04:37:23Z. https://palimpsest.info/news/china/erasure/#censorpractice-1703e0daff6c2df1c5533e82",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-1703e0daff6c2df1c5533e82",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_legal_administrative_pressure.",
+          "evidence_id": "censorevidence-ccab4dd076e2f43d55dc",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-20T04:37:23Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+        },
+        {
+          "claim": "The retained source names Wuhan Municipal Bureau of Culture and Tourism with role reported_investigating_authority.",
+          "evidence_id": "censorevidence-0930cfc91062b353fa94",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-20T04:37:23Z",
+          "relation": "source_named_actor_relationship",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-f8ba02bc56831413b810",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-08-20T04:37:23Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_legal_administrative_pressure"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-4924a38129bc1c18ddd0",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-23T23:36:27Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-b7273d618a4cea8f364d",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "CCP history; Chinese opera; Cultural Revolution; Culture & the Arts; Netizen Voices; Red; The Cultural Revolution Never Ended; arts censorship; censorship; comedy; cross-talk; cultural policy; free expression; freedom of expression; humor; insulting heroes and martyrs; netizen comments; party history; revolutionary films; translation excerpt; wuhan"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "peer_source_named",
+          "basis": "The retained excerpt explicitly says the subject is under investigation by this municipal bureau. This names the reported investigating authority, not a higher-level ordering actor.",
+          "name": "Wuhan Municipal Bureau of Culture and Tourism",
+          "role": "reported_investigating_authority"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_legal_administrative_pressure"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "text: censor",
+          "tags: free expression",
+          "tags: freedom of expression"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "3e93e2e56d27a69cf9e26fd3efda7652d2975eef0a62d721128809f8317df718",
+        "excerpt": "News that comedian Guo Degang is under investigation by the Wuhan Municipal Bureau of Culture and Tourism for a playful riff on an old “red tune” has set alarm bells ringing about the state of artistic censorship in China. While playing the popular role of “mad monk” Ji Gong in a theatrical performance in Wuhan […]",
+        "first_seen": "2026-08-20T04:37:23Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-08-20T04:37:23Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Netizen Voices on the Investigation of Comedian Guo Degang for Riffing on a “Red” Tune: “The Cultural Revolution Never Ended”",
+        "url": "https://chinadigitaltimes.net/2026/08/netizen-voices-on-the-investigation-of-comedian-guo-degang-for-riffing-on-a-red-tune-the-cultural-revolution-never-ended/"
+      },
+      "timeline": [
+        {
+          "at": "2026-08-20T04:37:23Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-08-20T04:37:23Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-78f269685b481bacb24730b7, “Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints”, evidence state peer_reported, source clock 2026-08-11T02:57:16Z. https://palimpsest.info/news/china/erasure/#censorpractice-78f269685b481bacb24730b7",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-78f269685b481bacb24730b7",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_legal_administrative_pressure.",
+          "evidence_id": "censorevidence-f07afa497e7baf70d0a8",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-11T02:57:16Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-7e39dfe083ec8832b9b8",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-08-11T02:57:16Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_legal_administrative_pressure"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-7b5e4ae06a12ce7addc1",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-23T23:36:27Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-05e797fa621bf78ba2eb",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "Caixin; Gansu; Lanzhou; defending rights; migrant workers; social media; trials; unpaid wages"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_legal_administrative_pressure"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "title: detention for reposting"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "7ca3fb6d13902fb6b13a45422553f114b358a793e578f895d377fb0258ca83b5",
+        "excerpt": "Late last month, Caixin published an update on the case, prompting commentator and former investigative journalist Chu Chaoxin to post a belated but heartfelt plea for Jing Shuren’s release. He emphasizes that Jing was for the most part only reposting others’ content, and there is no sign that he took payment for this. Chu writes […]",
+        "first_seen": "2026-08-11T02:57:16Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-08-11T02:57:16Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Translation: Migrant Worker Jing Shuren On Trial After Two-Year Detention for Reposting Unpaid Wage Complaints",
+        "url": "https://chinadigitaltimes.net/2026/08/translation-migrant-worker-jing-shuren-on-trial-after-two-year-detention-for-reposting-unpaid-wage-complaints/"
+      },
+      "timeline": [
+        {
+          "at": "2026-08-11T02:57:16Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-08-11T02:57:16Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-58e218bdbe970c85cd1a7f80, “Translation: No Scaling the Great Firewall in the Library”, evidence state peer_reported, source clock 2026-07-29T23:48:00Z. https://palimpsest.info/news/china/erasure/#censorpractice-58e218bdbe970c85cd1a7f80",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-58e218bdbe970c85cd1a7f80",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_network_blocking.",
+          "evidence_id": "censorevidence-16133cdc3a30b30f60be",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-07-29T23:48:00Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+        },
+        {
+          "claim": "The retained source names Hunan Library with role reported_implementing_institution.",
+          "evidence_id": "censorevidence-755bdea4288bcc2d2db9",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-07-29T23:48:00Z",
+          "relation": "source_named_actor_relationship",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-74fdb739309c3b18e3cf",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-07-29T23:48:00Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_network_blocking"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-d5ce8e2a5bb50a26a384",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-23T23:36:27Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-c8de25f41229b1275996",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "Changsha; Cyberspace Administration of China; Great Firewall; Hunan; Internet; Internet access; Internet censorship; censorship; cybersecurity; real name registration; wi-fi"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "peer_source_named",
+          "basis": "The retained excerpt explicitly says Hunan Library issued the notice announcing the Wi-Fi suspension. It does not establish who required or ordered the policy.",
+          "name": "Hunan Library",
+          "role": "reported_implementing_institution"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_network_blocking"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "text: censor",
+          "title: great firewall"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "bc3e1de5e1390cd89819bb1dd18df5af0d387dc9426e31f7d3903c5f8cf081fe",
+        "excerpt": "The notice below was issued by the Hunan Library, a provincial institution located in Changsha. It announces the temporary suspension of library Wi-Fi in response to \"hazardous\" use of censorship circumvention tools. The message is underlined by the inclusion of partly redacted cellphone numbers belonging to three alleged offenders, implicitly reminding library patrons that network […",
+        "first_seen": "2026-07-29T23:48:00Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-07-29T23:48:00Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Translation: No Scaling the Great Firewall in the Library",
+        "url": "https://chinadigitaltimes.net/2026/07/translation-no-scaling-the-great-firewall-in-the-library/"
+      },
+      "timeline": [
+        {
+          "at": "2026-07-29T23:48:00Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-07-29T23:48:00Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-eabdf397d075ac01bef9d5f2, “Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly””, evidence state peer_reported, source clock 2026-08-14T00:51:23Z. https://palimpsest.info/news/china/erasure/#censorpractice-eabdf397d075ac01bef9d5f2",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-eabdf397d075ac01bef9d5f2",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_keyword_filtering.",
+          "evidence_id": "censorevidence-bac1b05113ca825334ca",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-14T00:51:23Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+        },
+        {
+          "claim": "The retained source names Chinese online platforms (source wording) with role reported_implementing_surface_class.",
+          "evidence_id": "censorevidence-6d20f779477d34a9411a",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-14T00:51:23Z",
+          "relation": "source_named_actor_relationship",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-e47617b820da7314fe05",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-08-14T00:51:23Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_keyword_filtering"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-ba894ea824fb9ba45325",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-23T23:36:27Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-e799ffd798a0eaed45e2",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "Cannot Speak Openly; Internet censorship; WeChat; censorship; online censorship; sensitive words; social media; social media censorship; tech companies"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "peer_source_named",
+          "basis": "The retained excerpt explicitly locates keyword-based censorship on Chinese online platforms. It names a surface class, not a specific company or ordering authority.",
+          "name": "Chinese online platforms (source wording)",
+          "role": "reported_implementing_surface_class"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_keyword_filtering"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "text: censor",
+          "title: blocked word",
+          "title: blocked words",
+          "tags: sensitive word",
+          "tags: sensitive words",
+          "title: cannot speak openly"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "b8f3830622bf9df248f1118ad1e319e4d731c2d042c5914bf02f7a2aa2f24b70",
+        "excerpt": "The post translated below, from WeChat account “Summer Flavors,” argues that keyword-based censorship on Chinese online platforms is missing the mark, both unnecessarily restricting harmless speech and failing to address the problems it is meant to target. This leaves users struggling to articulate even relatively innocuous messages in ways that will survive. The post carefully […]",
+        "first_seen": "2026-08-14T00:51:23Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-08-14T00:51:23Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Translation: The Deluge of Blocked Words Online – Why We Feel We “Cannot Speak Openly”",
+        "url": "https://chinadigitaltimes.net/2026/08/translation-the-deluge-of-blocked-words-online-why-we-feel-we-cannot-speak-openly/"
+      },
+      "timeline": [
+        {
+          "at": "2026-08-14T00:51:23Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-08-14T00:51:23Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-280e01c2310b3fd9cee7cb49, “Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat”, evidence state peer_reported, source clock 2026-08-19T05:20:06Z. https://palimpsest.info/news/china/erasure/#censorpractice-280e01c2310b3fd9cee7cb49",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-280e01c2310b3fd9cee7cb49",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_content_removal.",
+          "evidence_id": "censorevidence-369c266520c2101ee307",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-08-19T05:20:06Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-62fd95173c0132fa502c",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-08-19T05:20:06Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_content_removal"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-3d5d0650aea7da2b43da",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-19T05:20:06Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-f5d767e89529d32feae3",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "Beijing; Extreme Security; Internet censorship; Shanghai; Tiananmen; Tiananmen Square; WeChat; airport security; beijing subway; fraud; online censorship; social media censorship; subway; tourism; tourist sites; travel"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_content_removal"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "tags: censor"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "fdfa71cff17c9cf0e3ca4ea04c1c433d706f2ac28c302155365f59b76933e1eb",
+        "excerpt": "This post from WeChat account 百里曾游 Bǎilǐ Céngyóu (\"100 Li Once Traveled\"), deleted at the source but archived at CDT Chinese, describes the gauntlet of security checks, ID-card scans, pat-downs, bag-checks, book-checks, hem-lifts, and shoe-squeezes involved in visiting Zhengyangmen, also known as Qianmen, the towering gate at the southern edge of Beijing’s Tiananmen Square. The [R",
+        "first_seen": "2026-08-19T05:20:06Z",
+        "kind": "coverage_article",
+        "language": "mixed",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-08-19T05:20:06Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Translation: “Extreme Security” at Tiananmen Landmark in the Maddening Summer Heat",
+        "url": "https://chinadigitaltimes.net/2026/08/translation-extreme-security-at-tiananmen-landmark-in-the-maddening-summer-heat/"
+      },
+      "timeline": [
+        {
+          "at": "2026-08-19T05:20:06Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-08-19T05:20:06Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-0e13da745bff5873ed2bd49d, “Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters””, evidence state peer_reported, source clock 2026-07-24T22:16:02Z. https://palimpsest.info/news/china/erasure/#censorpractice-0e13da745bff5873ed2bd49d",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-0e13da745bff5873ed2bd49d",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_information_control.",
+          "evidence_id": "censorevidence-3d88fc3d8ff84cc54367",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-07-24T22:16:02Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-dcc9d711a1124aa61de9",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-07-24T22:16:02Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_information_control"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-7b04ab544e909cd18a33",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-19T05:20:06Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-e1da4818e5173d340cac",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "CDT translation; Environment; Internet censorship; Man-Made Problems Lurking Behind Natural Disasters; dams; death toll; disaster relief; emergency response; environment; floods; infrastructure; investigative journalism; media censorship; natural disasters; online censorship; rainfall; reporting; reservoirs; social media censorship; state media; storms; typhoons"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_information_control"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "tags: censor"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "b1b52867d6c1359b5027120338181ca33c73c79a66ef195d518030bb1c74c324",
+        "excerpt": "Disaster preparedness and disaster-relief efforts are hot topics on Chinese social media as the country braces for as many as three new typhoons in the next ten days. This follows the devastation earlier this month of twin typhoons Bavi and Maysak, which caused 39 deaths in southern and central China, damaged farmland and livestock, prompted […]",
+        "first_seen": "2026-07-24T22:16:02Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-07-24T22:16:02Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Translations: On Foreign and Domestic Media and “Man-Made Problems Lurking Behind Natural Disasters”",
+        "url": "https://chinadigitaltimes.net/2026/07/translations-on-foreign-and-domestic-media-and-man-made-problems-lurking-behind-natural-disasters/"
+      },
+      "timeline": [
+        {
+          "at": "2026-07-24T22:16:02Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-07-24T22:16:02Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-a9d9279b779dadc6d4869951, “Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On”, evidence state peer_reported, source clock 2026-07-27T20:03:29Z. https://palimpsest.info/news/china/erasure/#censorpractice-a9d9279b779dadc6d4869951",
+      "counter_readings": [
+        "Palimpsest has no independent item-level liveness result for the peer article."
+      ],
+      "dossier_id": "censorpractice-a9d9279b779dadc6d4869951",
+      "evidence": [
+        {
+          "claim": "Source metadata supports classification as reported_content_removal.",
+          "evidence_id": "censorevidence-ef79323319534a079519",
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "observed_at": "2026-07-27T20:03:29Z",
+          "relation": "attributed_source_report",
+          "source_name": "ledger:cdt_english_root",
+          "source_url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "059b92074d7ede6064b06c06f8a0f69eb2a35dc8b960bde573c22669a9a8d087",
+          "interpretation_limit": "The feed item is an attributed public report, not an independent liveness check.",
+          "match_kind": "source-item",
+          "measurement_id": "censormeasure-081534c0740446e76df4",
+          "metric": "public information-control report",
+          "reading_id": "public-deletion-ledgers",
+          "reading_url": "https://palimpsest.info/readings/public-deletion-ledgers-latest.json",
+          "source_timestamp": "2026-07-27T20:03:29Z",
+          "status": "reported",
+          "value": "ledger_kind=cdt; mechanisms=reported_content_removal"
+        },
+        {
+          "input_sha256": "d2ecea7b4c296dca33078752f54e1bcb030e635db947e9135ff32b87cc0dc8dd",
+          "interpretation_limit": "UNDERTEXT is a derived fusion and is not independent corroboration of its ledger or archive input.",
+          "match_kind": "exact-url-derived-projection",
+          "measurement_id": "censormeasure-ab42d886ae842c00fc4d",
+          "metric": "UNDERTEXT item signal",
+          "reading_id": "undertext",
+          "reading_url": "https://palimpsest.info/readings/undertext-latest.json",
+          "source_timestamp": "2026-08-23T23:36:27Z",
+          "status": "joined",
+          "value": "no item-level transition"
+        },
+        {
+          "input_sha256": "bbc8061e1a9ae78ebae83a75b3e28b9013cebd3318d7cf8485bd0f5199471ef4",
+          "interpretation_limit": "DDTI measures attention in collected public reports. It does not independently verify deletion, actor, or motive.",
+          "match_kind": "exact-sample-url",
+          "measurement_id": "censormeasure-3bb5cb7e33d3894d1906",
+          "metric": "DDTI terms attached to exact source URL",
+          "reading_id": "ddti",
+          "reading_url": "https://palimpsest.info/readings/ddti-latest.json",
+          "source_timestamp": "2026-08-24T04:07:05Z",
+          "status": "reported_attention",
+          "value": "Chengdu; Henan; Li Zhi; Sometimes Forgetting Is as Terrible as the Disaster; State Council; Zhengzhou; accountability; censorship; drones; floods; mourning; natural disasters; online censorship; social media censorship; subway"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "This captured peer article explicitly reports or discusses an information-control practice. Palimpsest did not observe the peer article itself being deleted or blocked.",
+        "interpretation_limit": "The underlying practice remains attributed to the public source. A ledger entry is not an independent Palimpsest deletion check, and coverage about censorship is not proof that the coverage article was censored.",
+        "mechanisms": [
+          "reported_content_removal"
+        ]
+      },
+      "qualification": {
+        "basis": "The retained title, excerpt, tags, or terms explicitly names an information-control practice; this is attributed coverage, not a Palimpsest liveness verdict.",
+        "criticality_basis": [
+          "title: censor"
+        ],
+        "evidence_strength": "moderate",
+        "state": "peer_reported"
+      },
+      "subject": {
+        "content_sha256": "cf5d545376c1ddac0a389a1e85491c994aca86adfdf7883463c538b0f6dcb6aa",
+        "excerpt": "Recent weeks have seen extreme weather across central and southern China, particularly in Guangxi, where a dam breach led to at least 26 deaths. These events sparked widespread online discussion about accountability for human failings that exacerbated the damage; lionization of rescue efforts as a distraction from those failings; official euphemisms such as \"a gap […]",
+        "first_seen": "2026-07-27T20:03:29Z",
+        "kind": "coverage_article",
+        "language": "en",
+        "last_confirmed_alive": null,
+        "last_seen": "2026-07-27T20:03:29Z",
+        "platform": "cdt",
+        "source": "ledger:cdt_english_root",
+        "title": "Translations: “Sometimes Forgetting Is as Terrible as the Disaster.” Censored Reflections on the Deadly Zhengzhou Floods, Five Years On",
+        "url": "https://chinadigitaltimes.net/2026/07/translations-sometimes-forgetting-is-as-terrible-as-the-disaster-censored-reflections-on-the-deadly-zhengzhou-floods-five-years-on/"
+      },
+      "timeline": [
+        {
+          "at": "2026-07-27T20:03:29Z",
+          "event": "peer item first recorded",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        },
+        {
+          "at": "2026-07-27T20:03:29Z",
+          "event": "peer item last recorded in this reading",
+          "precision": "source timestamp",
+          "source": "ledger:cdt_english_root"
+        }
+      ],
+      "unknowns": [
+        "The ordering actor, motive, geographic reach, audience impact, and complete removal timeline are not established unless an evidence row explicitly says otherwise."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-0d3599a7ef74e8acf96a3424, “中国裁判文书网”, evidence state pattern_signal, source clock 2026-08-24T05:55:38Z. https://palimpsest.info/news/china/erasure/#censorpractice-0d3599a7ef74e8acf96a3424",
+      "counter_readings": [
+        "No exact social-post URL or platform deletion notice is attached.",
+        "A headline-board transition is not equivalent to removing the underlying post or article."
+      ],
+      "dossier_id": "censorpractice-0d3599a7ef74e8acf96a3424",
+      "evidence": [
+        {
+          "claim": "The retained board classifier emitted suppressed_invisible.",
+          "evidence_id": "censorevidence-420ebbcd6f53d5bb0e3a",
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "observed_at": "2026-08-24T05:55:38Z",
+          "relation": "board_pattern",
+          "source_name": "Palimpsest Weibo hot-search archive",
+          "source_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "interpretation_limit": "A board regime is topic/headline-level evidence, not an item-level removal confirmation.",
+          "match_kind": "declared-board-regime",
+          "measurement_id": "censormeasure-e629602c627bf9cc1428",
+          "metric": "permitted-attention board regime",
+          "reading_id": "weibo-hotsearch",
+          "reading_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "source_timestamp": "2026-08-24T05:55:38Z",
+          "status": "pattern",
+          "value": "regime=suppressed_invisible; terms=中国裁判文书网"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "A predeclared sensitive topic was absent from the retained Weibo hot-search board window while the instrument had a readable board. This is a permitted-attention pattern, not an observed deleted post.",
+        "interpretation_limit": "Board absence can reflect ranking, ordinary lack of attention, archive coverage, wording drift, or term-sense mismatch. It does not establish deletion, motive, or CCP/platform action.",
+        "mechanisms": [
+          "permitted_attention_suppression"
+        ]
+      },
+      "qualification": {
+        "basis": "The board instrument emitted suppressed_invisible for a predeclared topic against its retained archive window.",
+        "criticality_basis": [
+          "predeclared term: 中国裁判文书网"
+        ],
+        "evidence_strength": "context_only",
+        "state": "pattern_signal"
+      },
+      "subject": {
+        "content_sha256": "f093b6424b2b603a61d80fbdd0089da54f4b66a5ce883fe1b9b0904bc3bae13d",
+        "excerpt": "中国裁判文书网",
+        "first_seen": null,
+        "kind": "topic_or_headline",
+        "language": "zh",
+        "last_confirmed_alive": null,
+        "last_seen": null,
+        "platform": "weibo",
+        "source": "Weibo hot-search archive",
+        "title": "中国裁判文书网",
+        "url": ""
+      },
+      "timeline": [
+        {
+          "at": "2026-08-24T05:55:38Z",
+          "event": "board classifier emitted suppressed_invisible",
+          "precision": "reading timestamp",
+          "source": "Palimpsest Weibo-board instrument"
+        }
+      ],
+      "unknowns": [
+        "Whether the topic was posted elsewhere, why its board state changed, and who caused any change are not established."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-cfb11aef352ed1e9ae0f4489, “天安门下半旗悼念朱镕基同志”, evidence state review_required, source clock 2026-08-24T05:55:38Z. https://palimpsest.info/news/china/erasure/#censorpractice-cfb11aef352ed1e9ae0f4489",
+      "counter_readings": [
+        "No exact social-post URL or platform deletion notice is attached.",
+        "A headline-board transition is not equivalent to removing the underlying post or article."
+      ],
+      "dossier_id": "censorpractice-cfb11aef352ed1e9ae0f4489",
+      "evidence": [
+        {
+          "claim": "The retained board classifier emitted withdrawal_watch.",
+          "evidence_id": "censorevidence-328ee9c14a2caee15e13",
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "observed_at": "2026-08-24T05:55:38Z",
+          "relation": "board_pattern",
+          "source_name": "Palimpsest Weibo hot-search archive",
+          "source_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "interpretation_limit": "A board regime is topic/headline-level evidence, not an item-level removal confirmation.",
+          "match_kind": "declared-board-regime",
+          "measurement_id": "censormeasure-74345e774c61bce58f8a",
+          "metric": "permitted-attention board regime",
+          "reading_id": "weibo-hotsearch",
+          "reading_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "source_timestamp": "2026-08-24T05:55:38Z",
+          "status": "review_required",
+          "value": "regime=withdrawal_watch; terms=天安门"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "The board instrument placed this headline on withdrawal watch after a retained-board transition. No post URL, takedown notice, or actor was observed, so the candidate remains unconfirmed.",
+        "interpretation_limit": "Board absence can reflect ranking, ordinary lack of attention, archive coverage, wording drift, or term-sense mismatch. It does not establish deletion, motive, or CCP/platform action.",
+        "mechanisms": [
+          "hot_search_withdrawal_unconfirmed"
+        ]
+      },
+      "qualification": {
+        "basis": "The board instrument emitted withdrawal_watch. Semantic relevance and a censorship explanation require independent review.",
+        "criticality_basis": [
+          "predeclared term: 天安门"
+        ],
+        "evidence_strength": "context_only",
+        "state": "review_required"
+      },
+      "subject": {
+        "content_sha256": "1f25c99a99b95afd7c1a5feed2da011ccf142d449d8cbef7616d30fefc8054c8",
+        "excerpt": "天安门下半旗悼念朱镕基同志",
+        "first_seen": null,
+        "kind": "topic_or_headline",
+        "language": "zh",
+        "last_confirmed_alive": null,
+        "last_seen": null,
+        "platform": "weibo",
+        "source": "Weibo hot-search archive",
+        "title": "天安门下半旗悼念朱镕基同志",
+        "url": ""
+      },
+      "timeline": [
+        {
+          "at": "2026-08-24T05:55:38Z",
+          "event": "board classifier emitted withdrawal_watch",
+          "precision": "reading timestamp",
+          "source": "Palimpsest Weibo-board instrument"
+        }
+      ],
+      "unknowns": [
+        "Whether the topic was posted elsewhere, why its board state changed, and who caused any change are not established."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-f250d80b0044912145484d8e, “恒大集团被罚88.2亿元”, evidence state review_required, source clock 2026-08-24T05:55:38Z. https://palimpsest.info/news/china/erasure/#censorpractice-f250d80b0044912145484d8e",
+      "counter_readings": [
+        "No exact social-post URL or platform deletion notice is attached.",
+        "A headline-board transition is not equivalent to removing the underlying post or article."
+      ],
+      "dossier_id": "censorpractice-f250d80b0044912145484d8e",
+      "evidence": [
+        {
+          "claim": "The retained board classifier emitted withdrawal_watch.",
+          "evidence_id": "censorevidence-4bd37ff03c828b1a9490",
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "observed_at": "2026-08-24T05:55:38Z",
+          "relation": "board_pattern",
+          "source_name": "Palimpsest Weibo hot-search archive",
+          "source_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "interpretation_limit": "A board regime is topic/headline-level evidence, not an item-level removal confirmation.",
+          "match_kind": "declared-board-regime",
+          "measurement_id": "censormeasure-1786f34becd7eee965ec",
+          "metric": "permitted-attention board regime",
+          "reading_id": "weibo-hotsearch",
+          "reading_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "source_timestamp": "2026-08-24T05:55:38Z",
+          "status": "review_required",
+          "value": "regime=withdrawal_watch; terms=恒大"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "The board instrument placed this headline on withdrawal watch after a retained-board transition. No post URL, takedown notice, or actor was observed, so the candidate remains unconfirmed.",
+        "interpretation_limit": "Board absence can reflect ranking, ordinary lack of attention, archive coverage, wording drift, or term-sense mismatch. It does not establish deletion, motive, or CCP/platform action.",
+        "mechanisms": [
+          "hot_search_withdrawal_unconfirmed"
+        ]
+      },
+      "qualification": {
+        "basis": "The board instrument emitted withdrawal_watch. Semantic relevance and a censorship explanation require independent review.",
+        "criticality_basis": [
+          "predeclared term: 恒大"
+        ],
+        "evidence_strength": "context_only",
+        "state": "review_required"
+      },
+      "subject": {
+        "content_sha256": "c62ddf373456bfe330327dd618696a1b7a26cb8b38e3016fa58e071ae09582a1",
+        "excerpt": "恒大集团被罚88.2亿元",
+        "first_seen": null,
+        "kind": "topic_or_headline",
+        "language": "zh",
+        "last_confirmed_alive": null,
+        "last_seen": null,
+        "platform": "weibo",
+        "source": "Weibo hot-search archive",
+        "title": "恒大集团被罚88.2亿元",
+        "url": ""
+      },
+      "timeline": [
+        {
+          "at": "2026-08-24T05:55:38Z",
+          "event": "board classifier emitted withdrawal_watch",
+          "precision": "reading timestamp",
+          "source": "Palimpsest Weibo-board instrument"
+        }
+      ],
+      "unknowns": [
+        "Whether the topic was posted elsewhere, why its board state changed, and who caused any change are not established."
+      ]
+    },
+    {
+      "cite": "Palimpsest censorship-practice dossier censorpractice-bf48931529077455cbe65aad, “蘸甲醛的大白菜正运往江苏安徽等地”, evidence state review_required, source clock 2026-08-24T05:55:38Z. https://palimpsest.info/news/china/erasure/#censorpractice-bf48931529077455cbe65aad",
+      "counter_readings": [
+        "No exact social-post URL or platform deletion notice is attached.",
+        "A headline-board transition is not equivalent to removing the underlying post or article."
+      ],
+      "dossier_id": "censorpractice-bf48931529077455cbe65aad",
+      "evidence": [
+        {
+          "claim": "The retained board classifier emitted withdrawal_watch.",
+          "evidence_id": "censorevidence-42d193dacce6ce7d041c",
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "observed_at": "2026-08-24T05:55:38Z",
+          "relation": "board_pattern",
+          "source_name": "Palimpsest Weibo hot-search archive",
+          "source_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json"
+        }
+      ],
+      "measurements": [
+        {
+          "input_sha256": "1abbe233731828c4920ffab502a386566146b778ced12c1ccf09c7ea32e289e3",
+          "interpretation_limit": "A board regime is topic/headline-level evidence, not an item-level removal confirmation.",
+          "match_kind": "declared-board-regime",
+          "measurement_id": "censormeasure-da6dbb784fe9b065407f",
+          "metric": "permitted-attention board regime",
+          "reading_id": "weibo-hotsearch",
+          "reading_url": "https://palimpsest.info/readings/weibo-hotsearch-latest.json",
+          "source_timestamp": "2026-08-24T05:55:38Z",
+          "status": "review_required",
+          "value": "regime=withdrawal_watch; terms=大白"
+        }
+      ],
+      "practice": {
+        "actor": {
+          "attribution": "not_established",
+          "basis": "The retained item does not explicitly identify the ordering actor. Palimpsest does not infer CCP, state, platform, or local-authority responsibility from disappearance or topic alone.",
+          "name": null,
+          "role": "not_established"
+        },
+        "finding": "The board instrument placed this headline on withdrawal watch after a retained-board transition. No post URL, takedown notice, or actor was observed, so the candidate remains unconfirmed.",
+        "interpretation_limit": "Board absence can reflect ranking, ordinary lack of attention, archive coverage, wording drift, or term-sense mismatch. It does not establish deletion, motive, or CCP/platform action.",
+        "mechanisms": [
+          "hot_search_withdrawal_unconfirmed"
+        ]
+      },
+      "qualification": {
+        "basis": "The board instrument emitted withdrawal_watch. Semantic relevance and a censorship explanation require independent review.",
+        "criticality_basis": [
+          "predeclared term: 大白"
+        ],
+        "evidence_strength": "context_only",
+        "state": "review_required"
+      },
+      "subject": {
+        "content_sha256": "6481c527c9685ac6e3e817b1e7cb4c7e305d42b38d9c7b90700863b91eeaaed1",
+        "excerpt": "蘸甲醛的大白菜正运往江苏安徽等地",
+        "first_seen": null,
+        "kind": "topic_or_headline",
+        "language": "zh",
+        "last_confirmed_alive": null,
+        "last_seen": null,
+        "platform": "weibo",
+        "source": "Weibo hot-search archive",
+        "title": "蘸甲醛的大白菜正运往江苏安徽等地",
+        "url": ""
+      },
+      "timeline": [
+        {
+          "at": "2026-08-24T05:55:38Z",
+          "event": "board classifier emitted withdrawal_watch",
+          "precision": "reading timestamp",
+          "source": "Palimpsest Weibo-board instrument"
+        }
+      ],
+      "unknowns": [
+        "Whether the topic was posted elsewhere, why its board state changed, and who caused any change are not established."
+      ]
+    }
+  ],
+  "generated_at": "2026-08-26T07:22:00Z",
+  "method": "Item-level qualification before presentation; exact URL or stable observation-ID joins only; every qualifying captured item is emitted. No network fetch, sentiment model, fuzzy cross-piece join, causal inference, or default CCP/state/platform attribution. Method v1.",
+  "schema_version": "palimpsest.censorship-practice-dossiers.v1",
+  "scope": "Every qualifying item in the supplied retained inputs, not every post on the internet. Critical reporting without censorship evidence is not called censored. Coverage receipts expose missing and unattempted doors.",
+  "source": "Deterministic projection of retained public deletion-ledger, social tombstone, Weibo-board, DDTI, UNDERTEXT, and Wayback evidence",
+  "status": "live"
+}

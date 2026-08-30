@@ -131,6 +131,7 @@ def test_every_osint_publisher_rebuilds_checks_and_stages_the_erasure_trail():
         assert publication_candidates > 0, path.name
         for artifact in (
             "readings/erasure-trail-latest.json",
+            "readings/censorship-practice-dossiers-latest.json",
             "readings/erasure-trail-history.jsonl",
             "readings/erasure-trail.csv",
         ):

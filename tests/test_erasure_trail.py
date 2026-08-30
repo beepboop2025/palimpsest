@@ -137,6 +137,56 @@ def test_html_desk_is_usable_without_javascript(tmp_path):
     assert "/readings/erasure-trail.csv" in page
 
 
+def test_piece_level_dossier_is_rendered_beside_unchanged_raw_archive(tmp_path):
+    _write(tmp_path / "undertext-latest.json", {
+        "generated_at": "2026-08-01T01:00:00Z",
+        "observations": [{
+            "title": "Censored flood reflections",
+            "url": "https://chinadigitaltimes.net/example/flood-reflections/",
+            "source": "undertext:fusion:ddti",
+            "first_seen": "2026-08-01T00:00:00Z",
+            "last_seen": "2026-08-01T00:00:00Z",
+        }],
+    })
+    _write(tmp_path / "public-deletion-ledgers-latest.json", {
+        "generated_at": "2026-08-01T02:00:00Z",
+        "ledgers": [{
+            "name": "cdt_english_root",
+            "kind": "cdt",
+            "status": "ok",
+            "n_observations": 1,
+        }],
+        "observations": [{
+            "title": "Censored flood reflections",
+            "text": "A bounded report about online censorship after a flood.",
+            "url": "https://chinadigitaltimes.net/example/flood-reflections/",
+            "source": "ledger:cdt_english_root",
+            "ledger_kind": "cdt",
+            "tags": ["online censorship", "floods"],
+            "terms": ["censorship", "accountability"],
+            "detected_at": "2026-08-01T00:00:00Z",
+            "first_seen": "2026-08-01T00:00:00Z",
+            "last_seen": "2026-08-01T00:00:00Z",
+        }],
+    })
+
+    raw = trail.build_document(readings_dir=tmp_path)
+    dossier = trail.build_dossier_document(readings_dir=tmp_path)
+    assert raw is not None and dossier is not None
+    assert raw["n_rows"] == 1
+    assert dossier["counts"]["dossiers"] == 1
+    assert dossier["dossiers"][0]["qualification"]["state"] == "peer_reported"
+
+    page = trail.render_html(raw, dossier_document=dossier)
+    assert "How censorship was practiced" in page
+    assert "Censored flood reflections" in page
+    assert "peer reported" in page
+    assert "Actor not established" in page
+    assert "What Palimpsest measured" in page
+    assert "/readings/censorship-practice-dossiers-latest.json" in page
+    assert "Raw reconstruction archive" in page
+
+
 def test_history_is_idempotent_and_keeps_distinct_states(tmp_path, monkeypatch):
     inputs = tmp_path / "inputs"
     inputs.mkdir()
@@ -195,14 +245,19 @@ def test_desk_is_discoverable():
     llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
     openapi = json.loads((ROOT / "openapi.json").read_text(encoding="utf-8"))
     researchers = (ROOT / "for-researchers.html").read_text(encoding="utf-8")
-    assert '("/news/china/erasure/", "Find a deleted post"' in nav
+    assert '("/news/china/erasure/", "Censorship dossiers"' in nav
     assert "https://palimpsest.info/news/china/erasure/" in sitemap
     assert "https://palimpsest.info/news/china/erasure/" in news_sitemap
     assert "https://palimpsest.info/news/china/erasure/" in llms
     assert "https://palimpsest.info/readings/erasure-trail-latest.json" in llms
+    assert (
+        "https://palimpsest.info/readings/censorship-practice-dossiers-latest.json"
+        in llms
+    )
     assert "https://palimpsest.info/readings/erasure-trail.csv" in llms
     assert "/readings/erasure-trail-latest.json" in openapi["paths"]
+    assert "/readings/censorship-practice-dossiers-latest.json" in openapi["paths"]
     assert "/readings/erasure-trail.csv" in openapi["paths"]
     assert "/readings/undertext-latest.json" in openapi["paths"]
-    assert "For journalists: find, trail, export, cite" in researchers
+    assert "Censorship practice, piece by piece" in researchers
     assert (ROOT / "docs" / "FOR-JOURNALISTS.md").is_file()

@@ -132,7 +132,7 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
     repository.mkdir()
     _git(repository, "init", "--quiet")
     _git(repository, "config", "user.name", "Palimpsest Test")
-    _git(repository, "config", "user.email", "test@palimpsest.invalid")
+    _git(repository, "config", "user.email", "test@palimpsest.info")
 
     (repository / "host.txt").write_text("host deployment\n", encoding="utf-8")
     _git(repository, "add", "host.txt")

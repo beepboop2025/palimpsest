@@ -88,6 +88,21 @@ def test_erasure_trail_declares_every_runtime_dependency_in_the_mesh() -> None:
     assert declared == runtime
 
 
+def test_censorship_dossiers_declare_every_runtime_dependency_in_the_mesh() -> None:
+    config = json.loads((ROOT / "config/evidence_mesh.json").read_text())
+    declared = set(config["derived_dependencies"]["censorship-practice-dossiers"])
+    runtime = {
+        filename.removesuffix("-latest.json")
+        for filename in build_erasure_trail.DOSSIER_INPUT_FILES
+    }
+
+    assert all(
+        filename.endswith("-latest.json")
+        for filename in build_erasure_trail.DOSSIER_INPUT_FILES
+    )
+    assert declared == runtime
+
+
 def _isolated_root(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     for relative in REQUIRED_FILES:

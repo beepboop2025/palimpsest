@@ -21,6 +21,7 @@ from collectors.weibo_hotsearch import (
     collect_range, join_ddti, pinned_series, term_presence,
     withdrawal_candidates)
 from core.china_event_lens import build_declared_event_lenses
+from core.china_trending_event_lens import build_trending_event_lenses
 from core.weibo_hotsearch_terms import write_weibo_hotsearch_terms
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -45,7 +46,10 @@ HIST = os.path.join(READINGS, "weibo-hotsearch-history.jsonl")
 #   3: disaster vocabulary is included in the ordinary-sense gate for 失联,
 #      and declared event lenses check exact-headline exits against later event
 #      headlines. A changing casualty count is continuity, not a takedown.
-METHOD_VERSION = 3
+#   4: current board headlines are deterministically grouped into bounded trend
+#      lenses. Pins, withdrawal watch, DDTI overlap, and optional newswire
+#      context remain separate signals; missing context never becomes calm.
+METHOD_VERSION = 4
 
 DDTI = os.path.join(READINGS, "ddti-latest.json")
 GAZETTEER = os.path.join(ROOT, "config", "zh_censorship_gazetteer.json")
@@ -54,13 +58,18 @@ WINDOW_DAYS = 7
 _HAS_CJK = re.compile(r"[㐀-鿿]")
 
 
-def _load_ddti_terms() -> list[dict]:
+def _load_ddti_input() -> tuple[list[dict], str | None]:
     try:
         with open(DDTI, encoding="utf-8") as f:
-            ranked = json.load(f).get("ranked") or []
+            document = json.load(f)
     except (OSError, json.JSONDecodeError):
-        return []
-    return [t for t in ranked if _HAS_CJK.search(t.get("term") or "")]
+        return [], None
+    if not isinstance(document, dict):
+        return [], None
+    ranked = document.get("ranked") or []
+    terms = [t for t in ranked if _HAS_CJK.search(t.get("term") or "")]
+    generated_at = document.get("generated_at")
+    return terms, generated_at if isinstance(generated_at, str) else None
 
 
 def _load_gazetteer_terms() -> list[dict]:
@@ -78,6 +87,18 @@ def _load_gazetteer_terms() -> list[dict]:
             if len(zh) >= 2:
                 out.append({"term": zh, "category": cat})
     return out
+
+
+def _load_newswire() -> dict | None:
+    """Optional context only; a bad wire must not suppress the board reading."""
+
+    path = os.path.join(READINGS, "newswire-latest.json")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            document = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return document if isinstance(document, dict) else None
 
 
 def _observation_records(now, joined, breakthroughs, days, withdrawals=None) -> list[dict]:
@@ -161,7 +182,7 @@ def main() -> None:
         print("weibo hot-search archive returned nothing parseable — abstaining")
         return
 
-    ddti_terms = _load_ddti_terms()
+    ddti_terms, ddti_generated_at = _load_ddti_input()
     joined = join_ddti(ddti_terms, days)
     suppressed = [j for j in joined if j["regime"] == "suppressed_invisible"]
     contained = [j for j in joined if j["regime"] == "contained_visible"]
@@ -192,6 +213,12 @@ def main() -> None:
         | {t["term"] for t in ddti_terms},
     )
     event_lenses = build_declared_event_lenses(terms_document, evaluated_at=now)
+    trending_event_lenses = build_trending_event_lenses(
+        terms_document,
+        _load_newswire(),
+        ddti_source_generated_at=ddti_generated_at,
+        evaluated_at=now,
+    )
 
     latest = {
         "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -210,6 +237,7 @@ def main() -> None:
         "gazetteer_breakthroughs": breakthroughs,
         "withdrawal_watch": withdrawal_watch,
         "event_lenses": event_lenses,
+        "trending_event_lenses": trending_event_lenses,
         "observation_records": _observation_records(
             now, joined, breakthroughs, days,
             withdrawals=withdrawal_watch.get("candidates"),
@@ -226,7 +254,10 @@ def main() -> None:
             "attention_ratio is threat share over permitted-attention share, "
             "published with both parts. Declared event lenses group revised "
             "headlines before interpreting an exact-title exit, so changing "
-            "casualty counts do not become takedown claims."
+            "casualty counts do not become takedown claims. Automatic trend "
+            "lenses apply a conservative deterministic revision cluster to "
+            "every selected current headline and report pinning, withdrawal "
+            "watch, DDTI overlap, and optional newswire context separately."
         ),
     }
     os.makedirs(READINGS, exist_ok=True)

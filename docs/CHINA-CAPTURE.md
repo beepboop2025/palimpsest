@@ -31,7 +31,7 @@ the join `topic-or-url-context-not-corroboration`.
 | --- | --- | --- | --- |
 | DDTI / CDT | `scripts/ddti_live_pull.py` | fleet `ddti` | Index now keeps `observation_records` and ranked-term `last_seen`. |
 | Wayback reconstruction | `scripts/wayback_reconstruct_pull.py` | fleet `wayback` | Watchlist in `config/wayback_watchlist.json` covers official landings (Xinhua, People's Daily, gov.cn + English, MFA, PBOC, CAC, NDRC, MIIT, NPC, MOE, NHC, NBS latest-releases, wenshu landing only) plus topic/event Baike lemmas. No person pages. No captcha docket scrape. |
-| Weibo hot-search join | `scripts/weibo_hotsearch_pull.py` | fleet `weibo-hotsearch` | Public board archive only. `observation_records` from join/breakthroughs. |
+| Weibo hot-search join | `scripts/weibo_hotsearch_pull.py` | fleet `weibo-hotsearch` | Public board archive only. `observation_records` from join/breakthroughs; deterministic current-trend lenses keep visibility, pins, withdrawal watch, DDTI overlap, and optional Chinese-headline wire context separate. |
 | GitHub refuge | `scripts/github_refuge_pull.py` | fleet `github-refuge` | `active_watchlist` stays empty until an activation review. |
 | UNDERTEXT fusion | `scripts/undertext_pull.py` | fleet `undertext` | Default is **offline fusion** of every committed Wayback reconstruction, every DDTI ranked sample, Weibo suppression / breakthrough / withdrawal rows, plus public-deletion-ledgers / official-first-seen / news-wire-live / Wikipedia gazetteer RC / Baike public snapshots / public hot boards / public Telegram channels when those readings exist. Clock = newest input `generated_at`. Clustered by public URL, with GDELT / OONI / Bleedthrough joins and a read-only Common Crawl lake join when a sanitized receipt or existing sqlite is already present. An empty or absent lake abstains. `UNDERTEXT_LIVE_SURFACES=1` may add Wikipedia-only presence (last-confirmed-alive, not a deletion). Live Weibo / Baidu / Baike *inside UNDERTEXT* stay off; those surfaces have their own fleet jobs. Never invent a crawl or scrape publishers to refill the lake. |
 | Public deletion ledgers | `scripts/public_deletion_ledgers_pull.py` | fleet `public-deletion-ledgers` | CDT EN/ZH, GreatFire RSS, FreeWeibo-style feed. Each feed is a candidate. If every ledger is unreachable the runner **abstains**. Newly first-seen ledger URLs may request IA Save Page Now; a snapshot URL is attached only when IA confirmed one. |
@@ -56,11 +56,17 @@ the join `topic-or-url-context-not-corroboration`.
 2. `scripts/build_osint_china.py` embeds every configured payload, including
    `undertext` (required once published) and `public-deletion-ledgers` (optional
    until a live file exists).
-3. `scripts/build_erasure_trail.py` flattens those observations into a
-   journalist desk at `/news/china/erasure/` with first-seen, last-seen,
-   snapshots, hashes, source URLs, CSV/JSON export, and a citation line.
-   The clock is the newest input `generated_at`. A missing ledger is skipped,
-   not invented.
+3. `scripts/build_erasure_trail.py` emits two separate contracts. The raw
+   `erasure-trail` preserves every reconstruction with first-seen, last-seen,
+   snapshots, hashes, source URLs, CSV/JSON export, and a citation line. The
+   `censorship-practice-dossiers` artifact emits every item that clears a
+   closed piece-level qualification gate, with evidence state, mechanism,
+   explicit actor attribution, timeline, exact-identity measurements,
+   counter-readings, unknowns, exclusions, and collector receipts. A CDT story
+   reporting censorship is not called itself censored; a social edit is not a
+   tombstone; a Wayback gap is not censorship. The clock is the newest actual
+   input `generated_at`. A missing ledger is skipped, not invented. See
+   `docs/CENSORSHIP-PRACTICE-DOSSIERS.md`.
 4. `osint-china.html` links that desk and states what is captured (public
    posts, deletions, archives, GFW injector telemetry) and what is not
    (private WeChat, classified systems, in-country accounts).

@@ -93,9 +93,12 @@ def publish(tmp_path, monkeypatch):
     # that keeps the CJK filter and the two-character gazetteer rule under test.
     ddti = tmp_path / "ddti-latest.json"
     with open(ddti, "w", encoding="utf-8") as f:
-        json.dump({"ranked": [{"term": TRENDING, "threat": 0.4},
-                              {"term": SUPPRESSED, "threat": 0.3},
-                              {"term": "english-only-label", "threat": 0.9}]}, f)
+        json.dump({
+            "generated_at": "2026-07-17T03:30:00Z",
+            "ranked": [{"term": TRENDING, "threat": 0.4},
+                       {"term": SUPPRESSED, "threat": 0.3},
+                       {"term": "english-only-label", "threat": 0.9}],
+        }, f)
     monkeypatch.setattr(pull, "DDTI", str(ddti))
 
     gazetteer = tmp_path / "zh_censorship_gazetteer.json"
@@ -246,6 +249,18 @@ def test_the_join_reports_both_regimes_so_a_moved_split_would_show(publish):
     lens = reading["event_lenses"]
     assert lens["schema_version"] == "palimpsest.china-event-lenses.v1"
     assert lens["events"][0]["assessment"]["code"] == "not_observed"
+    trends = reading["trending_event_lenses"]
+    assert trends["schema_version"] == "palimpsest.china-trending-event-lenses.v1"
+    assert trends["status"] == "live"
+    assert trends["ddti_context"]["state"] == "fresh"
+    assert trends["selection"]["current_clusters"] >= 1
+    assert trends["events"]
+    ddti_event = next(
+        event for event in trends["events"]
+        if event["canonical_headline"] == TRENDING
+    )
+    assert ddti_event["assessment"]["code"] == "visible_ddti_overlap"
+    assert ddti_event["ddti_corroboration"]["current_matches"] == 1
 
 
 def test_an_unparseable_archive_abstains_and_writes_nothing(publish):

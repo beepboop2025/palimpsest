@@ -23,10 +23,11 @@ import html
 import io
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from core import censorship_practice_dossiers as practice_dossiers
 from core.china_observation import content_sha256, iso_z, public_text
 from scripts import site_nav
 
@@ -35,6 +36,7 @@ ROOT = Path(__file__).resolve().parent.parent
 READINGS = ROOT / "readings"
 PAGE_DIR = ROOT / "news" / "china" / "erasure"
 JSON_OUT = READINGS / "erasure-trail-latest.json"
+DOSSIER_JSON_OUT = READINGS / "censorship-practice-dossiers-latest.json"
 CSV_OUT = READINGS / "erasure-trail.csv"
 HIST = READINGS / "erasure-trail-history.jsonl"
 HTML_OUT = PAGE_DIR / "index.html"
@@ -52,6 +54,10 @@ INPUT_FILES = (
     "bleedthrough-latest.json",
     "public-deletion-ledgers-latest.json",
 )
+DOSSIER_INPUT_FILES = tuple(
+    name for name in practice_dossiers.INPUT_FILES if name.endswith(".json")
+)
+SOCIAL_VERSIONS_FILE = "social-observations-versions.jsonl"
 
 ROW_FIELDS = (
     "key",
@@ -141,6 +147,26 @@ def _load_json(name: str, readings_dir: Path) -> dict[str, Any] | None:
     except (OSError, ValueError):
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _load_jsonl(name: str, readings_dir: Path) -> tuple[dict[str, Any], ...]:
+    """Load a complete retained JSONL input or abstain from that input."""
+
+    path = readings_dir / name
+    if not path.is_file():
+        return ()
+    rows: list[dict[str, Any]] = []
+    try:
+        for raw_line in path.read_text(encoding="utf-8").splitlines():
+            if not raw_line.strip():
+                continue
+            row = json.loads(raw_line)
+            if not isinstance(row, dict):
+                return ()
+            rows.append(row)
+    except (OSError, UnicodeError, ValueError):
+        return ()
+    return tuple(rows)
 
 
 def _wayback_timestamp(value: Any) -> str | None:
@@ -459,17 +485,19 @@ def _from_wayback(rec: Mapping[str, Any]) -> dict[str, str] | None:
 
 
 def _richer(existing: Mapping[str, str], candidate: Mapping[str, str]) -> bool:
-    score = lambda row: (
-        1 if row.get("wayback_snapshot") else 0,
-        1 if row.get("source_url") else 0,
-        1 if row.get("content_sha256") else 0,
-        1 if row.get("last_confirmed_alive") else 0,
-        1 if row.get("cross_links_gdelt") else 0,
-        1 if row.get("cross_links_ooni") else 0,
-        len(row.get("text") or row.get("excerpt") or ""),
-        len(row.get("uncertainty") or ""),
-        len(row.get("deletion_confirmations") or ""),
-    )
+    def score(row: Mapping[str, str]) -> tuple[int, ...]:
+        return (
+            1 if row.get("wayback_snapshot") else 0,
+            1 if row.get("source_url") else 0,
+            1 if row.get("content_sha256") else 0,
+            1 if row.get("last_confirmed_alive") else 0,
+            1 if row.get("cross_links_gdelt") else 0,
+            1 if row.get("cross_links_ooni") else 0,
+            len(row.get("text") or row.get("excerpt") or ""),
+            len(row.get("uncertainty") or ""),
+            len(row.get("deletion_confirmations") or ""),
+        )
+
     return score(candidate) > score(existing)
 
 
@@ -641,6 +669,27 @@ def build_document(
     return document
 
 
+def build_dossier_document(
+    *,
+    readings_dir: Path | None = None,
+) -> dict[str, Any] | None:
+    """Build the separate piece-level dossier artifact from retained inputs."""
+
+    readings_dir = readings_dir or READINGS
+    payloads = {
+        name: _load_json(name, readings_dir) for name in DOSSIER_INPUT_FILES
+    }
+    clock = fusion_clock(payloads)
+    if clock is None:
+        return None
+    versions = _load_jsonl(SOCIAL_VERSIONS_FILE, readings_dir)
+    return practice_dossiers.build_document(
+        payloads,
+        generated_at=iso_z(clock) or "",
+        social_versions=versions,
+    )
+
+
 def render_csv(document: Mapping[str, Any]) -> str:
     buffer = io.StringIO()
     writer = csv.DictWriter(
@@ -718,7 +767,99 @@ def _card(row: Mapping[str, str]) -> str:
     )
 
 
-def render_html(document: Mapping[str, Any]) -> str:
+def _dossier_card(dossier: Mapping[str, Any]) -> str:
+    qualification = dossier["qualification"]
+    subject = dossier["subject"]
+    practice = dossier["practice"]
+    actor = practice["actor"]
+    criticality = "".join(
+        f"<li>{_h(item)}</li>" for item in qualification["criticality_basis"]
+    ) or "<li>No separate criticality label was retained.</li>"
+    timeline = "".join(
+        "<li>"
+        f"<time>{_h(row['at'])}</time> · {_h(row['event'])} "
+        f"<span>({_h(row['source'])}; {_h(row['precision'])})</span>"
+        "</li>"
+        for row in dossier["timeline"]
+    ) or "<li>Exact event time unavailable in retained metadata.</li>"
+    measurements = "".join(
+        "<article class=\"et-measure\">"
+        f"<p class=\"et-measure-id\">{_h(row['reading_id'])} · "
+        f"{_h(row['status'])} · {_h(row['match_kind'])}</p>"
+        f"<h4>{_h(row['metric'])}</h4>"
+        f"<p>{_h(row['value'] or '—')}</p>"
+        "<dl>"
+        f"<div><dt>Source clock</dt><dd>{_h(row['source_timestamp'] or 'unknown')}</dd></div>"
+        f"<div><dt>Reading</dt><dd>{_link(row['reading_url'], row['reading_id'])}</dd></div>"
+        f"<div><dt>Input SHA-256</dt><dd><code>{_h(row['input_sha256'] or 'unavailable')}</code></dd></div>"
+        f"<div><dt>Limit</dt><dd>{_h(row['interpretation_limit'])}</dd></div>"
+        "</dl></article>"
+        for row in dossier["measurements"]
+    )
+    evidence = "".join(
+        "<li>"
+        f"<strong>{_h(row['relation'])}</strong> · {_h(row['claim'])} "
+        f"{_link(row['source_url'], row['source_name']) if row['source_url'] else _h(row['source_name'])} "
+        f"<span>({_h(row['observed_at'] or 'clock unavailable')}; "
+        f"SHA-256 {_h(row['input_sha256'])})</span>"
+        "</li>"
+        for row in dossier["evidence"]
+    )
+    counter = "".join(
+        f"<li>{_h(item)}</li>" for item in dossier["counter_readings"]
+    )
+    unknowns = "".join(f"<li>{_h(item)}</li>" for item in dossier["unknowns"])
+    mechanisms = " · ".join(practice["mechanisms"])
+    actor_name = actor["name"] or "Actor not established"
+    excerpt = subject["excerpt"] or "No public excerpt retained."
+    return (
+        f"<details class=\"et-dossier\" id=\"{_h(dossier['dossier_id'])}\" open>"
+        "<summary>"
+        "<span class=\"et-dossier-heading\">"
+        f"<span class=\"et-state et-state--{_h(qualification['state'])}\">"
+        f"{_h(qualification['state'].replace('_', ' '))}</span>"
+        f"<strong>{_h(subject['title'])}</strong>"
+        "</span>"
+        f"<span class=\"et-mechanism\">{_h(mechanisms)}</span>"
+        "</summary>"
+        "<div class=\"et-dossier-body\">"
+        f"<p class=\"et-finding\">{_h(practice['finding'])}</p>"
+        f"<blockquote>{_h(excerpt)}</blockquote>"
+        "<div class=\"et-dossier-grid\">"
+        "<section><h3>What qualifies this piece</h3>"
+        f"<p>{_h(qualification['basis'])}</p><ul>{criticality}</ul></section>"
+        "<section><h3>Actor attribution</h3>"
+        f"<p><strong>{_h(actor_name)}</strong> · {_h(actor['role'])} · "
+        f"{_h(actor['attribution'])}</p>"
+        f"<p>{_h(actor['basis'])}</p></section>"
+        "<section><h3>Timeline</h3>"
+        f"<ol class=\"et-timeline\">{timeline}</ol></section>"
+        "<section><h3>Piece identity</h3><dl class=\"et-card-meta\">"
+        f"<div><dt>Kind</dt><dd>{_h(subject['kind'])}</dd></div>"
+        f"<div><dt>Platform</dt><dd>{_h(subject['platform'] or 'unavailable')}</dd></div>"
+        f"<div><dt>Source</dt><dd>{_h(subject['source'] or 'unavailable')}</dd></div>"
+        f"<div><dt>URL</dt><dd>{_link(subject['url']) if subject['url'] else 'unavailable'}</dd></div>"
+        f"<div><dt>Content SHA-256</dt><dd><code>{_h(subject['content_sha256'])}</code></dd></div>"
+        "</dl></section></div>"
+        "<section><h3>What Palimpsest measured</h3>"
+        f"<div class=\"et-measures\">{measurements}</div></section>"
+        "<div class=\"et-dossier-grid\">"
+        f"<section><h3>Evidence rows</h3><ul>{evidence}</ul></section>"
+        f"<section><h3>Counter-readings</h3><ul>{counter}</ul></section>"
+        f"<section><h3>Unknowns</h3><ul>{unknowns}</ul></section>"
+        "<section><h3>Claim ceiling</h3>"
+        f"<p>{_h(practice['interpretation_limit'])}</p></section>"
+        "</div>"
+        f"<p class=\"et-citation\">{_h(dossier['cite'])}</p>"
+        f"<button type=\"button\" class=\"et-cite\" data-cite=\"{_h(dossier['cite'])}\">Copy cite</button>"
+        "</div></details>"
+    )
+
+
+def render_html(
+    document: Mapping[str, Any],
+    dossier_document: Mapping[str, Any] | None = None,
+) -> str:
     rows_html = []
     cards_html = []
     for row in document["rows"]:
@@ -746,20 +887,53 @@ def render_html(document: Mapping[str, Any]) -> str:
     )
     nav = site_nav.render("/news/china/erasure/")
     generated = _h(document["generated_at"])
+    dossier_document = dossier_document or {
+        "generated_at": document["generated_at"],
+        "status": "coverage_gap",
+        "counts": {
+            "dossiers": 0,
+            "observed_disappearances": 0,
+            "peer_reported": 0,
+            "pattern_signals": 0,
+            "review_required": 0,
+            "captured_items_reviewed": 0,
+            "excluded_items": 0,
+        },
+        "coverage": {"collector_receipts": [], "exclusions": []},
+        "dossiers": [],
+    }
+    dossier_cards = "\n".join(
+        _dossier_card(dossier) for dossier in dossier_document["dossiers"]
+    ) or (
+        "<p class=\"et-empty\">No qualifying piece-level dossier in the retained "
+        "inputs. This is a coverage state, not a zero-censorship finding.</p>"
+    )
+    dossier_counts = dossier_document["counts"]
+    collector_gaps = sum(
+        1
+        for row in dossier_document["coverage"]["collector_receipts"]
+        if row["status"] not in {"ok", "success"}
+    )
+    exclusion_lines = "".join(
+        f"<li><strong>{_h(row['count'])}</strong> · "
+        f"{_h(row['reason'].replace('_', ' '))}</li>"
+        for row in dossier_document["coverage"]["exclusions"]
+    ) or "<li>No excluded candidates in the retained inputs.</li>"
+    dossier_generated = _h(dossier_document["generated_at"])
     return f"""<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Find a deleted post · evidence trail · Palimpsest</title>
-<meta name="description" content="Journalist desk for public China deletions and reconstructions: first-seen, last-seen, snapshots, hashes, source URLs, CSV export and a citation line. Public data only.">
+<title>How China censorship is practiced · piece-level evidence · Palimpsest</title>
+<meta name="description" content="Piece-level China censorship-practice dossiers: exact post or article, observed or reported mechanism, actor attribution, timeline, Palimpsest measurements, evidence hashes, counter-readings and unknowns.">
 <link rel="canonical" href="{SITE}/news/china/erasure/">
 <link rel="icon" type="image/svg+xml" href="/brand/palimpsest-icon.svg">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Palimpsest">
-<meta property="og:title" content="Find a deleted post · evidence trail">
-<meta property="og:description" content="First-seen, last-seen, snapshots, hashes and source URLs for already-public China posts the state later hid.">
+<meta property="og:title" content="How censorship was practiced — piece by piece">
+<meta property="og:description" content="Exact evidence state, mechanism, actor attribution, timeline, measurement receipts and claim limits for every qualifying item Palimpsest captured.">
 <meta property="og:url" content="{SITE}/news/china/erasure/">
 <meta property="og:image" content="{SITE}/brand/og-site.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -770,6 +944,10 @@ def render_html(document: Mapping[str, Any]) -> str:
 .et-title{{font-size:clamp(40px,7vw,84px);font-weight:800;line-height:.9;letter-spacing:-.04em;margin:0;max-width:900px}}
 .et-deck{{font-size:clamp(16px,2vw,21px);line-height:1.5;color:var(--tk-text-2);max-width:760px;margin:18px 0 0}}
 .et-actions{{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}}
+.et-counts{{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 24px}}
+.et-count{{padding:14px 16px;border:1px solid var(--tk-line-1);background:var(--tk-bg-1)}}
+.et-count strong{{display:block;font:800 26px/1 var(--tk-font-mono)}}
+.et-count span{{display:block;margin-top:7px;color:var(--tk-text-3);font:600 10px/1.3 var(--tk-font-mono);letter-spacing:.08em;text-transform:uppercase}}
 .et-honesty{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 28px}}
 .et-honesty article{{padding:16px 18px}}
 .et-honesty h2{{margin:0 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase}}
@@ -782,6 +960,40 @@ def render_html(document: Mapping[str, Any]) -> str:
 .et-table code{{font-size:11px}}
 .et-cite{{min-height:36px;padding:6px 10px;border:1px solid var(--tk-line-2);background:transparent;color:var(--tk-text-2);font:600 10px/1 var(--tk-font-mono);letter-spacing:.08em;text-transform:uppercase;cursor:pointer}}
 .et-cite:hover{{color:var(--tk-text-0);border-color:var(--tk-line-3)}}
+.et-section-head{{margin:34px 0 8px;max-width:900px}}
+.et-section-deck{{max-width:820px;color:var(--tk-text-2);line-height:1.6;margin:0 0 18px}}
+.et-dossiers{{display:grid;gap:16px;margin:20px 0 34px}}
+.et-dossier{{border:1px solid var(--tk-line-2);background:var(--tk-bg-1)}}
+.et-dossier>summary{{cursor:pointer;display:flex;justify-content:space-between;gap:24px;padding:18px;align-items:flex-start}}
+.et-dossier-heading{{display:grid;gap:9px}}
+.et-dossier-heading strong{{font-size:clamp(17px,2vw,23px);line-height:1.25}}
+.et-state{{width:max-content;padding:5px 7px;border:1px solid var(--tk-line-2);font:700 9px/1 var(--tk-font-mono);letter-spacing:.09em;text-transform:uppercase}}
+.et-state--observed_disappearance{{border-color:#d66;color:#f99}}
+.et-state--peer_reported{{border-color:#d89b45;color:#efbd73}}
+.et-state--pattern_signal{{border-color:#7799d8;color:#a9c1f2}}
+.et-state--review_required{{border-color:#888;color:var(--tk-text-2)}}
+.et-mechanism{{max-width:34ch;color:var(--tk-text-3);font:600 10px/1.4 var(--tk-font-mono);letter-spacing:.07em;text-align:right;text-transform:uppercase}}
+.et-dossier-body{{padding:0 18px 20px;border-top:1px solid var(--tk-line-1)}}
+.et-finding{{font-size:clamp(16px,2vw,20px);line-height:1.55;max-width:920px}}
+.et-dossier blockquote{{margin:16px 0;padding:12px 16px;border-left:3px solid var(--tk-line-3);color:var(--tk-text-2);white-space:pre-wrap}}
+.et-dossier-grid{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}}
+.et-dossier-grid section{{padding:14px 16px;border:1px solid var(--tk-line-1)}}
+.et-dossier h3{{margin:0 0 8px;font:700 11px/1.3 var(--tk-font-mono);letter-spacing:.08em;text-transform:uppercase}}
+.et-dossier h4{{margin:6px 0 8px;font-size:15px}}
+.et-dossier ul,.et-dossier ol{{margin:8px 0 0;padding-left:1.2em;color:var(--tk-text-2);line-height:1.55}}
+.et-dossier li+li{{margin-top:6px}}
+.et-dossier li span{{color:var(--tk-text-3)}}
+.et-measures{{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
+.et-measure{{padding:14px;border:1px solid var(--tk-line-1);background:var(--tk-bg-0)}}
+.et-measure-id{{margin:0;color:var(--tk-text-3);font:600 9px/1.4 var(--tk-font-mono);letter-spacing:.07em;text-transform:uppercase}}
+.et-measure p{{color:var(--tk-text-2);line-height:1.5}}
+.et-measure dl{{margin:0;display:grid;gap:8px}}
+.et-measure dt{{font:600 9px/1.3 var(--tk-font-mono);letter-spacing:.07em;text-transform:uppercase;color:var(--tk-text-4)}}
+.et-measure dd{{margin:3px 0 0;overflow-wrap:anywhere;color:var(--tk-text-2)}}
+.et-citation{{overflow-wrap:anywhere;color:var(--tk-text-3);font:500 11px/1.5 var(--tk-font-mono)}}
+.et-exclusions{{padding:16px 18px;margin:0 0 28px;border:1px solid var(--tk-line-1)}}
+.et-exclusions ul{{columns:2;gap:28px;color:var(--tk-text-2);line-height:1.55}}
+.et-empty{{padding:18px;border:1px solid var(--tk-line-1);color:var(--tk-text-2)}}
 .et-records{{display:grid;gap:12px;margin:28px 0}}
 .et-card{{padding:16px 18px;border:1px solid var(--tk-line-1);background:var(--tk-bg-1)}}
 .et-card summary{{cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:baseline}}
@@ -792,19 +1004,20 @@ def render_html(document: Mapping[str, Any]) -> str:
 .et-card-meta dd{{margin:4px 0 0;color:var(--tk-text-2);overflow-wrap:anywhere}}
 .et-how{{margin:28px 0;max-width:760px}}
 .et-how ol{{margin:8px 0 0;padding-left:1.2em;color:var(--tk-text-2);line-height:1.6}}
-@media(max-width:900px){{.et-honesty{{grid-template-columns:1fr}}.et-wrap{{overflow-x:auto}}}}
+@media(max-width:900px){{.et-counts{{grid-template-columns:repeat(2,minmax(0,1fr))}}.et-honesty,.et-dossier-grid,.et-measures{{grid-template-columns:1fr}}.et-dossier>summary{{display:grid}}.et-mechanism{{text-align:left}}.et-exclusions ul{{columns:1}}.et-wrap{{overflow-x:auto}}}}
 </style>
 </head>
 <body class="ps">
 {nav}
 <main id="main" class="ps-wrap ps-wrap--wide">
   <header class="et-hero">
-    <p class="ps-kicker">Journalist desk · public record only</p>
-    <h1 class="et-title">Find a deleted post.<br>See the trail. Export it.</h1>
-    <p class="et-deck">Each record is a Palimpsest reconstruction: the public text we actually hold, language, first-seen / last-seen / last-confirmed-alive, every deletion confirmation, every Wayback / archive.today / Ghostarchive address, hashes, gazetteer hits, mirrors, and GDELT / OONI / GreatFire / CDT / Weibo / Bleedthrough joins. A journalist should be able to write from this object without hopping five other sites. This is not a private-message feed and not a live claim about anyone inside China.</p>
+    <p class="ps-kicker">Censorship-practice dossiers · public evidence only</p>
+    <h1 class="et-title">How censorship was practiced.<br>Piece by piece.</h1>
+    <p class="et-deck">Every qualifying post, article, or topic Palimpsest captured gets its own dossier: what the item said, what was observed versus reported, the information-control mechanism, who the evidence actually names, the timeline, every matching Palimpsest reading and input hash, counter-readings, and what remains unknown. Reporting critical of PRC authorities is not called censored merely because it is critical. “Every” means every qualifying item in the disclosed collector inputs—not every post on the internet.</p>
     <div class="et-actions">
-      <a class="ps-btn" href="/readings/erasure-trail.csv">Download CSV</a>
-      <a class="ps-btn ps-btn--ghost" href="/readings/erasure-trail-latest.json">Download JSON</a>
+      <a class="ps-btn" href="/readings/censorship-practice-dossiers-latest.json">Download dossier JSON</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/erasure-trail.csv">Download CSV (raw)</a>
+      <a class="ps-btn ps-btn--ghost" href="/readings/erasure-trail-latest.json">Download JSON (raw)</a>
       <a class="ps-btn ps-btn--ghost" href="/docs/FOR-JOURNALISTS.md">How to cite</a>
       <a class="ps-btn ps-btn--ghost" href="/osint-china.html">Signal board</a>
     </div>
@@ -825,7 +1038,31 @@ def render_html(document: Mapping[str, Any]) -> str:
     </article>
   </section>
 
-  <p class="et-meta">{_h(document["n_rows"])} public reconstructions · clock {generated} from committed inputs · method v{METHOD_VERSION}</p>
+  <section class="et-counts" aria-label="Dossier evidence-state counts">
+    <div class="et-count"><strong>{_h(dossier_counts["dossiers"])}</strong><span>Qualifying dossiers</span></div>
+    <div class="et-count"><strong>{_h(dossier_counts["observed_disappearances"])}</strong><span>Observed disappearances</span></div>
+    <div class="et-count"><strong>{_h(dossier_counts["peer_reported"])}</strong><span>Peer reported</span></div>
+    <div class="et-count"><strong>{_h(dossier_counts["pattern_signals"] + dossier_counts["review_required"])}</strong><span>Patterns / review</span></div>
+    <div class="et-count"><strong>{_h(collector_gaps)}</strong><span>Collector gaps</span></div>
+  </section>
+
+  <p class="et-meta">{_h(dossier_counts["captured_items_reviewed"])} captured input records reviewed · {_h(dossier_counts["dossiers"])} qualifying dossiers · dossier clock {dossier_generated} · method v{practice_dossiers.METHOD_VERSION}</p>
+  <h2 class="ps-section-head et-section-head">Every qualifying captured piece</h2>
+  <p class="et-section-deck">Open a dossier to see the exact claim ceiling. <b>Observed disappearance</b> establishes a state transition, not its cause. <b>Peer reported</b> preserves an external report without pretending Palimpsest verified it. <b>Pattern signal</b> is topic-level. <b>Review required</b> is deliberately not a censorship finding. CCP, PRC authority, platform, or local-authority responsibility appears only when retained evidence explicitly names that actor.</p>
+  <section class="et-dossiers" aria-label="Piece-level censorship-practice dossiers, readable without JavaScript">
+    {dossier_cards}
+  </section>
+
+  <aside class="et-exclusions">
+    <p class="ps-kicker">Qualification audit</p>
+    <h2>What the classifier reviewed but refused to call censorship</h2>
+    <p>Excluded items remain counted so silence in this dossier list cannot hide a failed or noisy input.</p>
+    <ul>{exclusion_lines}</ul>
+  </aside>
+
+  <h2 class="ps-section-head et-section-head">Raw reconstruction archive</h2>
+  <p class="et-section-deck">The archive below preserves every retained reconstruction—including archive transitions and lexical board rows that do not clear the dossier qualification gate. It is evidence for inspection, not a list of confirmed censorship acts.</p>
+  <p class="et-meta">{_h(document["n_rows"])} public reconstructions · archive clock {generated} from committed inputs · method v{METHOD_VERSION}</p>
   <section class="et-records" aria-label="Fat Palimpsest reconstructions, readable without JavaScript">
     {cards}
   </section>
@@ -855,8 +1092,8 @@ def render_html(document: Mapping[str, Any]) -> str:
     <ol>
       <li>Find the row by title, gazetteer term, or source URL.</li>
       <li>Copy first-seen, last-seen, the snapshot or lookup URL, and the SHA-256.</li>
-      <li>Download the <a href="/readings/erasure-trail.csv">CSV</a> or <a href="/readings/erasure-trail-latest.json">JSON</a> if you need the fat record, including public text, joins and uncertainty.</li>
-      <li>Cite Palimpsest as the observatory that recorded a public disappearance, not as a witness inside China and not as proof of motive.</li>
+      <li>Download the <a href="/readings/censorship-practice-dossiers-latest.json">dossier JSON</a> for item-level claims, or the <a href="/readings/erasure-trail.csv">raw CSV</a> / <a href="/readings/erasure-trail-latest.json">raw JSON</a> for the complete reconstruction record.</li>
+      <li>Preserve the dossier evidence state: cite an observed disappearance as a state transition, a peer report as attributed reporting, and a board pattern as context. Do not upgrade any of them into motive or actor attribution.</li>
     </ol>
     <p>Method: <a href="/docs/CHINA-CAPTURE.md">China capture</a> · <a href="/docs/FOR-JOURNALISTS.md">Journalist guide</a> · <a href="/protocol/china-observation-v1.schema.json">Observation schema</a>.</p>
   </section>
@@ -924,24 +1161,40 @@ def _history_payload(document: Mapping[str, Any], *, path: Path | None = None) -
     )
 
 
-def write_outputs(document: Mapping[str, Any], *, history: bool = True) -> None:
+def write_outputs(
+    document: Mapping[str, Any],
+    dossier_document: Mapping[str, Any] | None = None,
+    *,
+    history: bool = True,
+) -> None:
     READINGS.mkdir(parents=True, exist_ok=True)
     PAGE_DIR.mkdir(parents=True, exist_ok=True)
     JSON_OUT.write_text(_canonical_json(document), encoding="utf-8")
+    if dossier_document is not None:
+        DOSSIER_JSON_OUT.write_text(
+            _canonical_json(dossier_document), encoding="utf-8"
+        )
     CSV_OUT.write_text(render_csv(document), encoding="utf-8")
-    HTML_OUT.write_text(render_html(document), encoding="utf-8")
+    HTML_OUT.write_text(
+        render_html(document, dossier_document=dossier_document), encoding="utf-8"
+    )
     if history:
         HIST.write_text(_history_payload(document), encoding="utf-8")
 
 
-def check_outputs(document: Mapping[str, Any]) -> list[str]:
+def check_outputs(
+    document: Mapping[str, Any],
+    dossier_document: Mapping[str, Any] | None = None,
+) -> list[str]:
     problems: list[str] = []
     expected = {
         JSON_OUT: _canonical_json(document),
         CSV_OUT: render_csv(document),
-        HTML_OUT: render_html(document),
+        HTML_OUT: render_html(document, dossier_document=dossier_document),
         HIST: _history_payload(document),
     }
+    if dossier_document is not None:
+        expected[DOSSIER_JSON_OUT] = _canonical_json(dossier_document)
     for path, payload in expected.items():
         if not path.is_file():
             problems.append(f"missing {path.relative_to(ROOT)}")
@@ -962,15 +1215,28 @@ def main(argv: Iterable[str] | None = None) -> int:
     if document is None:
         print("erasure-trail: no dated public inputs — abstaining")
         return 2
+    dossier_document = build_dossier_document(readings_dir=readings_dir)
+    if dossier_document is None:
+        print("erasure-trail: no dated dossier inputs — abstaining")
+        return 2
     if args.check:
-        problems = check_outputs(document)
+        problems = check_outputs(document, dossier_document=dossier_document)
         if problems:
             print("erasure-trail --check failed:\n  " + "\n  ".join(problems))
             return 1
-        print(f"erasure-trail: current · {document['n_rows']} rows · {document['generated_at']}")
+        print(
+            "erasure-trail: current · "
+            f"{document['n_rows']} rows · "
+            f"{dossier_document['counts']['dossiers']} dossiers · "
+            f"{dossier_document['generated_at']}"
+        )
         return 0
-    write_outputs(document)
-    print(f"erasure-trail: {document['n_rows']} row(s) · {document['generated_at']}")
+    write_outputs(document, dossier_document=dossier_document)
+    print(
+        f"erasure-trail: {document['n_rows']} row(s) · "
+        f"{dossier_document['counts']['dossiers']} dossier(s) · "
+        f"{dossier_document['generated_at']}"
+    )
     return 0
 
 

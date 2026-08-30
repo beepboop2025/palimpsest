@@ -863,6 +863,28 @@
     },
     {
       "@type": "Dataset",
+      "identifier": "censorship-practice-dossiers",
+      "name": "Piece-level censorship-practice dossiers",
+      "description": "Deterministic dossier for every qualifying item in retained public inputs: evidence state, observed or reported mechanism, explicit actor attribution, timeline, exact-identity measurement joins, input hashes, counter-readings, unknowns and collector gaps. Reporting about censorship is not represented as itself censored; ordinary edits and archive gaps are excluded and counted.",
+      "url": "https://palimpsest.info/news/china/erasure/",
+      "license": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE",
+      "spatialCoverage": [
+        "CN",
+        "GLOBAL"
+      ],
+      "dateModified": "2026-08-26T07:22:00Z",
+      "isAccessibleForFree": true,
+      "distribution": [
+        {
+          "@type": "DataDownload",
+          "name": "Piece-level censorship-practice dossiers — latest",
+          "encodingFormat": "application/json",
+          "contentUrl": "https://palimpsest.info/readings/censorship-practice-dossiers-latest.json"
+        }
+      ]
+    },
+    {
+      "@type": "Dataset",
       "identifier": "public-deletion-ledgers",
       "name": "Public deletion ledgers",
       "description": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style). Each feed is a candidate; if every ledger is unreachable the runner abstains rather than publish a zero.",

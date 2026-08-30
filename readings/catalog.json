@@ -9,17 +9,17 @@
   "homepage": "https://palimpsest.info/data.html",
   "contact": "desk@palimpsest.info",
   "summary": {
-    "datasets": 87,
+    "datasets": 88,
     "states": {
       "disabled": 1,
       "fresh": 26,
       "gated": 17,
       "private-node": 1,
-      "stale": 30,
+      "stale": 31,
       "warming": 12
     },
     "layers": {
-      "content": 16,
+      "content": 17,
       "cross-layer": 30,
       "economy": 6,
       "integrity": 2,
@@ -29,7 +29,7 @@
       "platform": 3,
       "state": 5
     },
-    "published_bytes": 47000893,
+    "published_bytes": 47097674,
     "history_rows": 9938
   },
   "datasets": [
@@ -654,7 +654,7 @@
           "format": "jsonfeed",
           "mediatype": "application/feed+json",
           "available": true,
-          "bytes": 309440,
+          "bytes": 309464,
           "url": "https://palimpsest.info/news/china/english/feed.json"
         },
         {
@@ -663,7 +663,7 @@
           "format": "rss",
           "mediatype": "application/rss+xml",
           "available": true,
-          "bytes": 180010,
+          "bytes": 180083,
           "url": "https://palimpsest.info/news/china/english/feed.xml"
         },
         {
@@ -1737,6 +1737,68 @@
         "history": "https://palimpsest.info/readings/erasure-trail-history.jsonl",
         "landing_page": "https://palimpsest.info/news/china/erasure/",
         "method": "https://palimpsest.info/docs/FOR-JOURNALISTS.md"
+      }
+    },
+    {
+      "id": "censorship-practice-dossiers",
+      "name": "Piece-level censorship-practice dossiers",
+      "description": "Deterministic dossier for every qualifying item in retained public inputs: evidence state, observed or reported mechanism, explicit actor attribution, timeline, exact-identity measurement joins, input hashes, counter-readings, unknowns and collector gaps. Reporting about censorship is not represented as itself censored; ordinary edits and archive gaps are excluded and counted.",
+      "layer": "content",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": [
+        "CN",
+        "GLOBAL"
+      ],
+      "sources": [
+        "Public deletion-ledger feeds",
+        "Bounded social observations",
+        "Weibo hot-search archive",
+        "DDTI",
+        "UNDERTEXT",
+        "Internet Archive CDX"
+      ],
+      "latest": "readings/censorship-practice-dossiers-latest.json",
+      "landing_page": "news/china/erasure/",
+      "method": "docs/CENSORSHIP-PRACTICE-DOSSIERS.md",
+      "count_fields": [
+        "counts.captured_items_reviewed",
+        "counts.dossiers",
+        "counts.observed_disappearances",
+        "counts.peer_reported",
+        "counts.pattern_signals",
+        "counts.review_required",
+        "counts.excluded_items"
+      ],
+      "license": {
+        "name": "Upstream rights retained; bounded excerpts and Palimpsest derived metadata MIT",
+        "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"
+      },
+      "artifacts": {
+        "evidence_state": "stale",
+        "observed_at": "2026-08-26T07:22:00Z",
+        "age_seconds": 350606,
+        "counts": {
+          "counts.captured_items_reviewed": 370,
+          "counts.dossiers": 15,
+          "counts.observed_disappearances": 0,
+          "counts.peer_reported": 11,
+          "counts.pattern_signals": 1,
+          "counts.review_required": 3,
+          "counts.excluded_items": 57
+        },
+        "latest_bytes": 96684,
+        "history_bytes": 0,
+        "history_rows": 0,
+        "latest_available": true,
+        "history_available": false
+      },
+      "urls": {
+        "latest": "https://palimpsest.info/readings/censorship-practice-dossiers-latest.json",
+        "landing_page": "https://palimpsest.info/news/china/erasure/",
+        "method": "https://palimpsest.info/docs/CENSORSHIP-PRACTICE-DOSSIERS.md"
       }
     },
     {

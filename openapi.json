@@ -625,6 +625,11 @@
       "summary": "Read fat journalist reconstructions: public text, archives, hashes, joins and uncertainty",
       "responses": {"200": {"$ref": "#/components/responses/Reading"}}
     }},
+    "/readings/censorship-practice-dossiers-latest.json": {"get": {
+      "operationId": "getCensorshipPracticeDossiers",
+      "summary": "Read every qualifying piece-level censorship-practice dossier with evidence state, mechanism, actor attribution, timeline, measurements, hashes, counter-readings and coverage gaps",
+      "responses": {"200": {"$ref": "#/components/responses/Reading"}}
+    }},
     "/readings/erasure-trail.csv": {"get": {
       "operationId": "getErasureTrailCsv",
       "summary": "Download the journalist evidence trail as UTF-8 CSV for citation and export",

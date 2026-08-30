@@ -276,6 +276,7 @@ def test_refresh_workflow_rebuilds_and_revalidates_the_aggregate_before_push():
         "readings/china-econ-observations-latest.json",
         "readings/china-index-latest.json",
         "readings/erasure-trail-latest.json",
+        "readings/censorship-practice-dossiers-latest.json",
         "readings/erasure-trail-history.jsonl",
         "readings/erasure-trail.csv",
         "readings/osint-china-latest.json",
