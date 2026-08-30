@@ -1,0 +1,1119 @@
+{
+  "schema_version": "palimpsest.regional-captured-index.v1",
+  "region": "myanmar",
+  "label": "Myanmar",
+  "generated_at": "2026-08-30T07:25:25Z",
+  "scope": "Every unique event retained in the append-only Palimpsest event-version ledger that matches this regional lane by reviewed source identity or bounded title metadata, plus every matching event in the current wire.",
+  "classification": {
+    "overlap_allowed": true,
+    "method": "reviewed dedicated source ids plus bounded metadata terms",
+    "article_body_fetching": "prohibited",
+    "bri_lane": "combined index of all three regional lanes plus explicit BRI terms",
+    "csv_formula_neutralization": "CSV text cells whose first non-whitespace character is =, +, -, or @ receive a leading apostrophe; JSON and JSONL preserve the exact captured text."
+  },
+  "rights": {
+    "publication_mode": "metadata-link-only",
+    "article_bodies_included": false,
+    "publisher_copyright_retained": true,
+    "source_policy": "config/news_sources.json"
+  },
+  "inputs": {
+    "newswire_generated_at": "2026-08-30T07:25:25Z",
+    "newswire_window": {
+      "from": "2026-08-23T07:25:25Z",
+      "hours": 168,
+      "to": "2026-08-30T07:25:25Z"
+    },
+    "newswire_versions_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+    "source_registry_sha256": "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14",
+    "chinese_translation_sidecar": {
+      "schema_version": "chinese-translations-v1",
+      "generated_at": "2026-08-30T07:25:25Z",
+      "newswire_sha256": "fd12a19ae11362a9802ef3942938cb18698879fae5b2b936436085aa7d79083b",
+      "newswire_ledger_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+      "newswire_ledger_rows": 4320,
+      "translated_records": 2207,
+      "missing_records": 0
+    }
+  },
+  "capture_universe": {
+    "event_versions": 4320,
+    "unique_events": 3059,
+    "current_wire_events": 561
+  },
+  "counts": {
+    "event_versions": 29,
+    "unique_events": 25,
+    "current_events": 19,
+    "historical_events": 6,
+    "event_pages_available": 21,
+    "sources": 7,
+    "events_with_english_translation": 3
+  },
+  "coverage": {
+    "earliest_published_at": "2026-08-06T13:34:05Z",
+    "latest_published_at": "2026-08-30T02:21:53Z",
+    "earliest_recorded_at": "2026-08-11T14:55:03Z",
+    "latest_recorded_at": "2026-08-30T02:25:11Z"
+  },
+  "sources": [
+    {
+      "source_id": "bbc-chinese",
+      "source_name": "BBC News Chinese",
+      "feed_url": "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml",
+      "role": "media",
+      "independence_group": "bbc-chinese-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "dvb-english",
+      "source_name": "Democratic Voice of Burma — English",
+      "feed_url": "https://english.dvb.no/feed/",
+      "role": "media",
+      "independence_group": "dvb-english-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 9
+    },
+    {
+      "source_id": "financial-times-china",
+      "source_name": "Financial Times — China",
+      "feed_url": "https://www.ft.com/china?format=rss",
+      "role": "media",
+      "independence_group": "financial-times-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "myanmar-now",
+      "source_name": "Myanmar Now — English",
+      "feed_url": "https://myanmar-now.org/en/feed/",
+      "role": "media",
+      "independence_group": "myanmar-now-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 10
+    },
+    {
+      "source_id": "rfi-chinese",
+      "source_name": "RFI",
+      "feed_url": "https://www.rfi.fr/cn/rss",
+      "role": "media",
+      "independence_group": "france-medias-monde-rfi-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "shan-news-english",
+      "source_name": "SHAN News — English",
+      "feed_url": "https://english.shannews.org/feed",
+      "role": "media",
+      "independence_group": "shan-news-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 3
+    },
+    {
+      "source_id": "voa-chinese",
+      "source_name": "Voice of America Chinese",
+      "feed_url": "https://www.voachinese.com/api/zm_yql-vomx-tpeybti",
+      "role": "media",
+      "independence_group": "voice-of-america-chinese-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    }
+  ],
+  "events": [
+    {
+      "event_id": "event-f265dd95194f52b2c0264fbd",
+      "event_url": "https://palimpsest.info/news/wire/event-f265dd95194f52b2c0264fbd/",
+      "event_page_available": true,
+      "headline": "THE MYTH OF THE CLEAN SWEEP: How Myanmar’s Scam Empire Evolved Into a National Shadow State",
+      "dek": "Recent reports of Shan Herald Agency for News and Khit Thit Media on cyberscam and scam center operations have made headlines, raising questions about whether Chinese Foreign Minister Wang Yi’s claim that the illicit trade is being eradicated is credible or just state propaganda aimed at portraying China as in control.",
+      "published_at": "2026-08-30T02:21:53Z",
+      "first_recorded_at": "2026-08-30T02:25:11Z",
+      "last_recorded_at": "2026-08-30T02:25:11Z",
+      "source_ids": [
+        "shan-news-english"
+      ],
+      "source_names": [
+        "SHAN News — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-262416e35903e22d1b44e74a"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "shan-news-english",
+          "title": "THE MYTH OF THE CLEAN SWEEP: How Myanmar’s Scam Empire Evolved Into a National Shadow State",
+          "url": "https://english.shannews.org/archives/30149"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-cc9d3076409e18086ccdad50",
+      "event_url": "https://palimpsest.info/news/wire/event-cc9d3076409e18086ccdad50/",
+      "event_page_available": false,
+      "headline": "Cyber Scam Hubs Expand Across Shan State Despite Crackdown",
+      "dek": null,
+      "published_at": "2026-08-30T02:05:07Z",
+      "first_recorded_at": "2026-08-30T02:05:13Z",
+      "last_recorded_at": "2026-08-30T02:10:10Z",
+      "source_ids": [
+        "shan-news-english"
+      ],
+      "source_names": [
+        "SHAN News — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-19d016e2f8af57e35dcab859",
+        "eventv-91d6d492bb5647116732bddc"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-1c02faa26ae1a68573621299",
+      "event_url": "https://palimpsest.info/news/wire/event-1c02faa26ae1a68573621299/",
+      "event_page_available": true,
+      "headline": "Nepal-China flood survivors reach safe areas as families await news of nearly 3,000 missing",
+      "dek": "As rescue efforts in communities buried by catastrophic flash floods along the Nepal – China border entered their fourth day Saturday, authorities were still finding survivors and transporting them to safety. At relief centers, families of missing people waited anxiously for news of their loved ones as the death toll a",
+      "published_at": "2026-08-30T01:18:10Z",
+      "first_recorded_at": "2026-08-30T01:45:27Z",
+      "last_recorded_at": "2026-08-30T01:45:27Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-2369d3ed87bed2ba495225b9"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Nepal-China flood survivors reach safe areas as families await news of nearly 3,000 missing",
+          "url": "https://english.dvb.no/nepal-china-flood-survivors-reach-safe-areas-as-families-await-news-of-nearly-3000-missing/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-6072c850e51244df76ba507c",
+      "event_url": "https://palimpsest.info/news/wire/event-6072c850e51244df76ba507c/",
+      "event_page_available": true,
+      "headline": "Arakan Army imposes first nighttime curfew across southern Rakhine State townships",
+      "dek": "The Arakan Army (AA) has enacted a temporary nighttime curfew across the southern Arakan State townships of Thandwe, Gwa, and Toungup. Implemented for the first time in these regions since mid-August 2026, the emergency measure responds to intensifying Myanmar regime air and naval bombardments alongside growing public",
+      "published_at": "2026-08-29T00:28:09Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-bdc027be617ff5144903d25d"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Arakan Army imposes first nighttime curfew across southern Rakhine State townships",
+          "url": "https://english.dvb.no/arakan-army-imposes-first-nighttime-curfew-across-southern-rakhine-state-townships/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-722c2daa941a4e7b9d53b729",
+      "event_url": "https://palimpsest.info/news/wire/event-722c2daa941a4e7b9d53b729/",
+      "event_page_available": true,
+      "headline": "9th Rohingya Genocide Remembrance Day",
+      "dek": "Tens of thousands of Rohingya refugees from Myanmar living in dozens of camps in Bangladesh held a rally on Aug. 25 to demand their safe return to their home in Arakan State, nine years after they fled a Myanmar military crackdown. Read more Watch the Rohingya rally on Aug. 25, here The post 9th Rohingya Genocide Remem",
+      "published_at": "2026-08-28T22:06:05Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-990c53dd1a6ee2309369da37"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "9th Rohingya Genocide Remembrance Day",
+          "url": "https://english.dvb.no/9th-rohingya-genocide-remembrance-day-in-bangladesh/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-87b8a9162c574423ac05c390",
+      "event_url": "https://palimpsest.info/news/wire/event-87b8a9162c574423ac05c390/",
+      "event_page_available": true,
+      "headline": "Buddhist monk suspected of links to pro-regime militia dies in resistance custody",
+      "dek": "Junta-controlled state media accuses PDF “terrorists” of torturing the monk to death a week after his arrest",
+      "published_at": "2026-08-28T10:00:25Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-d67d632d8b7c9a1b7368c8a2"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Buddhist monk suspected of links to pro-regime militia dies in resistance custody",
+          "url": "https://myanmar-now.org/en/news/buddhist-monk-suspected-of-links-to-pro-regime-militia-dies-in-resistance-custody/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-83a178ec5858c6dac3cb4873",
+      "event_url": "https://palimpsest.info/news/wire/event-83a178ec5858c6dac3cb4873/",
+      "event_page_available": true,
+      "headline": "Over 100 scholars and former diplomats demand release of detained US academic in China",
+      "dek": "A coalition of 108 international scholars, former diplomats, and foreign policy experts organized through the Scholars at Risk Network issued a joint statement on Thursday, demanding the immediate and unconditional release of Min Zin, a Myanmar academic and U.S. citizen detained by Chinese authorities in Kunming, Yunna",
+      "published_at": "2026-08-28T09:16:33Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-de09106afb539128138a2f85"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "connectivity",
+        "policy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Over 100 scholars and former diplomats demand release of detained US academic in China",
+          "url": "https://english.dvb.no/over-100-scholars-and-former-diplomats-demand-release-of-detained-us-academic-min-zin-in-china/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-a60cf57614329ae08b545687",
+      "event_url": "https://palimpsest.info/news/wire/event-a60cf57614329ae08b545687/",
+      "event_page_available": true,
+      "headline": "Malaysia to repatriate first group of Myanmar nationals in September",
+      "dek": "The controversial move comes as Rohingya refugees in Malaysia are increasingly targeted by online disinformation campaigns",
+      "published_at": "2026-08-28T05:45:25Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-0f97239495058e4a83dbba04"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Malaysia to repatriate first group of Myanmar nationals in September",
+          "url": "https://myanmar-now.org/en/news/malaysia-to-repatriate-first-group-of-myanmar-nationals-in-september/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-7b331c7777a0612c3b516871",
+      "event_url": "https://palimpsest.info/news/wire/event-7b331c7777a0612c3b516871/",
+      "event_page_available": true,
+      "headline": "India, Myanmar, and mineral imperialism",
+      "dek": "Guest contributor Shalini Perumal The global transition toward green technologies and electric mobility has triggered an unprecedented rush for critical minerals. This situation has fundamentally reshaped the geopolitics of the Indo-Pacific, turning remote frontier regions into arenas for competition. For a rapidly gro",
+      "published_at": "2026-08-28T03:05:56Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-0744d73f12308f23dbb6c8b4"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "India, Myanmar, and mineral imperialism",
+          "url": "https://english.dvb.no/india-myanmar-and-mineral-imperialism/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-364d582351325318e6b7b21f",
+      "event_url": "https://palimpsest.info/news/wire/event-364d582351325318e6b7b21f/",
+      "event_page_available": true,
+      "headline": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
+      "dek": "Malaysia will repatriate 1,476 Myanmar nationals next month in the first phase of a voluntary program, the Home Ministry said on Thursday, as the government moves to address the country’s long-running refugee and undocumented migrant issue. The repatriation is part of a broader program involving 5,000 eligible Myanmar",
+      "published_at": "2026-08-28T02:17:54Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-1991f499be071205bd84e1fd"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "government",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
+          "url": "https://english.dvb.no/malaysia-to-return-1476-myanmar-nationals-in-first-phase-of-voluntary-repatriation-program/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-d59970aaa4d85060cc1b0afe",
+      "event_url": "https://palimpsest.info/news/wire/event-d59970aaa4d85060cc1b0afe/",
+      "event_page_available": true,
+      "headline": "Investigating International Crimes in Myanmar",
+      "dek": "The Independent Investigative Mechanism for Myanmar (IIMM) released its 2026 Annual Report on Aug. 11. Lead investigator Nicholas Koumjian told DVB that civilians continue to bear the brunt of the conflict in Myanmar since the 2021 military coup. Read more Watch the IIMM 2026 Annual Report press conference at the U.N.",
+      "published_at": "2026-08-28T01:37:09Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-01652e26dcd3bb7feef7f6e4"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Investigating International Crimes in Myanmar",
+          "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar/"
+        },
+        {
+          "source_id": "dvb-english",
+          "title": "Investigating International Crimes in Myanmar [AUDIO]",
+          "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar-audio/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-a4c59536010ef58532ea21ed",
+      "event_url": "https://palimpsest.info/news/wire/event-a4c59536010ef58532ea21ed/",
+      "event_page_available": false,
+      "headline": "Myanmar Air Force launches 30-bomb strike on border village in Chin State’s Paletwa Township",
+      "dek": null,
+      "published_at": "2026-08-27T23:43:11Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-5e230d522b6d473613b6f7fd"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-a0184ef389549b8f5874c8a0",
+      "event_url": "https://palimpsest.info/news/wire/event-a0184ef389549b8f5874c8a0/",
+      "event_page_available": true,
+      "headline": "More than 1,400 people missing after Nepal flood disaster",
+      "dek": "China warns of risk of further landslides as rescue effort intensifies",
+      "published_at": "2026-08-27T17:03:13Z",
+      "first_recorded_at": "2026-08-29T16:31:50Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english",
+        "financial-times-china"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English",
+        "Financial Times — China"
+      ],
+      "evidence_strength": "multi-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-782c3fe37f0f16fa76c438f2",
+        "eventv-4f7395b7afebb8a9e73b5244"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "financial-times-china",
+          "title": "More than 1,400 people missing after Nepal flood disaster",
+          "url": "https://www.ft.com/content/7fbae161-96a0-4e72-9366-0f2f3f4667c8?syn-25a6b1a6=1"
+        },
+        {
+          "source_id": "dvb-english",
+          "title": "People from more than 30 countries are missing after flash floods in Nepal and China",
+          "url": "https://english.dvb.no/people-from-more-than-30-countries-are-missing-after-the-flash-floods-in-nepal-and-china/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-fd696d9dfaf3e06f146e9807",
+      "event_url": "https://palimpsest.info/news/wire/event-fd696d9dfaf3e06f146e9807/",
+      "event_page_available": true,
+      "headline": "AA introduces Rakhine as subject in schools, replacing Myanmar language",
+      "dek": "The Rakhine-language textbook has already been distributed to Grade 12 students across AA territory, including Chin State’s Paletwa, for the current academic year",
+      "published_at": "2026-08-27T11:10:14Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-165a8d9a1e2cb505ebec9301"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "AA introduces Rakhine as subject in schools, replacing Myanmar language",
+          "url": "https://myanmar-now.org/en/news/aa-introduces-rakhine-as-subject-in-schools-replacing-myanmar-language/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-94f0d42a832597eceff84e32",
+      "event_url": "https://palimpsest.info/news/wire/event-94f0d42a832597eceff84e32/",
+      "event_page_available": true,
+      "headline": "Fighting intensifies as resistance forces attack Myanmar junta flotilla headed for Shwegu",
+      "dek": "The flotilla, including combat vessels and landing craft, began advancing toward the Kachin State town from Mandalay late last week",
+      "published_at": "2026-08-27T10:37:26Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-21f0ef2e596c4a7691874437"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Fighting intensifies as resistance forces attack Myanmar junta flotilla headed for Shwegu",
+          "url": "https://myanmar-now.org/en/news/fighting-intensifies-as-resistance-forces-attack-myanmar-junta-flotilla-headed-for-shwegu/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-db18a5c449b939a74e0ae272",
+      "event_url": "https://palimpsest.info/news/wire/event-db18a5c449b939a74e0ae272/",
+      "event_page_available": false,
+      "headline": "Medical Shortages, Monsoon Illnesses Put More Than 600 IDPs at Risk in Western Pai Khun",
+      "dek": null,
+      "published_at": "2026-08-27T09:06:54Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "shan-news-english"
+      ],
+      "source_names": [
+        "SHAN News — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-7def095800749c54463cdf44"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-30a2e4fa8a8f5b98af25a21d",
+      "event_url": "https://palimpsest.info/news/wire/event-30a2e4fa8a8f5b98af25a21d/",
+      "event_page_available": true,
+      "headline": "Myanmar junta tightens restrictions on transport of Chinese goods at border",
+      "dek": "Merchants and drivers say the regime has stepped up efforts to block the flow of goods through areas controlled by ethnic armed groups",
+      "published_at": "2026-08-26T10:17:17Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-bec1adc291e0a66d1743ec61"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Myanmar junta tightens restrictions on transport of Chinese goods at border",
+          "url": "https://myanmar-now.org/en/news/myanmar-junta-tightens-restrictions-on-transport-of-chinese-goods-at-border/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-85f1ccd9cc864c084474a06c",
+      "event_url": "https://palimpsest.info/news/wire/event-85f1ccd9cc864c084474a06c/",
+      "event_page_available": true,
+      "headline": "Human rights in Myanmar hitting a ‘new low’: UN",
+      "dek": "The UN warned that illegal mining and scam centres were further deteriorating Myanmar’s already critical human rights situation",
+      "published_at": "2026-08-26T08:28:06Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-ff1bc5c7869ad7ab3cba3a6d"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Human rights in Myanmar hitting a ‘new low’: UN",
+          "url": "https://myanmar-now.org/en/news/human-rights-in-myanmar-hitting-a-new-low-un/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-ffd7818d0eb924aa5eab5a3d",
+      "event_url": "https://palimpsest.info/news/wire/event-ffd7818d0eb924aa5eab5a3d/",
+      "event_page_available": true,
+      "headline": "Myanmar Rohingya refugees protest dire conditions in Bangladesh camps",
+      "dek": "Nine years after the 2017 crackdown that forced hundreds of thousands of Rohingya out of Myanmar, refugees gathered in remembrance and to protest deteriorating camp conditions",
+      "published_at": "2026-08-26T06:05:15Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-36f27e955e7c0ba5fd460311"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Myanmar Rohingya refugees protest dire conditions in Bangladesh camps",
+          "url": "https://myanmar-now.org/en/news/myanmar-rohingya-refugees-protest-dire-conditions-in-bangladesh-camps/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-546ba6cfcdf61e81deed767a",
+      "event_url": "https://palimpsest.info/news/wire/event-546ba6cfcdf61e81deed767a/",
+      "event_page_available": true,
+      "headline": "Photo Essay: Between battles in central Myanmar",
+      "dek": "As junta forces push towards oil-producing areas of Magway Region’s Myaing Township, photographs from near the frontline document the resistance fighters trying to hold them back",
+      "published_at": "2026-08-25T10:55:14Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-42bb4afb06d0699d3ef76c7a"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Photo Essay: Between battles in central Myanmar",
+          "url": "https://myanmar-now.org/en/news/photo-essay-between-battles-in-central-myanmar/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-ced9f670938784e3923a46de",
+      "event_url": "https://palimpsest.info/news/wire/event-ced9f670938784e3923a46de/",
+      "event_page_available": true,
+      "headline": "Myanmar junta airstrike in Paletwa kills five and injures 17, including children",
+      "dek": "The airstrike targeted a monastery in rural Chin State, destroying several buildings and leaving many children among the dead and injured",
+      "published_at": "2026-08-25T09:21:48Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-6c388dd9163d089496f40ef2"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Myanmar junta airstrike in Paletwa kills five and injures 17, including children",
+          "url": "https://myanmar-now.org/en/news/myanmar-junta-airstrike-in-paletwa-kills-five-and-injures-17-including-children/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-2dab7d023574637542768ee1",
+      "event_url": "https://palimpsest.info/news/wire/event-2dab7d023574637542768ee1/",
+      "event_page_available": true,
+      "headline": "The Russian general behind Moscow’s decades-long military courtship of Myanmar",
+      "dek": "Long before Russia became the regime’s most important military partner, Aleksandr Fomin was already cultivating ties with its officer corps, a relationship now extending beyond military support into energy, finance, infrastructure and space cooperation",
+      "published_at": "2026-08-25T05:46:15Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-065980d9a5fe4d82213b27fa"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "The Russian general behind Moscow’s decades-long military courtship of Myanmar",
+          "url": "https://myanmar-now.org/en/news/the-russian-general-behind-moscows-decades-long-military-courtship-of-myanmar/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-1906678f72b36035246838fb",
+      "event_url": "https://palimpsest.info/news/wire/event-1906678f72b36035246838fb/",
+      "event_page_available": false,
+      "headline": "北京否认“任意拘押”缅甸问题学者敏辛，指称“这位美国公民涉嫌危害国家安全”",
+      "dek": null,
+      "published_at": "2026-08-21T11:45:35Z",
+      "first_recorded_at": "2026-08-21T12:00:04Z",
+      "last_recorded_at": "2026-08-21T12:00:04Z",
+      "source_ids": [
+        "rfi-chinese"
+      ],
+      "source_names": [
+        "RFI"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-7a41f40f82b3ca7b26ecf85c"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-b2c47d2966a2aa2e513d2a5c",
+        "public_url": "/news/china/english/page/17/#translation-zhtr-b2c47d2966a2aa2e513d2a5c",
+        "title_en": "Beijing Denies 'Arbitrary Detention' of Myanmar-focused Scholar Min Zin, Alleging 'This U.S. Citizen Is Suspected of Endangering National Security'",
+        "context_en": "",
+        "translation_notes_en": "The name 'Min Zin' refers to the Myanmar-focused scholar mentioned in the text. Proper name standardized to ‘Min Zin’ for the person rendered as 敏辛 in the captured Chinese metadata.",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "Beijing is officially justifying the detention of a U.S. citizen by citing national security charges, contradicting accusations of arbitrary detainment.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "北京否认“任意拘押”缅甸问题学者敏辛，指称“这位美国公民涉嫌危害国家安全”",
+        "original_context_zh": "",
+        "original_content_sha256": "36793637fd6059796f24eb4ae6d29487eda9f25eb556c24d2e4c344dc38f004f",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    },
+    {
+      "event_id": "event-4e242014cf4f1b07591b046f",
+      "event_url": "https://palimpsest.info/news/wire/event-4e242014cf4f1b07591b046f/",
+      "event_page_available": true,
+      "headline": "美国务院认定学者敏辛在中国遭“非法拘押”，“已在最高层级”促北京释放敏辛",
+      "dek": null,
+      "published_at": "2026-08-20T21:45:23Z",
+      "first_recorded_at": "2026-08-20T22:00:05Z",
+      "last_recorded_at": "2026-08-23T20:30:05Z",
+      "source_ids": [
+        "voa-chinese"
+      ],
+      "source_names": [
+        "Voice of America Chinese"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-9f890997be72e5106f19fe6b",
+        "eventv-ae88933a4b055471ae6e2cd4"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-0c7a1dae847540a6eac8e7d3",
+        "public_url": "/news/china/english/page/21/#translation-zhtr-0c7a1dae847540a6eac8e7d3",
+        "title_en": "U.S. State Department Determines Scholar Min Zin Was 'Wrongfully Detained' in China; Has Urged Beijing at the 'Highest Levels' to Release Min Zin",
+        "context_en": "",
+        "translation_notes_en": "The term 'wrongfully detained' is a specific legal designation used by the U.S. government. Proper name standardized to ‘Min Zin’ for the person rendered as 敏辛 in the captured Chinese metadata.",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "The U.S. Department of State has formally categorized the detention of a scholar as wrongful and is engaging in high-level diplomatic pressure to secure their release.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "美国务院认定学者敏辛在中国遭“非法拘押”，“已在最高层级”促北京释放敏辛",
+        "original_context_zh": "",
+        "original_content_sha256": "cd459aa9f080bf120b601c1635405a0276ba46dd8cc40c8ae3aeaa114f081ce5",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    },
+    {
+      "event_id": "event-b8bb70ff36ce2fcc1405d34d",
+      "event_url": "https://palimpsest.info/news/wire/event-b8bb70ff36ce2fcc1405d34d/",
+      "event_page_available": true,
+      "headline": "軍政府因中國再次強硬 緬甸百姓的革命夢想幻滅了嗎？",
+      "dek": null,
+      "published_at": "2026-08-06T13:34:05Z",
+      "first_recorded_at": "2026-08-11T14:55:03Z",
+      "last_recorded_at": "2026-08-11T15:18:52Z",
+      "source_ids": [
+        "bbc-chinese"
+      ],
+      "source_names": [
+        "BBC News Chinese"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-f59546da22fed1cf52787621",
+        "eventv-4b8ffd16680a10ab727ee0c9"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-d233ccd9955ccad6fcdd4eb7",
+        "public_url": "/news/china/english/page/28/#translation-zhtr-d233ccd9955ccad6fcdd4eb7",
+        "title_en": "Military junta stands tough again because of China: Are the revolutionary dreams of the Burmese people shattered?",
+        "context_en": "With China's support, Myanmar's President Min Aung Hlaing, who 'swapped his military uniform for civilian clothes,' is seeking to break out of diplomatic isolation. For those Myanmar opposition supporters who hope to reshape the country through revolution, the prospects are disheartening.",
+        "translation_notes_en": "“棄戎從文” literally means abandoning military life to engage in literature/civilian life; in this context, it refers to Min Aung Hlaing shedding his military uniform for a civilian political role.",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "The publisher suggests that ongoing Chinese support for the current Myanmar administration is complicating the efforts of opposition movements.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "軍政府因中國再次強硬 緬甸百姓的革命夢想幻滅了嗎？",
+        "original_context_zh": "在中國支持下，「棄戎從文」的緬甸總統敏昂萊正尋求突破外交孤立。對於那些希望透過革命來重塑國家的緬甸反對派支持者來說，前景讓人沮喪。",
+        "original_content_sha256": "974a7fdcbdc128213a00d856374bbc25d88df5046a0185569c8b91ccda3b6bc1",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    }
+  ],
+  "limitations": [
+    "This is the complete retained Palimpsest capture ledger for the declared classifier, not every article ever published on the internet.",
+    "Feed metadata can be incomplete, partisan, mistaken, translated, revised or removed; a listing is attribution, not endorsement or adjudication.",
+    "Historical ledger entries may lack a retained excerpt or publisher URL; the event page is linked only when a generated public page remains present.",
+    "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
+    "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump."
+  ],
+  "content_sha256": "43432b9a1e4fa0e64602e5a0b753e047d4dcda7dc010d44277c9f80ef34b3c5e"
+}

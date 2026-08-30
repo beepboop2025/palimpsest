@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/regional-captured-index-v1.schema.json",
+  "title": "Palimpsest regional captured-news index v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "region",
+    "label",
+    "generated_at",
+    "scope",
+    "classification",
+    "rights",
+    "inputs",
+    "capture_universe",
+    "counts",
+    "coverage",
+    "sources",
+    "events",
+    "limitations",
+    "content_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "palimpsest.regional-captured-index.v1"},
+    "region": {"enum": ["bri", "gwadar", "balochistan", "myanmar"]},
+    "label": {"type": "string", "minLength": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "scope": {"type": "string", "minLength": 1},
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overlap_allowed", "method", "article_body_fetching", "bri_lane", "csv_formula_neutralization"],
+      "properties": {
+        "overlap_allowed": {"const": true},
+        "method": {"type": "string", "minLength": 1},
+        "article_body_fetching": {"const": "prohibited"},
+        "bri_lane": {"type": "string", "minLength": 1},
+        "csv_formula_neutralization": {"const": "CSV text cells whose first non-whitespace character is =, +, -, or @ receive a leading apostrophe; JSON and JSONL preserve the exact captured text."}
+      }
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publication_mode", "article_bodies_included", "publisher_copyright_retained", "source_policy"],
+      "properties": {
+        "publication_mode": {"const": "metadata-link-only"},
+        "article_bodies_included": {"const": false},
+        "publisher_copyright_retained": {"const": true},
+        "source_policy": {"const": "config/news_sources.json"}
+      }
+    },
+    "inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["newswire_generated_at", "newswire_window", "newswire_versions_sha256", "source_registry_sha256", "chinese_translation_sidecar"],
+      "properties": {
+        "newswire_generated_at": {"type": "string", "format": "date-time"},
+        "newswire_window": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from", "hours", "to"],
+          "properties": {
+            "from": {"type": "string", "format": "date-time"},
+            "hours": {"type": "integer", "minimum": 1},
+            "to": {"type": "string", "format": "date-time"}
+          }
+        },
+        "newswire_versions_sha256": {"$ref": "#/$defs/sha256"},
+        "source_registry_sha256": {"$ref": "#/$defs/sha256"},
+        "chinese_translation_sidecar": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["schema_version", "generated_at", "newswire_sha256", "newswire_ledger_sha256", "newswire_ledger_rows", "translated_records", "missing_records"],
+              "properties": {
+                "schema_version": {"const": "chinese-translations-v1"},
+                "generated_at": {"type": "string", "format": "date-time"},
+                "newswire_sha256": {"$ref": "#/$defs/sha256"},
+                "newswire_ledger_sha256": {"$ref": "#/$defs/sha256"},
+                "newswire_ledger_rows": {"type": "integer", "minimum": 1},
+                "translated_records": {"type": "integer", "minimum": 1},
+                "missing_records": {"const": 0}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "capture_universe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_versions", "unique_events", "current_wire_events"],
+      "properties": {
+        "event_versions": {"type": "integer", "minimum": 0},
+        "unique_events": {"type": "integer", "minimum": 0},
+        "current_wire_events": {"type": "integer", "minimum": 0}
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_versions", "unique_events", "current_events", "historical_events", "event_pages_available", "sources", "events_with_english_translation"],
+      "properties": {
+        "event_versions": {"type": "integer", "minimum": 0},
+        "unique_events": {"type": "integer", "minimum": 0},
+        "current_events": {"type": "integer", "minimum": 0},
+        "historical_events": {"type": "integer", "minimum": 0},
+        "event_pages_available": {"type": "integer", "minimum": 0},
+        "sources": {"type": "integer", "minimum": 0},
+        "events_with_english_translation": {"type": "integer", "minimum": 0}
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["earliest_published_at", "latest_published_at", "earliest_recorded_at", "latest_recorded_at"],
+      "properties": {
+        "earliest_published_at": {"type": ["string", "null"], "format": "date-time"},
+        "latest_published_at": {"type": ["string", "null"], "format": "date-time"},
+        "earliest_recorded_at": {"type": ["string", "null"], "format": "date-time"},
+        "latest_recorded_at": {"type": ["string", "null"], "format": "date-time"}
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "events": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/event"}
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "content_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_name", "feed_url", "role", "independence_group", "rights_policy", "captured_event_count"],
+      "properties": {
+        "source_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$"},
+        "source_name": {"type": "string", "minLength": 1},
+        "feed_url": {"type": "string", "format": "iri"},
+        "role": {"type": "string", "minLength": 1},
+        "independence_group": {"type": "string", "minLength": 1},
+        "rights_policy": {"const": "metadata-link-only"},
+        "captured_event_count": {"type": "integer", "minimum": 1}
+      }
+    },
+    "publisher_link": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "title", "url"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "url": {"type": "string", "format": "iri"}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "event_url", "event_page_available", "headline", "dek", "published_at", "first_recorded_at", "last_recorded_at", "source_ids", "source_names", "evidence_strength", "version_count", "version_ids", "current_in_wire", "topics", "region_tags", "publisher_links", "english_translation"],
+      "properties": {
+        "event_id": {"type": "string", "pattern": "^event-[0-9a-f]+$"},
+        "event_url": {"type": "string", "format": "uri"},
+        "event_page_available": {"type": "boolean"},
+        "headline": {"type": "string", "minLength": 1},
+        "dek": {"type": ["string", "null"]},
+        "published_at": {"type": "string", "format": "date-time"},
+        "first_recorded_at": {"type": "string", "format": "date-time"},
+        "last_recorded_at": {"type": "string", "format": "date-time"},
+        "source_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "source_names": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "evidence_strength": {"type": "string", "minLength": 1},
+        "version_count": {"type": "integer", "minimum": 1},
+        "version_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^eventv-[0-9a-f]+$"}},
+        "current_in_wire": {"type": "boolean"},
+        "topics": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "region_tags": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["bri", "gwadar", "balochistan", "myanmar"]}},
+        "publisher_links": {"type": "array", "items": {"$ref": "#/$defs/publisher_link"}},
+        "english_translation": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/english_translation"}
+          ]
+        }
+      }
+    },
+    "english_translation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["translation_id", "public_url", "title_en", "context_en", "translation_notes_en", "status", "background_en", "background_basis", "background_status", "original_title_zh", "original_context_zh", "original_content_sha256", "provider", "model_id", "prompt_revision"],
+      "properties": {
+        "translation_id": {"type": "string", "pattern": "^zhtr-[0-9a-f]{24}$"},
+        "public_url": {"type": "string", "pattern": "^/news/china/english/(?:page/[1-9][0-9]*/)?#translation-zhtr-[0-9a-f]{24}$"},
+        "title_en": {"type": "string", "minLength": 1},
+        "context_en": {"type": "string"},
+        "translation_notes_en": {"type": "string"},
+        "status": {"const": "machine-draft-not-human-certified"},
+        "background_en": {"type": "string", "minLength": 1},
+        "background_basis": {"type": "string", "minLength": 1},
+        "background_status": {"const": "machine-generated-context-not-translation"},
+        "original_title_zh": {"type": "string", "minLength": 1},
+        "original_context_zh": {"type": "string"},
+        "original_content_sha256": {"$ref": "#/$defs/sha256"},
+        "provider": {"enum": ["Google Gemini API", "OpenRouter"]},
+        "model_id": {"enum": ["gemini-3.1-flash-lite", "google/gemini-3.1-flash-lite"]},
+        "prompt_revision": {"const": "palimpsest-zh-en-metadata-v1"}
+      }
+    }
+  }
+}

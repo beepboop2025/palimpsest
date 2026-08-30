@@ -1,0 +1,13 @@
+[Unit]
+Description=Independently reconcile Palimpsest with Railway every fifteen minutes
+
+[Timer]
+OnCalendar=*:0/15
+RandomizedDelaySec=30s
+FixedRandomDelay=true
+AccuracySec=15s
+Persistent=true
+Unit=palimpsest-railway-publish.service
+
+[Install]
+WantedBy=timers.target

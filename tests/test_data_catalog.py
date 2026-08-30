@@ -20,8 +20,8 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     assert len(ids) >= 30
     assert len(ids) == len(set(ids))
     assert built["summary"]["datasets"] == len(ids)
-    assert "Belt and Road infrastructure and economic evidence" in (
-        built["description"]
+    assert (
+        "Belt and Road infrastructure and economic evidence" in (built["description"])
     )
     assert set(built["summary"]["layers"]) >= {
         "network",
@@ -45,7 +45,27 @@ def test_catalog_is_unique_bounded_and_machine_discoverable():
     assert package["resources"]
 
 
-def test_publication_denied_datasets_do_not_advertise_legacy_distributions():
+def test_publication_denied_datasets_do_not_advertise_legacy_distributions(
+    monkeypatch, tmp_path
+):
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    restricted = next(
+        item
+        for item in source["datasets"]
+        if item["id"] == "china-economic-observations"
+    )
+    restricted["distributions"] = [
+        {
+            "name": "restricted-catalog-source",
+            "path": "config/public_data_catalog.json",
+            "format": "json",
+            "mediatype": "application/json",
+        }
+    ]
+    temporary_config = tmp_path / "public_data_catalog.json"
+    temporary_config.write_text(json.dumps(source), encoding="utf-8")
+    monkeypatch.setattr(catalog, "CONFIG", temporary_config)
+
     built, jsonld, package = catalog.build_catalog(
         now=datetime(2026, 8, 26, tzinfo=timezone.utc)
     )
@@ -76,18 +96,20 @@ def test_publication_denied_datasets_do_not_advertise_legacy_distributions():
             "latest_available": False,
             "history_available": False,
         }
+        assert item.get("distributions", []) == []
     by_id = {item["identifier"]: item for item in jsonld["dataset"]}
     assert all(by_id[item_id]["distribution"] == [] for item_id in restricted_ids)
     assert all(
-        by_id[item_id]["isAccessibleForFree"] is False
-        for item_id in restricted_ids
+        by_id[item_id]["isAccessibleForFree"] is False for item_id in restricted_ids
     )
     resource_names = {resource["name"] for resource in package["resources"]}
     assert all(
         not any(name.startswith(f"{item_id}-") for name in resource_names)
         for item_id in restricted_ids
     )
-    inside_view = next(item for item in built["datasets"] if item["id"] == "inside-view")
+    inside_view = next(
+        item for item in built["datasets"] if item["id"] == "inside-view"
+    )
     assert inside_view["status"] == "gated"
     assert inside_view["artifacts"]["latest_available"] is True
     assert inside_view["artifacts"]["history_available"] is True
@@ -121,7 +143,11 @@ def test_catalog_keeps_collection_mode_rights_and_caveats_explicit():
     assert transcripts["latest"] == "readings/gfi-transcripts-latest.json"
     assert transcripts["method"] == "readings/gfi-evaluation-protocol-v2.json"
     assert transcripts["count_fields"] == [
-        "n_models", "n_prompt_arms", "samples_per_cell", "n_cells", "n_samples"
+        "n_models",
+        "n_prompt_arms",
+        "samples_per_cell",
+        "n_cells",
+        "n_samples",
     ]
     assert "sealed" in transcripts["description"].lower()
 
@@ -232,9 +258,7 @@ def test_social_ledger_catalog_keeps_access_and_corroboration_boundaries_explici
 
 def test_china_situation_catalog_exposes_layer_specific_coverage_and_public_surface():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
-    entry = next(
-        item for item in source["datasets"] if item["id"] == "china-situation"
-    )
+    entry = next(item for item in source["datasets"] if item["id"] == "china-situation")
 
     assert (entry["layer"], entry["stage"], entry["collection_mode"]) == (
         "cross-layer",
@@ -352,8 +376,9 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     ]
     assert bri_wdi["license"] == wdi["license"]
     assert "country-period context only" in bri_wdi["description"]
-    assert "P120D is the economic-data freshness budget" in (
-        bri_wdi["freshness_semantics"]
+    assert (
+        "P120D is the economic-data freshness budget"
+        in (bri_wdi["freshness_semantics"])
     )
 
     ucdp = by_id["ucdp-annual-aggregate-context"]
@@ -374,9 +399,7 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
     ]
     assert "cannot establish a NarcoScope actor" in ucdp["description"]
     assert "P7D is the collection target" in bri_wdi["freshness_semantics"]
-    assert "24-hour point-in-time deployment proof" in (
-        bri_wdi["freshness_semantics"]
-    )
+    assert "24-hour point-in-time deployment proof" in (bri_wdi["freshness_semantics"])
     assert "not continuous monitoring" in bri_wdi["freshness_semantics"]
 
     built, _jsonld, _package = catalog.build_catalog(
@@ -404,6 +427,276 @@ def test_economic_observation_ledger_is_a_first_class_bitemporal_distribution():
         "summary.abstaining_targets",
     ]
     assert "stay null" in forecast["description"]
+
+
+def test_regional_archives_publish_json_jsonl_and_csv_as_first_class_distributions():
+    built, jsonld, package = catalog.build_catalog(
+        now=datetime(2026, 8, 30, 7, tzinfo=timezone.utc)
+    )
+    by_id = {item["id"]: item for item in built["datasets"]}
+    jsonld_by_id = {item["identifier"]: item for item in jsonld["dataset"]}
+    resources = {resource["name"]: resource for resource in package["resources"]}
+
+    for region, prefix, geography in (
+        ("bri", "belt-and-road/", ["GLOBAL", "CN", "PK", "MM"]),
+        ("gwadar", "belt-and-road/gwadar/", ["PK", "CN"]),
+        ("balochistan", "belt-and-road/balochistan/", ["PK", "CN"]),
+        ("myanmar", "belt-and-road/myanmar/", ["MM", "CN"]),
+    ):
+        entry = by_id[f"{region}-regional-archive"]
+        assert entry["latest"] == f"{prefix}data/regional-data.json"
+        assert entry["landing_page"] == prefix
+        assert entry["method"] == "protocol/regional-data-dump-v1.schema.json"
+        assert entry["geography"] == geography
+        assert entry["collection_mode"] == ("append-only-metadata-ledger-projection")
+        assert entry["artifacts"]["latest_available"] is True
+        assert entry["artifacts"]["counts"]["captured_news.counts.unique_events"] > 0
+
+        expected = {
+            f"{region}-captured-index-json": (
+                f"{prefix}data/captured-index.json",
+                "application/json",
+                "json",
+            ),
+            f"{region}-captured-index-jsonl": (
+                f"{prefix}data/captured-index.jsonl",
+                "application/x-ndjson",
+                "jsonl",
+            ),
+            f"{region}-captured-index-csv": (
+                f"{prefix}data/captured-index.csv",
+                "text/csv",
+                "csv",
+            ),
+        }
+        if region == "bri":
+            expected["bri-regional-editorial-evidence-json"] = (
+                "config/regional_editorials.json",
+                "application/json",
+                "json",
+            )
+        projected = {row["name"]: row for row in entry["distributions"]}
+        assert set(projected) == set(expected)
+        for name, (path, mediatype, file_format) in expected.items():
+            assert projected[name] == {
+                "name": name,
+                "path": path,
+                "format": file_format,
+                "mediatype": mediatype,
+                "available": True,
+                "bytes": (ROOT / path).stat().st_size,
+                "url": f"https://palimpsest.info/{path}",
+            }
+            assert resources[name] == {
+                "name": name,
+                "path": path,
+                "format": file_format,
+                "mediatype": mediatype,
+                "bytes": (ROOT / path).stat().st_size,
+            }
+
+        downloads = {
+            row["contentUrl"]: row["encodingFormat"]
+            for row in jsonld_by_id[f"{region}-regional-archive"]["distribution"]
+        }
+        assert downloads == {
+            f"https://palimpsest.info/{prefix}data/regional-data.json": (
+                "application/json"
+            ),
+            **{
+                f"https://palimpsest.info/{path}": mediatype
+                for path, mediatype, _file_format in expected.values()
+            },
+        }
+
+
+def test_chinese_translation_catalog_is_metadata_only_and_source_controlled():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    entry = next(
+        item
+        for item in source["datasets"]
+        if item["id"] == "chinese-news-english-translations"
+    )
+
+    assert entry["latest"] == "readings/chinese-translations-latest.json"
+    assert entry["landing_page"] == "news/china/english/"
+    assert entry["method"] == "protocol/chinese-translations-v1.schema.json"
+    assert entry["count_fields"] == [
+        "coverage.translated_records",
+        "coverage.unique_content_digests",
+        "coverage.record_kinds",
+        "coverage.eligible_ledger_event_revisions",
+        "coverage.translated_ledger_event_revisions",
+        "coverage.missing_records",
+    ]
+    assert entry["distributions"] == [
+        {
+            "name": "chinese-translations-json-feed",
+            "path": "news/china/english/feed.json",
+            "format": "jsonfeed",
+            "mediatype": "application/feed+json",
+        },
+        {
+            "name": "chinese-translations-rss",
+            "path": "news/china/english/feed.xml",
+            "format": "rss",
+            "mediatype": "application/rss+xml",
+        },
+        {
+            "name": "chinese-translations-generated-manifest",
+            "path": "news/china/english/generated-manifest.json",
+            "format": "json",
+            "mediatype": "application/json",
+        },
+    ]
+    description = entry["description"].lower()
+    assert "machine-draft" in description
+    assert "every current chinese-dominant palimpsest wire item" in description
+    assert "append-only event-version ledger" in description
+    assert "not already represented by that ledger" in description
+    assert "article bodies" in description
+    assert "original publishers retain their rights" in description
+    assert "source-controlled" in entry["license"]["name"].lower()
+
+    built, jsonld, package = catalog.build_catalog(
+        now=datetime(2026, 8, 30, 7, tzinfo=timezone.utc)
+    )
+    built_entry = next(
+        item
+        for item in built["datasets"]
+        if item["id"] == "chinese-news-english-translations"
+    )
+    sidecar = json.loads(
+        (ROOT / "readings" / "chinese-translations-latest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    coverage = sidecar["coverage"]
+    assert coverage["translated_records"] == coverage["candidate_records"]
+    assert coverage["missing_records"] == 0
+    assert sum(coverage["record_kinds"].values()) == coverage["translated_records"]
+    assert coverage["translated_current_items"] == coverage["eligible_current_items"]
+    assert coverage["translated_event_revisions"] == (
+        coverage["eligible_event_revisions"]
+    )
+    assert coverage["translated_ledger_event_revisions"] == (
+        coverage["eligible_ledger_event_revisions"]
+    )
+    assert coverage["translated_current_events"] == (
+        coverage["eligible_current_events"]
+    )
+    assert built_entry["artifacts"]["latest_available"] is True
+    assert built_entry["artifacts"]["counts"] == {
+        "coverage.translated_records": coverage["translated_records"],
+        "coverage.unique_content_digests": coverage["unique_content_digests"],
+        "coverage.record_kinds": len(coverage["record_kinds"]),
+        "coverage.eligible_ledger_event_revisions": coverage[
+            "eligible_ledger_event_revisions"
+        ],
+        "coverage.translated_ledger_event_revisions": coverage[
+            "translated_ledger_event_revisions"
+        ],
+        "coverage.missing_records": coverage["missing_records"],
+    }
+    expected_distributions = {
+        row["name"]: row for row in entry["distributions"]
+    }
+    assert {row["name"] for row in built_entry["distributions"]} == set(
+        expected_distributions
+    )
+    for row in built_entry["distributions"]:
+        source_distribution = expected_distributions[row["name"]]
+        path = source_distribution["path"]
+        assert row == {
+            **source_distribution,
+            "available": True,
+            "bytes": (ROOT / path).stat().st_size,
+            "url": f"https://palimpsest.info/{path}",
+        }
+
+    jsonld_entry = next(
+        item
+        for item in jsonld["dataset"]
+        if item["identifier"] == "chinese-news-english-translations"
+    )
+    assert {
+        row["contentUrl"]: row["encodingFormat"]
+        for row in jsonld_entry["distribution"]
+    } == {
+        "https://palimpsest.info/readings/chinese-translations-latest.json": (
+            "application/json"
+        ),
+        **{
+            f"https://palimpsest.info/{row['path']}": row["mediatype"]
+            for row in entry["distributions"]
+        },
+    }
+    package_resources = {
+        row["name"]: row for row in package["resources"]
+    }
+    for row in entry["distributions"]:
+        assert package_resources[row["name"]] == {
+            **row,
+            "bytes": (ROOT / row["path"]).stat().st_size,
+        }
+
+
+def test_catalog_rejects_ambiguous_or_extensible_distribution_specs():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+    by_id["gwadar-regional-archive"]["distributions"][0]["name"] = by_id[
+        "bri-regional-archive"
+    ]["distributions"][0]["name"]
+    with pytest.raises(ValueError, match="duplicate distribution name"):
+        catalog._validate(source)
+
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    by_id = {item["id"]: item for item in source["datasets"]}
+    by_id["bri-regional-archive"]["distributions"][0]["undocumented"] = True
+    with pytest.raises(ValueError, match="unknown fields: undocumented"):
+        catalog._validate(source)
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("path", "news//feed.json", "canonical and repository-relative"),
+        ("path", "news/%2e%2e/private.json", "canonical and repository-relative"),
+        ("format", "JSON; charset=utf-8", "invalid distribution format"),
+        ("mediatype", "application/json; charset=utf-8", "invalid distribution mediatype"),
+    ),
+)
+def test_catalog_rejects_noncanonical_distribution_strings(
+    field: str, value: str, message: str
+):
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    target = next(item for item in source["datasets"] if item.get("distributions"))
+    target["distributions"][0][field] = value
+
+    with pytest.raises(ValueError, match=message):
+        catalog._validate(source)
+
+
+def test_catalog_bounds_distribution_arrays_and_requires_string_names():
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    target = next(item for item in source["datasets"] if item.get("distributions"))
+    template = target["distributions"][0]
+    target["distributions"] = [
+        {
+            **template,
+            "name": f"bounded-{index:02d}",
+            "path": f"generated/bounded-{index:02d}.json",
+        }
+        for index in range(catalog._MAX_DISTRIBUTIONS + 1)
+    ]
+    with pytest.raises(ValueError, match="bounded list"):
+        catalog._validate(source)
+
+    source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
+    target = next(item for item in source["datasets"] if item.get("distributions"))
+    target["distributions"][0]["name"] = 7
+    with pytest.raises(ValueError, match="invalid or duplicate distribution name"):
+        catalog._validate(source)
 
 
 def test_bleedthrough_catalog_exposes_only_the_sanitized_relay() -> None:
@@ -494,8 +787,7 @@ def test_machine_analysis_catalog_exposes_mesh_and_abstention_boundary():
 def test_china_censorship_analysis_catalog_exposes_article_quality_boundary():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     entry = next(
-        item for item in source["datasets"]
-        if item["id"] == "china-censorship-analysis"
+        item for item in source["datasets"] if item["id"] == "china-censorship-analysis"
     )
 
     assert entry["collection_mode"] == "deterministic-cross-instrument-analysis"
@@ -516,21 +808,19 @@ def test_reporting_newsroom_catalog_keeps_five_capabilities_distinct():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in source["datasets"]}
 
-    assert by_id["primary-documents"]["collection_mode"] == (
-        "passive-primary-document"
-    )
+    assert by_id["primary-documents"]["collection_mode"] == ("passive-primary-document")
     assert by_id["primary-documents"]["stage"] == "archive"
     assert "not a parsed observation" in by_id["primary-documents"]["description"]
-    assert by_id["corroboration"]["collection_mode"] == (
-        "deterministic-human-reviewed"
-    )
+    assert by_id["corroboration"]["collection_mode"] == ("deterministic-human-reviewed")
     assert "never confirms" in by_id["corroboration"]["description"]
     assert by_id["network-rounds"]["status"] == "warming"
     assert "national censorship percentage" in by_id["network-rounds"]["description"]
     assert by_id["source-workflow"]["status"] == "gated"
     assert "note text stay" in by_id["source-workflow"]["description"]
     assert by_id["editorial-readiness"]["stage"] == "publication"
-    assert "never publishes automatically" in by_id["editorial-readiness"]["description"]
+    assert (
+        "never publishes automatically" in by_id["editorial-readiness"]["description"]
+    )
     assert {
         by_id[name]["latest"]
         for name in (
@@ -579,7 +869,8 @@ def test_duration_parser_matches_catalog_subset():
 def test_explicit_freshness_budget_requires_bounded_semantics():
     source = json.loads(catalog.CONFIG.read_text(encoding="utf-8"))
     target = next(
-        item for item in source["datasets"]
+        item
+        for item in source["datasets"]
         if item["id"] == "china-economic-observations"
     )
     target.pop("freshness_semantics")
@@ -635,14 +926,17 @@ def test_anchor_metadata_replays_the_summary_and_log_prefix_at_its_clock(
         anchor_roots.serialize_anchor_summary(future), encoding="utf-8"
     )
 
-    metadata = catalog._artifact_metadata({
-        "id": "anchors",
-        "latest": "readings/anchors-latest.json",
-        "history": "readings/anchors.jsonl",
-        "cadence": "PT6H",
-        "status": "live",
-        "count_fields": ["wayback_snapshots"],
-    }, now=datetime(2026, 8, 4, 12, tzinfo=timezone.utc))
+    metadata = catalog._artifact_metadata(
+        {
+            "id": "anchors",
+            "latest": "readings/anchors-latest.json",
+            "history": "readings/anchors.jsonl",
+            "cadence": "PT6H",
+            "status": "live",
+            "count_fields": ["wayback_snapshots"],
+        },
+        now=datetime(2026, 8, 4, 12, tzinfo=timezone.utc),
+    )
 
     expected_latest = anchor_roots.serialize_anchor_summary(historical).encode()
     assert metadata["observed_at"] == "2026-08-04T11:00:00Z"
@@ -670,9 +964,7 @@ def test_cli_now_replays_an_exact_timezone_aware_catalog_clock(monkeypatch, caps
 
     monkeypatch.setattr(catalog, "build_catalog", fake_build_catalog)
     assert catalog.main(["--check", "--now", "2026-08-12T16:14:02.289540Z"]) == 0
-    assert seen["now"] == datetime(
-        2026, 8, 12, 16, 14, 2, 289540, tzinfo=timezone.utc
-    )
+    assert seen["now"] == datetime(2026, 8, 12, 16, 14, 2, 289540, tzinfo=timezone.utc)
     assert json.loads(capsys.readouterr().out)["status"] == "ok"
 
 
@@ -714,14 +1006,14 @@ def test_catalog_page_and_assets_exist():
     assert (ROOT / "data.html").is_file()
     assert (ROOT / "assets" / "data-catalog.css").is_file()
     script = (ROOT / "assets" / "data-catalog.js").read_text(encoding="utf-8")
-    assert 'item.artifacts.history_available' in script
+    assert "item.artifacts.history_available" in script
     assert ': "Unavailable"' in script
 
 
 def test_hourly_rollup_rebuilds_and_commits_catalog_views():
-    workflow = (ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (
+        ROOT / ".github" / "workflows" / "osint-china-v2-refresh.yml"
+    ).read_text(encoding="utf-8")
     assert workflow.count("python -m scripts.build_data_catalog") == 3
     committed_lines = {
         line.strip().rstrip("\\").strip()

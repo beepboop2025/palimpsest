@@ -25,15 +25,17 @@ import html as _html
 BEGIN = "<!--PS_NAV-->"
 END = "<!--/PS_NAV-->"
 
-# The four regional ledgers stay visible beneath the primary navigation.  Keep
+# The regional ledgers and Chinese-to-English desk stay visible beneath the
+# primary navigation. Keep
 # this as a separate, compact tuple rather than a flyout entry: a visitor should
 # not need JavaScript, a menu disclosure, or prior knowledge of the BRI page to
 # reach the regional evidence boundaries.
 REGIONAL_EVIDENCE = (
-    ("/belt-and-road/#bri-corridors", "BRI & Corridors"),
-    ("/belt-and-road/#balochistan", "Balochistan"),
-    ("/belt-and-road/gwadar/", "Pakistan & Gwadar"),
-    ("/belt-and-road/#myanmar", "Myanmar"),
+    ("/belt-and-road/", "BRI & Corridors"),
+    ("/belt-and-road/gwadar/", "CPEC / Gwadar"),
+    ("/belt-and-road/balochistan/", "Balochistan"),
+    ("/belt-and-road/myanmar/", "Myanmar"),
+    ("/news/china/english/", "Chinese → English"),
 )
 
 # `new` marks a signal that shipped recently enough to be worth pointing at.

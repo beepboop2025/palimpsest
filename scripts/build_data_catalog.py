@@ -12,7 +12,9 @@ byte size, history rows, and bounded headline counts), then emits three views:
 
 It never reads the private warehouse and never copies raw source material into
 the website.  A catalog build therefore cannot accidentally broaden the public
-publication boundary.
+publication boundary. Editorial dataset entries may also declare explicit
+``distributions`` (for example JSON, JSONL and CSV views of the same archive);
+the builder publishes only those files that exist and remain publication-allowed.
 """
 
 from __future__ import annotations
@@ -24,7 +26,7 @@ import os
 import re
 import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterable
 from urllib.parse import urljoin, urlsplit
 
@@ -40,6 +42,12 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config" / "public_data_catalog.json"
 SITE = "https://palimpsest.info/"
 _SLUG = re.compile(r"[a-z0-9][a-z0-9-]{1,63}\Z")
+_DISTRIBUTION_FORMAT = re.compile(r"[a-z0-9][a-z0-9._+-]{0,31}\Z")
+_DISTRIBUTION_MEDIATYPE = re.compile(
+    r"[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+\Z"
+)
+_DISTRIBUTION_PATH = re.compile(r"[A-Za-z0-9._-][A-Za-z0-9._/-]{0,511}\Z")
+_MAX_DISTRIBUTIONS = 64
 _TIMESTAMP_FIELDS = (
     "generated_at",
     "observed_at",
@@ -96,7 +104,7 @@ def _walk_timestamps(value: Any, *, depth: int = 0) -> Iterable[datetime]:
     elif isinstance(value, list):
         # Latest readings can contain evidence arrays.  Inspecting their first
         # and last items finds the time boundary without walking a huge payload.
-        for child in (value[:1] + value[-1:] if len(value) > 1 else value):
+        for child in value[:1] + value[-1:] if len(value) > 1 else value:
             yield from _walk_timestamps(child, depth=depth + 1)
 
 
@@ -147,9 +155,28 @@ def _safe_repo_path(raw: str | None) -> Path | None:
     return resolved
 
 
+def _safe_distribution_path(raw: Any) -> Path:
+    if not isinstance(raw, str):
+        raise ValueError("catalog distribution path must be a string")
+    relative = PurePosixPath(raw)
+    if (
+        not _DISTRIBUTION_PATH.fullmatch(raw)
+        or relative.as_posix() != raw
+        or any(part in {".", ".."} for part in relative.parts)
+    ):
+        raise ValueError(
+            f"catalog distribution path must be canonical and repository-relative: {raw!r}"
+        )
+    resolved = _safe_repo_path(raw)
+    assert resolved is not None
+    return resolved
+
+
 def _line_count(path: Path) -> int:
     with path.open("rb") as handle:
-        return sum(chunk.count(b"\n") for chunk in iter(lambda: handle.read(1024 * 1024), b""))
+        return sum(
+            chunk.count(b"\n") for chunk in iter(lambda: handle.read(1024 * 1024), b"")
+        )
 
 
 def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]:
@@ -177,7 +204,9 @@ def _artifact_metadata(spec: dict[str, Any], *, now: datetime) -> dict[str, Any]
     document: dict[str, Any] | None = None
     invalid = False
     latest_bytes = latest_path.stat().st_size if latest_exists and latest_path else 0
-    history_bytes = history_path.stat().st_size if history_exists and history_path else 0
+    history_bytes = (
+        history_path.stat().st_size if history_exists and history_path else 0
+    )
     history_rows = _line_count(history_path) if history_exists and history_path else 0
     if latest_exists and latest_path is not None:
         try:
@@ -261,10 +290,23 @@ def _validate(config: dict[str, Any]) -> None:
     if not isinstance(datasets, list) or not datasets:
         raise ValueError("catalog requires at least one dataset")
     seen: set[str] = set()
+    seen_distribution_names: set[str] = set()
     required = {
-        "id", "name", "description", "layer", "stage", "collection_mode",
-        "status", "cadence", "geography", "sources", "latest",
-        "landing_page", "method", "count_fields", "license",
+        "id",
+        "name",
+        "description",
+        "layer",
+        "stage",
+        "collection_mode",
+        "status",
+        "cadence",
+        "geography",
+        "sources",
+        "latest",
+        "landing_page",
+        "method",
+        "count_fields",
+        "license",
     }
     for item in datasets:
         if not isinstance(item, dict):
@@ -278,6 +320,66 @@ def _validate(config: dict[str, Any]) -> None:
         seen.add(slug)
         _safe_repo_path(str(item["latest"]))
         _safe_repo_path(str(item["history"])) if item.get("history") else None
+        distribution_names: set[str] = set()
+        distribution_paths: set[str] = set()
+        distributions = item.get("distributions", [])
+        if not isinstance(distributions, list) or len(distributions) > _MAX_DISTRIBUTIONS:
+            raise ValueError(f"dataset {slug} distributions must be a bounded list")
+        for distribution in distributions:
+            if not isinstance(distribution, dict):
+                raise ValueError(f"dataset {slug} distributions must contain objects")
+            distribution_required = {"name", "path", "format", "mediatype"}
+            distribution_missing = sorted(distribution_required - set(distribution))
+            if distribution_missing:
+                raise ValueError(
+                    f"dataset {slug} distribution is missing fields: "
+                    + ", ".join(distribution_missing)
+                )
+            distribution_extra = sorted(set(distribution) - distribution_required)
+            if distribution_extra:
+                raise ValueError(
+                    f"dataset {slug} distribution has unknown fields: "
+                    + ", ".join(distribution_extra)
+                )
+            name = distribution["name"]
+            path = distribution["path"]
+            if (
+                not isinstance(name, str)
+                or not _SLUG.fullmatch(name)
+                or name in distribution_names
+                or name in seen_distribution_names
+            ):
+                raise ValueError(
+                    f"dataset {slug} has invalid or duplicate distribution name: "
+                    f"{name!r}"
+                )
+            _safe_distribution_path(path)
+            if path in distribution_paths or path in {
+                str(item["latest"]),
+                str(item.get("history", "")),
+            }:
+                raise ValueError(
+                    f"dataset {slug} has a duplicate distribution path: {path!r}"
+                )
+            file_format = distribution["format"]
+            if not isinstance(file_format, str) or not _DISTRIBUTION_FORMAT.fullmatch(
+                file_format
+            ):
+                raise ValueError(
+                    f"dataset {slug} has an invalid distribution format: "
+                    f"{file_format!r}"
+                )
+            mediatype = distribution["mediatype"]
+            if not isinstance(mediatype, str) or not _DISTRIBUTION_MEDIATYPE.fullmatch(
+                mediatype
+            ):
+                raise ValueError(
+                    f"dataset {slug} has an invalid distribution mediatype: "
+                    f"{mediatype!r}"
+                )
+            distribution_names.add(name)
+            distribution_paths.add(path)
+            seen_distribution_names.add(name)
         cadence_seconds = _duration_seconds(str(item["cadence"]))
         if cadence_seconds is None or cadence_seconds <= 0:
             raise ValueError(f"unsupported cadence for {slug}: {item['cadence']!r}")
@@ -304,17 +406,21 @@ def _validate(config: dict[str, Any]) -> None:
         if type(publication_allowed) is not bool:
             raise ValueError(f"dataset {slug} has invalid publication_allowed")
         if publication_allowed is False and item["status"] != "gated":
-            raise ValueError(
-                f"dataset {slug} must be gated when publication is denied"
-            )
+            raise ValueError(f"dataset {slug} must be gated when publication is denied")
         license_doc = item.get("license")
-        if not isinstance(license_doc, dict) or not license_doc.get("name") or not license_doc.get("url"):
+        if (
+            not isinstance(license_doc, dict)
+            or not license_doc.get("name")
+            or not license_doc.get("url")
+        ):
             raise ValueError(f"dataset {slug} needs an explicit license name and URL")
         if urlsplit(str(license_doc["url"])).scheme != "https":
             raise ValueError(f"dataset {slug} license URL must use HTTPS")
 
 
-def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+def build_catalog(
+    *, now: datetime | None = None
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     config = json.loads(CONFIG.read_text(encoding="utf-8"))
     _validate(config)
     build_time = now or _utc_now()
@@ -322,6 +428,19 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
     for source in config["datasets"]:
         item = dict(source)
         item["artifacts"] = _artifact_metadata(item, now=build_time)
+        if source.get("distributions"):
+            item["distributions"] = []
+            if source.get("publication_allowed") is not False:
+                for distribution in source["distributions"]:
+                    projected = dict(distribution)
+                    local = _safe_repo_path(str(projected["path"]))
+                    available = bool(local and local.is_file())
+                    projected["available"] = available
+                    projected["bytes"] = (
+                        local.stat().st_size if available and local else None
+                    )
+                    projected["url"] = urljoin(SITE, str(projected["path"]))
+                    item["distributions"].append(projected)
         item["urls"] = {
             key: urljoin(SITE, str(item[key]))
             for key in ("latest", "history", "landing_page", "method")
@@ -340,6 +459,12 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
         total_bytes += (item["artifacts"]["latest_bytes"] or 0) + (
             item["artifacts"]["history_bytes"] or 0
         )
+        if item.get("publication_allowed") is not False:
+            total_bytes += sum(
+                distribution["bytes"] or 0
+                for distribution in item.get("distributions", [])
+                if distribution["available"]
+            )
         total_rows += item["artifacts"]["history_rows"] or 0
 
     catalog = {
@@ -360,7 +485,10 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
     resources = []
     for item in datasets:
         distributions = []
-        for kind, media in (("latest", "application/json"), ("history", "application/x-ndjson")):
+        for kind, media in (
+            ("latest", "application/json"),
+            ("history", "application/x-ndjson"),
+        ):
             path = item.get(kind)
             if not path or item.get("publication_allowed") is False:
                 continue
@@ -370,31 +498,60 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
             # catalog without advertising a download URL that returns 404.
             if local is None or not local.is_file():
                 continue
-            distributions.append({
-                "@type": "DataDownload",
-                "name": f"{item['name']} — {kind}",
-                "encodingFormat": media,
-                "contentUrl": urljoin(SITE, path),
-            })
-            resources.append({
-                "name": f"{item['id']}-{kind}",
-                "path": path,
-                "format": "jsonl" if kind == "history" else "json",
-                "mediatype": media,
-                "bytes": item["artifacts"][f"{kind}_bytes"],
-            })
-        jsonld_datasets.append({
-            "@type": "Dataset",
-            "identifier": item["id"],
-            "name": item["name"],
-            "description": item["description"],
-            "url": urljoin(SITE, item["landing_page"]),
-            "license": item["license"]["url"],
-            "spatialCoverage": item["geography"],
-            "dateModified": item["artifacts"]["observed_at"],
-            "isAccessibleForFree": item.get("publication_allowed") is not False,
-            "distribution": distributions,
-        })
+            distributions.append(
+                {
+                    "@type": "DataDownload",
+                    "name": f"{item['name']} — {kind}",
+                    "encodingFormat": media,
+                    "contentUrl": urljoin(SITE, path),
+                }
+            )
+            resources.append(
+                {
+                    "name": f"{item['id']}-{kind}",
+                    "path": path,
+                    "format": "jsonl" if kind == "history" else "json",
+                    "mediatype": media,
+                    "bytes": item["artifacts"][f"{kind}_bytes"],
+                }
+            )
+        for distribution in item.get("distributions", []):
+            if (
+                not distribution["available"]
+                or item.get("publication_allowed") is False
+            ):
+                continue
+            distributions.append(
+                {
+                    "@type": "DataDownload",
+                    "name": distribution["name"],
+                    "encodingFormat": distribution["mediatype"],
+                    "contentUrl": distribution["url"],
+                }
+            )
+            resources.append(
+                {
+                    "name": distribution["name"],
+                    "path": distribution["path"],
+                    "format": distribution["format"],
+                    "mediatype": distribution["mediatype"],
+                    "bytes": distribution["bytes"],
+                }
+            )
+        jsonld_datasets.append(
+            {
+                "@type": "Dataset",
+                "identifier": item["id"],
+                "name": item["name"],
+                "description": item["description"],
+                "url": urljoin(SITE, item["landing_page"]),
+                "license": item["license"]["url"],
+                "spatialCoverage": item["geography"],
+                "dateModified": item["artifacts"]["observed_at"],
+                "isAccessibleForFree": item.get("publication_allowed") is not False,
+                "distribution": distributions,
+            }
+        )
 
     jsonld = {
         "@context": "https://schema.org",
@@ -418,7 +575,13 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
         "description": config["catalog"]["description"],
         "homepage": config["catalog"]["homepage"],
         "created": _iso(build_time),
-        "contributors": [{"title": "Palimpsest", "email": config["catalog"]["contact"], "role": "publisher"}],
+        "contributors": [
+            {
+                "title": "Palimpsest",
+                "email": config["catalog"]["contact"],
+                "role": "publisher",
+            }
+        ],
         "resources": resources,
     }
     return catalog, jsonld, datapackage
@@ -426,8 +589,12 @@ def build_catalog(*, now: datetime | None = None) -> tuple[dict[str, Any], dict[
 
 def _atomic_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = (json.dumps(value, ensure_ascii=False, indent=2, sort_keys=False) + "\n").encode("utf-8")
-    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    payload = (
+        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=False) + "\n"
+    ).encode("utf-8")
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{path.name}.", suffix=".tmp", dir=path.parent
+    )
     try:
         with os.fdopen(fd, "wb") as handle:
             handle.write(payload)
@@ -444,7 +611,11 @@ def _atomic_json(path: Path, value: Any) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true", help="validate the source and build in memory only")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="validate the source and build in memory only",
+    )
     parser.add_argument(
         "--now",
         help="build at this timezone-aware ISO-8601 clock (for deterministic replay)",
@@ -467,13 +638,18 @@ def main(argv: list[str] | None = None) -> int:
         _atomic_json(ROOT / "readings" / "catalog.json", catalog)
         _atomic_json(ROOT / "readings" / "catalog.jsonld", jsonld)
         _atomic_json(ROOT / "datapackage.json", datapackage)
-    print(json.dumps({
-        "status": "ok",
-        "datasets": catalog["summary"]["datasets"],
-        "published_bytes": catalog["summary"]["published_bytes"],
-        "history_rows": catalog["summary"]["history_rows"],
-        "written": not args.check,
-    }, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "datasets": catalog["summary"]["datasets"],
+                "published_bytes": catalog["summary"]["published_bytes"],
+                "history_rows": catalog["summary"]["history_rows"],
+                "written": not args.check,
+            },
+            sort_keys=True,
+        )
+    )
     return 0
 
 

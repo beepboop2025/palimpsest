@@ -1,6 +1,6 @@
 {
   "schema_version": "palimpsest-weekly-situation.v1",
-  "generated_at": "2026-08-24T17:22:36.625503+00:00",
+  "generated_at": "2026-08-30T07:32:12.407491+00:00",
   "template": {
     "id": "weekly-situation-v1",
     "version": 1,
@@ -18,7 +18,7 @@
     ],
     "sha256": "bf82970c09174fbae87e6067472d58c9a7d3f7d352456c4cb5af9e9420a39e2b"
   },
-  "headline": "218 DDTI terms from 107 CDT observations. 9 of 9 fused layers present. 2 layer(s) elevated (content, network). GFI 25.0 (interval 11.2 to 46.9).",
+  "headline": "218 DDTI terms from 107 CDT observations. 9 of 9 fused layers present. 0 layer(s) elevated (none). GFI 25.0 (interval 11.2 to 46.9).",
   "working_hardest": [
     {
       "term": "Caixin",
@@ -242,8 +242,8 @@
     "network-board": {
       "status": "ok",
       "source": "board_alarm",
-      "generated_at": "2026-08-24T17:22:36.167843+00:00",
-      "sha256": "f166f6cb31c747d072eb16bca259522d257a193ea5dfec42f3987acf8428c23e"
+      "generated_at": "2026-08-30T07:32:12.196824+00:00",
+      "sha256": "009552238ba179c38f0938cdd458cd72af21a8c3f87fc145aaa897315b3b90ec"
     },
     "model": {
       "status": "ok",
@@ -254,8 +254,8 @@
     "forecast": {
       "status": "ok",
       "source": "forecast_ledger",
-      "generated_at": "2026-08-24T17:22:36.343185+00:00",
-      "sha256": "90431b87fc072811c32221c0582a7f11558fa962caea445c4aa9c712dfa7e86e"
+      "generated_at": "2026-08-30T07:32:12.265622+00:00",
+      "sha256": "92dd686d31a4e373b86f2dbc7165a78a9e31c5c1ba7ede6b0cd946ac2fc68bd8"
     }
   },
   "social_differential": {
@@ -791,7 +791,7 @@
     ]
   },
   "n_layers_present": 9,
-  "trigger": "cross-layer",
+  "trigger": "scheduled",
   "inputs": {
     "ddti": {
       "source": "ddti",
@@ -825,29 +825,29 @@
       "source": "board_alarm",
       "path": "board-alarm-latest.json",
       "status": "ok",
-      "sha256": "f166f6cb31c747d072eb16bca259522d257a193ea5dfec42f3987acf8428c23e",
-      "generated_at": "2026-08-24T17:22:36.167843+00:00"
+      "sha256": "009552238ba179c38f0938cdd458cd72af21a8c3f87fc145aaa897315b3b90ec",
+      "generated_at": "2026-08-30T07:32:12.196824+00:00"
     },
     "coverage_guard": {
       "source": "coverage_guard",
       "path": "coverage-guard-latest.json",
       "status": "ok",
-      "sha256": "842b284dcfa935fd4980df9deba688d25d9f4f3cd730d6db4eb53986cdade3bb",
-      "generated_at": "2026-08-24T17:22:36.277106+00:00"
+      "sha256": "287abe9b2b5d7038bdaeb102e89573687d3ef927b7db373a192ed04a60167c3c",
+      "generated_at": "2026-08-30T07:32:12.233442+00:00"
     },
     "forecast_ledger": {
       "source": "forecast_ledger",
       "path": "forecast-ledger-latest.json",
       "status": "ok",
-      "sha256": "90431b87fc072811c32221c0582a7f11558fa962caea445c4aa9c712dfa7e86e",
-      "generated_at": "2026-08-24T17:22:36.343185+00:00"
+      "sha256": "92dd686d31a4e373b86f2dbc7165a78a9e31c5c1ba7ede6b0cd946ac2fc68bd8",
+      "generated_at": "2026-08-30T07:32:12.265622+00:00"
     },
     "cross_layer": {
       "source": "cross_layer",
       "path": "cross-layer-latest.json",
       "status": "ok",
-      "sha256": "fefb6c36c763bcd0d75ac4b1dc0986871e887a7eb74bbca9870c22d1ea824f55",
-      "generated_at": "2026-08-24T17:22:36.442298+00:00"
+      "sha256": "047af6063df77ce866635a85494e1e151d400d70f865b2a410ba416c887af12d",
+      "generated_at": "2026-08-30T07:32:12.318667+00:00"
     },
     "gfi": {
       "source": "gfi",
@@ -868,7 +868,7 @@
   ],
   "method_version": 1,
   "seal": {
-    "payload_sha256": "e77f5060de47757e762dddb4af0a1f82202cb07cb38703220c21136548b9c9af",
+    "payload_sha256": "2ae681479bd2e9f87d904d776dcfdb888f77cb64751fa8b7cd0e743536a03b2d",
     "schema_version": "palimpsest-weekly-situation.v1",
     "template_id": "weekly-situation-v1"
   }

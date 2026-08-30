@@ -104,9 +104,23 @@ jobs:
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom
           python -m scripts.build_newsroom --check
+          # Scope the provider credential to the one reviewed model client.
+          OPENROUTER_API_KEY="${{ secrets.OPENROUTER_API_KEY }}" \
+            python -m scripts.build_chinese_translations
+          python -m scripts.build_chinese_translations --check
+          install -m 0600 \
+            readings/chinese-translations-latest.json \
+            "$RUNNER_TEMP/chinese-translations-replay-cache.json"
+          python -m scripts.build_chinese_translation_pages
+          python -m scripts.build_chinese_translation_pages --check
+          python -m scripts.build_bri_observatory
+          python -m scripts.build_bri_observatory --check
           python -m scripts.build_china_situation
           python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
+          python -m scripts.build_data_catalog --check
+          python -m scripts.sync_nav
+          python -m scripts.sync_nav --check
           python scripts/seal_readings.py
 
       - name: Verify collection, security and publication contracts
@@ -142,6 +156,10 @@ jobs:
             tests/test_china_situation_renderer.py \
             tests/test_evidence_wire_renderer.py \
             tests/test_evidence_wire_publication.py \
+            tests/test_chinese_translations.py \
+            tests/test_chinese_translation_pages.py \
+            tests/test_chinese_translation_automation.py \
+            tests/test_bri_observatory.py \
             tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
             tests/test_seal_readings.py \
@@ -181,13 +199,23 @@ jobs:
             readings/china-article-stream-latest.json \
             readings/china-situation-latest.json \
             readings/china-censorship-analysis-latest.json \
+            readings/chinese-translations-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            .well-known/ai-catalog.json \
+            config/public_data_catalog.json \
+            sitemap.xml \
+            belt-and-road/ \
             china/ \
             news/
-          git add -A -- readings china news datapackage.json
+          git add -A -- \
+            readings china news belt-and-road \
+            .well-known/ai-catalog.json \
+            config/public_data_catalog.json \
+            datapackage.json sitemap.xml \
+            ':(glob)**/*.html'
           if git status --porcelain=v1 --untracked-files=all | grep -q .; then
             echo "unstaged after git add:"
             git status --porcelain=v1 --untracked-files=all | head -80
@@ -252,9 +280,29 @@ jobs:
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom
           python -m scripts.build_newsroom --check
+          test -s "$RUNNER_TEMP/chinese-translations-replay-cache.json"
+          python - \
+            "$RUNNER_TEMP/chinese-translations-replay-cache.json" \
+            "$RUNNER_TEMP/chinese-translations-replay-work-cache.json" <<'PY'
+          from pathlib import Path
+          import sys
+          from scripts.build_chinese_translations import _save_work_cache, _translation_cache
+          cache, usage = _translation_cache(Path(sys.argv[1]))
+          _save_work_cache(Path(sys.argv[2]), cache, usage)
+          PY
+          python -m scripts.build_chinese_translations --offline \
+            --work-cache "$RUNNER_TEMP/chinese-translations-replay-work-cache.json"
+          python -m scripts.build_chinese_translations --check
+          python -m scripts.build_chinese_translation_pages
+          python -m scripts.build_chinese_translation_pages --check
+          python -m scripts.build_bri_observatory
+          python -m scripts.build_bri_observatory --check
           python -m scripts.build_china_situation
           python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
+          python -m scripts.build_data_catalog --check
+          python -m scripts.sync_nav
+          python -m scripts.sync_nav --check
           python scripts/seal_readings.py
 
       - name: Retest after a pre-publication ledger change
@@ -291,6 +339,10 @@ jobs:
             tests/test_china_situation_renderer.py \
             tests/test_evidence_wire_renderer.py \
             tests/test_evidence_wire_publication.py \
+            tests/test_chinese_translations.py \
+            tests/test_chinese_translation_pages.py \
+            tests/test_chinese_translation_automation.py \
+            tests/test_bri_observatory.py \
             tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
             tests/test_seal_readings.py \
@@ -332,13 +384,23 @@ jobs:
             readings/china-article-stream-latest.json \
             readings/china-situation-latest.json \
             readings/china-censorship-analysis-latest.json \
+            readings/chinese-translations-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            .well-known/ai-catalog.json \
+            config/public_data_catalog.json \
+            sitemap.xml \
+            belt-and-road/ \
             china/ \
             news/
-          git add -A -- readings china news datapackage.json
+          git add -A -- \
+            readings china news belt-and-road \
+            .well-known/ai-catalog.json \
+            config/public_data_catalog.json \
+            datapackage.json sitemap.xml \
+            ':(glob)**/*.html'
           if git status --porcelain=v1 --untracked-files=all | grep -q .; then
             echo "unstaged after git add:"
             git status --porcelain=v1 --untracked-files=all | head -80
@@ -419,9 +481,29 @@ jobs:
           python -m core.machine_investigations --check
           python -m scripts.build_newsroom
           python -m scripts.build_newsroom --check
+          test -s "$RUNNER_TEMP/chinese-translations-replay-cache.json"
+          python - \
+            "$RUNNER_TEMP/chinese-translations-replay-cache.json" \
+            "$RUNNER_TEMP/chinese-translations-replay-work-cache.json" <<'PY'
+          from pathlib import Path
+          import sys
+          from scripts.build_chinese_translations import _save_work_cache, _translation_cache
+          cache, usage = _translation_cache(Path(sys.argv[1]))
+          _save_work_cache(Path(sys.argv[2]), cache, usage)
+          PY
+          python -m scripts.build_chinese_translations --offline \
+            --work-cache "$RUNNER_TEMP/chinese-translations-replay-work-cache.json"
+          python -m scripts.build_chinese_translations --check
+          python -m scripts.build_chinese_translation_pages
+          python -m scripts.build_chinese_translation_pages --check
+          python -m scripts.build_bri_observatory
+          python -m scripts.build_bri_observatory --check
           python -m scripts.build_china_situation
           python -m scripts.build_china_situation --check
           python -m scripts.build_data_catalog
+          python -m scripts.build_data_catalog --check
+          python -m scripts.sync_nav
+          python -m scripts.sync_nav --check
           python scripts/seal_readings.py
 
       - name: Retest after a push race
@@ -458,6 +540,10 @@ jobs:
             tests/test_china_situation_renderer.py \
             tests/test_evidence_wire_renderer.py \
             tests/test_evidence_wire_publication.py \
+            tests/test_chinese_translations.py \
+            tests/test_chinese_translation_pages.py \
+            tests/test_chinese_translation_automation.py \
+            tests/test_bri_observatory.py \
             tests/test_ai_discovery.py \
             tests/test_data_catalog.py \
             tests/test_seal_readings.py \
@@ -499,13 +585,23 @@ jobs:
             readings/china-article-stream-latest.json \
             readings/china-situation-latest.json \
             readings/china-censorship-analysis-latest.json \
+            readings/chinese-translations-latest.json \
             readings/readings-ledger.jsonl \
             readings/catalog.json \
             readings/catalog.jsonld \
             datapackage.json \
+            .well-known/ai-catalog.json \
+            config/public_data_catalog.json \
+            sitemap.xml \
+            belt-and-road/ \
             china/ \
             news/
-          git add -A -- readings china news datapackage.json
+          git add -A -- \
+            readings china news belt-and-road \
+            .well-known/ai-catalog.json \
+            config/public_data_catalog.json \
+            datapackage.json sitemap.xml \
+            ':(glob)**/*.html'
           if git status --porcelain=v1 --untracked-files=all | grep -q .; then
             echo "unstaged after git add:"
             git status --porcelain=v1 --untracked-files=all | head -80

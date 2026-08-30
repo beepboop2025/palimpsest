@@ -1,0 +1,2157 @@
+{
+  "schema_version": "palimpsest.regional-captured-index.v1",
+  "region": "bri",
+  "label": "BRI and regional corridors",
+  "generated_at": "2026-08-30T07:25:25Z",
+  "scope": "Every unique event retained in the append-only Palimpsest event-version ledger that matches this regional lane by reviewed source identity or bounded title metadata, plus every matching event in the current wire.",
+  "classification": {
+    "overlap_allowed": true,
+    "method": "reviewed dedicated source ids plus bounded metadata terms",
+    "article_body_fetching": "prohibited",
+    "bri_lane": "combined index of all three regional lanes plus explicit BRI terms",
+    "csv_formula_neutralization": "CSV text cells whose first non-whitespace character is =, +, -, or @ receive a leading apostrophe; JSON and JSONL preserve the exact captured text."
+  },
+  "rights": {
+    "publication_mode": "metadata-link-only",
+    "article_bodies_included": false,
+    "publisher_copyright_retained": true,
+    "source_policy": "config/news_sources.json"
+  },
+  "inputs": {
+    "newswire_generated_at": "2026-08-30T07:25:25Z",
+    "newswire_window": {
+      "from": "2026-08-23T07:25:25Z",
+      "hours": 168,
+      "to": "2026-08-30T07:25:25Z"
+    },
+    "newswire_versions_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+    "source_registry_sha256": "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14",
+    "chinese_translation_sidecar": {
+      "schema_version": "chinese-translations-v1",
+      "generated_at": "2026-08-30T07:25:25Z",
+      "newswire_sha256": "fd12a19ae11362a9802ef3942938cb18698879fae5b2b936436085aa7d79083b",
+      "newswire_ledger_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+      "newswire_ledger_rows": 4320,
+      "translated_records": 2207,
+      "missing_records": 0
+    }
+  },
+  "capture_universe": {
+    "event_versions": 4320,
+    "unique_events": 3059,
+    "current_wire_events": 561
+  },
+  "counts": {
+    "event_versions": 61,
+    "unique_events": 51,
+    "current_events": 34,
+    "historical_events": 17,
+    "event_pages_available": 41,
+    "sources": 18,
+    "events_with_english_translation": 5
+  },
+  "coverage": {
+    "earliest_published_at": "2026-08-06T13:34:05Z",
+    "latest_published_at": "2026-08-30T04:14:56Z",
+    "earliest_recorded_at": "2026-08-11T14:55:03Z",
+    "latest_recorded_at": "2026-08-30T04:20:15Z"
+  },
+  "sources": [
+    {
+      "source_id": "bbc-chinese",
+      "source_name": "BBC News Chinese",
+      "feed_url": "https://feeds.bbci.co.uk/zhongwen/trad/rss.xml",
+      "role": "media",
+      "independence_group": "bbc-chinese-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "cgtn-china",
+      "source_name": "CGTN — China",
+      "feed_url": "https://www.cgtn.com/subscribe/rss/section/china.xml",
+      "role": "media",
+      "independence_group": "china-media-group-state-media",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "china-news-service-finance",
+      "source_name": "China News Service",
+      "feed_url": "https://www.chinanews.com.cn/rss/finance.xml",
+      "role": "media",
+      "independence_group": "china-news-service-state-media",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "china-news-service-politics",
+      "source_name": "China News Service",
+      "feed_url": "https://www.chinanews.com.cn/rss/china.xml",
+      "role": "media",
+      "independence_group": "china-news-service-state-media",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "daily-cpec-china-pakistan",
+      "source_name": "The Daily CPEC — China-Pakistan",
+      "feed_url": "https://thedailycpec.com/category/china-pakistan/feed/",
+      "role": "media",
+      "independence_group": "daily-cpec-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 11
+    },
+    {
+      "source_id": "dawn-pakistan",
+      "source_name": "Dawn — Pakistan",
+      "feed_url": "https://www.dawn.com/feeds/pakistan/",
+      "role": "media",
+      "independence_group": "dawn-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 4
+    },
+    {
+      "source_id": "dvb-english",
+      "source_name": "Democratic Voice of Burma — English",
+      "feed_url": "https://english.dvb.no/feed/",
+      "role": "media",
+      "independence_group": "dvb-english-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 9
+    },
+    {
+      "source_id": "express-tribune-balochistan",
+      "source_name": "The Express Tribune — Balochistan",
+      "feed_url": "https://tribune.com.pk/feed/balochistan",
+      "role": "media",
+      "independence_group": "express-tribune-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 4
+    },
+    {
+      "source_id": "financial-times-china",
+      "source_name": "Financial Times — China",
+      "feed_url": "https://www.ft.com/china?format=rss",
+      "role": "media",
+      "independence_group": "financial-times-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "hksar-releases",
+      "source_name": "Hong Kong SAR Government News",
+      "feed_url": "https://www.info.gov.hk/gia/rss/general_en.xml",
+      "role": "primary",
+      "independence_group": "hksar-government",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "hrc-balochistan",
+      "source_name": "Human Rights Council of Balochistan — News reports",
+      "feed_url": "https://hrcbalochistan.com/category/news-reports/feed/",
+      "role": "documentation",
+      "independence_group": "hrc-balochistan-documentation",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "myanmar-now",
+      "source_name": "Myanmar Now — English",
+      "feed_url": "https://myanmar-now.org/en/feed/",
+      "role": "media",
+      "independence_group": "myanmar-now-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 10
+    },
+    {
+      "source_id": "rfi-chinese",
+      "source_name": "RFI",
+      "feed_url": "https://www.rfi.fr/cn/rss",
+      "role": "media",
+      "independence_group": "france-medias-monde-rfi-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "rthk-finance",
+      "source_name": "Radio Television Hong Kong",
+      "feed_url": "https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_efinance.xml",
+      "role": "media",
+      "independence_group": "rthk-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "rthk-greater-china",
+      "source_name": "Radio Television Hong Kong",
+      "feed_url": "https://rthk9.rthk.hk/rthk/news/rss/e_expressnews_egreaterchina.xml",
+      "role": "media",
+      "independence_group": "rthk-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "scmp-china",
+      "source_name": "South China Morning Post — China",
+      "feed_url": "https://www.scmp.com/rss/4/feed/",
+      "role": "media",
+      "independence_group": "south-china-morning-post-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    },
+    {
+      "source_id": "shan-news-english",
+      "source_name": "SHAN News — English",
+      "feed_url": "https://english.shannews.org/feed",
+      "role": "media",
+      "independence_group": "shan-news-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 3
+    },
+    {
+      "source_id": "voa-chinese",
+      "source_name": "Voice of America Chinese",
+      "feed_url": "https://www.voachinese.com/api/zm_yql-vomx-tpeybti",
+      "role": "media",
+      "independence_group": "voice-of-america-chinese-editorial",
+      "rights_policy": "metadata-link-only",
+      "captured_event_count": 1
+    }
+  ],
+  "events": [
+    {
+      "event_id": "event-1623f1d617575f96a5fc6297",
+      "event_url": "https://palimpsest.info/news/wire/event-1623f1d617575f96a5fc6297/",
+      "event_page_available": true,
+      "headline": "Murder case of Asma Jattak's father: Police arrest 6 suspects in Balochistan's Khuzdar",
+      "dek": "https://www.dawn.com/news/2026052",
+      "published_at": "2026-08-30T04:14:56Z",
+      "first_recorded_at": "2026-08-30T04:20:15Z",
+      "last_recorded_at": "2026-08-30T04:20:15Z",
+      "source_ids": [
+        "dawn-pakistan"
+      ],
+      "source_names": [
+        "Dawn — Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-e5bbc818b2c561db77346428"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "rights"
+      ],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dawn-pakistan",
+          "title": "Murder case of Asma Jattak's father: Police arrest 6 suspects in Balochistan's Khuzdar",
+          "url": "https://www.dawn.com/news/2026124/murder-case-of-asma-jattaks-father-police-arrest-6-suspects-in-balochistans-khuzdar"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-889fda007d6e7c658f80af0b",
+      "event_url": "https://palimpsest.info/news/wire/event-889fda007d6e7c658f80af0b/",
+      "event_page_available": false,
+      "headline": "Durbar legacy in Balochistan",
+      "dek": null,
+      "published_at": "2026-08-30T03:45:22Z",
+      "first_recorded_at": "2026-08-30T03:50:27Z",
+      "last_recorded_at": "2026-08-30T03:50:27Z",
+      "source_ids": [
+        "dawn-pakistan"
+      ],
+      "source_names": [
+        "Dawn — Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-4da292e74809ab4f1639c595"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-f265dd95194f52b2c0264fbd",
+      "event_url": "https://palimpsest.info/news/wire/event-f265dd95194f52b2c0264fbd/",
+      "event_page_available": true,
+      "headline": "THE MYTH OF THE CLEAN SWEEP: How Myanmar’s Scam Empire Evolved Into a National Shadow State",
+      "dek": "Recent reports of Shan Herald Agency for News and Khit Thit Media on cyberscam and scam center operations have made headlines, raising questions about whether Chinese Foreign Minister Wang Yi’s claim that the illicit trade is being eradicated is credible or just state propaganda aimed at portraying China as in control.",
+      "published_at": "2026-08-30T02:21:53Z",
+      "first_recorded_at": "2026-08-30T02:25:11Z",
+      "last_recorded_at": "2026-08-30T02:25:11Z",
+      "source_ids": [
+        "shan-news-english"
+      ],
+      "source_names": [
+        "SHAN News — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-262416e35903e22d1b44e74a"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "shan-news-english",
+          "title": "THE MYTH OF THE CLEAN SWEEP: How Myanmar’s Scam Empire Evolved Into a National Shadow State",
+          "url": "https://english.shannews.org/archives/30149"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-b54e0137564a118182f80220",
+      "event_url": "https://palimpsest.info/news/wire/event-b54e0137564a118182f80220/",
+      "event_page_available": true,
+      "headline": "Putin, Xi to Hold Talks at SCO Summit",
+      "dek": "Russian President Vladimir Putin and Chinese President Xi Jinping are set to hold bilateral talks during the 25th-anniversary summit of the Shanghai Cooperation Organization (SCO) in Bishkek, Kyrgyzstan. The Kremlin confirmed the meeting on Friday. Foreign policy aide Yury Ushakov said the leaders will discuss bilatera",
+      "published_at": "2026-08-30T02:15:57Z",
+      "first_recorded_at": "2026-08-30T02:20:06Z",
+      "last_recorded_at": "2026-08-30T02:20:06Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-d52fa4ab15662b1ca55e2e7a"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "policy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Putin, Xi to Hold Talks at SCO Summit",
+          "url": "https://thedailycpec.com/putin-xi-to-hold-talks-at-sco-summit/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-cc9d3076409e18086ccdad50",
+      "event_url": "https://palimpsest.info/news/wire/event-cc9d3076409e18086ccdad50/",
+      "event_page_available": false,
+      "headline": "Cyber Scam Hubs Expand Across Shan State Despite Crackdown",
+      "dek": null,
+      "published_at": "2026-08-30T02:05:07Z",
+      "first_recorded_at": "2026-08-30T02:05:13Z",
+      "last_recorded_at": "2026-08-30T02:10:10Z",
+      "source_ids": [
+        "shan-news-english"
+      ],
+      "source_names": [
+        "SHAN News — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-19d016e2f8af57e35dcab859",
+        "eventv-91d6d492bb5647116732bddc"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-1c02faa26ae1a68573621299",
+      "event_url": "https://palimpsest.info/news/wire/event-1c02faa26ae1a68573621299/",
+      "event_page_available": true,
+      "headline": "Nepal-China flood survivors reach safe areas as families await news of nearly 3,000 missing",
+      "dek": "As rescue efforts in communities buried by catastrophic flash floods along the Nepal – China border entered their fourth day Saturday, authorities were still finding survivors and transporting them to safety. At relief centers, families of missing people waited anxiously for news of their loved ones as the death toll a",
+      "published_at": "2026-08-30T01:18:10Z",
+      "first_recorded_at": "2026-08-30T01:45:27Z",
+      "last_recorded_at": "2026-08-30T01:45:27Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-2369d3ed87bed2ba495225b9"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Nepal-China flood survivors reach safe areas as families await news of nearly 3,000 missing",
+          "url": "https://english.dvb.no/nepal-china-flood-survivors-reach-safe-areas-as-families-await-news-of-nearly-3000-missing/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-36bf7a13ba096b2be5e22be2",
+      "event_url": "https://palimpsest.info/news/wire/event-36bf7a13ba096b2be5e22be2/",
+      "event_page_available": false,
+      "headline": "Two minor girls being prepared for suicide attacks rescued in Balochistan, home minister claims",
+      "dek": null,
+      "published_at": "2026-08-29T15:05:50Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dawn-pakistan"
+      ],
+      "source_names": [
+        "Dawn — Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-98a7acdb53fa23c8e6dec5ee"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-cf2bbd8fcbd3163c799350f3",
+      "event_url": "https://palimpsest.info/news/wire/event-cf2bbd8fcbd3163c799350f3/",
+      "event_page_available": true,
+      "headline": "Gwadar University Adds Chinese to B.Ed. Courses",
+      "dek": "The University of Gwadar (UoG) has approved Chinese Language as an Arts and Humanities course in its Bachelor of Education (B.Ed.) programmes. The move aims to equip future teachers with skills for emerging regional and international opportunities. The university’s Department of Education approved the course during its",
+      "published_at": "2026-08-29T09:38:25Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-d08a3a818a3dc7898bd1061e"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Gwadar University Adds Chinese to B.Ed. Courses",
+          "url": "https://thedailycpec.com/gwadar-university-adds-chinese-to-b-ed-courses/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-e647d655058322e1a3a36c3a",
+      "event_url": "https://palimpsest.info/news/wire/event-e647d655058322e1a3a36c3a/",
+      "event_page_available": true,
+      "headline": "Pakistan-China Friendship Association Launched in Lahore",
+      "dek": "The Pakistan-China Friendship Association (PCFA) Lahore was formally established on August 20. Founding members held their first meeting at the University of Central Punjab (UCP) in Lahore. The new association aims to strengthen people-to-people ties between Pakistan and China. It will create opportunities for cooperat",
+      "published_at": "2026-08-29T09:21:44Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-8136975794ae4242e97c9fbd"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Pakistan-China Friendship Association Launched in Lahore",
+          "url": "https://thedailycpec.com/pakistan-china-friendship-association-launched-in-lahore/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-3b9dcdb8cc453ab9456c35ca",
+      "event_url": "https://palimpsest.info/news/wire/event-3b9dcdb8cc453ab9456c35ca/",
+      "event_page_available": true,
+      "headline": "Pakistan Targets China Retail Market for Kinnow",
+      "dek": "Pakistan is stepping up efforts to expand its Kinnow exports to China. The move aims to give the country’s horticulture sector stronger access to one of the world’s largest consumer markets. The Pakistan Horticulture Development & Export Company (PHDEC) recently facilitated a business-to-business meeting between Pakist",
+      "published_at": "2026-08-29T09:13:54Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-ed813a9698b81c00e0cbb46d"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Pakistan Targets China Retail Market for Kinnow",
+          "url": "https://thedailycpec.com/pakistan-targets-china-retail-market-for-kinnow/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-bd3f7a9a09430372de7de3d4",
+      "event_url": "https://palimpsest.info/news/wire/event-bd3f7a9a09430372de7de3d4/",
+      "event_page_available": true,
+      "headline": "Orange Line, UET Sign MoU for Rail Research",
+      "dek": "The CPEC Orange Line Metro Rail Transit System (OLMRTS) in Lahore and the University of Engineering and Technology (UET) Lahore have signed a Memorandum of Understanding (MoU). The agreement, signed on August 27, aims to strengthen cooperation between academia and the urban rail industry. Both institutions will work to",
+      "published_at": "2026-08-29T09:06:04Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-678f855550811b82b183e2b3"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "technology"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Orange Line, UET Sign MoU for Rail Research",
+          "url": "https://thedailycpec.com/orange-line-uet-sign-mou-for-rail-research/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-d26fe1de9c7565160436e484",
+      "event_url": "https://palimpsest.info/news/wire/event-d26fe1de9c7565160436e484/",
+      "event_page_available": false,
+      "headline": "Owners to be liable if terrorists use their land, says Balochistan CM Bugti",
+      "dek": null,
+      "published_at": "2026-08-29T02:34:21Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dawn-pakistan"
+      ],
+      "source_names": [
+        "Dawn — Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-fd8aa54e5dc8b63e36dca189"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-6072c850e51244df76ba507c",
+      "event_url": "https://palimpsest.info/news/wire/event-6072c850e51244df76ba507c/",
+      "event_page_available": true,
+      "headline": "Arakan Army imposes first nighttime curfew across southern Rakhine State townships",
+      "dek": "The Arakan Army (AA) has enacted a temporary nighttime curfew across the southern Arakan State townships of Thandwe, Gwa, and Toungup. Implemented for the first time in these regions since mid-August 2026, the emergency measure responds to intensifying Myanmar regime air and naval bombardments alongside growing public",
+      "published_at": "2026-08-29T00:28:09Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-bdc027be617ff5144903d25d"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Arakan Army imposes first nighttime curfew across southern Rakhine State townships",
+          "url": "https://english.dvb.no/arakan-army-imposes-first-nighttime-curfew-across-southern-rakhine-state-townships/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-722c2daa941a4e7b9d53b729",
+      "event_url": "https://palimpsest.info/news/wire/event-722c2daa941a4e7b9d53b729/",
+      "event_page_available": true,
+      "headline": "9th Rohingya Genocide Remembrance Day",
+      "dek": "Tens of thousands of Rohingya refugees from Myanmar living in dozens of camps in Bangladesh held a rally on Aug. 25 to demand their safe return to their home in Arakan State, nine years after they fled a Myanmar military crackdown. Read more Watch the Rohingya rally on Aug. 25, here The post 9th Rohingya Genocide Remem",
+      "published_at": "2026-08-28T22:06:05Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-990c53dd1a6ee2309369da37"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "9th Rohingya Genocide Remembrance Day",
+          "url": "https://english.dvb.no/9th-rohingya-genocide-remembrance-day-in-bangladesh/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-87b8a9162c574423ac05c390",
+      "event_url": "https://palimpsest.info/news/wire/event-87b8a9162c574423ac05c390/",
+      "event_page_available": true,
+      "headline": "Buddhist monk suspected of links to pro-regime militia dies in resistance custody",
+      "dek": "Junta-controlled state media accuses PDF “terrorists” of torturing the monk to death a week after his arrest",
+      "published_at": "2026-08-28T10:00:25Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-d67d632d8b7c9a1b7368c8a2"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Buddhist monk suspected of links to pro-regime militia dies in resistance custody",
+          "url": "https://myanmar-now.org/en/news/buddhist-monk-suspected-of-links-to-pro-regime-militia-dies-in-resistance-custody/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-83a178ec5858c6dac3cb4873",
+      "event_url": "https://palimpsest.info/news/wire/event-83a178ec5858c6dac3cb4873/",
+      "event_page_available": true,
+      "headline": "Over 100 scholars and former diplomats demand release of detained US academic in China",
+      "dek": "A coalition of 108 international scholars, former diplomats, and foreign policy experts organized through the Scholars at Risk Network issued a joint statement on Thursday, demanding the immediate and unconditional release of Min Zin, a Myanmar academic and U.S. citizen detained by Chinese authorities in Kunming, Yunna",
+      "published_at": "2026-08-28T09:16:33Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-de09106afb539128138a2f85"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "connectivity",
+        "policy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Over 100 scholars and former diplomats demand release of detained US academic in China",
+          "url": "https://english.dvb.no/over-100-scholars-and-former-diplomats-demand-release-of-detained-us-academic-min-zin-in-china/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-2395e41b3720914d10ca7bd2",
+      "event_url": "https://palimpsest.info/news/wire/event-2395e41b3720914d10ca7bd2/",
+      "event_page_available": true,
+      "headline": "China Mobilizes Forces for Xizang Mudslide Relief",
+      "dek": "Multiple emergency response teams have mobilized after a mudslide hit Gyirong County in Xigaze City, southwest China’s Xizang Autonomous Region. Rescue teams are working to restore transport links and support affected residents. Meanwhile, authorities are delivering food, shelter, and other essential supplies to the di",
+      "published_at": "2026-08-28T08:12:08Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-5670e95865ac8cd12a0080d8"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "China Mobilizes Forces for Xizang Mudslide Relief",
+          "url": "https://thedailycpec.com/china-mobilizes-forces-for-xizang-mudslide-relief/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-37fceba4cba6dcc4a86feba8",
+      "event_url": "https://palimpsest.info/news/wire/event-37fceba4cba6dcc4a86feba8/",
+      "event_page_available": true,
+      "headline": "Maryam Nawaz Seeks Stronger Punjab-Xinjiang Ties",
+      "dek": "Punjab Chief Minister Maryam Nawaz Sharif met senior officials in China’s Xinjiang region to expand cooperation between Punjab and Xinjiang. The discussions covered agriculture, industry, technology, healthcare, infrastructure, and people-to-people exchanges. Focus on Modern Agriculture Maryam Nawaz proposed joint proj",
+      "published_at": "2026-08-28T07:11:46Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-30T02:30:05Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-82e0f6d58eb21861c7128747",
+        "eventv-e6d71d36aa091d24a26f347e"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "technology"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Maryam Nawaz Seeks Stronger Punjab-Xinjiang Ties",
+          "url": "https://thedailycpec.com/maryam-nawaz-seeks-stronger-punjab-xinjiang-ties/"
+        },
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Maryam Nawaz Seeks Stronger China-Punjab Ties",
+          "url": "https://thedailycpec.com/maryam-nawaz-seeks-stronger-china-punjab-ties/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-f84c897c2d02dac4eef1dd64",
+      "event_url": "https://palimpsest.info/news/wire/event-f84c897c2d02dac4eef1dd64/",
+      "event_page_available": true,
+      "headline": "PM Shehbaz Condoles China Floods, Landslides",
+      "dek": "Prime Minister Shehbaz Sharif has expressed deep condolences to China following deadly flash floods and landslides in the country’s border region. The disaster caused loss of life and left several people missing. In a post on X, the prime minister expressed grief and solidarity with the Chinese people. Pakistan Offers",
+      "published_at": "2026-08-28T07:08:00Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-bdf4df9c0b2c8d34fc92c185"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "PM Shehbaz Condoles China Floods, Landslides",
+          "url": "https://thedailycpec.com/pm-shehbaz-condoles-china-floods-landslides/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-791edd0fa319214afe68c9c0",
+      "event_url": "https://palimpsest.info/news/wire/event-791edd0fa319214afe68c9c0/",
+      "event_page_available": true,
+      "headline": "Pakistani Mangoes Reach Xinjiang by Land",
+      "dek": "A 2-ton shipment of Pakistani mangoes has arrived in China’s Xinjiang region for the first time this year. The consignment cleared customs and entered markets in Kashgar and Korla. The mangoes entered Xinjiang through a China-Pakistan land port. Customs authorities used a dedicated clearance process to maintain fruit q",
+      "published_at": "2026-08-28T07:03:35Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-c584fa0a6a5640abc282479c"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "Pakistani Mangoes Reach Xinjiang by Land",
+          "url": "https://thedailycpec.com/pakistani-mangoes-reach-xinjiang-by-land/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-2d7feae0d06052c668bb9594",
+      "event_url": "https://palimpsest.info/news/wire/event-2d7feae0d06052c668bb9594/",
+      "event_page_available": false,
+      "headline": "9th CPEC Gwadar Working Group Meeting Next Week",
+      "dek": null,
+      "published_at": "2026-08-28T06:58:04Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-3792f56c6842e7ea0a450375"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "gwadar",
+        "balochistan"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-a60cf57614329ae08b545687",
+      "event_url": "https://palimpsest.info/news/wire/event-a60cf57614329ae08b545687/",
+      "event_page_available": true,
+      "headline": "Malaysia to repatriate first group of Myanmar nationals in September",
+      "dek": "The controversial move comes as Rohingya refugees in Malaysia are increasingly targeted by online disinformation campaigns",
+      "published_at": "2026-08-28T05:45:25Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-0f97239495058e4a83dbba04"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Malaysia to repatriate first group of Myanmar nationals in September",
+          "url": "https://myanmar-now.org/en/news/malaysia-to-repatriate-first-group-of-myanmar-nationals-in-september/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-7b331c7777a0612c3b516871",
+      "event_url": "https://palimpsest.info/news/wire/event-7b331c7777a0612c3b516871/",
+      "event_page_available": true,
+      "headline": "India, Myanmar, and mineral imperialism",
+      "dek": "Guest contributor Shalini Perumal The global transition toward green technologies and electric mobility has triggered an unprecedented rush for critical minerals. This situation has fundamentally reshaped the geopolitics of the Indo-Pacific, turning remote frontier regions into arenas for competition. For a rapidly gro",
+      "published_at": "2026-08-28T03:05:56Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-0744d73f12308f23dbb6c8b4"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "India, Myanmar, and mineral imperialism",
+          "url": "https://english.dvb.no/india-myanmar-and-mineral-imperialism/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-364d582351325318e6b7b21f",
+      "event_url": "https://palimpsest.info/news/wire/event-364d582351325318e6b7b21f/",
+      "event_page_available": true,
+      "headline": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
+      "dek": "Malaysia will repatriate 1,476 Myanmar nationals next month in the first phase of a voluntary program, the Home Ministry said on Thursday, as the government moves to address the country’s long-running refugee and undocumented migrant issue. The repatriation is part of a broader program involving 5,000 eligible Myanmar",
+      "published_at": "2026-08-28T02:17:54Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-1991f499be071205bd84e1fd"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "government",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
+          "url": "https://english.dvb.no/malaysia-to-return-1476-myanmar-nationals-in-first-phase-of-voluntary-repatriation-program/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-d59970aaa4d85060cc1b0afe",
+      "event_url": "https://palimpsest.info/news/wire/event-d59970aaa4d85060cc1b0afe/",
+      "event_page_available": true,
+      "headline": "Investigating International Crimes in Myanmar",
+      "dek": "The Independent Investigative Mechanism for Myanmar (IIMM) released its 2026 Annual Report on Aug. 11. Lead investigator Nicholas Koumjian told DVB that civilians continue to bear the brunt of the conflict in Myanmar since the 2021 military coup. Read more Watch the IIMM 2026 Annual Report press conference at the U.N.",
+      "published_at": "2026-08-28T01:37:09Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-01652e26dcd3bb7feef7f6e4"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Investigating International Crimes in Myanmar",
+          "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar/"
+        },
+        {
+          "source_id": "dvb-english",
+          "title": "Investigating International Crimes in Myanmar [AUDIO]",
+          "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar-audio/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-a4c59536010ef58532ea21ed",
+      "event_url": "https://palimpsest.info/news/wire/event-a4c59536010ef58532ea21ed/",
+      "event_page_available": false,
+      "headline": "Myanmar Air Force launches 30-bomb strike on border village in Chin State’s Paletwa Township",
+      "dek": null,
+      "published_at": "2026-08-27T23:43:11Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-5e230d522b6d473613b6f7fd"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-a0184ef389549b8f5874c8a0",
+      "event_url": "https://palimpsest.info/news/wire/event-a0184ef389549b8f5874c8a0/",
+      "event_page_available": true,
+      "headline": "More than 1,400 people missing after Nepal flood disaster",
+      "dek": "China warns of risk of further landslides as rescue effort intensifies",
+      "published_at": "2026-08-27T17:03:13Z",
+      "first_recorded_at": "2026-08-29T16:31:50Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "dvb-english",
+        "financial-times-china"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English",
+        "Financial Times — China"
+      ],
+      "evidence_strength": "multi-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-782c3fe37f0f16fa76c438f2",
+        "eventv-4f7395b7afebb8a9e73b5244"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "financial-times-china",
+          "title": "More than 1,400 people missing after Nepal flood disaster",
+          "url": "https://www.ft.com/content/7fbae161-96a0-4e72-9366-0f2f3f4667c8?syn-25a6b1a6=1"
+        },
+        {
+          "source_id": "dvb-english",
+          "title": "People from more than 30 countries are missing after flash floods in Nepal and China",
+          "url": "https://english.dvb.no/people-from-more-than-30-countries-are-missing-after-the-flash-floods-in-nepal-and-china/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-fd696d9dfaf3e06f146e9807",
+      "event_url": "https://palimpsest.info/news/wire/event-fd696d9dfaf3e06f146e9807/",
+      "event_page_available": true,
+      "headline": "AA introduces Rakhine as subject in schools, replacing Myanmar language",
+      "dek": "The Rakhine-language textbook has already been distributed to Grade 12 students across AA territory, including Chin State’s Paletwa, for the current academic year",
+      "published_at": "2026-08-27T11:10:14Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-165a8d9a1e2cb505ebec9301"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "AA introduces Rakhine as subject in schools, replacing Myanmar language",
+          "url": "https://myanmar-now.org/en/news/aa-introduces-rakhine-as-subject-in-schools-replacing-myanmar-language/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-497b16efd65b210c8eed53fe",
+      "event_url": "https://palimpsest.info/news/wire/event-497b16efd65b210c8eed53fe/",
+      "event_page_available": true,
+      "headline": "Balochistan moves to fully operationalise long-delayed Safe City project in Quetta, other districts",
+      "dek": "Decision finalised during the two-day 28th Defence Review Committee meeting",
+      "published_at": "2026-08-27T11:10:04Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "express-tribune-balochistan"
+      ],
+      "source_names": [
+        "The Express Tribune — Balochistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-34850603f113bbef3c7be77b"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "express-tribune-balochistan",
+          "title": "Balochistan moves to fully operationalise long-delayed Safe City project in Quetta, other districts",
+          "url": "https://tribune.com.pk/story/2626077/balochistan-moves-to-fully-operationalise-long-delayed-safe-city-project-in-quetta-other-districts"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-02213acf7a3f347a2a1a6cee",
+      "event_url": "https://palimpsest.info/news/wire/event-02213acf7a3f347a2a1a6cee/",
+      "event_page_available": true,
+      "headline": "Three killed as toxic gas builds up inside coal mine in Balochistan's Duki",
+      "dek": "Workers' federation decries 'inadequate safety measures in the mining sector'",
+      "published_at": "2026-08-27T10:46:42Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "express-tribune-balochistan"
+      ],
+      "source_names": [
+        "The Express Tribune — Balochistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-1cebb12f1ac9fad8da03a73e"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "express-tribune-balochistan",
+          "title": "Three killed as toxic gas builds up inside coal mine in Balochistan's Duki",
+          "url": "https://tribune.com.pk/story/2626071/three-killed-as-toxic-gas-builds-up-inside-coal-mine-in-balochistans-duki"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-94f0d42a832597eceff84e32",
+      "event_url": "https://palimpsest.info/news/wire/event-94f0d42a832597eceff84e32/",
+      "event_page_available": true,
+      "headline": "Fighting intensifies as resistance forces attack Myanmar junta flotilla headed for Shwegu",
+      "dek": "The flotilla, including combat vessels and landing craft, began advancing toward the Kachin State town from Mandalay late last week",
+      "published_at": "2026-08-27T10:37:26Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-21f0ef2e596c4a7691874437"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Fighting intensifies as resistance forces attack Myanmar junta flotilla headed for Shwegu",
+          "url": "https://myanmar-now.org/en/news/fighting-intensifies-as-resistance-forces-attack-myanmar-junta-flotilla-headed-for-shwegu/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-ab92bc06ad836a40184dc4e2",
+      "event_url": "https://palimpsest.info/news/wire/event-ab92bc06ad836a40184dc4e2/",
+      "event_page_available": false,
+      "headline": "Fact Check: Old Shabbar Zaidi Video Misleads on CPEC",
+      "dek": null,
+      "published_at": "2026-08-27T09:12:09Z",
+      "first_recorded_at": "2026-08-29T19:00:35Z",
+      "last_recorded_at": "2026-08-29T19:00:35Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-7269511edbb859070433df9a"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-db18a5c449b939a74e0ae272",
+      "event_url": "https://palimpsest.info/news/wire/event-db18a5c449b939a74e0ae272/",
+      "event_page_available": false,
+      "headline": "Medical Shortages, Monsoon Illnesses Put More Than 600 IDPs at Risk in Western Pai Khun",
+      "dek": null,
+      "published_at": "2026-08-27T09:06:54Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "shan-news-english"
+      ],
+      "source_names": [
+        "SHAN News — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-7def095800749c54463cdf44"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-3025649d0a8d413e663343cc",
+      "event_url": "https://palimpsest.info/news/wire/event-3025649d0a8d413e663343cc/",
+      "event_page_available": true,
+      "headline": "11 terrorists killed in separate K-P, Balochistan operations",
+      "dek": "President Zardari, PM Shehbaz, Naqvi praise security forces, reaffirm resolve to eliminate terrorism",
+      "published_at": "2026-08-26T23:41:12Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "express-tribune-balochistan"
+      ],
+      "source_names": [
+        "The Express Tribune — Balochistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-e7600741a9c9ecc45a6596e7"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "express-tribune-balochistan",
+          "title": "11 terrorists killed in separate K-P, Balochistan operations",
+          "url": "https://tribune.com.pk/story/2625992/11-terrorists-killed-in-separate-k-p-balochistan-operations-security-sources"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-30a2e4fa8a8f5b98af25a21d",
+      "event_url": "https://palimpsest.info/news/wire/event-30a2e4fa8a8f5b98af25a21d/",
+      "event_page_available": true,
+      "headline": "Myanmar junta tightens restrictions on transport of Chinese goods at border",
+      "dek": "Merchants and drivers say the regime has stepped up efforts to block the flow of goods through areas controlled by ethnic armed groups",
+      "published_at": "2026-08-26T10:17:17Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-bec1adc291e0a66d1743ec61"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Myanmar junta tightens restrictions on transport of Chinese goods at border",
+          "url": "https://myanmar-now.org/en/news/myanmar-junta-tightens-restrictions-on-transport-of-chinese-goods-at-border/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-85f1ccd9cc864c084474a06c",
+      "event_url": "https://palimpsest.info/news/wire/event-85f1ccd9cc864c084474a06c/",
+      "event_page_available": true,
+      "headline": "Human rights in Myanmar hitting a ‘new low’: UN",
+      "dek": "The UN warned that illegal mining and scam centres were further deteriorating Myanmar’s already critical human rights situation",
+      "published_at": "2026-08-26T08:28:06Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-ff1bc5c7869ad7ab3cba3a6d"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Human rights in Myanmar hitting a ‘new low’: UN",
+          "url": "https://myanmar-now.org/en/news/human-rights-in-myanmar-hitting-a-new-low-un/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-ffd7818d0eb924aa5eab5a3d",
+      "event_url": "https://palimpsest.info/news/wire/event-ffd7818d0eb924aa5eab5a3d/",
+      "event_page_available": true,
+      "headline": "Myanmar Rohingya refugees protest dire conditions in Bangladesh camps",
+      "dek": "Nine years after the 2017 crackdown that forced hundreds of thousands of Rohingya out of Myanmar, refugees gathered in remembrance and to protest deteriorating camp conditions",
+      "published_at": "2026-08-26T06:05:15Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-36f27e955e7c0ba5fd460311"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Myanmar Rohingya refugees protest dire conditions in Bangladesh camps",
+          "url": "https://myanmar-now.org/en/news/myanmar-rohingya-refugees-protest-dire-conditions-in-bangladesh-camps/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-1fb7883d267f9ee81d9ea458",
+      "event_url": "https://palimpsest.info/news/wire/event-1fb7883d267f9ee81d9ea458/",
+      "event_page_available": true,
+      "headline": "Death toll in Pishin attack rises to six",
+      "dek": "Meanwhile, two Afghan nationals were shot dead by unidentified armed men near Sheikh Zayed Hospital in Quetta",
+      "published_at": "2026-08-25T23:14:06Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "express-tribune-balochistan"
+      ],
+      "source_names": [
+        "The Express Tribune — Balochistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-4fa18ab909760c3284c1678b"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "express-tribune-balochistan",
+          "title": "Death toll in Pishin attack rises to six",
+          "url": "https://tribune.com.pk/story/2625927/death-toll-in-pishin-attack-rises-to-six"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-546ba6cfcdf61e81deed767a",
+      "event_url": "https://palimpsest.info/news/wire/event-546ba6cfcdf61e81deed767a/",
+      "event_page_available": true,
+      "headline": "Photo Essay: Between battles in central Myanmar",
+      "dek": "As junta forces push towards oil-producing areas of Magway Region’s Myaing Township, photographs from near the frontline document the resistance fighters trying to hold them back",
+      "published_at": "2026-08-25T10:55:14Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-42bb4afb06d0699d3ef76c7a"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Photo Essay: Between battles in central Myanmar",
+          "url": "https://myanmar-now.org/en/news/photo-essay-between-battles-in-central-myanmar/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-ced9f670938784e3923a46de",
+      "event_url": "https://palimpsest.info/news/wire/event-ced9f670938784e3923a46de/",
+      "event_page_available": true,
+      "headline": "Myanmar junta airstrike in Paletwa kills five and injures 17, including children",
+      "dek": "The airstrike targeted a monastery in rural Chin State, destroying several buildings and leaving many children among the dead and injured",
+      "published_at": "2026-08-25T09:21:48Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-6c388dd9163d089496f40ef2"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "Myanmar junta airstrike in Paletwa kills five and injures 17, including children",
+          "url": "https://myanmar-now.org/en/news/myanmar-junta-airstrike-in-paletwa-kills-five-and-injures-17-including-children/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-2dab7d023574637542768ee1",
+      "event_url": "https://palimpsest.info/news/wire/event-2dab7d023574637542768ee1/",
+      "event_page_available": true,
+      "headline": "The Russian general behind Moscow’s decades-long military courtship of Myanmar",
+      "dek": "Long before Russia became the regime’s most important military partner, Aleksandr Fomin was already cultivating ties with its officer corps, a relationship now extending beyond military support into energy, finance, infrastructure and space cooperation",
+      "published_at": "2026-08-25T05:46:15Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "myanmar-now"
+      ],
+      "source_names": [
+        "Myanmar Now — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-065980d9a5fe4d82213b27fa"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "myanmar-now",
+          "title": "The Russian general behind Moscow’s decades-long military courtship of Myanmar",
+          "url": "https://myanmar-now.org/en/news/the-russian-general-behind-moscows-decades-long-military-courtship-of-myanmar/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-2af2d10e69cc858a0150569b",
+      "event_url": "https://palimpsest.info/news/wire/event-2af2d10e69cc858a0150569b/",
+      "event_page_available": true,
+      "headline": "Human Rights Violations in Balochistan: 105 Enforced Disappearances, 59 Killings Documented in July 2026",
+      "dek": "In July 2026, Balochistan recorded 105 cases of enforced disappearance, including five women and three minor girls. Fourteen teenagers and The post Human Rights Violations in Balochistan: 105 Enforced Disappearances, 59 Killings Documented in July 2026 appeared first on .",
+      "published_at": "2026-08-24T21:45:16Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "source_ids": [
+        "hrc-balochistan"
+      ],
+      "source_names": [
+        "Human Rights Council of Balochistan — News reports"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-de3270630776c9dab47e5428"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "balochistan"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "hrc-balochistan",
+          "title": "Human Rights Violations in Balochistan: 105 Enforced Disappearances, 59 Killings Documented in July 2026",
+          "url": "https://hrcbalochistan.com/human-rights-violations-in-balochistan-105-enforced-disappearances-59-killings-documented-in-july-2026/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-44004bf625eb7aab094abcdc",
+      "event_url": "https://palimpsest.info/news/wire/event-44004bf625eb7aab094abcdc/",
+      "event_page_available": false,
+      "headline": "新思想引领新征程丨拓展共建“一带一路”合作新空间 铺就共赢之路",
+      "dek": null,
+      "published_at": "2026-08-23T00:55:36Z",
+      "first_recorded_at": "2026-08-23T01:00:06Z",
+      "last_recorded_at": "2026-08-23T01:30:07Z",
+      "source_ids": [
+        "china-news-service-politics"
+      ],
+      "source_names": [
+        "China News Service"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-421c039dbf6019935e16639b",
+        "eventv-a7d5f06d0278286ed8e07b2a"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-cda13497673361cd8902acd2",
+        "public_url": "/news/china/english/page/14/#translation-zhtr-cda13497673361cd8902acd2",
+        "title_en": "New Ideas Lead a New Journey | Expanding New Spaces for Cooperation in Jointly Building the 'Belt and Road' to Pave a Win-Win Path",
+        "context_en": "",
+        "translation_notes_en": "The phrase 'New Ideas' serves as a standard political descriptor in official Chinese media for recent policy directives.",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "The metadata highlights official efforts to broaden cooperative frameworks under the Belt and Road Initiative to foster mutual benefits.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "新思想引领新征程丨拓展共建“一带一路”合作新空间 铺就共赢之路",
+        "original_context_zh": "",
+        "original_content_sha256": "76a8c69da43977a6e429e8ff7974871d0905202130e6170d23de0fadf67ea3cb",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    },
+    {
+      "event_id": "event-e064b40a39c8eafe55b8d01e",
+      "event_url": "https://palimpsest.info/news/wire/event-e064b40a39c8eafe55b8d01e/",
+      "event_page_available": true,
+      "headline": "首列检测车开行 ！中交马东铁动态检测正式启动",
+      "dek": null,
+      "published_at": "2026-08-22T06:26:17Z",
+      "first_recorded_at": "2026-08-22T07:30:05Z",
+      "last_recorded_at": "2026-08-22T07:30:05Z",
+      "source_ids": [
+        "china-news-service-finance"
+      ],
+      "source_names": [
+        "China News Service"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-f0b1b528570f8e28e9f2c9a4"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-ecb4a53bafe4fa903d1fa7bb",
+        "public_url": "/news/china/english/page/15/#translation-zhtr-ecb4a53bafe4fa903d1fa7bb",
+        "title_en": "First Test Train Departs! Dynamic Testing Officially Starts for CCCC's East Coast Rail Link",
+        "context_en": "Kuala Lumpur, August 22 (Reporter Liu Yu-ying) - China News Service reports that as the first test train set off, Phase 1 of the East Coast Rail Link (ECRL) in Malaysia—a flagship project of high-quality Belt and Road cooperation between China and Malaysia, spanning from Kota Bharu in Kelantan to Gombak in Selangor—has officially entered the stage of dynamic testing and fault-free operation, according to the CCCC ECRL project team.",
+        "translation_notes_en": "",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "The commencement of dynamic testing for the ECRL marks a milestone in the China-Malaysia 'Belt and Road' infrastructure collaboration.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "首列检测车开行 ！中交马东铁动态检测正式启动",
+        "original_context_zh": "中新网吉隆坡8月22日电 (记者 刘育英)记者22日从中交马东铁项目获悉，随着首列检测列车开行，中马高质量共建“一带一路”旗舰项目——马来西亚东海岸铁路(马东铁)一期工程(吉兰丹州哥打巴鲁至雪兰莪州鹅唛段)正式进入动态检测及无故障运行阶段。",
+        "original_content_sha256": "70c306794dea4b04676fd26bb1a6d2e3ff056ab2bc60ef990b16171a53d9b190",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    },
+    {
+      "event_id": "event-1906678f72b36035246838fb",
+      "event_url": "https://palimpsest.info/news/wire/event-1906678f72b36035246838fb/",
+      "event_page_available": false,
+      "headline": "北京否认“任意拘押”缅甸问题学者敏辛，指称“这位美国公民涉嫌危害国家安全”",
+      "dek": null,
+      "published_at": "2026-08-21T11:45:35Z",
+      "first_recorded_at": "2026-08-21T12:00:04Z",
+      "last_recorded_at": "2026-08-21T12:00:04Z",
+      "source_ids": [
+        "rfi-chinese"
+      ],
+      "source_names": [
+        "RFI"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-7a41f40f82b3ca7b26ecf85c"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-b2c47d2966a2aa2e513d2a5c",
+        "public_url": "/news/china/english/page/17/#translation-zhtr-b2c47d2966a2aa2e513d2a5c",
+        "title_en": "Beijing Denies 'Arbitrary Detention' of Myanmar-focused Scholar Min Zin, Alleging 'This U.S. Citizen Is Suspected of Endangering National Security'",
+        "context_en": "",
+        "translation_notes_en": "The name 'Min Zin' refers to the Myanmar-focused scholar mentioned in the text. Proper name standardized to ‘Min Zin’ for the person rendered as 敏辛 in the captured Chinese metadata.",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "Beijing is officially justifying the detention of a U.S. citizen by citing national security charges, contradicting accusations of arbitrary detainment.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "北京否认“任意拘押”缅甸问题学者敏辛，指称“这位美国公民涉嫌危害国家安全”",
+        "original_context_zh": "",
+        "original_content_sha256": "36793637fd6059796f24eb4ae6d29487eda9f25eb556c24d2e4c344dc38f004f",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    },
+    {
+      "event_id": "event-4e242014cf4f1b07591b046f",
+      "event_url": "https://palimpsest.info/news/wire/event-4e242014cf4f1b07591b046f/",
+      "event_page_available": true,
+      "headline": "美国务院认定学者敏辛在中国遭“非法拘押”，“已在最高层级”促北京释放敏辛",
+      "dek": null,
+      "published_at": "2026-08-20T21:45:23Z",
+      "first_recorded_at": "2026-08-20T22:00:05Z",
+      "last_recorded_at": "2026-08-23T20:30:05Z",
+      "source_ids": [
+        "voa-chinese"
+      ],
+      "source_names": [
+        "Voice of America Chinese"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-9f890997be72e5106f19fe6b",
+        "eventv-ae88933a4b055471ae6e2cd4"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-0c7a1dae847540a6eac8e7d3",
+        "public_url": "/news/china/english/page/21/#translation-zhtr-0c7a1dae847540a6eac8e7d3",
+        "title_en": "U.S. State Department Determines Scholar Min Zin Was 'Wrongfully Detained' in China; Has Urged Beijing at the 'Highest Levels' to Release Min Zin",
+        "context_en": "",
+        "translation_notes_en": "The term 'wrongfully detained' is a specific legal designation used by the U.S. government. Proper name standardized to ‘Min Zin’ for the person rendered as 敏辛 in the captured Chinese metadata.",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "The U.S. Department of State has formally categorized the detention of a scholar as wrongful and is engaging in high-level diplomatic pressure to secure their release.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "美国务院认定学者敏辛在中国遭“非法拘押”，“已在最高层级”促北京释放敏辛",
+        "original_context_zh": "",
+        "original_content_sha256": "cd459aa9f080bf120b601c1635405a0276ba46dd8cc40c8ae3aeaa114f081ce5",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    },
+    {
+      "event_id": "event-cdb283cc8dafbb5af0841801",
+      "event_url": "https://palimpsest.info/news/wire/event-cdb283cc8dafbb5af0841801/",
+      "event_page_available": true,
+      "headline": "'More mainland firms eye Belt and Road expansion'",
+      "dek": null,
+      "published_at": "2026-08-18T10:45:09Z",
+      "first_recorded_at": "2026-08-20T16:30:05Z",
+      "last_recorded_at": "2026-08-22T14:00:06Z",
+      "source_ids": [
+        "rthk-finance",
+        "rthk-greater-china"
+      ],
+      "source_names": [
+        "Radio Television Hong Kong",
+        "Radio Television Hong Kong"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 3,
+      "version_ids": [
+        "eventv-8c0fe031c9fa31f20c1a875f",
+        "eventv-e769944550b4a4d1f5cf1362",
+        "eventv-1eb517ea7aa08a0081c63b40"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-9cc805dff3de54bea1eafa83",
+      "event_url": "https://palimpsest.info/news/wire/event-9cc805dff3de54bea1eafa83/",
+      "event_page_available": true,
+      "headline": "Breaking the 'debt-trap diplomacy' myth, forging BRI's golden future",
+      "dek": null,
+      "published_at": "2026-08-17T06:43:36Z",
+      "first_recorded_at": "2026-08-20T16:30:05Z",
+      "last_recorded_at": "2026-08-20T16:30:05Z",
+      "source_ids": [
+        "cgtn-china"
+      ],
+      "source_names": [
+        "CGTN — China"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-f576aedb8428a846c5e9a841"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-7ac205563284031f0b5229c6",
+      "event_url": "https://palimpsest.info/news/wire/event-7ac205563284031f0b5229c6/",
+      "event_page_available": true,
+      "headline": "Nearly 200-country study shows China’s Belt and Road Initiative cuts debt and corruption",
+      "dek": null,
+      "published_at": "2026-08-13T02:00:10Z",
+      "first_recorded_at": "2026-08-13T12:25:59Z",
+      "last_recorded_at": "2026-08-13T12:25:59Z",
+      "source_ids": [
+        "scmp-china"
+      ],
+      "source_names": [
+        "South China Morning Post — China"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-3efdee60f5ce1525250e4c8f"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-b84c51f1401656e1ef3f5680",
+      "event_url": "https://palimpsest.info/news/wire/event-b84c51f1401656e1ef3f5680/",
+      "event_page_available": true,
+      "headline": "Immigration Department Youth Leaders Corps' Belt and Road summer exchange tours conclude (with photos)",
+      "dek": null,
+      "published_at": "2026-08-11T08:50:00Z",
+      "first_recorded_at": "2026-08-11T14:55:03Z",
+      "last_recorded_at": "2026-08-11T15:18:52Z",
+      "source_ids": [
+        "hksar-releases"
+      ],
+      "source_names": [
+        "Hong Kong SAR Government News"
+      ],
+      "evidence_strength": "single-primary-source",
+      "version_count": 3,
+      "version_ids": [
+        "eventv-460a38452ed5c1528dab533b",
+        "eventv-e1c41fa968442f59e50aada1",
+        "eventv-a1c3d03f3b8fd972d47c3a48"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri"
+      ],
+      "publisher_links": [],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-b8bb70ff36ce2fcc1405d34d",
+      "event_url": "https://palimpsest.info/news/wire/event-b8bb70ff36ce2fcc1405d34d/",
+      "event_page_available": true,
+      "headline": "軍政府因中國再次強硬 緬甸百姓的革命夢想幻滅了嗎？",
+      "dek": null,
+      "published_at": "2026-08-06T13:34:05Z",
+      "first_recorded_at": "2026-08-11T14:55:03Z",
+      "last_recorded_at": "2026-08-11T15:18:52Z",
+      "source_ids": [
+        "bbc-chinese"
+      ],
+      "source_names": [
+        "BBC News Chinese"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-f59546da22fed1cf52787621",
+        "eventv-4b8ffd16680a10ab727ee0c9"
+      ],
+      "current_in_wire": false,
+      "topics": [],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [],
+      "english_translation": {
+        "translation_id": "zhtr-d233ccd9955ccad6fcdd4eb7",
+        "public_url": "/news/china/english/page/28/#translation-zhtr-d233ccd9955ccad6fcdd4eb7",
+        "title_en": "Military junta stands tough again because of China: Are the revolutionary dreams of the Burmese people shattered?",
+        "context_en": "With China's support, Myanmar's President Min Aung Hlaing, who 'swapped his military uniform for civilian clothes,' is seeking to break out of diplomatic isolation. For those Myanmar opposition supporters who hope to reshape the country through revolution, the prospects are disheartening.",
+        "translation_notes_en": "“棄戎從文” literally means abandoning military life to engage in literature/civilian life; in this context, it refers to Min Aung Hlaing shedding his military uniform for a civilian political role.",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "The publisher suggests that ongoing Chinese support for the current Myanmar administration is complicating the efforts of opposition movements.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "軍政府因中國再次強硬 緬甸百姓的革命夢想幻滅了嗎？",
+        "original_context_zh": "在中國支持下，「棄戎從文」的緬甸總統敏昂萊正尋求突破外交孤立。對於那些希望透過革命來重塑國家的緬甸反對派支持者來說，前景讓人沮喪。",
+        "original_content_sha256": "974a7fdcbdc128213a00d856374bbc25d88df5046a0185569c8b91ccda3b6bc1",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    }
+  ],
+  "limitations": [
+    "This is the complete retained Palimpsest capture ledger for the declared classifier, not every article ever published on the internet.",
+    "Feed metadata can be incomplete, partisan, mistaken, translated, revised or removed; a listing is attribution, not endorsement or adjudication.",
+    "Historical ledger entries may lack a retained excerpt or publisher URL; the event page is linked only when a generated public page remains present.",
+    "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
+    "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump."
+  ],
+  "content_sha256": "63ac7b6257340356e9e0059ac3a1ede3160caf325f36b29e15b072703f6dd8a9"
+}

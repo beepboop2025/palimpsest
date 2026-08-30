@@ -151,6 +151,7 @@ def test_every_event_has_a_human_page_current_json_and_immutable_revision(public
         page = outputs[base / "index.html"]
         text = page.decode("utf-8")
         assert _one_h1(page)
+        assert not re.search(r"(?m)^[ \t]+$", text)
         assert "Evidence matrix" in text
         assert "Palimpsest addition" in text
         assert "What Palimpsest adds to this source report" in text
