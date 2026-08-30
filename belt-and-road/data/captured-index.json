@@ -2,7 +2,7 @@
   "schema_version": "palimpsest.regional-captured-index.v1",
   "region": "bri",
   "label": "BRI and regional corridors",
-  "generated_at": "2026-08-30T07:25:25Z",
+  "generated_at": "2026-08-30T08:45:26Z",
   "scope": "Every unique event retained in the append-only Palimpsest event-version ledger that matches this regional lane by reviewed source identity or bounded title metadata, plus every matching event in the current wire.",
   "classification": {
     "overlap_allowed": true,
@@ -18,43 +18,43 @@
     "source_policy": "config/news_sources.json"
   },
   "inputs": {
-    "newswire_generated_at": "2026-08-30T07:25:25Z",
+    "newswire_generated_at": "2026-08-30T08:45:26Z",
     "newswire_window": {
-      "from": "2026-08-23T07:25:25Z",
+      "from": "2026-08-23T08:45:26Z",
       "hours": 168,
-      "to": "2026-08-30T07:25:25Z"
+      "to": "2026-08-30T08:45:26Z"
     },
-    "newswire_versions_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+    "newswire_versions_sha256": "4964b729d8c8a7889f5b71890627df5e0af403c8fca14b1a0b75419884d59768",
     "source_registry_sha256": "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14",
     "chinese_translation_sidecar": {
       "schema_version": "chinese-translations-v1",
-      "generated_at": "2026-08-30T07:25:25Z",
-      "newswire_sha256": "fd12a19ae11362a9802ef3942938cb18698879fae5b2b936436085aa7d79083b",
-      "newswire_ledger_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
-      "newswire_ledger_rows": 4320,
-      "translated_records": 2207,
+      "generated_at": "2026-08-30T08:45:26Z",
+      "newswire_sha256": "03ebaa57ee9b480f6b090632c3f76bea1cf1c8013f47d5c7e2a4f2d6b7c76ca7",
+      "newswire_ledger_sha256": "4964b729d8c8a7889f5b71890627df5e0af403c8fca14b1a0b75419884d59768",
+      "newswire_ledger_rows": 4339,
+      "translated_records": 2217,
       "missing_records": 0
     }
   },
   "capture_universe": {
-    "event_versions": 4320,
-    "unique_events": 3059,
-    "current_wire_events": 561
+    "event_versions": 4339,
+    "unique_events": 3072,
+    "current_wire_events": 559
   },
   "counts": {
-    "event_versions": 61,
-    "unique_events": 51,
-    "current_events": 34,
-    "historical_events": 17,
-    "event_pages_available": 41,
+    "event_versions": 67,
+    "unique_events": 55,
+    "current_events": 36,
+    "historical_events": 19,
+    "event_pages_available": 45,
     "sources": 18,
-    "events_with_english_translation": 5
+    "events_with_english_translation": 6
   },
   "coverage": {
     "earliest_published_at": "2026-08-06T13:34:05Z",
-    "latest_published_at": "2026-08-30T04:14:56Z",
+    "latest_published_at": "2026-08-30T08:03:34Z",
     "earliest_recorded_at": "2026-08-11T14:55:03Z",
-    "latest_recorded_at": "2026-08-30T04:20:15Z"
+    "latest_recorded_at": "2026-08-30T08:43:46Z"
   },
   "sources": [
     {
@@ -91,7 +91,7 @@
       "role": "media",
       "independence_group": "china-news-service-state-media",
       "rights_policy": "metadata-link-only",
-      "captured_event_count": 1
+      "captured_event_count": 2
     },
     {
       "source_id": "daily-cpec-china-pakistan",
@@ -100,7 +100,7 @@
       "role": "media",
       "independence_group": "daily-cpec-editorial",
       "rights_policy": "metadata-link-only",
-      "captured_event_count": 11
+      "captured_event_count": 12
     },
     {
       "source_id": "dawn-pakistan",
@@ -118,7 +118,7 @@
       "role": "media",
       "independence_group": "dvb-english-editorial",
       "rights_policy": "metadata-link-only",
-      "captured_event_count": 9
+      "captured_event_count": 11
     },
     {
       "source_id": "express-tribune-balochistan",
@@ -221,6 +221,176 @@
     }
   ],
   "events": [
+    {
+      "event_id": "event-5bc244671f6caef0ec5c93ba",
+      "event_url": "https://palimpsest.info/news/wire/event-5bc244671f6caef0ec5c93ba/",
+      "event_page_available": true,
+      "headline": "中埃务实合作成果丰硕",
+      "dek": "中国和埃及是志同道合、彼此信任的好朋友，也是携手发展、共同繁荣的好伙伴。埃及是最早加入共建“一带一路”倡议的国家之一，中埃在两国元首战略引领下，持续深化共建“一带一路”合作。",
+      "published_at": "2026-08-30T08:03:34Z",
+      "first_recorded_at": "2026-08-30T08:43:46Z",
+      "last_recorded_at": "2026-08-30T08:43:46Z",
+      "source_ids": [
+        "china-news-service-politics"
+      ],
+      "source_names": [
+        "China News Service"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-21ca91436397ee4f5c6ff75f"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "government",
+        "politics"
+      ],
+      "region_tags": [
+        "bri"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "china-news-service-politics",
+          "title": "中埃务实合作成果丰硕",
+          "url": "https://www.chinanews.com.cn/gn/2026/08-30/10686817.shtml"
+        }
+      ],
+      "english_translation": {
+        "translation_id": "zhtr-06b41624a46780b0e10bd7ba",
+        "public_url": "/news/china/english/#translation-zhtr-06b41624a46780b0e10bd7ba",
+        "title_en": "Fruitful Outcomes of China-Egypt Pragmatic Cooperation",
+        "context_en": "China and Egypt are like-minded and mutually trusting good friends, as well as partners working together for development and common prosperity. Egypt is one of the earliest countries to join the Belt and Road Initiative, and under the strategic guidance of the two heads of state, China and Egypt continue to deepen cooperation in building the Belt and Road.",
+        "translation_notes_en": "",
+        "status": "machine-draft-not-human-certified",
+        "background_en": "China News Service characterizes the bilateral relationship as one of deep trust and mutual prosperity, centered on the strategic guidance of leadership regarding the Belt and Road Initiative.",
+        "background_basis": "Supplied title/headline, bounded feed excerpt/dek, publisher metadata, topics, and source clocks only; no article body, web retrieval, or outside facts.",
+        "background_status": "machine-generated-context-not-translation",
+        "original_title_zh": "中埃务实合作成果丰硕",
+        "original_context_zh": "中国和埃及是志同道合、彼此信任的好朋友，也是携手发展、共同繁荣的好伙伴。埃及是最早加入共建“一带一路”倡议的国家之一，中埃在两国元首战略引领下，持续深化共建“一带一路”合作。",
+        "original_content_sha256": "45ae55a65cde4054cbf067f5aac168d5d923fba253776f8fabcb5efe8b11a06a",
+        "provider": "Google Gemini API",
+        "model_id": "gemini-3.1-flash-lite",
+        "prompt_revision": "palimpsest-zh-en-metadata-v1"
+      }
+    },
+    {
+      "event_id": "event-78e4e1aa798994e8109d9994",
+      "event_url": "https://palimpsest.info/news/wire/event-78e4e1aa798994e8109d9994/",
+      "event_page_available": true,
+      "headline": "$3.5B Falcon Oils Refinery Wins CPEC Approval",
+      "dek": "The proposed $3.5 billion Falcon Oils Refinery and Storage Complex has secured approval from the China-Pakistan Economic Corridor (CPEC) Secretariat. The project marks a major milestone for Pakistan’s energy and industrial sectors. The refinery will be established in Dhabeji, Thatta district. Following the approval, th",
+      "published_at": "2026-08-30T07:31:24Z",
+      "first_recorded_at": "2026-08-30T08:43:46Z",
+      "last_recorded_at": "2026-08-30T08:43:46Z",
+      "source_ids": [
+        "daily-cpec-china-pakistan"
+      ],
+      "source_names": [
+        "The Daily CPEC — China-Pakistan"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-fb551734e8d85780294968a3"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "economy",
+        "politics"
+      ],
+      "region_tags": [
+        "bri",
+        "gwadar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "daily-cpec-china-pakistan",
+          "title": "$3.5B Falcon Oils Refinery Wins CPEC Approval",
+          "url": "https://thedailycpec.com/3-5b-falcon-oils-refinery-wins-cpec-approval/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-a89297573dd51aa1d3ba411c",
+      "event_url": "https://palimpsest.info/news/wire/event-a89297573dd51aa1d3ba411c/",
+      "event_page_available": true,
+      "headline": "NUG reports 88 civilians killed in airstrikes as military blockades aid to flood-ravaged Myanmar",
+      "dek": "At least 88 civilians have been killed and 157 others injured in 239 airstrikes carried out by the Myanmar Air Force from Aug. 8-23, according to a report released by the National Unity Government (NUG). The intensified aerial bombardment spanned Sagaing, Magway, Mandalay, Tanintharyi, and Bago regions, as well as Arak",
+      "published_at": "2026-08-30T06:50:52Z",
+      "first_recorded_at": "2026-08-30T08:43:46Z",
+      "last_recorded_at": "2026-08-30T08:43:46Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-338e7793d2a0c52468167f7e"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "government",
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "NUG reports 88 civilians killed in airstrikes as military blockades aid to flood-ravaged Myanmar",
+          "url": "https://english.dvb.no/nug-reports-88-civilians-killed-in-airstrikes-as-military-blockades-aid-to-flood-ravaged-myanmar/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
+      "event_id": "event-0cb71c8d09261f06835bfdab",
+      "event_url": "https://palimpsest.info/news/wire/event-0cb71c8d09261f06835bfdab/",
+      "event_page_available": true,
+      "headline": "Myanmar’s Taungbyone Spirit Festival keeps ancient animist rituals alive",
+      "dek": "As monsoon rains pound the heartlands of war-fractured Myanmar, “spirit consorts” gather to renew their vows with a pantheon of gods hailed for their powers to protect and destroy. Drinking, dancing and swooning, the dazzling mediums communed with the 111 divine ghosts of ancient Burmese folk religion at Taungbyone Fes",
+      "published_at": "2026-08-30T06:30:10Z",
+      "first_recorded_at": "2026-08-30T08:43:46Z",
+      "last_recorded_at": "2026-08-30T08:43:46Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 1,
+      "version_ids": [
+        "eventv-24dfe5391835d6f846815916"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Myanmar’s Taungbyone Spirit Festival keeps ancient animist rituals alive",
+          "url": "https://english.dvb.no/myanmars-taungbyone-spirit-festival-keeps-ancient-animist-rituals-alive/"
+        }
+      ],
+      "english_translation": null
+    },
     {
       "event_id": "event-1623f1d617575f96a5fc6297",
       "event_url": "https://palimpsest.info/news/wire/event-1623f1d617575f96a5fc6297/",
@@ -933,7 +1103,7 @@
       "event_url": "https://palimpsest.info/news/wire/event-791edd0fa319214afe68c9c0/",
       "event_page_available": true,
       "headline": "Pakistani Mangoes Reach Xinjiang by Land",
-      "dek": "A 2-ton shipment of Pakistani mangoes has arrived in China’s Xinjiang region for the first time this year. The consignment cleared customs and entered markets in Kashgar and Korla. The mangoes entered Xinjiang through a China-Pakistan land port. Customs authorities used a dedicated clearance process to maintain fruit q",
+      "dek": null,
       "published_at": "2026-08-28T07:03:35Z",
       "first_recorded_at": "2026-08-29T19:00:35Z",
       "last_recorded_at": "2026-08-29T19:00:35Z",
@@ -948,22 +1118,13 @@
       "version_ids": [
         "eventv-c584fa0a6a5640abc282479c"
       ],
-      "current_in_wire": true,
-      "topics": [
-        "economy",
-        "politics"
-      ],
+      "current_in_wire": false,
+      "topics": [],
       "region_tags": [
         "bri",
         "gwadar"
       ],
-      "publisher_links": [
-        {
-          "source_id": "daily-cpec-china-pakistan",
-          "title": "Pakistani Mangoes Reach Xinjiang by Land",
-          "url": "https://thedailycpec.com/pakistani-mangoes-reach-xinjiang-by-land/"
-        }
-      ],
+      "publisher_links": [],
       "english_translation": null
     },
     {
@@ -1075,11 +1236,51 @@
       "english_translation": null
     },
     {
+      "event_id": "event-d59970aaa4d85060cc1b0afe",
+      "event_url": "https://palimpsest.info/news/wire/event-d59970aaa4d85060cc1b0afe/",
+      "event_page_available": true,
+      "headline": "Investigating International Crimes in Myanmar [AUDIO]",
+      "dek": "The Independent Investigative Mechanism for Myanmar (IIMM) released its 2026 Annual Report on Aug. 11. Lead investigator Nicholas Koumjian told DVB that civilians continue to bear the brunt of the conflict in Myanmar since the 2021 military coup. Read more Watch the IIMM 2026 Annual Report, here. The post Investigating",
+      "published_at": "2026-08-28T02:59:25Z",
+      "first_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-30T08:43:46Z",
+      "source_ids": [
+        "dvb-english"
+      ],
+      "source_names": [
+        "Democratic Voice of Burma — English"
+      ],
+      "evidence_strength": "single-source",
+      "version_count": 2,
+      "version_ids": [
+        "eventv-01652e26dcd3bb7feef7f6e4",
+        "eventv-f18605a61bf5e69eddaa2903"
+      ],
+      "current_in_wire": true,
+      "topics": [
+        "politics",
+        "rights",
+        "security"
+      ],
+      "region_tags": [
+        "bri",
+        "myanmar"
+      ],
+      "publisher_links": [
+        {
+          "source_id": "dvb-english",
+          "title": "Investigating International Crimes in Myanmar [AUDIO]",
+          "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar-audio/"
+        }
+      ],
+      "english_translation": null
+    },
+    {
       "event_id": "event-364d582351325318e6b7b21f",
       "event_url": "https://palimpsest.info/news/wire/event-364d582351325318e6b7b21f/",
       "event_page_available": true,
       "headline": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
-      "dek": "Malaysia will repatriate 1,476 Myanmar nationals next month in the first phase of a voluntary program, the Home Ministry said on Thursday, as the government moves to address the country’s long-running refugee and undocumented migrant issue. The repatriation is part of a broader program involving 5,000 eligible Myanmar",
+      "dek": null,
       "published_at": "2026-08-28T02:17:54Z",
       "first_recorded_at": "2026-08-29T20:10:35Z",
       "last_recorded_at": "2026-08-29T20:10:35Z",
@@ -1094,68 +1295,13 @@
       "version_ids": [
         "eventv-1991f499be071205bd84e1fd"
       ],
-      "current_in_wire": true,
-      "topics": [
-        "government",
-        "politics",
-        "rights",
-        "security"
-      ],
+      "current_in_wire": false,
+      "topics": [],
       "region_tags": [
         "bri",
         "myanmar"
       ],
-      "publisher_links": [
-        {
-          "source_id": "dvb-english",
-          "title": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
-          "url": "https://english.dvb.no/malaysia-to-return-1476-myanmar-nationals-in-first-phase-of-voluntary-repatriation-program/"
-        }
-      ],
-      "english_translation": null
-    },
-    {
-      "event_id": "event-d59970aaa4d85060cc1b0afe",
-      "event_url": "https://palimpsest.info/news/wire/event-d59970aaa4d85060cc1b0afe/",
-      "event_page_available": true,
-      "headline": "Investigating International Crimes in Myanmar",
-      "dek": "The Independent Investigative Mechanism for Myanmar (IIMM) released its 2026 Annual Report on Aug. 11. Lead investigator Nicholas Koumjian told DVB that civilians continue to bear the brunt of the conflict in Myanmar since the 2021 military coup. Read more Watch the IIMM 2026 Annual Report press conference at the U.N.",
-      "published_at": "2026-08-28T01:37:09Z",
-      "first_recorded_at": "2026-08-29T20:10:35Z",
-      "last_recorded_at": "2026-08-29T20:10:35Z",
-      "source_ids": [
-        "dvb-english"
-      ],
-      "source_names": [
-        "Democratic Voice of Burma — English"
-      ],
-      "evidence_strength": "single-source",
-      "version_count": 1,
-      "version_ids": [
-        "eventv-01652e26dcd3bb7feef7f6e4"
-      ],
-      "current_in_wire": true,
-      "topics": [
-        "politics",
-        "rights",
-        "security"
-      ],
-      "region_tags": [
-        "bri",
-        "myanmar"
-      ],
-      "publisher_links": [
-        {
-          "source_id": "dvb-english",
-          "title": "Investigating International Crimes in Myanmar",
-          "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar/"
-        },
-        {
-          "source_id": "dvb-english",
-          "title": "Investigating International Crimes in Myanmar [AUDIO]",
-          "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar-audio/"
-        }
-      ],
+      "publisher_links": [],
       "english_translation": null
     },
     {
@@ -1609,11 +1755,11 @@
       "event_id": "event-1fb7883d267f9ee81d9ea458",
       "event_url": "https://palimpsest.info/news/wire/event-1fb7883d267f9ee81d9ea458/",
       "event_page_available": true,
-      "headline": "Death toll in Pishin attack rises to six",
-      "dek": "Meanwhile, two Afghan nationals were shot dead by unidentified armed men near Sheikh Zayed Hospital in Quetta",
-      "published_at": "2026-08-25T23:14:06Z",
+      "headline": "Death toll in Pishin gun attack on labourers rises to six",
+      "dek": "Police said six labourers were killed after armed men opened fire on them in Saranan a day earlier",
+      "published_at": "2026-08-25T12:00:33Z",
       "first_recorded_at": "2026-08-29T20:10:35Z",
-      "last_recorded_at": "2026-08-29T20:10:35Z",
+      "last_recorded_at": "2026-08-30T08:43:46Z",
       "source_ids": [
         "express-tribune-balochistan"
       ],
@@ -1621,9 +1767,10 @@
         "The Express Tribune — Balochistan"
       ],
       "evidence_strength": "single-source",
-      "version_count": 1,
+      "version_count": 2,
       "version_ids": [
-        "eventv-4fa18ab909760c3284c1678b"
+        "eventv-4fa18ab909760c3284c1678b",
+        "eventv-42ec918b4fa0962179131159"
       ],
       "current_in_wire": true,
       "topics": [
@@ -1636,6 +1783,11 @@
         "balochistan"
       ],
       "publisher_links": [
+        {
+          "source_id": "express-tribune-balochistan",
+          "title": "Death toll in Pishin gun attack on labourers rises to six",
+          "url": "https://tribune.com.pk/story/2625821/death-toll-in-pishin-gun-attack-on-labourers-rises-to-six"
+        },
         {
           "source_id": "express-tribune-balochistan",
           "title": "Death toll in Pishin attack rises to six",
@@ -1874,7 +2026,7 @@
       "publisher_links": [],
       "english_translation": {
         "translation_id": "zhtr-ecb4a53bafe4fa903d1fa7bb",
-        "public_url": "/news/china/english/page/15/#translation-zhtr-ecb4a53bafe4fa903d1fa7bb",
+        "public_url": "/news/china/english/page/16/#translation-zhtr-ecb4a53bafe4fa903d1fa7bb",
         "title_en": "First Test Train Departs! Dynamic Testing Officially Starts for CCCC's East Coast Rail Link",
         "context_en": "Kuala Lumpur, August 22 (Reporter Liu Yu-ying) - China News Service reports that as the first test train set off, Phase 1 of the East Coast Rail Link (ECRL) in Malaysia—a flagship project of high-quality Belt and Road cooperation between China and Malaysia, spanning from Kota Bharu in Kelantan to Gombak in Selangor—has officially entered the stage of dynamic testing and fault-free operation, according to the CCCC ECRL project team.",
         "translation_notes_en": "",
@@ -2153,5 +2305,5 @@
     "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
     "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump."
   ],
-  "content_sha256": "63ac7b6257340356e9e0059ac3a1ede3160caf325f36b29e15b072703f6dd8a9"
+  "content_sha256": "24d94bb788221a7c94217be57e8624992856a74ac8567086df45e9f7fd514d50"
 }

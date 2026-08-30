@@ -2,7 +2,7 @@
   "schema_version": "palimpsest.regional-data-dump.v1",
   "region": "myanmar",
   "label": "Myanmar",
-  "generated_at": "2026-08-30T07:25:25Z",
+  "generated_at": "2026-08-30T08:45:26Z",
   "publication_boundary": {
     "role": "public research context",
     "cross_lane_causality": "prohibited",
@@ -14,7 +14,7 @@
     "schema_version": "palimpsest.regional-captured-index.v1",
     "region": "myanmar",
     "label": "Myanmar",
-    "generated_at": "2026-08-30T07:25:25Z",
+    "generated_at": "2026-08-30T08:45:26Z",
     "scope": "Every unique event retained in the append-only Palimpsest event-version ledger that matches this regional lane by reviewed source identity or bounded title metadata, plus every matching event in the current wire.",
     "classification": {
       "overlap_allowed": true,
@@ -30,43 +30,43 @@
       "source_policy": "config/news_sources.json"
     },
     "inputs": {
-      "newswire_generated_at": "2026-08-30T07:25:25Z",
+      "newswire_generated_at": "2026-08-30T08:45:26Z",
       "newswire_window": {
-        "from": "2026-08-23T07:25:25Z",
+        "from": "2026-08-23T08:45:26Z",
         "hours": 168,
-        "to": "2026-08-30T07:25:25Z"
+        "to": "2026-08-30T08:45:26Z"
       },
-      "newswire_versions_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
+      "newswire_versions_sha256": "4964b729d8c8a7889f5b71890627df5e0af403c8fca14b1a0b75419884d59768",
       "source_registry_sha256": "7738ab6e4e275f9eb515593a2a2962de5ec8271c7c1b9cb287eb616932accd14",
       "chinese_translation_sidecar": {
         "schema_version": "chinese-translations-v1",
-        "generated_at": "2026-08-30T07:25:25Z",
-        "newswire_sha256": "fd12a19ae11362a9802ef3942938cb18698879fae5b2b936436085aa7d79083b",
-        "newswire_ledger_sha256": "1b2ca3d89b085f918e20f2032fcf2b3ee21e8d7fdf02421c6b25d358dbe1af7a",
-        "newswire_ledger_rows": 4320,
-        "translated_records": 2207,
+        "generated_at": "2026-08-30T08:45:26Z",
+        "newswire_sha256": "03ebaa57ee9b480f6b090632c3f76bea1cf1c8013f47d5c7e2a4f2d6b7c76ca7",
+        "newswire_ledger_sha256": "4964b729d8c8a7889f5b71890627df5e0af403c8fca14b1a0b75419884d59768",
+        "newswire_ledger_rows": 4339,
+        "translated_records": 2217,
         "missing_records": 0
       }
     },
     "capture_universe": {
-      "event_versions": 4320,
-      "unique_events": 3059,
-      "current_wire_events": 561
+      "event_versions": 4339,
+      "unique_events": 3072,
+      "current_wire_events": 559
     },
     "counts": {
-      "event_versions": 29,
-      "unique_events": 25,
-      "current_events": 19,
-      "historical_events": 6,
-      "event_pages_available": 21,
+      "event_versions": 32,
+      "unique_events": 27,
+      "current_events": 20,
+      "historical_events": 7,
+      "event_pages_available": 23,
       "sources": 7,
       "events_with_english_translation": 3
     },
     "coverage": {
       "earliest_published_at": "2026-08-06T13:34:05Z",
-      "latest_published_at": "2026-08-30T02:21:53Z",
+      "latest_published_at": "2026-08-30T06:50:52Z",
       "earliest_recorded_at": "2026-08-11T14:55:03Z",
-      "latest_recorded_at": "2026-08-30T02:25:11Z"
+      "latest_recorded_at": "2026-08-30T08:43:46Z"
     },
     "sources": [
       {
@@ -85,7 +85,7 @@
         "role": "media",
         "independence_group": "dvb-english-editorial",
         "rights_policy": "metadata-link-only",
-        "captured_event_count": 9
+        "captured_event_count": 11
       },
       {
         "source_id": "financial-times-china",
@@ -134,6 +134,85 @@
       }
     ],
     "events": [
+      {
+        "event_id": "event-a89297573dd51aa1d3ba411c",
+        "event_url": "https://palimpsest.info/news/wire/event-a89297573dd51aa1d3ba411c/",
+        "event_page_available": true,
+        "headline": "NUG reports 88 civilians killed in airstrikes as military blockades aid to flood-ravaged Myanmar",
+        "dek": "At least 88 civilians have been killed and 157 others injured in 239 airstrikes carried out by the Myanmar Air Force from Aug. 8-23, according to a report released by the National Unity Government (NUG). The intensified aerial bombardment spanned Sagaing, Magway, Mandalay, Tanintharyi, and Bago regions, as well as Arak",
+        "published_at": "2026-08-30T06:50:52Z",
+        "first_recorded_at": "2026-08-30T08:43:46Z",
+        "last_recorded_at": "2026-08-30T08:43:46Z",
+        "source_ids": [
+          "dvb-english"
+        ],
+        "source_names": [
+          "Democratic Voice of Burma — English"
+        ],
+        "evidence_strength": "single-source",
+        "version_count": 1,
+        "version_ids": [
+          "eventv-338e7793d2a0c52468167f7e"
+        ],
+        "current_in_wire": true,
+        "topics": [
+          "government",
+          "politics",
+          "rights",
+          "security"
+        ],
+        "region_tags": [
+          "bri",
+          "myanmar"
+        ],
+        "publisher_links": [
+          {
+            "source_id": "dvb-english",
+            "title": "NUG reports 88 civilians killed in airstrikes as military blockades aid to flood-ravaged Myanmar",
+            "url": "https://english.dvb.no/nug-reports-88-civilians-killed-in-airstrikes-as-military-blockades-aid-to-flood-ravaged-myanmar/"
+          }
+        ],
+        "english_translation": null
+      },
+      {
+        "event_id": "event-0cb71c8d09261f06835bfdab",
+        "event_url": "https://palimpsest.info/news/wire/event-0cb71c8d09261f06835bfdab/",
+        "event_page_available": true,
+        "headline": "Myanmar’s Taungbyone Spirit Festival keeps ancient animist rituals alive",
+        "dek": "As monsoon rains pound the heartlands of war-fractured Myanmar, “spirit consorts” gather to renew their vows with a pantheon of gods hailed for their powers to protect and destroy. Drinking, dancing and swooning, the dazzling mediums communed with the 111 divine ghosts of ancient Burmese folk religion at Taungbyone Fes",
+        "published_at": "2026-08-30T06:30:10Z",
+        "first_recorded_at": "2026-08-30T08:43:46Z",
+        "last_recorded_at": "2026-08-30T08:43:46Z",
+        "source_ids": [
+          "dvb-english"
+        ],
+        "source_names": [
+          "Democratic Voice of Burma — English"
+        ],
+        "evidence_strength": "single-source",
+        "version_count": 1,
+        "version_ids": [
+          "eventv-24dfe5391835d6f846815916"
+        ],
+        "current_in_wire": true,
+        "topics": [
+          "politics",
+          "rights",
+          "security"
+        ],
+        "region_tags": [
+          "bri",
+          "myanmar"
+        ],
+        "publisher_links": [
+          {
+            "source_id": "dvb-english",
+            "title": "Myanmar’s Taungbyone Spirit Festival keeps ancient animist rituals alive",
+            "url": "https://english.dvb.no/myanmars-taungbyone-spirit-festival-keeps-ancient-animist-rituals-alive/"
+          }
+        ],
+        "english_translation": null
+      },
       {
         "event_id": "event-f265dd95194f52b2c0264fbd",
         "event_url": "https://palimpsest.info/news/wire/event-f265dd95194f52b2c0264fbd/",
@@ -480,11 +559,51 @@
         "english_translation": null
       },
       {
+        "event_id": "event-d59970aaa4d85060cc1b0afe",
+        "event_url": "https://palimpsest.info/news/wire/event-d59970aaa4d85060cc1b0afe/",
+        "event_page_available": true,
+        "headline": "Investigating International Crimes in Myanmar [AUDIO]",
+        "dek": "The Independent Investigative Mechanism for Myanmar (IIMM) released its 2026 Annual Report on Aug. 11. Lead investigator Nicholas Koumjian told DVB that civilians continue to bear the brunt of the conflict in Myanmar since the 2021 military coup. Read more Watch the IIMM 2026 Annual Report, here. The post Investigating",
+        "published_at": "2026-08-28T02:59:25Z",
+        "first_recorded_at": "2026-08-29T20:10:35Z",
+        "last_recorded_at": "2026-08-30T08:43:46Z",
+        "source_ids": [
+          "dvb-english"
+        ],
+        "source_names": [
+          "Democratic Voice of Burma — English"
+        ],
+        "evidence_strength": "single-source",
+        "version_count": 2,
+        "version_ids": [
+          "eventv-01652e26dcd3bb7feef7f6e4",
+          "eventv-f18605a61bf5e69eddaa2903"
+        ],
+        "current_in_wire": true,
+        "topics": [
+          "politics",
+          "rights",
+          "security"
+        ],
+        "region_tags": [
+          "bri",
+          "myanmar"
+        ],
+        "publisher_links": [
+          {
+            "source_id": "dvb-english",
+            "title": "Investigating International Crimes in Myanmar [AUDIO]",
+            "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar-audio/"
+          }
+        ],
+        "english_translation": null
+      },
+      {
         "event_id": "event-364d582351325318e6b7b21f",
         "event_url": "https://palimpsest.info/news/wire/event-364d582351325318e6b7b21f/",
         "event_page_available": true,
         "headline": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
-        "dek": "Malaysia will repatriate 1,476 Myanmar nationals next month in the first phase of a voluntary program, the Home Ministry said on Thursday, as the government moves to address the country’s long-running refugee and undocumented migrant issue. The repatriation is part of a broader program involving 5,000 eligible Myanmar",
+        "dek": null,
         "published_at": "2026-08-28T02:17:54Z",
         "first_recorded_at": "2026-08-29T20:10:35Z",
         "last_recorded_at": "2026-08-29T20:10:35Z",
@@ -499,68 +618,13 @@
         "version_ids": [
           "eventv-1991f499be071205bd84e1fd"
         ],
-        "current_in_wire": true,
-        "topics": [
-          "government",
-          "politics",
-          "rights",
-          "security"
-        ],
+        "current_in_wire": false,
+        "topics": [],
         "region_tags": [
           "bri",
           "myanmar"
         ],
-        "publisher_links": [
-          {
-            "source_id": "dvb-english",
-            "title": "Malaysia to return 1,476 Myanmar nationals in first phase of voluntary repatriation program",
-            "url": "https://english.dvb.no/malaysia-to-return-1476-myanmar-nationals-in-first-phase-of-voluntary-repatriation-program/"
-          }
-        ],
-        "english_translation": null
-      },
-      {
-        "event_id": "event-d59970aaa4d85060cc1b0afe",
-        "event_url": "https://palimpsest.info/news/wire/event-d59970aaa4d85060cc1b0afe/",
-        "event_page_available": true,
-        "headline": "Investigating International Crimes in Myanmar",
-        "dek": "The Independent Investigative Mechanism for Myanmar (IIMM) released its 2026 Annual Report on Aug. 11. Lead investigator Nicholas Koumjian told DVB that civilians continue to bear the brunt of the conflict in Myanmar since the 2021 military coup. Read more Watch the IIMM 2026 Annual Report press conference at the U.N.",
-        "published_at": "2026-08-28T01:37:09Z",
-        "first_recorded_at": "2026-08-29T20:10:35Z",
-        "last_recorded_at": "2026-08-29T20:10:35Z",
-        "source_ids": [
-          "dvb-english"
-        ],
-        "source_names": [
-          "Democratic Voice of Burma — English"
-        ],
-        "evidence_strength": "single-source",
-        "version_count": 1,
-        "version_ids": [
-          "eventv-01652e26dcd3bb7feef7f6e4"
-        ],
-        "current_in_wire": true,
-        "topics": [
-          "politics",
-          "rights",
-          "security"
-        ],
-        "region_tags": [
-          "bri",
-          "myanmar"
-        ],
-        "publisher_links": [
-          {
-            "source_id": "dvb-english",
-            "title": "Investigating International Crimes in Myanmar",
-            "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar/"
-          },
-          {
-            "source_id": "dvb-english",
-            "title": "Investigating International Crimes in Myanmar [AUDIO]",
-            "url": "https://english.dvb.no/investigating-international-crimes-in-myanmar-audio/"
-          }
-        ],
+        "publisher_links": [],
         "english_translation": null
       },
       {
@@ -1127,7 +1191,7 @@
       "A source-specific lane can include a relevant regional item whose headline omits the place name; records may therefore appear in multiple lanes.",
       "Restricted article bodies and licensed event-level datasets are not copied into this metadata dump."
     ],
-    "content_sha256": "43432b9a1e4fa0e64602e5a0b753e047d4dcda7dc010d44277c9f80ef34b3c5e"
+    "content_sha256": "5ae592ece96e16766a22434f94d777123aecbf0801ceed0e4c06cf2c9343f1dd"
   },
   "editorial_evidence": {
     "schema_version": "palimpsest.regional-editorial-evidence.v1",
@@ -54903,5 +54967,5 @@
     "The coverage contract includes registered, pending and unavailable routes; registration is not a captured observation.",
     "No cross-lane join in this dump proves that a BRI project caused conflict, repression, benefit or harm."
   ],
-  "content_sha256": "b9251903641c9e9b0cd389b70670e6d3dd274ec270be1362cf37f7689831d56b"
+  "content_sha256": "0e1b9473aa681fea65b893e5e5e4f85cd52849bbbd3e8a577b4aaa63e8c21ab4"
 }
