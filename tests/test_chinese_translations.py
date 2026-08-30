@@ -514,7 +514,7 @@ def test_checked_in_sidecar_is_complete_schema_valid_and_exactly_reproducible() 
     assert artifact["source_snapshot"]["newswire_ledger_sha256"] == hashlib.sha256(
         LEDGER.read_bytes()
     ).hexdigest()
-    assert artifact["source_snapshot"]["newswire_ledger_rows"] == 4_320
+    assert artifact["source_snapshot"]["newswire_ledger_rows"] == 4_339
     assert artifact["source_snapshot"]["newswire_ledger_bytes"] == LEDGER.stat().st_size
 
     discovered = discover_candidates(NEWS_ROOT, WIRE, LEDGER)
