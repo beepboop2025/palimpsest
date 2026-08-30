@@ -20,7 +20,7 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
 
-from scripts import stage_pages_rights
+from scripts import share_cards, stage_pages_rights
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -236,9 +236,9 @@ def test_regional_archives_validate_and_keep_article_bodies_outside_publication(
         == "iri"
     )
     assert (
-        REGIONAL_CAPTURED_INDEX_SCHEMA["$defs"]["publisher_link"]["properties"][
-            "url"
-        ]["format"]
+        REGIONAL_CAPTURED_INDEX_SCHEMA["$defs"]["publisher_link"]["properties"]["url"][
+            "format"
+        ]
         == "iri"
     )
     Draft202012Validator(
@@ -264,12 +264,15 @@ def test_regional_archives_validate_and_keep_article_bodies_outside_publication(
         assert captured["counts"]["event_versions"] == sum(
             event["version_count"] for event in captured["events"]
         )
-        assert captured["counts"]["current_events"] + captured["counts"][
-            "historical_events"
-        ] == captured["counts"]["unique_events"]
-        assert captured["counts"]["event_pages_available"] <= captured["counts"][
-            "unique_events"
-        ]
+        assert (
+            captured["counts"]["current_events"]
+            + captured["counts"]["historical_events"]
+            == captured["counts"]["unique_events"]
+        )
+        assert (
+            captured["counts"]["event_pages_available"]
+            <= captured["counts"]["unique_events"]
+        )
         assert captured["counts"]["events_with_english_translation"] == sum(
             event["english_translation"] is not None for event in captured["events"]
         )
@@ -291,12 +294,14 @@ def test_regional_archives_validate_and_keep_article_bodies_outside_publication(
             assert captured["region"] in event["region_tags"]
         translation_input = captured["inputs"]["chinese_translation_sidecar"]
         assert translation_input is not None
-        assert translation_input["newswire_ledger_sha256"] == captured["inputs"][
-            "newswire_versions_sha256"
-        ]
-        assert translation_input["newswire_ledger_rows"] == captured[
-            "capture_universe"
-        ]["event_versions"]
+        assert (
+            translation_input["newswire_ledger_sha256"]
+            == captured["inputs"]["newswire_versions_sha256"]
+        )
+        assert (
+            translation_input["newswire_ledger_rows"]
+            == captured["capture_universe"]["event_versions"]
+        )
         assert translation_input["missing_records"] == 0
         assert captured["rights"] == {
             "publication_mode": "metadata-link-only",
@@ -1218,6 +1223,53 @@ def test_exact_reviewed_binary_is_allowed_and_digest_drift_is_refused(tmp_path: 
     with pytest.raises(
         stage_pages_rights.PagesRightsError,
         match="opaque public artifact lacks exact path-and-digest review",
+    ):
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+
+def test_generated_share_cards_require_reproducible_specs_not_png_allowlisting(
+    tmp_path: Path,
+):
+    _write_minimal_denied_tree(tmp_path)
+    spec = {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "instrument-reading",
+        "kicker": "Command desk / evidence reading",
+        "title": "Current evidence remains explicitly bounded",
+        "status": "live",
+        "status_label": "Current evidence",
+        "metric": {"value": "84.4%", "label": "empirical coverage"},
+        "as_of": "2026-08-30T07:32:12Z",
+        "source": "forecast-ledger-latest.json",
+        "receipt": "SHA256 92dd686d31a4e373",
+        "target_url": "https://palimpsest.info/news/forecast-ledger/",
+    }
+    card = share_cards.render_card(spec)
+    card_path = tmp_path / card.path
+    card_path.parent.mkdir(parents=True, exist_ok=True)
+    card_path.write_bytes(card.png)
+    manifest_path = tmp_path / share_cards.MANIFEST_PATH
+    manifest_path.write_bytes(share_cards.manifest_bytes([card]))
+
+    assert stage_pages_rights.find_denied_value_paths(
+        tmp_path, evaluated_at=RIGHTS_CLOCK
+    ) == [
+        "readings/china-econ-observations.jsonl",
+        "readings/china-situation-latest.json",
+    ]
+
+    card_path.write_bytes(card.png + b"drift")
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="does not reproduce from its spec",
+    ):
+        stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+    card_path.write_bytes(card.png)
+    manifest_path.unlink()
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="generated share card lacks a reproducing manifest row",
     ):
         stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 

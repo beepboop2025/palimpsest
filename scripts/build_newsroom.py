@@ -50,7 +50,7 @@ from core.live_paths import (
     resolve_newswire_path,
     resolve_readings_dir,
 )
-from scripts import site_nav
+from scripts import share_cards, site_nav
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -141,6 +141,7 @@ _MACHINE_REVISION_FILENAME = re.compile(r"machinev-[0-9a-f]{24}\.json")
 _EVENT_ANALYSIS_REVISION_FILENAME = re.compile(r"analysisv-[0-9a-f]{24}\.json")
 _EVENT_REVISION_FILENAME = re.compile(r"eventv-[0-9a-f]{24}\.json")
 _WIRE_EVENT_DIRECTORY = re.compile(r"event-[0-9a-f]{24}")
+_SHARE_CARD_FILENAME = re.compile(r"sha256-[0-9a-f]{64}\.png")
 _MACHINE_EVIDENCE_FILENAME = re.compile(r"sha256-[0-9a-f]{64}\.json")
 _ANALYSIS_CASE_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 MAX_WIRE_HISTORY_FILES = 100_000
@@ -1122,6 +1123,346 @@ def _status_label(status: str) -> str:
     }[status]
 
 
+def _story_share_card_spec(
+    story: Mapping[str, Any], *, section: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Bind one instrument card to the same state and metric shown on its page."""
+
+    status = story["status"]
+    evidence = story["evidence"]
+    source_input = evidence["input"]
+    metric = None
+    if status == "live" and story["metric"]["value"] is not None:
+        metric = {
+            "value": _metric_value(story),
+            "label": _metric_caption(story),
+        }
+    digest = source_input.get("sha256")
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "instrument-reading",
+        "kicker": f"{section['title']} / EVIDENCE READING",
+        "title": story["headline"],
+        "status": status,
+        "status_label": _status_label(status),
+        "metric": metric,
+        "as_of": evidence.get("source_timestamp"),
+        "source": source_input.get("filename"),
+        "receipt": f"SHA256 {digest[:16]}" if isinstance(digest, str) else None,
+        "target_url": story["url"],
+    }
+
+
+def _event_share_card_spec(
+    event: Mapping[str, Any], *, analysis: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    """Describe one attributed dossier without upgrading it into verified news."""
+
+    source_names = list(
+        dict.fromkeys(ref["source_name"] for ref in event["evidence_refs"])
+    )
+    group_count = len(event["evidence_groups"])
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "wire-event",
+        "kicker": f"{EVENT_DESKS[event['desk']]} / PUBLISHER SOURCE RECORD",
+        "title": event["headline"],
+        "status": "attributed",
+        "status_label": "ATTRIBUTED / NOT INDEPENDENTLY VERIFIED",
+        "metric": {
+            "value": str(group_count),
+            "label": (
+                "INDEPENDENT SOURCE GROUP"
+                if group_count == 1
+                else "INDEPENDENT SOURCE GROUPS"
+            ),
+        },
+        "as_of": (
+            max(event["updated_at"], analysis["generated_at"])
+            if analysis is not None
+            else event["updated_at"]
+        ),
+        "source": ", ".join(source_names),
+        "receipt": event["version_id"],
+        "target_url": event["url"],
+    }
+
+
+def _edition_share_card_spec(feed: Mapping[str, Any]) -> dict[str, Any]:
+    lead = _select_lead(feed["stories"])
+    metric = None
+    if lead["status"] == "live" and lead["metric"]["value"] is not None:
+        metric = {"value": _metric_value(lead), "label": _metric_caption(lead)}
+    coverage = feed["coverage"]
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "newsroom-edition",
+        "kicker": "PALIMPSEST WIRE / CURRENT EDITION",
+        "title": lead["headline"],
+        "status": "edition",
+        "status_label": (
+            f"{coverage['status'].upper()} COVERAGE / "
+            f"{coverage['live']} OF {coverage['total']} LIVE"
+        ),
+        "metric": metric,
+        "as_of": feed["generated_at"],
+        "source": Path(urlsplit(feed["source"]).path).name,
+        "receipt": f"COMMIT {feed['source_commit'][:16]}",
+        "target_url": feed["url"],
+    }
+
+
+def _investigation_share_card_spec(case: Mapping[str, Any]) -> dict[str, Any]:
+    labels = {
+        "published": "PUBLISHED INVESTIGATION",
+        "abstained": "EDITORIAL ABSTENTION / NO FINDING",
+        "evidence_gathering": "EVIDENCE GATHERING / NOT A FINDING",
+    }
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "investigation-case",
+        "kicker": "INVESTIGATIONS / EVIDENCE CASE FILE",
+        "title": case["title"],
+        "status": case["status"],
+        "status_label": labels[case["status"]],
+        "metric": None,
+        "as_of": case["updated_at"],
+        "source": "STRUCTURED INVESTIGATIONS DESK",
+        "receipt": case["version_id"],
+        "target_url": _case_public_url(case),
+    }
+
+
+def _machine_share_card_spec(case: Mapping[str, Any]) -> dict[str, Any]:
+    is_article = _machine_is_article(case)
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "machine-analysis",
+        "kicker": "DETERMINISTIC MACHINE ANALYSIS / NO HUMAN INTERVIEW",
+        "title": case["title"],
+        "status": case["status"],
+        "status_label": (
+            "PUBLISHED ANALYSIS REPORT"
+            if is_article
+            else "ABSTENTION REPORT / EVIDENCE GATE NOT MET"
+        ),
+        "metric": None,
+        "as_of": case["updated_at"],
+        "source": "AGGREGATE PUBLIC EVIDENCE ONLY",
+        "receipt": case["revision_id"],
+        "target_url": _machine_case_public_url(case),
+    }
+
+
+def _china_analysis_share_card_spec(article: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "china-analysis",
+        "kicker": article["kicker"],
+        "title": article["title"],
+        "status": article["finding_state"],
+        "status_label": "INSTRUMENT WARNING / VALUES WITHHELD",
+        "metric": None,
+        "as_of": article["updated_at"],
+        "source": "PALIMPSEST NEWSROOM EDITION",
+        "receipt": article["revision_id"],
+        "target_url": f"{SITE}{article['url']}",
+    }
+
+
+def _economic_share_card_spec(pulse: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": share_cards.SPEC_VERSION,
+        "kind": "economic-pulse",
+        "kicker": "CHINA ECONOMIC EVIDENCE / COMPOSITE GATE",
+        "title": "The economic pulse abstains - and shows you exactly why.",
+        "status": pulse["economic_state"]["status"],
+        "status_label": "WARMING UP / DIRECTION WITHHELD",
+        "metric": None,
+        "as_of": pulse["as_of"],
+        "source": pulse["source"],
+        "receipt": pulse["pulse_id"],
+        "target_url": f"{SITE}/news/economy/",
+    }
+
+
+def _historical_wire_share_outputs(
+    *,
+    archive_root: Path,
+    current_event_ids: frozenset[str],
+) -> tuple[dict[str, share_cards.RenderedCard], dict[Path, bytes]]:
+    """Contextualize retained dossier aliases without rewriting immutable JSON."""
+
+    cards: dict[str, share_cards.RenderedCard] = {}
+    html_outputs: dict[Path, bytes] = {}
+    wire_root = archive_root / "news" / "wire"
+    if not wire_root.is_dir() or wire_root.is_symlink():
+        return cards, html_outputs
+    for event_directory in sorted(
+        wire_root.glob("event-*"), key=lambda path: path.name
+    ):
+        event_id = event_directory.name
+        if event_id in current_event_ids:
+            continue
+        if (
+            _WIRE_EVENT_DIRECTORY.fullmatch(event_id) is None
+            or event_directory.is_symlink()
+            or not event_directory.is_dir()
+        ):
+            continue
+        base = Path("news/wire") / event_id
+        story_raw = _read_bounded_regular_file(
+            base / "story.json",
+            root=archive_root,
+            max_bytes=machine_investigations_model.MAX_OUTPUT_BYTES,
+            label="historical event alias",
+        )
+        html_raw = _read_bounded_regular_file(
+            base / "index.html",
+            root=archive_root,
+            max_bytes=machine_investigations_model.MAX_OUTPUT_BYTES,
+            label="historical event page",
+        )
+        if story_raw is None or html_raw is None:
+            raise newsroom.NewsroomError(
+                f"historical wire event lacks its story/page pair: {event_id}"
+            )
+        try:
+            event = newswire_model.strict_json_loads(
+                story_raw, label=f"historical event alias {event_id}"
+            )
+            newswire_model._validate_public_event(event, event_id)
+        except (TypeError, ValueError, newswire_model.NewswireError) as exc:
+            raise newsroom.NewsroomError(
+                f"invalid historical wire event alias: {event_id}"
+            ) from exc
+        if (
+            event["event_id"] != event_id
+            or event["url"] != f"{SITE}/news/wire/{event_id}/"
+        ):
+            raise newsroom.NewsroomError(
+                f"historical wire event path does not match its record: {event_id}"
+            )
+        try:
+            source_html = html_raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise newsroom.NewsroomError(
+                f"historical wire event page is not UTF-8: {event_id}"
+            ) from exc
+        canonical = f'<link rel="canonical" href="{event["url"]}">'
+        if canonical not in source_html:
+            raise newsroom.NewsroomError(
+                f"historical wire event page has the wrong canonical: {event_id}"
+            )
+        card = share_cards.render_card(_event_share_card_spec(event))
+        cards[event_id] = card
+        html_outputs[base / "index.html"] = _inject_share_image_meta(
+            source_html, card
+        ).encode("utf-8")
+    return cards, html_outputs
+
+
+def _assert_contextual_share_coverage(
+    outputs: Mapping[Path, bytes], *, required_paths: Sequence[Path]
+) -> None:
+    """Block generic fallback metadata on declared data/story/detail pages."""
+
+    problems: list[str] = []
+    for path in sorted(set(required_paths), key=str):
+        raw = outputs.get(path)
+        if raw is None:
+            problems.append(f"missing {path}")
+            continue
+        try:
+            page = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            problems.append(f"non-UTF-8 {path}")
+            continue
+        fields = {
+            key: re.findall(
+                rf'<meta\s+(?:property|name)="{re.escape(key)}"\s+content="([^"]*)">',
+                page,
+            )
+            for key in _SHARE_IMAGE_META_KEYS
+        }
+        image_values = fields["og:image"]
+        if (
+            len(image_values) != 1
+            or re.fullmatch(
+                rf"{re.escape(SITE)}/{re.escape(share_cards.OUTPUT_ROOT.as_posix())}/"
+                r"sha256-[0-9a-f]{64}\.png",
+                image_values[0],
+            )
+            is None
+        ):
+            problems.append(f"generic image {path}")
+            continue
+        image_url = image_values[0]
+        expected = {
+            "og:image:secure_url": image_url,
+            "og:image:type": "image/png",
+            "og:image:width": str(share_cards.WIDTH),
+            "og:image:height": str(share_cards.HEIGHT),
+            "twitter:image": image_url,
+        }
+        invalid = [key for key, value in expected.items() if fields[key] != [value]]
+        for alt_key in ("og:image:alt", "twitter:image:alt"):
+            if len(fields[alt_key]) != 1 or not fields[alt_key][0].strip():
+                invalid.append(alt_key)
+        if fields["og:image:alt"] != fields["twitter:image:alt"]:
+            invalid.append("image alt mismatch")
+        if invalid:
+            problems.append(f"incomplete image metadata {path}: {','.join(invalid)}")
+    if problems:
+        preview = "; ".join(problems[:20])
+        suffix = f"; plus {len(problems) - 20} more" if len(problems) > 20 else ""
+        raise newsroom.NewsroomError(
+            f"contextual share-card coverage failed: {preview}{suffix}"
+        )
+
+
+_SHARE_IMAGE_META_KEYS = (
+    "og:image",
+    "og:image:secure_url",
+    "og:image:type",
+    "og:image:width",
+    "og:image:height",
+    "og:image:alt",
+    "twitter:image",
+    "twitter:image:alt",
+)
+
+
+def _share_image_meta(image_url: str, image_alt: str) -> str:
+    return f"""<meta property="og:image" content="{_h(image_url)}">
+<meta property="og:image:secure_url" content="{_h(image_url)}">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="{_h(image_alt)}">
+<meta name="twitter:image" content="{_h(image_url)}">
+<meta name="twitter:image:alt" content="{_h(image_alt)}">"""
+
+
+def _inject_share_image_meta(source: str, card: share_cards.RenderedCard) -> str:
+    """Replace only crawler image tags in a retained historical HTML page."""
+
+    if "</head>" not in source:
+        raise newsroom.NewsroomError("historical event page has no closing head")
+    cleaned = source
+    for key in _SHARE_IMAGE_META_KEYS:
+        cleaned = re.sub(
+            rf'\s*<meta\s+(?:property|name)="{re.escape(key)}"[^>]*>',
+            "",
+            cleaned,
+        )
+    return cleaned.replace(
+        "</head>",
+        _share_image_meta(card.url, card.alt) + "\n</head>",
+        1,
+    )
+
+
 def _head(
     *,
     title: str,
@@ -1133,6 +1474,8 @@ def _head(
     json_ld: object,
     feed_base: str = "/news",
     extra_styles: Sequence[str] = (),
+    image_url: str = OG_IMAGE,
+    image_alt: str = "Palimpsest evidence observatory",
 ) -> str:
     article_meta = ""
     if published_at:
@@ -1165,11 +1508,10 @@ def _head(
 <meta property="og:title" content="{_h(title)}">
 <meta property="og:description" content="{_h(description)}">
 <meta property="og:url" content="{_h(canonical)}">
-<meta property="og:image" content="{OG_IMAGE}">
+{_share_image_meta(image_url, image_alt)}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{_h(title)}">
 <meta name="twitter:description" content="{_h(description)}">
-<meta name="twitter:image" content="{OG_IMAGE}">
 {article_meta}<script type="application/ld+json">{_json_script(json_ld)}</script>
 {site_nav.HEAD}
 <link rel="stylesheet" href="/assets/newsroom.css">
@@ -1230,7 +1572,9 @@ def _receipt(story: Mapping[str, Any]) -> str:
 </aside>"""
 
 
-def _story_json_ld(story: Mapping[str, Any], section_title: str) -> dict[str, Any]:
+def _story_json_ld(
+    story: Mapping[str, Any], section_title: str, *, image_url: str = OG_IMAGE
+) -> dict[str, Any]:
     evidence = story["evidence"]
     return {
         "@context": "https://schema.org",
@@ -1246,7 +1590,7 @@ def _story_json_ld(story: Mapping[str, Any], section_title: str) -> dict[str, An
         "isAccessibleForFree": True,
         "author": _organization(),
         "publisher": _organization(),
-        "image": [OG_IMAGE],
+        "image": [image_url],
         "isBasedOn": evidence["url"],
         "citation": evidence["url"],
         "keywords": [
@@ -1687,7 +2031,9 @@ def _investigations_index_json_ld(
     }
 
 
-def _investigation_case_json_ld(case: Mapping[str, Any]) -> dict[str, Any]:
+def _investigation_case_json_ld(
+    case: Mapping[str, Any], *, image_url: str = OG_IMAGE
+) -> dict[str, Any]:
     public_url = _case_public_url(case)
     common = {
         "@id": public_url,
@@ -1711,7 +2057,7 @@ def _investigation_case_json_ld(case: Mapping[str, Any]) -> dict[str, Any]:
             "articleSection": "Investigations",
             "mainEntityOfPage": {"@type": "WebPage", "@id": public_url},
             "author": _organization(),
-            "image": [OG_IMAGE],
+            "image": [image_url],
         }
     return {
         "@context": "https://schema.org",
@@ -1856,10 +2202,11 @@ def render_evidence_index(
     pulse: Mapping[str, Any] | None,
     investigations: Mapping[str, Any] | None = None,
     machine_analyses: Mapping[str, Any] | None = None,
+    share_card: share_cards.RenderedCard | None = None,
 ) -> str:
     events = wire["events"]
     if not events:
-        return render_index(feed)
+        return render_index(feed, share_card=share_card)
     source_lead = _select_lead(events)
     instrument_lead = _select_instrument_lead(feed["stories"])
     sections = {section["id"]: section for section in feed["sections"]}
@@ -1931,6 +2278,12 @@ def render_evidence_index(
             page_type="website",
             modified_at=max(feed["generated_at"], wire["generated_at"]),
             json_ld=_wire_index_json_ld(feed, wire),
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
@@ -2155,7 +2508,9 @@ def _safety_lists(case: Mapping[str, Any]) -> str:
     return f"""<div class="nw-case-columns"><div class="nw-case-panel nw-case-panel--safety"><h3>Prohibited interpretations</h3><ul>{prohibited}</ul></div><div class="nw-case-panel"><h3>Allegations and motives</h3><ul>{allegations}{motives}</ul></div></div>"""
 
 
-def render_investigation_case(case: Mapping[str, Any]) -> str:
+def render_investigation_case(
+    case: Mapping[str, Any], *, share_card: share_cards.RenderedCard | None = None
+) -> str:
     kind, status = _case_status_label(case)
     state = _case_publication_state(case)
     published = case["published_at"]
@@ -2263,7 +2618,16 @@ def render_investigation_case(case: Mapping[str, Any]) -> str:
             page_type="article" if is_published else "website",
             published_at=case["published_at"] if is_published else None,
             modified_at=case["updated_at"],
-            json_ld=_investigation_case_json_ld(case),
+            json_ld=_investigation_case_json_ld(
+                case,
+                image_url=share_card.url if share_card is not None else OG_IMAGE,
+            ),
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
@@ -2376,6 +2740,8 @@ def _machine_index_json_ld(analyses: Mapping[str, Any]) -> dict[str, Any]:
 def _machine_case_json_ld(
     case: Mapping[str, Any],
     attributions: Mapping[str, Mapping[str, Any]] | None = None,
+    *,
+    image_url: str = OG_IMAGE,
 ) -> dict[str, Any]:
     public_url = _machine_case_public_url(case)
     common: dict[str, Any] = {
@@ -2406,7 +2772,7 @@ def _machine_case_json_ld(
                 "name": "Palimpsest Machine Analysis Desk",
                 "url": f"{SITE}/news/analysis/",
             },
-            "image": [OG_IMAGE],
+            "image": [image_url],
         }
     return {
         "@context": "https://schema.org",
@@ -2920,7 +3286,9 @@ def _machine_evaluation_receipt(case: Mapping[str, Any]) -> str:
     return f'<div class="nw-analysis-receipt"><dl>{"".join(summary_rows)}</dl>{checks_table}</div>'
 
 
-def render_machine_analysis_case(case: Mapping[str, Any]) -> str:
+def render_machine_analysis_case(
+    case: Mapping[str, Any], *, share_card: share_cards.RenderedCard | None = None
+) -> str:
     is_article = _machine_is_article(case)
     state = "published" if is_article else "abstained"
     report_label = "ANALYSIS REPORT" if is_article else "ABSTENTION REPORT"
@@ -2969,14 +3337,26 @@ def render_machine_analysis_case(case: Mapping[str, Any]) -> str:
             page_type="article" if is_article else "website",
             published_at=case["published_at"] if is_article else None,
             modified_at=case["updated_at"],
-            json_ld=_machine_case_json_ld(case, attributions),
+            json_ld=_machine_case_json_ld(
+                case,
+                attributions,
+                image_url=share_card.url if share_card is not None else OG_IMAGE,
+            ),
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
     )
 
 
-def render_index(feed: Mapping[str, Any]) -> str:
+def render_index(
+    feed: Mapping[str, Any], *, share_card: share_cards.RenderedCard | None = None
+) -> str:
     stories = feed["stories"]
     sections = {section["id"]: section for section in feed["sections"]}
     lead = _select_lead(stories)
@@ -3054,6 +3434,12 @@ def render_index(feed: Mapping[str, Any]) -> str:
             page_type="website",
             modified_at=feed["generated_at"],
             json_ld=_index_json_ld(feed),
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
@@ -3183,6 +3569,7 @@ def render_story(
     section: Mapping[str, Any],
     by_id: Mapping[str, Mapping[str, Any]],
     analysis: Mapping[str, Any] | None = None,
+    share_card: share_cards.RenderedCard | None = None,
 ) -> str:
     claim_items = "\n".join(
         f"<p><strong>{_h(claim['type'].replace('_', ' ').title())}.</strong> {_h(claim['statement'])}</p>"
@@ -3245,7 +3632,17 @@ def render_story(
             page_type="article",
             published_at=story["published_at"],
             modified_at=story["modified_at"],
-            json_ld=_story_json_ld(story, section["title"]),
+            json_ld=_story_json_ld(
+                story,
+                section["title"],
+                image_url=share_card.url if share_card is not None else OG_IMAGE,
+            ),
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
@@ -3253,7 +3650,10 @@ def render_story(
 
 
 def _event_json_ld(
-    event: Mapping[str, Any], analysis: Mapping[str, Any]
+    event: Mapping[str, Any],
+    analysis: Mapping[str, Any],
+    *,
+    image_url: str = OG_IMAGE,
 ) -> dict[str, Any]:
     citations = [ref["url"] for ref in event["evidence_refs"]]
     citations.extend(row["evidence_url"] for row in analysis["collector_context"])
@@ -3272,7 +3672,7 @@ def _event_json_ld(
         "isAccessibleForFree": True,
         "creator": _organization(),
         "isPartOf": {"@type": "CollectionPage", "url": f"{SITE}/news/"},
-        "image": [OG_IMAGE],
+        "image": [image_url],
         "citation": list(dict.fromkeys(citations)),
         "about": EVENT_DESKS[event["desk"]],
         "keywords": keywords,
@@ -3481,6 +3881,7 @@ def render_event(
     wire: Mapping[str, Any],
     feed: Mapping[str, Any],
     analysis: Mapping[str, Any] | None = None,
+    share_card: share_cards.RenderedCard | None = None,
 ) -> str:
     if analysis is None:
         peer = (
@@ -3596,7 +3997,17 @@ def render_event(
             page_type="website",
             published_at=event["published_at"],
             modified_at=max(event["updated_at"], analysis["generated_at"]),
-            json_ld=_event_json_ld(event, analysis),
+            json_ld=_event_json_ld(
+                event,
+                analysis,
+                image_url=share_card.url if share_card is not None else OG_IMAGE,
+            ),
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
@@ -3676,7 +4087,9 @@ def _china_analysis_citations(citation_ids: Sequence[str]) -> str:
     )
 
 
-def _china_analysis_json_ld(article: Mapping[str, Any]) -> dict[str, Any]:
+def _china_analysis_json_ld(
+    article: Mapping[str, Any], *, image_url: str = OG_IMAGE
+) -> dict[str, Any]:
     canonical = f"{SITE}{article['url']}"
     return {
         "@context": "https://schema.org",
@@ -3701,7 +4114,7 @@ def _china_analysis_json_ld(article: Mapping[str, Any]) -> dict[str, Any]:
             "information controls",
             "content erasure",
         ],
-        "image": [OG_IMAGE],
+        "image": [image_url],
         "isAccessibleForFree": True,
     }
 
@@ -3718,7 +4131,10 @@ def _china_analysis_records(
 
 
 def render_china_censorship_analysis(
-    article: Mapping[str, Any], *, feed: Mapping[str, Any]
+    article: Mapping[str, Any],
+    *,
+    feed: Mapping[str, Any],
+    share_card: share_cards.RenderedCard | None = None,
 ) -> str:
     china_analysis_model.validate(article, feed=feed)
     numbers = "".join(
@@ -3813,7 +4229,16 @@ def render_china_censorship_analysis(
             modified_at=article["updated_at"],
             feed_base="/news/china/analysis",
             extra_styles=("/assets/china-analysis.css",),
-            json_ld=_china_analysis_json_ld(article),
+            json_ld=_china_analysis_json_ld(
+                article,
+                image_url=share_card.url if share_card is not None else OG_IMAGE,
+            ),
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
@@ -4456,7 +4881,9 @@ def _format_economic_value(metric: Mapping[str, Any]) -> str:
     return f"{value} {metric['unit']}"
 
 
-def render_economic_page(pulse: Mapping[str, Any]) -> str:
+def render_economic_page(
+    pulse: Mapping[str, Any], *, share_card: share_cards.RenderedCard | None = None
+) -> str:
     gate_rows = "".join(
         f"""<li data-passed="{_h(str(gate["passed"]).lower())}"><span>{_h(gate["label"])}</span><strong>{gate["observed"]} / {gate["minimum"]}</strong></li>"""
         for gate in pulse["readiness"]["gates"]
@@ -4517,7 +4944,14 @@ def render_economic_page(pulse: Mapping[str, Any]) -> str:
                 "dateModified": pulse["generated_at"],
                 "url": f"{SITE}/readings/china-economic-pulse-latest.json",
                 "creator": _dataset_organization(),
+                "image": (share_card.url if share_card is not None else OG_IMAGE),
             },
+            image_url=share_card.url if share_card is not None else OG_IMAGE,
+            image_alt=(
+                share_card.alt
+                if share_card is not None
+                else "Palimpsest evidence observatory"
+            ),
         )
         + "\n"
         + body
@@ -5761,35 +6195,104 @@ def build_outputs(
             if dragon_whispers is not None
             else dragon_whispers_model.empty_document(wire["generated_at"])
         )
-    outputs: dict[Path, bytes] = {
-        Path("readings/newsroom-latest.json"): _pretty_json(feed),
-        Path("news/index.html"): (
-            render_evidence_index(feed, wire, pulse, investigations, machine_analyses)
-            if wire is not None
-            else render_index(feed)
-        ).encode("utf-8"),
-        Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
-        Path("news/feed.xml"): build_rss(feed, wire),
-        Path("news/sitemap.xml"): build_sitemap(
-            feed,
-            wire,
-            investigations,
-            machine_analyses,
-            china_stream,
-            whispers_document,
-            china_analysis,
-        ),
-        Path("readings/china-censorship-analysis-latest.json"): (
-            china_analysis_model.pretty_json_bytes(china_analysis)
-        ),
-        Path("news/china/analysis/index.html"): (
-            render_china_censorship_analysis(china_analysis, feed=feed).encode("utf-8")
-        ),
-        Path("news/china/analysis/feed.json"): _pretty_json(
-            build_china_analysis_json_feed(china_analysis)
-        ),
-        Path("news/china/analysis/feed.xml"): build_china_analysis_rss(china_analysis),
+    story_share_cards = {
+        story["signal_id"]: share_cards.render_card(
+            _story_share_card_spec(story, section=sections[story["section"]])
+        )
+        for story in feed["stories"]
     }
+    event_share_cards = {
+        event["event_id"]: share_cards.render_card(
+            _event_share_card_spec(
+                event,
+                analysis=event_analyses[event["event_id"]],
+            )
+        )
+        for event in (wire["events"] if wire is not None else [])
+    }
+    edition_share_card = share_cards.render_card(_edition_share_card_spec(feed))
+    china_analysis_share_card = share_cards.render_card(
+        _china_analysis_share_card_spec(china_analysis)
+    )
+    economic_share_card = (
+        share_cards.render_card(_economic_share_card_spec(pulse))
+        if pulse is not None
+        else None
+    )
+    investigation_share_cards = {
+        case["slug"]: share_cards.render_card(_investigation_share_card_spec(case))
+        for case in (investigations["cases"] if investigations is not None else [])
+    }
+    machine_share_cards = {
+        case["slug"]: share_cards.render_card(_machine_share_card_spec(case))
+        for case in (machine_analyses["cases"] if machine_analyses is not None else [])
+    }
+    historical_event_cards: dict[str, share_cards.RenderedCard] = {}
+    historical_event_html: dict[Path, bytes] = {}
+    if wire is not None:
+        historical_event_cards, historical_event_html = _historical_wire_share_outputs(
+            archive_root=archive_root,
+            current_event_ids=frozenset(event_share_cards),
+        )
+    rendered_share_cards = [
+        edition_share_card,
+        china_analysis_share_card,
+        *story_share_cards.values(),
+        *event_share_cards.values(),
+        *historical_event_cards.values(),
+        *([economic_share_card] if economic_share_card is not None else []),
+        *investigation_share_cards.values(),
+        *machine_share_cards.values(),
+    ]
+    outputs: dict[Path, bytes] = {card.path: card.png for card in rendered_share_cards}
+    outputs[share_cards.MANIFEST_PATH] = share_cards.manifest_bytes(
+        rendered_share_cards
+    )
+    outputs.update(
+        {
+            Path("readings/newsroom-latest.json"): _pretty_json(feed),
+            Path("news/index.html"): (
+                render_evidence_index(
+                    feed,
+                    wire,
+                    pulse,
+                    investigations,
+                    machine_analyses,
+                    share_card=edition_share_card,
+                )
+                if wire is not None
+                else render_index(feed, share_card=edition_share_card)
+            ).encode("utf-8"),
+            Path("news/feed.json"): _pretty_json(build_json_feed(feed, wire)),
+            Path("news/feed.xml"): build_rss(feed, wire),
+            Path("news/sitemap.xml"): build_sitemap(
+                feed,
+                wire,
+                investigations,
+                machine_analyses,
+                china_stream,
+                whispers_document,
+                china_analysis,
+            ),
+            Path("readings/china-censorship-analysis-latest.json"): (
+                china_analysis_model.pretty_json_bytes(china_analysis)
+            ),
+            Path("news/china/analysis/index.html"): (
+                render_china_censorship_analysis(
+                    china_analysis,
+                    feed=feed,
+                    share_card=china_analysis_share_card,
+                ).encode("utf-8")
+            ),
+            Path("news/china/analysis/feed.json"): _pretty_json(
+                build_china_analysis_json_feed(china_analysis)
+            ),
+            Path("news/china/analysis/feed.xml"): build_china_analysis_rss(
+                china_analysis
+            ),
+        }
+    )
+    outputs.update(historical_event_html)
     if wire is not None:
         outputs[Path("news/instruments/feed.json")] = _pretty_json(
             build_json_feed(feed)
@@ -5857,7 +6360,11 @@ def build_outputs(
             base = Path("news/wire") / event["event_id"]
             analysis = event_analyses[event["event_id"]]
             outputs[base / "index.html"] = render_event(
-                event, wire=wire, feed=feed, analysis=analysis
+                event,
+                wire=wire,
+                feed=feed,
+                analysis=analysis,
+                share_card=event_share_cards[event["event_id"]],
             ).encode("utf-8")
             outputs[base / "story.json"] = _pretty_json(event)
             event_revision_path = base / "revisions" / f"{event['version_id']}.json"
@@ -5882,18 +6389,18 @@ def build_outputs(
                 }
             )
     if pulse is not None:
-        outputs[Path("news/economy/index.html")] = render_economic_page(pulse).encode(
-            "utf-8"
-        )
+        outputs[Path("news/economy/index.html")] = render_economic_page(
+            pulse, share_card=economic_share_card
+        ).encode("utf-8")
     if investigations is not None:
         outputs[Path("news/investigations/index.html")] = render_investigations_index(
             investigations
         ).encode("utf-8")
         for case in investigations["cases"]:
             base = Path("news/investigations") / case["slug"]
-            outputs[base / "index.html"] = render_investigation_case(case).encode(
-                "utf-8"
-            )
+            outputs[base / "index.html"] = render_investigation_case(
+                case, share_card=investigation_share_cards[case["slug"]]
+            ).encode("utf-8")
             outputs[base / "case.json"] = _pretty_json(case)
             outputs[base / "revisions" / f"{case['version_id']}.json"] = _pretty_json(
                 case
@@ -5907,9 +6414,9 @@ def build_outputs(
         for case in machine_analyses["cases"]:
             base = Path("news/analysis") / case["slug"]
             case_raw = _pretty_json(case)
-            outputs[base / "index.html"] = render_machine_analysis_case(case).encode(
-                "utf-8"
-            )
+            outputs[base / "index.html"] = render_machine_analysis_case(
+                case, share_card=machine_share_cards[case["slug"]]
+            ).encode("utf-8")
             outputs[base / "report.json"] = case_raw
             for history_index, event in enumerate(case["corrections"]["history"]):
                 revision_id = event["revision_id"]
@@ -6014,6 +6521,7 @@ def build_outputs(
             section=sections[story["section"]],
             by_id=stories,
             analysis=analysis,
+            share_card=story_share_cards[story["signal_id"]],
         ).encode("utf-8")
         outputs[base / "story.json"] = _pretty_json(story)
         outputs[base / "analysis.json"] = instrument_analysis_model.pretty_json_bytes(
@@ -6032,6 +6540,22 @@ def build_outputs(
         if wire is not None:
             revision = _revision_id(story, "storyv")
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
+    contextual_paths = [
+        Path("news/index.html"),
+        Path("news/china/analysis/index.html"),
+        *(Path("news") / story["slug"] / "index.html" for story in feed["stories"]),
+        *(
+            Path("news/wire") / event_id / "index.html"
+            for event_id in (*historical_event_cards, *event_share_cards)
+        ),
+        *([Path("news/economy/index.html")] if economic_share_card is not None else []),
+        *(
+            Path("news/investigations") / slug / "index.html"
+            for slug in investigation_share_cards
+        ),
+        *(Path("news/analysis") / slug / "index.html" for slug in machine_share_cards),
+    ]
+    _assert_contextual_share_coverage(outputs, required_paths=contextual_paths)
     history_integrity = None
     if wire is not None:
         history_integrity = _wire_history_integrity_receipt(
@@ -6408,18 +6932,38 @@ def _managed_analysis_inventory(*, root: Path) -> dict[Path, bool]:
 
                     record = revision_records.get(report_raw) if report_raw else None
                     if record is not None and index_raw is not None:
+                        expected_indexes: list[bytes] = []
                         try:
-                            expected_index = render_machine_analysis_case(
-                                record
-                            ).encode("utf-8")
+                            # Retain a byte-exact migration proof for generic
+                            # pre-card renderer output.
+                            expected_indexes.append(
+                                render_machine_analysis_case(record).encode("utf-8")
+                            )
                         except (
                             KeyError,
                             TypeError,
                             ValueError,
                             newsroom.NewsroomError,
                         ):
-                            expected_index = None
-                        if expected_index == index_raw:
+                            pass
+                        try:
+                            share_card = share_cards.render_card(
+                                _machine_share_card_spec(record)
+                            )
+                            expected_indexes.append(
+                                render_machine_analysis_case(
+                                    record, share_card=share_card
+                                ).encode("utf-8")
+                            )
+                        except (
+                            KeyError,
+                            TypeError,
+                            ValueError,
+                            newsroom.NewsroomError,
+                            share_cards.ShareCardError,
+                        ):
+                            pass
+                        if index_raw in expected_indexes:
                             discovered[base / "index.html"] = True
                             discovered[base / "report.json"] = True
                 finally:
@@ -6546,6 +7090,73 @@ def _extra_managed_pagination_paths(
     }
 
 
+def _is_managed_share_card_path(relative: Path) -> bool:
+    return (
+        not relative.is_absolute()
+        and ".." not in relative.parts
+        and relative.parent == share_cards.OUTPUT_ROOT
+        and _SHARE_CARD_FILENAME.fullmatch(relative.name) is not None
+    )
+
+
+def _managed_share_card_inventory(*, root: Path) -> dict[Path, bool]:
+    """Prove prior dynamic cards from their canonical renderer manifest."""
+
+    directory = root / share_cards.OUTPUT_ROOT
+    if not directory.exists():
+        return {}
+    if directory.is_symlink() or not directory.is_dir():
+        raise newsroom.NewsroomError("share-card output root is not a safe directory")
+    manifest_path = root / share_cards.MANIFEST_PATH
+    manifest_rows: dict[Path, share_cards.RenderedCard] = {}
+    if manifest_path.is_file() and not manifest_path.is_symlink():
+        try:
+            parsed = share_cards.parse_manifest(manifest_path.read_bytes())
+        except (OSError, share_cards.ShareCardError) as exc:
+            raise newsroom.NewsroomError(
+                f"cannot validate prior share-card manifest: {exc}"
+            ) from exc
+        manifest_rows = {Path(row["path"]): card for row, card in parsed}
+    elif manifest_path.exists():
+        raise newsroom.NewsroomError("prior share-card manifest is not a regular file")
+
+    discovered: dict[Path, bool] = {}
+    for path in directory.iterdir():
+        if path.name == share_cards.MANIFEST_PATH.name:
+            continue
+        if path.suffix.lower() != ".png":
+            continue
+        relative = path.relative_to(root)
+        card = manifest_rows.get(relative)
+        if path.is_symlink() or not path.is_file() or card is None:
+            discovered[relative] = False
+            continue
+        try:
+            discovered[relative] = path.read_bytes() == card.png
+        except OSError:
+            discovered[relative] = False
+    missing = sorted(set(manifest_rows) - set(discovered), key=str)
+    if missing:
+        raise newsroom.NewsroomError(
+            "prior share-card manifest names missing files: "
+            + ", ".join(str(path) for path in missing)
+        )
+    return discovered
+
+
+def _extra_managed_share_card_paths(
+    outputs: Mapping[Path, bytes], *, root: Path
+) -> dict[Path, bool]:
+    expected = {Path(relative) for relative in outputs}
+    if share_cards.MANIFEST_PATH not in expected:
+        return {}
+    return {
+        relative: proven
+        for relative, proven in _managed_share_card_inventory(root=root).items()
+        if relative not in expected
+    }
+
+
 def _safe_unlink_managed_analysis(relative: Path, *, root: Path) -> bool:
     """Unlink one generated file without following any parent symlink."""
 
@@ -6632,15 +7243,56 @@ def _safe_unlink_managed_pagination(relative: Path, *, root: Path) -> bool:
         os.close(directory_fd)
 
 
+def _safe_unlink_managed_share_card(relative: Path, *, root: Path) -> bool:
+    """Remove one prior manifest-proven content-addressed card."""
+
+    if not _is_managed_share_card_path(relative):
+        raise newsroom.NewsroomError(
+            f"refusing to remove non-generated share-card path: {relative}"
+        )
+    flags = _directory_open_flags()
+    try:
+        directory_fd = os.open(root / share_cards.OUTPUT_ROOT, flags)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise newsroom.NewsroomError(
+            f"cannot safely inspect share-card directory: {exc}"
+        ) from exc
+    try:
+        try:
+            metadata = os.stat(
+                relative.name,
+                dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+        except FileNotFoundError:
+            return False
+        if not stat.S_ISREG(metadata.st_mode):
+            raise newsroom.NewsroomError(
+                f"refusing to remove non-file share card: {relative}"
+            )
+        os.unlink(relative.name, dir_fd=directory_fd)
+        os.fsync(directory_fd)
+        return True
+    finally:
+        os.close(directory_fd)
+
+
 def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, int]:
     _verify_wire_history_integrity_output(outputs, root=root)
     changed = unchanged = 0
     stale_analysis = _extra_managed_analysis_paths(outputs, root=root)
     stale_pagination = _extra_managed_pagination_paths(outputs, root=root)
+    stale_share_cards = _extra_managed_share_card_paths(outputs, root=root)
     unverified = sorted(
         (
             relative
-            for relative, proven in {**stale_analysis, **stale_pagination}.items()
+            for relative, proven in {
+                **stale_analysis,
+                **stale_pagination,
+                **stale_share_cards,
+            }.items()
             if not proven
         ),
         key=str,
@@ -6653,14 +7305,18 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
     ordered = sorted(
         ((Path(relative), payload) for relative, payload in outputs.items()),
         key=lambda item: (
-            item[0] == _GENERATED_MANIFEST_PATH,
+            2
+            if item[0] == _GENERATED_MANIFEST_PATH
+            else 1
+            if item[0] == share_cards.MANIFEST_PATH
+            else 0,
             str(item[0]),
         ),
     )
-    manifest_item: tuple[Path, bytes] | None = None
+    manifest_items: list[tuple[Path, bytes]] = []
     for relative, payload in ordered:
-        if relative == _GENERATED_MANIFEST_PATH:
-            manifest_item = (relative, payload)
+        if relative in {_GENERATED_MANIFEST_PATH, share_cards.MANIFEST_PATH}:
+            manifest_items.append((relative, payload))
             continue
         destination = root / relative
         if _is_immutable_analysis_path(relative):
@@ -6692,8 +7348,10 @@ def publish(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> tuple[int, i
     for relative in sorted(stale_pagination, key=str):
         if _safe_unlink_managed_pagination(relative, root=root):
             changed += 1
-    if manifest_item is not None:
-        relative, payload = manifest_item
+    for relative in sorted(stale_share_cards, key=str):
+        if _safe_unlink_managed_share_card(relative, root=root):
+            changed += 1
+    for relative, payload in manifest_items:
         destination = root / relative
         try:
             current = destination.read_bytes()
@@ -6734,6 +7392,7 @@ def check(outputs: Mapping[Path, bytes], *, root: Path = ROOT) -> list[str]:
     extras = {
         **_extra_managed_analysis_paths(outputs, root=root),
         **_extra_managed_pagination_paths(outputs, root=root),
+        **_extra_managed_share_card_paths(outputs, root=root),
     }
     for relative in sorted(extras, key=str):
         drift.append(f"extra {relative}")
