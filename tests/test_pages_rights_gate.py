@@ -1274,6 +1274,100 @@ def test_generated_share_cards_require_reproducible_specs_not_png_allowlisting(
         stage_pages_rights.find_denied_value_paths(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
 
+def test_share_card_rights_are_scanned_per_spec_without_cross_row_token_bleed(
+    tmp_path: Path,
+) -> None:
+    _write_minimal_denied_tree(tmp_path)
+    safe = share_cards.render_card(
+        {
+            "schema_version": share_cards.SPEC_VERSION,
+            "kind": "instrument-reading",
+            "kicker": "Command desk / evidence reading",
+            "title": "Current evidence remains explicitly bounded",
+            "status": "live",
+            "status_label": "Current evidence",
+            "metric": {"value": "84.4%", "label": "empirical coverage"},
+            "as_of": "2026-08-30T07:32:12Z",
+            "source": "forecast-ledger-latest.json",
+            "receipt": "SHA256 92dd686d31a4e373",
+            "target_url": "https://palimpsest.info/news/forecast-ledger/",
+        }
+    )
+    restricted = share_cards.render_card(
+        {
+            "schema_version": share_cards.SPEC_VERSION,
+            "kind": "instrument-reading",
+            "kicker": "China economic evidence",
+            "title": "Restricted upstream values remain unavailable",
+            "status": "restricted",
+            "status_label": "Publication restricted",
+            "metric": None,
+            "as_of": "2026-08-30T07:32:12Z",
+            "source": "cfets_benchmarks",
+            "receipt": None,
+            "target_url": "https://palimpsest.info/news/economy/",
+        }
+    )
+    for card in (safe, restricted):
+        destination = tmp_path / card.path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(card.png)
+    manifest_path = tmp_path / share_cards.MANIFEST_PATH
+    manifest_raw = share_cards.manifest_bytes([safe, restricted])
+    manifest_path.write_bytes(manifest_raw)
+
+    assert share_cards.MANIFEST_PATH.as_posix() not in (
+        stage_pages_rights.find_denied_value_paths(
+            tmp_path, evaluated_at=RIGHTS_CLOCK
+        )
+    )
+    status = _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+    assert share_cards.MANIFEST_PATH.as_posix() not in status["quarantined_paths"]
+    assert manifest_path.read_bytes() == manifest_raw
+    assert len(share_cards.parse_manifest(manifest_raw)) == 2
+    assert _verify(tmp_path, evaluated_at=RIGHTS_CLOCK) == status
+
+
+def test_denied_share_card_fails_before_mutating_the_staged_tree(
+    tmp_path: Path,
+) -> None:
+    _write_minimal_denied_tree(tmp_path)
+    denied = share_cards.render_card(
+        {
+            "schema_version": share_cards.SPEC_VERSION,
+            "kind": "instrument-reading",
+            "kicker": "China economic evidence",
+            "title": "A value that must not be published",
+            "status": "live",
+            "status_label": "Current evidence",
+            "metric": {"value": "987654.321", "label": "restricted benchmark"},
+            "as_of": "2026-08-30T07:32:12Z",
+            "source": "cfets_benchmarks",
+            "receipt": "SHA256 denied000000000",
+            "target_url": "https://palimpsest.info/news/economy/",
+        }
+    )
+    card_path = tmp_path / denied.path
+    card_path.parent.mkdir(parents=True, exist_ok=True)
+    card_path.write_bytes(denied.png)
+    manifest_path = tmp_path / share_cards.MANIFEST_PATH
+    manifest_raw = share_cards.manifest_bytes([denied])
+    manifest_path.write_bytes(manifest_raw)
+    ledger_path = tmp_path / "readings" / "china-econ-observations.jsonl"
+    ledger_raw = ledger_path.read_bytes()
+
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="generated share card contains a denied value",
+    ):
+        _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+    assert manifest_path.read_bytes() == manifest_raw
+    assert card_path.read_bytes() == denied.png
+    assert ledger_path.read_bytes() == ledger_raw
+    assert not (tmp_path / stage_pages_rights.STATUS_RELATIVE_PATH).exists()
+
+
 def test_markers_unknown_sources_and_transitive_lineage_cannot_bypass_gate(
     tmp_path: Path,
 ):
