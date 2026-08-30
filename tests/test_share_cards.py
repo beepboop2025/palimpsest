@@ -251,6 +251,8 @@ def test_historical_wire_alias_gets_its_own_complete_contextual_metadata(tmp_pat
 <link rel="canonical" href="{event["url"]}">
 <meta property="og:image" content="{build_newsroom.OG_IMAGE}">
 <meta name="twitter:image" content="{build_newsroom.OG_IMAGE}">
+<link rel="stylesheet" href="/assets/newsroom.css">
+
 </head><body><h1>Retained dossier</h1></body></html>''',
         encoding="utf-8",
     )
@@ -268,3 +270,12 @@ def test_historical_wire_alias_gets_its_own_complete_contextual_metadata(tmp_pat
     assert build_newsroom.OG_IMAGE not in page
     assert page.count(f'<meta property="og:image" content="{card.url}">') == 1
     build_newsroom._assert_contextual_share_coverage(pages, required_paths=[page_path])
+
+    (directory / "index.html").write_bytes(pages[page_path])
+    second_cards, second_pages = build_newsroom._historical_wire_share_outputs(
+        archive_root=tmp_path,
+        current_event_ids=frozenset(),
+    )
+
+    assert second_cards[event_id].png == card.png
+    assert second_pages[page_path] == pages[page_path]

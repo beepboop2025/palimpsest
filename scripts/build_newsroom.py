@@ -1452,7 +1452,8 @@ def _inject_share_image_meta(source: str, card: share_cards.RenderedCard) -> str
     cleaned = source
     for key in _SHARE_IMAGE_META_KEYS:
         cleaned = re.sub(
-            rf'\s*<meta\s+(?:property|name)="{re.escape(key)}"[^>]*>',
+            rf'(?m)^[ \t]*<meta\s+(?:property|name)="{re.escape(key)}"'
+            rf'[^>\r\n]*>[ \t]*(?:\r?\n)?',
             "",
             cleaned,
         )
