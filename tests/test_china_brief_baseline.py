@@ -17,6 +17,7 @@ import tempfile
 from datetime import datetime, timezone
 
 from core.china_event_lens import build_declared_event_lenses
+from core.china_trending_event_lens import build_trending_event_lenses
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -159,3 +160,72 @@ def test_live_event_refresh_treats_json_as_text_not_markup():
     assert "innerHTML" not in mod.EVENT_LENS_JS
     assert "replaceChildren" in mod.EVENT_LENS_JS
     assert "Preserve the sealed static reading" in mod.EVENT_LENS_JS
+
+
+def test_trending_lens_grid_is_visible_and_escapes_every_public_title():
+    mod = _load()
+    document = {
+        "schema_version": "palimpsest-weibo-hotsearch-terms.v1",
+        "status": "live",
+        "generated_at": "2026-08-30T09:00:00Z",
+        "window_days": ["2026-08-29", "2026-08-30"],
+        "terms": [
+            {
+                "title": "华为发布芯片<script>alert(1)</script>",
+                "best_rank": 1,
+                "first_seen": "2026-08-30",
+                "last_seen": "2026-08-30",
+                "days_present": 1,
+                "appearances": 1,
+                "pinned": False,
+            }
+        ],
+        "pinned_headlines": [],
+        "withdrawal_watch": {
+            "baseline_persist_rate": 0.2,
+            "candidates": [],
+            "sense_filtered": [],
+        },
+        "ddti_join": [],
+    }
+    lenses = build_trending_event_lenses(
+        document,
+        evaluated_at=datetime(2026, 8, 30, 10, 0, tzinfo=timezone.utc),
+    )
+    lenses["retrieval_state"] = "test_fixture"
+
+    page = mod._trending_event_panel(lenses)
+
+    assert "What each trending story indicates" in page
+    assert "VISIBLE · PERMITTED ATTENTION" in page
+    assert "<script>alert(1)</script>" not in page
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in page
+    assert 'id="trend-lenses-grid"' in page
+    assert "headline variants" in page
+    assert "DDTI overlaps" in page
+    assert "wire publisher groups" in page
+    assert "weibo-hotsearch-latest.json" in page
+
+
+def test_unavailable_trending_lenses_render_no_false_zero():
+    mod = _load()
+    lenses = build_trending_event_lenses(
+        None,
+        evaluated_at=datetime(2026, 8, 30, 10, 0, tzinfo=timezone.utc),
+    )
+
+    page = mod._trending_event_panel(lenses)
+
+    assert "TREND LENSES · UNAVAILABLE" in page
+    assert "No current trend-level censorship inference" in page
+    assert "false calm" in page
+    assert "0 headline variants" not in page
+
+
+def test_live_trending_refresh_uses_dom_text_nodes_not_markup():
+    mod = _load()
+
+    assert "TREND_SCHEMA" in mod.EVENT_LENS_JS
+    assert ".textContent" in mod.EVENT_LENS_JS
+    assert "replaceChildren" in mod.EVENT_LENS_JS
+    assert "innerHTML" not in mod.EVENT_LENS_JS

@@ -85,6 +85,13 @@ CONTRACT = {
     "research-corpus":      _d("generated_at", ["source", "method", "scope"], "n_sources"),
     "undertext":            _d("generated_at", ["source", "method", "scope"], "n_observations"),
     "erasure-trail":        _d("generated_at", ["source", "method", "scope"], "n_rows"),
+    "censorship-practice-dossiers": _d(
+        "generated_at", ["source", "method", "scope"],
+        reason="the artifact publishes a complete qualification projection over "
+               "captured_items_reviewed while keeping observed disappearances, peer "
+               "reports, pattern signals, review candidates and exclusions as "
+               "separate non-commensurate populations under counts and coverage.",
+    ),
     "public-deletion-ledgers": _d(
         "generated_at", ["source", "method", "scope"], "n_observations"
     ),
@@ -401,6 +408,7 @@ SCHEDULED_PUBLICATIONS = {
     "eval-articles",
     "research-corpus",
     "social-observations",
+    "censorship-practice-dossiers",
     "china-situation",
     "chinese-translations",
     "archive-news-context",

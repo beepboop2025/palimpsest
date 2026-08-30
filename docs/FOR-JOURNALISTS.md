@@ -1,16 +1,25 @@
-# For journalists — find a deleted post, see the trail, export it, cite it
+# For journalists — inspect censorship practice piece by piece
 
-Palimpsest is a public-data censorship observatory. This page is the
-human path from a disappeared public post to a citable evidence row.
-It is written for a reporter who is not the operator.
+Palimpsest is a public-data censorship observatory. This page is the human path
+from a captured post, article, or topic signal to a bounded censorship-practice
+dossier and its underlying reconstruction. It is written for a reporter who is
+not the operator.
 
 The desk is [palimpsest.info/news/china/erasure/](https://palimpsest.info/news/china/erasure/).
-Machine files: [JSON](https://palimpsest.info/readings/erasure-trail-latest.json)
-and [CSV](https://palimpsest.info/readings/erasure-trail.csv).
-OpenAPI: `GET /readings/erasure-trail-latest.json` and
-`GET /readings/erasure-trail.csv` on [openapi.json](../openapi.json).
+Machine files:
+[dossiers](https://palimpsest.info/readings/censorship-practice-dossiers-latest.json),
+[raw JSON](https://palimpsest.info/readings/erasure-trail-latest.json), and
+[raw CSV](https://palimpsest.info/readings/erasure-trail.csv). OpenAPI exposes
+all three endpoints in [openapi.json](../openapi.json).
 
-Each row is a **Palimpsest reconstruction**, not a CDT or Wayback wrapper.
+The dossier is the claim-bearing object. It states whether a disappearance was
+observed, a practice was reported by a peer, a topic-level pattern was measured,
+or a candidate still requires review. It also states the mechanism, explicit
+actor attribution, timeline, measurements, counter-readings, and unknowns. An
+article reporting censorship is not described as itself censored.
+
+Each raw row is a **Palimpsest reconstruction**, not automatically a censorship
+finding and not a CDT or Wayback wrapper.
 The unique object is the joined record: public text we actually hold,
 language (lexical CJK/Latin split, not machine translation), first-seen /
 last-seen / last-confirmed-alive, every deletion confirmation, every
@@ -48,32 +57,37 @@ reading when a collector is silent.
 ## Find → trail → export → cite
 
 1. **Find.** Open the [erasure desk](https://palimpsest.info/news/china/erasure/).
-   Each row is a public record. Search the table, or download the CSV and
-   filter locally.
-2. **Trail.** Read first-seen, last-seen, last-confirmed-alive (when known),
+   Start with the qualifying dossiers. Search the raw table or download the CSV
+   only when you need records that did not clear the claim gate.
+2. **Qualify.** Preserve `observed_disappearance`, `peer_reported`,
+   `pattern_signal`, or `review_required` in your wording. Read the actor basis
+   before naming CCP, a PRC authority, a platform, or a local authority.
+3. **Trail.** Read first-seen, last-seen, last-confirmed-alive (when known),
    the source URL, the Wayback snapshot or lookup, and the SHA-256 of the
    public excerpt. A lookup URL is an address to try. A snapshot URL is a
    witnessed capture.
-3. **Export.** Download
+4. **Export.** Download
+   [censorship-practice-dossiers-latest.json](https://palimpsest.info/readings/censorship-practice-dossiers-latest.json),
    [erasure-trail.csv](https://palimpsest.info/readings/erasure-trail.csv)
    or
    [erasure-trail-latest.json](https://palimpsest.info/readings/erasure-trail-latest.json).
    The Frictionless package at [datapackage.json](https://palimpsest.info/datapackage.json)
    lists the JSON after each catalog rebuild.
-4. **Cite.** Use the row's citation line, or write:
+5. **Cite.** Use the dossier's citation line. For a raw reconstruction, write:
 
    > Palimpsest erasure trail (`<key>`), “`<title>`”, first seen `<first_seen>`,
    > last seen `<last_seen>`, SHA-256 `<content_sha256>`. Public source:
    > `<source_url>`. Desk: https://palimpsest.info/news/china/erasure/`#<key>`
 
-   Cite Palimpsest as the observatory that recorded a public disappearance,
-   not as a witness inside China and not as proof of motive.
+   Cite Palimpsest only for the evidence state it records. A raw archive
+   transition may be reconstruction context rather than a live disappearance;
+   neither object is proof of motive.
 
 ## Related surfaces
 
 | Surface | What it is for |
 | --- | --- |
-| [Erasure desk](https://palimpsest.info/news/china/erasure/) | Find, trail, export, cite |
+| [Censorship-practice dossiers and erasure desk](https://palimpsest.info/news/china/erasure/) | Qualify, inspect mechanism and actor evidence, trail, export, cite |
 | [OSINT China](https://palimpsest.info/osint-china.html) | Every China signal and its freshness |
 | [China Situation](https://palimpsest.info/news/china/situation/) | Publisher reports + OSINT context with URL, hash, snapshot |
 | [For researchers](https://palimpsest.info/for-researchers.html) | Methods, limits, and every public file |
@@ -85,3 +99,5 @@ reading when a collector is silent.
 - No exploits, no Wallbleed, no logged-in scraping, no Baike live fetch.
 - A Situation OSINT join is context, not corroboration.
 - Absence is a coverage gap. It is never relabelled as calm.
+- An ordinary edit is not a deletion. A deletion is not automatically
+  censorship. A censorship report is not proof the report itself was censored.

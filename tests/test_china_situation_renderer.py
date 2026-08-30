@@ -84,7 +84,7 @@ def test_page_makes_each_relation_and_zero_state_visible(tmp_path):
     assert "Social context." in page
     assert "Measurements." in page
     assert "Public OSINT context" in page
-    assert "Find a deleted post" in page
+    assert "Censorship dossiers" in page
     assert "private WeChat" in page
     assert "classified systems" in page
     assert "More context does not automatically mean more proof." in page

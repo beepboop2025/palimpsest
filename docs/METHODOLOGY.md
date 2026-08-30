@@ -122,6 +122,55 @@ headline string. High and continuing visibility can contradict a topic-level bla
 reading, but it does not prove that discussion was uncensored. Headline casualty figures
 remain unverified source text, not Palimpsest estimates.
 
+The China Brief also applies the same evidence grammar automatically to leading
+headline clusters on the latest board day. This automatic layer is intentionally
+narrower than the declared lens:
+
+- it folds contextual Arabic/full-width/Chinese counts, then uses conservative
+  containment and character-trigram similarity;
+- current headlines seed clusters, while historical rows may enrich but never bridge
+  two current clusters;
+- it reports permitted visibility, deterministic pin overlap, withdrawal continuity,
+  and DDTI overlap as separate fields; a DDTI overlap can set a current label only
+  when its own bound source clock is fresh;
+- optional newswire context matches Chinese headline text only and cannot determine the
+  censorship label;
+- stale, abstaining, malformed, or internally incomplete board input produces
+  **unavailable**, never a quiet or no-blackout reading.
+
+Automatic cards may therefore say **visible permitted attention**, **state-pinned
+framing**, **DDTI overlap**, or **withdrawal watch unconfirmed**. They may not assert a
+takedown, blackout, neutral popularity, or uncensored discussion. The machine artifact
+publishes a bounded ranked set; the China Brief renders its leading cards and links the
+full JSON.
+
+### Piece-level censorship-practice dossiers
+
+The event lens answers what a public attention surface did around a current
+event. It does not by itself answer whether a particular post or article was
+removed. The censorship-practice dossier layer makes that item-level boundary
+explicit:
+
+- a documented social tombstone is an observed disappearance, but not an
+  automatic finding about cause or actor;
+- a public ledger or CDT item is attributed reporting, and the reporting
+  article is not represented as itself removed;
+- `suppressed_invisible` is a topic-level permitted-attention pattern;
+- `withdrawal_watch` remains `review_required` without an exact post URL and
+  independent removal evidence;
+- ordinary edits, visible results, `no_baseline`, unreachable archives, and
+  unmatched CDX transitions remain counted exclusions.
+
+Cross-piece joins use exact public URL or stable social observation identity
+only. DDTI joins an article only through an exact retained sample URL.
+UNDERTEXT is labeled as a derived projection rather than independent
+corroboration. Actor attribution remains `not_established` unless the retained
+evidence explicitly names the CCP, a PRC authority, a platform, a local
+authority, or another actor in a relationship to the reported action. An
+attributed actor carries its reported role; an entity appearing only in tags
+does not qualify. The complete contract is documented in
+`docs/CENSORSHIP-PRACTICE-DOSSIERS.md`.
+
 ## 4. Term extraction
 
 Terms come from three deterministic, auditable sources, unioned (`extract_terms()`):

@@ -304,7 +304,7 @@ def test_route_is_present_on_every_discovery_surface():
     assert "https://palimpsest.info/osint-china.html" in _text("llms.txt")
     assert '"/osint-china.html"' in _text("sw.js")
     assert 'href="/news/china/erasure/"' in _text("osint-china.html")
-    assert "Find a deleted post and its evidence trail" in _text("osint-china.html")
+    assert "See how censorship was practiced, piece by piece" in _text("osint-china.html")
     assert "not private WeChat" in _text("osint-china.html")
 
 

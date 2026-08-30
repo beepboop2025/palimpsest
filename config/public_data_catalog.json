@@ -568,6 +568,23 @@
       "license": {"name": "Upstream rights retained; derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
     },
     {
+      "id": "censorship-practice-dossiers",
+      "name": "Piece-level censorship-practice dossiers",
+      "description": "Deterministic dossier for every qualifying item in retained public inputs: evidence state, observed or reported mechanism, explicit actor attribution, timeline, exact-identity measurement joins, input hashes, counter-readings, unknowns and collector gaps. Reporting about censorship is not represented as itself censored; ordinary edits and archive gaps are excluded and counted.",
+      "layer": "content",
+      "stage": "synthesis",
+      "collection_mode": "derived",
+      "status": "live",
+      "cadence": "PT6H",
+      "geography": ["CN", "GLOBAL"],
+      "sources": ["Public deletion-ledger feeds", "Bounded social observations", "Weibo hot-search archive", "DDTI", "UNDERTEXT", "Internet Archive CDX"],
+      "latest": "readings/censorship-practice-dossiers-latest.json",
+      "landing_page": "news/china/erasure/",
+      "method": "docs/CENSORSHIP-PRACTICE-DOSSIERS.md",
+      "count_fields": ["counts.captured_items_reviewed", "counts.dossiers", "counts.observed_disappearances", "counts.peer_reported", "counts.pattern_signals", "counts.review_required", "counts.excluded_items"],
+      "license": {"name": "Upstream rights retained; bounded excerpts and Palimpsest derived metadata MIT", "url": "https://github.com/beepboop2025/palimpsest/blob/main/LICENSE"}
+    },
+    {
       "id": "public-deletion-ledgers",
       "name": "Public deletion ledgers",
       "description": "Ingests public RSS/Atom deletion and blocking ledgers (CDT, GreatFire, FreeWeibo-style). Each feed is a candidate; if every ledger is unreachable the runner abstains rather than publish a zero.",
