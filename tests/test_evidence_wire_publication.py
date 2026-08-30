@@ -519,9 +519,7 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
 
     add_positions = [
         match.start()
-        for match in re.finditer(
-            r"git add -A -- readings china news datapackage\.json", workflow
-        )
+        for match in re.finditer(r"git add -A -- \\\n", workflow)
     ]
     guard_positions = [match.start() for match in re.finditer(re.escape(guard), workflow)]
     assert len(add_positions) == len(guard_positions) == 3
@@ -533,32 +531,54 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         assert staged_at < guarded_at
         assert re.search(r"git commit(?: --amend)?", candidate_section)
 
-    build_graph = re.findall(
-        r"python -m scripts\.build_economic_pulse\n"
-        r"\s*python -m scripts\.build_china_econ_manifest\n"
-        r"\s*python -m scripts\.build_china_site\n"
-        r"\s*python -m scripts\.build_erasure_trail\n"
-        r"\s*python -m scripts\.build_erasure_trail --check\n"
-        r"\s*python -m scripts\.build_osint_china[^\n]*\n"
-        r"\s*python -m scripts\.build_investigations\n"
-        r"\s*python -m scripts\.build_network_rounds\n"
-        r"\s*python -m scripts\.build_corroboration\n"
-        r"\s*python -m scripts\.build_editorial_readiness\n"
-        r"\s*python -m scripts\.sync_narcoscope --check\n"
-        r"\s*python -m scripts\.sync_narcoscope --remote-check(?: \|\| true)?\n"
-        r"\s*python -m core\.evidence_mesh\n"
-        r"\s*python -m core\.evidence_mesh --check\n"
-        r"\s*python -m core\.machine_investigations\n"
-        r"\s*python -m core\.machine_investigations --check\n"
-        r"\s*python -m scripts\.build_newsroom\n"
-        r"\s*python -m scripts\.build_newsroom --check\n"
-        r"\s*python -m scripts\.build_china_situation\n"
-        r"\s*python -m scripts\.build_china_situation --check\n"
-        r"\s*python -m scripts\.build_data_catalog\n"
-        r"\s*python scripts/seal_readings\.py",
-        workflow,
+    build_sections = tuple(
+        workflow[
+            workflow.index(f"- name: {name}") : workflow.index(
+                "\n      - name:", workflow.index(f"- name: {name}") + 1
+            )
+        ]
+        for name in (
+            "Correlate, render and seal the evidence wire",
+            "Rebuild and reseal after a pre-publication ledger change",
+            "Rebuild and reseal after a push race",
+        )
     )
-    assert len(build_graph) == 3
+    graph_commands = (
+        "python -m scripts.build_economic_pulse",
+        "python -m scripts.build_china_econ_manifest",
+        "python -m scripts.build_china_site",
+        "python -m scripts.build_erasure_trail",
+        "python -m scripts.build_erasure_trail --check",
+        "python -m scripts.build_osint_china",
+        "python -m scripts.build_investigations",
+        "python -m scripts.build_network_rounds",
+        "python -m scripts.build_corroboration",
+        "python -m scripts.build_editorial_readiness",
+        "python -m scripts.sync_narcoscope --check",
+        "python -m scripts.sync_narcoscope --remote-check",
+        "python -m core.evidence_mesh",
+        "python -m core.evidence_mesh --check",
+        "python -m core.machine_investigations",
+        "python -m core.machine_investigations --check",
+        "python -m scripts.build_newsroom",
+        "python -m scripts.build_newsroom --check",
+        "python -m scripts.build_chinese_translations",
+        "python -m scripts.build_chinese_translations --check",
+        "python -m scripts.build_chinese_translation_pages",
+        "python -m scripts.build_chinese_translation_pages --check",
+        "python -m scripts.build_bri_observatory",
+        "python -m scripts.build_bri_observatory --check",
+        "python -m scripts.build_china_situation",
+        "python -m scripts.build_china_situation --check",
+        "python -m scripts.build_data_catalog",
+        "python -m scripts.build_data_catalog --check",
+        "python -m scripts.sync_nav",
+        "python -m scripts.sync_nav --check",
+        "python scripts/seal_readings.py",
+    )
+    for section in build_sections:
+        positions = [section.index(command) for command in graph_commands]
+        assert positions == sorted(positions)
 
     staged = (
         "readings/newswire-latest.json",
@@ -576,11 +596,18 @@ def test_newswire_workflow_rebuilds_one_identical_graph_on_every_race_path():
         "readings/source-workflow-latest.json",
         "readings/editorial-readiness-latest.json",
         "readings/newsroom-latest.json",
+        "readings/china-article-stream-latest.json",
         "readings/china-situation-latest.json",
+        "readings/china-censorship-analysis-latest.json",
+        "readings/chinese-translations-latest.json",
         "readings/readings-ledger.jsonl",
         "readings/catalog.json",
         "readings/catalog.jsonld",
+        ".well-known/ai-catalog.json",
+        "config/public_data_catalog.json",
         "datapackage.json",
+        "sitemap.xml",
+        "belt-and-road/",
         "china/",
         "news/",
     )

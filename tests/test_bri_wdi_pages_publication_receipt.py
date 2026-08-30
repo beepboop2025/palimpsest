@@ -283,7 +283,7 @@ def _repository_ready_registry_path(tmp_path: Path) -> Path:
     return path
 
 
-def _copy_evidence_mesh_inputs(target: Path) -> None:
+def _copy_evidence_mesh_inputs(target: Path, *, mesh_now: datetime) -> None:
     config = json.loads((ROOT / "config" / "evidence_mesh.json").read_text())
     paths = ["config/evidence_mesh.json"]
     paths.extend(
@@ -302,6 +302,34 @@ def _copy_evidence_mesh_inputs(target: Path) -> None:
         destination = target / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / relative, destination)
+
+    # The WDI receipt assertions use a fixed deployment clock. Normalize only
+    # unrelated rolling OSINT clocks so the fixture remains isolated as main's
+    # current snapshot advances beyond that historical instant.
+    osint_path = target / "readings" / "osint-china-latest.json"
+    osint = json.loads(osint_path.read_text(encoding="utf-8"))
+    clock_text = mesh_now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    osint["generated_at"] = clock_text
+    for signal in osint["signals"]:
+        source_text = signal["source_timestamp"]
+        if source_text is None:
+            continue
+        source_time = datetime.fromisoformat(source_text.replace("Z", "+00:00"))
+        if source_time <= mesh_now:
+            continue
+        shift = source_time - mesh_now
+        signal["source_timestamp"] = clock_text
+        if signal["freshness_deadline"] is not None:
+            deadline = datetime.fromisoformat(
+                signal["freshness_deadline"].replace("Z", "+00:00")
+            )
+            signal["freshness_deadline"] = (deadline - shift).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+    osint_path.write_text(
+        json.dumps(osint, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _build_descriptor(receipt_path: Path, size_path: Path) -> dict:
@@ -495,7 +523,8 @@ def test_evidence_mesh_loads_production_receipts_offline_and_expires_availabilit
     )
 
     mesh_root = tmp_path / "mesh"
-    _copy_evidence_mesh_inputs(mesh_root)
+    mesh_now = datetime(2026, 8, 26, 14, 10, tzinfo=UTC)
+    _copy_evidence_mesh_inputs(mesh_root, mesh_now=mesh_now)
     observatory_path = mesh_root / "readings" / "belt-and-road-observatory-latest.json"
     observatory_path.parent.mkdir(parents=True, exist_ok=True)
     observatory_path.write_bytes(v2_json)
@@ -511,7 +540,7 @@ def test_evidence_mesh_loads_production_receipts_offline_and_expires_availabilit
 
     mesh = build_evidence_mesh(
         mesh_root,
-        now=datetime(2026, 8, 26, 14, 10, tzinfo=UTC),
+        now=mesh_now,
     )
     resource = next(
         row

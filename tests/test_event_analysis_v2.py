@@ -578,6 +578,41 @@ def test_emitted_text_has_no_causal_or_motive_verbs() -> None:
     assert event_brief.causal_hits(analysis) == []
 
 
+def test_attributed_headline_causal_wording_stays_in_evidence_metadata() -> None:
+    headline = "Yemen: Enforced disappearance as a tool to silence the press"
+    event = _event()
+    event["headline"] = headline
+    event["reported_facts"][0]["statement"] = (
+        f"China Digital Times published “{headline}”."
+    )
+    event["evidence_refs"][0]["title"] = headline
+    wire = _wire(event)
+    wire["items"][0]["title"] = headline
+
+    analysis = event_analysis.build_event_analysis(
+        event,
+        wire=wire,
+        feed=_feed(),
+    )
+
+    event_analysis.validate_event_analysis(analysis, event=event)
+    source = next(row for row in analysis["evidence"] if row["kind"] == "event-source")
+    lead = " ".join(
+        sentence["text"] for sentence in analysis["brief"]["lead"]["sentences"]
+    )
+    causal_gate = next(
+        gate
+        for gate in analysis["publication_receipt"]["gates"]
+        if gate["gate_id"] == "no-causal-language"
+    )
+
+    assert source["headline"] == headline
+    assert headline in source["claim"]
+    assert headline not in lead
+    assert "to silence" not in lead.casefold()
+    assert causal_gate["passed"] is True
+
+
 def test_citation_coverage_is_complete() -> None:
     analysis = _build(
         live_families=_all_families(),

@@ -4,10 +4,12 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
+from core import sealed_ledger
 from scripts import build_chinese_translations as translation_builder
 from scripts.build_chinese_translations import (
     BACKGROUND_BASIS,
@@ -373,6 +375,104 @@ def test_offline_build_fails_closed_when_any_digest_is_missing(tmp_path: Path) -
         )
 
 
+def test_retain_last_good_is_explicit_sealed_and_byte_preserving(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    news_root, wire_path, ledger_path = _fixture_tree(tmp_path)
+    candidates = discover_candidates(news_root, wire_path, ledger_path)
+    cache = {candidate.content_sha256: _cached(candidate) for candidate in candidates}
+    artifact = build_artifact(
+        candidates,
+        cache,
+        _empty_usage(),
+        wire_path=wire_path,
+        news_root=news_root,
+        ledger_path=ledger_path,
+    )
+    output = tmp_path / "translations.json"
+    output.write_text(translation_builder._render(artifact), encoding="utf-8")
+    seal_ledger = tmp_path / "readings-ledger.jsonl"
+    sealed_ledger.append_seal(
+        str(seal_ledger), "chinese-translations", artifact
+    )
+
+    wire = json.loads(wire_path.read_text(encoding="utf-8"))
+    wire["generated_at"] = "2026-08-30T06:00:00Z"
+    wire["items"].append(
+        _item(
+            "itemv-pending",
+            "新增中文记录仍在等待翻译",
+            "这条新增记录不得让最后一个完整快照消失。",
+        )
+    )
+    wire_path.write_text(json.dumps(wire, ensure_ascii=False), encoding="utf-8")
+    work_cache = tmp_path / "work-cache.json"
+    work_cache.write_bytes(b"must remain untouched")
+    before = output.read_bytes()
+    monkeypatch.setattr(
+        translation_builder,
+        "_translation_cache",
+        lambda _path: pytest.fail("retained mode reopened its admitted sidecar"),
+    )
+
+    result = translation_builder.run_with_state(
+        news_root=news_root,
+        wire_path=wire_path,
+        ledger_path=ledger_path,
+        output_path=output,
+        schema_path=SCHEMA,
+        seal_ledger_path=seal_ledger,
+        retain_last_good=True,
+        work_cache_path=work_cache,
+    )
+
+    assert result.artifact == artifact
+    assert result.publication_state == "retained-last-good"
+    assert result.pending_records == 1
+    assert result.pending_unique_content_digests == 1
+    assert result.current_newswire_generated_at == "2026-08-30T06:00:00Z"
+    assert result.retained_newswire_generated_at == "2026-08-30T05:00:00Z"
+    assert result.output_mutated is False
+    assert output.read_bytes() == before
+    assert work_cache.read_bytes() == b"must remain untouched"
+
+    assert translation_builder.main(
+        [
+            "--news-root", str(news_root),
+            "--wire", str(wire_path),
+            "--ledger", str(ledger_path),
+            "--output", str(output),
+            "--schema", str(SCHEMA),
+            "--seal-ledger", str(seal_ledger),
+            "--work-cache", str(work_cache),
+            "--retain-last-good",
+        ]
+    ) == 0
+    stdout = capsys.readouterr().out.strip()
+    state = json.loads(stdout.removeprefix("chinese-translations: "))
+    assert state["publication_state"] == "retained-last-good"
+    assert state["pending_records"] == 1
+    assert state["pending_unique_content_digests"] == 1
+    assert state["output_mutated"] is False
+    assert output.read_bytes() == before
+
+    tampered = json.loads(output.read_text(encoding="utf-8"))
+    tampered["generation_usage"]["api_calls"] += 1
+    output.write_text(translation_builder._render(tampered), encoding="utf-8")
+    with pytest.raises(TranslationBuildError, match="newest admitted seal"):
+        translation_builder.run_with_state(
+            news_root=news_root,
+            wire_path=wire_path,
+            ledger_path=ledger_path,
+            output_path=output,
+            schema_path=SCHEMA,
+            seal_ledger_path=seal_ledger,
+            retain_last_good=True,
+        )
+
+
 def test_content_addressed_cache_rebuilds_without_api(tmp_path: Path) -> None:
     news_root, wire_path, ledger_path = _fixture_tree(tmp_path)
     candidates = discover_candidates(news_root, wire_path, ledger_path)
@@ -459,6 +559,51 @@ def test_google_retry_hint_is_parsed_and_bounded() -> None:
     assert _retry_after_seconds("Please retry in 806.966757ms.") == 1.0
     assert _retry_after_seconds("Please retry in 9999s.") == 65.0
     assert _retry_after_seconds("quota response omitted a retry hint") == 15.0
+
+
+def test_google_interactions_uses_the_bounded_hardened_post(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed = {}
+
+    def fake_fetch(url, **kwargs):
+        observed["url"] = url
+        observed.update(kwargs)
+        kwargs["url_policy"](url)
+        return SimpleNamespace(status=200, body=b'{"steps": []}')
+
+    monkeypatch.setattr(translation_builder, "safe_fetch_response", fake_fetch)
+    response = translation_builder._post_interaction(
+        {"model": MODEL_ID, "store": False}, "fixture-secret"
+    )
+
+    assert response == {"steps": []}
+    assert observed["url"] == translation_builder.API_ENDPOINT
+    assert observed["method"] == "POST"
+    assert json.loads(observed["body"]) == {"model": MODEL_ID, "store": False}
+    assert observed["headers"] == {
+        "Content-Type": "application/json",
+        "x-goog-api-key": "fixture-secret",
+    }
+    assert observed["max_bytes"] == translation_builder.MAX_MODEL_RESPONSE_BYTES
+    assert observed["max_redirects"] == 0
+
+
+def test_google_interactions_preserves_bounded_rate_limit_semantics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        translation_builder,
+        "safe_fetch_response",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            status=429, body=b'{"message":"Please retry in 11.5s."}'
+        ),
+    )
+
+    with pytest.raises(TranslationRateLimitError) as error:
+        translation_builder._post_interaction({}, "fixture-secret")
+
+    assert error.value.retry_after == 11.5
 
 
 def test_rate_limit_is_never_recursively_split(

@@ -1,0 +1,768 @@
+#!/usr/bin/env python3
+"""Close the 2026-08-30 direct-publication lineage incident exactly once.
+
+This is intentionally not a general base-selection command.  It admits only
+the recorded b22d -> ae5 incident, re-proves both live origins byte-for-byte,
+and writes one root-controlled transition document for the direct publisher.
+"""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import grp
+import hashlib
+import json
+import os
+import pwd
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+
+SCHEMA_VERSION = "palimpsest.direct-publication-base-transition.v1"
+INCIDENT_ID = "palimpsest-direct-lineage-2026-08-30"
+ACKNOWLEDGEMENT = "advance-palimpsest-direct-lineage-2026-08-30"
+INCIDENT_BASE_SHA = "b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
+INCIDENT_LIVE_SHA = "ae5ecacd2e151d15af3fe06a7cd1219aa51573e7"
+INCIDENT_RECEIPT_SHA256 = (
+    "150d4d4314c1a1239f19c29747ce1a69c574cfc01f73fda2020cd51f1c1868b1"
+)
+INCIDENT_INPUT_SHA256 = (
+    "7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede38b2dc68a549413e"
+)
+INCIDENT_MANIFEST_SHA256 = (
+    "1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
+)
+INCIDENT_TREE_SHA256 = (
+    "6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
+)
+INCIDENT_DEPLOYMENT_ID = "505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+PROVIDER_ORIGIN = "https://palimpsest-publication-production.up.railway.app"
+PUBLIC_ORIGIN = "https://www.palimpsest.info"
+EXPECTED_REMOTE = "https://github.com/beepboop2025/palimpsest.git"
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+MAX_MANIFEST_BYTES = 8 * 1024 * 1024
+
+
+class TransitionError(RuntimeError):
+    """Raised when any one-time transition proof is absent or ambiguous."""
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
+def _sha256(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _read_regular(path: Path, *, max_bytes: int) -> bytes:
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise TransitionError(f"cannot inspect required file: {path}") from exc
+    if not stat.S_ISREG(metadata.st_mode) or path.is_symlink():
+        raise TransitionError(f"required file is not regular: {path}")
+    if metadata.st_size > max_bytes:
+        raise TransitionError(f"required file is too large: {path}")
+    try:
+        return path.read_bytes()
+    except OSError as exc:
+        raise TransitionError(f"cannot read required file: {path}") from exc
+
+
+def _strict_json(raw: bytes, label: str) -> dict[str, Any]:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        document: dict[str, Any] = {}
+        for key, value in rows:
+            if key in document:
+                raise TransitionError(f"{label} contains a duplicate key")
+            document[key] = value
+        return document
+
+    try:
+        parsed = json.loads(
+            raw,
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                TransitionError(f"{label} contains {value}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise TransitionError(f"{label} is not strict JSON") from exc
+    if not isinstance(parsed, dict):
+        raise TransitionError(f"{label} must be a JSON object")
+    return parsed
+
+
+def _require_keys(document: dict[str, Any], expected: set[str], label: str) -> None:
+    if set(document) != expected:
+        raise TransitionError(f"{label} does not match its closed schema")
+
+
+def _validate_incident_receipt(raw: bytes) -> dict[str, Any]:
+    if _sha256(raw) != INCIDENT_RECEIPT_SHA256:
+        raise TransitionError("publication receipt is not the exact incident receipt")
+    receipt = _strict_json(raw, "publication receipt")
+    _require_keys(
+        receipt,
+        {
+            "schema_version",
+            "status",
+            "recorded_at",
+            "input_sha256",
+            "wire_generated_at",
+            "base_sha",
+            "release_sha",
+            "railway",
+            "origins",
+            "github_actions_used",
+        },
+        "publication receipt",
+    )
+    if (
+        receipt["schema_version"] != "palimpsest.hetzner-railway-publication.v1"
+        or receipt["status"] != "verified"
+        or receipt["base_sha"] != INCIDENT_BASE_SHA
+        or receipt["release_sha"] != INCIDENT_LIVE_SHA
+        or receipt["input_sha256"] != INCIDENT_INPUT_SHA256
+        or receipt["github_actions_used"] is not False
+    ):
+        raise TransitionError("publication receipt identity does not match the incident")
+    railway = receipt.get("railway")
+    origins = receipt.get("origins")
+    if not isinstance(railway, dict) or not isinstance(origins, dict):
+        raise TransitionError("publication receipt proof objects are invalid")
+    _require_keys(railway, {"deployment_id", "status"}, "Railway receipt")
+    _require_keys(origins, {"provider", "public"}, "origin receipt")
+    if railway != {"deployment_id": INCIDENT_DEPLOYMENT_ID, "status": "SUCCESS"}:
+        raise TransitionError("publication receipt names a different Railway deployment")
+    if origins != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+        raise TransitionError("publication receipt names different live origins")
+    return receipt
+
+
+def _manifest_url(origin: str, nonce: int) -> str:
+    parsed = urllib.parse.urlsplit(origin)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        raise TransitionError("live origin is not an exact HTTPS origin")
+    return origin.rstrip("/") + f"/railway-release.json?lineage_transition={nonce}"
+
+
+def _fetch_manifest(origin: str, nonce: int) -> bytes:
+    url = _manifest_url(origin, nonce)
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache, no-store",
+            "User-Agent": "palimpsest-lineage-transition/1",
+        },
+    )
+    opener = urllib.request.build_opener(_NoRedirect())
+    try:
+        with opener.open(request, timeout=30) as response:
+            if response.status != 200 or response.geturl() != url:
+                raise TransitionError(f"live manifest response is not exact for {origin}")
+            declared = response.headers.get("Content-Length")
+            if declared is not None and int(declared) > MAX_MANIFEST_BYTES:
+                raise TransitionError(f"live manifest is too large for {origin}")
+            raw = response.read(MAX_MANIFEST_BYTES + 1)
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        if isinstance(exc, TransitionError):
+            raise
+        raise TransitionError(f"cannot fetch live manifest from {origin}") from exc
+    if len(raw) > MAX_MANIFEST_BYTES:
+        raise TransitionError(f"live manifest is too large for {origin}")
+    return raw
+
+
+def _validate_live_manifests(provider_raw: bytes, public_raw: bytes) -> None:
+    if provider_raw != public_raw:
+        raise TransitionError("provider and public live manifests are not byte-identical")
+    if _sha256(provider_raw) != INCIDENT_MANIFEST_SHA256:
+        raise TransitionError("live manifest is not the exact incident manifest")
+    manifest = _strict_json(provider_raw, "live manifest")
+    if (
+        manifest.get("schema_version") != "palimpsest.railway-static-release.v1"
+        or manifest.get("source_commit") != INCIDENT_LIVE_SHA
+        or manifest.get("state") != "artifact_ready"
+        or manifest.get("tree_sha256") != INCIDENT_TREE_SHA256
+        or manifest.get("file_count") != 42_909
+        or manifest.get("total_bytes") != 291_047_470
+    ):
+        raise TransitionError("live manifest identity does not match the incident")
+
+
+def _run(
+    command: list[str],
+    *,
+    user: pwd.struct_passwd | None = None,
+    text: bool = True,
+) -> subprocess.CompletedProcess[Any]:
+    def demote() -> None:
+        assert user is not None
+        os.setgroups([user.pw_gid])
+        os.setgid(user.pw_gid)
+        os.setuid(user.pw_uid)
+
+    environment = dict(
+        PATH="/usr/bin:/bin",
+        LANG="C.UTF-8",
+        GIT_CONFIG_NOSYSTEM="1",
+        GIT_CONFIG_GLOBAL="/dev/null",
+        GIT_CONFIG_SYSTEM="/dev/null",
+        GIT_NO_REPLACE_OBJECTS="1",
+        GIT_TERMINAL_PROMPT="0",
+    )
+    if user is not None:
+        environment.update(
+            HOME=user.pw_dir,
+            LOGNAME=user.pw_name,
+            USER=user.pw_name,
+        )
+    try:
+        return subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=text,
+            timeout=120,
+            env=environment,
+            preexec_fn=demote if user is not None else None,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        detail = ""
+        if isinstance(exc, subprocess.CalledProcessError):
+            detail = str(exc.stderr).strip()
+        raise TransitionError(
+            f"command failed: {' '.join(command)}" + (f": {detail}" if detail else "")
+        ) from exc
+
+
+def _git(
+    repository: Path,
+    arguments: list[str],
+    *,
+    user: pwd.struct_passwd,
+    text: bool = True,
+) -> subprocess.CompletedProcess[Any]:
+    return _run(
+        ["/usr/bin/git", "-C", str(repository), *arguments],
+        user=user,
+        text=text,
+    )
+
+
+def _validate_metadata(
+    path: Path,
+    *,
+    uid: int,
+    gid: int,
+    mode: int,
+    label: str,
+) -> None:
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise TransitionError(f"cannot inspect {label}") from exc
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or path.is_symlink()
+        or metadata.st_uid != uid
+        or metadata.st_gid != gid
+        or stat.S_IMODE(metadata.st_mode) != mode
+    ):
+        raise TransitionError(f"{label} ownership or mode is unsafe")
+
+
+def _validate_target_blob(
+    repository: Path,
+    target_sha: str,
+    repository_path: str,
+    installed_path: Path,
+    *,
+    owner: pwd.struct_passwd,
+    git_mode: str = "100755",
+    installed_mode: int = 0o755,
+) -> str:
+    _validate_metadata(
+        installed_path,
+        uid=0,
+        gid=0,
+        mode=installed_mode,
+        label=f"installed {repository_path}",
+    )
+    tree_row = _git(
+        repository,
+        ["ls-tree", target_sha, "--", repository_path],
+        user=owner,
+    ).stdout.strip()
+    if not tree_row.startswith(f"{git_mode} blob ") or not tree_row.endswith(
+        f"\t{repository_path}"
+    ):
+        raise TransitionError(f"target does not contain executable {repository_path}")
+    expected = _git(
+        repository,
+        ["show", f"{target_sha}:{repository_path}"],
+        user=owner,
+        text=False,
+    ).stdout
+    actual = _read_regular(installed_path, max_bytes=4 * 1024 * 1024)
+    if expected != actual:
+        raise TransitionError(f"installed {repository_path} differs from target Git")
+    return _sha256(actual)
+
+
+def _canonical_bytes(document: dict[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _atomic_create_pin(path: Path, raw: bytes, *, group_gid: int) -> None:
+    parent = path.parent
+    try:
+        parent_metadata = parent.lstat()
+    except OSError as exc:
+        raise TransitionError("cannot inspect publication base-pin directory") from exc
+    if (
+        not stat.S_ISDIR(parent_metadata.st_mode)
+        or parent.is_symlink()
+        or parent_metadata.st_uid != 0
+        or parent_metadata.st_gid != 0
+        or stat.S_IMODE(parent_metadata.st_mode) != 0o755
+    ):
+        raise TransitionError("publication base-pin directory is unsafe")
+    if path.exists() or path.is_symlink():
+        raise TransitionError("publication base pin already exists; incident is closed")
+
+    directory_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    temporary_path: str | None = None
+    try:
+        descriptor, temporary_path = tempfile.mkstemp(
+            prefix=".railway-publication-base.", dir=parent
+        )
+        try:
+            os.fchmod(descriptor, 0o640)
+            os.fchown(descriptor, 0, group_gid)
+            with os.fdopen(descriptor, "wb", closefd=True) as handle:
+                handle.write(raw)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.link(
+                Path(temporary_path).name,
+                path.name,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+            os.fsync(directory_fd)
+        except FileExistsError as exc:
+            raise TransitionError("publication base pin appeared during transition") from exc
+        finally:
+            if temporary_path is not None:
+                try:
+                    os.unlink(Path(temporary_path).name, dir_fd=directory_fd)
+                except FileNotFoundError:
+                    pass
+    finally:
+        os.close(directory_fd)
+
+
+def perform_transition(args: argparse.Namespace) -> dict[str, Any]:
+    if os.geteuid() != 0:
+        raise TransitionError("base transition must run as root")
+    if args.ack != ACKNOWLEDGEMENT:
+        raise TransitionError("exact incident acknowledgement is required")
+    if SHA40.fullmatch(args.target_base_sha) is None:
+        raise TransitionError("target base SHA must be 40 lowercase hex characters")
+    if args.target_base_sha in {INCIDENT_BASE_SHA, INCIDENT_LIVE_SHA}:
+        raise TransitionError("target base must be a new public descendant")
+
+    repository = args.repository.resolve(strict=True)
+    publisher_user = pwd.getpwnam(args.publisher_user)
+    publisher_group = grp.getgrnam(args.publisher_group)
+    if publisher_user.pw_gid != publisher_group.gr_gid:
+        raise TransitionError("publisher user primary group does not match pin group")
+
+    state_metadata = args.state_root.lstat()
+    if (
+        not stat.S_ISDIR(state_metadata.st_mode)
+        or args.state_root.is_symlink()
+        or state_metadata.st_uid != publisher_user.pw_uid
+        or state_metadata.st_gid != publisher_group.gr_gid
+        or stat.S_IMODE(state_metadata.st_mode) != 0o700
+    ):
+        raise TransitionError("publication state root ownership or mode is unsafe")
+    lock_path = args.state_root / "publish.lock"
+    _validate_metadata(
+        lock_path,
+        uid=publisher_user.pw_uid,
+        gid=publisher_group.gr_gid,
+        mode=0o600,
+        label="publication lock",
+    )
+    lock_descriptor = os.open(lock_path, os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW)
+    try:
+        try:
+            fcntl.flock(lock_descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise TransitionError("direct publisher is active") from exc
+
+        _validate_metadata(
+            args.deployed_commit,
+            uid=0,
+            gid=0,
+            mode=0o644,
+            label="deployed-commit",
+        )
+        deployed = _read_regular(args.deployed_commit, max_bytes=256).decode().strip()
+        if deployed != INCIDENT_BASE_SHA:
+            raise TransitionError("deployed-commit is not the exact incident base")
+        if args.base_pin.exists() or args.base_pin.is_symlink():
+            raise TransitionError("publication base pin already exists; incident is closed")
+
+        _validate_metadata(
+            args.success_receipt,
+            uid=publisher_user.pw_uid,
+            gid=publisher_group.gr_gid,
+            mode=0o600,
+            label="publication receipt",
+        )
+        receipt_raw = _read_regular(args.success_receipt, max_bytes=64 * 1024)
+        _validate_incident_receipt(receipt_raw)
+
+        if _git(repository, ["status", "--porcelain=v1", "--untracked-files=all"], user=publisher_user).stdout:
+            raise TransitionError("canonical repository is not clean")
+        git_dir = repository / ".git"
+        if (
+            (git_dir / "shallow").exists()
+            or (git_dir / "info" / "grafts").exists()
+            or _git(
+                repository,
+                ["for-each-ref", "--format=%(refname)", "refs/replace"],
+                user=publisher_user,
+            ).stdout
+        ):
+            raise TransitionError("canonical repository uses shallow, graft, or replacement history")
+        canonical_head = _git(repository, ["rev-parse", "HEAD"], user=publisher_user).stdout.strip()
+        if canonical_head != INCIDENT_BASE_SHA:
+            raise TransitionError("canonical HEAD is not the exact incident base")
+        remote_url = _git(repository, ["remote", "get-url", "origin"], user=publisher_user).stdout.strip()
+        if remote_url != EXPECTED_REMOTE:
+            raise TransitionError("origin is not the reviewed public repository")
+
+        _git(
+            repository,
+            [
+                "fetch",
+                "--quiet",
+                "--no-tags",
+                "--force",
+                "origin",
+                "+refs/heads/main:refs/remotes/origin/main",
+            ],
+            user=publisher_user,
+        )
+        remote_rows = _git(
+            repository,
+            ["ls-remote", "--exit-code", "origin", "refs/heads/main"],
+            user=publisher_user,
+        ).stdout.splitlines()
+        if len(remote_rows) != 1 or not remote_rows[0].endswith("\trefs/heads/main"):
+            raise TransitionError("public main remote identity is ambiguous")
+        public_main_sha = remote_rows[0].split("\t", 1)[0]
+        local_main_sha = _git(
+            repository, ["rev-parse", "refs/remotes/origin/main"], user=publisher_user
+        ).stdout.strip()
+        if public_main_sha != local_main_sha or SHA40.fullmatch(public_main_sha) is None:
+            raise TransitionError("fetched origin/main does not equal public main")
+        if args.target_base_sha != public_main_sha:
+            raise TransitionError("target base is not the exact fetched public main tip")
+        _git(
+            repository,
+            ["merge-base", "--is-ancestor", INCIDENT_BASE_SHA, args.target_base_sha],
+            user=publisher_user,
+        )
+        _git(
+            repository,
+            ["merge-base", "--is-ancestor", args.target_base_sha, public_main_sha],
+            user=publisher_user,
+        )
+
+        publisher_sha256 = _validate_target_blob(
+            repository,
+            args.target_base_sha,
+            "ops/railway/palimpsest-railway-publish",
+            args.installed_publisher,
+            owner=publisher_user,
+        )
+        helper_sha256 = _validate_target_blob(
+            repository,
+            args.target_base_sha,
+            "ops/railway/advance-direct-publication-base",
+            args.installed_helper,
+            owner=publisher_user,
+        )
+        watchdog_sha256 = _validate_target_blob(
+            repository,
+            args.target_base_sha,
+            "ops/railway/palimpsest-direct-watchdog",
+            args.installed_watchdog,
+            owner=publisher_user,
+        )
+        reconciler_sha256 = _validate_target_blob(
+            repository,
+            args.target_base_sha,
+            "ops/railway/reconcile-direct-publication-candidate",
+            args.installed_reconciler,
+            owner=publisher_user,
+        )
+        publisher_service_sha256 = _validate_target_blob(
+            repository,
+            args.target_base_sha,
+            "ops/systemd/palimpsest-railway-publish.service",
+            args.installed_publisher_service,
+            owner=publisher_user,
+            git_mode="100644",
+            installed_mode=0o644,
+        )
+        watchdog_service_sha256 = _validate_target_blob(
+            repository,
+            args.target_base_sha,
+            "ops/systemd/palimpsest-direct-watchdog.service",
+            args.installed_watchdog_service,
+            owner=publisher_user,
+            git_mode="100644",
+            installed_mode=0o644,
+        )
+        watchdog_timer_sha256 = _validate_target_blob(
+            repository,
+            args.target_base_sha,
+            "ops/systemd/palimpsest-direct-watchdog.timer",
+            args.installed_watchdog_timer,
+            owner=publisher_user,
+            git_mode="100644",
+            installed_mode=0o644,
+        )
+
+        nonce = time.time_ns()
+        provider_raw = _fetch_manifest(PROVIDER_ORIGIN, nonce)
+        public_raw = _fetch_manifest(PUBLIC_ORIGIN, nonce)
+        _validate_live_manifests(provider_raw, public_raw)
+
+        # Close the observation-to-mutation window. Public main, the local host
+        # identity, the exact v1 receipt, and every installed control-plane byte
+        # must still equal the values proved above immediately before pinning.
+        final_remote_rows = _git(
+            repository,
+            ["ls-remote", "--exit-code", "origin", "refs/heads/main"],
+            user=publisher_user,
+        ).stdout.splitlines()
+        if (
+            len(final_remote_rows) != 1
+            or final_remote_rows[0] != f"{public_main_sha}\trefs/heads/main"
+        ):
+            raise TransitionError("public main moved before the transition boundary")
+        if _read_regular(args.success_receipt, max_bytes=64 * 1024) != receipt_raw:
+            raise TransitionError("publication receipt changed before the transition boundary")
+        if _read_regular(args.deployed_commit, max_bytes=256).decode().strip() != deployed:
+            raise TransitionError("deployed-commit changed before the transition boundary")
+        if (
+            _git(repository, ["rev-parse", "HEAD"], user=publisher_user).stdout.strip()
+            != canonical_head
+            or _git(
+                repository,
+                ["status", "--porcelain=v1", "--untracked-files=all"],
+                user=publisher_user,
+            ).stdout
+        ):
+            raise TransitionError("canonical repository changed before the transition boundary")
+        installed_rechecks = (
+            (args.installed_publisher, publisher_sha256),
+            (args.installed_helper, helper_sha256),
+            (args.installed_reconciler, reconciler_sha256),
+            (args.installed_watchdog, watchdog_sha256),
+            (args.installed_publisher_service, publisher_service_sha256),
+            (args.installed_watchdog_service, watchdog_service_sha256),
+            (args.installed_watchdog_timer, watchdog_timer_sha256),
+        )
+        for installed_path, expected_digest in installed_rechecks:
+            if _sha256(
+                _read_regular(installed_path, max_bytes=4 * 1024 * 1024)
+            ) != expected_digest:
+                raise TransitionError(
+                    "installed publication lane changed before the transition boundary"
+                )
+
+        document: dict[str, Any] = {
+            "incident_id": INCIDENT_ID,
+            "installed": {
+                "publisher_service_sha256": publisher_service_sha256,
+                "publisher_sha256": publisher_sha256,
+                "reconciler_sha256": reconciler_sha256,
+                "transition_helper_sha256": helper_sha256,
+                "watchdog_service_sha256": watchdog_service_sha256,
+                "watchdog_sha256": watchdog_sha256,
+                "watchdog_timer_sha256": watchdog_timer_sha256,
+            },
+            "origins": {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN},
+            "previous": {
+                "canonical_head": canonical_head,
+                "deployed_commit": deployed,
+                "live_manifest_sha256": INCIDENT_MANIFEST_SHA256,
+                "live_release_sha": INCIDENT_LIVE_SHA,
+                "live_tree_sha256": INCIDENT_TREE_SHA256,
+                "publication_input_sha256": INCIDENT_INPUT_SHA256,
+                "publication_receipt_sha256": INCIDENT_RECEIPT_SHA256,
+                "railway_deployment_id": INCIDENT_DEPLOYMENT_ID,
+            },
+            "recorded_at": datetime.now(UTC)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z"),
+            "schema_version": SCHEMA_VERSION,
+            "status": "verified",
+            "target": {
+                "base_sha": args.target_base_sha,
+                "public_main_sha": public_main_sha,
+            },
+        }
+        _atomic_create_pin(
+            args.base_pin,
+            _canonical_bytes(document),
+            group_gid=publisher_group.gr_gid,
+        )
+        _validate_metadata(
+            args.base_pin,
+            uid=0,
+            gid=publisher_group.gr_gid,
+            mode=0o640,
+            label="publication base pin",
+        )
+        if _strict_json(
+            _read_regular(args.base_pin, max_bytes=64 * 1024), "publication base pin"
+        ) != document:
+            raise TransitionError("persisted publication base pin changed")
+        return document
+    finally:
+        os.close(lock_descriptor)
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target-base-sha", required=True)
+    parser.add_argument("--ack", required=True)
+    parser.add_argument(
+        "--repository",
+        type=Path,
+        default=Path("/home/palimpsest/palimpsest"),
+    )
+    parser.add_argument(
+        "--state-root",
+        type=Path,
+        default=Path("/var/lib/palimpsest/railway-publication"),
+    )
+    parser.add_argument(
+        "--success-receipt",
+        type=Path,
+        default=Path("/var/lib/palimpsest/railway-publication/latest-success.json"),
+    )
+    parser.add_argument(
+        "--deployed-commit",
+        type=Path,
+        default=Path("/etc/palimpsest/deployed-commit"),
+    )
+    parser.add_argument(
+        "--base-pin",
+        type=Path,
+        default=Path("/etc/palimpsest/railway-publication-base.json"),
+    )
+    parser.add_argument(
+        "--installed-publisher",
+        type=Path,
+        default=Path("/usr/local/sbin/palimpsest-railway-publish"),
+    )
+    parser.add_argument(
+        "--installed-helper",
+        type=Path,
+        default=Path("/usr/local/sbin/palimpsest-advance-direct-publication-base"),
+    )
+    parser.add_argument(
+        "--installed-watchdog",
+        type=Path,
+        default=Path("/usr/local/sbin/palimpsest-direct-watchdog"),
+    )
+    parser.add_argument(
+        "--installed-reconciler",
+        type=Path,
+        default=Path("/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate"),
+    )
+    parser.add_argument(
+        "--installed-publisher-service",
+        type=Path,
+        default=Path("/etc/systemd/system/palimpsest-railway-publish.service"),
+    )
+    parser.add_argument(
+        "--installed-watchdog-service",
+        type=Path,
+        default=Path("/etc/systemd/system/palimpsest-direct-watchdog.service"),
+    )
+    parser.add_argument(
+        "--installed-watchdog-timer",
+        type=Path,
+        default=Path("/etc/systemd/system/palimpsest-direct-watchdog.timer"),
+    )
+    parser.add_argument("--publisher-user", default="palimpsest")
+    parser.add_argument("--publisher-group", default="palimpsest")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    try:
+        document = perform_transition(_parser().parse_args(argv))
+    except TransitionError as exc:
+        print(f"base transition refused: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(document, sort_keys=True, separators=(",", ":")))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

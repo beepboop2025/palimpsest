@@ -1,0 +1,13 @@
+[Unit]
+Description=Check direct Palimpsest publication health every five minutes
+
+[Timer]
+OnCalendar=*:0/5
+RandomizedDelaySec=30s
+FixedRandomDelay=true
+AccuracySec=15s
+Persistent=true
+Unit=palimpsest-direct-watchdog.service
+
+[Install]
+WantedBy=timers.target

@@ -5,12 +5,31 @@
 set -Eeuo pipefail
 umask 077
 
+# Repository-controlled builders never inherit caller Git configuration.  A
+# shell function keeps every Git invocation on the same replacement-free,
+# prompt-free configuration without relying on the ambient process.
+git() {
+  /usr/bin/env -i \
+    PATH=/usr/bin:/bin \
+    HOME=/nonexistent \
+    LANG=C.UTF-8 \
+    GIT_CONFIG_NOSYSTEM=1 \
+    GIT_CONFIG_GLOBAL=/dev/null \
+    GIT_CONFIG_SYSTEM=/dev/null \
+    GIT_NO_REPLACE_OBJECTS=1 \
+    GIT_TERMINAL_PROMPT=0 \
+    /usr/bin/git "$@"
+}
+
 readonly SOURCE_REPOSITORY="${PALIMPSEST_SOURCE_REPOSITORY:-/home/palimpsest/palimpsest}"
 readonly HOST_READINGS="${PALIMPSEST_HOST_READINGS:-/var/lib/palimpsest/readings}"
 readonly LIVE_WIRE_ROOT="${PALIMPSEST_LIVE_WIRE_ROOT:-/var/lib/palimpsest/newswire}"
 readonly STATE_ROOT="${PALIMPSEST_RAILWAY_STATE_ROOT:-/var/lib/palimpsest/railway-publication}"
 readonly DATA_LOCK_FILE="${PALIMPSEST_DATA_LOCK_FILE:-/var/lib/palimpsest/railway-publication/data.lock}"
 readonly DEPLOYED_COMMIT_FILE="${PALIMPSEST_DEPLOYED_COMMIT_FILE:-/etc/palimpsest/deployed-commit}"
+readonly PUBLICATION_BASE_FILE="${PALIMPSEST_RAILWAY_BASE_FILE:-/etc/palimpsest/railway-publication-base.json}"
+readonly DATA_HOLD_FILE="${PALIMPSEST_RAILWAY_DATA_HOLD_FILE:-/etc/palimpsest/railway-publication-data-hold.json}"
+readonly PUBLICATION_BASE_GROUP="${PALIMPSEST_RAILWAY_BASE_GROUP:-palimpsest}"
 readonly PROJECT_ID="${RAILWAY_PROJECT_ID:?RAILWAY_PROJECT_ID is required}"
 readonly ENVIRONMENT_ID="${RAILWAY_ENVIRONMENT_ID:?RAILWAY_ENVIRONMENT_ID is required}"
 readonly SERVICE_ID="${RAILWAY_SERVICE_ID:?RAILWAY_SERVICE_ID is required}"
@@ -22,8 +41,30 @@ readonly PYTHON_BIN="${PALIMPSEST_PYTHON_BIN:-/usr/bin/python3}"
 
 readonly WIRE_FILE="$LIVE_WIRE_ROOT/newswire-latest.json"
 readonly LEDGER_FILE="$LIVE_WIRE_ROOT/newswire-versions.jsonl"
-readonly ANALYSIS_FILE="$LIVE_WIRE_ROOT/event-analysis-latest.json"
 readonly SUCCESS_RECEIPT="$STATE_ROOT/latest-success.json"
+readonly PENDING_CANDIDATE="$STATE_ROOT/pending-candidate.json"
+readonly PENDING_PREPARATION="$STATE_ROOT/pending-preparation.json"
+readonly RELEASE_BUNDLE_ROOT="$STATE_ROOT/release-bundles"
+readonly RELEASE_MANIFEST_ROOT="$STATE_ROOT/release-manifests"
+readonly RECEIPT_ARCHIVE_ROOT="$STATE_ROOT/receipts"
+readonly CANDIDATE_ARCHIVE_ROOT="$STATE_ROOT/candidates"
+readonly PREDECESSOR_EVIDENCE_ROOT="$STATE_ROOT/predecessors"
+readonly BASE_TRANSITION_SCHEMA="palimpsest.direct-publication-base-transition.v1"
+readonly BASE_TRANSITION_INCIDENT="palimpsest-direct-lineage-2026-08-30"
+readonly INCIDENT_BASE_SHA="b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
+readonly INCIDENT_LIVE_SHA="ae5ecacd2e151d15af3fe06a7cd1219aa51573e7"
+readonly INCIDENT_RECEIPT_SHA256="150d4d4314c1a1239f19c29747ce1a69c574cfc01f73fda2020cd51f1c1868b1"
+readonly INCIDENT_INPUT_SHA256="7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede38b2dc68a549413e"
+readonly INCIDENT_MANIFEST_SHA256="1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
+readonly INCIDENT_TREE_SHA256="6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
+readonly INCIDENT_DEPLOYMENT_ID="505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+readonly INSTALLED_PUBLISHER="${PALIMPSEST_INSTALLED_PUBLISHER:-/usr/local/sbin/palimpsest-railway-publish}"
+readonly INSTALLED_TRANSITION_HELPER="${PALIMPSEST_INSTALLED_TRANSITION_HELPER:-/usr/local/sbin/palimpsest-advance-direct-publication-base}"
+readonly INSTALLED_RECONCILER="${PALIMPSEST_INSTALLED_RECONCILER:-/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate}"
+readonly INSTALLED_WATCHDOG="${PALIMPSEST_INSTALLED_WATCHDOG:-/usr/local/sbin/palimpsest-direct-watchdog}"
+readonly INSTALLED_PUBLISHER_SERVICE="${PALIMPSEST_INSTALLED_PUBLISHER_SERVICE:-/etc/systemd/system/palimpsest-railway-publish.service}"
+readonly INSTALLED_WATCHDOG_SERVICE="${PALIMPSEST_INSTALLED_WATCHDOG_SERVICE:-/etc/systemd/system/palimpsest-direct-watchdog.service}"
+readonly INSTALLED_WATCHDOG_TIMER="${PALIMPSEST_INSTALLED_WATCHDOG_TIMER:-/etc/systemd/system/palimpsest-direct-watchdog.timer}"
 
 declare -ar PUBLIC_COMPANION_PATHS=(
   "readings/public-deletion-ledgers-history.jsonl"
@@ -38,6 +79,12 @@ declare -ar PUBLIC_COMPANION_PATHS=(
 )
 
 work_root=""
+bundle_tmp=""
+bundle_metadata_tmp=""
+candidate_tmp=""
+preparation_tmp=""
+release_manifest_tmp=""
+receipt_tmp=""
 
 log() {
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"
@@ -46,10 +93,666 @@ log() {
 origin_release_sha() {
   local origin="$1" cache_buster
   cache_buster="$(date +%s%N)"
-  curl -fsSL --max-time 30 \
+  curl -fsS --proto '=https' --max-redirs 0 --max-time 30 \
     "$origin/railway-release.json?edition=$cache_buster" \
     | jq -r '.source_commit // empty' 2>/dev/null \
     || true
+}
+
+sha256_file() {
+  sha256sum "$1" | awk '{print $1}'
+}
+
+validate_installed_transition_artifact() {
+  local key="$1" path="$2" mode="$3" expected actual
+  [[ -f "$path" && ! -L "$path" \
+    && "$(stat -c '%u:%g:%a' "$path")" == "0:0:$mode" ]] || {
+    log "installed transition artifact has unsafe metadata: $path" >&2
+    return 1
+  }
+  expected="$(jq -er --arg key "$key" '.installed[$key]' "$PUBLICATION_BASE_FILE")"
+  actual="$(sha256_file "$path")"
+  [[ "$actual" == "$expected" ]] || {
+    log "installed transition artifact differs from the root-owned pin: $path" >&2
+    return 1
+  }
+}
+
+fsync_paths_and_directory() {
+  "$PYTHON_BIN" - "$@" <<'PY'
+import os
+import sys
+
+for raw_path in sys.argv[1:-1]:
+    descriptor = os.open(raw_path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+directory = os.open(sys.argv[-1], os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+try:
+    os.fsync(directory)
+finally:
+    os.close(directory)
+PY
+}
+
+archive_predecessor_receipt() {
+  mkdir -p "$RECEIPT_ARCHIVE_ROOT"
+  chmod 0700 "$RECEIPT_ARCHIVE_ROOT"
+  fsync_paths_and_directory "$STATE_ROOT"
+  receipt_archive_path="$RECEIPT_ARCHIVE_ROOT/$receipt_sha256.json"
+  if [[ -e "$receipt_archive_path" || -L "$receipt_archive_path" ]]; then
+    [[ -f "$receipt_archive_path" && ! -L "$receipt_archive_path" \
+      && "$(stat -c '%a' "$receipt_archive_path")" == 600 \
+      && "$(sha256_file "$receipt_archive_path")" == "$receipt_sha256" ]] || {
+      log "predecessor receipt archive conflicts with its digest" >&2
+      return 1
+    }
+  else
+    # latest-success and its immutable archive live on the same private state
+    # filesystem, so a hard link preserves the exact predecessor inode without
+    # a copy/replace window.
+    ln "$SUCCESS_RECEIPT" "$receipt_archive_path"
+  fi
+  fsync_paths_and_directory "$receipt_archive_path" "$RECEIPT_ARCHIVE_ROOT"
+}
+
+archive_candidate_journal() {
+  mkdir -p "$CANDIDATE_ARCHIVE_ROOT"
+  chmod 0700 "$CANDIDATE_ARCHIVE_ROOT"
+  candidate_archive_path="$CANDIDATE_ARCHIVE_ROOT/$candidate_journal_sha256.json"
+  [[ ! -e "$candidate_archive_path" && ! -L "$candidate_archive_path" ]] || {
+    log "candidate journal archive unexpectedly already exists" >&2
+    return 1
+  }
+  ln "$PENDING_CANDIDATE" "$candidate_archive_path"
+  [[ "$(stat -c '%a' "$candidate_archive_path")" == 600 \
+    && "$(sha256_file "$candidate_archive_path")" == "$candidate_journal_sha256" ]] || {
+    log "candidate journal archive identity changed" >&2
+    return 1
+  }
+  fsync_paths_and_directory "$candidate_archive_path" "$CANDIDATE_ARCHIVE_ROOT"
+}
+
+persist_release_manifest_anchor() {
+  local source_manifest="$release/railway-release.json"
+  mkdir -p "$RELEASE_MANIFEST_ROOT"
+  chmod 0700 "$RELEASE_MANIFEST_ROOT"
+  release_manifest_path="$RELEASE_MANIFEST_ROOT/$release_sha.json"
+  [[ -f "$source_manifest" && ! -L "$source_manifest" \
+    && ! -e "$release_manifest_path" && ! -L "$release_manifest_path" ]] || {
+    log "release manifest anchor source/destination is unsafe" >&2
+    return 1
+  }
+  release_manifest_tmp="$(mktemp "$RELEASE_MANIFEST_ROOT/.release-manifest.XXXXXX")"
+  cp "$source_manifest" "$release_manifest_tmp"
+  chmod 0600 "$release_manifest_tmp"
+  "$PYTHON_BIN" -I -S - "$release_manifest_tmp" "$release_sha" <<'PY'
+import json
+import re
+import sys
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+EXPECTED = {
+    "built_at",
+    "critical_files",
+    "deployment_source",
+    "file_count",
+    "github_required",
+    "schema_version",
+    "source_commit",
+    "state",
+    "total_bytes",
+    "tree_sha256",
+}
+
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("release manifest anchor contains a duplicate key")
+        value[key] = item
+    return value
+
+
+try:
+    document = json.loads(
+        Path(sys.argv[1]).read_bytes().decode("utf-8", "strict"),
+        object_pairs_hook=strict_object,
+        parse_constant=lambda value: (_ for _ in ()).throw(
+            ValueError(f"non-finite JSON value: {value}")
+        ),
+    )
+except (UnicodeError, ValueError, json.JSONDecodeError) as exc:
+    raise SystemExit("release manifest anchor is not strict JSON") from exc
+if not isinstance(document, dict) or set(document) != EXPECTED:
+    raise SystemExit("release manifest anchor document is not closed-schema")
+try:
+    built_at = datetime.fromisoformat(document["built_at"].replace("Z", "+00:00"))
+except (AttributeError, ValueError) as exc:
+    raise SystemExit("release manifest built_at is invalid") from exc
+if (
+    built_at.tzinfo is None
+    or built_at.utcoffset() is None
+    or built_at.astimezone(UTC) > datetime.now(UTC) + timedelta(seconds=120)
+    or document["schema_version"] != "palimpsest.railway-static-release.v1"
+    or document["source_commit"] != sys.argv[2]
+    or document["deployment_source"] != "local-git-archive"
+    or document["github_required"] is not False
+    or document["state"] != "artifact_ready"
+    or not isinstance(document["tree_sha256"], str)
+    or re.fullmatch(r"[0-9a-f]{64}", document["tree_sha256"]) is None
+    or not isinstance(document["file_count"], int)
+    or isinstance(document["file_count"], bool)
+    or document["file_count"] < 1
+    or not isinstance(document["total_bytes"], int)
+    or isinstance(document["total_bytes"], bool)
+    or document["total_bytes"] < 1
+    or not isinstance(document["critical_files"], dict)
+    or not document["critical_files"]
+):
+    raise SystemExit("release manifest anchor identity is invalid")
+PY
+  release_manifest_sha256="$(sha256_file "$release_manifest_tmp")"
+  release_manifest_bytes="$(stat -c '%s' "$release_manifest_tmp")"
+  release_manifest_tree_sha256="$(jq -er --arg release "$release_sha" '
+    select(
+      .schema_version == "palimpsest.railway-static-release.v1" and
+      .source_commit == $release and
+      .deployment_source == "local-git-archive" and
+      .github_required == false and
+      .state == "artifact_ready"
+    ) | .tree_sha256 | select(type == "string" and test("^[0-9a-f]{64}$"))
+  ' "$release_manifest_tmp")"
+  release_manifest_file_count="$(jq -er '.file_count | select(type == "number" and . >= 1 and floor == .)' "$release_manifest_tmp")"
+  release_manifest_total_bytes="$(jq -er '.total_bytes | select(type == "number" and . >= 1 and floor == .)' "$release_manifest_tmp")"
+  [[ "$release_manifest_sha256" =~ ^[0-9a-f]{64}$ \
+    && "$release_manifest_bytes" =~ ^[1-9][0-9]*$ ]] || {
+    log "local release manifest anchor identity is invalid" >&2
+    return 1
+  }
+  ln "$release_manifest_tmp" "$release_manifest_path"
+  unlink "$release_manifest_tmp"
+  release_manifest_tmp=""
+  fsync_paths_and_directory "$release_manifest_path" "$RELEASE_MANIFEST_ROOT"
+}
+
+recover_abandoned_preparation() {
+  local release bundle metadata evidence manifest
+  [[ -e "$PENDING_PREPARATION" || -L "$PENDING_PREPARATION" ]] || return 0
+  [[ ! -e "$PENDING_CANDIDATE" && ! -L "$PENDING_CANDIDATE" ]] || return 0
+  [[ -f "$PENDING_PREPARATION" && ! -L "$PENDING_PREPARATION" \
+    && "$(stat -c '%u:%g:%a' "$PENDING_PREPARATION")" == "$(id -u):$(id -g):600" ]] || {
+    log "abandoned preparation journal has unsafe metadata" >&2
+    return 1
+  }
+  jq -e '
+    type == "object" and
+    keys == ["base_sha","bundle_metadata_path","bundle_path","evidence_directory","input_sha256","prepared_at","release_manifest_path","release_sha","schema_version","status","submission_id"] and
+    .schema_version == "palimpsest.direct-publication-preparation.v1" and
+    .status == "pre_mutation" and
+    (.prepared_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")) and
+    ([.base_sha,.release_sha] | all(type == "string" and test("^[0-9a-f]{40}$"))) and
+    (.input_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+    (.submission_id | type == "string" and test("^[0-9a-f]{32}$"))
+  ' "$PENDING_PREPARATION" >/dev/null || {
+    log "abandoned preparation journal is not closed-schema" >&2
+    return 1
+  }
+  release="$(jq -er '.release_sha' "$PENDING_PREPARATION")"
+  bundle="$(jq -er '.bundle_path' "$PENDING_PREPARATION")"
+  metadata="$(jq -er '.bundle_metadata_path' "$PENDING_PREPARATION")"
+  evidence="$(jq -er '.evidence_directory' "$PENDING_PREPARATION")"
+  manifest="$(jq -er '.release_manifest_path' "$PENDING_PREPARATION")"
+  [[ "$bundle" == "$RELEASE_BUNDLE_ROOT/$release.bundle" \
+    && "$metadata" == "$RELEASE_BUNDLE_ROOT/$release.json" \
+    && "$evidence" == "$PREDECESSOR_EVIDENCE_ROOT/$release" \
+    && "$manifest" == "$RELEASE_MANIFEST_ROOT/$release.json" ]] || {
+    log "abandoned preparation paths escape their canonical release identity" >&2
+    return 1
+  }
+  for orphan in "$bundle" "$metadata" "$manifest"; do
+    if [[ -e "$orphan" || -L "$orphan" ]]; then
+      [[ -f "$orphan" && ! -L "$orphan" \
+        && "$(stat -c '%u:%g:%a' "$orphan")" == "$(id -u):$(id -g):600" ]] || {
+        log "abandoned preparation artifact has unsafe metadata: $orphan" >&2
+        return 1
+      }
+      unlink "$orphan"
+    fi
+  done
+  if [[ -e "$evidence" || -L "$evidence" ]]; then
+    [[ -d "$evidence" && ! -L "$evidence" \
+      && "$(stat -c '%u:%g:%a' "$evidence")" == "$(id -u):$(id -g):700" \
+      && -z "$(find "$evidence" -mindepth 1 -maxdepth 1 \
+        ! -name 'provider-railway-release.json' \
+        ! -name 'public-railway-release.json' \
+        ! -name 'railway-status.json' \
+        ! -name '.provider.*' ! -name '.public.*' ! -name '.topology.*' -print -quit)" \
+      && -z "$(find "$evidence" -type l -print -quit)" ]] || {
+      log "abandoned predecessor evidence directory is unsafe" >&2
+      return 1
+    }
+    rm -rf --one-file-system -- "$evidence"
+  fi
+  unlink "$PENDING_PREPARATION"
+  fsync_paths_and_directory "$STATE_ROOT"
+  log "recovered an abandoned pre-mutation preparation without touching Railway"
+}
+
+write_preparation_journal() {
+  preparation_tmp="$(mktemp "$STATE_ROOT/.pending-preparation.XXXXXX")"
+  jq -n \
+    --arg prepared_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --arg input_sha256 "$input_sha256" \
+    --arg base_sha "$base_sha" \
+    --arg release_sha "$release_sha" \
+    --arg submission_id "$candidate_submission_id" \
+    --arg bundle_path "$RELEASE_BUNDLE_ROOT/$release_sha.bundle" \
+    --arg bundle_metadata_path "$RELEASE_BUNDLE_ROOT/$release_sha.json" \
+    --arg evidence_directory "$PREDECESSOR_EVIDENCE_ROOT/$release_sha" \
+    --arg release_manifest_path "$RELEASE_MANIFEST_ROOT/$release_sha.json" \
+    '{schema_version:"palimpsest.direct-publication-preparation.v1",status:"pre_mutation",prepared_at:$prepared_at,input_sha256:$input_sha256,base_sha:$base_sha,release_sha:$release_sha,submission_id:$submission_id,bundle_path:$bundle_path,bundle_metadata_path:$bundle_metadata_path,evidence_directory:$evidence_directory,release_manifest_path:$release_manifest_path}' \
+    >"$preparation_tmp"
+  chmod 0600 "$preparation_tmp"
+  [[ ! -e "$PENDING_PREPARATION" && ! -L "$PENDING_PREPARATION" ]] || {
+    log "preparation journal appeared before private artifact staging" >&2
+    return 1
+  }
+  ln "$preparation_tmp" "$PENDING_PREPARATION"
+  unlink "$preparation_tmp"
+  preparation_tmp=""
+  fsync_paths_and_directory "$PENDING_PREPARATION" "$STATE_ROOT"
+}
+
+capture_predecessor_rollback_evidence() {
+  local provider_tmp public_tmp topology_tmp topology_row
+
+  mkdir -p "$PREDECESSOR_EVIDENCE_ROOT"
+  chmod 0700 "$PREDECESSOR_EVIDENCE_ROOT"
+  predecessor_evidence_directory="$PREDECESSOR_EVIDENCE_ROOT/$release_sha"
+  [[ ! -e "$predecessor_evidence_directory" && ! -L "$predecessor_evidence_directory" ]] || {
+    log "candidate-specific predecessor evidence already exists" >&2
+    return 1
+  }
+  mkdir "$predecessor_evidence_directory"
+  chmod 0700 "$predecessor_evidence_directory"
+  predecessor_provider_manifest_path="$predecessor_evidence_directory/provider-railway-release.json"
+  predecessor_public_manifest_path="$predecessor_evidence_directory/public-railway-release.json"
+  predecessor_topology_path="$predecessor_evidence_directory/railway-status.json"
+  provider_tmp="$(mktemp "$predecessor_evidence_directory/.provider.XXXXXX")"
+  public_tmp="$(mktemp "$predecessor_evidence_directory/.public.XXXXXX")"
+  topology_tmp="$(mktemp "$predecessor_evidence_directory/.topology.XXXXXX")"
+  chmod 0600 "$provider_tmp" "$public_tmp" "$topology_tmp"
+
+  predecessor_capture_nonce="$(date +%s%N)"
+  curl -fsS --proto '=https' --max-redirs 0 --max-time 30 --max-filesize 8388608 \
+    "$PROVIDER_ORIGIN/railway-release.json?predecessor=$predecessor_capture_nonce" \
+    -o "$provider_tmp"
+  curl -fsS --proto '=https' --max-redirs 0 --max-time 30 --max-filesize 8388608 \
+    "$PUBLIC_ORIGIN/railway-release.json?predecessor=$predecessor_capture_nonce" \
+    -o "$public_tmp"
+  [[ -s "$provider_tmp" && "$(stat -c '%s' "$provider_tmp")" -le 8388608 \
+    && -s "$public_tmp" && "$(stat -c '%s' "$public_tmp")" -le 8388608 ]] || {
+    log "predecessor live manifest is empty or oversized" >&2
+    return 1
+  }
+  cmp -s "$provider_tmp" "$public_tmp" || {
+    log "predecessor provider and public manifests are not byte-identical" >&2
+    return 1
+  }
+  predecessor_provider_manifest_sha256="$(sha256_file "$provider_tmp")"
+  predecessor_public_manifest_sha256="$(sha256_file "$public_tmp")"
+  [[ "$predecessor_provider_manifest_sha256" == "$receipt_manifest_sha256" \
+    && "$predecessor_public_manifest_sha256" == "$receipt_manifest_sha256" ]] || {
+    log "predecessor live manifest bytes differ from the predecessor receipt" >&2
+    return 1
+  }
+  "$PYTHON_BIN" -I -S - "$provider_tmp" "$receipt_release_sha" \
+    "$receipt_tree_sha256" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("predecessor manifest contains a duplicate key")
+        value[key] = item
+    return value
+
+raw = Path(sys.argv[1]).read_bytes()
+try:
+    document = json.loads(raw.decode("utf-8", "strict"), object_pairs_hook=strict_object)
+except (UnicodeError, json.JSONDecodeError) as exc:
+    raise SystemExit("predecessor manifest is not strict JSON") from exc
+if not isinstance(document, dict):
+    raise SystemExit("predecessor manifest is not an object")
+if (
+    document.get("schema_version") != "palimpsest.railway-static-release.v1"
+    or document.get("source_commit") != sys.argv[2]
+    or document.get("tree_sha256") != sys.argv[3]
+    or document.get("deployment_source") != "local-git-archive"
+    or document.get("github_required") is not False
+    or document.get("state") != "artifact_ready"
+    or not isinstance(document.get("file_count"), int)
+    or isinstance(document.get("file_count"), bool)
+    or document["file_count"] < 1
+    or not isinstance(document.get("total_bytes"), int)
+    or isinstance(document.get("total_bytes"), bool)
+    or document["total_bytes"] < 1
+):
+    raise SystemExit("predecessor manifest identity is invalid")
+PY
+
+  env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+    "$railway_token_name=$railway_token_value" \
+    "$RAILWAY_BIN" status --project "$PROJECT_ID" \
+    --environment "$ENVIRONMENT_ID" --json >"$topology_tmp"
+  [[ -s "$topology_tmp" && "$(stat -c '%s' "$topology_tmp")" -le 2097152 ]] || {
+    log "predecessor Railway topology is empty or oversized" >&2
+    return 1
+  }
+  topology_row="$("$PYTHON_BIN" -I -S - "$topology_tmp" "$PROJECT_ID" \
+    "$ENVIRONMENT_ID" "$SERVICE_ID" "$receipt_deployment_id" <<'PY'
+import json
+import re
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+def strict_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise SystemExit("Railway topology contains a duplicate key")
+        value[key] = item
+    return value
+
+def edges(value, label):
+    if not isinstance(value, dict) or set(value) != {"edges"}:
+        raise SystemExit(f"Railway {label} edge inventory is invalid")
+    rows = value["edges"]
+    if not isinstance(rows, list) or len(rows) > 100:
+        raise SystemExit(f"Railway {label} edge inventory is invalid")
+    if any(not isinstance(row, dict) or not isinstance(row.get("node"), dict) for row in rows):
+        raise SystemExit(f"Railway {label} edge is invalid")
+    return [row["node"] for row in rows]
+
+def one(rows, key, expected, label):
+    matches = [row for row in rows if row.get(key) == expected]
+    if len(matches) != 1:
+        raise SystemExit(f"Railway {label} is not singular")
+    return matches[0]
+
+raw = Path(sys.argv[1]).read_bytes()
+try:
+    document = json.loads(raw.decode("utf-8", "strict"), object_pairs_hook=strict_object)
+except (UnicodeError, json.JSONDecodeError) as exc:
+    raise SystemExit("Railway topology is not strict JSON") from exc
+project_id, environment_id, service_id, deployment_id = sys.argv[2:6]
+if not isinstance(document, dict) or document.get("id") != project_id:
+    raise SystemExit("Railway topology project identity is invalid")
+service = one(edges(document.get("services"), "services"), "id", service_id, "service")
+if service.get("name") != "palimpsest-publication":
+    raise SystemExit("Railway topology service name is invalid")
+environment = one(edges(document.get("environments"), "environments"), "id", environment_id, "environment")
+if environment.get("deletedAt") is not None or environment.get("canAccess") is not True:
+    raise SystemExit("Railway topology environment is inaccessible")
+if edges(environment.get("volumeInstances"), "volumes"):
+    raise SystemExit("Railway topology unexpectedly has volumes")
+instance = one(edges(environment.get("serviceInstances"), "service instances"), "serviceId", service_id, "service instance")
+if instance.get("environmentId") != environment_id or instance.get("serviceName") != "palimpsest-publication":
+    raise SystemExit("Railway topology service instance identity is invalid")
+if instance.get("source") not in (None, {"image": None, "repo": None}):
+    raise SystemExit("Railway topology has an attached source")
+if "source" not in instance or instance.get("cronSchedule") is not None or instance.get("nextCronRunAt") is not None:
+    raise SystemExit("Railway topology scheduling/source contract is invalid")
+latest = instance.get("latestDeployment")
+if not isinstance(latest, dict) or latest.get("id") != deployment_id or latest.get("status") != "SUCCESS" or latest.get("deploymentStopped") is not False:
+    raise SystemExit("Railway latest deployment identity is invalid")
+instances = latest.get("instances")
+if not isinstance(instances, list) or len(instances) != 1 or not isinstance(instances[0], dict) or instances[0].get("status") != "RUNNING":
+    raise SystemExit("Railway latest deployment is not singular and running")
+metadata = latest.get("meta")
+if not isinstance(metadata, dict) or metadata.get("buildOnly") is not False or metadata.get("reason") not in {"deploy", "deploymentRollback"}:
+    raise SystemExit("Railway latest deployment metadata is invalid")
+image = metadata.get("imageDigest")
+if not isinstance(image, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", image) is None or metadata.get("volumeMounts") != []:
+    raise SystemExit("Railway latest deployment image/mount identity is invalid")
+manifest = metadata.get("serviceManifest")
+if not isinstance(manifest, dict) or not isinstance(manifest.get("build"), dict) or not isinstance(manifest.get("deploy"), dict):
+    raise SystemExit("Railway service manifest is invalid")
+build, deploy = manifest["build"], manifest["deploy"]
+if build.get("builder") != "DOCKERFILE" or build.get("dockerfilePath") != "ops/railway/Dockerfile.static":
+    raise SystemExit("Railway static builder identity is invalid")
+if deploy.get("healthcheckPath") != "/healthz" or deploy.get("numReplicas") != 1 or deploy.get("cronSchedule") is not None or deploy.get("requiredMountPath") is not None:
+    raise SystemExit("Railway static deployment topology is invalid")
+created = latest.get("createdAt")
+if not isinstance(created, str) or len(created) > 64:
+    raise SystemExit("Railway deployment timestamp is invalid")
+try:
+    parsed = datetime.fromisoformat(created.replace("Z", "+00:00"))
+except ValueError as exc:
+    raise SystemExit("Railway deployment timestamp is invalid") from exc
+if parsed.tzinfo is None or parsed.utcoffset() is None or parsed.astimezone(UTC) > datetime.now(UTC):
+    raise SystemExit("Railway deployment timestamp is invalid")
+print(image, metadata["reason"], created, sep="\t")
+PY
+)"
+  IFS=$'\t' read -r predecessor_image_digest predecessor_deployment_reason \
+    predecessor_deployment_created_at <<<"$topology_row"
+  [[ "$predecessor_image_digest" =~ ^sha256:[0-9a-f]{64}$ \
+    && "$predecessor_deployment_reason" =~ ^(deploy|deploymentRollback)$ \
+    && -n "$predecessor_deployment_created_at" ]] || {
+    log "predecessor topology extraction returned an invalid identity" >&2
+    return 1
+  }
+
+  ln "$provider_tmp" "$predecessor_provider_manifest_path"
+  ln "$public_tmp" "$predecessor_public_manifest_path"
+  ln "$topology_tmp" "$predecessor_topology_path"
+  unlink "$provider_tmp" "$public_tmp" "$topology_tmp"
+  predecessor_provider_manifest_bytes="$(stat -c '%s' "$predecessor_provider_manifest_path")"
+  predecessor_public_manifest_bytes="$(stat -c '%s' "$predecessor_public_manifest_path")"
+  predecessor_topology_bytes="$(stat -c '%s' "$predecessor_topology_path")"
+  predecessor_topology_sha256="$(sha256_file "$predecessor_topology_path")"
+  fsync_paths_and_directory \
+    "$predecessor_provider_manifest_path" "$predecessor_public_manifest_path" \
+    "$predecessor_topology_path" "$predecessor_evidence_directory"
+  fsync_paths_and_directory "$PREDECESSOR_EVIDENCE_ROOT"
+  log "captured exact predecessor manifests and active Railway topology"
+}
+
+read_publication_base() {
+  local metadata expected_group_gid
+
+  if [[ -e "$PUBLICATION_BASE_FILE" || -L "$PUBLICATION_BASE_FILE" ]]; then
+    [[ -f "$PUBLICATION_BASE_FILE" && ! -L "$PUBLICATION_BASE_FILE" ]] || {
+      log "publication base pin is not a regular non-symbolic-link file" >&2
+      return 1
+    }
+    expected_group_gid="$(id -g "$PUBLICATION_BASE_GROUP")" || {
+      log "publication base group does not exist" >&2
+      return 1
+    }
+    metadata="$(stat -c '%u:%g:%a' "$PUBLICATION_BASE_FILE")"
+    [[ "$metadata" == "0:${expected_group_gid}:640" ]] || {
+      log "publication base pin must be root:$PUBLICATION_BASE_GROUP mode 0640" >&2
+      return 1
+    }
+    jq -e \
+      --arg schema "$BASE_TRANSITION_SCHEMA" \
+      --arg incident "$BASE_TRANSITION_INCIDENT" \
+      --arg provider "$PROVIDER_ORIGIN" \
+      --arg public "$PUBLIC_ORIGIN" \
+      --arg incident_base "$INCIDENT_BASE_SHA" \
+      --arg incident_live "$INCIDENT_LIVE_SHA" \
+      --arg incident_receipt "$INCIDENT_RECEIPT_SHA256" \
+      --arg incident_input "$INCIDENT_INPUT_SHA256" \
+      --arg incident_manifest "$INCIDENT_MANIFEST_SHA256" \
+      --arg incident_tree "$INCIDENT_TREE_SHA256" \
+      --arg incident_deployment "$INCIDENT_DEPLOYMENT_ID" '
+      type == "object" and
+      keys == ["incident_id","installed","origins","previous","recorded_at","schema_version","status","target"] and
+      .schema_version == $schema and .status == "verified" and
+      .incident_id == $incident and
+      (.recorded_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")) and
+      (.installed | type == "object" and keys == ["publisher_service_sha256","publisher_sha256","reconciler_sha256","transition_helper_sha256","watchdog_service_sha256","watchdog_sha256","watchdog_timer_sha256"] and
+        (.publisher_service_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.publisher_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.reconciler_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.transition_helper_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.watchdog_service_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.watchdog_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
+        (.watchdog_timer_sha256 | type == "string" and test("^[0-9a-f]{64}$"))) and
+      (.origins | type == "object" and keys == ["provider","public"] and
+        .provider == $provider and .public == $public) and
+      (.previous | type == "object" and keys == ["canonical_head","deployed_commit","live_manifest_sha256","live_release_sha","live_tree_sha256","publication_input_sha256","publication_receipt_sha256","railway_deployment_id"] and
+        ([.canonical_head,.deployed_commit,.live_release_sha] | all(type == "string" and test("^[0-9a-f]{40}$"))) and
+        ([.live_manifest_sha256,.live_tree_sha256,.publication_input_sha256,.publication_receipt_sha256] | all(type == "string" and test("^[0-9a-f]{64}$"))) and
+        (.railway_deployment_id | type == "string" and test("^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")) and
+        .canonical_head == $incident_base and .deployed_commit == $incident_base and
+        .live_release_sha == $incident_live and .publication_receipt_sha256 == $incident_receipt and
+        .publication_input_sha256 == $incident_input and .live_manifest_sha256 == $incident_manifest and
+        .live_tree_sha256 == $incident_tree and .railway_deployment_id == $incident_deployment) and
+      (.target | type == "object" and keys == ["base_sha","public_main_sha"] and
+        ([.base_sha,.public_main_sha] | all(type == "string" and test("^[0-9a-f]{40}$"))) and
+        .base_sha == .public_main_sha)
+      ' "$PUBLICATION_BASE_FILE" >/dev/null || {
+      log "publication base pin does not satisfy the closed transition schema" >&2
+      return 1
+    }
+    validate_installed_transition_artifact \
+      publisher_sha256 "$INSTALLED_PUBLISHER" 755
+    validate_installed_transition_artifact \
+      transition_helper_sha256 "$INSTALLED_TRANSITION_HELPER" 755
+    validate_installed_transition_artifact \
+      reconciler_sha256 "$INSTALLED_RECONCILER" 755
+    validate_installed_transition_artifact \
+      watchdog_sha256 "$INSTALLED_WATCHDOG" 755
+    validate_installed_transition_artifact \
+      publisher_service_sha256 "$INSTALLED_PUBLISHER_SERVICE" 644
+    validate_installed_transition_artifact \
+      watchdog_service_sha256 "$INSTALLED_WATCHDOG_SERVICE" 644
+    validate_installed_transition_artifact \
+      watchdog_timer_sha256 "$INSTALLED_WATCHDOG_TIMER" 644
+    base_sha="$(jq -er '.target.base_sha' "$PUBLICATION_BASE_FILE")"
+    base_pin_path="$PUBLICATION_BASE_FILE"
+    base_pin_kind="verified_transition"
+  else
+    log "verified publication transition pin is mandatory before direct publication" >&2
+    return 1
+  fi
+
+  [[ "$base_sha" =~ ^[0-9a-f]{40}$ ]] || {
+    log "invalid publication base commit" >&2
+    return 1
+  }
+  base_pin_sha256="$(sha256_file "$base_pin_path")"
+  [[ "$base_pin_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+    log "cannot hash publication base pin" >&2
+    return 1
+  }
+}
+
+persist_release_bundle() {
+  local release_ref verify_repo verify_base_ref listed_heads expected_tree actual_tree
+  local bundle_created_at
+
+  release_ref="refs/palimpsest/releases/$release_sha"
+  verify_base_ref="refs/palimpsest/verification-base/$base_sha"
+  verify_repo="$work_root/bundle-verifier.git"
+  bundle_created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  mkdir -p "$RELEASE_BUNDLE_ROOT"
+  chmod 0700 "$RELEASE_BUNDLE_ROOT"
+  fsync_paths_and_directory "$STATE_ROOT"
+  release_bundle_path="$RELEASE_BUNDLE_ROOT/$release_sha.bundle"
+  release_bundle_metadata_path="$RELEASE_BUNDLE_ROOT/$release_sha.json"
+  [[ ! -e "$release_bundle_path" && ! -L "$release_bundle_path" ]] || {
+    log "release bundle destination already exists: $release_bundle_path" >&2
+    return 1
+  }
+  [[ ! -e "$release_bundle_metadata_path" && ! -L "$release_bundle_metadata_path" ]] || {
+    log "release bundle metadata destination already exists" >&2
+    return 1
+  }
+
+  git update-ref "$release_ref" "$release_sha"
+  bundle_tmp="$(mktemp "$RELEASE_BUNDLE_ROOT/.release-bundle.XXXXXX")"
+  git bundle create "$bundle_tmp" "$release_ref" "^$base_sha" >/dev/null
+  chmod 0600 "$bundle_tmp"
+
+  listed_heads="$(git bundle list-heads "$bundle_tmp")"
+  [[ "$listed_heads" == "$release_sha $release_ref" ]] || {
+    log "incremental release bundle exposes an unexpected ref" >&2
+    return 1
+  }
+
+  git init --quiet --bare "$verify_repo"
+  git -C "$verify_repo" fetch --quiet "$checkout" "$base_sha:$verify_base_ref"
+  [[ ! -e "$verify_repo/objects/info/alternates" ]] || {
+    log "fresh release-bundle verifier unexpectedly uses alternates" >&2
+    return 1
+  }
+  git -C "$verify_repo" bundle verify "$bundle_tmp" >/dev/null
+  git -C "$verify_repo" fetch --quiet "$bundle_tmp" "$release_ref:$release_ref"
+  [[ "$(git -C "$verify_repo" rev-list --parents -n 1 "$release_ref")" == "$release_sha $base_sha" ]] || {
+    log "release bundle is not the exact one-commit successor of its base" >&2
+    return 1
+  }
+  expected_tree="$(git rev-parse "$release_sha^{tree}")"
+  actual_tree="$(git -C "$verify_repo" rev-parse "$release_ref^{tree}")"
+  [[ "$actual_tree" == "$expected_tree" ]] || {
+    log "release bundle verification produced a different tree" >&2
+    return 1
+  }
+
+  release_bundle_sha256="$(sha256_file "$bundle_tmp")"
+  release_bundle_bytes="$(stat -c '%s' "$bundle_tmp")"
+  [[ "$release_bundle_sha256" =~ ^[0-9a-f]{64}$ && "$release_bundle_bytes" =~ ^[1-9][0-9]*$ ]] || {
+    log "invalid release bundle identity" >&2
+    return 1
+  }
+
+  # A hard link is an atomic, no-clobber promotion on this state filesystem.
+  ln "$bundle_tmp" "$release_bundle_path"
+  unlink "$bundle_tmp"
+  bundle_tmp=""
+  [[ "$(stat -c '%a' "$release_bundle_path")" == 600 ]] || {
+    log "persisted release bundle is not mode 0600" >&2
+    return 1
+  }
+  [[ "$(sha256_file "$release_bundle_path")" == "$release_bundle_sha256" ]] || {
+    log "persisted release bundle digest changed during promotion" >&2
+    return 1
+  }
+
+  bundle_metadata_tmp="$(mktemp "$RELEASE_BUNDLE_ROOT/.release-metadata.XXXXXX")"
+  jq -n \
+    --arg created_at "$bundle_created_at" \
+    --arg path "$release_bundle_path" \
+    --arg sha256 "$release_bundle_sha256" \
+    --argjson bytes "$release_bundle_bytes" \
+    --arg base_sha "$base_sha" \
+    --arg release_sha "$release_sha" \
+    '{schema_version:"palimpsest.incremental-release-bundle.v1",status:"verified",created_at:$created_at,path:$path,sha256:$sha256,bytes:$bytes,base_sha:$base_sha,release_sha:$release_sha}' \
+    >"$bundle_metadata_tmp"
+  chmod 0600 "$bundle_metadata_tmp"
+  ln "$bundle_metadata_tmp" "$release_bundle_metadata_path"
+  unlink "$bundle_metadata_tmp"
+  bundle_metadata_tmp=""
+  release_bundle_metadata_sha256="$(sha256_file "$release_bundle_metadata_path")"
+
+  fsync_paths_and_directory \
+    "$release_bundle_path" "$release_bundle_metadata_path" "$RELEASE_BUNDLE_ROOT"
+  log "persisted and independently verified release bundle $release_bundle_sha256"
 }
 
 cleanup() {
@@ -58,6 +761,24 @@ cleanup() {
   if [[ -n "$work_root" && "$work_root" == "$STATE_ROOT"/work.* && -d "$work_root" ]]; then
     chmod -R u+w "$work_root" 2>/dev/null || true
     rm -rf --one-file-system -- "$work_root"
+  fi
+  if [[ -n "$bundle_tmp" && "$bundle_tmp" == "$RELEASE_BUNDLE_ROOT"/.release-bundle.* ]]; then
+    rm -f -- "$bundle_tmp"
+  fi
+  if [[ -n "$bundle_metadata_tmp" && "$bundle_metadata_tmp" == "$RELEASE_BUNDLE_ROOT"/.release-metadata.* ]]; then
+    rm -f -- "$bundle_metadata_tmp"
+  fi
+  if [[ -n "$candidate_tmp" && "$candidate_tmp" == "$STATE_ROOT"/.pending-candidate.* ]]; then
+    rm -f -- "$candidate_tmp"
+  fi
+  if [[ -n "$preparation_tmp" && "$preparation_tmp" == "$STATE_ROOT"/.pending-preparation.* ]]; then
+    rm -f -- "$preparation_tmp"
+  fi
+  if [[ -n "$release_manifest_tmp" && "$release_manifest_tmp" == "$RELEASE_MANIFEST_ROOT"/.release-manifest.* ]]; then
+    rm -f -- "$release_manifest_tmp"
+  fi
+  if [[ -n "$receipt_tmp" && "$receipt_tmp" == "$STATE_ROOT"/.latest-success.* ]]; then
+    rm -f -- "$receipt_tmp"
   fi
   exit "$status"
 }
@@ -75,16 +796,26 @@ if ! flock -n 9; then
   exit 0
 fi
 
+recover_abandoned_preparation
+
+if [[ -e "$DATA_HOLD_FILE" || -L "$DATA_HOLD_FILE" ]]; then
+  log "DATA HOLD blocks direct publication pending root reconciliation: $DATA_HOLD_FILE" >&2
+  exit 1
+fi
+
 for required in \
   "$SOURCE_REPOSITORY/.git" \
-  "$DEPLOYED_COMMIT_FILE" \
   "$WIRE_FILE" \
   "$LEDGER_FILE" \
-  "$ANALYSIS_FILE" \
   "$RAILWAY_BIN" \
   "$PYTHON_BIN"; do
   [[ -e "$required" ]] || { log "required path missing: $required" >&2; exit 1; }
 done
+
+[[ -e "$PUBLICATION_BASE_FILE" || -L "$PUBLICATION_BASE_FILE" ]] || {
+  log "verified publication transition pin is missing; run the root transition helper first" >&2
+  exit 1
+}
 
 if [[ -z "${RAILWAY_TOKEN:-}" && -z "${RAILWAY_API_TOKEN:-}" ]]; then
   log "one Railway automation token is required" >&2
@@ -94,30 +825,160 @@ if [[ -n "${RAILWAY_TOKEN:-}" && -n "${RAILWAY_API_TOKEN:-}" ]]; then
   log "only one Railway automation token may be configured" >&2
   exit 1
 fi
+if [[ -n "${RAILWAY_TOKEN:-}" ]]; then
+  railway_token_name="RAILWAY_TOKEN"
+  railway_token_value="$RAILWAY_TOKEN"
+else
+  railway_token_name="RAILWAY_API_TOKEN"
+  railway_token_value="$RAILWAY_API_TOKEN"
+fi
+unset RAILWAY_TOKEN RAILWAY_API_TOKEN
 
-base_sha="$(tr -d '[:space:]' < "$DEPLOYED_COMMIT_FILE")"
-[[ "$base_sha" =~ ^[0-9a-f]{40}$ ]] || { log "invalid deployed commit" >&2; exit 1; }
-[[ "$(git -C "$SOURCE_REPOSITORY" rev-parse HEAD)" == "$base_sha" ]] || {
-  log "canonical checkout does not match deployed commit" >&2
-  exit 1
-}
 [[ -z "$(git -C "$SOURCE_REPOSITORY" status --porcelain=v1 --untracked-files=all)" ]] || {
   log "canonical checkout is not clean" >&2
+  exit 1
+}
+[[ ! -s "$SOURCE_REPOSITORY/.git/shallow" \
+  && ! -s "$SOURCE_REPOSITORY/.git/info/grafts" \
+  && -z "$(git -C "$SOURCE_REPOSITORY" for-each-ref --format='%(refname)' refs/replace)" ]] || {
+  log "canonical repository uses shallow, graft, or replacement history" >&2
+  exit 1
+}
+[[ -f "$DEPLOYED_COMMIT_FILE" && ! -L "$DEPLOYED_COMMIT_FILE" \
+  && "$(stat -c '%u:%g:%a' "$DEPLOYED_COMMIT_FILE")" == "0:0:644" ]] || {
+  log "host deployed-commit must remain a root:root mode 0644 regular file" >&2
+  exit 1
+}
+host_deployed_sha="$(tr -d '[:space:]' < "$DEPLOYED_COMMIT_FILE")"
+[[ "$host_deployed_sha" =~ ^[0-9a-f]{40}$ ]] || {
+  log "host deployed-commit is invalid" >&2
+  exit 1
+}
+read_publication_base
+canonical_head="$(git -C "$SOURCE_REPOSITORY" rev-parse HEAD)"
+git -C "$SOURCE_REPOSITORY" cat-file -e "$base_sha^{commit}" 2>/dev/null || {
+  log "publication base commit is absent from the canonical repository" >&2
+  exit 1
+}
+git -C "$SOURCE_REPOSITORY" rev-parse --verify 'refs/remotes/origin/main^{commit}' >/dev/null 2>&1 || {
+  log "canonical repository has no verified origin/main commit" >&2
+  exit 1
+}
+git -C "$SOURCE_REPOSITORY" merge-base --is-ancestor "$canonical_head" "$base_sha" || {
+  log "canonical HEAD is not an ancestor of the pinned publication base" >&2
+  exit 1
+}
+git -C "$SOURCE_REPOSITORY" merge-base --is-ancestor "$base_sha" refs/remotes/origin/main || {
+  log "pinned publication base is not contained in origin/main" >&2
   exit 1
 }
 
 receipt_input_sha=""
 receipt_release_sha=""
+receipt_base_sha=""
+receipt_base_pin_sha256=""
+receipt_bundle_path=""
+receipt_bundle_sha256=""
+receipt_schema=""
+receipt_deployment_id=""
+receipt_sha256=""
+receipt_wire_generated_at=""
+receipt_manifest_sha256=""
+receipt_tree_sha256=""
+receipt_status=""
+receipt_railway_status=""
+receipt_provider_origin=""
+receipt_public_origin=""
+receipt_direct_path=""
+receipt_host_deployed_sha=""
 provider_receipt_sha=""
 public_receipt_sha=""
 if [[ -f "$SUCCESS_RECEIPT" ]]; then
+  receipt_sha256="$(sha256_file "$SUCCESS_RECEIPT")"
+  receipt_schema="$(jq -r '.schema_version // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_input_sha="$(jq -r '.input_sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_release_sha="$(jq -r '.release_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_base_sha="$(jq -r '.base_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_base_pin_sha256="$(jq -r '.publication_base.sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_bundle_path="$(jq -r '.release_bundle.path // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_bundle_sha256="$(jq -r '.release_bundle.sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_deployment_id="$(jq -r '.railway.deployment_id // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_wire_generated_at="$(jq -r '.wire_generated_at // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_manifest_sha256="$(jq -r '.live_manifest.sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_tree_sha256="$(jq -r '.live_manifest.tree_sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_status="$(jq -r '.status // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_railway_status="$(jq -r '.railway.status // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_provider_origin="$(jq -r '.origins.provider // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_public_origin="$(jq -r '.origins.public // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_direct_path="$(jq -r '.github_actions_used | if . == false then "direct" else "invalid" end' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_host_deployed_sha="$(jq -r '.host_deployed_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]]; then
     provider_receipt_sha="$(origin_release_sha "$PROVIDER_ORIGIN")"
     public_receipt_sha="$(origin_release_sha "$PUBLIC_ORIGIN")"
   fi
 fi
+
+if [[ "$receipt_schema" == "palimpsest.hetzner-railway-publication.v2" ]]; then
+  [[ "$receipt_base_sha" == "$base_sha" \
+    && "$receipt_base_pin_sha256" == "$base_pin_sha256" \
+    && "$receipt_host_deployed_sha" == "$host_deployed_sha" ]] || {
+    log "v2 predecessor no longer matches the publication or host base" >&2
+    exit 1
+  }
+fi
+
+if [[ "$receipt_schema" == "palimpsest.hetzner-railway-publication.v1" \
+  && "$base_pin_kind" == "verified_transition" ]]; then
+  pin_predecessor_receipt_sha256="$(jq -er '.previous.publication_receipt_sha256' "$base_pin_path")"
+  pin_predecessor_release_sha="$(jq -er '.previous.live_release_sha' "$base_pin_path")"
+  pin_predecessor_base_sha="$(jq -er '.previous.deployed_commit' "$base_pin_path")"
+  pin_predecessor_input_sha256="$(jq -er '.previous.publication_input_sha256' "$base_pin_path")"
+  pin_predecessor_deployment_id="$(jq -er '.previous.railway_deployment_id' "$base_pin_path")"
+  pin_predecessor_manifest_sha256="$(jq -er '.previous.live_manifest_sha256' "$base_pin_path")"
+  pin_predecessor_tree_sha256="$(jq -er '.previous.live_tree_sha256' "$base_pin_path")"
+  [[ "$receipt_sha256" == "$pin_predecessor_receipt_sha256" \
+    && "$receipt_release_sha" == "$pin_predecessor_release_sha" \
+    && "$receipt_base_sha" == "$pin_predecessor_base_sha" \
+    && "$receipt_input_sha" == "$pin_predecessor_input_sha256" \
+    && "$receipt_deployment_id" == "$pin_predecessor_deployment_id" ]] || {
+    log "legacy predecessor receipt no longer matches the verified transition pin" >&2
+    exit 1
+  }
+  receipt_manifest_sha256="$pin_predecessor_manifest_sha256"
+  receipt_tree_sha256="$pin_predecessor_tree_sha256"
+fi
+
+if [[ -e "$PENDING_CANDIDATE" || -L "$PENDING_CANDIDATE" ]]; then
+  [[ -f "$PENDING_CANDIDATE" && ! -L "$PENDING_CANDIDATE" ]] || {
+    log "pending candidate journal is not a regular private file" >&2
+    exit 1
+  }
+  [[ "$(stat -c '%a' "$PENDING_CANDIDATE")" == 600 ]] || {
+    log "pending candidate journal is not mode 0600" >&2
+    exit 1
+  }
+  log "unresolved candidate journal blocks a second Railway mutation; run the root reconciler: $PENDING_CANDIDATE" >&2
+  exit 1
+fi
+
+[[ "$receipt_sha256" =~ ^[0-9a-f]{64}$ \
+  && "$receipt_schema" =~ ^palimpsest\.hetzner-railway-publication\.v[12]$ \
+  && "$receipt_base_sha" =~ ^[0-9a-f]{40}$ \
+  && "$receipt_release_sha" =~ ^[0-9a-f]{40}$ \
+  && "$receipt_deployment_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ \
+  && "$receipt_input_sha" =~ ^[0-9a-f]{64}$ \
+  && "$receipt_manifest_sha256" =~ ^[0-9a-f]{64}$ \
+  && "$receipt_tree_sha256" =~ ^[0-9a-f]{64}$ \
+  && "$receipt_wire_generated_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ \
+  && "$receipt_status" == verified \
+  && "$receipt_railway_status" == SUCCESS \
+  && "$receipt_provider_origin" == "$PROVIDER_ORIGIN" \
+  && "$receipt_public_origin" == "$PUBLIC_ORIGIN" \
+  && "$receipt_direct_path" == direct ]] || {
+  log "a valid predecessor publication receipt is required" >&2
+  exit 1
+}
+archive_predecessor_receipt
 
 exec 8>"$DATA_LOCK_FILE"
 flock -s 8
@@ -132,7 +993,7 @@ readings_sha256="$({
   fi
 } | sort -z | xargs -0 sha256sum | sha256sum | awk '{print $1}')"
 input_sha256="$({
-  sha256sum "$WIRE_FILE" "$LEDGER_FILE" "$ANALYSIS_FILE"
+  sha256sum "$WIRE_FILE" "$LEDGER_FILE"
   printf '%s  host-readings\n' "$readings_sha256"
 } | sha256sum | awk '{print $1}')"
 [[ "$input_sha256" =~ ^[0-9a-f]{64}$ ]] || { log "cannot hash live inputs" >&2; exit 1; }
@@ -140,6 +1001,12 @@ wire_generated_at="$(jq -er '.generated_at | select(type == "string")' "$WIRE_FI
 
 if [[ "$receipt_input_sha" == "$input_sha256" ]]; then
   if [[ "$receipt_release_sha" =~ ^[0-9a-f]{40}$ ]] \
+    && [[ "$receipt_base_sha" == "$base_sha" ]] \
+    && [[ "$receipt_base_pin_sha256" == "$base_pin_sha256" ]] \
+    && [[ "$receipt_bundle_path" == "$RELEASE_BUNDLE_ROOT/$receipt_release_sha.bundle" ]] \
+    && [[ -f "$receipt_bundle_path" && ! -L "$receipt_bundle_path" ]] \
+    && [[ "$(stat -c '%a' "$receipt_bundle_path")" == 600 ]] \
+    && [[ "$(sha256_file "$receipt_bundle_path")" == "$receipt_bundle_sha256" ]] \
     && [[ "$provider_receipt_sha" == "$receipt_release_sha" ]] \
     && [[ "$public_receipt_sha" == "$receipt_release_sha" ]]; then
     flock -u 8
@@ -154,7 +1021,21 @@ checkout="$work_root/source"
 release="$work_root/release"
 
 log "building capture $wire_generated_at from base $base_sha"
-git clone --quiet --shared --no-checkout "$SOURCE_REPOSITORY" "$checkout"
+git clone --quiet --no-local --no-checkout "$SOURCE_REPOSITORY" "$checkout"
+git -C "$checkout" fetch --quiet --no-tags "$SOURCE_REPOSITORY" \
+  'refs/remotes/origin/main:refs/remotes/source/public-main'
+[[ ! -e "$checkout/.git/objects/info/alternates" \
+  && ! -s "$checkout/.git/shallow" \
+  && ! -s "$checkout/.git/info/grafts" \
+  && -z "$(git -C "$checkout" for-each-ref --format='%(refname)' refs/replace)" ]] || {
+  log "copied publication checkout is not a full replacement-free object database" >&2
+  exit 1
+}
+[[ "$(git -C "$checkout" rev-parse refs/remotes/source/public-main)" \
+  == "$(git -C "$SOURCE_REPOSITORY" rev-parse refs/remotes/origin/main)" ]] || {
+  log "copied publication checkout lost the verified public-main identity" >&2
+  exit 1
+}
 git -C "$checkout" checkout --quiet --detach "$base_sha"
 
 if find "$HOST_READINGS" -type l -print -quit | grep -q .; then
@@ -192,13 +1073,27 @@ fi
 
 cp -p "$WIRE_FILE" "$checkout/readings/newswire-latest.json"
 cp -p "$LEDGER_FILE" "$checkout/readings/newswire-versions.jsonl"
-cp -p "$ANALYSIS_FILE" "$checkout/readings/event-analysis-latest.json"
 flock -u 8
 
 export PYTHONPATH="$checkout"
 export PYTHONDONTWRITEBYTECODE=1
 export PALIMPSEST_PUBLICATION_SNAPSHOT_ROOT="$checkout"
 cd "$checkout"
+
+# The pinned host checkout intentionally remains the incident base, so its
+# scheduled analysis may lag a newly captured wire. Generate analysis with the
+# target publication code from the exact overlaid wire/readings, outside the
+# Git tree as required by the analyzer, then admit that output into the build.
+generated_analysis="$work_root/event-analysis-latest.json"
+"$PYTHON_BIN" -m scripts.event_analysis_live \
+  --wire "$checkout/readings/newswire-latest.json" \
+  --readings "$checkout/readings" \
+  --output "$generated_analysis"
+[[ -f "$generated_analysis" && ! -L "$generated_analysis" ]] || {
+  log "target event analysis did not produce a regular output" >&2
+  exit 1
+}
+cp -p "$generated_analysis" "$checkout/readings/event-analysis-latest.json"
 
 "$PYTHON_BIN" -c \
   'import json; from pathlib import Path; from inject_ddti import DASHBOARDS, inject_dashboard; root = Path("."); index = json.loads((root / "readings/ddti-latest.json").read_text(encoding="utf-8")); [inject_dashboard(root / relative, index) for relative in DASHBOARDS]'
@@ -235,12 +1130,37 @@ aggregate_clock="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 "$PYTHON_BIN" -m scripts.build_newsroom
 "$PYTHON_BIN" -m scripts.build_newsroom --check
 
-# Railway is a deterministic publisher, never a translation-model caller. The
-# offline rebuild admits only content digests already present in the checked-in
-# sidecar. A new Chinese regional record therefore exits here, before a release
-# commit or deployment can replace the last known-good public edition.
-"$PYTHON_BIN" -m scripts.build_chinese_translations --offline
-"$PYTHON_BIN" -m scripts.build_chinese_translations --check
+# Railway is a deterministic publisher, never a translation-model caller. A
+# fully cached current wire is rebuilt locally. If the current wire has an
+# uncached translation, retain-last-good independently validates the existing
+# canonical sidecar and its newest sealed-ledger admission, performs no write,
+# and lets the pages label that retained snapshot honestly.
+translation_line="$("$PYTHON_BIN" -m scripts.build_chinese_translations --retain-last-good)"
+[[ "$translation_line" == 'chinese-translations: {'* && "$translation_line" == *'}' \
+  && "$translation_line" != *$'\n'* ]] || {
+  log "translation retention command returned an invalid status line" >&2
+  exit 1
+}
+translation_status="${translation_line#chinese-translations: }"
+jq -e '
+  type == "object" and
+  keys == ["cumulative_api_calls","current_newswire_generated_at","input_tokens","output_mutated","output_tokens","pending_records","pending_unique_content_digests","publication_state","retained_newswire_generated_at","translated_records","unique_content_digests"] and
+  (.publication_state == "current-complete" or .publication_state == "retained-last-good") and
+  ([.cumulative_api_calls,.input_tokens,.output_tokens,.pending_records,.pending_unique_content_digests,.translated_records,.unique_content_digests] | all(type == "number" and . >= 0 and floor == .)) and
+  (.output_mutated | type == "boolean") and
+  ([.current_newswire_generated_at,.retained_newswire_generated_at] | all(type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"))) and
+  (if .publication_state == "retained-last-good" then
+     .output_mutated == false and .pending_records >= 1 and .pending_unique_content_digests >= 1
+   else
+     .pending_records == 0 and .pending_unique_content_digests == 0
+   end)
+  ' <<<"$translation_status" >/dev/null || {
+  log "translation retention status does not satisfy its closed release contract" >&2
+  exit 1
+}
+translation_publication_state="$(jq -r '.publication_state' <<<"$translation_status")"
+translation_pending_records="$(jq -r '.pending_records' <<<"$translation_status")"
+log "translation publication state=$translation_publication_state pending_records=$translation_pending_records"
 "$PYTHON_BIN" -m scripts.build_chinese_translation_pages
 "$PYTHON_BIN" -m scripts.build_chinese_translation_pages --check
 "$PYTHON_BIN" -m scripts.build_bri_observatory
@@ -269,13 +1189,98 @@ log "rights-scrubbing local release $release_sha"
 PALIMPSEST_RAILWAY_PYTHON="$PYTHON_BIN" \
   /usr/bin/bash "$checkout/ops/railway/build-static-bundle.sh" "$release_sha" "$release"
 
-message="palimpsest-hetzner-${release_sha:0:12}-${input_sha256:0:12}"
+# The generated Git object must remain recoverable after cleanup. Verify the
+# incremental bundle in a fresh object database and durably promote it before
+# crossing the Railway mutation boundary.
+candidate_submission_id="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')"
+[[ "$candidate_submission_id" =~ ^[0-9a-f]{32}$ ]] || {
+  log "cannot generate a high-entropy candidate submission identity" >&2
+  exit 1
+}
+write_preparation_journal
+persist_release_manifest_anchor
+persist_release_bundle
+
+# This is the last read-only boundary before Railway can change.  Preserve the
+# exact predecessor bytes and active topology so recovery never has to infer a
+# rollback target from a mutable deployment list.
+capture_predecessor_rollback_evidence
+
+message="palimpsest-hetzner-${release_sha:0:12}-${input_sha256:0:12}-${candidate_submission_id}"
+candidate_prepared_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+candidate_tmp="$(mktemp "$STATE_ROOT/.pending-candidate.XXXXXX")"
+jq -n \
+  --arg prepared_at "$candidate_prepared_at" \
+  --arg message "$message" \
+  --arg submission_id "$candidate_submission_id" \
+  --arg input_sha256 "$input_sha256" \
+  --arg wire_generated_at "$wire_generated_at" \
+  --arg host_deployed_sha "$host_deployed_sha" \
+  --arg base_sha "$base_sha" \
+  --arg base_pin_path "$base_pin_path" \
+  --arg base_pin_sha256 "$base_pin_sha256" \
+  --arg release_sha "$release_sha" \
+  --arg release_manifest_path "$release_manifest_path" \
+  --arg release_manifest_sha256 "$release_manifest_sha256" \
+  --argjson release_manifest_bytes "$release_manifest_bytes" \
+  --arg release_manifest_tree_sha256 "$release_manifest_tree_sha256" \
+  --argjson release_manifest_file_count "$release_manifest_file_count" \
+  --argjson release_manifest_total_bytes "$release_manifest_total_bytes" \
+  --arg release_bundle_path "$release_bundle_path" \
+  --arg release_bundle_sha256 "$release_bundle_sha256" \
+  --argjson release_bundle_bytes "$release_bundle_bytes" \
+  --arg predecessor_receipt_sha256 "$receipt_sha256" \
+  --arg predecessor_archive_path "$receipt_archive_path" \
+  --arg predecessor_schema "$receipt_schema" \
+  --arg predecessor_base_sha "$receipt_base_sha" \
+  --arg predecessor_release_sha "$receipt_release_sha" \
+  --arg predecessor_deployment_id "$receipt_deployment_id" \
+  --arg predecessor_input_sha256 "$receipt_input_sha" \
+  --arg predecessor_wire_generated_at "$receipt_wire_generated_at" \
+  --arg predecessor_manifest_sha256 "$receipt_manifest_sha256" \
+  --arg predecessor_tree_sha256 "$receipt_tree_sha256" \
+  --arg rollback_captured_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg predecessor_provider_manifest_path "$predecessor_provider_manifest_path" \
+  --arg predecessor_provider_manifest_sha256 "$predecessor_provider_manifest_sha256" \
+  --argjson predecessor_provider_manifest_bytes "$predecessor_provider_manifest_bytes" \
+  --arg predecessor_public_manifest_path "$predecessor_public_manifest_path" \
+  --arg predecessor_public_manifest_sha256 "$predecessor_public_manifest_sha256" \
+  --argjson predecessor_public_manifest_bytes "$predecessor_public_manifest_bytes" \
+  --arg predecessor_topology_path "$predecessor_topology_path" \
+  --arg predecessor_topology_sha256 "$predecessor_topology_sha256" \
+  --argjson predecessor_topology_bytes "$predecessor_topology_bytes" \
+  --arg predecessor_image_digest "$predecessor_image_digest" \
+  --arg predecessor_deployment_reason "$predecessor_deployment_reason" \
+  --arg predecessor_deployment_created_at "$predecessor_deployment_created_at" \
+  --arg project_id "$PROJECT_ID" \
+  --arg environment_id "$ENVIRONMENT_ID" \
+  --arg service_id "$SERVICE_ID" \
+  --arg base_pin_kind "$base_pin_kind" \
+  --arg release_bundle_metadata_path "$release_bundle_metadata_path" \
+  --arg release_bundle_metadata_sha256 "$release_bundle_metadata_sha256" \
+  '{schema_version:"palimpsest.direct-publication-candidate.v1",status:"mutation_unresolved",prepared_at:$prepared_at,message:$message,submission_id:$submission_id,input_sha256:$input_sha256,wire_generated_at:$wire_generated_at,host_deployed_sha:$host_deployed_sha,base_sha:$base_sha,publication_base:{path:$base_pin_path,kind:$base_pin_kind,sha256:$base_pin_sha256},release_sha:$release_sha,release_manifest:{path:$release_manifest_path,sha256:$release_manifest_sha256,bytes:$release_manifest_bytes,tree_sha256:$release_manifest_tree_sha256,file_count:$release_manifest_file_count,total_bytes:$release_manifest_total_bytes},release_bundle:{path:$release_bundle_path,sha256:$release_bundle_sha256,bytes:$release_bundle_bytes,metadata_path:$release_bundle_metadata_path,metadata_sha256:$release_bundle_metadata_sha256},predecessor:{receipt_sha256:$predecessor_receipt_sha256,archive_path:$predecessor_archive_path,schema_version:$predecessor_schema,base_sha:$predecessor_base_sha,release_sha:$predecessor_release_sha,deployment_id:$predecessor_deployment_id,input_sha256:$predecessor_input_sha256,wire_generated_at:$predecessor_wire_generated_at,manifest_sha256:$predecessor_manifest_sha256,tree_sha256:$predecessor_tree_sha256},rollback_evidence:{schema_version:"palimpsest.direct-publication-rollback-evidence.v1",captured_at:$rollback_captured_at,provider_manifest:{path:$predecessor_provider_manifest_path,sha256:$predecessor_provider_manifest_sha256,bytes:$predecessor_provider_manifest_bytes},public_manifest:{path:$predecessor_public_manifest_path,sha256:$predecessor_public_manifest_sha256,bytes:$predecessor_public_manifest_bytes},topology:{path:$predecessor_topology_path,sha256:$predecessor_topology_sha256,bytes:$predecessor_topology_bytes,project_id:$project_id,environment_id:$environment_id,service_id:$service_id,deployment_id:$predecessor_deployment_id,image_digest:$predecessor_image_digest,reason:$predecessor_deployment_reason,created_at:$predecessor_deployment_created_at}}}' \
+  >"$candidate_tmp"
+chmod 0600 "$candidate_tmp"
+[[ ! -e "$PENDING_CANDIDATE" && ! -L "$PENDING_CANDIDATE" ]] || {
+  log "candidate journal appeared before the Railway mutation boundary" >&2
+  exit 1
+}
+ln "$candidate_tmp" "$PENDING_CANDIDATE"
+unlink "$candidate_tmp"
+candidate_tmp=""
+candidate_journal_sha256="$(sha256_file "$PENDING_CANDIDATE")"
+fsync_paths_and_directory "$PENDING_CANDIDATE" "$STATE_ROOT"
+archive_candidate_journal
+unlink "$PENDING_PREPARATION"
+fsync_paths_and_directory "$PENDING_CANDIDATE" "$candidate_archive_path" "$STATE_ROOT"
+
 upload_log="$STATE_ROOT/last-upload.json"
 upload_error_log="$STATE_ROOT/last-upload.stderr"
 log "submitting one Railway deployment: $message"
 (
   cd "$release"
   env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+    "$railway_token_name=$railway_token_value" \
     "$RAILWAY_BIN" up --detach --json --yes --no-gitignore \
     --project "$PROJECT_ID" \
     --environment "$ENVIRONMENT_ID" \
@@ -286,8 +1291,12 @@ chmod 0600 "$upload_log" "$upload_error_log"
 
 deployment_id=""
 deployment_status=""
+deployment_image_digest=""
+deployment_reason=""
+deployment_created_at=""
 for _ in $(seq 1 120); do
   inventory="$(env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+    "$railway_token_name=$railway_token_value" \
     "$RAILWAY_BIN" deployment list --json --limit 30 \
     --project "$PROJECT_ID" \
     --environment "$ENVIRONMENT_ID" \
@@ -296,6 +1305,9 @@ for _ in $(seq 1 120); do
   if [[ "$match_count" == 1 ]]; then
     deployment_id="$(jq -r --arg message "$message" '.[] | select(.meta.cliMessage == $message) | .id' <<<"$inventory")"
     deployment_status="$(jq -r --arg message "$message" '.[] | select(.meta.cliMessage == $message) | .status' <<<"$inventory")"
+    deployment_image_digest="$(jq -r --arg message "$message" '.[] | select(.meta.cliMessage == $message) | .meta.imageDigest // empty' <<<"$inventory")"
+    deployment_reason="$(jq -r --arg message "$message" '.[] | select(.meta.cliMessage == $message) | .meta.reason // empty' <<<"$inventory")"
+    deployment_created_at="$(jq -r --arg message "$message" '.[] | select(.meta.cliMessage == $message) | .createdAt // empty' <<<"$inventory")"
     case "$deployment_status" in
       SUCCESS) break ;;
       FAILED|CRASHED|REMOVED|CANCELLED|CANCELED|SKIPPED)
@@ -314,6 +1326,50 @@ done
   log "Railway deployment did not become successful before timeout" >&2
   exit 1
 }
+[[ "$deployment_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ \
+  && "$deployment_image_digest" =~ ^sha256:[0-9a-f]{64}$ \
+  && "$deployment_reason" == deploy ]] || {
+  log "successful candidate inventory has an invalid deployment identity" >&2
+  exit 1
+}
+"$PYTHON_BIN" -I -S - "$candidate_prepared_at" "$deployment_created_at" <<'PY'
+import sys
+from datetime import UTC, datetime, timedelta
+
+def parse(value):
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise SystemExit("candidate deployment timestamp has no timezone")
+    return parsed.astimezone(UTC)
+
+prepared, created = map(parse, sys.argv[1:3])
+now = datetime.now(UTC)
+if created < prepared - timedelta(seconds=120) or created > now + timedelta(seconds=120):
+    raise SystemExit("candidate deployment timestamp is outside its journal boundary")
+PY
+candidate_topology="$work_root/candidate-railway-status.json"
+env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+  "$railway_token_name=$railway_token_value" \
+  "$RAILWAY_BIN" status --project "$PROJECT_ID" \
+  --environment "$ENVIRONMENT_ID" --json >"$candidate_topology"
+PYTHONPATH="$checkout" "$PYTHON_BIN" - "$candidate_topology" \
+  "$PROJECT_ID" "$ENVIRONMENT_ID" "$SERVICE_ID" "$deployment_id" \
+  "$deployment_image_digest" "$deployment_reason" <<'PY'
+import sys
+from pathlib import Path
+
+from ops.railway.verify_continuous_release import parse_status_topology
+
+parse_status_topology(
+    Path(sys.argv[1]).read_bytes(),
+    expected_project_id=sys.argv[2],
+    expected_environment_id=sys.argv[3],
+    expected_service_id=sys.argv[4],
+    expected_deployment_id=sys.argv[5],
+    expected_image_digest=sys.argv[6],
+    expected_deployment_reason=sys.argv[7],
+)
+PY
 
 live_sha=""
 for _ in $(seq 1 36); do
@@ -331,6 +1387,42 @@ done
   exit 1
 }
 
+provider_manifest="$work_root/provider-railway-release.json"
+public_manifest="$work_root/public-railway-release.json"
+manifest_nonce="$(date +%s%N)"
+curl -fsS --proto '=https' --max-redirs 0 --max-time 30 \
+  "$PROVIDER_ORIGIN/railway-release.json?receipt=$manifest_nonce" \
+  -o "$provider_manifest"
+curl -fsS --proto '=https' --max-redirs 0 --max-time 30 \
+  "$PUBLIC_ORIGIN/railway-release.json?receipt=$manifest_nonce" \
+  -o "$public_manifest"
+cmp -s "$provider_manifest" "$public_manifest" || {
+  log "provider and public live manifests are not byte-identical" >&2
+  exit 1
+}
+cmp -s "$provider_manifest" "$release_manifest_path" || {
+  log "live manifest bytes differ from the durable pre-mutation release anchor" >&2
+  exit 1
+}
+live_manifest_sha256="$(sha256_file "$provider_manifest")"
+live_tree_sha256="$(jq -er \
+  --arg release_sha "$release_sha" \
+  'select(.schema_version == "palimpsest.railway-static-release.v1" and .source_commit == $release_sha and .state == "artifact_ready") | .tree_sha256 | select(type == "string" and test("^[0-9a-f]{64}$"))' \
+  "$provider_manifest")"
+live_file_count="$(jq -er '.file_count | select(type == "number" and . >= 1 and floor == .)' "$provider_manifest")"
+live_total_bytes="$(jq -er '.total_bytes | select(type == "number" and . >= 1 and floor == .)' "$provider_manifest")"
+[[ "$live_manifest_sha256" =~ ^[0-9a-f]{64}$ ]] || {
+  log "live manifest digest is invalid" >&2
+  exit 1
+}
+[[ "$live_manifest_sha256" == "$release_manifest_sha256" \
+  && "$live_tree_sha256" == "$release_manifest_tree_sha256" \
+  && "$live_file_count" == "$release_manifest_file_count" \
+  && "$live_total_bytes" == "$release_manifest_total_bytes" ]] || {
+  log "live manifest identity differs from the durable release anchor" >&2
+  exit 1
+}
+
 cache_buster="$(date +%s)"
 news_html="$(curl -fsSL --max-time 45 "$PUBLIC_ORIGIN/news/?edition=$cache_buster")"
 grep -Eq '<strong>[1-9][0-9]*/39</strong> measurements live' <<<"$news_html" || {
@@ -342,20 +1434,82 @@ grep -q 'The Board · Current evidence' <<<"$news_html" || {
   exit 1
 }
 
+# Close the live-fetch TOCTOU window: the exact candidate topology proved
+# before origin checks must still be active immediately before receipt commit.
+candidate_final_topology="$work_root/candidate-final-railway-status.json"
+env NODE_OPTIONS="$RAILWAY_NODE_OPTIONS" \
+  "$railway_token_name=$railway_token_value" \
+  "$RAILWAY_BIN" status --project "$PROJECT_ID" \
+  --environment "$ENVIRONMENT_ID" --json >"$candidate_final_topology"
+PYTHONPATH="$checkout" "$PYTHON_BIN" - "$candidate_final_topology" \
+  "$PROJECT_ID" "$ENVIRONMENT_ID" "$SERVICE_ID" "$deployment_id" \
+  "$deployment_image_digest" "$deployment_reason" <<'PY'
+import sys
+from pathlib import Path
+
+from ops.railway.verify_continuous_release import parse_status_topology
+
+parse_status_topology(
+    Path(sys.argv[1]).read_bytes(),
+    expected_project_id=sys.argv[2],
+    expected_environment_id=sys.argv[3],
+    expected_service_id=sys.argv[4],
+    expected_deployment_id=sys.argv[5],
+    expected_image_digest=sys.argv[6],
+    expected_deployment_reason=sys.argv[7],
+)
+PY
+
 receipt_tmp="$(mktemp "$STATE_ROOT/.latest-success.XXXXXX")"
 jq -n \
   --arg recorded_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg input_sha256 "$input_sha256" \
   --arg wire_generated_at "$wire_generated_at" \
   --arg base_sha "$base_sha" \
+  --arg base_pin_path "$base_pin_path" \
+  --arg base_pin_kind "$base_pin_kind" \
+  --arg base_pin_sha256 "$base_pin_sha256" \
   --arg release_sha "$release_sha" \
+  --arg release_bundle_path "$release_bundle_path" \
+  --arg release_bundle_sha256 "$release_bundle_sha256" \
+  --argjson release_bundle_bytes "$release_bundle_bytes" \
+  --arg release_bundle_metadata_path "$release_bundle_metadata_path" \
+  --arg release_bundle_metadata_sha256 "$release_bundle_metadata_sha256" \
+  --arg candidate_journal_sha256 "$candidate_journal_sha256" \
+  --arg candidate_archive_path "$candidate_archive_path" \
+  --arg candidate_message "$message" \
+  --arg predecessor_receipt_sha256 "$receipt_sha256" \
+  --arg predecessor_archive_path "$receipt_archive_path" \
+  --arg predecessor_schema "$receipt_schema" \
+  --arg predecessor_base_sha "$receipt_base_sha" \
+  --arg predecessor_release_sha "$receipt_release_sha" \
+  --arg predecessor_deployment_id "$receipt_deployment_id" \
+  --arg predecessor_input_sha256 "$receipt_input_sha" \
+  --arg predecessor_wire_generated_at "$receipt_wire_generated_at" \
+  --arg predecessor_manifest_sha256 "$receipt_manifest_sha256" \
+  --arg predecessor_tree_sha256 "$receipt_tree_sha256" \
+  --arg host_deployed_sha "$host_deployed_sha" \
+  --arg live_manifest_sha256 "$live_manifest_sha256" \
+  --arg live_manifest_path "$release_manifest_path" \
+  --argjson live_manifest_bytes "$release_manifest_bytes" \
+  --arg live_tree_sha256 "$live_tree_sha256" \
+  --argjson live_file_count "$live_file_count" \
+  --argjson live_total_bytes "$live_total_bytes" \
   --arg deployment_id "$deployment_id" \
   --arg deployment_status "$deployment_status" \
   --arg provider_origin "$PROVIDER_ORIGIN" \
   --arg public_origin "$PUBLIC_ORIGIN" \
-  '{schema_version:"palimpsest.hetzner-railway-publication.v1",status:"verified",recorded_at:$recorded_at,input_sha256:$input_sha256,wire_generated_at:$wire_generated_at,base_sha:$base_sha,release_sha:$release_sha,railway:{deployment_id:$deployment_id,status:$deployment_status},origins:{provider:$provider_origin,public:$public_origin},github_actions_used:false}' \
+  '{schema_version:"palimpsest.hetzner-railway-publication.v2",status:"verified",recorded_at:$recorded_at,input_sha256:$input_sha256,wire_generated_at:$wire_generated_at,host_deployed_sha:$host_deployed_sha,base_sha:$base_sha,publication_base:{path:$base_pin_path,kind:$base_pin_kind,sha256:$base_pin_sha256,target_sha:$base_sha},release_sha:$release_sha,release_bundle:{schema_version:"palimpsest.incremental-release-bundle.v1",path:$release_bundle_path,sha256:$release_bundle_sha256,bytes:$release_bundle_bytes,base_sha:$base_sha,release_sha:$release_sha,metadata_path:$release_bundle_metadata_path,metadata_sha256:$release_bundle_metadata_sha256},predecessor:{receipt_sha256:$predecessor_receipt_sha256,archive_path:$predecessor_archive_path,schema_version:$predecessor_schema,base_sha:$predecessor_base_sha,release_sha:$predecessor_release_sha,deployment_id:$predecessor_deployment_id,input_sha256:$predecessor_input_sha256,wire_generated_at:$predecessor_wire_generated_at,manifest_sha256:$predecessor_manifest_sha256,tree_sha256:$predecessor_tree_sha256},candidate:{archive_path:$candidate_archive_path,journal_sha256:$candidate_journal_sha256,message:$candidate_message},live_manifest:{path:$live_manifest_path,sha256:$live_manifest_sha256,bytes:$live_manifest_bytes,tree_sha256:$live_tree_sha256,file_count:$live_file_count,total_bytes:$live_total_bytes},railway:{deployment_id:$deployment_id,status:$deployment_status},origins:{provider:$provider_origin,public:$public_origin},github_actions_used:false}' \
   >"$receipt_tmp"
 chmod 0600 "$receipt_tmp"
 mv -f "$receipt_tmp" "$SUCCESS_RECEIPT"
+receipt_tmp=""
+fsync_paths_and_directory "$SUCCESS_RECEIPT" "$STATE_ROOT"
+[[ "$(sha256_file "$PENDING_CANDIDATE")" == "$candidate_journal_sha256" ]] || {
+  log "candidate journal changed before consumption" >&2
+  exit 1
+}
+unlink "$PENDING_CANDIDATE"
+fsync_paths_and_directory "$SUCCESS_RECEIPT" "$STATE_ROOT"
 
 log "verified live deployment $deployment_id at $release_sha"

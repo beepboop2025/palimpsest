@@ -152,6 +152,13 @@ CONTRACT = {
     "china-article-stream": _d(
         "generated_at", ["source_wire", "method", "scope"], "n_entries"
     ),
+    "chinese-translations": _d(
+        "generated_at", ["source_snapshot", "method", "model", "rights"],
+        reason="translation coverage is a complete projection whose coverage object pairs "
+               "translated_records with candidate_records and preserves separate eligible "
+               "and translated counts per record kind; one top-level denominator would "
+               "collapse distinct revision, ledger and current-item populations.",
+    ),
     "social-observations": _d(
         "generated_at", ["source_registry", "scope", "relation"], "n_observations"
     ),
@@ -395,6 +402,7 @@ SCHEDULED_PUBLICATIONS = {
     "research-corpus",
     "social-observations",
     "china-situation",
+    "chinese-translations",
     "archive-news-context",
     "reading-analysis",
     "peer-context-rank",

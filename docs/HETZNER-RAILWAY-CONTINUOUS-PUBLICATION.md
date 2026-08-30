@@ -24,6 +24,113 @@ This document is both an architecture record and an activation runbook. A
 merged workflow is not evidence that continuous publication has been activated;
 the gates in [Activation](#activation) must also be completed and receipted.
 
+## Current direct authority and durable lineage
+
+As of the 2026-08-30 authority change, the production lane is the reviewed
+Hetzner direct publisher, not the scheduled GitHub controller described in the
+historical activation design below. GitHub Actions remain disabled for this
+lane. Railway still receives only the rights-scrubbed static directory; it does
+not receive the host warehouse or the private Git recovery bundle.
+
+[`palimpsest-railway-publish`](../ops/railway/palimpsest-railway-publish) keeps
+the host deployment identity and public publication base deliberately
+separate:
+
+- `/etc/palimpsest/deployed-commit` remains the exact host deployment SHA;
+- `/etc/palimpsest/railway-publication-base.json` is the mandatory
+  root:`palimpsest` mode `0640` closed-schema base pin; only the one-time root
+  helper may operate against the exact pre-pin v1 incident state;
+- a pinned base must exist locally, descend from the clean canonical checkout,
+  and be contained in the fetched public `origin/main` history;
+- the one-time transition command additionally requires its target to equal
+  the exact public `main` tip at the mutation boundary.
+
+Every generated release is a one-commit child of that base. After the static
+rights gate succeeds and before `railway up`, the publisher writes an
+incremental Git bundle under
+`/var/lib/palimpsest/railway-publication/release-bundles/`. The bundle and its
+metadata are private mode `0600`; a fresh Git repository with no alternates
+must import the base, verify the bundle prerequisite/ref, and reconstruct the
+exact release tree. The bundle is recovery evidence and may contain generated
+host-overlay data that the public static rights gate excluded, so it must never
+be uploaded, attached to a public issue, or pushed to public Git.
+The exact rights-scrubbed `railway-release.json` is separately persisted under
+`release-manifests/` before mutation. Its strict, duplicate-safe closed schema,
+nonempty critical-file map, SHA-256, byte length, tree digest, file count and
+total byte count are bound into the candidate and v2 receipt. Both live origins
+must serve those exact anchored bytes; a self-consistent but different live
+manifest cannot be adopted.
+
+The release input digest covers the exact live wire, ledger, and host readings
+overlay. It does not trust a potentially older host event-analysis artifact:
+target publication code runs `scripts.event_analysis_live` against the copied
+wire/readings, writes outside the Git tree, and then admits that generated
+analysis before downstream builders run. A private, fsynced
+`pending-preparation.json` precedes bundle and predecessor-evidence promotion.
+If the process dies before a mutation journal exists, the next publisher run
+strictly validates that preparation and removes only its exact private orphan
+artifacts without contacting Railway.
+
+Immediately before the Railway mutation, the publisher fsyncs
+`pending-candidate.json`. It binds the base pin, release bundle and manifest
+anchor, input digest, host deployment identity, immutable predecessor receipt
+archive, and a 128-bit random submission ID carried in the exact CLI message.
+It also binds byte-exact provider/public predecessor manifests and the strict
+active Railway topology. These private mode-`0600` files live in a
+candidate-specific mode-`0700` predecessor directory; the journal is
+hard-linked into an immutable candidate archive. A timer run that finds an
+unresolved candidate refuses a second upload. Use
+[`reconcile-direct-publication-candidate`](../ops/railway/reconcile-direct-publication-candidate)
+only after an interrupted run. It has no upload operation and never invents a
+second candidate. It either adopts the one successful active candidate after
+full live proof, records no-mutation recovery when the captured predecessor
+topology and both raw manifest bytes are already live, or—only while the exact
+candidate is active—queries the captured predecessor's `canRollback`, rechecks
+the candidate, fsyncs a no-repeat attempt record, and calls
+`deploymentRollback` once. A rollback is accepted only when a fresh rollback
+deployment has the captured predecessor image and both origins are restored
+byte-for-byte. Before that sole mutation, the reconciler durably stores the
+exact active-candidate status bytes under `rollback-attempt-topologies/`, binds
+their path and digest into the attempt, upgrades the root DATA HOLD to
+`attempted=true`, and re-reads the exact active topology. A moved topology
+leaves the guard and hold intact and emits no mutation. On restart, the same
+topology anchor and microsecond-precision attempt clock prove the
+no-second-mutation branch; an ordinary same-image deployment or same-second
+older rollback cannot close it.
+
+Any duplicate candidate, unrelated topology, prior ambiguous rollback attempt,
+or unproved restoration creates
+`/etc/palimpsest/railway-publication-data-hold.json`, root:`palimpsest` mode
+`0640`. Publisher and watchdog report **DATA HOLD**. Do not delete this marker
+or the journal to make the lane green. Re-run the root reconciler: it can clear
+the hold only after exact candidate adoption or byte-exact predecessor
+restoration is re-proved. Immutable recovery receipts make this idempotent even
+if the helper dies after writing the recovery receipt but before journal
+consumption.
+
+The incident-specific base transition is
+[`advance-direct-publication-base`](../ops/railway/advance-direct-publication-base).
+It can run only as root and only while the exact recorded `b22d809b…` host base,
+`ae5ecacd…` live release, v1 success receipt's Railway deployment identity,
+provider manifest, and public manifest still agree. It fetches public `main`,
+verifies the installed publisher, reconciler, watchdog, and service unit bytes
+against that target, then atomically creates the pin. The direct publisher
+subsequently captures and proves the active Railway topology before mutation.
+The helper cannot rewrite an existing pin and is not a general base-selection
+bypass.
+
+Operational ordering for this transition is fixed: stop the publisher and
+watchdog timers; fetch the reviewed target without switching the canonical host
+checkout; install the exact target versions of the publisher, transition
+helper, reconciler, watchdog, publisher service, watchdog service, and watchdog
+timer; reload systemd; run the
+transition helper with acknowledgement
+`advance-palimpsest-direct-lineage-2026-08-30`; start one
+publisher service; verify the v2 receipt, private bundle, both live manifest
+byte streams, and contextual share-card route; then restore the timers. If a
+candidate journal remains, reconcile it before restoring the publisher timer.
+Do not delete the journal to make the lane look healthy.
+
 ## Trust and data flow
 
 ```text

@@ -24,17 +24,17 @@ import re
 import stat
 import sys
 import time
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
+from core import sealed_ledger
 from core.openrouter_client import (
     ENDPOINT as OPENROUTER_ENDPOINT,
     OpenRouterError,
     chat_completion as openrouter_chat_completion,
 )
+from core.safe_fetch import FetchError, safe_fetch_response
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +43,7 @@ DEFAULT_WIRE = ROOT / "readings" / "newswire-latest.json"
 DEFAULT_LEDGER = ROOT / "readings" / "newswire-versions.jsonl"
 DEFAULT_OUTPUT = ROOT / "readings" / "chinese-translations-latest.json"
 DEFAULT_SCHEMA = ROOT / "protocol" / "chinese-translations-v1.schema.json"
+DEFAULT_SEAL_LEDGER = ROOT / "readings" / "readings-ledger.jsonl"
 
 SCHEMA_VERSION = "chinese-translations-v1"
 MODEL_ID = "gemini-3.1-flash-lite"
@@ -62,6 +63,8 @@ DEFAULT_BATCH_SIZE = 36
 GOOGLE_SAFE_BATCH_SIZE = 8
 DEFAULT_WORKERS = 1
 MAX_RETRIES = 3
+MAX_MODEL_RESPONSE_BYTES = 4 * 1024 * 1024
+MAX_ADMITTED_SIDECAR_BYTES = 64 * 1024 * 1024
 
 LEDGER_KEYS = frozenset(
     {
@@ -110,6 +113,17 @@ class TranslationRateLimitError(TranslationBuildError):
     def __init__(self, message: str, retry_after: float):
         super().__init__(message)
         self.retry_after = min(max(retry_after, 1.0), 65.0)
+
+
+@dataclass(frozen=True)
+class TranslationBuildResult:
+    artifact: dict[str, Any]
+    publication_state: str
+    pending_records: int
+    pending_unique_content_digests: int
+    current_newswire_generated_at: str
+    retained_newswire_generated_at: str
+    output_mutated: bool
 
 
 def _retry_after_seconds(detail: str) -> float:
@@ -667,10 +681,9 @@ def discover_candidates(
     return candidates
 
 
-def _translation_cache(path: Path) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
-    if not path.exists():
-        return {}, _empty_usage()
-    artifact = _read_json(path)
+def _translation_cache_from_artifact(
+    artifact: dict[str, Any],
+) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
     cache: dict[str, dict[str, Any]] = {}
     for record in artifact.get("translations", []):
         if not isinstance(record, dict):
@@ -698,6 +711,12 @@ def _translation_cache(path: Path) -> tuple[dict[str, dict[str, Any]], dict[str,
             cache[digest] = cached
     usage = artifact.get("generation_usage", _empty_usage())
     return cache, _normalise_usage(usage)
+
+
+def _translation_cache(path: Path) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
+    if not path.exists():
+        return {}, _empty_usage()
+    return _translation_cache_from_artifact(_read_json(path))
 
 
 def _load_work_cache(path: Path) -> tuple[dict[str, dict[str, Any]], dict[str, Any]]:
@@ -983,30 +1002,38 @@ def _extract_response_text(response: dict[str, Any]) -> str:
 
 
 def _post_interaction(payload: dict[str, Any], api_key: str) -> dict[str, Any]:
-    request = urllib.request.Request(
-        API_ENDPOINT,
-        data=_canonical_json(payload).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "x-goog-api-key": api_key,
-        },
-        method="POST",
-    )
+    request_body = _canonical_json(payload).encode("utf-8")
+
+    def exact_google_endpoint(url: str) -> None:
+        if url != API_ENDPOINT:
+            raise FetchError("translation request left the reviewed Google endpoint")
+
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            raw = response.read()
-    except urllib.error.HTTPError as exc:
+        response = safe_fetch_response(
+            API_ENDPOINT,
+            method="POST",
+            body=request_body,
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": api_key,
+            },
+            timeout=120,
+            max_bytes=MAX_MODEL_RESPONSE_BYTES,
+            max_redirects=0,
+            url_policy=exact_google_endpoint,
+        )
+    except FetchError as exc:
+        raise TranslationBuildError(f"Interactions API request failed: {exc}") from exc
+
+    raw = response.body
+    if not 200 <= response.status < 300:
         # Never include request headers or the API key in diagnostics.
-        detail = exc.read(2048).decode("utf-8", errors="replace")
-        if exc.code == 429:
+        detail = raw[:2048].decode("utf-8", errors="replace")
+        if response.status == 429:
             raise TranslationRateLimitError(
                 "Interactions API rate limit reached", _retry_after_seconds(detail)
-            ) from exc
-        raise TranslationBuildError(
-            f"Interactions API HTTP {exc.code}: {detail}"
-        ) from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise TranslationBuildError(f"Interactions API request failed: {exc}") from exc
+            )
+        raise TranslationBuildError(f"Interactions API HTTP {response.status}: {detail}")
     try:
         value = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -1445,28 +1472,211 @@ def _validate_schema(artifact: dict[str, Any], schema_path: Path) -> None:
         raise TranslationBuildError(f"schema validation failed at {location}: {first.message}")
 
 
-def run(
+def _read_admitted_sidecar(path: Path) -> tuple[bytes, dict[str, Any]]:
+    flags = os.O_RDONLY
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise TranslationBuildError(
+            f"cannot open retained translation sidecar as a regular file: {path}"
+        ) from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise TranslationBuildError(
+                f"retained translation sidecar is not a regular file: {path}"
+            )
+        if not 1 <= metadata.st_size <= MAX_ADMITTED_SIDECAR_BYTES:
+            raise TranslationBuildError(
+                f"retained translation sidecar has invalid size: {path}"
+            )
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            block = os.read(descriptor, min(1024 * 1024, MAX_ADMITTED_SIDECAR_BYTES + 1 - total))
+            if not block:
+                break
+            chunks.append(block)
+            total += len(block)
+            if total > MAX_ADMITTED_SIDECAR_BYTES:
+                raise TranslationBuildError(
+                    f"retained translation sidecar exceeds the byte limit: {path}"
+                )
+        raw = b"".join(chunks)
+    finally:
+        os.close(descriptor)
+    try:
+        document = json.loads(
+            raw.decode("utf-8", "strict"),
+            object_pairs_hook=_strict_json_object,
+            parse_constant=_reject_json_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise TranslationBuildError(
+            f"retained translation sidecar is not strict JSON: {path}: {exc}"
+        ) from exc
+    if not isinstance(document, dict):
+        raise TranslationBuildError("retained translation sidecar must be an object")
+    return raw, document
+
+
+def _validate_admitted_sidecar(
+    output_path: Path,
+    *,
+    schema_path: Path,
+    seal_ledger_path: Path,
+) -> dict[str, Any]:
+    raw, artifact = _read_admitted_sidecar(output_path)
+    _validate_schema(artifact, schema_path)
+    if raw != _render(artifact).encode("utf-8"):
+        raise TranslationBuildError(
+            "retained translation sidecar is not in canonical checked-in form"
+        )
+
+    records = artifact["translations"]
+    coverage = artifact["coverage"]
+    record_kinds: dict[str, int] = {}
+    content_digests: set[str] = set()
+    translation_ids: set[str] = set()
+    for record in records:
+        translation_id = record["translation_id"]
+        if translation_id in translation_ids:
+            raise TranslationBuildError(
+                f"retained translation sidecar repeats identity {translation_id}"
+            )
+        translation_ids.add(translation_id)
+        original = record["original_zh"]
+        content_sha256 = _sha256_json(
+            {
+                "context_zh": original["context"],
+                "title_zh": original["title"],
+            }
+        )
+        if original["content_sha256"] != content_sha256:
+            raise TranslationBuildError(
+                f"retained translation content digest does not recompute: {translation_id}"
+            )
+        identity = record["identity"]
+        record_sha256 = _sha256_json(
+            {
+                "content_sha256": content_sha256,
+                "event_id": identity["event_id"],
+                "event_version_id": identity["event_version_id"],
+                "item_id": identity["item_id"],
+                "item_version_id": identity["item_version_id"],
+                "record_kind": record["record_kind"],
+                "source_path": record["source_path"],
+            }
+        )
+        if record["record_sha256"] != record_sha256 or translation_id != (
+            f"zhtr-{record_sha256[:24]}"
+        ):
+            raise TranslationBuildError(
+                f"retained translation record identity does not recompute: {translation_id}"
+            )
+        if not _valid_english(record["english"]):
+            raise TranslationBuildError(
+                f"retained translation English fields are invalid: {translation_id}"
+            )
+        content_digests.add(content_sha256)
+        kind = record["record_kind"]
+        record_kinds[kind] = record_kinds.get(kind, 0) + 1
+
+    expected_counts = {
+        "candidate_records": len(records),
+        "translated_records": len(records),
+        "unique_content_digests": len(content_digests),
+        "record_kinds": dict(sorted(record_kinds.items())),
+        "eligible_event_revisions": record_kinds.get("retained_event_revision", 0),
+        "translated_event_revisions": record_kinds.get("retained_event_revision", 0),
+        "eligible_ledger_event_revisions": record_kinds.get("ledger_event_revision", 0),
+        "translated_ledger_event_revisions": record_kinds.get("ledger_event_revision", 0),
+        "eligible_current_items": record_kinds.get("current_wire_item", 0),
+        "translated_current_items": record_kinds.get("current_wire_item", 0),
+        "eligible_current_events": record_kinds.get("current_wire_event", 0),
+        "translated_current_events": record_kinds.get("current_wire_event", 0),
+        "missing_records": 0,
+    }
+    if coverage != expected_counts:
+        raise TranslationBuildError(
+            "retained translation coverage does not recompute from its records"
+        )
+
+    try:
+        entries, _ledger_raw = sealed_ledger.read_ledger_snapshot(seal_ledger_path)
+    except sealed_ledger.LedgerFormatError as exc:
+        raise TranslationBuildError(
+            f"retained translation seal ledger is invalid: {exc}"
+        ) from exc
+    chain_ok, chain_problems = sealed_ledger.verify(entries)
+    if not chain_ok:
+        raise TranslationBuildError(
+            "retained translation seal ledger does not verify: "
+            + "; ".join(chain_problems)
+        )
+    newest = next(
+        (
+            entry
+            for entry in reversed(entries)
+            if entry.get("source") == "chinese-translations"
+        ),
+        None,
+    )
+    if newest is None or newest.get("payload_sha256") != sealed_ledger.payload_digest(
+        artifact
+    ):
+        raise TranslationBuildError(
+            "retained translation sidecar does not match its newest admitted seal"
+        )
+    return artifact
+
+
+def run_with_state(
     *,
     news_root: Path = DEFAULT_NEWS_ROOT,
     wire_path: Path = DEFAULT_WIRE,
     ledger_path: Path = DEFAULT_LEDGER,
     output_path: Path = DEFAULT_OUTPUT,
     schema_path: Path = DEFAULT_SCHEMA,
+    seal_ledger_path: Path = DEFAULT_SEAL_LEDGER,
     offline: bool = False,
     check: bool = False,
+    retain_last_good: bool = False,
     batch_size: int = DEFAULT_BATCH_SIZE,
     workers: int = DEFAULT_WORKERS,
     work_cache_path: Path | None = None,
-) -> dict[str, Any]:
+) -> TranslationBuildResult:
+    if check and retain_last_good:
+        raise TranslationBuildError(
+            "check and retain-last-good are distinct modes and cannot be combined"
+        )
     if batch_size < 1 or batch_size > 100:
         raise TranslationBuildError("batch size must be between 1 and 100")
     if workers < 1 or workers > 8:
         raise TranslationBuildError("workers must be between 1 and 8")
     candidates = discover_candidates(news_root, wire_path, ledger_path)
-    cache, usage = _translation_cache(output_path)
+    current_wire = _read_json(wire_path)
+    current_generated_at = _clean_text(current_wire.get("generated_at"))
+    retained_artifact = None
+    if retain_last_good:
+        retained_artifact = _validate_admitted_sidecar(
+            output_path,
+            schema_path=schema_path,
+            seal_ledger_path=seal_ledger_path,
+        )
+    if retained_artifact is None:
+        cache, usage = _translation_cache(output_path)
+    else:
+        # Use the exact file-descriptor snapshot that passed admission checks.
+        # Reopening the path here would create a validation/use race.
+        cache, usage = _translation_cache_from_artifact(retained_artifact)
     if work_cache_path is None:
         work_cache_path = output_path.with_name(f".{output_path.name}.work-cache")
-    if not check and work_cache_path.exists():
+    if not check and not retain_last_good and work_cache_path.exists():
         work_cache, work_usage = _load_work_cache(work_cache_path)
         for digest, cached in work_cache.items():
             existing = cache.get(digest)
@@ -1477,6 +1687,23 @@ def run(
             cache[digest] = cached
         usage = work_usage
     missing = _unique_missing(candidates, cache)
+    if missing and retain_last_good:
+        assert retained_artifact is not None
+        missing_digests = {candidate.content_sha256 for candidate in missing}
+        pending_records = sum(
+            candidate.content_sha256 in missing_digests for candidate in candidates
+        )
+        return TranslationBuildResult(
+            artifact=retained_artifact,
+            publication_state="retained-last-good",
+            pending_records=pending_records,
+            pending_unique_content_digests=len(missing_digests),
+            current_newswire_generated_at=current_generated_at,
+            retained_newswire_generated_at=retained_artifact["source_snapshot"][
+                "newswire_generated_at"
+            ],
+            output_mutated=False,
+        )
     if missing and (offline or check):
         raise TranslationBuildError(
             f"offline translation cache is missing {len(missing)} unique content digests"
@@ -1525,7 +1752,48 @@ def run(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(rendered, encoding="utf-8")
         work_cache_path.unlink(missing_ok=True)
-    return artifact
+    return TranslationBuildResult(
+        artifact=artifact,
+        publication_state="current-complete",
+        pending_records=0,
+        pending_unique_content_digests=0,
+        current_newswire_generated_at=current_generated_at,
+        retained_newswire_generated_at=artifact["source_snapshot"][
+            "newswire_generated_at"
+        ],
+        output_mutated=not check,
+    )
+
+
+def run(
+    *,
+    news_root: Path = DEFAULT_NEWS_ROOT,
+    wire_path: Path = DEFAULT_WIRE,
+    ledger_path: Path = DEFAULT_LEDGER,
+    output_path: Path = DEFAULT_OUTPUT,
+    schema_path: Path = DEFAULT_SCHEMA,
+    seal_ledger_path: Path = DEFAULT_SEAL_LEDGER,
+    offline: bool = False,
+    check: bool = False,
+    retain_last_good: bool = False,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    workers: int = DEFAULT_WORKERS,
+    work_cache_path: Path | None = None,
+) -> dict[str, Any]:
+    return run_with_state(
+        news_root=news_root,
+        wire_path=wire_path,
+        ledger_path=ledger_path,
+        output_path=output_path,
+        schema_path=schema_path,
+        seal_ledger_path=seal_ledger_path,
+        offline=offline,
+        check=check,
+        retain_last_good=retain_last_good,
+        batch_size=batch_size,
+        workers=workers,
+        work_cache_path=work_cache_path,
+    ).artifact
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1536,9 +1804,23 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA)
     parser.add_argument(
+        "--seal-ledger",
+        type=Path,
+        default=DEFAULT_SEAL_LEDGER,
+        help="append-only reading ledger that must admit a retained sidecar",
+    )
+    parser.add_argument(
         "--offline",
         action="store_true",
         help="reuse only the checked-in content-addressed cache; do not call an API",
+    )
+    parser.add_argument(
+        "--retain-last-good",
+        action="store_true",
+        help=(
+            "offline release mode: if current inputs have cache misses, retain the "
+            "strictly validated and sealed existing sidecar without changing its bytes"
+        ),
     )
     parser.add_argument(
         "--check",
@@ -1558,14 +1840,16 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        artifact = run(
+        result = run_with_state(
             news_root=args.news_root,
             wire_path=args.wire,
             ledger_path=args.ledger,
             output_path=args.output,
             schema_path=args.schema,
-            offline=args.offline or args.check,
+            seal_ledger_path=args.seal_ledger,
+            offline=args.offline or args.check or args.retain_last_good,
             check=args.check,
+            retain_last_good=args.retain_last_good,
             batch_size=args.batch_size,
             workers=args.workers,
             work_cache_path=args.work_cache,
@@ -1573,16 +1857,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     except TranslationBuildError as exc:
         print(f"chinese-translations: {exc}", file=sys.stderr)
         return 1
+    artifact = result.artifact
     coverage = artifact["coverage"]
     usage = artifact["generation_usage"]
-    print(
-        "chinese-translations: "
-        f"{coverage['translated_records']} records / "
-        f"{coverage['unique_content_digests']} unique content digests; "
-        f"cumulative API calls={usage['api_calls']}, "
-        f"input_tokens={usage['total_input_tokens']}, "
-        f"output_tokens={usage['total_output_tokens']}"
-    )
+    state = {
+        "current_newswire_generated_at": result.current_newswire_generated_at,
+        "cumulative_api_calls": usage["api_calls"],
+        "input_tokens": usage["total_input_tokens"],
+        "output_mutated": result.output_mutated,
+        "output_tokens": usage["total_output_tokens"],
+        "pending_records": result.pending_records,
+        "pending_unique_content_digests": result.pending_unique_content_digests,
+        "publication_state": result.publication_state,
+        "retained_newswire_generated_at": result.retained_newswire_generated_at,
+        "translated_records": coverage["translated_records"],
+        "unique_content_digests": coverage["unique_content_digests"],
+    }
+    print("chinese-translations: " + _canonical_json(state))
     return 0
 
 

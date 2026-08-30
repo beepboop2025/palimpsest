@@ -1,0 +1,50 @@
+[Unit]
+Description=Monitor the direct Palimpsest Hetzner-to-Railway publication path
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=palimpsest
+Group=palimpsest
+ExecStart=/usr/local/sbin/palimpsest-direct-watchdog
+TimeoutStartSec=90s
+UMask=0077
+Nice=5
+StateDirectory=palimpsest-direct-watchdog
+StateDirectoryMode=0700
+
+ProtectSystem=strict
+# Hide every home directory except the exact read-only Git object database used
+# to verify incremental release bundles against their pinned base commit.
+ProtectHome=tmpfs
+BindReadOnlyPaths=/home/palimpsest/palimpsest
+ReadOnlyPaths=/var/lib/palimpsest/newswire
+ReadOnlyPaths=/var/lib/palimpsest/measurement-refresh
+ReadOnlyPaths=/var/lib/palimpsest/railway-publication
+ReadOnlyPaths=/etc/palimpsest/deployed-commit
+ReadOnlyPaths=-/etc/palimpsest/railway-publication-base.json
+ReadOnlyPaths=-/etc/palimpsest/railway-publication-data-hold.json
+NoExecPaths=/var/lib/palimpsest-direct-watchdog
+PrivateTmp=true
+PrivateDevices=true
+PrivateMounts=true
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ProcSubset=pid
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+KeyringMode=private
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
