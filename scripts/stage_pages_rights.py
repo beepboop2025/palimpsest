@@ -742,6 +742,24 @@ def build_publication_freshness_attestation(
     revision = _validated_publication_sha(publication_sha)
     clock = _normalize_evaluated_at(evaluated_at)
     snapshots = _validated_attested_artifacts(dict(artifacts))
+    newswire_at = _parse_clock(
+        snapshots["newswire"]["generated_at"],
+        path="artifacts.newswire.generated_at",
+    )
+    situation_at = _parse_clock(
+        snapshots["china_situation"]["generated_at"],
+        path="artifacts.china_situation.generated_at",
+    )
+    if newswire_at > situation_at:
+        raise PagesRightsError(
+            "publication-freshness causal clock violation: newswire generated_at "
+            "exceeds China situation generated_at"
+        )
+    if situation_at > clock:
+        raise PagesRightsError(
+            "publication-freshness causal clock violation: China situation "
+            "generated_at exceeds the rights evaluation clock"
+        )
     if (
         not isinstance(rights_status_sha256, str)
         or re.fullmatch(r"[0-9a-f]{64}", rights_status_sha256) is None

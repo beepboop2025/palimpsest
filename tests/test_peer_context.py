@@ -371,7 +371,7 @@ from collectors.greatfire_context import (
     compact_verdict,
     greatfire_path,
 )
-from collectors.ooni_peer_join import host_of, join_hosts
+from collectors.ooni_peer_join import host_of, join_hosts, load_gfw_index
 from collectors.public_deletion_ledgers import collect_ledgers
 from collectors.weiboscope import DOI, documented_abstention, probe_public_index
 from core import event_analysis, peer_context
@@ -497,6 +497,33 @@ def test_peer_context_pull_fails_closed_when_measurement_peers_are_silent(monkey
     assert row["peer"] == "weiboscope"
     assert row["status"] == "abstain"
     assert "GreatFire" not in row["credit"]
+
+
+def test_ooni_gfw_aggregate_uses_generated_at_not_query_until(tmp_path):
+    gfw = tmp_path / "ooni-gfw-latest.json"
+    payload = {
+        "generated_at": "2026-08-20T07:12:09Z",
+        "until": "2026-08-21",
+        "top_blocked": [
+            {
+                "domain": "www.hrw.org",
+                "anomaly_count": 38,
+                "measurement_count": 44,
+                "failure_count": 6,
+                "completed_measurement_count": 38,
+                "anomaly_rate": 1.0,
+            }
+        ],
+    }
+    gfw.write_text(json.dumps(payload), encoding="utf-8")
+
+    assert load_gfw_index(gfw)["www.hrw.org"]["last_measurement"] == (
+        "2026-08-20T07:12:09Z"
+    )
+
+    del payload["generated_at"]
+    gfw.write_text(json.dumps(payload), encoding="utf-8")
+    assert load_gfw_index(gfw)["www.hrw.org"]["last_measurement"] is None
 
 
 def test_ooni_miss_abstains(tmp_path):
