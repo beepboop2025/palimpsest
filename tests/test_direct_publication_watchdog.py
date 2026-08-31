@@ -1476,6 +1476,65 @@ def test_prior_status_round_trips_the_strict_chain_checkpoint(
     assert watchdog._load_prior_chain_checkpoint() == checkpoint
 
 
+@pytest.mark.parametrize("checkpoint", [None, {"schema_version": "checkpoint"}])
+def test_lineage_only_passes_the_prior_checkpoint(
+    checkpoint: dict[str, Any] | None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config = object()
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(watchdog, "_load_prior_chain_checkpoint", lambda: checkpoint)
+    monkeypatch.setattr(watchdog, "default_lineage_config", lambda: config)
+
+    def validate(
+        actual_config: object,
+        *,
+        fetch_manifest: Callable[[str], bytes],
+        chain_checkpoint: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        captured.update(
+            config=actual_config,
+            fetch_manifest=fetch_manifest,
+            chain_checkpoint=chain_checkpoint,
+        )
+        return {"status": "verified"}, {"status": "none"}
+
+    monkeypatch.setattr(watchdog, "validate_lineage", validate)
+
+    assert watchdog._lineage_only() == 0
+    assert captured == {
+        "config": config,
+        "fetch_manifest": watchdog.fetch_manifest,
+        "chain_checkpoint": checkpoint,
+    }
+    assert json.loads(capsys.readouterr().out) == {
+        "candidate": {"status": "none"},
+        "lineage": {"status": "verified"},
+    }
+
+
+def test_lineage_only_refuses_a_corrupt_prior_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        watchdog,
+        "_load_prior_chain_checkpoint",
+        lambda: (_ for _ in ()).throw(watchdog.WatchdogError("corrupt checkpoint")),
+    )
+    monkeypatch.setattr(
+        watchdog,
+        "validate_lineage",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("lineage must not run after checkpoint refusal")
+        ),
+    )
+
+    assert watchdog._lineage_only() == 1
+    assert "lineage refused: corrupt checkpoint" in capsys.readouterr().err
+
+
 def test_checkpoint_extends_across_authenticated_pin_digest_rotation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

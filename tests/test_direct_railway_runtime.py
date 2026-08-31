@@ -368,6 +368,16 @@ def test_repeatable_base_rotation_owns_the_zero_quiesce_lock_transaction() -> No
         < replace
     )
     assert '["/usr/bin/systemctl", "daemon-reload"]' in installer
+    ensure_control_root = transaction.index("_ensure_control_root(")
+    assert ensure_control_root < install
+    for unit_name in (
+        "palimpsest-direct-watchdog.service",
+        "palimpsest-event-analysis-live.service",
+        "palimpsest-railway-publish.service",
+    ):
+        unit = (ROOT / "ops" / "systemd" / unit_name).read_text(encoding="utf-8")
+        assert "ReadOnlyPaths=/var/lib/palimpsest/railway-control" in unit
+        assert "ReadOnlyPaths=-/var/lib/palimpsest/railway-control" not in unit
     assert "systemctl disable" not in source
     assert "systemctl stop" not in source
     assert "maintenance-begin" not in source

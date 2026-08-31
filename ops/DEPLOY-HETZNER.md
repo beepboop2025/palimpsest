@@ -74,6 +74,11 @@ Mandatory admission and closure checks are:
    and the direct watchdog is healthy while all three timers remain enabled
    and active.
 
+The successor systemd units use a strict, non-optional `ReadOnlyPaths=` mount
+for `/var/lib/palimpsest/railway-control`. This is safe only because the helper
+creates and authenticates that directory before installing or reloading those
+units; its later absence is a fail-closed startup error.
+
 If the helper exits after preparing the transaction, leave timers enabled and
 do not delete its intent or proof files. The successor-aware publisher refuses
 all mutation while the root intent exists; on the first v1 to v2 failure the

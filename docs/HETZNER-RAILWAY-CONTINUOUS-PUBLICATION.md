@@ -235,6 +235,12 @@ pin. It never disables or stops a timer. The event wrapper holds a shared lease
 on the same root lock across its final pin recheck and output replacement, so a
 mid-analysis rotation cannot commit predecessor output.
 
+The successor unit files deliberately mount the control root with a
+non-optional systemd `ReadOnlyPaths=` entry. The helper creates and authenticates
+that root before it installs or reloads any successor unit; if the root later
+disappears, namespace setup must fail closed instead of running without the
+publication interlock or lineage history.
+
 Start one event-analysis run after the helper releases the locks; its journal
 must report the new pinned target. Then start one publisher run. Require a new v2
 receipt whose base and `publication_base.sha256` match the successor pin, the

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 from importlib.machinery import SourceFileLoader
+import fcntl
 import hashlib
 import json
 import multiprocessing
@@ -1115,6 +1116,39 @@ def test_dangling_safety_marker_fails_closed(
 
     with pytest.raises(guard.GuardError, match="not a regular file"):
         guard._blockers(datetime(2026, 8, 31, 8, 0, tzinfo=UTC))
+
+
+def test_legacy_publisher_lock_remains_a_continuity_repair_blocker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    legacy = Path("/var/lib/palimpsest/railway-publication/publish.lock")
+    root = Path("/var/lib/palimpsest/railway-control/publish.lock")
+    data = Path("/var/lib/palimpsest/railway-publication/data.lock")
+    assert guard.PUBLICATION_LOCKS == (legacy, root, data)
+
+    held = tmp_path / "legacy-publish.lock"
+    held.touch(mode=0o600)
+    descriptor = os.open(held, os.O_RDONLY | os.O_CLOEXEC)
+    try:
+        fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        monkeypatch.setattr(guard, "SAFETY_MARKERS", ())
+        monkeypatch.setattr(guard, "PUBLICATION_LOCKS", (held,))
+        monkeypatch.setattr(
+            guard,
+            "_systemctl",
+            lambda *_arguments: subprocess.CompletedProcess((), 0, "", ""),
+        )
+        monkeypatch.setattr(
+            guard,
+            "_read_maintenance_hold",
+            lambda **_kwargs: (_ for _ in ()).throw(FileNotFoundError),
+        )
+
+        assert guard._blockers(datetime(2026, 8, 31, 8, 0, tzinfo=UTC)) == [
+            f"held-lock:{held}"
+        ]
+    finally:
+        os.close(descriptor)
 
 
 def test_failed_release_disable_cannot_trigger_guard_repair(

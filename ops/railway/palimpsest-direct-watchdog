@@ -3162,9 +3162,11 @@ def _load_prior_chain_checkpoint() -> dict[str, Any] | None:
 
 def _lineage_only() -> int:
     try:
+        prior_chain_checkpoint = _load_prior_chain_checkpoint()
         lineage, candidate = validate_lineage(
             default_lineage_config(),
             fetch_manifest=fetch_manifest,
+            chain_checkpoint=prior_chain_checkpoint,
         )
     except (OSError, ValueError, WatchdogError) as exc:
         print(f"palimpsest-direct-watchdog lineage refused: {exc}", file=sys.stderr)
