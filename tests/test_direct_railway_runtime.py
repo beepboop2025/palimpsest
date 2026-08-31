@@ -232,6 +232,40 @@ def test_direct_publisher_uses_a_verified_public_base_pin_without_rewriting_host
     assert "InaccessiblePaths=-/run/docker.sock" in service
 
 
+def test_successor_bridge_receipt_outputs_escape_base_reader_scope() -> None:
+    publisher = PUBLISHER.read_text(encoding="utf-8")
+    reader_start = publisher.index("read_publication_base() {")
+    reader_end = publisher.index("\n}\n\npersist_release_bundle()", reader_start)
+    reader = publisher[reader_start:reader_end]
+    consumer_start = publisher.index("\nread_publication_base\n", reader_end)
+    consumer = publisher[consumer_start:]
+    local_names = {
+        name
+        for line in reader.splitlines()
+        if line.lstrip().startswith("local ")
+        for name in line.lstrip().removeprefix("local ").split()
+    }
+    bridge_outputs = {
+        "bridge_receipt_path",
+        "bridge_receipt_sha",
+        "bridge_receipt_base_sha",
+        "bridge_receipt_pin_sha256",
+        "bridge_receipt_host_sha",
+        "bridge_receipt_release_sha",
+        "bridge_receipt_input_sha256",
+        "bridge_receipt_wire_generated_at",
+        "bridge_receipt_manifest_sha256",
+        "bridge_receipt_tree_sha256",
+        "bridge_receipt_deployment_id",
+    }
+
+    assert "set -Eeuo pipefail" in publisher
+    assert bridge_outputs.isdisjoint(local_names)
+    for output in bridge_outputs:
+        assert f'{output}="$(jq -er ' in reader
+        assert f'"${output}"' in consumer
+
+
 def test_generated_release_is_durably_bundled_before_any_railway_mutation() -> None:
     publisher = PUBLISHER.read_text(encoding="utf-8")
 
