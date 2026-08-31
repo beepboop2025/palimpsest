@@ -1790,6 +1790,9 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         "palimpsest-common-crawl-backup.timer",
         "palimpsest-node-offsite-backup.timer",
         "palimpsest-evidence-wire.timer",
+        "palimpsest-measurement-refresh.timer",
+        "palimpsest-railway-publish.timer",
+        "palimpsest-direct-watchdog.timer",
         "palimpsest-investigative-analysis.timer",
         "palimpsest-investigative-broker.socket",
         "palimpsest-common-crawl-import.path",
@@ -1806,6 +1809,9 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         "palimpsest-common-crawl-backup.service",
         "palimpsest-node-offsite-backup.service",
         "palimpsest-evidence-wire.service",
+        "palimpsest-measurement-refresh.service",
+        "palimpsest-railway-publish.service",
+        "palimpsest-direct-watchdog.service",
         "palimpsest-event-analysis-live.service",
         "palimpsest-investigative-analysis.service",
         "palimpsest-common-crawl-import.service",
@@ -1818,20 +1824,20 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         assert unit in services
 
     producer_hold = transaction.index(
-        "# Stop and persistently disable every systemd producer"
+        "# Persistently disable every systemd producer"
+    )
+    disable_activators = transaction.index(
+        'temporarily_disable_activator "$unit"', producer_hold
     )
     stop_activators = transaction.index(
-        'for unit in "${RELEASE_ACTIVATORS[@]}"', producer_hold
+        'stop_loaded_unit "$unit"', disable_activators
     )
     stop_services = transaction.index(
         'for unit in "${RELEASE_SERVICES[@]}"', stop_activators
     )
-    disable_activators = transaction.index(
-        'temporarily_disable_activator "$unit"', stop_services
-    )
     beat_stop = transaction.index(
         'release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat',
-        disable_activators,
+        stop_services,
     )
     celery_fence = transaction.index("CELERY_PRECHANGE_RECEIPT_PATH=", beat_stop)
     quiesce = transaction.index(
@@ -1864,12 +1870,20 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
     restore_activators = transaction.index(
         'restore_activator_enablement "$unit"', remove_quiesce
     )
+    restore_runtime = transaction.index(
+        'sudo systemctl start "$unit"', remove_quiesce
+    )
 
     assert "declare -A RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT" in transaction
     assert 'RELEASE_ENABLEMENT["$unit"]="$(read_enablement "$unit")"' in transaction
     assert 'RELEASE_WAS_ACTIVE["$unit"]=1' in transaction
     assert "restore_activator_enablement() {" in transaction
     assert "quiesce_dynamic_release_instances" in transaction[producer_hold:beat_stop]
+    emergency_quiesce = _bash_function_source(transaction, "release_quiesce_all")
+    assert emergency_quiesce.index('sudo systemctl disable "$unit"') \
+        < emergency_quiesce.index('sudo systemctl stop "$unit"')
+    assert emergency_quiesce.rindex('sudo systemctl disable "$unit"') \
+        < emergency_quiesce.rindex('sudo systemctl stop "$unit"')
     dynamic_helper = _bash_function_source(
         transaction, "capture_release_instance_inventory"
     )
@@ -1885,9 +1899,9 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
     )
     assert (
         producer_hold
+        < disable_activators
         < stop_activators
         < stop_services
-        < disable_activators
         < beat_stop
         < celery_fence
         < quiesce
@@ -1899,6 +1913,7 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         < proof_install
         < remove_quiesce
         < trigger_restored
+        < restore_runtime
         < restore_activators
     )
 
@@ -2744,7 +2759,7 @@ def test_every_release_service_has_an_exact_success_trigger_allowlist() -> None:
     helper = transaction.index("verify_release_service_success_triggers() {")
     first_stop = transaction.index(
         'for unit in "${RELEASE_SERVICES[@]}"; do',
-        transaction.index("# Stop and persistently disable every systemd producer"),
+        transaction.index("# Persistently disable every systemd producer"),
     )
     initial_call = transaction.index(
         "verify_release_service_success_triggers \\\n", helper
@@ -3744,7 +3759,7 @@ def test_finalized_receipt_records_and_validates_restored_runtime_identities() -
         '"backup_release_quiesce_present": False',
     ):
         assert marker in receipt
-    assert "len(activators) != 12" in receipt
+    assert "len(activators) != 15" in receipt
     assert '"beat", "worker", "worker-collectors"' in receipt
     assert (
         activator_capture
@@ -5466,7 +5481,7 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
     activators_path.write_text(
         "".join(
             f"unit-{index}.timer\tdisabled\t0\tdisabled\tinactive\n"
-            for index in range(12)
+            for index in range(15)
         ),
         encoding="utf-8",
     )
@@ -5909,7 +5924,7 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
         "release_proof_present": False,
         "writers_restored": True,
         "restored_celery": {},
-        "restored_activators": {f"unit-{index}.timer": {} for index in range(12)},
+        "restored_activators": {f"unit-{index}.timer": {} for index in range(15)},
         "restored_compose_writers": restored_compose,
         "restored_beat": restored_compose["beat"],
         "backup_on_success": "",

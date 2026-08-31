@@ -1,0 +1,14 @@
+[Unit]
+Description=Check Palimpsest publication timer continuity every two minutes
+RefuseManualStop=yes
+
+[Timer]
+OnBootSec=2m
+OnUnitActiveSec=2m
+RandomizedDelaySec=15s
+AccuracySec=15s
+Persistent=true
+Unit=palimpsest-continuity-guard.service
+
+[Install]
+WantedBy=timers.target

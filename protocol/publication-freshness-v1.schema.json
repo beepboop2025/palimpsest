@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://palimpsest.info/protocol/publication-freshness-v1.schema.json",
+  "title": "Palimpsest publication semantic freshness v1",
+  "description": "A runtime check of the manifest-bound evidence-wire and immutable-publication clocks. This is not a value-publication permission or a claim about unavailable evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "service", "checked_at"],
+  "properties": {
+    "schema_version": {
+      "const": "palimpsest.publication-freshness.v1"
+    },
+    "status": {
+      "enum": ["fresh", "stale", "unavailable"]
+    },
+    "service": {
+      "const": "palimpsest-publication"
+    },
+    "checked_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "source_commit": {
+      "$ref": "#/$defs/commitSha"
+    },
+    "tree_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "rights": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "publication_allowed"],
+      "properties": {
+        "mode": {
+          "const": "rights-suppressed"
+        },
+        "publication_allowed": {
+          "const": false
+        }
+      }
+    },
+    "clocks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wire", "publication"],
+      "properties": {
+        "wire": {
+          "allOf": [
+            {"$ref": "#/$defs/clock"},
+            {
+              "properties": {
+                "freshness_budget_seconds": {"const": 1800}
+              }
+            }
+          ]
+        },
+        "publication": {
+          "allOf": [
+            {"$ref": "#/$defs/clock"},
+            {
+              "properties": {
+                "freshness_budget_seconds": {"const": 3600}
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"enum": ["fresh", "stale"]}
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["source_commit", "tree_sha256", "rights", "clocks"]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {"required": ["source_commit"]},
+            {"required": ["tree_sha256"]},
+            {"required": ["rights"]},
+            {"required": ["clocks"]}
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "commitSha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "clock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generated_at",
+        "age_seconds",
+        "freshness_budget_seconds",
+        "status"
+      ],
+      "properties": {
+        "generated_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "age_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "freshness_budget_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        },
+        "status": {
+          "enum": ["fresh", "stale"]
+        }
+      }
+    }
+  }
+}

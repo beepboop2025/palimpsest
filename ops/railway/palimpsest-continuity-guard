@@ -1,0 +1,385 @@
+#!/usr/bin/env python3
+"""Repair accidentally stopped Palimpsest direct-publication timers.
+
+Only enabled-but-inactive timers are repaired. Disabled timers remain an
+explicit operator decision, and every release/data safety marker causes an
+abstention rather than an automatic publication mutation.
+"""
+
+from __future__ import annotations
+
+import fcntl
+import json
+import os
+import re
+import stat
+import subprocess
+import tempfile
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+
+SCHEMA_VERSION = "palimpsest.continuity-guard.v1"
+HOLD_SCHEMA = "palimpsest.continuity-maintenance-hold.v1"
+SYSTEMCTL = "/usr/bin/systemctl"
+STATUS_PATH = Path("/var/lib/palimpsest-continuity/status.json")
+HOLD_PATH = Path("/var/lib/palimpsest-continuity/maintenance-hold.json")
+MAX_HOLD_SECONDS = 2 * 60 * 60
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+TRANSACTION_ID = re.compile(r"^[0-9a-f]{32}$")
+
+TIMERS = (
+    "palimpsest-evidence-wire.timer",
+    "palimpsest-measurement-refresh.timer",
+    "palimpsest-railway-publish.timer",
+    "palimpsest-direct-watchdog.timer",
+)
+SAFETY_MARKERS = (
+    Path("/etc/palimpsest/railway-publication-data-hold.json"),
+    Path("/var/lib/palimpsest/railway-publication/pending-candidate.json"),
+    Path("/var/lib/palimpsest/railway-publication/pending-preparation.json"),
+    Path("/var/lib/palimpsest-public-osint-sync/release-proof.json"),
+    Path(
+        "/etc/systemd/system/palimpsest-backup.service.d/"
+        "zz-release-quiesce.conf"
+    ),
+)
+PUBLICATION_LOCKS = (
+    Path("/var/lib/palimpsest/railway-publication/publish.lock"),
+    Path("/var/lib/palimpsest/railway-publication/data.lock"),
+)
+
+
+class GuardError(RuntimeError):
+    """A continuity input or systemd result is unsafe or ambiguous."""
+
+
+@dataclass(frozen=True)
+class TimerState:
+    unit: str
+    load_state: str
+    unit_file_state: str
+    active_state: str
+
+
+def _utc(value: Any, *, field: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise GuardError(f"{field} is not an RFC 3339 UTC clock")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise GuardError(f"{field} is not an RFC 3339 UTC clock") from exc
+    if parsed.utcoffset() != UTC.utcoffset(parsed):
+        raise GuardError(f"{field} is not an RFC 3339 UTC clock")
+    return parsed
+
+
+def _clock(value: datetime) -> str:
+    return value.astimezone(UTC).replace(microsecond=0).isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
+def _strict_json(raw: bytes, *, label: str) -> dict[str, Any]:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        document: dict[str, Any] = {}
+        for key, value in rows:
+            if key in document:
+                raise GuardError(f"{label} contains a duplicate key")
+            document[key] = value
+        return document
+
+    try:
+        document = json.loads(
+            raw,
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                GuardError(f"{label} contains {value}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise GuardError(f"{label} is not strict JSON") from exc
+    if not isinstance(document, dict):
+        raise GuardError(f"{label} must be one object")
+    return document
+
+
+def _canonical(document: dict[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode()
+
+
+def validate_maintenance_hold(
+    raw: bytes,
+    *,
+    now: datetime,
+    owner_uid: int,
+    owner_gid: int,
+    mode: int,
+) -> dict[str, Any]:
+    if owner_uid != 0 or owner_gid != 0 or stat.S_IMODE(mode) != 0o600:
+        raise GuardError("maintenance hold ownership or mode is invalid")
+    document = _strict_json(raw, label="maintenance hold")
+    if raw != _canonical(document):
+        raise GuardError("maintenance hold is not canonical JSON")
+    if set(document) != {
+        "schema_version",
+        "status",
+        "transaction_id",
+        "reason_code",
+        "created_at",
+        "expires_at",
+        "controller_commit",
+        "pre_state",
+        "restore_profile_sha256",
+    }:
+        raise GuardError("maintenance hold does not match its closed schema")
+    if (
+        document["schema_version"] != HOLD_SCHEMA
+        or document["status"] not in {"active", "fail_closed"}
+        or not isinstance(document["transaction_id"], str)
+        or not TRANSACTION_ID.fullmatch(document["transaction_id"])
+        or not isinstance(document["reason_code"], str)
+        or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", document["reason_code"])
+        or not isinstance(document["controller_commit"], str)
+        or not SHA40.fullmatch(document["controller_commit"])
+        or not isinstance(document["restore_profile_sha256"], str)
+        or not SHA256.fullmatch(document["restore_profile_sha256"])
+    ):
+        raise GuardError("maintenance hold identity is invalid")
+    created = _utc(document["created_at"], field="maintenance hold created_at")
+    expires = _utc(document["expires_at"], field="maintenance hold expires_at")
+    if expires <= created or (expires - created).total_seconds() > MAX_HOLD_SECONDS:
+        raise GuardError("maintenance hold exceeds its bounded lease")
+    if now < created or now >= expires:
+        raise GuardError("maintenance hold is not currently effective")
+    pre_state = document.get("pre_state")
+    if not isinstance(pre_state, dict) or set(pre_state) != set(TIMERS):
+        raise GuardError("maintenance hold timer inventory is invalid")
+    for unit, row in pre_state.items():
+        if not isinstance(row, dict) or set(row) != {
+            "load_state",
+            "unit_file_state",
+            "active_state",
+            "fragment_sha256",
+        }:
+            raise GuardError(f"maintenance hold state is invalid for {unit}")
+        if (
+            row["load_state"] not in {"loaded", "not-found"}
+            or row["unit_file_state"]
+            not in {"enabled", "enabled-runtime", "disabled", "not-found"}
+            or row["active_state"] not in {"active", "inactive", "failed", "unknown"}
+            or not isinstance(row["fragment_sha256"], str)
+            or not SHA256.fullmatch(row["fragment_sha256"])
+        ):
+            raise GuardError(f"maintenance hold state identity is invalid for {unit}")
+    return document
+
+
+def repair_candidates(states: list[TimerState], *, blockers: list[str]) -> list[str]:
+    if blockers:
+        return []
+    repairs = []
+    for item in states:
+        if (
+            item.load_state == "loaded"
+            and item.unit_file_state in {"enabled", "enabled-runtime"}
+            and item.active_state in {"inactive", "failed"}
+        ):
+            repairs.append(item.unit)
+    return repairs
+
+
+def _systemctl(*arguments: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [SYSTEMCTL, *arguments],
+        check=False,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"},
+        timeout=20,
+    )
+
+
+def _property(unit: str, name: str) -> str:
+    result = _systemctl("show", unit, f"--property={name}", "--value")
+    if result.returncode != 0:
+        raise GuardError(f"cannot inspect {name} for {unit}")
+    value = result.stdout.strip()
+    if not value or "\n" in value:
+        raise GuardError(f"ambiguous {name} for {unit}")
+    return value
+
+
+def _timer_states() -> list[TimerState]:
+    return [
+        TimerState(
+            unit=unit,
+            load_state=_property(unit, "LoadState"),
+            unit_file_state=_property(unit, "UnitFileState"),
+            active_state=_property(unit, "ActiveState"),
+        )
+        for unit in TIMERS
+    ]
+
+
+def _lock_is_held(path: Path) -> bool:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise GuardError(f"cannot inspect publication lock: {path}") from exc
+    try:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        return False
+    finally:
+        os.close(descriptor)
+
+
+def _blockers(now: datetime) -> list[str]:
+    blockers = [str(path) for path in SAFETY_MARKERS if path.exists()]
+    for path in PUBLICATION_LOCKS:
+        if _lock_is_held(path):
+            blockers.append(f"held-lock:{path}")
+    proof_units = _systemctl(
+        "list-units",
+        "--type=service",
+        "--state=activating,active",
+        "--plain",
+        "--no-legend",
+        "palimpsest-release-proof-*.service",
+    )
+    if proof_units.returncode != 0:
+        raise GuardError("cannot inspect active release-proof services")
+    if proof_units.stdout.strip():
+        blockers.append("active-release-proof-service")
+    try:
+        metadata = HOLD_PATH.lstat()
+    except FileNotFoundError:
+        return blockers
+    if not stat.S_ISREG(metadata.st_mode) or HOLD_PATH.is_symlink():
+        raise GuardError("maintenance hold is not a regular file")
+    raw = HOLD_PATH.read_bytes()
+    if len(raw) > 64 * 1024:
+        raise GuardError("maintenance hold is too large")
+    hold = validate_maintenance_hold(
+        raw,
+        now=now,
+        owner_uid=metadata.st_uid,
+        owner_gid=metadata.st_gid,
+        mode=metadata.st_mode,
+    )
+    blockers.append(f"maintenance-hold:{hold['status']}")
+    return blockers
+
+
+def _write_status(document: dict[str, Any]) -> None:
+    STATUS_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=".status.", dir=STATUS_PATH.parent
+    )
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(_canonical(document))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, STATUS_PATH)
+        directory = os.open(STATUS_PATH.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def main() -> int:
+    now = datetime.now(UTC)
+    exit_code = 0
+    repairs: list[str] = []
+    problems: list[str] = []
+    blockers: list[str] = []
+    states: list[TimerState] = []
+    try:
+        states = _timer_states()
+        blockers = _blockers(now)
+        for unit in repair_candidates(states, blockers=blockers):
+            if _systemctl("reset-failed", unit).returncode not in {0, 1}:
+                problems.append(f"cannot reset failed state for {unit}")
+                continue
+            start = _systemctl("start", unit)
+            if start.returncode != 0 or _property(unit, "ActiveState") != "active":
+                problems.append(f"cannot restore {unit}")
+            else:
+                repairs.append(unit)
+        unsafe_states = [
+            item.unit
+            for item in states
+            if item.load_state != "loaded"
+            or item.unit_file_state
+            not in {"enabled", "enabled-runtime", "disabled"}
+            or item.active_state not in {"active", "inactive", "failed"}
+        ]
+        problems.extend(f"ambiguous timer state: {unit}" for unit in unsafe_states)
+        if not blockers:
+            problems.extend(
+                f"steady-state timer is disabled: {item.unit}"
+                for item in states
+                if item.unit_file_state == "disabled"
+            )
+    except GuardError as exc:
+        problems.append(str(exc))
+    if problems:
+        status = "degraded"
+        exit_code = 1
+    elif blockers:
+        status = "abstained"
+    elif repairs:
+        status = "repaired"
+    else:
+        status = "healthy"
+    document = {
+        "schema_version": SCHEMA_VERSION,
+        "status": status,
+        "checked_at": _clock(now),
+        "timers": [asdict(item) for item in states],
+        "repairs": repairs,
+        "blockers": blockers,
+        "problems": problems,
+    }
+    try:
+        _write_status(document)
+    except OSError as exc:
+        print(f"palimpsest-continuity-guard cannot write status: {exc}")
+        return 1
+    print(
+        "palimpsest-continuity-guard "
+        f"status={status} repairs={len(repairs)} blockers={len(blockers)} "
+        f"problems={len(problems)}"
+    )
+    return exit_code
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -3,9 +3,10 @@
    only when offline. Never serve stale data to a connected user. */
 /* Bump CACHE whenever the shell assets change shape, so a returning reader is
    not left holding a cached page that points at a stylesheet we no longer ship. */
-const CACHE = "palimpsest-v21";
+const CACHE = "palimpsest-v22";
 const LIVE_ROLLUP = "/readings/osint-china-latest.json";
 const LIVE_NEWSROOM = "/readings/newsroom-latest.json";
+const LIVE_FRESHNESS = new Set(["/freshness", "/freshnessz"]);
 const LIVE_EVIDENCE_READINGS = new Set([
   "/readings/newswire-latest.json",
   "/readings/china-economic-pulse-latest.json",
@@ -140,6 +141,12 @@ self.addEventListener("fetch", (e) => {
   // into an apparent success, so it is network-only. The page retains and visibly ages
   // its last verified in-memory document when this request fails.
   if (url.pathname === LIVE_ROLLUP) {
+    e.respondWith(fetch(req, { cache: "no-store" }));
+    return;
+  }
+  // Readiness can stay green while a collector or publication clock is stale.
+  // Never let an offline cache turn that explicit freshness failure into green.
+  if (LIVE_FRESHNESS.has(url.pathname)) {
     e.respondWith(fetch(req, { cache: "no-store" }));
     return;
   }

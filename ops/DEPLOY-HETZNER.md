@@ -2033,6 +2033,9 @@ RELEASE_ACTIVATORS=(
   palimpsest-common-crawl-backup.timer
   palimpsest-node-offsite-backup.timer
   palimpsest-evidence-wire.timer
+  palimpsest-measurement-refresh.timer
+  palimpsest-railway-publish.timer
+  palimpsest-direct-watchdog.timer
   palimpsest-investigative-analysis.timer
   palimpsest-investigative-broker.socket
   palimpsest-common-crawl-import.path
@@ -2047,6 +2050,9 @@ RELEASE_SERVICES=(
   palimpsest-common-crawl-backup.service
   palimpsest-node-offsite-backup.service
   palimpsest-evidence-wire.service
+  palimpsest-measurement-refresh.service
+  palimpsest-railway-publish.service
+  palimpsest-direct-watchdog.service
   palimpsest-event-analysis-live.service
   palimpsest-investigative-analysis.service
   palimpsest-common-crawl-import.service
@@ -2527,10 +2533,6 @@ release_quiesce_all() {
     fi
     case "$load_state" in
       loaded|masked)
-        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
-          printf 'failed to stop release activator: %s\n' "$unit" >&2
-          quiesce_rc=1
-        fi
         enablement="$(read_enablement "$unit")"
         if (( $? != 0 )); then
           quiesce_rc=1
@@ -2550,6 +2552,10 @@ release_quiesce_all() {
             quiesce_rc=1
             ;;
         esac
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to stop release activator: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
         ;;
       not-found) ;;
       *)
@@ -2792,10 +2798,6 @@ release_quiesce_all() {
     fi
     case "$load_state" in
       loaded|masked)
-        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
-          printf 'failed to restop release activator: %s\n' "$unit" >&2
-          quiesce_rc=1
-        fi
         if ! enablement="$(read_enablement "$unit")"; then
           quiesce_rc=1
           continue
@@ -2815,6 +2817,10 @@ release_quiesce_all() {
             quiesce_rc=1
             ;;
         esac
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to restop release activator: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
         ;;
       not-found) ;;
       *)
@@ -4566,9 +4572,13 @@ uptime
 ps -eo pid,comm,%cpu,%mem,etime --sort=-%cpu | sed -n '1,15p'
 # Stop here until any unexplained high-load process has been cleared.
 
-# Stop and persistently disable every systemd producer before touching Beat or
-# asking a worker to drain. This closes the race where a timer, path, socket, or
-# OnCalendar invocation could enqueue new Celery work during the drain window.
+# Persistently disable every systemd producer before stopping it, then stop all
+# controlled services before touching Beat or asking a worker to drain. The
+# disable-before-stop order prevents the independent continuity guard from
+# observing an enabled-but-inactive timer and restarting it during the release.
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  temporarily_disable_activator "$unit"
+done
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   stop_loaded_unit "$unit"
 done
@@ -4576,9 +4586,6 @@ for unit in "${RELEASE_SERVICES[@]}"; do
   stop_loaded_unit "$unit"
 done
 quiesce_dynamic_release_instances
-for unit in "${RELEASE_ACTIVATORS[@]}"; do
-  temporarily_disable_activator "$unit"
-done
 
 # With every systemd producer held, stop Beat and let each already-running
 # worker drain its local reservations and all four broker queues. The reviewed
@@ -8989,19 +8996,10 @@ verify_backup_dropins "$EXPECTED_DEPLOY_SHA" 0
 verify_release_service_success_triggers \
   "$BACKUP_ON_SUCCESS" palimpsest-event-analysis-live.service
 
-# Restore every captured systemd activator. All three first-install safety
-# timers (sync, watchdog, and witness) become enabled. An unconfigured
-# node-offsite lane can never be restored active because Phase 1 rejected it.
-for unit in "${RELEASE_ACTIVATORS[@]}"; do
-  if [[ "$unit" == palimpsest-node-offsite-backup.timer ]] \
-      && (( NODE_OFFSITE_CONFIGURED == 0 )); then
-    test "${RELEASE_WAS_ACTIVE[$unit]}" = "0"
-    case "${RELEASE_ENABLEMENT[$unit]}" in
-      enabled|enabled-runtime) exit 1 ;;
-    esac
-  fi
-  restore_activator_enablement "$unit"
-done
+# Restore every captured systemd activator. Start the intended runtime set while
+# its timers are still disabled, then restore boot enablement. This is the
+# reverse of disable-before-stop and prevents the continuity guard from seeing
+# an enabled-but-inactive timer during restoration.
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   if [[ "${RELEASE_WAS_ACTIVE[$unit]}" == "1" ]] \
       || { [[ "${RELEASE_ENABLEMENT[$unit]}" == not-found ]] \
@@ -9012,6 +9010,16 @@ for unit in "${RELEASE_ACTIVATORS[@]}"; do
   else
     stop_loaded_unit "$unit"
   fi
+done
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  if [[ "$unit" == palimpsest-node-offsite-backup.timer ]] \
+      && (( NODE_OFFSITE_CONFIGURED == 0 )); then
+    test "${RELEASE_WAS_ACTIVE[$unit]}" = "0"
+    case "${RELEASE_ENABLEMENT[$unit]}" in
+      enabled|enabled-runtime) exit 1 ;;
+    esac
+  fi
+  restore_activator_enablement "$unit"
 done
 
 ACTIVATOR_RESTORED_PATH="$OBSERVER_PREFLIGHT_DIR/activators-restored.tsv"
@@ -9297,7 +9305,7 @@ for line in pathlib.Path(compose_path).read_text(encoding="utf-8").splitlines():
 expected_compose = {
     "beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"
 }
-if set(compose) != expected_compose or len(activators) != 12:
+if set(compose) != expected_compose or len(activators) != 15:
     raise SystemExit("restored release inventory is incomplete")
 value = {
     "schema_version": "palimpsest-host-release-finalization.v1",
@@ -9426,7 +9434,7 @@ checks = (
     value.get("writers_restored") is True,
     value.get("backup_release_quiesce_present") is False,
     isinstance(value.get("restored_activators"), dict)
-        and len(value["restored_activators"]) == 12,
+        and len(value["restored_activators"]) == 15,
     isinstance(value.get("restored_compose_writers"), dict)
         and set(value["restored_compose_writers"])
         == {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"},
@@ -9928,7 +9936,7 @@ finalized_checks = (
     finalized.get("writers_restored") is True,
     finalized.get("backup_release_quiesce_present") is False,
     isinstance(finalized.get("restored_activators"), dict)
-        and len(finalized["restored_activators"]) == 12,
+        and len(finalized["restored_activators"]) == 15,
     isinstance(finalized.get("restored_compose_writers"), dict)
         and set(finalized["restored_compose_writers"])
         == {"beat", "worker", "worker-collectors", "worker-warehouse",
