@@ -195,8 +195,10 @@ def _write_freshness_attestation(
     source_commit: str,
     wire_generated_at: str,
     attested_at: str,
-) -> None:
+) -> Path:
     digest = "d" * 64
+    rights_status = root / "readings/china-publication-rights-latest.json"
+    rights_raw = rights_status.read_bytes()
     payload = {
         "schema_version": "palimpsest.publication-freshness-attestation.v1",
         "publication_sha": source_commit,
@@ -223,8 +225,8 @@ def _write_freshness_attestation(
         },
         "rights_status": {
             "path": "readings/china-publication-rights-latest.json",
-            "sha256": digest,
-            "bytes": 1,
+            "sha256": hashlib.sha256(rights_raw).hexdigest(),
+            "bytes": len(rights_raw),
         },
         "limitations": [
             "Metadata only; quarantined source artifacts are not republished here.",
@@ -234,7 +236,18 @@ def _write_freshness_attestation(
         ],
     }
     destination = root / "readings/publication-freshness-attestation-latest.json"
-    destination.write_text(json.dumps(payload), encoding="utf-8")
+    destination.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return destination
 
 
 def test_manifest_is_canonical_local_release_evidence(tmp_path: Path) -> None:
@@ -555,6 +568,183 @@ def test_freshness_attestation_must_match_manifest_bytes(tmp_path: Path) -> None
     attestation.write_bytes(attestation.read_bytes() + b"\n")
 
     with pytest.raises(ValueError, match="not bound to the release manifest"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "missing-limitations",
+        "missing-rights-status",
+        "extra-top-level-field",
+        "extra-artifact-field",
+    ),
+)
+def test_freshness_attestation_rejects_closed_schema_drift_after_remanifest(
+    tmp_path: Path, mutation: str
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "9" * 40
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    if mutation == "missing-limitations":
+        payload.pop("limitations")
+    elif mutation == "missing-rights-status":
+        payload.pop("rights_status")
+    elif mutation == "extra-top-level-field":
+        payload["unreviewed_extension"] = True
+    else:
+        payload["artifacts"]["newswire"]["unreviewed_extension"] = True
+    attestation_path.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="changed its exact schema"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_noncanonical_json_after_remanifest(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "c" * 40
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    attestation_path.write_text(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="not canonical JSON"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_remanifested_rights_identity_drift(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "a" * 40
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    payload["rights_status"]["sha256"] = "e" * 64
+    attestation_path.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="exact publication rights status"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_boolean_rights_byte_count(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "d" * 40
+    (root / "readings/china-publication-rights-latest.json").write_bytes(b"x")
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    payload["rights_status"]["bytes"] = True
+    attestation_path.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="invalid rights identity"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_rights_file_changed_after_manifest(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "b" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+    rights_status = root / "readings/china-publication-rights-latest.json"
+    rights_status.write_bytes(rights_status.read_bytes() + b"changed-after-release\n")
+
+    with pytest.raises(ValueError, match="rights status is not bound"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_fractional_release_clock(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "e" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00.500000Z"
+    )
+
+    with pytest.raises(ValueError, match="not a strict RFC 3339 UTC clock"):
         server_module._load_freshness_attestation(root, release=release)
 
 

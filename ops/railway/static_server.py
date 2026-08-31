@@ -32,6 +32,13 @@ MAX_FUTURE_SKEW_SECONDS = 5 * 60
 FRESHNESS_ATTESTATION_PATH = (
     "readings/publication-freshness-attestation-latest.json"
 )
+RIGHTS_STATUS_PATH = "readings/china-publication-rights-latest.json"
+FRESHNESS_ATTESTATION_LIMITATIONS = (
+    "Metadata only; quarantined source artifacts are not republished here.",
+    "No source values, observations, or per-record identifiers are included.",
+    "This attestation conveys no observation or publication authority.",
+    "Unavailable or restricted evidence is not a directional signal.",
+)
 
 
 def _load_release(site_root: Path) -> dict[str, Any]:
@@ -95,63 +102,155 @@ def _freshness_clock(
     }
 
 
-def _load_freshness_attestation(
-    site_root: Path, *, release: dict[str, Any]
+def _require_exact_object(
+    value: Any, expected_keys: set[str], *, field: str
 ) -> dict[str, Any]:
-    raw = (site_root / FRESHNESS_ATTESTATION_PATH).read_bytes()
+    if not isinstance(value, dict) or set(value) != expected_keys:
+        raise ValueError(f"{field} changed its exact schema")
+    return value
+
+
+def _strict_attestation_utc(value: Any, *, field: str) -> datetime:
+    if not isinstance(value, str) or re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+        value,
+    ) is None:
+        raise ValueError(f"{field} is not a strict RFC 3339 UTC clock")
+    try:
+        return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as exc:
+        raise ValueError(f"{field} is not a valid UTC clock") from exc
+
+
+def _require_manifest_bound_file(
+    release: dict[str, Any], *, relative_path: str, raw: bytes, field: str
+) -> dict[str, Any]:
     critical_files = release.get("critical_files")
     expected = (
-        critical_files.get(FRESHNESS_ATTESTATION_PATH)
+        critical_files.get(relative_path)
         if isinstance(critical_files, dict)
         else None
     )
+    digest = hashlib.sha256(raw).hexdigest()
     if (
         not isinstance(expected, dict)
         or set(expected) != {"bytes", "sha256"}
         or type(expected.get("bytes")) is not int
+        or expected["bytes"] <= 0
         or expected["bytes"] != len(raw)
         or not isinstance(expected.get("sha256"), str)
         or not SHA256_RE.fullmatch(expected["sha256"])
-        or hashlib.sha256(raw).hexdigest() != expected["sha256"]
+        or expected["sha256"] != digest
     ):
-        raise ValueError("freshness attestation is not bound to the release manifest")
+        raise ValueError(f"{field} is not bound to the release manifest")
+    return {"bytes": len(raw), "sha256": digest}
+
+
+def _load_freshness_attestation(
+    site_root: Path, *, release: dict[str, Any]
+) -> dict[str, Any]:
+    raw = (site_root / FRESHNESS_ATTESTATION_PATH).read_bytes()
+    _require_manifest_bound_file(
+        release,
+        relative_path=FRESHNESS_ATTESTATION_PATH,
+        raw=raw,
+        field="freshness attestation",
+    )
     payload = json.loads(raw)
     if not isinstance(payload, dict):
         raise ValueError("publication freshness attestation must be one object")
-    artifacts = payload.get("artifacts")
-    newswire = artifacts.get("newswire") if isinstance(artifacts, dict) else None
-    situation = (
-        artifacts.get("china_situation") if isinstance(artifacts, dict) else None
+    try:
+        canonical = (
+            json.dumps(
+                payload,
+                allow_nan=False,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            ).encode("utf-8")
+            + b"\n"
+        )
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            "publication freshness attestation is not canonical JSON"
+        ) from exc
+    if raw != canonical:
+        raise ValueError("publication freshness attestation is not canonical JSON")
+    document = _require_exact_object(
+        payload,
+        {
+            "artifacts",
+            "attested_at",
+            "limitations",
+            "mode",
+            "publication_allowed",
+            "publication_sha",
+            "rights_status",
+            "schema_version",
+        },
+        field="publication freshness attestation",
     )
-    if payload.get("schema_version") != FRESHNESS_ATTESTATION_SCHEMA:
+    artifacts = _require_exact_object(
+        document.get("artifacts"),
+        {"china_situation", "newswire"},
+        field="publication freshness artifacts",
+    )
+    newswire = _require_exact_object(
+        artifacts.get("newswire"),
+        {"canonical_sha256", "generated_at", "path", "schema_version"},
+        field="publication freshness newswire identity",
+    )
+    situation = _require_exact_object(
+        artifacts.get("china_situation"),
+        {
+            "canonical_sha256",
+            "generated_at",
+            "inputs",
+            "path",
+            "schema_version",
+        },
+        field="publication freshness China situation identity",
+    )
+    inputs = _require_exact_object(
+        situation.get("inputs"),
+        {"newswire_canonical_sha256", "newswire_generated_at"},
+        field="publication freshness China situation inputs",
+    )
+    rights_status = _require_exact_object(
+        document.get("rights_status"),
+        {"bytes", "path", "sha256"},
+        field="publication freshness rights status",
+    )
+    if (
+        type(rights_status.get("bytes")) is not int
+        or rights_status["bytes"] <= 0
+        or not isinstance(rights_status.get("sha256"), str)
+        or not SHA256_RE.fullmatch(rights_status["sha256"])
+    ):
+        raise ValueError("freshness attestation has an invalid rights identity")
+    if document.get("schema_version") != FRESHNESS_ATTESTATION_SCHEMA:
         raise ValueError("unsupported publication freshness attestation schema")
-    if payload.get("publication_sha") != release["source_commit"]:
+    if document.get("publication_sha") != release["source_commit"]:
         raise ValueError("freshness attestation is not bound to this release")
-    if payload.get("mode") != "rights-suppressed":
+    if document.get("mode") != "rights-suppressed":
         raise ValueError("unsupported publication freshness attestation mode")
-    if payload.get("publication_allowed") is not False:
+    if document.get("publication_allowed") is not False:
         raise ValueError("freshness attestation overstates publication authority")
-    if not isinstance(newswire, dict):
-        raise ValueError("freshness attestation lacks its newswire identity")
     if newswire.get("path") != "readings/newswire-latest.json":
         raise ValueError("freshness attestation has an invalid newswire path")
     if newswire.get("schema_version") != NEWSWIRE_SCHEMA:
         raise ValueError("freshness attestation has an invalid newswire schema")
-    if not isinstance(situation, dict):
-        raise ValueError("freshness attestation lacks its China situation identity")
     if situation.get("path") != "readings/china-situation-latest.json":
         raise ValueError("freshness attestation has an invalid China situation path")
     if situation.get("schema_version") != "palimpsest-china-situation.v1":
         raise ValueError("freshness attestation has an invalid China situation schema")
     wire_digest = newswire.get("canonical_sha256")
     situation_digest = situation.get("canonical_sha256")
-    inputs = situation.get("inputs")
     if (
         not isinstance(wire_digest, str)
         or not SHA256_RE.fullmatch(wire_digest)
         or not isinstance(situation_digest, str)
         or not SHA256_RE.fullmatch(situation_digest)
-        or not isinstance(inputs, dict)
         or inputs
         != {
             "newswire_generated_at": newswire.get("generated_at"),
@@ -159,18 +258,39 @@ def _load_freshness_attestation(
         }
     ):
         raise ValueError("freshness attestation has invalid source lineage")
-    wire_at = _parse_utc(
+    rights_raw = (site_root / RIGHTS_STATUS_PATH).read_bytes()
+    rights_identity = _require_manifest_bound_file(
+        release,
+        relative_path=RIGHTS_STATUS_PATH,
+        raw=rights_raw,
+        field="publication rights status",
+    )
+    if rights_status != {
+        "path": RIGHTS_STATUS_PATH,
+        "bytes": rights_identity["bytes"],
+        "sha256": rights_identity["sha256"],
+    }:
+        raise ValueError(
+            "freshness attestation does not bind the exact publication rights status"
+        )
+    if document.get("limitations") != list(FRESHNESS_ATTESTATION_LIMITATIONS):
+        raise ValueError("freshness attestation changed its exact limitations")
+    wire_at = _strict_attestation_utc(
         newswire.get("generated_at"), field="artifacts.newswire.generated_at"
     )
-    situation_at = _parse_utc(
+    situation_at = _strict_attestation_utc(
         situation.get("generated_at"),
         field="artifacts.china_situation.generated_at",
     )
-    attested_at = _parse_utc(payload.get("attested_at"), field="attested_at")
-    built_at = _parse_utc(release.get("built_at"), field="release.built_at")
+    attested_at = _strict_attestation_utc(
+        document.get("attested_at"), field="attested_at"
+    )
+    built_at = _strict_attestation_utc(
+        release.get("built_at"), field="release.built_at"
+    )
     if not wire_at <= situation_at <= attested_at <= built_at:
         raise ValueError("freshness attestation clocks violate publication causality")
-    return payload
+    return document
 
 
 class PalimpsestStaticHandler(SimpleHTTPRequestHandler):

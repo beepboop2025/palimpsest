@@ -43,6 +43,35 @@ def test_home_has_one_heading_and_clear_publication_routes():
     assert 'rel="icon" type="image/svg+xml"' in page
 
 
+def test_home_initial_ledger_makes_no_unverified_live_count_claims():
+    page = (ROOT / "index.html").read_text(encoding="utf-8")
+    ledger = page.split('<div class="hm-ledger">', 1)[1].split(
+        '<section class="hm-boundaries"', 1
+    )[0]
+
+    for stale_claim in (
+        '<strong data-home-registry-runs>423</strong>',
+        '<span data-home-osint-live>32</span>',
+        '<span data-home-osint-total>33</span>',
+        '<strong data-home-wire-events>308</strong>',
+        '<span data-home-wire-sources>30</span>',
+        '<span data-home-wire-total-sources>31</span>',
+        '<code data-home-osint-state>healthy</code>',
+    ):
+        assert stale_claim not in ledger
+    for placeholder in (
+        'data-home-registry-runs>checking current receipt</strong>',
+        'data-home-registry-root>receipt unavailable</code>',
+        'data-home-osint-live>checking</span>',
+        'data-home-osint-total>checking</span>',
+        'data-home-osint-state>checking current receipt</code>',
+        'data-home-wire-events>checking current receipt</strong>',
+        'data-home-wire-sources>checking</span>',
+        'data-home-wire-total-sources>checking</span>',
+    ):
+        assert placeholder in ledger
+
+
 def test_home_progressive_enhancement_never_injects_markup():
     script = (ROOT / "assets" / "home.js").read_text(encoding="utf-8")
     assert "textContent" in script
