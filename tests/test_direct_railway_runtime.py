@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import os
 import json
 from pathlib import Path
@@ -17,6 +18,7 @@ MEASUREMENT = ROOT / "ops" / "measurement" / "palimpsest-measurement-refresh"
 PUBLISH_TIMER = ROOT / "ops" / "systemd" / "palimpsest-railway-publish.timer"
 PUBLISH_SERVICE = ROOT / "ops" / "systemd" / "palimpsest-railway-publish.service"
 ADVANCE_BASE = ROOT / "ops" / "railway" / "advance-direct-publication-base"
+ROTATE_BASE = ROOT / "ops" / "railway" / "rotate-direct-publication-base"
 RECONCILE = ROOT / "ops" / "railway" / "reconcile-direct-publication-candidate"
 
 
@@ -28,7 +30,9 @@ def _candidate_fixture() -> dict[str, object]:
         "input_sha256": "d" * 64,
         "message": f"palimpsest-hetzner-{release[:12]}-{'d' * 12}-{'0' * 32}",
         "predecessor": {
-            "archive_path": "/var/lib/palimpsest/railway-publication/receipts/" + "e" * 64 + ".json",
+            "archive_path": "/var/lib/palimpsest/railway-publication/receipts/"
+            + "e" * 64
+            + ".json",
             "base_sha": "f" * 40,
             "deployment_id": "505bd041-4c52-4ce7-a137-dc3e4c55cacb",
             "input_sha256": "1" * 64,
@@ -40,16 +44,44 @@ def _candidate_fixture() -> dict[str, object]:
             "wire_generated_at": "2026-08-30T12:00:00Z",
         },
         "prepared_at": "2026-08-30T12:05:00Z",
-        "publication_base": {"kind": "verified_transition", "path": "/etc/palimpsest/railway-publication-base.json", "sha256": "5" * 64},
-        "release_bundle": {"bytes": 1, "metadata_path": "/var/lib/palimpsest/railway-publication/release-bundles/a.json", "metadata_sha256": "6" * 64, "path": "/var/lib/palimpsest/railway-publication/release-bundles/a.bundle", "sha256": "7" * 64},
-        "release_manifest": {"bytes": 1, "file_count": 1, "path": "/var/lib/palimpsest/railway-publication/release-manifests/a.json", "sha256": "b" * 64, "total_bytes": 1, "tree_sha256": "c" * 64},
+        "publication_base": {
+            "kind": "verified_transition",
+            "path": "/etc/palimpsest/railway-publication-base.json",
+            "sha256": "5" * 64,
+        },
+        "release_bundle": {
+            "bytes": 1,
+            "metadata_path": "/var/lib/palimpsest/railway-publication/release-bundles/a.json",
+            "metadata_sha256": "6" * 64,
+            "path": "/var/lib/palimpsest/railway-publication/release-bundles/a.bundle",
+            "sha256": "7" * 64,
+        },
+        "release_manifest": {
+            "bytes": 1,
+            "file_count": 1,
+            "path": "/var/lib/palimpsest/railway-publication/release-manifests/a.json",
+            "sha256": "b" * 64,
+            "total_bytes": 1,
+            "tree_sha256": "c" * 64,
+        },
         "release_sha": release,
         "rollback_evidence": {
             "captured_at": "2026-08-30T12:04:00Z",
             "provider_manifest": {"bytes": 1, "path": "/provider", "sha256": "8" * 64},
             "public_manifest": {"bytes": 1, "path": "/public", "sha256": "8" * 64},
             "schema_version": "palimpsest.direct-publication-rollback-evidence.v1",
-            "topology": {"bytes": 1, "created_at": "2026-08-30T11:00:00Z", "deployment_id": "505bd041-4c52-4ce7-a137-dc3e4c55cacb", "environment_id": "1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2", "image_digest": "sha256:" + "9" * 64, "path": "/topology", "project_id": "f7c86128-53a7-458a-a931-6628c6e61fb2", "reason": "deploy", "service_id": "86a6f49c-b9dc-4be8-acd1-dd180c693230", "sha256": "a" * 64},
+            "topology": {
+                "bytes": 1,
+                "created_at": "2026-08-30T11:00:00Z",
+                "deployment_id": "505bd041-4c52-4ce7-a137-dc3e4c55cacb",
+                "environment_id": "1d4d9eef-7bad-4c7b-a003-0e66fe9a8fe2",
+                "image_digest": "sha256:" + "9" * 64,
+                "path": "/topology",
+                "project_id": "f7c86128-53a7-458a-a931-6628c6e61fb2",
+                "reason": "deploy",
+                "service_id": "86a6f49c-b9dc-4be8-acd1-dd180c693230",
+                "sha256": "a" * 64,
+            },
         },
         "schema_version": "palimpsest.direct-publication-candidate.v1",
         "status": "mutation_unresolved",
@@ -87,7 +119,10 @@ def test_direct_runtimes_are_executable_and_share_the_snapshot_lock() -> None:
     assert '--wire "$checkout/readings/newswire-latest.json"' in publisher
     assert '--readings "$checkout/readings"' in publisher
     assert '--output "$generated_analysis"' in publisher
-    assert 'cp -p "$generated_analysis" "$checkout/readings/event-analysis-latest.json"' in publisher
+    assert (
+        'cp -p "$generated_analysis" "$checkout/readings/event-analysis-latest.json"'
+        in publisher
+    )
     assert "ANALYSIS_FILE" not in publisher
 
 
@@ -107,6 +142,40 @@ def test_publisher_keeps_systemd_wx_protection_and_self_heals_origin_drift() -> 
     assert "unchanged capture is not proven on both origins" in publisher
 
 
+def test_publisher_blocks_every_rotation_intent_inode_after_root_lock() -> None:
+    publisher = PUBLISHER.read_text(encoding="utf-8")
+
+    canonical_intent = (
+        'readonly ROTATION_INTENT="$CONTROL_ROOT/rotation-intent.json"'
+    )
+    acquire = "exec 9<\"$LOCK_FILE\""
+    lock = "if ! flock -n 9; then"
+    verify = '[[ "$(stat -c \'%d:%i\' "$LOCK_FILE")" == "$lock_identity" ]]'
+    barrier = '[[ ! -e "$ROTATION_INTENT" && ! -L "$ROTATION_INTENT" ]] || {'
+    refusal = 'log "prepared base rotation blocks direct publication" >&2'
+    recovery = "recover_abandoned_preparation"
+    barrier_position = publisher.index(barrier)
+    positions = [
+        publisher.index(canonical_intent),
+        publisher.index(acquire),
+        publisher.index(lock),
+        publisher.index(verify),
+        barrier_position,
+        publisher.index(refusal, barrier_position),
+        publisher.index(recovery, barrier_position),
+    ]
+
+    assert positions == sorted(positions)
+    barrier_block = publisher[
+        barrier_position : publisher.index(recovery, barrier_position)
+    ]
+    assert "exit 1" in barrier_block
+    # `-e` catches every existing regular/directory/unsafe inode, while `-L`
+    # additionally catches a dangling symlink whose target does not exist.
+    assert '-e "$ROTATION_INTENT"' in barrier_block
+    assert '-L "$ROTATION_INTENT"' in barrier_block
+
+
 def test_independent_publication_timer_is_persistent_and_bounded() -> None:
     timer = PUBLISH_TIMER.read_text(encoding="utf-8")
 
@@ -115,21 +184,34 @@ def test_independent_publication_timer_is_persistent_and_bounded() -> None:
     assert "Unit=palimpsest-railway-publish.service" in timer
 
 
-def test_direct_publisher_uses_a_verified_public_base_pin_without_rewriting_host_identity() -> None:
+def test_direct_publisher_uses_a_verified_public_base_pin_without_rewriting_host_identity() -> (
+    None
+):
     publisher = PUBLISHER.read_text(encoding="utf-8")
     service = PUBLISH_SERVICE.read_text(encoding="utf-8")
 
     assert "PALIMPSEST_RAILWAY_BASE_FILE" in publisher
     assert "palimpsest.direct-publication-base-transition.v1" in publisher
+    assert "palimpsest.direct-publication-base.v2" in publisher
     assert 'base_pin_kind="verified_transition"' in publisher
+    assert 'base_pin_kind="verified_successor"' in publisher
     assert "verified publication transition pin is mandatory" in publisher
     assert 'merge-base --is-ancestor "$canonical_head" "$base_sha"' in publisher
     assert 'merge-base --is-ancestor "$base_sha" refs/remotes/origin/main' in publisher
     assert "root:$PUBLICATION_BASE_GROUP mode 0640" in publisher
-    assert publisher.count("validate_installed_transition_artifact \\") == 7
+    # Seven exact blobs remain mandatory for the v1 bootstrap pin.  Each v2
+    # successor authenticates the complete fourteen-artifact runtime lane.
+    assert publisher.count("validate_installed_transition_artifact \\") == 21
     for path in (
+        "/usr/local/sbin/palimpsest-continuity-guard",
+        "/etc/systemd/system/palimpsest-continuity-guard.service",
+        "/etc/systemd/system/palimpsest-continuity-guard.timer",
+        "/usr/local/sbin/palimpsest-event-analysis-live",
+        "/etc/systemd/system/palimpsest-event-analysis-live.service",
+        "/etc/systemd/system/palimpsest-event-analysis-live.service.d/90-railway-publish.conf",
         "/usr/local/sbin/palimpsest-railway-publish",
         "/usr/local/sbin/palimpsest-advance-direct-publication-base",
+        "/usr/local/sbin/palimpsest-rotate-direct-publication-base",
         "/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate",
         "/usr/local/sbin/palimpsest-direct-watchdog",
         "/etc/systemd/system/palimpsest-railway-publish.service",
@@ -138,8 +220,15 @@ def test_direct_publisher_uses_a_verified_public_base_pin_without_rewriting_host
     ):
         assert path in publisher
     assert "host_deployed_sha" in publisher
+    assert (
+        "accepting exact one-generation predecessor receipt bound by successor pin"
+        in publisher
+    )
+    assert "canonical host identity differs from the publication base pin" in publisher
     assert "ReadOnlyPaths=-/etc/palimpsest/railway-publication-base.json" in service
-    assert "ReadOnlyPaths=-/etc/palimpsest/railway-publication-data-hold.json" in service
+    assert (
+        "ReadOnlyPaths=-/etc/palimpsest/railway-publication-data-hold.json" in service
+    )
     assert "InaccessiblePaths=-/run/docker.sock" in service
 
 
@@ -247,6 +336,56 @@ def test_one_time_base_advance_is_incident_specific_and_closed_schema() -> None:
         namespace["_validate_incident_receipt"](b"{}\n")
 
 
+def test_repeatable_base_rotation_owns_the_zero_quiesce_lock_transaction() -> None:
+    assert os.access(ROTATE_BASE, os.X_OK)
+    namespace = runpy.run_path(str(ROTATE_BASE))
+    source = ROTATE_BASE.read_text(encoding="utf-8")
+
+    assert namespace["PIN_SCHEMA"] == "palimpsest.direct-publication-base.v2"
+    assert namespace["ROTATION_SCHEMA"] == (
+        "palimpsest.direct-publication-base-rotation.v1"
+    )
+    assert namespace["ACKNOWLEDGEMENT"] == ("rotate-palimpsest-direct-publication-base")
+    transaction = inspect.getsource(namespace["perform_rotation"])
+    installer = inspect.getsource(namespace["_install_target_artifacts"])
+    lock = transaction.index("_acquire_lock(")
+    admission_blockers = transaction.index("_require_no_rotation_blockers(", lock)
+    intent = transaction.index("_persist_rotation_intent(", lock)
+    install = transaction.index("_install_target_artifacts(", lock)
+    final_blockers = transaction.index("_require_no_rotation_blockers(", install)
+    inactive = transaction.index("_require_service_inactive(", install)
+    archive = transaction.index("_archive_bytes(record_path, record_raw", install)
+    replace = transaction.index("_atomic_replace_pin(", archive)
+    assert transaction.count("_require_no_rotation_blockers(") == 2
+    assert (
+        lock
+        < admission_blockers
+        < intent
+        < install
+        < final_blockers
+        < inactive
+        < archive
+        < replace
+    )
+    assert '["/usr/bin/systemctl", "daemon-reload"]' in installer
+    ensure_control_root = transaction.index("_ensure_control_root(")
+    assert ensure_control_root < install
+    for unit_name in (
+        "palimpsest-direct-watchdog.service",
+        "palimpsest-event-analysis-live.service",
+        "palimpsest-railway-publish.service",
+    ):
+        unit = (ROOT / "ops" / "systemd" / unit_name).read_text(encoding="utf-8")
+        assert "ReadOnlyPaths=/var/lib/palimpsest/railway-control" in unit
+        assert "ReadOnlyPaths=-/var/lib/palimpsest/railway-control" not in unit
+    assert "systemctl disable" not in source
+    assert "systemctl stop" not in source
+    assert "maintenance-begin" not in source
+    assert '(state_root / "pending-candidate.json", "pending candidate")' in source
+    assert '(state_root / "pending-preparation.json", "pending preparation")' in source
+    assert '(data_hold, "DATA HOLD")' in source
+
+
 def test_candidate_reconciler_has_closed_adopt_preserve_rollback_hold_states() -> None:
     assert os.access(RECONCILE, os.X_OK)
     source = RECONCILE.read_text(encoding="utf-8")
@@ -268,7 +407,9 @@ def test_candidate_reconciler_has_closed_adopt_preserve_rollback_hold_states() -
     attempt = source.index("attempt = _write_attempt")
     root_guard = source.index("_write_hold(", attempt)
     final_status = source.index("guarded_raw = _status", root_guard)
-    mutation = source.index('response = _graphql("mutation PalimpsestRollback', final_status)
+    mutation = source.index(
+        'response = _graphql("mutation PalimpsestRollback', final_status
+    )
     assert attempt < root_guard < final_status < mutation
 
 
@@ -309,8 +450,7 @@ def test_release_manifest_anchor_is_duplicate_safe_closed_and_nonempty() -> None
     with pytest.raises(error, match="identity is invalid"):
         validate(
             (
-                json.dumps(empty_critical, sort_keys=True, separators=(",", ":"))
-                + "\n"
+                json.dumps(empty_critical, sort_keys=True, separators=(",", ":")) + "\n"
             ).encode(),
             release=release_sha,
         )
@@ -338,7 +478,9 @@ def test_reconciler_repairs_candidate_archive_and_preserves_bound_artifacts(
     candidate["release_bundle"] = {
         **candidate["release_bundle"],
         "path": str(state / "release-bundles" / f"{candidate['release_sha']}.bundle"),
-        "metadata_path": str(state / "release-bundles" / f"{candidate['release_sha']}.json"),
+        "metadata_path": str(
+            state / "release-bundles" / f"{candidate['release_sha']}.json"
+        ),
     }
     raw = (json.dumps(candidate, sort_keys=True, separators=(",", ":")) + "\n").encode()
     pending.write_bytes(raw)
@@ -568,21 +710,29 @@ def test_reconciler_mutates_at_most_once_after_the_durable_guard(
     candidate["predecessor"]["archive_path"] = str(
         globals_["STATE_ROOT"] / "receipts" / f"{predecessor_digest}.json"
     )
-    pin_raw = b'{"target":{"base_sha":"' + str(candidate["base_sha"]).encode() + b'"}}\n'
+    pin_raw = (
+        b'{"target":{"base_sha":"' + str(candidate["base_sha"]).encode() + b'"}}\n'
+    )
     candidate["publication_base"]["sha256"] = hashlib.sha256(pin_raw).hexdigest()
     candidate_raw = (
         json.dumps(candidate, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode()
-    archive = globals_["STATE_ROOT"] / "candidates" / (
-        hashlib.sha256(candidate_raw).hexdigest() + ".json"
+    archive = (
+        globals_["STATE_ROOT"]
+        / "candidates"
+        / (hashlib.sha256(candidate_raw).hexdigest() + ".json")
     )
 
     reads = {
         globals_["CANDIDATE_JOURNAL"]: candidate_raw,
         globals_["BASE_PIN"]: pin_raw,
-        globals_["DEPLOYED_COMMIT"]: (str(candidate["host_deployed_sha"]) + "\n").encode(),
+        globals_["DEPLOYED_COMMIT"]: (
+            str(candidate["host_deployed_sha"]) + "\n"
+        ).encode(),
         globals_["SUCCESS_RECEIPT"]: predecessor_raw,
-        globals_["STATE_ROOT"] / "receipts" / f"{predecessor_digest}.json": predecessor_raw,
+        globals_["STATE_ROOT"]
+        / "receipts"
+        / f"{predecessor_digest}.json": predecessor_raw,
     }
 
     def fake_read(path: Path, **_kwargs: object) -> bytes:
@@ -622,9 +772,7 @@ def test_reconciler_mutates_at_most_once_after_the_durable_guard(
     if case == "guard_moved":
         statuses.append(b"moved-after-guard")
     elif case == "stable":
-        statuses.extend(
-            [b"active-after-guard", b"restored", b"restored-final"]
-        )
+        statuses.extend([b"active-after-guard", b"restored", b"restored-final"])
     else:
         statuses = [b"active-initial"]
     status_iter = iter(statuses)
@@ -675,16 +823,24 @@ def test_reconciler_mutates_at_most_once_after_the_durable_guard(
         return b'{"data":{"deployment":{"canRollback":true}}}\n'
 
     monkeypatch.setitem(globals_, "_read", fake_read)
-    monkeypatch.setitem(globals_, "_candidate_archive", lambda *_args, **_kwargs: archive)
+    monkeypatch.setitem(
+        globals_, "_candidate_archive", lambda *_args, **_kwargs: archive
+    )
     monkeypatch.setitem(globals_, "_read_hold", lambda *_args, **_kwargs: None)
     monkeypatch.setitem(globals_, "_validate_pin", lambda _pin: None)
     monkeypatch.setitem(globals_, "_validate_bundle", lambda *_args, **_kwargs: None)
     monkeypatch.setitem(
-        globals_, "_validate_release_manifest_anchor", lambda *_args, **_kwargs: b"anchor"
+        globals_,
+        "_validate_release_manifest_anchor",
+        lambda *_args, **_kwargs: b"anchor",
     )
-    monkeypatch.setitem(globals_, "_matching_preparation", lambda *_args, **_kwargs: False)
     monkeypatch.setitem(
-        globals_, "_predecessor_from_receipt", lambda *_args, **_kwargs: candidate["predecessor"]
+        globals_, "_matching_preparation", lambda *_args, **_kwargs: False
+    )
+    monkeypatch.setitem(
+        globals_,
+        "_predecessor_from_receipt",
+        lambda *_args, **_kwargs: candidate["predecessor"],
     )
     monkeypatch.setitem(
         globals_, "_validate_evidence", lambda *_args, **_kwargs: (b"saved", b"saved")
@@ -705,7 +861,9 @@ def test_reconciler_mutates_at_most_once_after_the_durable_guard(
     monkeypatch.setitem(globals_, "_write_attempt", lambda *_args, **_kwargs: attempt)
     monkeypatch.setitem(globals_, "_write_hold", lambda *_args, **_kwargs: {})
     monkeypatch.setitem(globals_, "_write_response", lambda *_args, **_kwargs: "2" * 64)
-    monkeypatch.setitem(globals_, "_live_manifests", lambda *_args: (b"saved", b"saved"))
+    monkeypatch.setitem(
+        globals_, "_live_manifests", lambda *_args: (b"saved", b"saved")
+    )
     monkeypatch.setitem(
         globals_,
         "_write_recovery",
@@ -714,7 +872,10 @@ def test_reconciler_mutates_at_most_once_after_the_durable_guard(
 
     if case == "stable":
         result = reconcile_locked(
-            uid=os.getuid(), gid=os.getgid(), token_name="RAILWAY_TOKEN", token_value="x"
+            uid=os.getuid(),
+            gid=os.getgid(),
+            token_name="RAILWAY_TOKEN",
+            token_value="x",
         )
         assert result == {"outcome": "predecessor_rolled_back"}
     else:

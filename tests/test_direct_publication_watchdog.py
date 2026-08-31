@@ -20,6 +20,25 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 WATCHDOG_PATH = ROOT / "ops" / "railway" / "palimpsest-direct-watchdog"
+ROTATION_HELPER_PATH = ROOT / "ops" / "railway" / "rotate-direct-publication-base"
+LEGACY_INSTALLED_KEYS = {
+    "publisher_service_sha256",
+    "publisher_sha256",
+    "reconciler_sha256",
+    "transition_helper_sha256",
+    "watchdog_service_sha256",
+    "watchdog_sha256",
+    "watchdog_timer_sha256",
+}
+SUCCESSOR_INSTALLED_KEYS = LEGACY_INSTALLED_KEYS | {
+    "continuity_guard_service_sha256",
+    "continuity_guard_sha256",
+    "continuity_guard_timer_sha256",
+    "event_analysis_publish_dropin_sha256",
+    "event_analysis_service_sha256",
+    "event_analysis_wrapper_sha256",
+    "rotation_helper_sha256",
+}
 
 
 def _load_watchdog() -> ModuleType:
@@ -153,6 +172,8 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
 
     state_root = tmp_path / "state"
     state_root.mkdir(mode=0o700)
+    control_root = tmp_path / "control"
+    control_root.mkdir(mode=0o750)
     bundle_root = state_root / "release-bundles"
     bundle_root.mkdir(mode=0o700)
     bundle_path = bundle_root / f"{release_sha}.bundle"
@@ -178,8 +199,33 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
     installed_root = tmp_path / "installed"
     installed_root.mkdir()
     installed: dict[str, tuple[Path, int]] = {
+        "continuity_guard_sha256": (
+            installed_root / "continuity-guard",
+            0o755,
+        ),
+        "continuity_guard_service_sha256": (
+            installed_root / "continuity-guard.service",
+            0o644,
+        ),
+        "continuity_guard_timer_sha256": (
+            installed_root / "continuity-guard.timer",
+            0o644,
+        ),
+        "event_analysis_wrapper_sha256": (
+            installed_root / "event-analysis",
+            0o755,
+        ),
+        "event_analysis_service_sha256": (
+            installed_root / "event-analysis.service",
+            0o644,
+        ),
+        "event_analysis_publish_dropin_sha256": (
+            installed_root / "event-analysis-publish.conf",
+            0o644,
+        ),
         "publisher_sha256": (installed_root / "publisher", 0o755),
         "transition_helper_sha256": (installed_root / "transition", 0o755),
+        "rotation_helper_sha256": (installed_root / "rotation", 0o755),
         "reconciler_sha256": (installed_root / "reconciler", 0o755),
         "watchdog_sha256": (installed_root / "watchdog", 0o755),
         "publisher_service_sha256": (
@@ -198,7 +244,11 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
     pin_path = tmp_path / "railway-publication-base.json"
     pin = {
         "incident_id": watchdog.PIN_INCIDENT,
-        "installed": installed_digests,
+        "installed": {
+            key: value
+            for key, value in installed_digests.items()
+            if key in LEGACY_INSTALLED_KEYS
+        },
         "origins": {
             "provider": watchdog.DEFAULT_PROVIDER_ORIGIN,
             "public": watchdog.DEFAULT_PUBLIC_ORIGIN,
@@ -219,6 +269,8 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
         "target": {"base_sha": base_sha, "public_main_sha": base_sha},
     }
     pin_raw = _json_bytes(pin)
+    monkeypatch.setattr(watchdog, "INCIDENT_PIN_SHA256", _sha(pin_raw))
+    monkeypatch.setattr(watchdog, "INCIDENT_PIN_TARGET_SHA", base_sha)
     _write(pin_path, pin_raw, 0o640)
 
     deployed_commit = tmp_path / "deployed-commit"
@@ -240,9 +292,7 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
         "tree_sha256": "3" * 64,
         "file_count": 123,
         "total_bytes": 456789,
-        "critical_files": {
-            "index.html": {"bytes": 10, "sha256": "7" * 64}
-        },
+        "critical_files": {"index.html": {"bytes": 10, "sha256": "7" * 64}},
     }
     manifest_raw = _json_bytes(manifest)
     manifest_root = state_root / "release-manifests"
@@ -364,8 +414,7 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
     input_sha256 = "4" * 64
     submission_id = "5" * 32
     message = (
-        f"palimpsest-hetzner-{release_sha[:12]}-{input_sha256[:12]}-"
-        f"{submission_id}"
+        f"palimpsest-hetzner-{release_sha[:12]}-{input_sha256[:12]}-{submission_id}"
     )
     candidate_document = {
         "schema_version": watchdog.CANDIDATE_SCHEMA,
@@ -437,6 +486,7 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
     gid = os.getgid()
     config = watchdog.LineageConfig(
         state_root=state_root,
+        control_root=control_root,
         source_repository=repository,
         publication_receipt=receipt_path,
         deployed_commit=deployed_commit,
@@ -444,7 +494,18 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
         pending_candidate=state_root / "pending-candidate.json",
         data_hold=tmp_path / "railway-publication-data-hold.json",
         installed_publisher=installed["publisher_sha256"][0],
+        installed_continuity_guard=installed["continuity_guard_sha256"][0],
+        installed_continuity_guard_service=installed["continuity_guard_service_sha256"][
+            0
+        ],
+        installed_continuity_guard_timer=installed["continuity_guard_timer_sha256"][0],
+        installed_event_analysis_wrapper=installed["event_analysis_wrapper_sha256"][0],
+        installed_event_analysis_service=installed["event_analysis_service_sha256"][0],
+        installed_event_analysis_publish_dropin=installed[
+            "event_analysis_publish_dropin_sha256"
+        ][0],
         installed_transition_helper=installed["transition_helper_sha256"][0],
+        installed_rotation_helper=installed["rotation_helper_sha256"][0],
         installed_reconciler=installed["reconciler_sha256"][0],
         installed_watchdog=installed["watchdog_sha256"][0],
         installed_publisher_service=installed["publisher_service_sha256"][0],
@@ -477,6 +538,7 @@ def lineage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
 def test_v2_allows_publication_base_to_differ_from_host_deployment(
     lineage: Fixture,
 ) -> None:
+    assert watchdog.MAX_PIN_GENERATIONS == 256
     proof, candidate = lineage.validate()
 
     assert lineage.host_sha != lineage.base_sha
@@ -484,6 +546,344 @@ def test_v2_allows_publication_base_to_differ_from_host_deployment(
     assert proof["publication_base_sha"] == lineage.base_sha
     assert proof["release_sha"] == lineage.release_sha
     assert candidate == {"status": "none"}
+
+
+def test_successor_pin_authenticates_archived_pin_receipt_and_rotation_record(
+    lineage: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    anchor = json.loads(lineage.pin_path.read_bytes())
+    anchor["previous"]["canonical_head"] = lineage.host_sha
+    anchor["previous"]["deployed_commit"] = lineage.host_sha
+    anchor_raw = _json_bytes(anchor)
+    anchor_digest = _sha(anchor_raw)
+    monkeypatch.setattr(watchdog, "INCIDENT_BASE_SHA", lineage.host_sha)
+    monkeypatch.setattr(watchdog, "INCIDENT_PIN_SHA256", anchor_digest)
+    monkeypatch.setattr(watchdog, "INCIDENT_PIN_TARGET_SHA", lineage.base_sha)
+
+    history = lineage.config.control_root / "base-rotation-history"
+    for relative in (
+        "",
+        "pins",
+        "receipts",
+        "manifests",
+        "manifests/provider",
+        "manifests/public",
+        "topologies",
+        "rotations",
+    ):
+        path = history / relative if relative else history
+        path.mkdir(mode=0o750)
+        path.chmod(0o750)
+    anchor_path = history / "pins" / f"{anchor_digest}.json"
+    _write(anchor_path, anchor_raw, 0o640)
+
+    predecessor_receipt = json.loads(json.dumps(lineage.receipt))
+    predecessor_receipt["publication_base"]["sha256"] = anchor_digest
+    predecessor_raw = _json_bytes(predecessor_receipt)
+    predecessor_digest = _sha(predecessor_raw)
+    predecessor_path = history / "receipts" / f"{predecessor_digest}.json"
+    _write(predecessor_path, predecessor_raw, 0o640)
+
+    manifest_digest = _sha(lineage.manifest_raw)
+    provider_path = history / "manifests/provider" / f"{manifest_digest}.json"
+    public_path = history / "manifests/public" / f"{manifest_digest}.json"
+    _write(provider_path, lineage.manifest_raw, 0o640)
+    _write(public_path, lineage.manifest_raw, 0o640)
+
+    project_id = "11111111-1111-4111-8111-111111111111"
+    environment_id = "22222222-2222-4222-8222-222222222222"
+    service_id = "33333333-3333-4333-8333-333333333333"
+    deployment_id = predecessor_receipt["railway"]["deployment_id"]
+    created_at = "2026-08-31T12:00:00Z"
+    image_digest = f"sha256:{'9' * 64}"
+    topology = {
+        "id": project_id,
+        "services": {
+            "edges": [{"node": {"id": service_id, "name": "palimpsest-publication"}}]
+        },
+        "environments": {
+            "edges": [
+                {
+                    "node": {
+                        "id": environment_id,
+                        "serviceInstances": {
+                            "edges": [
+                                {
+                                    "node": {
+                                        "serviceId": service_id,
+                                        "latestDeployment": {
+                                            "id": deployment_id,
+                                            "status": "SUCCESS",
+                                            "createdAt": created_at,
+                                            "meta": {
+                                                "imageDigest": image_digest,
+                                                "reason": "deploy",
+                                            },
+                                        },
+                                    }
+                                }
+                            ]
+                        },
+                    }
+                }
+            ]
+        },
+    }
+    topology_raw = _json_bytes(topology)
+    topology_digest = _sha(topology_raw)
+    topology_path = history / "topologies" / f"{topology_digest}.json"
+    _write(topology_path, topology_raw, 0o640)
+
+    installed_paths = {
+        "continuity_guard_sha256": lineage.config.installed_continuity_guard,
+        "continuity_guard_service_sha256": (
+            lineage.config.installed_continuity_guard_service
+        ),
+        "continuity_guard_timer_sha256": (
+            lineage.config.installed_continuity_guard_timer
+        ),
+        "event_analysis_wrapper_sha256": (
+            lineage.config.installed_event_analysis_wrapper
+        ),
+        "event_analysis_service_sha256": (
+            lineage.config.installed_event_analysis_service
+        ),
+        "event_analysis_publish_dropin_sha256": (
+            lineage.config.installed_event_analysis_publish_dropin
+        ),
+        "publisher_sha256": lineage.config.installed_publisher,
+        "transition_helper_sha256": lineage.config.installed_transition_helper,
+        "rotation_helper_sha256": lineage.config.installed_rotation_helper,
+        "reconciler_sha256": lineage.config.installed_reconciler,
+        "watchdog_sha256": lineage.config.installed_watchdog,
+        "publisher_service_sha256": lineage.config.installed_publisher_service,
+        "watchdog_service_sha256": lineage.config.installed_watchdog_service,
+        "watchdog_timer_sha256": lineage.config.installed_watchdog_timer,
+    }
+    assert set(installed_paths) == SUCCESSOR_INSTALLED_KEYS
+    installed = {key: _sha(path.read_bytes()) for key, path in installed_paths.items()}
+    target_sha = lineage.release_sha
+    _git(
+        lineage.config.source_repository,
+        "update-ref",
+        "refs/remotes/origin/main",
+        target_sha,
+    )
+    receipt_proof = {
+        "base_sha": predecessor_receipt["base_sha"],
+        "deployment_id": deployment_id,
+        "host_deployed_sha": predecessor_receipt["host_deployed_sha"],
+        "input_sha256": predecessor_receipt["input_sha256"],
+        "manifest_sha256": predecessor_receipt["live_manifest"]["sha256"],
+        "path": str(predecessor_path),
+        "publication_base_sha256": anchor_digest,
+        "release_sha": predecessor_receipt["release_sha"],
+        "schema_version": predecessor_receipt["schema_version"],
+        "sha256": predecessor_digest,
+        "tree_sha256": predecessor_receipt["live_manifest"]["tree_sha256"],
+        "wire_generated_at": predecessor_receipt["wire_generated_at"],
+    }
+    rotation_path = (
+        history / "rotations" / (f"1-{target_sha}-{predecessor_digest}.json")
+    )
+    successor = {
+        "anchor": {
+            "path": str(anchor_path),
+            "schema_version": watchdog.PIN_SCHEMA,
+            "sha256": anchor_digest,
+            "target_sha": lineage.base_sha,
+        },
+        "generation": 1,
+        "host": {
+            "canonical_head": lineage.host_sha,
+            "deployed_commit": lineage.host_sha,
+        },
+        "installed": installed,
+        "live": {
+            "file_count": json.loads(lineage.manifest_raw)["file_count"],
+            "provider_manifest": {
+                "bytes": len(lineage.manifest_raw),
+                "path": str(provider_path),
+                "sha256": manifest_digest,
+            },
+            "public_manifest": {
+                "bytes": len(lineage.manifest_raw),
+                "path": str(public_path),
+                "sha256": manifest_digest,
+            },
+            "release_sha": predecessor_receipt["release_sha"],
+            "total_bytes": json.loads(lineage.manifest_raw)["total_bytes"],
+            "tree_sha256": predecessor_receipt["live_manifest"]["tree_sha256"],
+        },
+        "origins": {
+            "provider": lineage.config.provider_origin,
+            "public": lineage.config.public_origin,
+        },
+        "predecessor": {
+            "pin": {
+                "generation": 0,
+                "path": str(anchor_path),
+                "schema_version": watchdog.PIN_SCHEMA,
+                "sha256": anchor_digest,
+                "target_sha": lineage.base_sha,
+            },
+            "publication_receipt": receipt_proof,
+        },
+        "railway": {
+            "created_at": created_at,
+            "deployment_id": deployment_id,
+            "environment_id": environment_id,
+            "image_digest": image_digest,
+            "project_id": project_id,
+            "reason": "deploy",
+            "service_id": service_id,
+            "topology": {
+                "bytes": len(topology_raw),
+                "path": str(topology_path),
+                "sha256": topology_digest,
+            },
+        },
+        "recorded_at": "2026-08-31T12:05:00Z",
+        "rotation_record_path": str(rotation_path),
+        "schema_version": watchdog.SUCCESSOR_PIN_SCHEMA,
+        "status": "verified",
+        "target": {"base_sha": target_sha, "public_main_sha": target_sha},
+    }
+    successor_raw = _json_bytes(successor)
+    rotation_record = {
+        "generation": 1,
+        "next_pin": successor,
+        "next_pin_sha256": _sha(successor_raw),
+        "predecessor_pin_sha256": anchor_digest,
+        "predecessor_receipt_sha256": predecessor_digest,
+        "recorded_at": successor["recorded_at"],
+        "schema_version": watchdog.ROTATION_SCHEMA,
+        "status": "verified",
+        "target_base_sha": target_sha,
+    }
+    _write(rotation_path, _json_bytes(rotation_record), 0o640)
+    _write(lineage.pin_path, successor_raw, 0o640)
+    monkeypatch.setattr(
+        watchdog,
+        "_validate_v2_receipt",
+        lambda *_args, **_kwargs: None,
+    )
+
+    pin, raw, authenticated = watchdog._validate_pin(lineage.config)
+
+    assert raw == successor_raw
+    assert pin["target"]["base_sha"] == target_sha
+    assert set(authenticated) == {anchor_digest, _sha(successor_raw)}
+
+
+def test_deep_successor_corruption_is_rejected_recursively(
+    lineage: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    anchor_raw = lineage.pin_path.read_bytes()
+    anchor = json.loads(anchor_raw)
+    anchor_digest = _sha(anchor_raw)
+    anchor_target = anchor["target"]["base_sha"]
+    host = {
+        "canonical_head": anchor["previous"]["canonical_head"],
+        "deployed_commit": anchor["previous"]["deployed_commit"],
+    }
+    history = lineage.config.control_root / "base-rotation-history"
+    forged_anchor_digest = "f" * 64
+
+    def successor(
+        *,
+        generation: int,
+        target: str,
+        predecessor_generation: int,
+        predecessor_digest: str,
+        predecessor_schema: str,
+        predecessor_target: str,
+    ) -> dict[str, Any]:
+        return {
+            "anchor": {
+                "path": str(history / "pins" / f"{anchor_digest}.json"),
+                "schema_version": watchdog.PIN_SCHEMA,
+                "sha256": anchor_digest,
+                "target_sha": anchor_target,
+            },
+            "generation": generation,
+            "host": host,
+            "installed": {key: "1" * 64 for key in SUCCESSOR_INSTALLED_KEYS},
+            "live": {},
+            "origins": {
+                "provider": lineage.config.provider_origin,
+                "public": lineage.config.public_origin,
+            },
+            "predecessor": {
+                "pin": {
+                    "generation": predecessor_generation,
+                    "path": str(history / "pins" / f"{predecessor_digest}.json"),
+                    "schema_version": predecessor_schema,
+                    "sha256": predecessor_digest,
+                    "target_sha": predecessor_target,
+                },
+                "publication_receipt": {},
+            },
+            "railway": {},
+            "recorded_at": "2026-08-31T12:05:00Z",
+            "rotation_record_path": str(
+                history / "rotations" / f"{generation}-{target}-proof.json"
+            ),
+            "schema_version": watchdog.SUCCESSOR_PIN_SCHEMA,
+            "status": "verified",
+            "target": {"base_sha": target, "public_main_sha": target},
+        }
+
+    generation_one = successor(
+        generation=1,
+        target="d" * 40,
+        predecessor_generation=0,
+        predecessor_digest=forged_anchor_digest,
+        predecessor_schema=watchdog.PIN_SCHEMA,
+        predecessor_target=anchor_target,
+    )
+    generation_one_raw = _json_bytes(generation_one)
+    generation_one_digest = _sha(generation_one_raw)
+    generation_two = successor(
+        generation=2,
+        target="e" * 40,
+        predecessor_generation=1,
+        predecessor_digest=generation_one_digest,
+        predecessor_schema=watchdog.SUCCESSOR_PIN_SCHEMA,
+        predecessor_target=generation_one["target"]["base_sha"],
+    )
+    generation_two_raw = _json_bytes(generation_two)
+
+    artifacts = {
+        anchor_digest: anchor_raw,
+        forged_anchor_digest: anchor_raw,
+        generation_one_digest: generation_one_raw,
+    }
+
+    def read_artifact(
+        _config: Any,
+        *,
+        digest: str,
+        **_kwargs: Any,
+    ) -> bytes:
+        return artifacts[digest]
+
+    monkeypatch.setattr(watchdog, "_read_rotation_artifact", read_artifact)
+
+    with pytest.raises(
+        watchdog.WatchdogError,
+        match="first successor does not extend the incident pin",
+    ):
+        watchdog._validate_successor_pin_document(
+            lineage.config,
+            generation_two,
+            generation_two_raw,
+            history_root=history,
+            active=False,
+            seen=set(),
+        )
 
 
 @pytest.mark.parametrize(
@@ -541,9 +941,7 @@ def test_malformed_receipt_or_corrupt_durable_proof_fails_closed(
 def test_corrupt_rollback_evidence_fails_closed(lineage: Fixture) -> None:
     candidate_path = Path(lineage.receipt["candidate"]["archive_path"])
     candidate = json.loads(candidate_path.read_bytes())
-    provider_path = Path(
-        candidate["rollback_evidence"]["provider_manifest"]["path"]
-    )
+    provider_path = Path(candidate["rollback_evidence"]["provider_manifest"]["path"])
     provider_path.write_bytes(provider_path.read_bytes() + b"corruption")
 
     with pytest.raises(watchdog.WatchdogError, match="provider rollback manifest"):
@@ -780,9 +1178,9 @@ def test_root_data_hold_rejects_changed_rollback_attempt_topology(
     attempt = json.loads(attempt_path.read_bytes())
     topology_path = Path(attempt["candidate_topology_path"])
     topology = json.loads(topology_path.read_bytes())
-    topology["environments"]["edges"][0]["node"]["serviceInstances"]["edges"][
-        0
-    ]["node"]["latestDeployment"]["id"] = watchdog.INCIDENT_DEPLOYMENT_ID
+    topology["environments"]["edges"][0]["node"]["serviceInstances"]["edges"][0][
+        "node"
+    ]["latestDeployment"]["id"] = watchdog.INCIDENT_DEPLOYMENT_ID
     topology_raw = _json_bytes(topology)
     _write(topology_path, topology_raw, 0o600)
     attempt["topology_sha256"] = _sha(topology_raw)
@@ -864,7 +1262,7 @@ def test_main_reports_valid_root_hold_as_explicit_data_hold(
     )
     monkeypatch.setattr(watchdog, "_write_status", captured.update)
 
-    assert watchdog.main() == 2
+    assert watchdog.main([]) == 2
     assert captured["status"] == "DATA HOLD"
     assert captured["data_hold"] is True
     assert captured["checks"]["data_hold"]["reason_code"] == hold["reason_code"]
@@ -1032,7 +1430,7 @@ def test_receipt_chain_scales_past_129_generations_and_checkpoints(
 @pytest.mark.parametrize(
     ("field", "value", "message"),
     [
-        ("pin_sha256", "a" * 64, "different anchor"),
+        ("head_publication_base_sha256", "a" * 64, "different anchor"),
         ("head_receipt_sha256", "b" * 64, "does not extend"),
         ("head_release_sha", "c" * 40, "head release changed"),
     ],
@@ -1078,20 +1476,175 @@ def test_prior_status_round_trips_the_strict_chain_checkpoint(
     assert watchdog._load_prior_chain_checkpoint() == checkpoint
 
 
+@pytest.mark.parametrize("checkpoint", [None, {"schema_version": "checkpoint"}])
+def test_lineage_only_passes_the_prior_checkpoint(
+    checkpoint: dict[str, Any] | None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config = object()
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(watchdog, "_load_prior_chain_checkpoint", lambda: checkpoint)
+    monkeypatch.setattr(watchdog, "default_lineage_config", lambda: config)
+
+    def validate(
+        actual_config: object,
+        *,
+        fetch_manifest: Callable[[str], bytes],
+        chain_checkpoint: dict[str, Any] | None,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        captured.update(
+            config=actual_config,
+            fetch_manifest=fetch_manifest,
+            chain_checkpoint=chain_checkpoint,
+        )
+        return {"status": "verified"}, {"status": "none"}
+
+    monkeypatch.setattr(watchdog, "validate_lineage", validate)
+
+    assert watchdog._lineage_only() == 0
+    assert captured == {
+        "config": config,
+        "fetch_manifest": watchdog.fetch_manifest,
+        "chain_checkpoint": checkpoint,
+    }
+    assert json.loads(capsys.readouterr().out) == {
+        "candidate": {"status": "none"},
+        "lineage": {"status": "verified"},
+    }
+
+
+def test_lineage_only_refuses_a_corrupt_prior_checkpoint(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        watchdog,
+        "_load_prior_chain_checkpoint",
+        lambda: (_ for _ in ()).throw(watchdog.WatchdogError("corrupt checkpoint")),
+    )
+    monkeypatch.setattr(
+        watchdog,
+        "validate_lineage",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("lineage must not run after checkpoint refusal")
+        ),
+    )
+
+    assert watchdog._lineage_only() == 1
+    assert "lineage refused: corrupt checkpoint" in capsys.readouterr().err
+
+
+def test_checkpoint_extends_across_authenticated_pin_digest_rotation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    old_pin_sha256 = "1" * 64
+    new_pin_sha256 = "2" * 64
+    old_release = "3" * 40
+    new_release = "4" * 40
+    old_receipt = {
+        "predecessor": {"kind": "unused"},
+        "publication_base": {"sha256": old_pin_sha256},
+        "release_sha": old_release,
+        "schema_version": watchdog.V2_SCHEMA,
+    }
+    old_raw = _json_bytes(old_receipt)
+    current_receipt = {
+        "predecessor": {"kind": "old-head"},
+        "publication_base": {"sha256": new_pin_sha256},
+        "release_sha": new_release,
+        "schema_version": watchdog.V2_SCHEMA,
+    }
+    current_raw = _json_bytes(current_receipt)
+    validated_pin_digests: list[str] = []
+
+    def read_predecessor(
+        _config: Any,
+        predecessor: dict[str, Any],
+        *,
+        pin: dict[str, Any],
+    ) -> tuple[str, bytes, dict[str, Any]]:
+        assert predecessor == {"kind": "old-head"}
+        assert pin == {"name": "new"}
+        return _sha(old_raw), old_raw, old_receipt
+
+    def validate_receipt(
+        _config: Any,
+        receipt: dict[str, Any],
+        *,
+        pin: dict[str, Any],
+        pin_sha256: str,
+        current: bool,
+        verify_bundle_git: bool,
+    ) -> None:
+        assert receipt is old_receipt
+        assert pin == {"name": "old"}
+        assert current is False
+        assert verify_bundle_git is False
+        validated_pin_digests.append(pin_sha256)
+
+    monkeypatch.setattr(watchdog, "_read_predecessor_archive", read_predecessor)
+    monkeypatch.setattr(watchdog, "_validate_v2_receipt", validate_receipt)
+    checkpoint = {
+        "anchor_receipt_sha256": watchdog.INCIDENT_RECEIPT_SHA256,
+        "generation_count": 7,
+        "head_receipt_sha256": _sha(old_raw),
+        "head_release_sha": old_release,
+        "pin_sha256": old_pin_sha256,
+        "schema_version": watchdog.LEGACY_CHAIN_CHECKPOINT_SCHEMA,
+        "validation_mode": "checkpoint_same_head",
+        "verified_at": "2026-08-31T12:00:00Z",
+    }
+
+    next_checkpoint = watchdog._validate_receipt_chain(
+        object(),
+        current_raw,
+        current_receipt,
+        authenticated_pins={
+            old_pin_sha256: {"name": "old"},
+            new_pin_sha256: {"name": "new"},
+        },
+        checkpoint=checkpoint,
+    )
+
+    assert next_checkpoint["schema_version"] == watchdog.CHAIN_CHECKPOINT_SCHEMA
+    assert next_checkpoint["generation_count"] == 8
+    assert next_checkpoint["head_publication_base_sha256"] == new_pin_sha256
+    assert next_checkpoint["validation_mode"] == "checkpoint_extension"
+    assert validated_pin_digests == [old_pin_sha256]
+
+
+def test_rotation_interlock_keeps_timers_live_and_one_lock_covers_install_to_pin() -> (
+    None
+):
+    source = ROTATION_HELPER_PATH.read_text(encoding="utf-8")
+    rotation = source[source.index("def perform_rotation") :]
+
+    lock = rotation.index("_acquire_lock(")
+    intent = rotation.index("_persist_rotation_intent(")
+    install = rotation.index("_install_target_artifacts(")
+    replace_pin = rotation.index("_atomic_replace_pin(")
+
+    assert lock < intent < install < replace_pin
+    assert "systemctl stop" not in rotation
+    assert "systemctl disable" not in rotation
+    assert "maintenance" not in rotation.lower()
+    assert "daemon-reload" in source
+
+
 def test_tracked_service_exposes_only_the_base_repository_from_home() -> None:
     service = (
         ROOT / "ops" / "systemd" / "palimpsest-direct-watchdog.service"
     ).read_text(encoding="utf-8")
-    timer = (
-        ROOT / "ops" / "systemd" / "palimpsest-direct-watchdog.timer"
-    ).read_text(encoding="utf-8")
+    timer = (ROOT / "ops" / "systemd" / "palimpsest-direct-watchdog.timer").read_text(
+        encoding="utf-8"
+    )
 
     assert "ProtectHome=tmpfs" in service
     assert "BindReadOnlyPaths=/home/palimpsest/palimpsest" in service
     assert "ReadOnlyPaths=-/etc/palimpsest/railway-publication-base.json" in service
     assert (
-        "ReadOnlyPaths=-/etc/palimpsest/railway-publication-data-hold.json"
-        in service
+        "ReadOnlyPaths=-/etc/palimpsest/railway-publication-data-hold.json" in service
     )
     assert "MemoryDenyWriteExecute=true" in service
     assert "OnCalendar=*:0/5" in timer

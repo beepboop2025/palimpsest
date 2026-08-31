@@ -289,6 +289,7 @@ def _validate_metadata(
     gid: int,
     mode: int,
     label: str,
+    single_link: bool = False,
 ) -> None:
     try:
         metadata = path.lstat()
@@ -300,6 +301,7 @@ def _validate_metadata(
         or metadata.st_uid != uid
         or metadata.st_gid != gid
         or stat.S_IMODE(metadata.st_mode) != mode
+        or (single_link and metadata.st_nlink != 1)
     ):
         raise TransitionError(f"{label} ownership or mode is unsafe")
 
@@ -320,6 +322,7 @@ def _validate_target_blob(
         gid=0,
         mode=installed_mode,
         label=f"installed {repository_path}",
+        single_link=True,
     )
     tree_row = _git(
         repository,
@@ -430,15 +433,25 @@ def perform_transition(args: argparse.Namespace) -> dict[str, Any]:
         or stat.S_IMODE(state_metadata.st_mode) != 0o700
     ):
         raise TransitionError("publication state root ownership or mode is unsafe")
-    lock_path = args.state_root / "publish.lock"
+    control_metadata = args.control_root.lstat()
+    if (
+        not stat.S_ISDIR(control_metadata.st_mode)
+        or args.control_root.is_symlink()
+        or control_metadata.st_uid != 0
+        or control_metadata.st_gid != publisher_group.gr_gid
+        or stat.S_IMODE(control_metadata.st_mode) != 0o750
+    ):
+        raise TransitionError("rotation control root ownership or mode is unsafe")
+    lock_path = args.control_root / "publish.lock"
     _validate_metadata(
         lock_path,
-        uid=publisher_user.pw_uid,
+        uid=0,
         gid=publisher_group.gr_gid,
-        mode=0o600,
+        mode=0o640,
         label="publication lock",
+        single_link=True,
     )
-    lock_descriptor = os.open(lock_path, os.O_RDWR | os.O_CLOEXEC | os.O_NOFOLLOW)
+    lock_descriptor = os.open(lock_path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
     try:
         try:
             fcntl.flock(lock_descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -698,6 +711,11 @@ def _parser() -> argparse.ArgumentParser:
         "--state-root",
         type=Path,
         default=Path("/var/lib/palimpsest/railway-publication"),
+    )
+    parser.add_argument(
+        "--control-root",
+        type=Path,
+        default=Path("/var/lib/palimpsest/railway-control"),
     )
     parser.add_argument(
         "--success-receipt",

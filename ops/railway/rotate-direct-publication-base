@@ -1,0 +1,2410 @@
+#!/usr/bin/env python3
+"""Rotate the direct Railway publication base to one exact public-main tip.
+
+The host deployment and canonical checkout deliberately remain unchanged.  A
+rotation archives the current authorization pin, the exact v2 publication
+receipt, both live manifests, and the active Railway topology before replacing
+the root-controlled pin.  Every durable object is content addressed and the
+append-only rotation record makes an interrupted final replacement retryable.
+"""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import grp
+import hashlib
+import json
+import os
+import pwd
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+
+PIN_SCHEMA = "palimpsest.direct-publication-base.v2"
+ROTATION_SCHEMA = "palimpsest.direct-publication-base-rotation.v1"
+ROTATION_INTENT_SCHEMA = "palimpsest.direct-publication-base-rotation-intent.v1"
+BOOTSTRAP_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
+PUBLICATION_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
+ACKNOWLEDGEMENT = "rotate-palimpsest-direct-publication-base"
+EXPECTED_REMOTE = "https://github.com/beepboop2025/palimpsest.git"
+PROVIDER_ORIGIN = "https://palimpsest-publication-production.up.railway.app"
+PUBLIC_ORIGIN = "https://www.palimpsest.info"
+BOOTSTRAP_INCIDENT = "palimpsest-direct-lineage-2026-08-30"
+BOOTSTRAP_HOST_SHA = "b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
+BOOTSTRAP_LIVE_SHA = "ae5ecacd2e151d15af3fe06a7cd1219aa51573e7"
+BOOTSTRAP_RECEIPT_SHA256 = (
+    "150d4d4314c1a1239f19c29747ce1a69c574cfc01f73fda2020cd51f1c1868b1"
+)
+BOOTSTRAP_INPUT_SHA256 = (
+    "7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede38b2dc68a549413e"
+)
+BOOTSTRAP_MANIFEST_SHA256 = (
+    "1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
+)
+BOOTSTRAP_TREE_SHA256 = (
+    "6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
+)
+BOOTSTRAP_DEPLOYMENT_ID = "505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+BOOTSTRAP_PIN_SHA256 = (
+    "255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97"
+)
+BOOTSTRAP_TARGET_SHA = "4957595735fd86fa57217309749961e1a1e0f05d"
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+UUID = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
+IMAGE = re.compile(r"^sha256:[0-9a-f]{64}$")
+TIMESTAMP = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]{1,6})?Z$")
+MAX_PIN_BYTES = 256 * 1024
+MAX_RECEIPT_BYTES = 256 * 1024
+MAX_MANIFEST_BYTES = 8 * 1024 * 1024
+MAX_TOPOLOGY_BYTES = 2 * 1024 * 1024
+MAX_PIN_GENERATIONS = 256
+EXPECTED_SERVICE_NAME = "palimpsest-publication"
+SUCCESSOR_INSTALLED_KEYS = {
+    "continuity_guard_service_sha256",
+    "continuity_guard_sha256",
+    "continuity_guard_timer_sha256",
+    "event_analysis_publish_dropin_sha256",
+    "event_analysis_service_sha256",
+    "event_analysis_wrapper_sha256",
+    "publisher_service_sha256",
+    "publisher_sha256",
+    "reconciler_sha256",
+    "rotation_helper_sha256",
+    "transition_helper_sha256",
+    "watchdog_service_sha256",
+    "watchdog_sha256",
+    "watchdog_timer_sha256",
+}
+
+
+class RotationError(RuntimeError):
+    """Raised when a successor-base proof is absent or ambiguous."""
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        req: urllib.request.Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
+def _sha256(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _canonical_bytes(document: dict[str, Any]) -> bytes:
+    return (
+        json.dumps(
+            document,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+        + b"\n"
+    )
+
+
+def _strict_json(raw: bytes, label: str) -> dict[str, Any]:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        value: dict[str, Any] = {}
+        for key, item in rows:
+            if key in value:
+                raise RotationError(f"{label} contains a duplicate key")
+            value[key] = item
+        return value
+
+    try:
+        parsed = json.loads(
+            raw,
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                RotationError(f"{label} contains {value}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RotationError(f"{label} is not strict JSON") from exc
+    if not isinstance(parsed, dict):
+        raise RotationError(f"{label} must be a JSON object")
+    return parsed
+
+
+def _require_keys(document: dict[str, Any], expected: set[str], label: str) -> None:
+    if set(document) != expected:
+        raise RotationError(f"{label} does not match its closed schema")
+
+
+def _require_sha(value: Any, *, length: int, label: str) -> str:
+    expression = SHA40 if length == 40 else SHA256
+    if not isinstance(value, str) or expression.fullmatch(value) is None:
+        raise RotationError(f"{label} is invalid")
+    return value
+
+
+def _require_uuid(value: Any, label: str) -> str:
+    if not isinstance(value, str) or UUID.fullmatch(value) is None:
+        raise RotationError(f"{label} is invalid")
+    return value
+
+
+def _require_timestamp(value: Any, label: str) -> str:
+    if not isinstance(value, str) or TIMESTAMP.fullmatch(value) is None:
+        raise RotationError(f"{label} is invalid")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise RotationError(f"{label} is invalid") from exc
+    if parsed.utcoffset() != UTC.utcoffset(parsed) or parsed > datetime.now(UTC):
+        raise RotationError(f"{label} is invalid")
+    return value
+
+
+def _descriptor_identity(metadata: os.stat_result) -> tuple[int, ...]:
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_mode,
+        metadata.st_uid,
+        metadata.st_gid,
+        metadata.st_nlink,
+        metadata.st_size,
+        metadata.st_mtime_ns,
+    )
+
+
+def _read_regular(
+    path: Path,
+    *,
+    max_bytes: int,
+    uid: int | None = None,
+    gid: int | None = None,
+    mode: int | None = None,
+    single_link: bool = True,
+) -> bytes:
+    flags = os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise RotationError(f"cannot open required file: {path}") from exc
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or (single_link and before.st_nlink != 1)
+            or (not single_link and before.st_nlink < 1)
+            or (uid is not None and before.st_uid != uid)
+            or (gid is not None and before.st_gid != gid)
+            or (mode is not None and stat.S_IMODE(before.st_mode) != mode)
+            or before.st_size > max_bytes
+        ):
+            raise RotationError(f"required file metadata is unsafe: {path}")
+        chunks: list[bytes] = []
+        remaining = max_bytes + 1
+        while remaining:
+            chunk = os.read(descriptor, min(64 * 1024, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw = b"".join(chunks)
+        after = os.fstat(descriptor)
+        try:
+            pathname = os.stat(path, follow_symlinks=False)
+        except OSError as exc:
+            raise RotationError(f"required file pathname changed: {path}") from exc
+        if (
+            len(raw) > max_bytes
+            or _descriptor_identity(before) != _descriptor_identity(after)
+            or before.st_dev != pathname.st_dev
+            or before.st_ino != pathname.st_ino
+        ):
+            raise RotationError(f"required file changed while reading: {path}")
+        return raw
+    except OSError as exc:
+        raise RotationError(f"cannot read required file: {path}") from exc
+    finally:
+        os.close(descriptor)
+
+
+def _validate_file(
+    path: Path,
+    *,
+    uid: int,
+    gid: int,
+    mode: int,
+    label: str,
+    single_link: bool = True,
+) -> None:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise RotationError(f"cannot inspect {label}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        pathname = os.stat(path, follow_symlinks=False)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != uid
+            or metadata.st_gid != gid
+            or stat.S_IMODE(metadata.st_mode) != mode
+            or (single_link and metadata.st_nlink != 1)
+            or (not single_link and metadata.st_nlink < 1)
+            or metadata.st_dev != pathname.st_dev
+            or metadata.st_ino != pathname.st_ino
+        ):
+            raise RotationError(f"{label} ownership or mode is unsafe")
+    except OSError as exc:
+        raise RotationError(f"cannot inspect {label}") from exc
+    finally:
+        os.close(descriptor)
+
+
+def _validate_directory(
+    path: Path,
+    *,
+    uid: int,
+    gid: int,
+    mode: int,
+    label: str,
+) -> None:
+    try:
+        descriptor = os.open(
+            path, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY | os.O_NOFOLLOW
+        )
+    except OSError as exc:
+        raise RotationError(f"cannot inspect {label}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        pathname = os.stat(path, follow_symlinks=False)
+        if (
+            not stat.S_ISDIR(metadata.st_mode)
+            or metadata.st_uid != uid
+            or metadata.st_gid != gid
+            or stat.S_IMODE(metadata.st_mode) != mode
+            or metadata.st_dev != pathname.st_dev
+            or metadata.st_ino != pathname.st_ino
+        ):
+            raise RotationError(f"{label} ownership or mode is unsafe")
+    except OSError as exc:
+        raise RotationError(f"cannot inspect {label}") from exc
+    finally:
+        os.close(descriptor)
+
+
+def _create_control_file(path: Path, *, uid: int, gid: int, mode: int) -> None:
+    directory = os.open(
+        path.parent, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY | os.O_NOFOLLOW
+    )
+    try:
+        try:
+            descriptor = os.open(
+                path.name,
+                os.O_WRONLY | os.O_CLOEXEC | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                mode,
+                dir_fd=directory,
+            )
+        except FileExistsError:
+            return
+        try:
+            os.fchmod(descriptor, mode)
+            os.fchown(descriptor, uid, gid)
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        os.fsync(directory)
+    finally:
+        os.close(directory)
+
+
+def _ensure_control_root(root: Path, *, group_gid: int) -> Path:
+    if not root.is_absolute() or root.absolute() != root:
+        raise RotationError("rotation control root path is not canonical")
+    try:
+        resolved_parent = root.parent.resolve(strict=True)
+    except OSError as exc:
+        raise RotationError("cannot resolve rotation control parent") from exc
+    if resolved_parent != root.parent:
+        raise RotationError("rotation control parent path is not canonical")
+    try:
+        parent = root.parent.lstat()
+    except OSError as exc:
+        raise RotationError("cannot inspect rotation control parent") from exc
+    if (
+        not stat.S_ISDIR(parent.st_mode)
+        or root.parent.is_symlink()
+        or parent.st_uid != 0
+        or bool(stat.S_IMODE(parent.st_mode) & 0o022)
+    ):
+        raise RotationError("rotation control parent is not root-owned and stable")
+    if not root.exists() and not root.is_symlink():
+        try:
+            root.mkdir(mode=0o750)
+            os.chown(root, 0, group_gid)
+            os.chmod(root, 0o750)
+            _fsync_directory(root.parent)
+        except OSError as exc:
+            raise RotationError("cannot create rotation control root") from exc
+    try:
+        if root.resolve(strict=True) != root:
+            raise RotationError("rotation control root path is not canonical")
+    except OSError as exc:
+        raise RotationError("cannot resolve rotation control root") from exc
+    _validate_directory(
+        root,
+        uid=0,
+        gid=group_gid,
+        mode=0o750,
+        label="rotation control root",
+    )
+    lock_path = root / "publish.lock"
+    _create_control_file(lock_path, uid=0, gid=group_gid, mode=0o640)
+    _validate_file(
+        lock_path,
+        uid=0,
+        gid=group_gid,
+        mode=0o640,
+        label="root publication lock",
+    )
+    return lock_path
+
+
+def _acquire_lock(
+    path: Path, *, uid: int, gid: int, mode: int, label: str
+) -> int:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    except OSError as exc:
+        raise RotationError(f"cannot open {label}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != uid
+            or metadata.st_gid != gid
+            or stat.S_IMODE(metadata.st_mode) != mode
+            or metadata.st_nlink != 1
+        ):
+            raise RotationError(f"{label} metadata is unsafe")
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RotationError("direct publisher is active") from exc
+        pathname = os.stat(path, follow_symlinks=False)
+        if metadata.st_dev != pathname.st_dev or metadata.st_ino != pathname.st_ino:
+            raise RotationError(f"{label} pathname changed while locking")
+        return descriptor
+    except (OSError, RotationError):
+        os.close(descriptor)
+        raise
+
+
+def _verify_locked_path(path: Path, descriptor: int, *, label: str) -> None:
+    try:
+        opened = os.fstat(descriptor)
+        pathname = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        raise RotationError(f"cannot reverify {label}") from exc
+    if (
+        opened.st_dev != pathname.st_dev
+        or opened.st_ino != pathname.st_ino
+        or opened.st_nlink != 1
+    ):
+        raise RotationError(f"{label} pathname changed after locking")
+
+
+def _seal_legacy_state_root(
+    path: Path, *, publisher_uid: int, publisher_gid: int
+) -> None:
+    try:
+        descriptor = os.open(
+            path, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY | os.O_NOFOLLOW
+        )
+    except OSError as exc:
+        raise RotationError("cannot open publication state root") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        allowed = {
+            (publisher_uid, publisher_gid, 0o700),
+            (publisher_uid, publisher_gid, 0o750),
+            (0, publisher_gid, 0o700),
+            (0, publisher_gid, 0o750),
+        }
+        if (
+            not stat.S_ISDIR(metadata.st_mode)
+            or (metadata.st_uid, metadata.st_gid, stat.S_IMODE(metadata.st_mode))
+            not in allowed
+        ):
+            raise RotationError("publication state root cannot be safely sealed")
+        os.fchown(descriptor, 0, publisher_gid)
+        os.fchmod(descriptor, 0o750)
+        os.fsync(descriptor)
+        pathname = os.stat(path, follow_symlinks=False)
+        after = os.fstat(descriptor)
+        if after.st_dev != pathname.st_dev or after.st_ino != pathname.st_ino:
+            raise RotationError("publication state root changed while sealing")
+    except OSError as exc:
+        raise RotationError("cannot seal publication state root") from exc
+    finally:
+        os.close(descriptor)
+
+
+def _restore_legacy_state_root(
+    path: Path, *, publisher_uid: int, publisher_gid: int
+) -> None:
+    descriptor = os.open(
+        path, os.O_RDONLY | os.O_CLOEXEC | os.O_DIRECTORY | os.O_NOFOLLOW
+    )
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            metadata.st_uid != 0
+            or metadata.st_gid != publisher_gid
+            or stat.S_IMODE(metadata.st_mode) != 0o750
+        ):
+            raise RotationError("sealed publication state root metadata changed")
+        # Keep the crash-intermediate state root-owned.  A retry can safely
+        # normalize root:group 0700, whereas publisher:group 0750 would reopen
+        # the legacy lock namespace before the durable intent is cleared.
+        os.fchmod(descriptor, 0o700)
+        os.fsync(descriptor)
+        os.fchown(descriptor, publisher_uid, publisher_gid)
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _fsync_directory(path: Path) -> None:
+    descriptor = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def _ensure_history_directories(root: Path, *, group_gid: int) -> None:
+    directories = (
+        root,
+        root / "pins",
+        root / "receipts",
+        root / "manifests",
+        root / "manifests" / "provider",
+        root / "manifests" / "public",
+        root / "topologies",
+        root / "rotations",
+    )
+    for directory in directories:
+        if not directory.exists() and not directory.is_symlink():
+            try:
+                directory.mkdir(mode=0o750)
+                os.chown(directory, 0, group_gid)
+                os.chmod(directory, 0o750)
+                _fsync_directory(directory.parent)
+            except OSError as exc:
+                raise RotationError(f"cannot create history directory: {directory}") from exc
+        _validate_directory(
+            directory,
+            uid=0,
+            gid=group_gid,
+            mode=0o750,
+            label=f"history directory {directory}",
+        )
+
+
+def _archive_bytes(path: Path, raw: bytes, *, group_gid: int) -> None:
+    if path.exists() or path.is_symlink():
+        _validate_file(
+            path,
+            uid=0,
+            gid=group_gid,
+            mode=0o640,
+            label=f"archived evidence {path}",
+        )
+        if _read_regular(path, max_bytes=max(len(raw), 1)) != raw:
+            raise RotationError(f"content-addressed archive conflicts: {path}")
+        return
+    descriptor, temporary = tempfile.mkstemp(prefix=".archive.", dir=path.parent)
+    temporary_path = Path(temporary)
+    directory_fd = os.open(
+        path.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    )
+    try:
+        os.fchmod(descriptor, 0o640)
+        os.fchown(descriptor, 0, group_gid)
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        try:
+            os.link(
+                temporary_path.name,
+                path.name,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+                follow_symlinks=False,
+            )
+        except FileExistsError:
+            _validate_file(
+                path,
+                uid=0,
+                gid=group_gid,
+                mode=0o640,
+                label=f"archived evidence {path}",
+            )
+            if _read_regular(path, max_bytes=max(len(raw), 1)) != raw:
+                raise RotationError(f"content-addressed archive raced: {path}")
+        os.fsync(directory_fd)
+    finally:
+        try:
+            os.unlink(temporary_path.name, dir_fd=directory_fd)
+        except FileNotFoundError:
+            pass
+        os.close(directory_fd)
+
+
+def _atomic_replace_pin(
+    path: Path,
+    raw: bytes,
+    *,
+    expected_previous: bytes,
+    group_gid: int,
+) -> None:
+    _validate_directory(
+        path.parent,
+        uid=0,
+        gid=0,
+        mode=0o755,
+        label="publication base-pin directory",
+    )
+    if _read_regular(path, max_bytes=MAX_PIN_BYTES) != expected_previous:
+        raise RotationError("publication base pin changed before replacement")
+    descriptor, temporary = tempfile.mkstemp(prefix=".publication-base.", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        os.fchmod(descriptor, 0o640)
+        os.fchown(descriptor, 0, group_gid)
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        _fsync_directory(path.parent)
+    finally:
+        try:
+            temporary_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _validate_rotation_intent(document: dict[str, Any]) -> None:
+    _require_keys(
+        document,
+        {
+            "evidence",
+            "installed",
+            "predecessor",
+            "schema_version",
+            "started_at",
+            "status",
+            "target",
+        },
+        "rotation intent",
+    )
+    if (
+        document["schema_version"] != ROTATION_INTENT_SCHEMA
+        or document["status"] != "prepared"
+    ):
+        raise RotationError("rotation intent identity is invalid")
+    _require_timestamp(document["started_at"], "rotation intent started_at")
+    predecessor = document.get("predecessor")
+    evidence = document.get("evidence")
+    target = document.get("target")
+    installed = document.get("installed")
+    if (
+        not isinstance(predecessor, dict)
+        or not isinstance(evidence, dict)
+        or not isinstance(target, dict)
+    ):
+        raise RotationError("rotation intent proof is invalid")
+    if not isinstance(installed, dict) or not installed:
+        raise RotationError("rotation intent installed proof is invalid")
+    if set(installed) != SUCCESSOR_INSTALLED_KEYS:
+        raise RotationError("rotation intent installed proof is incomplete")
+    _require_keys(
+        predecessor,
+        {"generation", "pin_sha256", "receipt_sha256", "target_sha"},
+        "rotation intent predecessor",
+    )
+    if (
+        type(predecessor["generation"]) is not int
+        or predecessor["generation"] < 0
+        or predecessor["generation"] >= MAX_PIN_GENERATIONS
+    ):
+        raise RotationError("rotation intent predecessor generation is invalid")
+    _require_sha(
+        predecessor["pin_sha256"],
+        length=64,
+        label="rotation intent predecessor pin",
+    )
+    _require_sha(
+        predecessor["receipt_sha256"],
+        length=64,
+        label="rotation intent predecessor receipt",
+    )
+    _require_sha(
+        predecessor["target_sha"],
+        length=40,
+        label="rotation intent predecessor target",
+    )
+    _require_keys(
+        evidence,
+        {
+            "provider_manifest_sha256",
+            "public_manifest_sha256",
+            "topology_sha256",
+        },
+        "rotation intent evidence",
+    )
+    for key, value in evidence.items():
+        _require_sha(value, length=64, label=f"rotation intent evidence {key}")
+    _require_keys(target, {"base_sha", "public_main_sha"}, "rotation intent target")
+    for key in target:
+        _require_sha(target[key], length=40, label=f"rotation intent target {key}")
+    if target["base_sha"] != target["public_main_sha"]:
+        raise RotationError("rotation intent did not capture an exact public-main tip")
+    for key, value in installed.items():
+        if not isinstance(key, str) or not key.endswith("_sha256"):
+            raise RotationError("rotation intent installed key is invalid")
+        _require_sha(value, length=64, label=f"rotation intent installed {key}")
+
+
+def _read_rotation_intent(path: Path, *, group_gid: int) -> tuple[dict[str, Any], bytes] | None:
+    try:
+        raw = _read_regular(
+            path,
+            max_bytes=MAX_PIN_BYTES,
+            uid=0,
+            gid=group_gid,
+            mode=0o640,
+        )
+    except RotationError as exc:
+        try:
+            os.stat(path, follow_symlinks=False)
+        except FileNotFoundError:
+            return None
+        except OSError:
+            pass
+        raise exc
+    document = _strict_json(raw, "rotation intent")
+    _validate_rotation_intent(document)
+    if raw != _canonical_bytes(document):
+        raise RotationError("rotation intent is not canonical JSON")
+    return document, raw
+
+
+def _persist_rotation_intent(
+    path: Path, document: dict[str, Any], *, group_gid: int
+) -> bytes:
+    _validate_rotation_intent(document)
+    raw = _canonical_bytes(document)
+    existing = _read_rotation_intent(path, group_gid=group_gid)
+    if existing is not None:
+        if existing != (document, raw):
+            raise RotationError("a different rotation transaction is already prepared")
+        return raw
+    descriptor, temporary = tempfile.mkstemp(prefix=".rotation-intent.", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        os.fchmod(descriptor, 0o640)
+        os.fchown(descriptor, 0, group_gid)
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        _fsync_directory(path.parent)
+    finally:
+        try:
+            temporary_path.unlink()
+        except FileNotFoundError:
+            pass
+    persisted = _read_rotation_intent(path, group_gid=group_gid)
+    if persisted != (document, raw):
+        raise RotationError("persisted rotation intent changed")
+    return raw
+
+
+def _clear_rotation_intent(path: Path, *, expected: bytes, group_gid: int) -> None:
+    current = _read_rotation_intent(path, group_gid=group_gid)
+    if current is None or current[1] != expected:
+        raise RotationError("rotation intent changed before completion")
+    try:
+        path.unlink()
+    except OSError as exc:
+        raise RotationError("cannot clear completed rotation intent") from exc
+    _fsync_directory(path.parent)
+
+
+def _run(
+    command: list[str],
+    *,
+    user: pwd.struct_passwd | None = None,
+    environment: dict[str, str] | None = None,
+    text: bool = True,
+) -> subprocess.CompletedProcess[Any]:
+    def demote() -> None:
+        assert user is not None
+        os.setgroups([user.pw_gid])
+        os.setgid(user.pw_gid)
+        os.setuid(user.pw_uid)
+
+    clean_environment = {
+        "PATH": "/usr/bin:/bin",
+        "LANG": "C.UTF-8",
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
+        "GIT_NO_REPLACE_OBJECTS": "1",
+        "GIT_TERMINAL_PROMPT": "0",
+    }
+    if user is not None:
+        clean_environment.update(
+            HOME=user.pw_dir,
+            LOGNAME=user.pw_name,
+            USER=user.pw_name,
+        )
+    if environment is not None:
+        clean_environment.update(environment)
+    try:
+        return subprocess.run(
+            command,
+            check=True,
+            capture_output=True,
+            text=text,
+            timeout=120,
+            env=clean_environment,
+            preexec_fn=demote if user is not None else None,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        detail = ""
+        if isinstance(exc, subprocess.CalledProcessError):
+            detail = str(exc.stderr).strip()[:1024]
+        raise RotationError(
+            f"command failed: {' '.join(command)}" + (f": {detail}" if detail else "")
+        ) from exc
+
+
+def _require_service_inactive(unit: str) -> None:
+    load_state = _run(
+        [
+            "/usr/bin/systemctl",
+            "show",
+            "--property=LoadState",
+            "--value",
+            unit,
+        ]
+    ).stdout.strip()
+    active_state = _run(
+        [
+            "/usr/bin/systemctl",
+            "show",
+            "--property=ActiveState",
+            "--value",
+            unit,
+        ]
+    ).stdout.strip()
+    if load_state != "loaded" or active_state not in {"inactive", "failed"}:
+        raise RotationError(f"{unit} must be loaded and inactive for base rotation")
+
+
+def _require_no_rotation_blockers(*, state_root: Path, data_hold: Path) -> None:
+    for blocked, label in (
+        (state_root / "pending-candidate.json", "pending candidate"),
+        (state_root / "pending-preparation.json", "pending preparation"),
+        (data_hold, "DATA HOLD"),
+    ):
+        if blocked.exists() or blocked.is_symlink():
+            raise RotationError(f"{label} blocks base rotation")
+
+
+def _git(
+    repository: Path,
+    arguments: list[str],
+    *,
+    user: pwd.struct_passwd,
+    text: bool = True,
+) -> subprocess.CompletedProcess[Any]:
+    return _run(
+        ["/usr/bin/git", "-C", str(repository), *arguments],
+        user=user,
+        text=text,
+    )
+
+
+def _validate_target_blob(
+    repository: Path,
+    target_sha: str,
+    repository_path: str,
+    installed_path: Path,
+    *,
+    owner: pwd.struct_passwd,
+    git_mode: str = "100755",
+    installed_mode: int = 0o755,
+) -> str:
+    _validate_file(
+        installed_path,
+        uid=0,
+        gid=0,
+        mode=installed_mode,
+        label=f"installed {repository_path}",
+    )
+    row = _git(
+        repository,
+        ["ls-tree", target_sha, "--", repository_path],
+        user=owner,
+    ).stdout.strip()
+    if not row.startswith(f"{git_mode} blob ") or not row.endswith(
+        f"\t{repository_path}"
+    ):
+        raise RotationError(f"target does not contain {repository_path}")
+    expected = _git(
+        repository,
+        ["show", f"{target_sha}:{repository_path}"],
+        user=owner,
+        text=False,
+    ).stdout
+    actual = _read_regular(installed_path, max_bytes=4 * 1024 * 1024)
+    if actual != expected:
+        raise RotationError(f"installed {repository_path} differs from target Git")
+    return _sha256(actual)
+
+
+def _installed_specifications(
+    args: argparse.Namespace,
+) -> tuple[tuple[str, str, Path, str, int], ...]:
+    return (
+        ("continuity_guard_sha256", "ops/railway/palimpsest-continuity-guard", args.installed_continuity_guard, "100755", 0o755),
+        ("continuity_guard_service_sha256", "ops/systemd/palimpsest-continuity-guard.service", args.installed_continuity_guard_service, "100644", 0o644),
+        ("continuity_guard_timer_sha256", "ops/systemd/palimpsest-continuity-guard.timer", args.installed_continuity_guard_timer, "100644", 0o644),
+        ("event_analysis_publish_dropin_sha256", "ops/systemd/palimpsest-event-analysis-live.railway-publish.conf", args.installed_event_analysis_publish_dropin, "100644", 0o644),
+        ("event_analysis_service_sha256", "ops/systemd/palimpsest-event-analysis-live.service", args.installed_event_analysis_service, "100644", 0o644),
+        ("event_analysis_wrapper_sha256", "ops/newswire/palimpsest-event-analysis-live", args.installed_event_analysis_wrapper, "100755", 0o755),
+        ("publisher_sha256", "ops/railway/palimpsest-railway-publish", args.installed_publisher, "100755", 0o755),
+        ("transition_helper_sha256", "ops/railway/advance-direct-publication-base", args.installed_transition_helper, "100755", 0o755),
+        ("rotation_helper_sha256", "ops/railway/rotate-direct-publication-base", args.installed_rotation_helper, "100755", 0o755),
+        ("reconciler_sha256", "ops/railway/reconcile-direct-publication-candidate", args.installed_reconciler, "100755", 0o755),
+        ("watchdog_sha256", "ops/railway/palimpsest-direct-watchdog", args.installed_watchdog, "100755", 0o755),
+        ("publisher_service_sha256", "ops/systemd/palimpsest-railway-publish.service", args.installed_publisher_service, "100644", 0o644),
+        ("watchdog_service_sha256", "ops/systemd/palimpsest-direct-watchdog.service", args.installed_watchdog_service, "100644", 0o644),
+        ("watchdog_timer_sha256", "ops/systemd/palimpsest-direct-watchdog.timer", args.installed_watchdog_timer, "100644", 0o644),
+    )
+
+
+def _validate_installed(args: argparse.Namespace, *, repository: Path, target: str, owner: pwd.struct_passwd) -> dict[str, str]:
+    return {
+        key: _validate_target_blob(
+            repository,
+            target,
+            repository_path,
+            installed_path,
+            owner=owner,
+            git_mode=git_mode,
+            installed_mode=installed_mode,
+        )
+        for key, repository_path, installed_path, git_mode, installed_mode in _installed_specifications(args)
+    }
+
+
+def _target_blob_digests(
+    args: argparse.Namespace,
+    *,
+    repository: Path,
+    target: str,
+    owner: pwd.struct_passwd,
+) -> dict[str, str]:
+    expected: dict[str, str] = {}
+    for key, repository_path, _, git_mode, _ in _installed_specifications(args):
+        row = _git(
+            repository,
+            ["ls-tree", target, "--", repository_path],
+            user=owner,
+        ).stdout.strip()
+        if not row.startswith(f"{git_mode} blob ") or not row.endswith(
+            f"\t{repository_path}"
+        ):
+            raise RotationError(f"target does not contain {repository_path}")
+        raw = _git(
+            repository,
+            ["show", f"{target}:{repository_path}"],
+            user=owner,
+            text=False,
+        ).stdout
+        expected[key] = _sha256(raw)
+    return expected
+
+
+def _available_tree_blob_digests(
+    args: argparse.Namespace,
+    *,
+    repository: Path,
+    target: str,
+    owner: pwd.struct_passwd,
+) -> dict[str, str]:
+    available: dict[str, str] = {}
+    for key, repository_path, _, git_mode, _ in _installed_specifications(args):
+        row = _git(
+            repository,
+            ["ls-tree", target, "--", repository_path],
+            user=owner,
+        ).stdout.strip()
+        if not row:
+            continue
+        if not row.startswith(f"{git_mode} blob ") or not row.endswith(
+            f"\t{repository_path}"
+        ):
+            raise RotationError(f"predecessor tree entry is unsafe: {repository_path}")
+        raw = _git(
+            repository,
+            ["show", f"{target}:{repository_path}"],
+            user=owner,
+            text=False,
+        ).stdout
+        available[key] = _sha256(raw)
+    return available
+
+
+def _installed_blob_digests(args: argparse.Namespace) -> dict[str, str]:
+    actual: dict[str, str] = {}
+    for key, repository_path, installed_path, _, installed_mode in _installed_specifications(args):
+        _validate_file(
+            installed_path,
+            uid=0,
+            gid=0,
+            mode=installed_mode,
+            label=f"installed {repository_path}",
+        )
+        actual[key] = _sha256(
+            _read_regular(installed_path, max_bytes=4 * 1024 * 1024)
+        )
+    return actual
+
+
+def _validate_install_transition(
+    current_pin: dict[str, Any],
+    *,
+    actual: dict[str, str],
+    host_tree: dict[str, str],
+    predecessor_tree: dict[str, str],
+    target: dict[str, str],
+) -> None:
+    current = current_pin["installed"]
+    for key, digest in actual.items():
+        allowed = {target[key]}
+        if key in current:
+            allowed.add(current[key])
+        if key in predecessor_tree:
+            allowed.add(predecessor_tree[key])
+        if key in host_tree:
+            allowed.add(host_tree[key])
+        if digest not in allowed:
+            raise RotationError(
+                "installed publication lane is neither current nor exact target"
+            )
+
+
+def _atomic_install_blob(path: Path, raw: bytes, *, mode: int) -> None:
+    _validate_directory(
+        path.parent,
+        uid=0,
+        gid=0,
+        mode=0o755,
+        label=f"installed artifact directory {path.parent}",
+    )
+    if path.exists() or path.is_symlink():
+        _validate_file(
+            path,
+            uid=0,
+            gid=0,
+            mode=mode,
+            label=f"installed artifact {path}",
+        )
+        if _read_regular(path, max_bytes=4 * 1024 * 1024) == raw:
+            return
+    descriptor, temporary = tempfile.mkstemp(prefix=".palimpsest-install.", dir=path.parent)
+    temporary_path = Path(temporary)
+    try:
+        os.fchmod(descriptor, mode)
+        os.fchown(descriptor, 0, 0)
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+        _fsync_directory(path.parent)
+    finally:
+        try:
+            temporary_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def _install_target_artifacts(
+    args: argparse.Namespace,
+    *,
+    repository: Path,
+    target: str,
+    owner: pwd.struct_passwd,
+) -> None:
+    for _, repository_path, installed_path, git_mode, installed_mode in _installed_specifications(args):
+        row = _git(
+            repository,
+            ["ls-tree", target, "--", repository_path],
+            user=owner,
+        ).stdout.strip()
+        if not row.startswith(f"{git_mode} blob ") or not row.endswith(
+            f"\t{repository_path}"
+        ):
+            raise RotationError(f"target does not contain {repository_path}")
+        raw = _git(
+            repository,
+            ["show", f"{target}:{repository_path}"],
+            user=owner,
+            text=False,
+        ).stdout
+        _atomic_install_blob(installed_path, raw, mode=installed_mode)
+
+    # Unit replacement is still inside publish.lock.  Reloading does not stop,
+    # disable, or start a timer; any timer activation coalesces on this lock.
+    _run(["/usr/bin/systemctl", "daemon-reload"])
+
+
+def _validate_bootstrap_pin(pin: dict[str, Any]) -> None:
+    _require_keys(
+        pin,
+        {"incident_id", "installed", "origins", "previous", "recorded_at", "schema_version", "status", "target"},
+        "bootstrap publication base pin",
+    )
+    if (
+        pin["schema_version"] != BOOTSTRAP_SCHEMA
+        or pin["status"] != "verified"
+        or pin["incident_id"] != BOOTSTRAP_INCIDENT
+    ):
+        raise RotationError("bootstrap publication base pin identity is invalid")
+    _require_timestamp(pin["recorded_at"], "bootstrap pin recorded_at")
+    installed = pin.get("installed")
+    if not isinstance(installed, dict):
+        raise RotationError("bootstrap installed proof is invalid")
+    _require_keys(
+        installed,
+        {"publisher_service_sha256", "publisher_sha256", "reconciler_sha256", "transition_helper_sha256", "watchdog_service_sha256", "watchdog_sha256", "watchdog_timer_sha256"},
+        "bootstrap installed proof",
+    )
+    for key, value in installed.items():
+        _require_sha(value, length=64, label=f"bootstrap installed {key}")
+    if pin.get("origins") != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+        raise RotationError("bootstrap origins are invalid")
+    previous = pin.get("previous")
+    if not isinstance(previous, dict):
+        raise RotationError("bootstrap previous proof is invalid")
+    _require_keys(
+        previous,
+        {"canonical_head", "deployed_commit", "live_manifest_sha256", "live_release_sha", "live_tree_sha256", "publication_input_sha256", "publication_receipt_sha256", "railway_deployment_id"},
+        "bootstrap previous proof",
+    )
+    expected = {
+        "canonical_head": BOOTSTRAP_HOST_SHA,
+        "deployed_commit": BOOTSTRAP_HOST_SHA,
+        "live_manifest_sha256": BOOTSTRAP_MANIFEST_SHA256,
+        "live_release_sha": BOOTSTRAP_LIVE_SHA,
+        "live_tree_sha256": BOOTSTRAP_TREE_SHA256,
+        "publication_input_sha256": BOOTSTRAP_INPUT_SHA256,
+        "publication_receipt_sha256": BOOTSTRAP_RECEIPT_SHA256,
+        "railway_deployment_id": BOOTSTRAP_DEPLOYMENT_ID,
+    }
+    if previous != expected:
+        raise RotationError("bootstrap previous proof is not the reviewed incident")
+    target = pin.get("target")
+    if not isinstance(target, dict):
+        raise RotationError("bootstrap target is invalid")
+    _require_keys(target, {"base_sha", "public_main_sha"}, "bootstrap target")
+    if target["base_sha"] != target["public_main_sha"]:
+        raise RotationError("bootstrap target identities differ")
+    _require_sha(target["base_sha"], length=40, label="bootstrap target SHA")
+    if target["base_sha"] != BOOTSTRAP_TARGET_SHA:
+        raise RotationError("bootstrap target is not the immutable reviewed target")
+
+
+def _validate_reference(value: Any, label: str) -> None:
+    if not isinstance(value, dict):
+        raise RotationError(f"{label} is invalid")
+    _require_keys(value, {"bytes", "path", "sha256"}, label)
+    if not isinstance(value["path"], str) or not value["path"]:
+        raise RotationError(f"{label} path is invalid")
+    _require_sha(value["sha256"], length=64, label=f"{label} SHA-256")
+    if type(value["bytes"]) is not int or value["bytes"] < 2:
+        raise RotationError(f"{label} byte count is invalid")
+
+
+def _validate_v2_pin_shape(pin: dict[str, Any]) -> None:
+    _require_keys(
+        pin,
+        {"anchor", "generation", "host", "installed", "live", "origins", "predecessor", "railway", "recorded_at", "rotation_record_path", "schema_version", "status", "target"},
+        "successor publication base pin",
+    )
+    if pin["schema_version"] != PIN_SCHEMA or pin["status"] != "verified":
+        raise RotationError("successor publication base pin identity is invalid")
+    if (
+        type(pin["generation"]) is not int
+        or pin["generation"] < 1
+        or pin["generation"] > MAX_PIN_GENERATIONS
+    ):
+        raise RotationError("successor publication base generation is invalid")
+    _require_timestamp(pin["recorded_at"], "successor pin recorded_at")
+    if not isinstance(pin["rotation_record_path"], str):
+        raise RotationError("successor rotation-record path is invalid")
+
+    anchor = pin.get("anchor")
+    if not isinstance(anchor, dict):
+        raise RotationError("successor anchor is invalid")
+    _require_keys(anchor, {"path", "schema_version", "sha256", "target_sha"}, "successor anchor")
+    if (
+        anchor["schema_version"] != BOOTSTRAP_SCHEMA
+        or anchor["sha256"] != BOOTSTRAP_PIN_SHA256
+        or anchor["target_sha"] != BOOTSTRAP_TARGET_SHA
+        or not isinstance(anchor["path"], str)
+    ):
+        raise RotationError("successor anchor identity is invalid")
+    _require_sha(anchor["sha256"], length=64, label="successor anchor SHA-256")
+    _require_sha(anchor["target_sha"], length=40, label="successor anchor target")
+
+    predecessor = pin.get("predecessor")
+    if not isinstance(predecessor, dict):
+        raise RotationError("successor predecessor is invalid")
+    _require_keys(predecessor, {"pin", "publication_receipt"}, "successor predecessor")
+    predecessor_pin = predecessor.get("pin")
+    if not isinstance(predecessor_pin, dict):
+        raise RotationError("successor predecessor pin is invalid")
+    _require_keys(predecessor_pin, {"generation", "path", "schema_version", "sha256", "target_sha"}, "successor predecessor pin")
+    if (
+        type(predecessor_pin["generation"]) is not int
+        or predecessor_pin["generation"] != pin["generation"] - 1
+        or predecessor_pin["schema_version"] not in {BOOTSTRAP_SCHEMA, PIN_SCHEMA}
+        or not isinstance(predecessor_pin["path"], str)
+    ):
+        raise RotationError("successor predecessor pin identity is invalid")
+    _require_sha(predecessor_pin["sha256"], length=64, label="predecessor pin SHA-256")
+    _require_sha(predecessor_pin["target_sha"], length=40, label="predecessor pin target")
+
+    receipt = predecessor.get("publication_receipt")
+    if not isinstance(receipt, dict):
+        raise RotationError("successor predecessor receipt is invalid")
+    _require_keys(
+        receipt,
+        {"base_sha", "deployment_id", "host_deployed_sha", "input_sha256", "manifest_sha256", "path", "publication_base_sha256", "release_sha", "schema_version", "sha256", "tree_sha256", "wire_generated_at"},
+        "successor predecessor receipt",
+    )
+    if receipt["schema_version"] != PUBLICATION_SCHEMA or not isinstance(receipt["path"], str):
+        raise RotationError("successor predecessor receipt identity is invalid")
+    for key in ("base_sha", "host_deployed_sha", "release_sha"):
+        _require_sha(receipt[key], length=40, label=f"predecessor receipt {key}")
+    for key in ("input_sha256", "manifest_sha256", "publication_base_sha256", "sha256", "tree_sha256"):
+        _require_sha(receipt[key], length=64, label=f"predecessor receipt {key}")
+    _require_uuid(receipt["deployment_id"], "predecessor receipt deployment ID")
+    _require_timestamp(receipt["wire_generated_at"], "predecessor receipt wire clock")
+
+    host = pin.get("host")
+    if not isinstance(host, dict):
+        raise RotationError("successor host proof is invalid")
+    _require_keys(host, {"canonical_head", "deployed_commit"}, "successor host proof")
+    for key in host:
+        _require_sha(host[key], length=40, label=f"successor host {key}")
+
+    installed = pin.get("installed")
+    if not isinstance(installed, dict):
+        raise RotationError("successor installed proof is invalid")
+    _require_keys(
+        installed,
+        SUCCESSOR_INSTALLED_KEYS,
+        "successor installed proof",
+    )
+    for key, value in installed.items():
+        _require_sha(value, length=64, label=f"successor installed {key}")
+
+    if pin.get("origins") != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+        raise RotationError("successor origins are invalid")
+    live = pin.get("live")
+    if not isinstance(live, dict):
+        raise RotationError("successor live proof is invalid")
+    _require_keys(live, {"file_count", "provider_manifest", "public_manifest", "release_sha", "total_bytes", "tree_sha256"}, "successor live proof")
+    _validate_reference(live["provider_manifest"], "provider manifest reference")
+    _validate_reference(live["public_manifest"], "public manifest reference")
+    _require_sha(live["release_sha"], length=40, label="successor live release")
+    _require_sha(live["tree_sha256"], length=64, label="successor live tree")
+    if any(type(live[key]) is not int or live[key] < 1 for key in ("file_count", "total_bytes")):
+        raise RotationError("successor live counts are invalid")
+
+    railway = pin.get("railway")
+    if not isinstance(railway, dict):
+        raise RotationError("successor Railway proof is invalid")
+    _require_keys(railway, {"created_at", "deployment_id", "environment_id", "image_digest", "project_id", "reason", "service_id", "topology"}, "successor Railway proof")
+    for key in ("deployment_id", "environment_id", "project_id", "service_id"):
+        _require_uuid(railway[key], f"successor Railway {key}")
+    if not isinstance(railway["image_digest"], str) or IMAGE.fullmatch(railway["image_digest"]) is None:
+        raise RotationError("successor Railway image digest is invalid")
+    if railway["reason"] not in {"deploy", "deploymentRollback"}:
+        raise RotationError("successor Railway reason is invalid")
+    _require_timestamp(railway["created_at"], "successor Railway created_at")
+    _validate_reference(railway["topology"], "Railway topology reference")
+
+    target = pin.get("target")
+    if not isinstance(target, dict):
+        raise RotationError("successor target is invalid")
+    _require_keys(target, {"base_sha", "public_main_sha"}, "successor target")
+    if target["base_sha"] != target["public_main_sha"]:
+        raise RotationError("successor target identities differ")
+    _require_sha(target["base_sha"], length=40, label="successor target SHA")
+
+
+def _validate_publication_receipt(receipt: dict[str, Any]) -> None:
+    _require_keys(
+        receipt,
+        {"base_sha", "candidate", "github_actions_used", "host_deployed_sha", "input_sha256", "live_manifest", "origins", "predecessor", "publication_base", "railway", "recorded_at", "release_bundle", "release_sha", "schema_version", "status", "wire_generated_at"},
+        "publication receipt",
+    )
+    if (
+        receipt["schema_version"] != PUBLICATION_SCHEMA
+        or receipt["status"] != "verified"
+        or receipt["github_actions_used"] is not False
+        or receipt["origins"] != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}
+    ):
+        raise RotationError("publication receipt identity is invalid")
+    _require_timestamp(receipt["recorded_at"], "publication receipt recorded_at")
+    _require_timestamp(receipt["wire_generated_at"], "publication receipt wire clock")
+    for key in ("base_sha", "host_deployed_sha", "release_sha"):
+        _require_sha(receipt[key], length=40, label=f"publication receipt {key}")
+    _require_sha(receipt["input_sha256"], length=64, label="publication receipt input")
+    publication_base = receipt.get("publication_base")
+    if not isinstance(publication_base, dict):
+        raise RotationError("publication receipt base proof is invalid")
+    _require_keys(publication_base, {"kind", "path", "sha256", "target_sha"}, "publication receipt base proof")
+    if not isinstance(publication_base["kind"], str) or not isinstance(publication_base["path"], str):
+        raise RotationError("publication receipt base proof is invalid")
+    _require_sha(publication_base["sha256"], length=64, label="publication receipt base-pin SHA-256")
+    _require_sha(publication_base["target_sha"], length=40, label="publication receipt base target")
+    live = receipt.get("live_manifest")
+    if not isinstance(live, dict):
+        raise RotationError("publication receipt live manifest is invalid")
+    _require_keys(live, {"bytes", "file_count", "path", "sha256", "total_bytes", "tree_sha256"}, "publication receipt live manifest")
+    if not isinstance(live["path"], str):
+        raise RotationError("publication receipt live manifest path is invalid")
+    for key in ("bytes", "file_count", "total_bytes"):
+        if type(live[key]) is not int or live[key] < 1:
+            raise RotationError("publication receipt live manifest counts are invalid")
+    for key in ("sha256", "tree_sha256"):
+        _require_sha(live[key], length=64, label=f"publication receipt live {key}")
+    railway = receipt.get("railway")
+    if not isinstance(railway, dict):
+        raise RotationError("publication receipt Railway proof is invalid")
+    _require_keys(railway, {"deployment_id", "status"}, "publication receipt Railway proof")
+    _require_uuid(railway["deployment_id"], "publication receipt deployment ID")
+    if railway["status"] != "SUCCESS":
+        raise RotationError("publication receipt Railway deployment is not successful")
+    for key, expected in (
+        ("candidate", {"archive_path", "journal_sha256", "message"}),
+        ("predecessor", {"archive_path", "base_sha", "deployment_id", "input_sha256", "manifest_sha256", "receipt_sha256", "release_sha", "schema_version", "tree_sha256", "wire_generated_at"}),
+        ("release_bundle", {"base_sha", "bytes", "metadata_path", "metadata_sha256", "path", "release_sha", "schema_version", "sha256"}),
+    ):
+        value = receipt.get(key)
+        if not isinstance(value, dict):
+            raise RotationError(f"publication receipt {key} proof is invalid")
+        _require_keys(value, expected, f"publication receipt {key} proof")
+
+
+def _validate_manifest(raw: bytes, *, receipt: dict[str, Any]) -> dict[str, Any]:
+    manifest = _strict_json(raw, "live release manifest")
+    _require_keys(
+        manifest,
+        {"built_at", "critical_files", "deployment_source", "file_count", "github_required", "schema_version", "source_commit", "state", "total_bytes", "tree_sha256"},
+        "live release manifest",
+    )
+    live = receipt["live_manifest"]
+    if (
+        manifest["schema_version"] != "palimpsest.railway-static-release.v1"
+        or manifest["state"] != "artifact_ready"
+        or manifest["deployment_source"] != "local-git-archive"
+        or manifest["github_required"] is not False
+        or manifest["source_commit"] != receipt["release_sha"]
+        or manifest["tree_sha256"] != live["tree_sha256"]
+        or manifest["file_count"] != live["file_count"]
+        or manifest["total_bytes"] != live["total_bytes"]
+        or not isinstance(manifest["critical_files"], dict)
+        or not manifest["critical_files"]
+    ):
+        raise RotationError("live release manifest differs from the publication receipt")
+    _require_timestamp(manifest["built_at"], "live release built_at")
+    if _sha256(raw) != live["sha256"] or len(raw) != live["bytes"]:
+        raise RotationError("live release manifest bytes differ from the publication receipt")
+    return manifest
+
+
+def _manifest_url(origin: str, nonce: int) -> str:
+    parsed = urllib.parse.urlsplit(origin)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        raise RotationError("live origin is not an exact HTTPS origin")
+    return origin.rstrip("/") + f"/railway-release.json?base_rotation={nonce}"
+
+
+def _fetch_manifest(origin: str, nonce: int) -> bytes:
+    url = _manifest_url(origin, nonce)
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "Cache-Control": "no-cache, no-store",
+            "User-Agent": "palimpsest-base-rotation/2",
+        },
+    )
+    opener = urllib.request.build_opener(_NoRedirect())
+    try:
+        with opener.open(request, timeout=30) as response:
+            if response.status != 200 or response.geturl() != url:
+                raise RotationError(f"live manifest response is not exact for {origin}")
+            declared = response.headers.get("Content-Length")
+            if declared is not None and int(declared) > MAX_MANIFEST_BYTES:
+                raise RotationError(f"live manifest is too large for {origin}")
+            raw = response.read(MAX_MANIFEST_BYTES + 1)
+    except (OSError, ValueError, urllib.error.URLError) as exc:
+        if isinstance(exc, RotationError):
+            raise
+        raise RotationError(f"cannot fetch live manifest from {origin}") from exc
+    if len(raw) > MAX_MANIFEST_BYTES:
+        raise RotationError(f"live manifest is too large for {origin}")
+    return raw
+
+
+def _edges(value: Any, label: str) -> list[dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) != {"edges"}:
+        raise RotationError(f"Railway {label} edge inventory is invalid")
+    edges = value.get("edges")
+    if not isinstance(edges, list) or len(edges) > 100:
+        raise RotationError(f"Railway {label} edge inventory is invalid")
+    if any(not isinstance(row, dict) or not isinstance(row.get("node"), dict) for row in edges):
+        raise RotationError(f"Railway {label} edge inventory is invalid")
+    return edges
+
+
+def _one_node(edges: list[dict[str, Any]], *, key: str, expected: str, label: str) -> dict[str, Any]:
+    matches = [row["node"] for row in edges if row["node"].get(key) == expected]
+    if len(matches) != 1:
+        raise RotationError(f"Railway status lacks one exact {label}")
+    return matches[0]
+
+
+def _validate_topology(
+    raw: bytes,
+    *,
+    project_id: str,
+    environment_id: str,
+    service_id: str,
+    deployment_id: str,
+) -> dict[str, str]:
+    topology = _strict_json(raw, "Railway status topology")
+    if topology.get("id") != project_id:
+        raise RotationError("Railway project identity differs")
+    service = _one_node(_edges(topology.get("services"), "services"), key="id", expected=service_id, label="service")
+    if service.get("name") != EXPECTED_SERVICE_NAME:
+        raise RotationError("Railway service name differs")
+    environment = _one_node(_edges(topology.get("environments"), "environments"), key="id", expected=environment_id, label="environment")
+    if environment.get("deletedAt") is not None or environment.get("canAccess") is not True:
+        raise RotationError("Railway environment is unavailable")
+    if _edges(environment.get("volumeInstances"), "volume instances"):
+        raise RotationError("Railway publication service unexpectedly has a volume")
+    instance = _one_node(_edges(environment.get("serviceInstances"), "service instances"), key="serviceId", expected=service_id, label="service instance")
+    if (
+        instance.get("environmentId") != environment_id
+        or instance.get("serviceName") != EXPECTED_SERVICE_NAME
+    ):
+        raise RotationError("Railway service instance identity differs")
+    if "source" not in instance:
+        raise RotationError("Railway publication source field is missing")
+    source = instance["source"]
+    if source is not None and source != {"image": None, "repo": None}:
+        raise RotationError("Railway publication source attachment is unsafe")
+    if (
+        "cronSchedule" not in instance
+        or "nextCronRunAt" not in instance
+        or instance["cronSchedule"] is not None
+        or instance["nextCronRunAt"] is not None
+    ):
+        raise RotationError("Railway publication service unexpectedly has cron")
+    latest = instance.get("latestDeployment")
+    if not isinstance(latest, dict) or latest.get("id") != deployment_id or latest.get("status") != "SUCCESS" or latest.get("deploymentStopped") is not False:
+        raise RotationError("Railway active deployment identity differs")
+    running = latest.get("instances")
+    if (
+        not isinstance(running, list)
+        or len(running) != 1
+        or not isinstance(running[0], dict)
+        or running[0].get("status") != "RUNNING"
+    ):
+        raise RotationError("Railway active deployment is not singular and running")
+    metadata = latest.get("meta")
+    if not isinstance(metadata, dict) or metadata.get("buildOnly") is not False:
+        raise RotationError("Railway active deployment metadata is invalid")
+    reason = metadata.get("reason")
+    image = metadata.get("imageDigest")
+    if reason not in {"deploy", "deploymentRollback"} or not isinstance(image, str) or IMAGE.fullmatch(image) is None or metadata.get("volumeMounts") != []:
+        raise RotationError("Railway active deployment image or reason is invalid")
+    manifest = metadata.get("serviceManifest")
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("build"), dict) or not isinstance(manifest.get("deploy"), dict):
+        raise RotationError("Railway active service manifest is invalid")
+    build = manifest["build"]
+    deploy = manifest["deploy"]
+    if build.get("builder") != "DOCKERFILE" or build.get("dockerfilePath") != "ops/railway/Dockerfile.static":
+        raise RotationError("Railway active build topology is invalid")
+    if (
+        deploy.get("healthcheckPath") != "/healthz"
+        or deploy.get("numReplicas") != 1
+        or "cronSchedule" not in deploy
+        or deploy["cronSchedule"] is not None
+        or "requiredMountPath" not in deploy
+        or deploy["requiredMountPath"] is not None
+    ):
+        raise RotationError("Railway active deployment topology is invalid")
+    created_at = _require_timestamp(latest.get("createdAt"), "Railway deployment createdAt")
+    return {"created_at": created_at, "image_digest": image, "reason": reason}
+
+
+def _railway_status(args: argparse.Namespace) -> bytes:
+    token_rows = [(key, os.environ.get(key, "")) for key in ("RAILWAY_TOKEN", "RAILWAY_API_TOKEN")]
+    configured = [(key, value) for key, value in token_rows if value]
+    if len(configured) != 1:
+        raise RotationError("exactly one Railway automation token is required")
+    token_name, token_value = configured[0]
+    result = _run(
+        [str(args.railway_bin), "status", "--project", args.project_id, "--environment", args.environment_id, "--json"],
+        environment={token_name: token_value, "NODE_OPTIONS": args.railway_node_options},
+        text=False,
+    )
+    raw = result.stdout
+    if not isinstance(raw, bytes) or len(raw) > MAX_TOPOLOGY_BYTES:
+        raise RotationError("Railway status topology is too large")
+    return raw
+
+
+def _current_pin_identity(pin: dict[str, Any]) -> tuple[int, str, str, str]:
+    if pin.get("schema_version") == BOOTSTRAP_SCHEMA:
+        _validate_bootstrap_pin(pin)
+        return (
+            0,
+            pin["target"]["base_sha"],
+            pin["previous"]["canonical_head"],
+            pin["previous"]["deployed_commit"],
+        )
+    _validate_v2_pin_shape(pin)
+    return (
+        pin["generation"],
+        pin["target"]["base_sha"],
+        pin["host"]["canonical_head"],
+        pin["host"]["deployed_commit"],
+    )
+
+
+def _archive_path(root: Path, category: str, digest: str, *, origin: str | None = None) -> Path:
+    if origin is not None:
+        return root / category / origin / f"{digest}.json"
+    return root / category / f"{digest}.json"
+
+
+def _validate_archive(path: Path, *, expected: Path, digest: str, group_gid: int, max_bytes: int) -> bytes:
+    if path != expected:
+        raise RotationError("history reference is outside its canonical content-addressed path")
+    _validate_file(path, uid=0, gid=group_gid, mode=0o640, label=f"history evidence {path}")
+    raw = _read_regular(path, max_bytes=max_bytes)
+    if _sha256(raw) != digest:
+        raise RotationError(f"history evidence digest differs: {path}")
+    return raw
+
+
+def _validate_v2_pin_archives_once(
+    pin: dict[str, Any],
+    raw: bytes,
+    *,
+    history_root: Path,
+    group_gid: int,
+) -> tuple[dict[str, Any], bytes] | None:
+    _validate_v2_pin_shape(pin)
+    anchor = pin["anchor"]
+    anchor_path = Path(anchor["path"])
+    anchor_raw = _validate_archive(anchor_path, expected=_archive_path(history_root, "pins", anchor["sha256"]), digest=anchor["sha256"], group_gid=group_gid, max_bytes=MAX_PIN_BYTES)
+    anchor_pin = _strict_json(anchor_raw, "archived bootstrap pin")
+    _validate_bootstrap_pin(anchor_pin)
+    if anchor_pin["target"]["base_sha"] != anchor["target_sha"]:
+        raise RotationError("archived bootstrap pin target differs")
+
+    predecessor_pin = pin["predecessor"]["pin"]
+    predecessor_raw = _validate_archive(Path(predecessor_pin["path"]), expected=_archive_path(history_root, "pins", predecessor_pin["sha256"]), digest=predecessor_pin["sha256"], group_gid=group_gid, max_bytes=MAX_PIN_BYTES)
+    predecessor_document = _strict_json(predecessor_raw, "archived predecessor pin")
+    predecessor_generation, predecessor_target, _, _ = _current_pin_identity(predecessor_document)
+    if predecessor_generation != predecessor_pin["generation"] or predecessor_target != predecessor_pin["target_sha"]:
+        raise RotationError("archived predecessor pin identity differs")
+    if predecessor_generation == 0:
+        if predecessor_pin != {
+            "generation": 0,
+            "path": anchor["path"],
+            "schema_version": BOOTSTRAP_SCHEMA,
+            "sha256": anchor["sha256"],
+            "target_sha": anchor["target_sha"],
+        }:
+            raise RotationError("successor predecessor is not the immutable bootstrap anchor")
+    elif predecessor_document["anchor"] != anchor:
+        raise RotationError("successor pin changed the immutable bootstrap anchor")
+
+    receipt_ref = pin["predecessor"]["publication_receipt"]
+    receipt_raw = _validate_archive(Path(receipt_ref["path"]), expected=_archive_path(history_root, "receipts", receipt_ref["sha256"]), digest=receipt_ref["sha256"], group_gid=group_gid, max_bytes=MAX_RECEIPT_BYTES)
+    receipt = _strict_json(receipt_raw, "archived predecessor publication receipt")
+    _validate_publication_receipt(receipt)
+    receipt_expected = {
+        "base_sha": receipt["base_sha"],
+        "deployment_id": receipt["railway"]["deployment_id"],
+        "host_deployed_sha": receipt["host_deployed_sha"],
+        "input_sha256": receipt["input_sha256"],
+        "manifest_sha256": receipt["live_manifest"]["sha256"],
+        "path": str(receipt_ref["path"]),
+        "publication_base_sha256": receipt["publication_base"]["sha256"],
+        "release_sha": receipt["release_sha"],
+        "schema_version": receipt["schema_version"],
+        "sha256": _sha256(receipt_raw),
+        "tree_sha256": receipt["live_manifest"]["tree_sha256"],
+        "wire_generated_at": receipt["wire_generated_at"],
+    }
+    if receipt_ref != receipt_expected:
+        raise RotationError("archived predecessor receipt projection differs")
+
+    for origin in ("provider", "public"):
+        reference = pin["live"][f"{origin}_manifest"]
+        archived = _validate_archive(Path(reference["path"]), expected=_archive_path(history_root, "manifests", reference["sha256"], origin=origin), digest=reference["sha256"], group_gid=group_gid, max_bytes=MAX_MANIFEST_BYTES)
+        if len(archived) != reference["bytes"]:
+            raise RotationError("archived manifest byte count differs")
+    topology = pin["railway"]["topology"]
+    archived_topology = _validate_archive(Path(topology["path"]), expected=_archive_path(history_root, "topologies", topology["sha256"]), digest=topology["sha256"], group_gid=group_gid, max_bytes=MAX_TOPOLOGY_BYTES)
+    if len(archived_topology) != topology["bytes"]:
+        raise RotationError("archived topology byte count differs")
+
+    record_path = Path(pin["rotation_record_path"])
+    expected_record = history_root / "rotations" / f"{pin['generation']}-{pin['target']['base_sha']}-{receipt_ref['sha256']}.json"
+    _validate_file(record_path, uid=0, gid=group_gid, mode=0o640, label="rotation record")
+    if record_path != expected_record:
+        raise RotationError("rotation record path is not canonical")
+    record = _strict_json(_read_regular(record_path, max_bytes=2 * MAX_PIN_BYTES), "rotation record")
+    _require_keys(record, {"generation", "next_pin", "next_pin_sha256", "predecessor_pin_sha256", "predecessor_receipt_sha256", "recorded_at", "schema_version", "status", "target_base_sha"}, "rotation record")
+    if (
+        record["schema_version"] != ROTATION_SCHEMA
+        or record["status"] != "verified"
+        or record["generation"] != pin["generation"]
+        or record["recorded_at"] != pin["recorded_at"]
+        or record["target_base_sha"] != pin["target"]["base_sha"]
+        or record["predecessor_pin_sha256"] != predecessor_pin["sha256"]
+        or record["predecessor_receipt_sha256"] != receipt_ref["sha256"]
+        or record["next_pin"] != pin
+        or record["next_pin_sha256"] != _sha256(raw)
+    ):
+        raise RotationError("append-only rotation record differs from the active pin")
+    if predecessor_generation == 0:
+        return None
+    return predecessor_document, predecessor_raw
+
+
+def _validate_v2_pin_archives(
+    pin: dict[str, Any],
+    raw: bytes,
+    *,
+    history_root: Path,
+    group_gid: int,
+) -> None:
+    current_pin = pin
+    current_raw = raw
+    seen: set[str] = set()
+    traversed = 0
+    while True:
+        digest = _sha256(current_raw)
+        if digest in seen:
+            raise RotationError("successor publication-base lineage contains a cycle")
+        seen.add(digest)
+        traversed += 1
+        if traversed > MAX_PIN_GENERATIONS:
+            raise RotationError("successor publication-base lineage is too deep")
+        predecessor = _validate_v2_pin_archives_once(
+            current_pin,
+            current_raw,
+            history_root=history_root,
+            group_gid=group_gid,
+        )
+        if predecessor is None:
+            return
+        current_pin, current_raw = predecessor
+
+
+def _receipt_matches_pin(
+    receipt: dict[str, Any],
+    *,
+    pin_path: Path,
+    pin_sha256: str,
+    pin_kind: str,
+    base_sha: str,
+    host_deployed_sha: str,
+) -> None:
+    if (
+        receipt["base_sha"] != base_sha
+        or receipt["publication_base"] != {
+            "kind": pin_kind,
+            "path": str(pin_path),
+            "sha256": pin_sha256,
+            "target_sha": base_sha,
+        }
+        or receipt["host_deployed_sha"] != host_deployed_sha
+    ):
+        raise RotationError("latest v2 publication receipt does not match the current base pin")
+
+
+def _receipt_matches_bridge(
+    receipt: dict[str, Any], raw: bytes, *, pin: dict[str, Any]
+) -> None:
+    reference = pin["predecessor"]["publication_receipt"]
+    projected = {
+        "base_sha": receipt["base_sha"],
+        "deployment_id": receipt["railway"]["deployment_id"],
+        "host_deployed_sha": receipt["host_deployed_sha"],
+        "input_sha256": receipt["input_sha256"],
+        "manifest_sha256": receipt["live_manifest"]["sha256"],
+        "path": reference["path"],
+        "publication_base_sha256": receipt["publication_base"]["sha256"],
+        "release_sha": receipt["release_sha"],
+        "schema_version": receipt["schema_version"],
+        "sha256": _sha256(raw),
+        "tree_sha256": receipt["live_manifest"]["tree_sha256"],
+        "wire_generated_at": receipt["wire_generated_at"],
+    }
+    if projected != reference:
+        raise RotationError("latest receipt is not the exact successor-pin bridge")
+    archived = _read_regular(Path(reference["path"]), max_bytes=MAX_RECEIPT_BYTES)
+    if archived != raw:
+        raise RotationError("latest bridge receipt differs from its root-owned archive")
+
+
+def _validate_completed_receipt(
+    receipt: dict[str, Any],
+    raw: bytes,
+    *,
+    pin: dict[str, Any],
+    pin_path: Path,
+    pin_sha256: str,
+) -> None:
+    try:
+        _receipt_matches_pin(
+            receipt,
+            pin_path=pin_path,
+            pin_sha256=pin_sha256,
+            pin_kind="verified_successor",
+            base_sha=pin["target"]["base_sha"],
+            host_deployed_sha=pin["host"]["deployed_commit"],
+        )
+    except RotationError:
+        _receipt_matches_bridge(receipt, raw, pin=pin)
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target-base-sha", required=True)
+    parser.add_argument("--ack", required=True)
+    parser.add_argument("--repository", type=Path, default=Path("/home/palimpsest/palimpsest"))
+    parser.add_argument("--state-root", type=Path, default=Path("/var/lib/palimpsest/railway-publication"))
+    parser.add_argument("--control-root", type=Path, default=Path("/var/lib/palimpsest/railway-control"))
+    parser.add_argument("--legacy-lock", type=Path, default=Path("/var/lib/palimpsest/railway-publication/publish.lock"))
+    parser.add_argument("--newswire-lock", type=Path, default=Path("/var/lib/palimpsest/newswire/newswire.lock"))
+    parser.add_argument("--deployed-commit", type=Path, default=Path("/etc/palimpsest/deployed-commit"))
+    parser.add_argument("--base-pin", type=Path, default=Path("/etc/palimpsest/railway-publication-base.json"))
+    parser.add_argument("--data-hold", type=Path, default=Path("/etc/palimpsest/railway-publication-data-hold.json"))
+    parser.add_argument("--railway-bin", type=Path, default=Path("/usr/bin/railway"))
+    parser.add_argument("--railway-node-options", default="--jitless")
+    parser.add_argument("--project-id", default=os.environ.get("RAILWAY_PROJECT_ID"))
+    parser.add_argument("--environment-id", default=os.environ.get("RAILWAY_ENVIRONMENT_ID"))
+    parser.add_argument("--service-id", default=os.environ.get("RAILWAY_SERVICE_ID"))
+    parser.add_argument("--installed-publisher", type=Path, default=Path("/usr/local/sbin/palimpsest-railway-publish"))
+    parser.add_argument("--installed-continuity-guard", type=Path, default=Path("/usr/local/sbin/palimpsest-continuity-guard"))
+    parser.add_argument("--installed-continuity-guard-service", type=Path, default=Path("/etc/systemd/system/palimpsest-continuity-guard.service"))
+    parser.add_argument("--installed-continuity-guard-timer", type=Path, default=Path("/etc/systemd/system/palimpsest-continuity-guard.timer"))
+    parser.add_argument("--installed-event-analysis-wrapper", type=Path, default=Path("/usr/local/sbin/palimpsest-event-analysis-live"))
+    parser.add_argument("--installed-event-analysis-service", type=Path, default=Path("/etc/systemd/system/palimpsest-event-analysis-live.service"))
+    parser.add_argument("--installed-event-analysis-publish-dropin", type=Path, default=Path("/etc/systemd/system/palimpsest-event-analysis-live.service.d/90-railway-publish.conf"))
+    parser.add_argument("--installed-transition-helper", type=Path, default=Path("/usr/local/sbin/palimpsest-advance-direct-publication-base"))
+    parser.add_argument("--installed-rotation-helper", type=Path, default=Path("/usr/local/sbin/palimpsest-rotate-direct-publication-base"))
+    parser.add_argument("--installed-reconciler", type=Path, default=Path("/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate"))
+    parser.add_argument("--installed-watchdog", type=Path, default=Path("/usr/local/sbin/palimpsest-direct-watchdog"))
+    parser.add_argument("--installed-publisher-service", type=Path, default=Path("/etc/systemd/system/palimpsest-railway-publish.service"))
+    parser.add_argument("--installed-watchdog-service", type=Path, default=Path("/etc/systemd/system/palimpsest-direct-watchdog.service"))
+    parser.add_argument("--installed-watchdog-timer", type=Path, default=Path("/etc/systemd/system/palimpsest-direct-watchdog.timer"))
+    parser.add_argument("--publisher-user", default="palimpsest")
+    parser.add_argument("--publisher-group", default="palimpsest")
+    return parser
+
+
+def perform_rotation(args: argparse.Namespace) -> dict[str, Any]:
+    if os.geteuid() != 0:
+        raise RotationError("base rotation must run as root")
+    if args.ack != ACKNOWLEDGEMENT:
+        raise RotationError("exact successor-base acknowledgement is required")
+    _require_sha(args.target_base_sha, length=40, label="target base SHA")
+    for key in ("project_id", "environment_id", "service_id"):
+        value = getattr(args, key)
+        if value is None:
+            raise RotationError(f"{key.replace('_', ' ')} is required")
+        _require_uuid(value, key.replace("_", " "))
+
+    publisher_user = pwd.getpwnam(args.publisher_user)
+    publisher_group = grp.getgrnam(args.publisher_group)
+    if publisher_user.pw_gid != publisher_group.gr_gid:
+        raise RotationError("publisher user primary group differs from pin group")
+    repository = args.repository.resolve(strict=True)
+    if args.state_root.is_symlink():
+        raise RotationError("publication state root must not be a symbolic link")
+    state_root = args.state_root.resolve(strict=True)
+    if state_root != args.state_root.absolute():
+        raise RotationError("publication state root path is not canonical")
+    control_root = args.control_root.absolute()
+    lock_path = _ensure_control_root(
+        control_root, group_gid=publisher_group.gr_gid
+    )
+    history_root = control_root / "base-rotation-history"
+    intent_path = control_root / "rotation-intent.json"
+    lock_descriptor = _acquire_lock(
+        lock_path,
+        uid=0,
+        gid=publisher_group.gr_gid,
+        mode=0o640,
+        label="root publication lock",
+    )
+    legacy_lock_descriptor: int | None = None
+    newswire_lock_descriptor: int | None = None
+    state_sealed = False
+    prepared: tuple[dict[str, Any], bytes] | None = None
+
+    def complete_prepared_transaction() -> None:
+        nonlocal state_sealed, prepared
+        if prepared is not None:
+            _clear_rotation_intent(
+                intent_path,
+                expected=prepared[1],
+                group_gid=publisher_group.gr_gid,
+            )
+            prepared = None
+        if state_sealed:
+            _restore_legacy_state_root(
+                state_root,
+                publisher_uid=publisher_user.pw_uid,
+                publisher_gid=publisher_group.gr_gid,
+            )
+            state_sealed = False
+
+    try:
+        _validate_file(args.base_pin, uid=0, gid=publisher_group.gr_gid, mode=0o640, label="publication base pin")
+        initial_pin_raw = _read_regular(args.base_pin, max_bytes=MAX_PIN_BYTES)
+        initial_pin = _strict_json(initial_pin_raw, "publication base pin")
+        initial_generation, _, _, _ = _current_pin_identity(initial_pin)
+        prepared = _read_rotation_intent(
+            intent_path, group_gid=publisher_group.gr_gid
+        )
+        prepared_generation = (
+            prepared[0]["predecessor"]["generation"]
+            if prepared is not None
+            else None
+        )
+        if initial_generation == 0 or prepared_generation == 0:
+            if args.legacy_lock.absolute() != state_root / "publish.lock":
+                raise RotationError("legacy publication lock path is not canonical")
+            legacy_lock_descriptor = _acquire_lock(
+                args.legacy_lock,
+                uid=publisher_user.pw_uid,
+                gid=publisher_group.gr_gid,
+                mode=0o600,
+                label="legacy publication lock",
+            )
+            _seal_legacy_state_root(
+                state_root,
+                publisher_uid=publisher_user.pw_uid,
+                publisher_gid=publisher_group.gr_gid,
+            )
+            state_sealed = True
+            _verify_locked_path(
+                args.legacy_lock,
+                legacy_lock_descriptor,
+                label="legacy publication lock",
+            )
+        else:
+            _validate_directory(
+                state_root,
+                uid=publisher_user.pw_uid,
+                gid=publisher_group.gr_gid,
+                mode=0o700,
+                label="publication state root",
+            )
+
+        if _read_regular(args.base_pin, max_bytes=MAX_PIN_BYTES) != initial_pin_raw:
+            raise RotationError("publication base pin changed while acquiring locks")
+
+        if (
+            not args.newswire_lock.is_absolute()
+            or args.newswire_lock.absolute() != args.newswire_lock
+        ):
+            raise RotationError("newswire lock path is not canonical")
+        _validate_directory(
+            args.newswire_lock.parent,
+            uid=publisher_user.pw_uid,
+            gid=publisher_group.gr_gid,
+            mode=0o750,
+            label="newswire state root",
+        )
+        newswire_lock_descriptor = _acquire_lock(
+            args.newswire_lock,
+            uid=publisher_user.pw_uid,
+            gid=publisher_group.gr_gid,
+            mode=0o600,
+            label="newswire attempt lock",
+        )
+
+        _require_no_rotation_blockers(
+            state_root=state_root,
+            data_hold=args.data_hold,
+        )
+        _require_service_inactive("palimpsest-event-analysis-live.service")
+
+        current_pin_raw = initial_pin_raw
+        current_pin = initial_pin
+        generation, current_base, expected_head, expected_deployed = _current_pin_identity(current_pin)
+        current_pin_sha256 = _sha256(current_pin_raw)
+        if generation == 0 and current_pin_sha256 != BOOTSTRAP_PIN_SHA256:
+            raise RotationError("bootstrap publication pin is not the immutable reviewed pin")
+        if generation > 0:
+            _ensure_history_directories(history_root, group_gid=publisher_group.gr_gid)
+            _validate_v2_pin_archives(current_pin, current_pin_raw, history_root=history_root, group_gid=publisher_group.gr_gid)
+
+        _validate_file(args.deployed_commit, uid=0, gid=0, mode=0o644, label="deployed-commit")
+        deployed_raw = _read_regular(args.deployed_commit, max_bytes=256)
+        deployed = deployed_raw.decode("ascii").strip()
+        if deployed != expected_deployed:
+            raise RotationError("host deployed-commit differs from the current pin")
+
+        success_receipt = state_root / "latest-success.json"
+        _validate_file(success_receipt, uid=publisher_user.pw_uid, gid=publisher_group.gr_gid, mode=0o600, label="latest publication receipt", single_link=False)
+        receipt_raw = _read_regular(success_receipt, max_bytes=MAX_RECEIPT_BYTES, single_link=False)
+        receipt = _strict_json(receipt_raw, "latest publication receipt")
+        _validate_publication_receipt(receipt)
+        if generation > 0 and current_base == args.target_base_sha:
+            _validate_completed_receipt(
+                receipt,
+                receipt_raw,
+                pin=current_pin,
+                pin_path=args.base_pin,
+                pin_sha256=current_pin_sha256,
+            )
+
+        if _git(repository, ["status", "--porcelain=v1", "--untracked-files=all"], user=publisher_user).stdout:
+            raise RotationError("canonical repository is not clean")
+        git_directory = repository / ".git"
+        if (git_directory / "shallow").exists() or (git_directory / "info" / "grafts").exists() or _git(repository, ["for-each-ref", "--format=%(refname)", "refs/replace"], user=publisher_user).stdout:
+            raise RotationError("canonical repository uses shallow, graft, or replacement history")
+        canonical_head = _git(repository, ["rev-parse", "HEAD"], user=publisher_user).stdout.strip()
+        if canonical_head != expected_head:
+            raise RotationError("canonical HEAD differs from the current pin")
+        remote_url = _git(repository, ["remote", "get-url", "origin"], user=publisher_user).stdout.strip()
+        if remote_url != EXPECTED_REMOTE:
+            raise RotationError("origin is not the reviewed public repository")
+
+        _git(repository, ["fetch", "--quiet", "--no-tags", "--force", "origin", "+refs/heads/main:refs/remotes/origin/main"], user=publisher_user)
+        remote_rows = _git(repository, ["ls-remote", "--exit-code", "origin", "refs/heads/main"], user=publisher_user).stdout.splitlines()
+        if len(remote_rows) != 1:
+            raise RotationError("public main does not have one exact identity")
+        current_public_main = remote_rows[0].split("\t", 1)[0]
+        local_main_sha = _git(repository, ["rev-parse", "refs/remotes/origin/main"], user=publisher_user).stdout.strip()
+        if current_public_main != local_main_sha:
+            raise RotationError("fetched origin/main differs from public main")
+        if prepared is not None:
+            intent = prepared[0]
+            predecessor = intent["predecessor"]
+            if (
+                intent["target"]
+                != {
+                    "base_sha": args.target_base_sha,
+                    "public_main_sha": args.target_base_sha,
+                }
+                or (
+                    generation == predecessor["generation"]
+                    and (
+                        current_pin_sha256 != predecessor["pin_sha256"]
+                        or current_base != predecessor["target_sha"]
+                    )
+                )
+                or (
+                    generation not in {
+                        predecessor["generation"],
+                        predecessor["generation"] + 1,
+                    }
+                )
+                or (
+                    generation == predecessor["generation"] + 1
+                    and current_base != args.target_base_sha
+                )
+            ):
+                raise RotationError("active state does not match the prepared rotation")
+            _git(
+                repository,
+                ["merge-base", "--is-ancestor", args.target_base_sha, current_public_main],
+                user=publisher_user,
+            )
+        elif current_public_main != args.target_base_sha:
+            if generation > 0 and current_base == args.target_base_sha:
+                _git(
+                    repository,
+                    ["merge-base", "--is-ancestor", args.target_base_sha, current_public_main],
+                    user=publisher_user,
+                )
+                installed = _validate_installed(args, repository=repository, target=args.target_base_sha, owner=publisher_user)
+                if installed != current_pin["installed"]:
+                    raise RotationError("installed target proof differs from completed rotation")
+                complete_prepared_transaction()
+                return current_pin
+            raise RotationError("target base is not the exact fetched public main tip")
+        public_main_sha = args.target_base_sha
+        if current_base == args.target_base_sha:
+            if generation < 1:
+                raise RotationError("bootstrap pin target cannot be rotated to itself")
+            installed = _validate_installed(args, repository=repository, target=args.target_base_sha, owner=publisher_user)
+            if installed != current_pin["installed"]:
+                raise RotationError("installed target proof differs from completed rotation")
+            complete_prepared_transaction()
+            return current_pin
+        _git(repository, ["merge-base", "--is-ancestor", current_base, args.target_base_sha], user=publisher_user)
+        if _git(repository, ["rev-parse", current_base], user=publisher_user).stdout.strip() == args.target_base_sha:
+            raise RotationError("successor base must advance the current pin")
+
+        target_digests = _target_blob_digests(
+            args,
+            repository=repository,
+            target=args.target_base_sha,
+            owner=publisher_user,
+        )
+        predecessor_tree_digests = _available_tree_blob_digests(
+            args,
+            repository=repository,
+            target=current_base,
+            owner=publisher_user,
+        )
+        host_tree_digests = _available_tree_blob_digests(
+            args,
+            repository=repository,
+            target=deployed,
+            owner=publisher_user,
+        )
+        if prepared is not None and prepared[0]["installed"] != target_digests:
+            raise RotationError("prepared rotation target artifacts changed")
+        _validate_install_transition(
+            current_pin,
+            actual=_installed_blob_digests(args),
+            host_tree=host_tree_digests,
+            predecessor_tree=predecessor_tree_digests,
+            target=target_digests,
+        )
+        _receipt_matches_pin(
+            receipt,
+            pin_path=args.base_pin,
+            pin_sha256=current_pin_sha256,
+            pin_kind="verified_transition" if generation == 0 else "verified_successor",
+            base_sha=current_base,
+            host_deployed_sha=deployed,
+        )
+
+        nonce = time.time_ns()
+        provider_raw = _fetch_manifest(PROVIDER_ORIGIN, nonce)
+        public_raw = _fetch_manifest(PUBLIC_ORIGIN, nonce)
+        if provider_raw != public_raw:
+            raise RotationError("provider and public live manifests are not byte-identical")
+        manifest = _validate_manifest(provider_raw, receipt=receipt)
+        topology_raw = _railway_status(args)
+        topology = _validate_topology(
+            topology_raw,
+            project_id=args.project_id,
+            environment_id=args.environment_id,
+            service_id=args.service_id,
+            deployment_id=receipt["railway"]["deployment_id"],
+        )
+        prepared_evidence = {
+            "provider_manifest_sha256": _sha256(provider_raw),
+            "public_manifest_sha256": _sha256(public_raw),
+            "topology_sha256": _sha256(topology_raw),
+        }
+        if (
+            prepared is not None
+            and generation == prepared[0]["predecessor"]["generation"]
+            and (
+                prepared[0]["predecessor"]["receipt_sha256"]
+                != _sha256(receipt_raw)
+                or prepared[0]["evidence"] != prepared_evidence
+            )
+        ):
+            raise RotationError("prepared rotation predecessor evidence changed")
+
+        if prepared is None:
+            intent = {
+                "evidence": prepared_evidence,
+                "installed": target_digests,
+                "predecessor": {
+                    "generation": generation,
+                    "pin_sha256": current_pin_sha256,
+                    "receipt_sha256": _sha256(receipt_raw),
+                    "target_sha": current_base,
+                },
+                "schema_version": ROTATION_INTENT_SCHEMA,
+                "started_at": (
+                    datetime.now(UTC)
+                    .replace(microsecond=0)
+                    .isoformat()
+                    .replace("+00:00", "Z")
+                ),
+                "status": "prepared",
+                "target": {
+                    "base_sha": args.target_base_sha,
+                    "public_main_sha": public_main_sha,
+                },
+            }
+            intent_raw = _persist_rotation_intent(
+                intent_path, intent, group_gid=publisher_group.gr_gid
+            )
+            prepared = (intent, intent_raw)
+
+        _install_target_artifacts(
+            args,
+            repository=repository,
+            target=args.target_base_sha,
+            owner=publisher_user,
+        )
+        installed = _validate_installed(
+            args,
+            repository=repository,
+            target=args.target_base_sha,
+            owner=publisher_user,
+        )
+        if installed != target_digests:
+            raise RotationError("installed target digest projection changed")
+
+        _ensure_history_directories(history_root, group_gid=publisher_group.gr_gid)
+        current_pin_archive = _archive_path(history_root, "pins", current_pin_sha256)
+        receipt_sha256 = _sha256(receipt_raw)
+        receipt_archive = _archive_path(history_root, "receipts", receipt_sha256)
+        provider_sha256 = _sha256(provider_raw)
+        public_sha256 = _sha256(public_raw)
+        provider_archive = _archive_path(history_root, "manifests", provider_sha256, origin="provider")
+        public_archive = _archive_path(history_root, "manifests", public_sha256, origin="public")
+        topology_sha256 = _sha256(topology_raw)
+        topology_archive = _archive_path(history_root, "topologies", topology_sha256)
+        for path, raw in (
+            (current_pin_archive, current_pin_raw),
+            (receipt_archive, receipt_raw),
+            (provider_archive, provider_raw),
+            (public_archive, public_raw),
+            (topology_archive, topology_raw),
+        ):
+            _archive_bytes(path, raw, group_gid=publisher_group.gr_gid)
+
+        if generation == 0:
+            anchor = {
+                "path": str(current_pin_archive),
+                "schema_version": BOOTSTRAP_SCHEMA,
+                "sha256": current_pin_sha256,
+                "target_sha": current_base,
+            }
+        else:
+            anchor = current_pin["anchor"]
+        next_generation = generation + 1
+        record_path = history_root / "rotations" / f"{next_generation}-{args.target_base_sha}-{receipt_sha256}.json"
+        existing_record_raw: bytes | None = None
+        existing_record: dict[str, Any] | None = None
+        if record_path.exists() or record_path.is_symlink():
+            _validate_file(
+                record_path,
+                uid=0,
+                gid=publisher_group.gr_gid,
+                mode=0o640,
+                label="prepared rotation record",
+            )
+            existing_record_raw = _read_regular(
+                record_path, max_bytes=2 * MAX_PIN_BYTES
+            )
+            existing_record = _strict_json(
+                existing_record_raw, "prepared rotation record"
+            )
+            _require_keys(
+                existing_record,
+                {
+                    "generation",
+                    "next_pin",
+                    "next_pin_sha256",
+                    "predecessor_pin_sha256",
+                    "predecessor_receipt_sha256",
+                    "recorded_at",
+                    "schema_version",
+                    "status",
+                    "target_base_sha",
+                },
+                "prepared rotation record",
+            )
+            if (
+                existing_record["schema_version"] != ROTATION_SCHEMA
+                or existing_record["status"] != "verified"
+                or existing_record["generation"] != next_generation
+                or existing_record["target_base_sha"] != args.target_base_sha
+                or existing_record["predecessor_pin_sha256"]
+                != current_pin_sha256
+                or existing_record["predecessor_receipt_sha256"]
+                != receipt_sha256
+                or not isinstance(existing_record["next_pin"], dict)
+            ):
+                raise RotationError(
+                    "existing rotation record names a different transaction"
+                )
+            recorded_at = _require_timestamp(
+                existing_record["recorded_at"],
+                "prepared rotation recorded_at",
+            )
+            prepared_railway = existing_record["next_pin"].get("railway")
+            if not isinstance(prepared_railway, dict) or not isinstance(
+                prepared_railway.get("topology"), dict
+            ):
+                raise RotationError("prepared rotation topology reference is invalid")
+            topology_reference = prepared_railway["topology"]
+            _validate_reference(topology_reference, "prepared topology reference")
+            prepared_topology_raw = _validate_archive(
+                Path(topology_reference["path"]),
+                expected=_archive_path(
+                    history_root, "topologies", topology_reference["sha256"]
+                ),
+                digest=topology_reference["sha256"],
+                group_gid=publisher_group.gr_gid,
+                max_bytes=MAX_TOPOLOGY_BYTES,
+            )
+            if len(prepared_topology_raw) != topology_reference["bytes"]:
+                raise RotationError("prepared topology byte count differs")
+            if _validate_topology(
+                prepared_topology_raw,
+                project_id=args.project_id,
+                environment_id=args.environment_id,
+                service_id=args.service_id,
+                deployment_id=receipt["railway"]["deployment_id"],
+            ) != topology:
+                raise RotationError(
+                    "prepared rotation no longer names the active topology"
+                )
+        else:
+            recorded_at = (
+                datetime.now(UTC)
+                .replace(microsecond=0)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+            topology_reference = {
+                "bytes": len(topology_raw),
+                "path": str(topology_archive),
+                "sha256": topology_sha256,
+            }
+        next_pin: dict[str, Any] = {
+            "anchor": anchor,
+            "generation": next_generation,
+            "host": {"canonical_head": canonical_head, "deployed_commit": deployed},
+            "installed": installed,
+            "live": {
+                "file_count": manifest["file_count"],
+                "provider_manifest": {"bytes": len(provider_raw), "path": str(provider_archive), "sha256": provider_sha256},
+                "public_manifest": {"bytes": len(public_raw), "path": str(public_archive), "sha256": public_sha256},
+                "release_sha": manifest["source_commit"],
+                "total_bytes": manifest["total_bytes"],
+                "tree_sha256": manifest["tree_sha256"],
+            },
+            "origins": {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN},
+            "predecessor": {
+                "pin": {
+                    "generation": generation,
+                    "path": str(current_pin_archive),
+                    "schema_version": current_pin["schema_version"],
+                    "sha256": current_pin_sha256,
+                    "target_sha": current_base,
+                },
+                "publication_receipt": {
+                    "base_sha": receipt["base_sha"],
+                    "deployment_id": receipt["railway"]["deployment_id"],
+                    "host_deployed_sha": receipt["host_deployed_sha"],
+                    "input_sha256": receipt["input_sha256"],
+                    "manifest_sha256": receipt["live_manifest"]["sha256"],
+                    "path": str(receipt_archive),
+                    "publication_base_sha256": receipt["publication_base"]["sha256"],
+                    "release_sha": receipt["release_sha"],
+                    "schema_version": receipt["schema_version"],
+                    "sha256": receipt_sha256,
+                    "tree_sha256": receipt["live_manifest"]["tree_sha256"],
+                    "wire_generated_at": receipt["wire_generated_at"],
+                },
+            },
+            "railway": {
+                "created_at": topology["created_at"],
+                "deployment_id": receipt["railway"]["deployment_id"],
+                "environment_id": args.environment_id,
+                "image_digest": topology["image_digest"],
+                "project_id": args.project_id,
+                "reason": topology["reason"],
+                "service_id": args.service_id,
+                "topology": topology_reference,
+            },
+            "recorded_at": recorded_at,
+            "rotation_record_path": str(record_path),
+            "schema_version": PIN_SCHEMA,
+            "status": "verified",
+            "target": {"base_sha": args.target_base_sha, "public_main_sha": public_main_sha},
+        }
+        _validate_v2_pin_shape(next_pin)
+        next_pin_raw = _canonical_bytes(next_pin)
+        record = {
+            "generation": next_generation,
+            "next_pin": next_pin,
+            "next_pin_sha256": _sha256(next_pin_raw),
+            "predecessor_pin_sha256": current_pin_sha256,
+            "predecessor_receipt_sha256": receipt_sha256,
+            "recorded_at": recorded_at,
+            "schema_version": ROTATION_SCHEMA,
+            "status": "verified",
+            "target_base_sha": args.target_base_sha,
+        }
+        record_raw = _canonical_bytes(record)
+        if existing_record_raw is not None:
+            if (
+                existing_record != record
+                or existing_record_raw != record_raw
+                or existing_record["next_pin_sha256"] != _sha256(next_pin_raw)
+            ):
+                raise RotationError(
+                    "prepared rotation record differs from the retry transaction"
+                )
+            _validate_v2_pin_archives(
+                next_pin,
+                next_pin_raw,
+                history_root=history_root,
+                group_gid=publisher_group.gr_gid,
+            )
+
+        final_remote = _git(repository, ["ls-remote", "--exit-code", "origin", "refs/heads/main"], user=publisher_user).stdout.splitlines()
+        if len(final_remote) != 1:
+            raise RotationError("public main identity changed before rotation")
+        final_public_main = final_remote[0].split("\t", 1)[0]
+        if final_public_main != args.target_base_sha:
+            if prepared is None:
+                raise RotationError("public main moved before the rotation boundary")
+            _git(
+                repository,
+                ["merge-base", "--is-ancestor", args.target_base_sha, final_public_main],
+                user=publisher_user,
+            )
+        if _read_regular(args.base_pin, max_bytes=MAX_PIN_BYTES) != current_pin_raw or _read_regular(success_receipt, max_bytes=MAX_RECEIPT_BYTES, single_link=False) != receipt_raw or _read_regular(args.deployed_commit, max_bytes=256) != deployed_raw:
+            raise RotationError("local publication identity changed before rotation")
+        if _git(repository, ["rev-parse", "HEAD"], user=publisher_user).stdout.strip() != canonical_head or _git(repository, ["status", "--porcelain=v1", "--untracked-files=all"], user=publisher_user).stdout:
+            raise RotationError("canonical repository changed before rotation")
+        final_provider = _fetch_manifest(PROVIDER_ORIGIN, time.time_ns())
+        final_public = _fetch_manifest(PUBLIC_ORIGIN, time.time_ns())
+        if final_provider != provider_raw or final_public != public_raw:
+            raise RotationError("live manifest bytes changed before rotation")
+        final_topology_raw = _railway_status(args)
+        final_topology = _validate_topology(final_topology_raw, project_id=args.project_id, environment_id=args.environment_id, service_id=args.service_id, deployment_id=receipt["railway"]["deployment_id"])
+        if final_topology != topology:
+            raise RotationError("active Railway topology changed before rotation")
+        if _validate_installed(args, repository=repository, target=args.target_base_sha, owner=publisher_user) != installed:
+            raise RotationError("installed publication lane changed before rotation")
+        _require_no_rotation_blockers(
+            state_root=state_root,
+            data_hold=args.data_hold,
+        )
+        _require_service_inactive("palimpsest-event-analysis-live.service")
+        if newswire_lock_descriptor is None:
+            raise RotationError("newswire attempt lock was not retained")
+        _verify_locked_path(
+            args.newswire_lock,
+            newswire_lock_descriptor,
+            label="newswire attempt lock",
+        )
+
+        _archive_bytes(record_path, record_raw, group_gid=publisher_group.gr_gid)
+        _atomic_replace_pin(args.base_pin, next_pin_raw, expected_previous=current_pin_raw, group_gid=publisher_group.gr_gid)
+        _validate_file(args.base_pin, uid=0, gid=publisher_group.gr_gid, mode=0o640, label="rotated publication base pin")
+        if _read_regular(args.base_pin, max_bytes=MAX_PIN_BYTES) != next_pin_raw:
+            raise RotationError("persisted successor publication base pin changed")
+        _validate_v2_pin_archives(next_pin, next_pin_raw, history_root=history_root, group_gid=publisher_group.gr_gid)
+        complete_prepared_transaction()
+        return next_pin
+    finally:
+        if state_sealed:
+            try:
+                intent_path.lstat()
+            except FileNotFoundError:
+                intent_is_present = False
+            except OSError:
+                intent_is_present = True
+            else:
+                intent_is_present = True
+            if not intent_is_present:
+                _restore_legacy_state_root(
+                    state_root,
+                    publisher_uid=publisher_user.pw_uid,
+                    publisher_gid=publisher_group.gr_gid,
+                )
+        if legacy_lock_descriptor is not None:
+            os.close(legacy_lock_descriptor)
+        os.close(lock_descriptor)
+        if newswire_lock_descriptor is not None:
+            os.close(newswire_lock_descriptor)
+
+
+def main(argv: list[str] | None = None) -> int:
+    try:
+        document = perform_rotation(_parser().parse_args(argv))
+    except (RotationError, KeyError, UnicodeDecodeError) as exc:
+        print(f"base rotation refused: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(document, sort_keys=True, separators=(",", ":")))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

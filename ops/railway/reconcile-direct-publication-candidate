@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Any
 
 STATE_ROOT = Path(os.environ.get("PALIMPSEST_RAILWAY_STATE_ROOT", "/var/lib/palimpsest/railway-publication"))
+CONTROL_ROOT = Path(os.environ.get("PALIMPSEST_RAILWAY_CONTROL_ROOT", "/var/lib/palimpsest/railway-control"))
+PUBLICATION_LOCK = CONTROL_ROOT / "publish.lock"
 SUCCESS_RECEIPT = STATE_ROOT / "latest-success.json"
 CANDIDATE_JOURNAL = STATE_ROOT / "pending-candidate.json"
 BASE_PIN = Path(os.environ.get("PALIMPSEST_RAILWAY_BASE_FILE", "/etc/palimpsest/railway-publication-base.json"))
@@ -167,7 +169,7 @@ def _stable_metadata(metadata: os.stat_result) -> tuple[int, ...]:
     )
 
 
-def _read(path: Path, *, uid: int, gid: int, mode: int, maximum: int = MAX_JSON, empty: bool = False) -> bytes:
+def _read(path: Path, *, uid: int, gid: int, mode: int, maximum: int = MAX_JSON, empty: bool = False, single_link: bool = False) -> bytes:
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     except OSError as exc:
@@ -179,6 +181,7 @@ def _read(path: Path, *, uid: int, gid: int, mode: int, maximum: int = MAX_JSON,
             or metadata.st_uid != uid
             or metadata.st_gid != gid
             or stat.S_IMODE(metadata.st_mode) != mode
+            or (single_link and metadata.st_nlink != 1)
             or metadata.st_size > maximum
             or (metadata.st_size == 0 and not empty)
         ):
@@ -194,7 +197,12 @@ def _read(path: Path, *, uid: int, gid: int, mode: int, maximum: int = MAX_JSON,
         raw = b"".join(chunks)
         if len(raw) > maximum or (not raw and not empty):
             raise ReconciliationError(f"unsafe byte size for {path}")
-        if _stable_metadata(os.fstat(descriptor)) != _stable_metadata(metadata):
+        pathname = os.stat(path, follow_symlinks=False)
+        if (
+            _stable_metadata(os.fstat(descriptor)) != _stable_metadata(metadata)
+            or metadata.st_dev != pathname.st_dev
+            or metadata.st_ino != pathname.st_ino
+        ):
             raise ReconciliationError(f"metadata changed while reading {path}")
         return raw
     finally:
@@ -1416,8 +1424,9 @@ def reconcile() -> dict[str, Any]:
         raise ReconciliationError("publisher user/group identity is inconsistent")
     uid, gid = publisher.pw_uid, group.gr_gid
     _directory(STATE_ROOT, uid=uid, gid=gid)
-    lock_path = STATE_ROOT / "publish.lock"
-    _read(lock_path, uid=uid, gid=gid, mode=0o600, maximum=64, empty=True)
+    _directory(CONTROL_ROOT, uid=ROOT_UID, gid=gid, mode=0o750)
+    lock_path = PUBLICATION_LOCK
+    _read(lock_path, uid=ROOT_UID, gid=gid, mode=0o640, maximum=64, empty=True, single_link=True)
     tokens = [(name, os.environ.get(name, "")) for name in ("RAILWAY_TOKEN", "RAILWAY_API_TOKEN") if os.environ.get(name)]
     if len(tokens) != 1:
         raise ReconciliationError("exactly one Railway automation token is required")
@@ -1425,7 +1434,7 @@ def reconcile() -> dict[str, Any]:
     os.environ.pop("RAILWAY_TOKEN", None)
     os.environ.pop("RAILWAY_API_TOKEN", None)
 
-    lock = os.open(lock_path, os.O_RDWR | os.O_NOFOLLOW)
+    lock = os.open(lock_path, os.O_RDONLY | os.O_NOFOLLOW)
     try:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)

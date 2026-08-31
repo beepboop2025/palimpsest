@@ -21,6 +21,79 @@ Files this runbook uses (all committed):
 
 ---
 
+## Current direct-publication successor-base transaction
+
+The current public release route is GitHub source storage → Hetzner scheduled
+build/release orchestration → Railway static runtime. GitHub Actions are not
+the production authority for this lane. A reviewed public-main code advance
+does not require moving the canonical host checkout or changing
+`/etc/palimpsest/deployed-commit`; rotate only the direct publisher's public
+base with `ops/railway/rotate-direct-publication-base`.
+
+This is a zero-quiesce transaction. Do **not** create the continuity
+maintenance hold and do not disable or stop the publisher, watchdog, or
+continuity timers: a base-only rotation cannot produce the full protected host
+release receipt that `maintenance-end` requires. Install only the previously
+unused rotation-helper path as a bootstrap, then let that helper create and
+acquire the root-owned nonblocking
+`/var/lib/palimpsest/railway-control/publish.lock`. On the first v1 to v2
+rotation it also acquires the legacy state-root lock and seals that namespace.
+Before changing an installed byte it persists
+`/var/lib/palimpsest/railway-control/rotation-intent.json`. While holding the
+interlock it installs and fsyncs the complete 14-artifact executable/unit
+contract, reloads systemd, archives the v1 anchor/current pin/current v2
+receipt/live manifest bytes/Railway topology under the root control tree, and
+atomically replaces the base pin. A scheduled publisher activation during
+this interval coalesces on the same lock.
+The event-analysis service must be loaded and inactive before installation and
+again at the pin boundary. The helper holds the collector's persistent
+`/var/lib/palimpsest/newswire/newswire.lock` across both checks and the pin
+write, so evidence-wire `OnSuccess` cannot start an old wrapper between them.
+
+Mandatory admission and closure checks are:
+
+1. `T` is the exact fetched public `origin/main` tip and is a strict descendant
+   of the current public base.
+2. The canonical checkout and `/etc/palimpsest/deployed-commit` still equal the
+   host identity bound by the current pin; neither is changed by rotation.
+3. `pending-candidate.json`, `pending-preparation.json`, and the root DATA HOLD
+   are absent both at admission and at the final pin boundary, and
+   `publish.lock` is acquired nonblocking.
+4. The latest receipt is a same-generation
+   `palimpsest.hetzner-railway-publication.v2` receipt; both live origins serve
+   its exact manifest bytes and its Railway deployment is the singular active
+   static deployment.
+   The durable intent binds that receipt, both manifest hashes, and the raw
+   topology hash; a retry cannot substitute newer predecessor evidence.
+5. Every target publisher/helper/validator/unit blob equals Git `T`. The
+   original v1 pin, immediately prior pin and receipt, both manifests and raw
+   topology are retained in root-owned content-addressed history.
+6. After pin replacement, run one event-analysis cycle and prove its journal
+   names `T`, then run one publisher cycle. Do not call `T` live until
+   its new receipt matches the new pin SHA, both origins serve the new release,
+   and the direct watchdog is healthy while all three timers remain enabled
+   and active.
+
+The successor systemd units use a strict, non-optional `ReadOnlyPaths=` mount
+for `/var/lib/palimpsest/railway-control`. This is safe only because the helper
+creates and authenticates that directory before installing or reloading those
+units; its later absence is a fail-closed startup error.
+
+If the helper exits after preparing the transaction, leave timers enabled and
+do not delete its intent or proof files. The successor-aware publisher refuses
+all mutation while the root intent exists; on the first v1 to v2 failure the
+helper also leaves the legacy publisher state root sealed until the exact retry
+closes the pin and clears the intent. Re-run the same exact `T` transaction;
+the root intent binds its target and predecessor before installation, while
+the append-only generation/target/predecessor-receipt record binds closure.
+Retry refuses a different target, predecessor, installed digest, or live
+topology; an advanced public `main` is accepted only when the prepared `T`
+remains its ancestor. The exact command
+sequence, private environment invocation, v2 schema and proof probes are in
+[`docs/HETZNER-RAILWAY-CONTINUOUS-PUBLICATION.md`](../docs/HETZNER-RAILWAY-CONTINUOUS-PUBLICATION.md#repeatable-successor-base-rotation-without-quiescence).
+
+---
+
 ## 0. Sizing and cost
 
 | Workload | Box | Specs | Approx / mo |
