@@ -28,14 +28,17 @@ cause those layers to abstain.
 During the 2026-08-30 direct-publication transition, the protected canonical
 checkout intentionally remains on its predecessor. Live event analysis must
 therefore enter through `/usr/local/sbin/palimpsest-event-analysis-live`. The
-wrapper accepts only the closed root-controlled publication-base pin with
-SHA-256
+wrapper accepts the closed root-controlled v1 pin with SHA-256
 `255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97` and
-target `4957595735fd86fa57217309749961e1a1e0f05d`. It proves that commit is a
-local ancestor of the reviewed `origin/main`, creates a bounded private
-`git archive` materialization, and runs the analyzer from those exact bytes.
-It never fetches, changes a ref, checks out a tree, or writes Git metadata.
-The materialization is removed after every success or failure.
+target `4957595735fd86fa57217309749961e1a1e0f05d`, or a closed v2 successor
+whose complete content-addressed predecessor chain resolves back to that exact
+anchor. Every v2 generation also authenticates the installed wrapper, its
+service and publish drop-in, the other publisher/watchdog control artifacts,
+and root-owned rotation evidence. It proves the active target is a local
+ancestor of reviewed `origin/main`, creates a bounded private `git archive`
+materialization, and runs the analyzer from those exact bytes. It never
+fetches, changes a ref, checks out a tree, or writes Git metadata. The
+materialization is removed after every success or failure.
 
 The Common Crawl context timer can fire and still leave
 `archive-news-context.json` untouched: `ExecStartPre` `cmp -s REVISION
@@ -48,6 +51,10 @@ The scheduled command holds an exclusive lease on the persistent mode-0600
 `newswire.lock` for the complete attempt, including the in-flight receipt and
 terminal publication. The node backup takes a shared lease on the same inode,
 so it cannot mix latest, lineage, and status files from different attempts.
+The root publication-base rotation helper also takes this lease nonblocking
+before admitting an inactive event wrapper and retains it through pin
+replacement. This prevents evidence-wire `OnSuccess` from launching a legacy
+wrapper inside the first v1-to-v2 transaction window.
 
 The systemd unit retries a failed attempt after two minutes, but permits only
 three starts in ten minutes. The five-minute production timer remains the
@@ -55,7 +62,7 @@ long-term recovery boundary after that bounded retry budget is exhausted.
 
 ## Install
 
-For this incident, install the wrapper, unit, and exact Railway success-trigger
+For the original v1 incident bootstrap only, install the wrapper, unit, and exact Railway success-trigger
 drop-in from a separately verified clean release worktree—not from the stale
 protected checkout. Bind every staged byte to an explicitly reviewed commit
 before installation. `git hash-object` does not write an object unless `-w` is
@@ -122,7 +129,10 @@ The analyzer receives only an exclusive mode-`0600` stage path. The wrapper
 admits a bounded, nonempty, closed-schema bundle only when its wire path and
 clock match the input and it contains at least one event. It then changes the
 stage to mode `0640`, fsyncs it, atomically replaces the public latest file,
-and fsyncs the containing directory. Analyzer errors or invalid partial output
+and fsyncs the containing directory. Immediately before replacement it takes a
+shared lease on `/var/lib/palimpsest/railway-control/publish.lock` and re-reads
+the exact pin; an active mutation or changed pin discards the stage. Analyzer
+errors or invalid partial output
 remove only that owned stage and preserve the prior latest file.
 
 ```bash

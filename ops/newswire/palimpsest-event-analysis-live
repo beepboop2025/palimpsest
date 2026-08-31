@@ -1,15 +1,17 @@
 #!/usr/bin/python3
-"""Run live event analysis from the incident-scoped publication base.
+"""Run live event analysis from the authenticated publication-base chain.
 
 The protected host checkout deliberately remains on the pre-transition commit.
-This wrapper reads the root-controlled publication-base pin, proves that exact
-commit against the local public-main ref, materializes only the analyzer's
-runtime paths with ``git archive``, and never checks out or updates a Git ref.
+This wrapper reads the root-controlled publication-base pin, proves every base
+rotation back to the exact reviewed incident anchor, materializes only the
+active analyzer runtime paths with ``git archive``, and never checks out or
+updates a Git ref.
 """
 
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
 import io
 import json
@@ -27,9 +29,11 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 
-# This pin closes one reviewed incident. A new transition must ship a reviewed
-# wrapper with new constants; it must not silently broaden this authority.
+# The exact v1 pin remains the immutable trust anchor.  Successor pins are not
+# compiled into this wrapper: they earn authority by extending the archived,
+# content-addressed pin/receipt chain rooted at these constants.
 PIN_SCHEMA = "palimpsest.direct-publication-base-transition.v1"
+SUCCESSOR_PIN_SCHEMA = "palimpsest.direct-publication-base.v2"
 PIN_SHA256 = "255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97"
 PIN_TARGET_SHA = "4957595735fd86fa57217309749961e1a1e0f05d"
 INCIDENT_ID = "palimpsest-direct-lineage-2026-08-30"
@@ -68,7 +72,9 @@ REQUIRED_FILES = frozenset(
         "scripts/event_analysis_live.py",
     }
 )
-MAX_PIN_BYTES = 64 * 1024
+MAX_PIN_BYTES = 256 * 1024
+MAX_HISTORY_BYTES = 8 * 1024 * 1024
+MAX_PIN_GENERATIONS = 256
 MAX_ARCHIVE_BYTES = 32 * 1024 * 1024
 MAX_MATERIALIZED_BYTES = 32 * 1024 * 1024
 MAX_MEMBER_BYTES = 4 * 1024 * 1024
@@ -76,6 +82,7 @@ MAX_FILES = 2048
 MAX_WIRE_BYTES = 64 * 1024 * 1024
 MAX_OUTPUT_BYTES = 64 * 1024 * 1024
 OUTPUT_SCHEMA = "palimpsest-event-analysis-live/v1"
+PUBLICATION_V2_SCHEMA = "palimpsest.hetzner-railway-publication.v2"
 OUTPUT_KEYS = {
     "analyses",
     "automatic_publication",
@@ -101,9 +108,25 @@ class RuntimeConfig:
     readings: Path
     output: Path
     python: Path
+    state_root: Path = Path("/var/lib/palimpsest/railway-publication")
+    control_root: Path = Path("/var/lib/palimpsest/railway-control")
+    installed_continuity_guard: Path = Path("/usr/local/sbin/palimpsest-continuity-guard")
+    installed_continuity_guard_service: Path = Path("/etc/systemd/system/palimpsest-continuity-guard.service")
+    installed_continuity_guard_timer: Path = Path("/etc/systemd/system/palimpsest-continuity-guard.timer")
+    installed_event_analysis_wrapper: Path = Path("/usr/local/sbin/palimpsest-event-analysis-live")
+    installed_event_analysis_service: Path = Path("/etc/systemd/system/palimpsest-event-analysis-live.service")
+    installed_event_analysis_publish_dropin: Path = Path("/etc/systemd/system/palimpsest-event-analysis-live.service.d/90-railway-publish.conf")
+    installed_publisher: Path = Path("/usr/local/sbin/palimpsest-railway-publish")
+    installed_transition_helper: Path = Path("/usr/local/sbin/palimpsest-advance-direct-publication-base")
+    installed_rotation_helper: Path = Path("/usr/local/sbin/palimpsest-rotate-direct-publication-base")
+    installed_reconciler: Path = Path("/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate")
+    installed_watchdog: Path = Path("/usr/local/sbin/palimpsest-direct-watchdog")
+    installed_publisher_service: Path = Path("/etc/systemd/system/palimpsest-railway-publish.service")
+    installed_watchdog_service: Path = Path("/etc/systemd/system/palimpsest-direct-watchdog.service")
+    installed_watchdog_timer: Path = Path("/etc/systemd/system/palimpsest-direct-watchdog.timer")
     temporary_parent: Path | None = None
-    expected_pin_sha256: str = PIN_SHA256
-    expected_target_sha: str = PIN_TARGET_SHA
+    expected_pin_sha256: str | None = None
+    expected_target_sha: str | None = None
     expected_predecessor_sha: str = INCIDENT_BASE_SHA
     expected_remote: str = EXPECTED_REMOTE
     pin_uid: int = 0
@@ -185,6 +208,10 @@ def _read_regular(
             remaining -= len(chunk)
         raw = b"".join(chunks)
         after = os.fstat(descriptor)
+        try:
+            pathname = os.stat(path, follow_symlinks=False)
+        except OSError as exc:
+            raise LiveAnalysisError(f"{label} pathname changed") from exc
         def identity(item: os.stat_result) -> tuple[int, ...]:
             return (
                 item.st_dev,
@@ -196,7 +223,12 @@ def _read_regular(
                 item.st_size,
                 item.st_mtime_ns,
             )
-        if len(raw) > maximum or identity(before) != identity(after):
+        if (
+            len(raw) > maximum
+            or identity(before) != identity(after)
+            or before.st_dev != pathname.st_dev
+            or before.st_ino != pathname.st_ino
+        ):
             raise LiveAnalysisError(f"{label} changed while reading")
         return raw
     finally:
@@ -214,6 +246,185 @@ def _read_pin(path: Path, *, uid: int, gid: int) -> bytes:
     )
 
 
+def _acquire_publication_boundary(
+    config: RuntimeConfig, *, pin_gid: int
+) -> int:
+    """Hold the shared root interlock across the final pin check and replace."""
+
+    path = config.control_root / "publish.lock"
+    flags = os.O_RDONLY | os.O_CLOEXEC
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        descriptor = os.open(path, flags)
+    except OSError as exc:
+        raise LiveAnalysisError("cannot open root publication lock") from exc
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != config.pin_uid
+            or before.st_gid != pin_gid
+            or stat.S_IMODE(before.st_mode) != 0o640
+            or before.st_nlink != 1
+        ):
+            raise LiveAnalysisError("root publication lock metadata is unsafe")
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise LiveAnalysisError("publication mutation is active") from exc
+        after = os.fstat(descriptor)
+        pathname = os.stat(path, follow_symlinks=False)
+        if (
+            _file_identity(before) != _file_identity(after)
+            or before.st_dev != pathname.st_dev
+            or before.st_ino != pathname.st_ino
+        ):
+            raise LiveAnalysisError("root publication lock changed while locking")
+        return descriptor
+    except (OSError, LiveAnalysisError):
+        os.close(descriptor)
+        raise
+
+
+def _validate_directory(
+    path: Path, *, label: str, uid: int, gid: int, mode: int
+) -> None:
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise LiveAnalysisError(f"cannot inspect {label}") from exc
+    if (
+        not path.is_absolute()
+        or path.is_symlink()
+        or not stat.S_ISDIR(metadata.st_mode)
+        or metadata.st_uid != uid
+        or metadata.st_gid != gid
+        or stat.S_IMODE(metadata.st_mode) != mode
+    ):
+        raise LiveAnalysisError(f"{label} metadata is unsafe")
+
+
+def _history_root(config: RuntimeConfig) -> Path:
+    return config.control_root / "base-rotation-history"
+
+
+def _validate_history_layout(config: RuntimeConfig, *, pin_gid: int) -> Path:
+    _validate_directory(
+        config.control_root,
+        label="rotation control root",
+        uid=config.pin_uid,
+        gid=pin_gid,
+        mode=0o750,
+    )
+    root = _history_root(config)
+    _validate_directory(
+        root,
+        label="base-rotation history root",
+        uid=config.pin_uid,
+        gid=pin_gid,
+        mode=0o750,
+    )
+    for category in (
+        "pins",
+        "receipts",
+        "manifests",
+        "manifests/provider",
+        "manifests/public",
+        "topologies",
+        "rotations",
+    ):
+        _validate_directory(
+            root / category,
+            label=f"base-rotation {category} directory",
+            uid=config.pin_uid,
+            gid=pin_gid,
+            mode=0o750,
+        )
+    return root
+
+
+def _validate_installed_artifacts(
+    config: RuntimeConfig, installed: dict[str, Any]
+) -> None:
+    paths = {
+        "continuity_guard_sha256": (config.installed_continuity_guard, 0o755),
+        "continuity_guard_service_sha256": (
+            config.installed_continuity_guard_service,
+            0o644,
+        ),
+        "continuity_guard_timer_sha256": (
+            config.installed_continuity_guard_timer,
+            0o644,
+        ),
+        "event_analysis_publish_dropin_sha256": (
+            config.installed_event_analysis_publish_dropin,
+            0o644,
+        ),
+        "event_analysis_service_sha256": (
+            config.installed_event_analysis_service,
+            0o644,
+        ),
+        "event_analysis_wrapper_sha256": (
+            config.installed_event_analysis_wrapper,
+            0o755,
+        ),
+        "publisher_sha256": (config.installed_publisher, 0o755),
+        "transition_helper_sha256": (config.installed_transition_helper, 0o755),
+        "rotation_helper_sha256": (config.installed_rotation_helper, 0o755),
+        "reconciler_sha256": (config.installed_reconciler, 0o755),
+        "watchdog_sha256": (config.installed_watchdog, 0o755),
+        "publisher_service_sha256": (config.installed_publisher_service, 0o644),
+        "watchdog_service_sha256": (config.installed_watchdog_service, 0o644),
+        "watchdog_timer_sha256": (config.installed_watchdog_timer, 0o644),
+    }
+    _exact(installed, set(paths), "publication-base installed proof")
+    for key, (path, mode) in paths.items():
+        expected = _sha(installed.get(key), f"publication-base installed {key}")
+        raw = _read_regular(
+            path,
+            label=f"installed publication artifact {path}",
+            uid=0,
+            gid=0,
+            mode=mode,
+            maximum=4 * 1024 * 1024,
+        )
+        if hashlib.sha256(raw).hexdigest() != expected:
+            raise LiveAnalysisError(f"installed publication artifact changed: {path}")
+
+
+def _read_history_artifact(
+    config: RuntimeConfig,
+    *,
+    history_root: Path,
+    category: str,
+    digest: str,
+    claimed_path: Any,
+    label: str,
+    maximum: int = MAX_HISTORY_BYTES,
+    origin: str | None = None,
+) -> bytes:
+    parent = history_root / category
+    if origin is not None:
+        if origin not in {"provider", "public"}:
+            raise LiveAnalysisError(f"{label} origin is invalid")
+        parent /= origin
+    expected = parent / f"{digest}.json"
+    if claimed_path != str(expected):
+        raise LiveAnalysisError(f"{label} path is not content-addressed")
+    raw = _read_regular(
+        expected,
+        label=label,
+        uid=config.pin_uid,
+        gid=os.getegid() if config.pin_gid < 0 else config.pin_gid,
+        mode=0o640,
+        maximum=maximum,
+    )
+    if hashlib.sha256(raw).hexdigest() != digest:
+        raise LiveAnalysisError(f"{label} digest changed")
+    return raw
+
+
 def _sha(value: Any, label: str) -> str:
     if type(value) is not str or SHA256.fullmatch(value) is None:
         raise LiveAnalysisError(f"{label} is not a SHA-256 digest")
@@ -226,7 +437,7 @@ def _sha40(value: Any, label: str) -> str:
     return value
 
 
-def _validate_pin(
+def _validate_legacy_pin(
     raw: bytes, *, expected_sha256: str, expected_target_sha: str
 ) -> dict[str, Any]:
     if hashlib.sha256(raw).hexdigest() != expected_sha256:
@@ -318,7 +529,687 @@ def _validate_pin(
     return pin
 
 
-def _validate_deployed_commit(config: RuntimeConfig) -> None:
+def _validate_manifest_history_proof(
+    config: RuntimeConfig,
+    proof: Any,
+    *,
+    history_root: Path,
+    release_sha: str,
+    tree_sha256: str,
+    file_count: int,
+    total_bytes: int,
+    label: str,
+    origin: str,
+) -> bytes:
+    if type(proof) is not dict:
+        raise LiveAnalysisError(f"{label} proof is invalid")
+    assert isinstance(proof, dict)
+    _exact(proof, {"bytes", "path", "sha256"}, f"{label} proof")
+    digest = _sha(proof.get("sha256"), f"{label} digest")
+    byte_count = proof.get("bytes")
+    if type(byte_count) is not int or byte_count < 1:
+        raise LiveAnalysisError(f"{label} byte count is invalid")
+    raw = _read_history_artifact(
+        config,
+        history_root=history_root,
+        category="manifests",
+        digest=digest,
+        claimed_path=proof.get("path"),
+        label=label,
+        origin=origin,
+    )
+    if len(raw) != byte_count:
+        raise LiveAnalysisError(f"{label} byte count changed")
+    manifest = _strict_object(raw, label)
+    if (
+        manifest.get("schema_version")
+        != "palimpsest.railway-static-release.v1"
+        or manifest.get("state") != "artifact_ready"
+        or manifest.get("source_commit") != release_sha
+        or manifest.get("tree_sha256") != tree_sha256
+        or manifest.get("file_count") != file_count
+        or manifest.get("total_bytes") != total_bytes
+        or manifest.get("deployment_source") != "local-git-archive"
+        or manifest.get("github_required") is not False
+    ):
+        raise LiveAnalysisError(f"{label} identity is invalid")
+    return raw
+
+
+def _topology_edges(value: Any, label: str) -> list[dict[str, Any]]:
+    if type(value) is not dict or set(value) != {"edges"}:
+        raise LiveAnalysisError(f"rotation topology {label} is invalid")
+    rows = value.get("edges")
+    if type(rows) is not list or len(rows) > 100:
+        raise LiveAnalysisError(f"rotation topology {label} is invalid")
+    nodes: list[dict[str, Any]] = []
+    for row in rows:
+        node = row.get("node") if type(row) is dict else None
+        if type(node) is not dict:
+            raise LiveAnalysisError(f"rotation topology {label} is invalid")
+        nodes.append(node)
+    return nodes
+
+
+def _one_topology_node(
+    rows: list[dict[str, Any]], *, key: str, expected: str, label: str
+) -> dict[str, Any]:
+    matches = [row for row in rows if row.get(key) == expected]
+    if len(matches) != 1:
+        raise LiveAnalysisError(f"rotation topology {label} is not singular")
+    return matches[0]
+
+
+def _validate_rotation_topology(
+    config: RuntimeConfig,
+    railway: Any,
+    *,
+    history_root: Path,
+    expected_deployment_id: str,
+) -> None:
+    if type(railway) is not dict:
+        raise LiveAnalysisError("publication-base Railway proof is invalid")
+    assert isinstance(railway, dict)
+    _exact(
+        railway,
+        {
+            "created_at",
+            "deployment_id",
+            "environment_id",
+            "image_digest",
+            "project_id",
+            "reason",
+            "service_id",
+            "topology",
+        },
+        "publication-base Railway proof",
+    )
+    for key in ("project_id", "environment_id", "service_id", "deployment_id"):
+        value = railway.get(key)
+        if type(value) is not str or UUID.fullmatch(value) is None:
+            raise LiveAnalysisError(f"publication-base Railway {key} is invalid")
+    if railway["deployment_id"] != expected_deployment_id:
+        raise LiveAnalysisError("publication-base Railway deployment changed")
+    if (
+        type(railway.get("image_digest")) is not str
+        or re.fullmatch(r"sha256:[0-9a-f]{64}", railway["image_digest"]) is None
+        or railway.get("reason") not in {"deploy", "deploymentRollback"}
+        or type(railway.get("created_at")) is not str
+        or len(railway["created_at"]) > 64
+    ):
+        raise LiveAnalysisError("publication-base Railway metadata is invalid")
+    topology = railway.get("topology")
+    if type(topology) is not dict:
+        raise LiveAnalysisError("publication-base topology proof is invalid")
+    assert isinstance(topology, dict)
+    _exact(topology, {"bytes", "path", "sha256"}, "publication-base topology")
+    digest = _sha(topology.get("sha256"), "publication-base topology digest")
+    byte_count = topology.get("bytes")
+    if type(byte_count) is not int or byte_count < 1:
+        raise LiveAnalysisError("publication-base topology byte count is invalid")
+    raw = _read_history_artifact(
+        config,
+        history_root=history_root,
+        category="topologies",
+        digest=digest,
+        claimed_path=topology.get("path"),
+        label="publication-base topology",
+        maximum=2 * 1024 * 1024,
+    )
+    if len(raw) != byte_count:
+        raise LiveAnalysisError("publication-base topology byte count changed")
+    document = _strict_object(raw, "publication-base topology")
+    if document.get("id") != railway["project_id"]:
+        raise LiveAnalysisError("publication-base topology project changed")
+    service = _one_topology_node(
+        _topology_edges(document.get("services"), "services"),
+        key="id",
+        expected=railway["service_id"],
+        label="service",
+    )
+    if service.get("name") != "palimpsest-publication":
+        raise LiveAnalysisError("publication-base topology service changed")
+    environment = _one_topology_node(
+        _topology_edges(document.get("environments"), "environments"),
+        key="id",
+        expected=railway["environment_id"],
+        label="environment",
+    )
+    instance = _one_topology_node(
+        _topology_edges(environment.get("serviceInstances"), "instances"),
+        key="serviceId",
+        expected=railway["service_id"],
+        label="service instance",
+    )
+    latest = instance.get("latestDeployment")
+    metadata = latest.get("meta") if type(latest) is dict else None
+    if (
+        type(latest) is not dict
+        or latest.get("id") != railway["deployment_id"]
+        or latest.get("status") != "SUCCESS"
+        or latest.get("createdAt") != railway["created_at"]
+        or type(metadata) is not dict
+        or metadata.get("imageDigest") != railway["image_digest"]
+        or metadata.get("reason") != railway["reason"]
+    ):
+        raise LiveAnalysisError("publication-base topology deployment changed")
+
+
+def _validate_archived_publication_receipt(
+    config: RuntimeConfig,
+    proof: Any,
+    *,
+    history_root: Path,
+    predecessor_pin_sha256: str,
+    predecessor_pin_schema: str,
+    predecessor_target_sha: str,
+    expected_host_sha: str,
+) -> tuple[dict[str, Any], bytes]:
+    if type(proof) is not dict:
+        raise LiveAnalysisError("publication-base predecessor receipt is invalid")
+    assert isinstance(proof, dict)
+    _exact(
+        proof,
+        {
+            "base_sha",
+            "deployment_id",
+            "host_deployed_sha",
+            "input_sha256",
+            "manifest_sha256",
+            "path",
+            "publication_base_sha256",
+            "release_sha",
+            "schema_version",
+            "sha256",
+            "tree_sha256",
+            "wire_generated_at",
+        },
+        "publication-base predecessor receipt",
+    )
+    digest = _sha(proof.get("sha256"), "predecessor receipt digest")
+    raw = _read_history_artifact(
+        config,
+        history_root=history_root,
+        category="receipts",
+        digest=digest,
+        claimed_path=proof.get("path"),
+        label="publication-base predecessor receipt",
+        maximum=MAX_PIN_BYTES,
+    )
+    receipt = _strict_object(raw, "publication-base predecessor receipt")
+    _exact(
+        receipt,
+        {
+            "base_sha",
+            "candidate",
+            "github_actions_used",
+            "host_deployed_sha",
+            "input_sha256",
+            "live_manifest",
+            "origins",
+            "predecessor",
+            "publication_base",
+            "railway",
+            "recorded_at",
+            "release_bundle",
+            "release_sha",
+            "schema_version",
+            "status",
+            "wire_generated_at",
+        },
+        "archived publication receipt",
+    )
+    publication_base = receipt.get("publication_base")
+    live_manifest = receipt.get("live_manifest")
+    railway = receipt.get("railway")
+    origins = receipt.get("origins")
+    if not all(
+        type(value) is dict
+        for value in (publication_base, live_manifest, railway, origins)
+    ):
+        raise LiveAnalysisError("archived publication receipt proof is invalid")
+    assert isinstance(publication_base, dict)
+    assert isinstance(live_manifest, dict)
+    assert isinstance(railway, dict)
+    assert isinstance(origins, dict)
+    _exact(
+        publication_base,
+        {"kind", "path", "sha256", "target_sha"},
+        "archived receipt publication base",
+    )
+    _exact(
+        live_manifest,
+        {"bytes", "file_count", "path", "sha256", "total_bytes", "tree_sha256"},
+        "archived receipt live manifest",
+    )
+    _exact(railway, {"deployment_id", "status"}, "archived receipt Railway proof")
+    _exact(origins, {"provider", "public"}, "archived receipt origins")
+    expected_kind = (
+        "verified_transition"
+        if predecessor_pin_schema == PIN_SCHEMA
+        else "verified_successor"
+    )
+    for key in (
+        "sha256",
+        "publication_base_sha256",
+        "input_sha256",
+        "manifest_sha256",
+        "tree_sha256",
+    ):
+        _sha(proof.get(key), f"predecessor receipt {key}")
+    for key in ("base_sha", "host_deployed_sha", "release_sha"):
+        _sha40(proof.get(key), f"predecessor receipt {key}")
+    if (
+        proof.get("schema_version") != PUBLICATION_V2_SCHEMA
+        or receipt.get("schema_version") != PUBLICATION_V2_SCHEMA
+        or receipt.get("status") != "verified"
+        or receipt.get("github_actions_used") is not False
+        or proof.get("base_sha") != predecessor_target_sha
+        or proof.get("publication_base_sha256") != predecessor_pin_sha256
+        or proof.get("host_deployed_sha") != expected_host_sha
+        or proof.get("wire_generated_at") != receipt.get("wire_generated_at")
+        or type(proof.get("wire_generated_at")) is not str
+        or TIMESTAMP.fullmatch(proof["wire_generated_at"]) is None
+        or publication_base.get("sha256") != predecessor_pin_sha256
+        or publication_base.get("target_sha") != predecessor_target_sha
+        or publication_base.get("kind") != expected_kind
+        or publication_base.get("path") != str(config.base_pin)
+        or receipt.get("base_sha") != predecessor_target_sha
+        or receipt.get("host_deployed_sha") != expected_host_sha
+        or proof.get("release_sha") != receipt.get("release_sha")
+        or proof.get("input_sha256") != receipt.get("input_sha256")
+        or proof.get("manifest_sha256") != live_manifest.get("sha256")
+        or proof.get("tree_sha256") != live_manifest.get("tree_sha256")
+        or proof.get("deployment_id") != railway.get("deployment_id")
+        or railway.get("status") != "SUCCESS"
+        or origins
+        != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}
+    ):
+        raise LiveAnalysisError("publication-base predecessor receipt changed")
+    deployment_id = proof.get("deployment_id")
+    if type(deployment_id) is not str or UUID.fullmatch(deployment_id) is None:
+        raise LiveAnalysisError("predecessor receipt deployment ID is invalid")
+    return receipt, raw
+
+
+def _validate_rotation_record(
+    config: RuntimeConfig,
+    pin: dict[str, Any],
+    pin_raw: bytes,
+    *,
+    history_root: Path,
+    predecessor_pin_sha256: str,
+    predecessor_receipt_sha256: str,
+) -> None:
+    expected = history_root / "rotations" / (
+        f"{pin['generation']}-{pin['target']['base_sha']}-"
+        f"{predecessor_receipt_sha256}.json"
+    )
+    if pin.get("rotation_record_path") != str(expected):
+        raise LiveAnalysisError("publication-base rotation-record path is not canonical")
+    raw = _read_regular(
+        expected,
+        label="publication-base rotation record",
+        uid=config.pin_uid,
+        gid=os.getegid() if config.pin_gid < 0 else config.pin_gid,
+        mode=0o640,
+        maximum=2 * MAX_PIN_BYTES,
+    )
+    record = _strict_object(raw, "publication-base rotation record")
+    _exact(
+        record,
+        {
+            "generation",
+            "next_pin",
+            "next_pin_sha256",
+            "predecessor_pin_sha256",
+            "predecessor_receipt_sha256",
+            "recorded_at",
+            "schema_version",
+            "status",
+            "target_base_sha",
+        },
+        "publication-base rotation record",
+    )
+    if (
+        record.get("schema_version")
+        != "palimpsest.direct-publication-base-rotation.v1"
+        or record.get("status") != "verified"
+        or record.get("generation") != pin["generation"]
+        or record.get("recorded_at") != pin["recorded_at"]
+        or record.get("target_base_sha") != pin["target"]["base_sha"]
+        or record.get("predecessor_pin_sha256") != predecessor_pin_sha256
+        or record.get("predecessor_receipt_sha256")
+        != predecessor_receipt_sha256
+        or record.get("next_pin") != pin
+        or record.get("next_pin_sha256") != hashlib.sha256(pin_raw).hexdigest()
+    ):
+        raise LiveAnalysisError("publication-base rotation record changed")
+
+
+def _validate_successor_pin(
+    config: RuntimeConfig,
+    raw: bytes,
+    *,
+    history_root: Path,
+    expected_digest: str | None,
+    active: bool,
+    seen: set[str],
+) -> tuple[dict[str, Any], list[str]]:
+    digest = hashlib.sha256(raw).hexdigest()
+    if expected_digest is not None and digest != expected_digest:
+        raise LiveAnalysisError("publication-base pin digest changed")
+    if digest in seen:
+        raise LiveAnalysisError("publication-base pin chain contains a loop")
+    seen.add(digest)
+    pin = _strict_object(raw, "publication-base pin")
+    _exact(
+        pin,
+        {
+            "anchor",
+            "generation",
+            "host",
+            "installed",
+            "live",
+            "origins",
+            "predecessor",
+            "railway",
+            "recorded_at",
+            "rotation_record_path",
+            "schema_version",
+            "status",
+            "target",
+        },
+        "publication-base pin",
+    )
+    generation = pin.get("generation")
+    if (
+        pin.get("schema_version") != SUCCESSOR_PIN_SCHEMA
+        or pin.get("status") != "verified"
+        or type(generation) is not int
+        or isinstance(generation, bool)
+        or generation < 1
+        or generation > MAX_PIN_GENERATIONS
+        or type(pin.get("recorded_at")) is not str
+        or TIMESTAMP.fullmatch(pin["recorded_at"]) is None
+    ):
+        raise LiveAnalysisError("publication-base successor identity is invalid")
+
+    anchor = pin.get("anchor")
+    predecessor = pin.get("predecessor")
+    host = pin.get("host")
+    installed = pin.get("installed")
+    live = pin.get("live")
+    origins = pin.get("origins")
+    target = pin.get("target")
+    if not all(
+        type(value) is dict
+        for value in (anchor, predecessor, host, installed, live, origins, target)
+    ):
+        raise LiveAnalysisError("publication-base successor proof is invalid")
+    assert isinstance(anchor, dict)
+    assert isinstance(predecessor, dict)
+    assert isinstance(host, dict)
+    assert isinstance(installed, dict)
+    assert isinstance(live, dict)
+    assert isinstance(origins, dict)
+    assert isinstance(target, dict)
+
+    _exact(
+        anchor,
+        {"path", "schema_version", "sha256", "target_sha"},
+        "publication-base anchor",
+    )
+    if (
+        anchor.get("schema_version") != PIN_SCHEMA
+        or anchor.get("sha256") != PIN_SHA256
+        or anchor.get("target_sha") != PIN_TARGET_SHA
+    ):
+        raise LiveAnalysisError("publication-base anchor is not the reviewed v1 pin")
+    anchor_raw = _read_history_artifact(
+        config,
+        history_root=history_root,
+        category="pins",
+        digest=PIN_SHA256,
+        claimed_path=anchor.get("path"),
+        label="publication-base v1 anchor",
+        maximum=MAX_PIN_BYTES,
+    )
+    anchor_pin = _validate_legacy_pin(
+        anchor_raw,
+        expected_sha256=PIN_SHA256,
+        expected_target_sha=PIN_TARGET_SHA,
+    )
+
+    _exact(host, {"canonical_head", "deployed_commit"}, "publication-base host")
+    anchor_previous = anchor_pin["previous"]
+    if host != {
+        "canonical_head": anchor_previous["canonical_head"],
+        "deployed_commit": anchor_previous["deployed_commit"],
+    }:
+        raise LiveAnalysisError("publication-base host identity changed")
+    _exact(target, {"base_sha", "public_main_sha"}, "publication-base target")
+    target_sha = _sha40(target.get("base_sha"), "publication-base target")
+    if target.get("public_main_sha") != target_sha:
+        raise LiveAnalysisError("publication-base target is not public main")
+    _exact(origins, {"provider", "public"}, "publication-base origins")
+    if origins != {"provider": PROVIDER_ORIGIN, "public": PUBLIC_ORIGIN}:
+        raise LiveAnalysisError("publication-base origins are not canonical")
+    installed_keys = {
+        "continuity_guard_service_sha256",
+        "continuity_guard_sha256",
+        "continuity_guard_timer_sha256",
+        "event_analysis_publish_dropin_sha256",
+        "event_analysis_service_sha256",
+        "event_analysis_wrapper_sha256",
+        "publisher_service_sha256",
+        "publisher_sha256",
+        "reconciler_sha256",
+        "rotation_helper_sha256",
+        "transition_helper_sha256",
+        "watchdog_service_sha256",
+        "watchdog_sha256",
+        "watchdog_timer_sha256",
+    }
+    _exact(installed, installed_keys, "publication-base installed proof")
+    for key in installed_keys:
+        _sha(installed.get(key), f"publication-base installed {key}")
+    if active:
+        _validate_installed_artifacts(config, installed)
+
+    _exact(predecessor, {"pin", "publication_receipt"}, "pin predecessor")
+    pin_proof = predecessor.get("pin")
+    if type(pin_proof) is not dict:
+        raise LiveAnalysisError("publication-base predecessor pin is invalid")
+    assert isinstance(pin_proof, dict)
+    _exact(
+        pin_proof,
+        {"generation", "path", "schema_version", "sha256", "target_sha"},
+        "publication-base predecessor pin",
+    )
+    prior_digest = _sha(pin_proof.get("sha256"), "predecessor pin digest")
+    prior_target = _sha40(pin_proof.get("target_sha"), "predecessor pin target")
+    prior_generation = pin_proof.get("generation")
+    if (
+        type(prior_generation) is not int
+        or isinstance(prior_generation, bool)
+        or prior_generation != generation - 1
+    ):
+        raise LiveAnalysisError("publication-base pin generation is not consecutive")
+    prior_raw = _read_history_artifact(
+        config,
+        history_root=history_root,
+        category="pins",
+        digest=prior_digest,
+        claimed_path=pin_proof.get("path"),
+        label="publication-base predecessor pin",
+        maximum=MAX_PIN_BYTES,
+    )
+    if prior_generation == 0:
+        if (
+            pin_proof.get("schema_version") != PIN_SCHEMA
+            or prior_digest != PIN_SHA256
+            or prior_target != PIN_TARGET_SHA
+        ):
+            raise LiveAnalysisError("first successor does not extend the v1 anchor")
+        _validate_legacy_pin(
+            prior_raw,
+            expected_sha256=PIN_SHA256,
+            expected_target_sha=PIN_TARGET_SHA,
+        )
+        targets = [PIN_TARGET_SHA]
+    else:
+        if pin_proof.get("schema_version") != SUCCESSOR_PIN_SCHEMA:
+            raise LiveAnalysisError("predecessor pin schema is invalid")
+        prior_pin, targets = _validate_successor_pin(
+            config,
+            prior_raw,
+            history_root=history_root,
+            expected_digest=prior_digest,
+            active=False,
+            seen=seen,
+        )
+        if (
+            prior_pin.get("generation") != prior_generation
+            or prior_pin.get("target", {}).get("base_sha") != prior_target
+        ):
+            raise LiveAnalysisError("predecessor pin summary changed")
+
+    receipt, _receipt_raw = _validate_archived_publication_receipt(
+        config,
+        predecessor.get("publication_receipt"),
+        history_root=history_root,
+        predecessor_pin_sha256=prior_digest,
+        predecessor_pin_schema=str(pin_proof["schema_version"]),
+        predecessor_target_sha=prior_target,
+        expected_host_sha=host["deployed_commit"],
+    )
+    _exact(
+        live,
+        {
+            "file_count",
+            "provider_manifest",
+            "public_manifest",
+            "release_sha",
+            "total_bytes",
+            "tree_sha256",
+        },
+        "publication-base live proof",
+    )
+    release_sha = _sha40(live.get("release_sha"), "publication-base live release")
+    tree_sha256 = _sha(live.get("tree_sha256"), "publication-base live tree")
+    file_count = live.get("file_count")
+    total_bytes = live.get("total_bytes")
+    if (
+        type(file_count) is not int
+        or isinstance(file_count, bool)
+        or file_count < 1
+        or type(total_bytes) is not int
+        or isinstance(total_bytes, bool)
+        or total_bytes < 1
+    ):
+        raise LiveAnalysisError("publication-base live size proof is invalid")
+    provider_raw = _validate_manifest_history_proof(
+        config,
+        live.get("provider_manifest"),
+        history_root=history_root,
+        release_sha=release_sha,
+        tree_sha256=tree_sha256,
+        file_count=file_count,
+        total_bytes=total_bytes,
+        label="publication-base provider manifest",
+        origin="provider",
+    )
+    public_raw = _validate_manifest_history_proof(
+        config,
+        live.get("public_manifest"),
+        history_root=history_root,
+        release_sha=release_sha,
+        tree_sha256=tree_sha256,
+        file_count=file_count,
+        total_bytes=total_bytes,
+        label="publication-base public manifest",
+        origin="public",
+    )
+    predecessor_receipt = predecessor["publication_receipt"]
+    if (
+        provider_raw != public_raw
+        or hashlib.sha256(provider_raw).hexdigest()
+        != predecessor_receipt["manifest_sha256"]
+        or release_sha != predecessor_receipt["release_sha"]
+        or tree_sha256 != predecessor_receipt["tree_sha256"]
+        or file_count != receipt["live_manifest"].get("file_count")
+        or total_bytes != receipt["live_manifest"].get("total_bytes")
+    ):
+        raise LiveAnalysisError("publication-base live proof differs from predecessor")
+    _validate_rotation_topology(
+        config,
+        pin.get("railway"),
+        history_root=history_root,
+        expected_deployment_id=predecessor_receipt["deployment_id"],
+    )
+    _validate_rotation_record(
+        config,
+        pin,
+        raw,
+        history_root=history_root,
+        predecessor_pin_sha256=prior_digest,
+        predecessor_receipt_sha256=predecessor_receipt["sha256"],
+    )
+    return pin, [*targets, target_sha]
+
+
+def _validate_active_pin(
+    config: RuntimeConfig, raw: bytes, *, pin_gid: int
+) -> tuple[dict[str, Any], list[str]]:
+    digest = hashlib.sha256(raw).hexdigest()
+    document = _strict_object(raw, "publication-base pin")
+    schema = document.get("schema_version")
+    if schema == PIN_SCHEMA:
+        expected_digest = config.expected_pin_sha256 or PIN_SHA256
+        expected_target = config.expected_target_sha or PIN_TARGET_SHA
+        return (
+            _validate_legacy_pin(
+                raw,
+                expected_sha256=expected_digest,
+                expected_target_sha=expected_target,
+            ),
+            [expected_target],
+        )
+    if schema != SUCCESSOR_PIN_SCHEMA:
+        raise LiveAnalysisError("publication-base pin schema is unsupported")
+    if config.expected_pin_sha256 is not None and digest != config.expected_pin_sha256:
+        raise LiveAnalysisError("publication-base pin hash is not the expected hash")
+    history_root = _validate_history_layout(config, pin_gid=pin_gid)
+    pin, targets = _validate_successor_pin(
+        config,
+        raw,
+        history_root=history_root,
+        expected_digest=digest,
+        active=True,
+        seen=set(),
+    )
+    if (
+        config.expected_target_sha is not None
+        and pin["target"]["base_sha"] != config.expected_target_sha
+    ):
+        raise LiveAnalysisError("publication-base target is not the expected target")
+    return pin, targets
+
+
+def _validate_pin(
+    raw: bytes, *, expected_sha256: str, expected_target_sha: str
+) -> dict[str, Any]:
+    """Compatibility entry point for focused v1-anchor tests."""
+
+    return _validate_legacy_pin(
+        raw,
+        expected_sha256=expected_sha256,
+        expected_target_sha=expected_target_sha,
+    )
+
+
+def _validate_deployed_commit(config: RuntimeConfig, expected_host_sha: str) -> None:
     raw = _read_regular(
         config.deployed_commit,
         label="deployed-commit retirement guard",
@@ -327,11 +1218,9 @@ def _validate_deployed_commit(config: RuntimeConfig) -> None:
         mode=0o644,
         maximum=41,
     )
-    expected = (config.expected_predecessor_sha + "\n").encode("ascii")
+    expected = (expected_host_sha + "\n").encode("ascii")
     if raw != expected:
-        raise LiveAnalysisError(
-            "deployed-commit no longer names the incident predecessor"
-        )
+        raise LiveAnalysisError("deployed-commit no longer names the pinned host")
 
 
 def _git_environment() -> dict[str, str]:
@@ -372,7 +1261,17 @@ def _git(
         ) from exc
 
 
-def _validate_repository(config: RuntimeConfig, target_sha: str) -> dict[str, int]:
+def _validate_repository(
+    config: RuntimeConfig,
+    target_sha: str,
+    *,
+    expected_host_sha: str | None = None,
+    ancestry_targets: list[str] | None = None,
+) -> dict[str, int]:
+    if expected_host_sha is None:
+        expected_host_sha = config.expected_predecessor_sha
+    if ancestry_targets is None:
+        ancestry_targets = [target_sha]
     repository = config.repository
     try:
         metadata = repository.lstat()
@@ -405,10 +1304,8 @@ def _validate_repository(config: RuntimeConfig, target_sha: str) -> dict[str, in
     canonical_head = _git(
         repository, ["rev-parse", "--verify", "HEAD^{commit}"]
     ).stdout.strip()
-    if canonical_head != config.expected_predecessor_sha:
-        raise LiveAnalysisError(
-            "canonical HEAD no longer names the incident predecessor"
-        )
+    if canonical_head != expected_host_sha:
+        raise LiveAnalysisError("canonical HEAD no longer names the pinned host")
     local_target = _git(
         repository, ["rev-parse", "--verify", f"{target_sha}^{{commit}}"]
     ).stdout.strip()
@@ -424,8 +1321,14 @@ def _validate_repository(config: RuntimeConfig, target_sha: str) -> dict[str, in
     )
     _git(
         repository,
-        ["merge-base", "--is-ancestor", config.expected_predecessor_sha, target_sha],
+        ["merge-base", "--is-ancestor", expected_host_sha, target_sha],
     )
+    if not ancestry_targets or ancestry_targets[-1] != target_sha:
+        raise LiveAnalysisError("publication-base ancestry proof is incomplete")
+    for predecessor, successor in zip(ancestry_targets, ancestry_targets[1:]):
+        _sha40(predecessor, "publication-base predecessor target")
+        _sha40(successor, "publication-base successor target")
+        _git(repository, ["merge-base", "--is-ancestor", predecessor, successor])
 
     rows = _git(
         repository,
@@ -904,14 +1807,25 @@ def run(config: RuntimeConfig) -> str:
         raise LiveAnalysisError("live event analysis must not run as root")
     pin_gid = os.getegid() if config.pin_gid < 0 else config.pin_gid
     raw_pin = _read_pin(config.base_pin, uid=config.pin_uid, gid=pin_gid)
-    pin = _validate_pin(
+    pin, ancestry_targets = _validate_active_pin(
+        config,
         raw_pin,
-        expected_sha256=config.expected_pin_sha256,
-        expected_target_sha=config.expected_target_sha,
+        pin_gid=pin_gid,
     )
-    _validate_deployed_commit(config)
+    host = pin.get("host")
+    expected_host_sha = (
+        str(host["deployed_commit"])
+        if isinstance(host, dict)
+        else config.expected_predecessor_sha
+    )
+    _validate_deployed_commit(config, expected_host_sha)
     target_sha = str(pin["target"]["base_sha"])
-    expected = _validate_repository(config, target_sha)
+    expected = _validate_repository(
+        config,
+        target_sha,
+        expected_host_sha=expected_host_sha,
+        ancestry_targets=ancestry_targets,
+    )
     wire_clock, output_identity = _validate_runtime_paths(config)
     archive = _archive_bytes(config.repository, target_sha)
     temporary_parent = (
@@ -926,12 +1840,23 @@ def run(config: RuntimeConfig) -> str:
         stage = _create_output_stage(config)
         try:
             _invoke_analysis(config, materialized, stage.path)
-            _publish_stage(
-                stage,
-                config=config,
-                wire_clock=wire_clock,
-                expected_output_identity=output_identity,
-            )
+            boundary = _acquire_publication_boundary(config, pin_gid=pin_gid)
+            try:
+                if (
+                    _read_pin(config.base_pin, uid=config.pin_uid, gid=pin_gid)
+                    != raw_pin
+                ):
+                    raise LiveAnalysisError(
+                        "publication-base pin changed during event analysis"
+                    )
+                _publish_stage(
+                    stage,
+                    config=config,
+                    wire_clock=wire_clock,
+                    expected_output_identity=output_identity,
+                )
+            finally:
+                os.close(boundary)
         finally:
             try:
                 _remove_owned_stage(stage)
@@ -955,6 +1880,16 @@ def _parser() -> argparse.ArgumentParser:
         "--deployed-commit",
         type=Path,
         default=Path("/etc/palimpsest/deployed-commit"),
+    )
+    parser.add_argument(
+        "--state-root",
+        type=Path,
+        default=Path("/var/lib/palimpsest/railway-publication"),
+    )
+    parser.add_argument(
+        "--control-root",
+        type=Path,
+        default=Path("/var/lib/palimpsest/railway-control"),
     )
     parser.add_argument(
         "--wire",
@@ -983,6 +1918,8 @@ def main(argv: list[str] | None = None) -> int:
         readings=args.readings,
         output=args.output,
         python=args.python,
+        state_root=args.state_root,
+        control_root=args.control_root,
     )
     try:
         target = run(config)

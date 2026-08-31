@@ -25,6 +25,9 @@ readonly SOURCE_REPOSITORY="${PALIMPSEST_SOURCE_REPOSITORY:-/home/palimpsest/pal
 readonly HOST_READINGS="${PALIMPSEST_HOST_READINGS:-/var/lib/palimpsest/readings}"
 readonly LIVE_WIRE_ROOT="${PALIMPSEST_LIVE_WIRE_ROOT:-/var/lib/palimpsest/newswire}"
 readonly STATE_ROOT="${PALIMPSEST_RAILWAY_STATE_ROOT:-/var/lib/palimpsest/railway-publication}"
+readonly CONTROL_ROOT="${PALIMPSEST_RAILWAY_CONTROL_ROOT:-/var/lib/palimpsest/railway-control}"
+readonly LOCK_FILE="$CONTROL_ROOT/publish.lock"
+readonly ROTATION_INTENT="$CONTROL_ROOT/rotation-intent.json"
 readonly DATA_LOCK_FILE="${PALIMPSEST_DATA_LOCK_FILE:-/var/lib/palimpsest/railway-publication/data.lock}"
 readonly DEPLOYED_COMMIT_FILE="${PALIMPSEST_DEPLOYED_COMMIT_FILE:-/etc/palimpsest/deployed-commit}"
 readonly PUBLICATION_BASE_FILE="${PALIMPSEST_RAILWAY_BASE_FILE:-/etc/palimpsest/railway-publication-base.json}"
@@ -50,6 +53,9 @@ readonly RECEIPT_ARCHIVE_ROOT="$STATE_ROOT/receipts"
 readonly CANDIDATE_ARCHIVE_ROOT="$STATE_ROOT/candidates"
 readonly PREDECESSOR_EVIDENCE_ROOT="$STATE_ROOT/predecessors"
 readonly BASE_TRANSITION_SCHEMA="palimpsest.direct-publication-base-transition.v1"
+readonly BASE_SUCCESSOR_SCHEMA="palimpsest.direct-publication-base.v2"
+readonly BASE_ROTATION_SCHEMA="palimpsest.direct-publication-base-rotation.v1"
+readonly BASE_ROTATION_HISTORY_ROOT="$CONTROL_ROOT/base-rotation-history"
 readonly BASE_TRANSITION_INCIDENT="palimpsest-direct-lineage-2026-08-30"
 readonly INCIDENT_BASE_SHA="b22d809bca5ca8aed8255e8a89a06a88dc9cbcb9"
 readonly INCIDENT_LIVE_SHA="ae5ecacd2e151d15af3fe06a7cd1219aa51573e7"
@@ -58,8 +64,17 @@ readonly INCIDENT_INPUT_SHA256="7fef2522dfdb1a0f6697f292b22a266e381073e5a9efeede
 readonly INCIDENT_MANIFEST_SHA256="1ddbbc54e7b53d055a0421d0711eaa1ab0c66349e8a81203c0be6473205eaafe"
 readonly INCIDENT_TREE_SHA256="6d7e91c656d8ee551050ead1a2cca1fe50b2db0fd29934316b875d4b55475e10"
 readonly INCIDENT_DEPLOYMENT_ID="505bd041-4c52-4ce7-a137-dc3e4c55cacb"
+readonly INCIDENT_PIN_SHA256="255e17340a38bfcc5ead6ed4a33a8f50f23da8655ca396cd99fbe1980ebd1e97"
+readonly INCIDENT_PIN_TARGET_SHA="4957595735fd86fa57217309749961e1a1e0f05d"
 readonly INSTALLED_PUBLISHER="${PALIMPSEST_INSTALLED_PUBLISHER:-/usr/local/sbin/palimpsest-railway-publish}"
+readonly INSTALLED_CONTINUITY_GUARD="${PALIMPSEST_INSTALLED_CONTINUITY_GUARD:-/usr/local/sbin/palimpsest-continuity-guard}"
+readonly INSTALLED_CONTINUITY_GUARD_SERVICE="${PALIMPSEST_INSTALLED_CONTINUITY_GUARD_SERVICE:-/etc/systemd/system/palimpsest-continuity-guard.service}"
+readonly INSTALLED_CONTINUITY_GUARD_TIMER="${PALIMPSEST_INSTALLED_CONTINUITY_GUARD_TIMER:-/etc/systemd/system/palimpsest-continuity-guard.timer}"
+readonly INSTALLED_EVENT_ANALYSIS_WRAPPER="${PALIMPSEST_INSTALLED_EVENT_ANALYSIS_WRAPPER:-/usr/local/sbin/palimpsest-event-analysis-live}"
+readonly INSTALLED_EVENT_ANALYSIS_SERVICE="${PALIMPSEST_INSTALLED_EVENT_ANALYSIS_SERVICE:-/etc/systemd/system/palimpsest-event-analysis-live.service}"
+readonly INSTALLED_EVENT_ANALYSIS_PUBLISH_DROPIN="${PALIMPSEST_INSTALLED_EVENT_ANALYSIS_PUBLISH_DROPIN:-/etc/systemd/system/palimpsest-event-analysis-live.service.d/90-railway-publish.conf}"
 readonly INSTALLED_TRANSITION_HELPER="${PALIMPSEST_INSTALLED_TRANSITION_HELPER:-/usr/local/sbin/palimpsest-advance-direct-publication-base}"
+readonly INSTALLED_ROTATION_HELPER="${PALIMPSEST_INSTALLED_ROTATION_HELPER:-/usr/local/sbin/palimpsest-rotate-direct-publication-base}"
 readonly INSTALLED_RECONCILER="${PALIMPSEST_INSTALLED_RECONCILER:-/usr/local/sbin/palimpsest-reconcile-direct-publication-candidate}"
 readonly INSTALLED_WATCHDOG="${PALIMPSEST_INSTALLED_WATCHDOG:-/usr/local/sbin/palimpsest-direct-watchdog}"
 readonly INSTALLED_PUBLISHER_SERVICE="${PALIMPSEST_INSTALLED_PUBLISHER_SERVICE:-/etc/systemd/system/palimpsest-railway-publish.service}"
@@ -106,7 +121,7 @@ sha256_file() {
 validate_installed_transition_artifact() {
   local key="$1" path="$2" mode="$3" expected actual
   [[ -f "$path" && ! -L "$path" \
-    && "$(stat -c '%u:%g:%a' "$path")" == "0:0:$mode" ]] || {
+    && "$(stat -c '%u:%g:%a:%h' "$path")" == "0:0:$mode:1" ]] || {
     log "installed transition artifact has unsafe metadata: $path" >&2
     return 1
   }
@@ -114,6 +129,26 @@ validate_installed_transition_artifact() {
   actual="$(sha256_file "$path")"
   [[ "$actual" == "$expected" ]] || {
     log "installed transition artifact differs from the root-owned pin: $path" >&2
+    return 1
+  }
+}
+
+validate_rotation_history_directory() {
+  local path="$1" expected_group_gid="$2"
+  [[ -d "$path" && ! -L "$path" \
+    && "$(stat -c '%u:%g:%a' "$path")" == "0:${expected_group_gid}:750" ]] || {
+    log "base-rotation history directory is unsafe: $path" >&2
+    return 1
+  }
+}
+
+validate_rotation_history_file() {
+  local path="$1" expected_path="$2" digest="$3" expected_group_gid="$4"
+  [[ "$path" == "$expected_path" \
+    && -f "$path" && ! -L "$path" \
+    && "$(stat -c '%u:%g:%a:%h' "$path")" == "0:${expected_group_gid}:640:1" \
+    && "$(sha256_file "$path")" == "$digest" ]] || {
+    log "base-rotation history file is unsafe or changed: $path" >&2
     return 1
   }
 }
@@ -572,7 +607,14 @@ PY
 }
 
 read_publication_base() {
-  local metadata expected_group_gid
+  local metadata expected_group_gid base_pin_schema
+  local anchor_path anchor_sha anchor_target predecessor_pin_path
+  local predecessor_pin_sha predecessor_pin_schema predecessor_pin_generation
+  local predecessor_pin_target bridge_receipt_path bridge_receipt_sha
+  local provider_history_path provider_history_sha provider_history_bytes
+  local public_history_path public_history_sha public_history_bytes
+  local topology_history_path topology_history_sha topology_history_bytes
+  local rotation_record_path expected_rotation_record_path
 
   if [[ -e "$PUBLICATION_BASE_FILE" || -L "$PUBLICATION_BASE_FILE" ]]; then
     [[ -f "$PUBLICATION_BASE_FILE" && ! -L "$PUBLICATION_BASE_FILE" ]] || {
@@ -588,65 +630,315 @@ read_publication_base() {
       log "publication base pin must be root:$PUBLICATION_BASE_GROUP mode 0640" >&2
       return 1
     }
-    jq -e \
-      --arg schema "$BASE_TRANSITION_SCHEMA" \
-      --arg incident "$BASE_TRANSITION_INCIDENT" \
-      --arg provider "$PROVIDER_ORIGIN" \
-      --arg public "$PUBLIC_ORIGIN" \
-      --arg incident_base "$INCIDENT_BASE_SHA" \
-      --arg incident_live "$INCIDENT_LIVE_SHA" \
-      --arg incident_receipt "$INCIDENT_RECEIPT_SHA256" \
-      --arg incident_input "$INCIDENT_INPUT_SHA256" \
-      --arg incident_manifest "$INCIDENT_MANIFEST_SHA256" \
-      --arg incident_tree "$INCIDENT_TREE_SHA256" \
-      --arg incident_deployment "$INCIDENT_DEPLOYMENT_ID" '
-      type == "object" and
-      keys == ["incident_id","installed","origins","previous","recorded_at","schema_version","status","target"] and
-      .schema_version == $schema and .status == "verified" and
-      .incident_id == $incident and
-      (.recorded_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")) and
-      (.installed | type == "object" and keys == ["publisher_service_sha256","publisher_sha256","reconciler_sha256","transition_helper_sha256","watchdog_service_sha256","watchdog_sha256","watchdog_timer_sha256"] and
-        (.publisher_service_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
-        (.publisher_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
-        (.reconciler_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
-        (.transition_helper_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
-        (.watchdog_service_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
-        (.watchdog_sha256 | type == "string" and test("^[0-9a-f]{64}$")) and
-        (.watchdog_timer_sha256 | type == "string" and test("^[0-9a-f]{64}$"))) and
-      (.origins | type == "object" and keys == ["provider","public"] and
-        .provider == $provider and .public == $public) and
-      (.previous | type == "object" and keys == ["canonical_head","deployed_commit","live_manifest_sha256","live_release_sha","live_tree_sha256","publication_input_sha256","publication_receipt_sha256","railway_deployment_id"] and
-        ([.canonical_head,.deployed_commit,.live_release_sha] | all(type == "string" and test("^[0-9a-f]{40}$"))) and
-        ([.live_manifest_sha256,.live_tree_sha256,.publication_input_sha256,.publication_receipt_sha256] | all(type == "string" and test("^[0-9a-f]{64}$"))) and
-        (.railway_deployment_id | type == "string" and test("^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")) and
-        .canonical_head == $incident_base and .deployed_commit == $incident_base and
-        .live_release_sha == $incident_live and .publication_receipt_sha256 == $incident_receipt and
-        .publication_input_sha256 == $incident_input and .live_manifest_sha256 == $incident_manifest and
-        .live_tree_sha256 == $incident_tree and .railway_deployment_id == $incident_deployment) and
-      (.target | type == "object" and keys == ["base_sha","public_main_sha"] and
-        ([.base_sha,.public_main_sha] | all(type == "string" and test("^[0-9a-f]{40}$"))) and
-        .base_sha == .public_main_sha)
-      ' "$PUBLICATION_BASE_FILE" >/dev/null || {
-      log "publication base pin does not satisfy the closed transition schema" >&2
+    base_pin_schema="$(jq -er '.schema_version | select(type == "string")' \
+      "$PUBLICATION_BASE_FILE")" || {
+      log "publication base pin has no valid schema" >&2
       return 1
     }
-    validate_installed_transition_artifact \
-      publisher_sha256 "$INSTALLED_PUBLISHER" 755
-    validate_installed_transition_artifact \
-      transition_helper_sha256 "$INSTALLED_TRANSITION_HELPER" 755
-    validate_installed_transition_artifact \
-      reconciler_sha256 "$INSTALLED_RECONCILER" 755
-    validate_installed_transition_artifact \
-      watchdog_sha256 "$INSTALLED_WATCHDOG" 755
-    validate_installed_transition_artifact \
-      publisher_service_sha256 "$INSTALLED_PUBLISHER_SERVICE" 644
-    validate_installed_transition_artifact \
-      watchdog_service_sha256 "$INSTALLED_WATCHDOG_SERVICE" 644
-    validate_installed_transition_artifact \
-      watchdog_timer_sha256 "$INSTALLED_WATCHDOG_TIMER" 644
-    base_sha="$(jq -er '.target.base_sha' "$PUBLICATION_BASE_FILE")"
+    case "$base_pin_schema" in
+      "$BASE_TRANSITION_SCHEMA")
+        jq -e \
+          --arg schema "$BASE_TRANSITION_SCHEMA" \
+          --arg incident "$BASE_TRANSITION_INCIDENT" \
+          --arg provider "$PROVIDER_ORIGIN" \
+          --arg public "$PUBLIC_ORIGIN" \
+          --arg incident_base "$INCIDENT_BASE_SHA" \
+          --arg incident_live "$INCIDENT_LIVE_SHA" \
+          --arg incident_receipt "$INCIDENT_RECEIPT_SHA256" \
+          --arg incident_input "$INCIDENT_INPUT_SHA256" \
+          --arg incident_manifest "$INCIDENT_MANIFEST_SHA256" \
+          --arg incident_tree "$INCIDENT_TREE_SHA256" \
+          --arg incident_deployment "$INCIDENT_DEPLOYMENT_ID" \
+          --arg incident_target "$INCIDENT_PIN_TARGET_SHA" '
+          type == "object" and
+          keys == ["incident_id","installed","origins","previous","recorded_at","schema_version","status","target"] and
+          .schema_version == $schema and .status == "verified" and
+          .incident_id == $incident and
+          (.recorded_at | type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")) and
+          (.installed | type == "object" and keys == ["publisher_service_sha256","publisher_sha256","reconciler_sha256","transition_helper_sha256","watchdog_service_sha256","watchdog_sha256","watchdog_timer_sha256"] and
+            ([.[]] | all(type == "string" and test("^[0-9a-f]{64}$")))) and
+          (.origins | type == "object" and keys == ["provider","public"] and
+            .provider == $provider and .public == $public) and
+          (.previous | type == "object" and keys == ["canonical_head","deployed_commit","live_manifest_sha256","live_release_sha","live_tree_sha256","publication_input_sha256","publication_receipt_sha256","railway_deployment_id"] and
+            .canonical_head == $incident_base and .deployed_commit == $incident_base and
+            .live_release_sha == $incident_live and .publication_receipt_sha256 == $incident_receipt and
+            .publication_input_sha256 == $incident_input and .live_manifest_sha256 == $incident_manifest and
+            .live_tree_sha256 == $incident_tree and .railway_deployment_id == $incident_deployment) and
+          (.target | type == "object" and keys == ["base_sha","public_main_sha"] and
+            ([.base_sha,.public_main_sha] | all(type == "string" and test("^[0-9a-f]{40}$"))) and
+            .base_sha == .public_main_sha and .base_sha == $incident_target)
+          ' "$PUBLICATION_BASE_FILE" >/dev/null || {
+          log "publication base pin does not satisfy the closed transition schema" >&2
+          return 1
+        }
+        [[ "$(sha256_file "$PUBLICATION_BASE_FILE")" == "$INCIDENT_PIN_SHA256" ]] || {
+          log "publication base pin is not the exact immutable incident pin" >&2
+          return 1
+        }
+        validate_installed_transition_artifact \
+          publisher_sha256 "$INSTALLED_PUBLISHER" 755
+        validate_installed_transition_artifact \
+          transition_helper_sha256 "$INSTALLED_TRANSITION_HELPER" 755
+        validate_installed_transition_artifact \
+          reconciler_sha256 "$INSTALLED_RECONCILER" 755
+        validate_installed_transition_artifact \
+          watchdog_sha256 "$INSTALLED_WATCHDOG" 755
+        validate_installed_transition_artifact \
+          publisher_service_sha256 "$INSTALLED_PUBLISHER_SERVICE" 644
+        validate_installed_transition_artifact \
+          watchdog_service_sha256 "$INSTALLED_WATCHDOG_SERVICE" 644
+        validate_installed_transition_artifact \
+          watchdog_timer_sha256 "$INSTALLED_WATCHDOG_TIMER" 644
+        base_sha="$(jq -er '.target.base_sha' "$PUBLICATION_BASE_FILE")"
+        pin_host_canonical_sha="$(jq -er '.previous.canonical_head' "$PUBLICATION_BASE_FILE")"
+        pin_host_deployed_sha="$(jq -er '.previous.deployed_commit' "$PUBLICATION_BASE_FILE")"
+        base_pin_kind="verified_transition"
+        ;;
+      "$BASE_SUCCESSOR_SCHEMA")
+        jq -e \
+          --arg schema "$BASE_SUCCESSOR_SCHEMA" \
+          --arg bootstrap "$BASE_TRANSITION_SCHEMA" \
+          --arg provider "$PROVIDER_ORIGIN" \
+          --arg public "$PUBLIC_ORIGIN" \
+          --arg incident_pin "$INCIDENT_PIN_SHA256" \
+          --arg incident_target "$INCIDENT_PIN_TARGET_SHA" '
+          def sha40: type == "string" and test("^[0-9a-f]{40}$");
+          def sha64: type == "string" and test("^[0-9a-f]{64}$");
+          def uuid: type == "string" and test("^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
+          def clock: type == "string" and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,6})?Z$");
+          def reference: type == "object" and keys == ["bytes","path","sha256"] and .bytes >= 2 and (.bytes | type == "number" and floor == .) and (.path | type == "string" and length > 0) and (.sha256 | sha64);
+          type == "object" and
+          keys == ["anchor","generation","host","installed","live","origins","predecessor","railway","recorded_at","rotation_record_path","schema_version","status","target"] and
+          .schema_version == $schema and .status == "verified" and
+          (.generation | type == "number" and floor == . and . >= 1 and . <= 256) and
+          (.recorded_at | clock) and (.rotation_record_path | type == "string" and length > 0) and
+          (.anchor | type == "object" and keys == ["path","schema_version","sha256","target_sha"] and
+            .schema_version == $bootstrap and (.path | type == "string" and length > 0) and
+            .sha256 == $incident_pin and .target_sha == $incident_target) and
+          (.host | type == "object" and keys == ["canonical_head","deployed_commit"] and
+            (.canonical_head | sha40) and (.deployed_commit | sha40)) and
+          (.installed | type == "object" and keys == ["continuity_guard_service_sha256","continuity_guard_sha256","continuity_guard_timer_sha256","event_analysis_publish_dropin_sha256","event_analysis_service_sha256","event_analysis_wrapper_sha256","publisher_service_sha256","publisher_sha256","reconciler_sha256","rotation_helper_sha256","transition_helper_sha256","watchdog_service_sha256","watchdog_sha256","watchdog_timer_sha256"] and
+            ([.[]] | all(sha64))) and
+          (.live | type == "object" and keys == ["file_count","provider_manifest","public_manifest","release_sha","total_bytes","tree_sha256"] and
+            (.provider_manifest | reference) and (.public_manifest | reference) and
+            (.release_sha | sha40) and (.tree_sha256 | sha64) and
+            ([.file_count,.total_bytes] | all(type == "number" and floor == . and . >= 1))) and
+          (.origins | type == "object" and keys == ["provider","public"] and .provider == $provider and .public == $public) and
+          (.predecessor | type == "object" and keys == ["pin","publication_receipt"] and
+            (.pin | type == "object" and keys == ["generation","path","schema_version","sha256","target_sha"] and
+              (.generation | type == "number" and floor == . and . >= 0) and
+              (.path | type == "string" and length > 0) and
+              (.schema_version == $bootstrap or .schema_version == $schema) and
+              (.sha256 | sha64) and (.target_sha | sha40)) and
+            (.publication_receipt | type == "object" and keys == ["base_sha","deployment_id","host_deployed_sha","input_sha256","manifest_sha256","path","publication_base_sha256","release_sha","schema_version","sha256","tree_sha256","wire_generated_at"] and
+              .schema_version == "palimpsest.hetzner-railway-publication.v2" and
+              ([.base_sha,.host_deployed_sha,.release_sha] | all(sha40)) and
+              ([.input_sha256,.manifest_sha256,.publication_base_sha256,.sha256,.tree_sha256] | all(sha64)) and
+              (.deployment_id | uuid) and (.wire_generated_at | clock) and
+              (.path | type == "string" and length > 0))) and
+          .predecessor.pin.generation == (.generation - 1) and
+          (.railway | type == "object" and keys == ["created_at","deployment_id","environment_id","image_digest","project_id","reason","service_id","topology"] and
+            ([.deployment_id,.environment_id,.project_id,.service_id] | all(uuid)) and
+            (.image_digest | type == "string" and test("^sha256:[0-9a-f]{64}$")) and
+            (.reason == "deploy" or .reason == "deploymentRollback") and
+            (.created_at | clock) and (.topology | reference)) and
+          (.target | type == "object" and keys == ["base_sha","public_main_sha"] and
+            (.base_sha | sha40) and .base_sha == .public_main_sha)
+          ' "$PUBLICATION_BASE_FILE" >/dev/null || {
+          log "publication base pin does not satisfy the closed successor schema" >&2
+          return 1
+        }
+
+        for history_directory in \
+          "$BASE_ROTATION_HISTORY_ROOT" \
+          "$BASE_ROTATION_HISTORY_ROOT/pins" \
+          "$BASE_ROTATION_HISTORY_ROOT/receipts" \
+          "$BASE_ROTATION_HISTORY_ROOT/manifests" \
+          "$BASE_ROTATION_HISTORY_ROOT/manifests/provider" \
+          "$BASE_ROTATION_HISTORY_ROOT/manifests/public" \
+          "$BASE_ROTATION_HISTORY_ROOT/topologies" \
+          "$BASE_ROTATION_HISTORY_ROOT/rotations"; do
+          validate_rotation_history_directory \
+            "$history_directory" "$expected_group_gid"
+        done
+
+        anchor_path="$(jq -er '.anchor.path' "$PUBLICATION_BASE_FILE")"
+        anchor_sha="$(jq -er '.anchor.sha256' "$PUBLICATION_BASE_FILE")"
+        anchor_target="$(jq -er '.anchor.target_sha' "$PUBLICATION_BASE_FILE")"
+        validate_rotation_history_file "$anchor_path" \
+          "$BASE_ROTATION_HISTORY_ROOT/pins/$anchor_sha.json" \
+          "$anchor_sha" "$expected_group_gid"
+        jq -e \
+          --arg schema "$BASE_TRANSITION_SCHEMA" \
+          --arg incident "$BASE_TRANSITION_INCIDENT" \
+          --arg target "$anchor_target" '
+          type == "object" and
+          keys == ["incident_id","installed","origins","previous","recorded_at","schema_version","status","target"] and
+          .schema_version == $schema and .status == "verified" and
+          .incident_id == $incident and .target.base_sha == $target and
+          .target.public_main_sha == $target
+          ' "$anchor_path" >/dev/null || {
+          log "successor pin does not retain the exact bootstrap anchor" >&2
+          return 1
+        }
+
+        predecessor_pin_path="$(jq -er '.predecessor.pin.path' "$PUBLICATION_BASE_FILE")"
+        predecessor_pin_sha="$(jq -er '.predecessor.pin.sha256' "$PUBLICATION_BASE_FILE")"
+        predecessor_pin_schema="$(jq -er '.predecessor.pin.schema_version' "$PUBLICATION_BASE_FILE")"
+        predecessor_pin_generation="$(jq -er '.predecessor.pin.generation' "$PUBLICATION_BASE_FILE")"
+        predecessor_pin_target="$(jq -er '.predecessor.pin.target_sha' "$PUBLICATION_BASE_FILE")"
+        validate_rotation_history_file "$predecessor_pin_path" \
+          "$BASE_ROTATION_HISTORY_ROOT/pins/$predecessor_pin_sha.json" \
+          "$predecessor_pin_sha" "$expected_group_gid"
+        jq -e \
+          --arg schema "$predecessor_pin_schema" \
+          --arg target "$predecessor_pin_target" \
+          --argjson generation "$predecessor_pin_generation" '
+          .schema_version == $schema and .target.base_sha == $target and
+          (if $generation == 0 then .schema_version == "palimpsest.direct-publication-base-transition.v1"
+           else .schema_version == "palimpsest.direct-publication-base.v2" and .generation == $generation end)
+          ' "$predecessor_pin_path" >/dev/null || {
+          log "archived predecessor pin identity differs" >&2
+          return 1
+        }
+
+        bridge_receipt_path="$(jq -er '.predecessor.publication_receipt.path' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_sha="$(jq -er '.predecessor.publication_receipt.sha256' "$PUBLICATION_BASE_FILE")"
+        validate_rotation_history_file "$bridge_receipt_path" \
+          "$BASE_ROTATION_HISTORY_ROOT/receipts/$bridge_receipt_sha.json" \
+          "$bridge_receipt_sha" "$expected_group_gid"
+        jq -e --slurpfile pin "$PUBLICATION_BASE_FILE" '
+          .schema_version == "palimpsest.hetzner-railway-publication.v2" and
+          .status == "verified" and
+          .base_sha == $pin[0].predecessor.publication_receipt.base_sha and
+          .host_deployed_sha == $pin[0].predecessor.publication_receipt.host_deployed_sha and
+          .input_sha256 == $pin[0].predecessor.publication_receipt.input_sha256 and
+          .release_sha == $pin[0].predecessor.publication_receipt.release_sha and
+          .wire_generated_at == $pin[0].predecessor.publication_receipt.wire_generated_at and
+          .publication_base.sha256 == $pin[0].predecessor.publication_receipt.publication_base_sha256 and
+          .live_manifest.sha256 == $pin[0].predecessor.publication_receipt.manifest_sha256 and
+          .live_manifest.tree_sha256 == $pin[0].predecessor.publication_receipt.tree_sha256 and
+          .railway.deployment_id == $pin[0].predecessor.publication_receipt.deployment_id
+          ' "$bridge_receipt_path" >/dev/null || {
+          log "archived predecessor receipt differs from successor pin" >&2
+          return 1
+        }
+
+        provider_history_path="$(jq -er '.live.provider_manifest.path' "$PUBLICATION_BASE_FILE")"
+        provider_history_sha="$(jq -er '.live.provider_manifest.sha256' "$PUBLICATION_BASE_FILE")"
+        provider_history_bytes="$(jq -er '.live.provider_manifest.bytes' "$PUBLICATION_BASE_FILE")"
+        public_history_path="$(jq -er '.live.public_manifest.path' "$PUBLICATION_BASE_FILE")"
+        public_history_sha="$(jq -er '.live.public_manifest.sha256' "$PUBLICATION_BASE_FILE")"
+        public_history_bytes="$(jq -er '.live.public_manifest.bytes' "$PUBLICATION_BASE_FILE")"
+        topology_history_path="$(jq -er '.railway.topology.path' "$PUBLICATION_BASE_FILE")"
+        topology_history_sha="$(jq -er '.railway.topology.sha256' "$PUBLICATION_BASE_FILE")"
+        topology_history_bytes="$(jq -er '.railway.topology.bytes' "$PUBLICATION_BASE_FILE")"
+        validate_rotation_history_file "$provider_history_path" \
+          "$BASE_ROTATION_HISTORY_ROOT/manifests/provider/$provider_history_sha.json" \
+          "$provider_history_sha" "$expected_group_gid"
+        validate_rotation_history_file "$public_history_path" \
+          "$BASE_ROTATION_HISTORY_ROOT/manifests/public/$public_history_sha.json" \
+          "$public_history_sha" "$expected_group_gid"
+        validate_rotation_history_file "$topology_history_path" \
+          "$BASE_ROTATION_HISTORY_ROOT/topologies/$topology_history_sha.json" \
+          "$topology_history_sha" "$expected_group_gid"
+        [[ "$(stat -c '%s' "$provider_history_path")" == "$provider_history_bytes" \
+          && "$(stat -c '%s' "$public_history_path")" == "$public_history_bytes" \
+          && "$(stat -c '%s' "$topology_history_path")" == "$topology_history_bytes" \
+          && "$provider_history_sha" == "$public_history_sha" ]] || {
+          log "successor live/topology archive identity differs" >&2
+          return 1
+        }
+
+        rotation_record_path="$(jq -er '.rotation_record_path' "$PUBLICATION_BASE_FILE")"
+        base_sha="$(jq -er '.target.base_sha' "$PUBLICATION_BASE_FILE")"
+        base_pin_generation="$(jq -er '.generation' "$PUBLICATION_BASE_FILE")"
+        expected_rotation_record_path="$BASE_ROTATION_HISTORY_ROOT/rotations/${base_pin_generation}-${base_sha}-${bridge_receipt_sha}.json"
+        [[ "$rotation_record_path" == "$expected_rotation_record_path" ]] || {
+          log "successor rotation-record path is not canonical" >&2
+          return 1
+        }
+        [[ -f "$rotation_record_path" && ! -L "$rotation_record_path" \
+          && "$(stat -c '%u:%g:%a' "$rotation_record_path")" == "0:${expected_group_gid}:640" ]] || {
+          log "successor rotation record is unsafe" >&2
+          return 1
+        }
+        base_pin_sha256="$(sha256_file "$PUBLICATION_BASE_FILE")"
+        jq -e \
+          --slurpfile pin "$PUBLICATION_BASE_FILE" \
+          --arg schema "$BASE_ROTATION_SCHEMA" \
+          --arg pin_sha "$base_pin_sha256" \
+          --arg predecessor_pin "$predecessor_pin_sha" \
+          --arg predecessor_receipt "$bridge_receipt_sha" '
+          type == "object" and
+          keys == ["generation","next_pin","next_pin_sha256","predecessor_pin_sha256","predecessor_receipt_sha256","recorded_at","schema_version","status","target_base_sha"] and
+          .schema_version == $schema and .status == "verified" and
+          .generation == $pin[0].generation and
+          .recorded_at == $pin[0].recorded_at and
+          .target_base_sha == $pin[0].target.base_sha and
+          .predecessor_pin_sha256 == $predecessor_pin and
+          .predecessor_receipt_sha256 == $predecessor_receipt and
+          .next_pin_sha256 == $pin_sha and .next_pin == $pin[0]
+          ' "$rotation_record_path" >/dev/null || {
+          log "successor rotation record differs from the active pin" >&2
+          return 1
+        }
+
+        validate_installed_transition_artifact \
+          continuity_guard_sha256 "$INSTALLED_CONTINUITY_GUARD" 755
+        validate_installed_transition_artifact \
+          continuity_guard_service_sha256 "$INSTALLED_CONTINUITY_GUARD_SERVICE" 644
+        validate_installed_transition_artifact \
+          continuity_guard_timer_sha256 "$INSTALLED_CONTINUITY_GUARD_TIMER" 644
+        validate_installed_transition_artifact \
+          event_analysis_wrapper_sha256 "$INSTALLED_EVENT_ANALYSIS_WRAPPER" 755
+        validate_installed_transition_artifact \
+          event_analysis_service_sha256 "$INSTALLED_EVENT_ANALYSIS_SERVICE" 644
+        validate_installed_transition_artifact \
+          event_analysis_publish_dropin_sha256 "$INSTALLED_EVENT_ANALYSIS_PUBLISH_DROPIN" 644
+        validate_installed_transition_artifact \
+          publisher_sha256 "$INSTALLED_PUBLISHER" 755
+        validate_installed_transition_artifact \
+          transition_helper_sha256 "$INSTALLED_TRANSITION_HELPER" 755
+        validate_installed_transition_artifact \
+          rotation_helper_sha256 "$INSTALLED_ROTATION_HELPER" 755
+        validate_installed_transition_artifact \
+          reconciler_sha256 "$INSTALLED_RECONCILER" 755
+        validate_installed_transition_artifact \
+          watchdog_sha256 "$INSTALLED_WATCHDOG" 755
+        validate_installed_transition_artifact \
+          publisher_service_sha256 "$INSTALLED_PUBLISHER_SERVICE" 644
+        validate_installed_transition_artifact \
+          watchdog_service_sha256 "$INSTALLED_WATCHDOG_SERVICE" 644
+        validate_installed_transition_artifact \
+          watchdog_timer_sha256 "$INSTALLED_WATCHDOG_TIMER" 644
+        PALIMPSEST_RAILWAY_STATE_ROOT="$STATE_ROOT" \
+          PALIMPSEST_RAILWAY_CONTROL_ROOT="$CONTROL_ROOT" \
+          PALIMPSEST_RAILWAY_BASE_FILE="$PUBLICATION_BASE_FILE" \
+          PALIMPSEST_PUBLICATION_RECEIPT="$SUCCESS_RECEIPT" \
+          "$PYTHON_BIN" "$INSTALLED_WATCHDOG" --lineage-only >/dev/null || {
+          log "complete successor lineage verification failed" >&2
+          return 1
+        }
+        pin_host_canonical_sha="$(jq -er '.host.canonical_head' "$PUBLICATION_BASE_FILE")"
+        pin_host_deployed_sha="$(jq -er '.host.deployed_commit' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_base_sha="$(jq -er '.predecessor.publication_receipt.base_sha' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_pin_sha256="$(jq -er '.predecessor.publication_receipt.publication_base_sha256' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_host_sha="$(jq -er '.predecessor.publication_receipt.host_deployed_sha' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_release_sha="$(jq -er '.predecessor.publication_receipt.release_sha' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_input_sha256="$(jq -er '.predecessor.publication_receipt.input_sha256' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_wire_generated_at="$(jq -er '.predecessor.publication_receipt.wire_generated_at' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_manifest_sha256="$(jq -er '.predecessor.publication_receipt.manifest_sha256' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_tree_sha256="$(jq -er '.predecessor.publication_receipt.tree_sha256' "$PUBLICATION_BASE_FILE")"
+        bridge_receipt_deployment_id="$(jq -er '.predecessor.publication_receipt.deployment_id' "$PUBLICATION_BASE_FILE")"
+        base_pin_kind="verified_successor"
+        ;;
+      *)
+        log "publication base pin schema is unsupported" >&2
+        return 1
+        ;;
+    esac
     base_pin_path="$PUBLICATION_BASE_FILE"
-    base_pin_kind="verified_transition"
   else
     log "verified publication transition pin is mandatory before direct publication" >&2
     return 1
@@ -792,11 +1084,33 @@ trap 'exit 143' TERM
 
 mkdir -p "$STATE_ROOT"
 chmod 0700 "$STATE_ROOT"
-exec 9>"$STATE_ROOT/publish.lock"
+control_group_gid="$(getent group "$PUBLICATION_BASE_GROUP" | cut -d: -f3)"
+[[ "$control_group_gid" =~ ^[0-9]+$ \
+  && -d "$CONTROL_ROOT" && ! -L "$CONTROL_ROOT" \
+  && "$(stat -c '%u:%g:%a' "$CONTROL_ROOT")" == "0:${control_group_gid}:750" \
+  && -f "$LOCK_FILE" && ! -L "$LOCK_FILE" \
+  && "$(stat -c '%u:%g:%a:%h' "$LOCK_FILE")" == "0:${control_group_gid}:640:1" ]] || {
+  log "root-controlled publication lock is unavailable or unsafe" >&2
+  exit 1
+}
+lock_identity="$(stat -c '%d:%i' "$LOCK_FILE")"
+exec 9<"$LOCK_FILE"
+[[ "$(stat -Lc '%d:%i' "/proc/$$/fd/9")" == "$lock_identity" ]] || {
+  log "publication lock descriptor differs from its root-controlled path" >&2
+  exit 1
+}
 if ! flock -n 9; then
   log "publisher already active; coalescing this capture"
   exit 0
 fi
+[[ "$(stat -c '%d:%i' "$LOCK_FILE")" == "$lock_identity" ]] || {
+  log "publication lock pathname changed while locking" >&2
+  exit 1
+}
+[[ ! -e "$ROTATION_INTENT" && ! -L "$ROTATION_INTENT" ]] || {
+  log "prepared base rotation blocks direct publication" >&2
+  exit 1
+}
 
 recover_abandoned_preparation
 
@@ -858,6 +1172,11 @@ host_deployed_sha="$(tr -d '[:space:]' < "$DEPLOYED_COMMIT_FILE")"
 }
 read_publication_base
 canonical_head="$(git -C "$SOURCE_REPOSITORY" rev-parse HEAD)"
+[[ "$canonical_head" == "$pin_host_canonical_sha" \
+  && "$host_deployed_sha" == "$pin_host_deployed_sha" ]] || {
+  log "canonical host identity differs from the publication base pin" >&2
+  exit 1
+}
 git -C "$SOURCE_REPOSITORY" cat-file -e "$base_sha^{commit}" 2>/dev/null || {
   log "publication base commit is absent from the canonical repository" >&2
   exit 1
@@ -879,6 +1198,9 @@ receipt_input_sha=""
 receipt_release_sha=""
 receipt_base_sha=""
 receipt_base_pin_sha256=""
+receipt_base_pin_path=""
+receipt_base_pin_kind=""
+receipt_base_pin_target=""
 receipt_bundle_path=""
 receipt_bundle_sha256=""
 receipt_schema=""
@@ -902,6 +1224,9 @@ if [[ -f "$SUCCESS_RECEIPT" ]]; then
   receipt_release_sha="$(jq -r '.release_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_base_sha="$(jq -r '.base_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_base_pin_sha256="$(jq -r '.publication_base.sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_base_pin_path="$(jq -r '.publication_base.path // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_base_pin_kind="$(jq -r '.publication_base.kind // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
+  receipt_base_pin_target="$(jq -r '.publication_base.target_sha // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_bundle_path="$(jq -r '.release_bundle.path // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_bundle_sha256="$(jq -r '.release_bundle.sha256 // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
   receipt_deployment_id="$(jq -r '.railway.deployment_id // empty' "$SUCCESS_RECEIPT" 2>/dev/null)"
@@ -921,12 +1246,31 @@ if [[ -f "$SUCCESS_RECEIPT" ]]; then
 fi
 
 if [[ "$receipt_schema" == "palimpsest.hetzner-railway-publication.v2" ]]; then
-  [[ "$receipt_base_sha" == "$base_sha" \
+  if [[ "$receipt_base_sha" == "$base_sha" \
     && "$receipt_base_pin_sha256" == "$base_pin_sha256" \
-    && "$receipt_host_deployed_sha" == "$host_deployed_sha" ]] || {
-    log "v2 predecessor no longer matches the publication or host base" >&2
+    && "$receipt_base_pin_path" == "$base_pin_path" \
+    && "$receipt_base_pin_kind" == "$base_pin_kind" \
+    && "$receipt_base_pin_target" == "$base_sha" \
+    && "$receipt_host_deployed_sha" == "$host_deployed_sha" ]]; then
+    : # Ordinary same-generation predecessor.
+  elif [[ "$base_pin_kind" == "verified_successor" \
+    && "$receipt_sha256" == "$bridge_receipt_sha" \
+    && "$receipt_base_sha" == "$bridge_receipt_base_sha" \
+    && "$receipt_base_pin_sha256" == "$bridge_receipt_pin_sha256" \
+    && "$receipt_host_deployed_sha" == "$bridge_receipt_host_sha" \
+    && "$receipt_release_sha" == "$bridge_receipt_release_sha" \
+    && "$receipt_input_sha" == "$bridge_receipt_input_sha256" \
+    && "$receipt_wire_generated_at" == "$bridge_receipt_wire_generated_at" \
+    && "$receipt_manifest_sha256" == "$bridge_receipt_manifest_sha256" \
+    && "$receipt_tree_sha256" == "$bridge_receipt_tree_sha256" \
+    && "$receipt_deployment_id" == "$bridge_receipt_deployment_id" \
+    && "$SUCCESS_RECEIPT" != "$bridge_receipt_path" ]] \
+    && cmp -s "$SUCCESS_RECEIPT" "$bridge_receipt_path"; then
+    log "accepting exact one-generation predecessor receipt bound by successor pin"
+  else
+    log "v2 predecessor no longer matches the publication base or its one-generation bridge" >&2
     exit 1
-  }
+  fi
 fi
 
 if [[ "$receipt_schema" == "palimpsest.hetzner-railway-publication.v1" \

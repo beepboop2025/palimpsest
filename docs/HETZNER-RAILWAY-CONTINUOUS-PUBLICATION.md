@@ -38,8 +38,9 @@ separate:
 
 - `/etc/palimpsest/deployed-commit` remains the exact host deployment SHA;
 - `/etc/palimpsest/railway-publication-base.json` is the mandatory
-  root:`palimpsest` mode `0640` closed-schema base pin; only the one-time root
-  helper may operate against the exact pre-pin v1 incident state;
+  root:`palimpsest` mode `0640` closed-schema base pin; the one-time root
+  helper creates the exact v1 incident anchor and the repeatable root rotation
+  helper advances only a forward public-build base;
 - a pinned base must exist locally, descend from the clean canonical checkout,
   and be contained in the fetched public `origin/main` history;
 - the one-time transition command additionally requires its target to equal
@@ -119,7 +120,156 @@ subsequently captures and proves the active Railway topology before mutation.
 The helper cannot rewrite an existing pin and is not a general base-selection
 bypass.
 
-Operational ordering for this transition is fixed: create the canonical
+Later reviewed public-main advances use
+[`rotate-direct-publication-base`](../ops/railway/rotate-direct-publication-base).
+Its `palimpsest.direct-publication-base.v2` pin does **not** rewrite either the
+canonical host checkout or `/etc/palimpsest/deployed-commit`. It retains the
+exact original v1 pin as an immutable anchor, archives the immediately prior
+pin and exact v2 publication receipt, and advances only
+`target.base_sha == target.public_main_sha`. Every generation also binds
+byte-exact provider/public manifests, the active Railway topology/deployment,
+and exact installed target blobs. Content-addressed archives and append-only
+rotation records live under the private
+`/var/lib/palimpsest/railway-control/base-rotation-history/` tree. Its
+directories are root:`palimpsest` mode `0750`; evidence is root:`palimpsest`
+mode `0640`.
+
+The first publisher run after rotation may consume only the exact prior v2
+receipt named by `predecessor.publication_receipt`. The publisher compares its
+raw bytes with the root-owned archive and checks its prior base-pin digest,
+host SHA, input, release, live manifest/tree and Railway deployment. The new
+successful receipt then matches the new pin normally. A second rotation is
+refused until such a same-generation v2 receipt exists, so the bridge cannot
+skip a generation or admit an arbitrary stale receipt.
+
+### Repeatable successor-base rotation without quiescence
+
+Do not open the continuity maintenance hold for this transaction: that hold
+can close only with the full protected host-release finalized receipt. Leave
+the publisher, watchdog and continuity timers enabled. Every successor-aware
+mutator uses the single root-owned, non-renamable
+`/var/lib/palimpsest/railway-control/publish.lock` inode as the complete
+interlock, from active-lane target installation through pin replacement. The
+first v1 to v2 rotation also acquires the legacy publisher-owned lock and
+temporarily seals its parent directory before any install. A timer firing
+while either lock applies coalesces without a second mutation.
+Because an already-running v1 event wrapper would retain its old executable
+inode, the helper also takes the persistent `newswire.lock` before requiring
+that service to be loaded and inactive. The evidence-wire collector uses the
+same exclusive lease across its complete attempt, so its `OnSuccess` cannot
+start an old wrapper between the two activity checks. The helper retains and
+reverifies that inode through pin replacement; any collector admitted after
+release executes the newly installed lock-aware wrapper.
+
+The only executable pre-transaction bootstrap is installation of the new
+rotation helper itself. The helper then creates and authenticates the root
+control directory and empty lock before it takes that lock. The v1 publisher
+and watchdog neither execute nor authenticate the previously unused helper
+path. Resolve `T` from the exact public remote, fetch it without moving the
+canonical checkout, extract that one target blob with the publisher's
+replacement-free Git environment, and install it root-owned:
+
+This bootstrap is for the first v1 → v2 rotation only. Every later generation
+must invoke the rotation helper already authenticated by the current v2 pin;
+that running helper installs its target-generation replacement under the lock.
+
+```bash
+set -Eeuo pipefail
+T="${TARGET_PUBLIC_MAIN_SHA:?set exact reviewed public main SHA}"
+REPO=/home/palimpsest/palimpsest
+test "$(sudo -u palimpsest env \
+  PATH=/usr/bin:/bin HOME=/home/palimpsest LANG=C.UTF-8 \
+  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+  GIT_CONFIG_SYSTEM=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+  GIT_TERMINAL_PROMPT=0 \
+  /usr/bin/git -C "$REPO" ls-remote --exit-code origin refs/heads/main)" \
+  = "$T"$'\trefs/heads/main'
+sudo -u palimpsest env \
+  PATH=/usr/bin:/bin HOME=/home/palimpsest LANG=C.UTF-8 \
+  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+  GIT_CONFIG_SYSTEM=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+  GIT_TERMINAL_PROMPT=0 \
+  /usr/bin/git -C "$REPO" fetch --quiet --no-tags --force origin \
+  +refs/heads/main:refs/remotes/origin/main
+ROTATE_STAGE="$(mktemp)"
+trap 'rm -f -- "$ROTATE_STAGE"' EXIT
+sudo -u palimpsest env \
+  PATH=/usr/bin:/bin HOME=/home/palimpsest LANG=C.UTF-8 \
+  GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null \
+  GIT_CONFIG_SYSTEM=/dev/null GIT_NO_REPLACE_OBJECTS=1 \
+  GIT_TERMINAL_PROMPT=0 \
+  /usr/bin/git -C "$REPO" show \
+  "$T:ops/railway/rotate-direct-publication-base" >"$ROTATE_STAGE"
+sudo install -o root -g root -m 0755 "$ROTATE_STAGE" \
+  /usr/local/sbin/palimpsest-rotate-direct-publication-base
+```
+
+Before rotation, require the publisher lock to be free and require exact
+absence—not deletion—of `pending-candidate.json`, `pending-preparation.json`
+and the root DATA HOLD. The helper rechecks all three immediately before the
+record/pin mutation, so a hold raised during its live proofs still wins. Then
+execute the helper in a transient root service that reads the existing private
+Railway publication environment without printing it:
+
+```bash
+sudo systemd-run --quiet --wait --pipe --collect \
+  --unit="palimpsest-base-rotation-${T:0:12}" \
+  --property=Type=oneshot \
+  --property=EnvironmentFile=/etc/palimpsest/railway-publication.env \
+  /usr/local/sbin/palimpsest-rotate-direct-publication-base \
+  --target-base-sha "$T" \
+  --ack rotate-palimpsest-direct-publication-base
+```
+
+After acquiring the locks, the helper re-fetches exact public `main`, proves
+forward ancestry, and persists root-owned `rotation-intent.json` before the
+first installed byte changes. That intent binds the exact predecessor pin and
+receipt plus both live-manifest hashes, the raw Railway-topology hash, target,
+and all target installed digests. It atomically installs and fsyncs the complete
+14-artifact contract: continuity guard executable/service/timer; event-analysis
+wrapper/service/publisher drop-in; publisher executable/service; transition,
+rotation, and reconciliation helpers; and watchdog executable/service/timer.
+It then runs `daemon-reload`, re-proves the live manifests and active Railway
+topology, writes the append-only record, and atomically replaces and fsyncs the
+pin. It never disables or stops a timer. The event wrapper holds a shared lease
+on the same root lock across its final pin recheck and output replacement, so a
+mid-analysis rotation cannot commit predecessor output.
+
+Start one event-analysis run after the helper releases the locks; its journal
+must report the new pinned target. Then start one publisher run. Require a new v2
+receipt whose base and `publication_base.sha256` match the successor pin, the
+new private incremental bundle, byte-identical manifests on both origins, and
+a healthy direct watchdog before treating `T` as visitor-visible:
+
+```bash
+sudo systemctl start palimpsest-event-analysis-live.service
+sudo systemctl start palimpsest-railway-publish.service
+sudo systemctl start palimpsest-direct-watchdog.service
+sudo systemctl is-enabled palimpsest-railway-publish.timer \
+  palimpsest-direct-watchdog.timer palimpsest-continuity-guard.timer
+sudo systemctl is-active palimpsest-railway-publish.timer \
+  palimpsest-direct-watchdog.timer palimpsest-continuity-guard.timer
+```
+
+If the helper fails after preparing its intent, the lane stays visibly
+fail-closed. Every successor-aware publisher refuses to mutate while that
+root-owned intent exists. During the first v1 to v2 transaction the helper
+also leaves the legacy state root sealed across failure, because the installed
+v1 publisher cannot understand the new intent; the exact retry clears the
+intent and restores the state root only after pin closure. Do not disable
+timers, delete the intent, archives, or journals, or open a maintenance hold.
+Re-run the same exact target command: it resumes
+only the target and predecessor named by the durable intent, even if public
+`main` has since advanced, and only while that target remains an ancestor of
+public `main`. A different target cannot be admitted until the prepared
+transaction completes. Existing content-addressed archives and rotation
+records are accepted only when their bytes and the intent-bound predecessor
+receipt, both live manifests, deployment, and raw topology remain exact. If
+any of those mutable inputs changed after a crash, retry refuses before a new
+record or pin write; never delete or rewrite the intent to force admission.
+
+Operational ordering for the one-time incident bootstrap transition is fixed:
+create the canonical
 continuity maintenance hold before the first disable or stop; disable the
 publisher and watchdog timers while they are still active, then stop them; fetch the reviewed
 target without switching the canonical host checkout; install the exact target
