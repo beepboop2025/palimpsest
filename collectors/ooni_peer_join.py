@@ -62,7 +62,7 @@ def _gfw_rows(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(rows, list):
         return []
     out: list[dict[str, Any]] = []
-    as_of = iso_z(payload.get("until") or payload.get("generated_at"))
+    as_of = iso_z(payload.get("generated_at"))
     for raw in rows:
         if not isinstance(raw, Mapping):
             continue

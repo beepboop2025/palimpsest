@@ -24,7 +24,7 @@ from scripts import share_cards, stage_pages_rights
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RIGHTS_CLOCK = datetime(2026, 8, 26, 0, 0, tzinfo=UTC)
+RIGHTS_CLOCK = datetime(2026, 8, 31, 0, 0, tzinfo=UTC)
 PUBLICATION_SHA = "1" * 40
 DENIED_VALUE_KEYS = {
     *stage_pages_rights.DIRECT_VALUE_KEYS,
@@ -504,7 +504,7 @@ def test_exact_git_archive_universe_is_recursively_quarantined(tmp_path: Path):
     assert status["status"] == "restricted"
     assert status["availability"] == "unavailable"
     assert status["publication_allowed"] is False
-    assert status["rights_evaluated_at"] == "2026-08-26T00:00:00Z"
+    assert status["rights_evaluated_at"] == "2026-08-31T00:00:00Z"
     assert status["publication_sha"] == PUBLICATION_SHA
     assert status["counts"] == {
         "input_records": 2259,
@@ -632,7 +632,7 @@ def test_pre_quarantine_freshness_attestation_is_compact_and_lineage_bound(
         "limitations",
     }
     assert attestation["publication_sha"] == PUBLICATION_SHA
-    assert attestation["attested_at"] == "2026-08-26T00:00:00Z"
+    assert attestation["attested_at"] == "2026-08-31T00:00:00Z"
     assert attestation["mode"] == "rights-suppressed"
     assert attestation["publication_allowed"] is False
     assert attestation["artifacts"] == {
@@ -726,9 +726,9 @@ def test_release_receipt_v2_rejects_attested_identity_tamper_during_check(
             "--publication-sha",
             PUBLICATION_SHA,
             "--evaluated-at",
-            "2026-08-26T00:00:00Z",
+            "2026-08-31T00:00:00Z",
             "--admission-at",
-            "2026-08-26T00:00:00Z",
+            "2026-08-31T00:00:00Z",
             "--receipt",
             str(receipt_path),
             "--check",
@@ -783,6 +783,23 @@ def test_freshness_attestation_refuses_mismatched_situation_lineage(
     with pytest.raises(
         stage_pages_rights.PagesRightsError,
         match="does not bind the exact newswire input",
+    ):
+        _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
+
+
+def test_freshness_attestation_rejects_future_situation_clock(tmp_path: Path):
+    _write_minimal_denied_tree(tmp_path)
+    situation_path = tmp_path / stage_pages_rights.CHINA_SITUATION_RELATIVE_PATH
+    situation = json.loads(situation_path.read_text(encoding="utf-8"))
+    situation["generated_at"] = "2026-09-01T00:00:00Z"
+    situation_path.write_text(
+        json.dumps(situation, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        stage_pages_rights.PagesRightsError,
+        match="China situation generated_at exceeds the rights evaluation clock",
     ):
         _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
 
@@ -1502,7 +1519,7 @@ def test_exact_status_and_policy_receipt_are_verified_not_self_attested(
     _write_pre_quarantine_sources(tmp_path)
     _stage(tmp_path, evaluated_at=RIGHTS_CLOCK)
     forged_master = json.loads(master.read_text(encoding="utf-8"))
-    forged_master["rights_evaluated_at"] = "2026-08-27T00:00:00Z"
+    forged_master["rights_evaluated_at"] = "2026-09-01T00:00:00Z"
     master.write_text(
         json.dumps(forged_master, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
