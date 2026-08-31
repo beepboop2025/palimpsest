@@ -265,6 +265,15 @@ def test_activation_handoff_blocks_embed_parseable_python() -> None:
         compile(source, f"{name}-heredoc-{index}", "exec")
 
 
+def test_phase_one_embeds_only_parseable_python() -> None:
+    block = _fenced_bash_block_after("### Phase 1: host transaction")
+    sources = _python_heredocs(block)
+
+    assert len(sources) == 22
+    for index, source in enumerate(sources, start=1):
+        compile(source, f"phase-one-heredoc-{index}", "exec")
+
+
 def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard() -> (
     None
 ):
@@ -280,7 +289,59 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
     phase_one_abort = transaction.index("phase1_abort() {", phase_one_fail_safe)
     phase_one_err = transaction.index("trap 'phase1_abort", phase_one_abort)
     phase_one_exit = transaction.index("trap 'phase1_exit \"$?\"' EXIT", phase_one_err)
-    first_fetch = transaction.index("release_git -c fetch.fsckObjects=true")
+    bootstrap_fetch = transaction.index("release_git -c fetch.fsckObjects=true")
+    forward_ancestry = transaction.index(
+        '"$EXPECTED_PREVIOUS_DEPLOY_SHA" "$EXPECTED_DEPLOY_SHA"',
+        bootstrap_fetch,
+    )
+    staged_capability = transaction.index(
+        'test "$("$CONTINUITY_GUARD_STAGED" capabilities)"',
+        forward_ancestry,
+    )
+    reviewed_drop_in = transaction.index(
+        "CONTINUITY_EVIDENCE_DROPIN_SHA256=", forward_ancestry
+    )
+    existing_hold_auth = transaction.index(
+        'CONTINUITY_EXISTING_HOLD="$(sudo "$CONTINUITY_GUARD_STAGED"',
+        staged_capability,
+    )
+    previous_invocation = transaction.index(
+        'CONTINUITY_PREVIOUS_INVOCATION_ID="$(systemctl show',
+        existing_hold_auth,
+    )
+    fence_condition = transaction.index(
+        "ConditionPathExists=!${CONTINUITY_FENCE_MARKER}",
+        previous_invocation,
+    )
+    fence_reload = transaction.index("sudo systemctl daemon-reload", fence_condition)
+    predecessor_stop = transaction.index(
+        'sudo systemctl stop "$CONTINUITY_GUARD_SERVICE"', fence_reload
+    )
+    fence_proof = transaction.index(
+        '"$CONTINUITY_GUARD_SERVICE")" = no', predecessor_stop
+    )
+    predecessor_drained = transaction.index(
+        '"$CONTINUITY_GUARD_SERVICE")" = 0', fence_proof
+    )
+    guard_install = transaction.index(
+        "os.replace(temporary, os.path.basename(destination)", bootstrap_fetch
+    )
+    installed_capability = transaction.index(
+        'test "$(sudo "$CONTINUITY_GUARD" capabilities)"', guard_install
+    )
+    fence_removal = transaction.index(
+        "\ncontinuity_bootstrap_remove_fence\n", installed_capability
+    )
+    fresh_condition = transaction.index(
+        '"$CONTINUITY_GUARD_SERVICE")" = yes', fence_removal
+    )
+    fresh_invocation = transaction.index(
+        'CONTINUITY_FRESH_INVOCATION_ID="$(systemctl show', fresh_condition
+    )
+    hold_begin = transaction.index("\ncontinuity_maintenance_begin\n", quiescer)
+    protected_fetch = transaction.index(
+        "release_git -c fetch.fsckObjects=true", bootstrap_fetch + 1
+    )
     phase_three = transaction.index("### Phase 3:")
     same_shell_guard = transaction.index("if ! declare -p", phase_three)
     shell_pid = transaction.index('test "$PHASE1_SHELL_PID" = "$$"', same_shell_guard)
@@ -372,14 +433,31 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
     )
     assert (
         direction_gate
+        < bootstrap_fetch
+        < forward_ancestry
+        < reviewed_drop_in
+        < staged_capability
+        < existing_hold_auth
+        < previous_invocation
+        < fence_condition
+        < fence_reload
+        < predecessor_stop
+        < fence_proof
+        < predecessor_drained
+        < guard_install
+        < installed_capability
+        < fence_removal
+        < fresh_condition
+        < fresh_invocation
         < writer_capture
         < instance_capture
         < quiescer
+        < hold_begin
         < phase_one_fail_safe
         < phase_one_abort
         < phase_one_err
         < phase_one_exit
-        < first_fetch
+        < protected_fetch
         < phase_three
         < same_shell_guard
         < shell_pid
@@ -389,6 +467,260 @@ def test_phase_one_fail_safe_is_armed_before_mutation_and_replaced_after_guard()
         < phase_three_exit
         < takeover
     )
+
+    bootstrap = transaction[previous_invocation:fresh_invocation]
+    for forbidden in (
+        "stop palimpsest-continuity-guard.timer",
+        "disable palimpsest-continuity-guard.timer",
+        "mask palimpsest-continuity-guard.timer",
+    ):
+        assert forbidden not in bootstrap
+    assert bootstrap.count(
+        'test "$(systemctl is-enabled "$CONTINUITY_GUARD_TIMER")" = enabled'
+    ) >= 2
+    assert bootstrap.count(
+        'test "$(systemctl is-active "$CONTINUITY_GUARD_TIMER")" = active'
+    ) >= 2
+
+
+def test_hold_recovery_reconciles_final_authority_and_exits_without_replay() -> None:
+    transaction = _transaction()
+    end_function = transaction.index("continuity_maintenance_end() {")
+    recovery = transaction.index(
+        "if (( CONTINUITY_HOLD_RECOVERY == 1 )); then", end_function
+    )
+    recovery_end = transaction.index("\nfi\n\nread_enablement() {", recovery)
+    branch = transaction[recovery:recovery_end]
+
+    cleanup = branch.index("cleanup_release_private_state")
+    reconcile = branch.index("maintenance-reconcile-finalized")
+    fragments = branch.index('"${CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS[@]}"')
+    drop_ins = branch.index(
+        '"${CONTINUITY_EXPECTED_DROPIN_ARGUMENTS[@]}"', fragments
+    )
+    handshake = branch.index("CONTINUITY_RECONCILE_PATTERN=", reconcile)
+    trap_clear = branch.index("trap - ERR EXIT HUP INT TERM", handshake)
+    terminal_exit = branch.rindex("exit 0")
+
+    assert (
+        cleanup
+        < reconcile
+        < fragments
+        < drop_ins
+        < handshake
+        < trap_clear
+        < terminal_exit
+    )
+    for forbidden in (
+        "continuity_maintenance_begin",
+        "release_git switch",
+        "release_compose",
+        "release_quiesce_all",
+        "publish_finalized_receipt",
+    ):
+        assert forbidden not in branch
+    assert recovery < transaction.index("\ncontinuity_maintenance_begin\n")
+
+
+def test_bootstrap_fence_removal_propagates_failures_under_negated_call() -> None:
+    transaction = _transaction()
+    remove_fence = _bash_function_source(
+        transaction, "continuity_bootstrap_remove_fence"
+    )
+
+    for failure_point in (
+        "authentication",
+        "remove",
+        "sync",
+        "daemon-reload",
+        "postcondition",
+    ):
+        script = f"""\
+set -Eeuo pipefail
+{remove_fence}
+FAILURE_POINT={failure_point}
+CONTINUITY_BOOTSTRAP_FENCED=1
+CONTINUITY_FENCE_MARKER=/run/palimpsest-continuity-bootstrap/{"a" * 32}.block
+CONTINUITY_FENCE_DROPIN=/run/systemd/system/palimpsest-continuity-guard.service.d/99-bootstrap-{"a" * 32}.conf
+CONTINUITY_FENCE_DROPIN_SHA256={"b" * 64}
+sudo() {{
+  local command="$1"
+  shift
+  case "$command" in
+    stat)
+      if [[ "$FAILURE_POINT" == authentication ]]; then
+        return 89
+      fi
+      case "$3" in
+        /run/palimpsest-continuity-bootstrap)
+          printf 'root:root:700\n'
+          ;;
+        /run/systemd/system/palimpsest-continuity-guard.service.d)
+          printf 'root:root:755\n'
+          ;;
+        "$CONTINUITY_FENCE_DROPIN")
+          printf 'root:root:644:1\n'
+          ;;
+        "$CONTINUITY_FENCE_MARKER")
+          printf 'root:root:600:1:0\n'
+          ;;
+        *) return 90 ;;
+      esac
+      ;;
+    test)
+      return 0
+      ;;
+    sha256sum)
+      printf '%s  %s\n' "$CONTINUITY_FENCE_DROPIN_SHA256" "$1"
+      ;;
+    rm)
+      if [[ "$FAILURE_POINT" == remove \
+          && "$2" == "$CONTINUITY_FENCE_DROPIN" ]]; then
+        return 91
+      fi
+      ;;
+    sync)
+      [[ "$FAILURE_POINT" != sync ]] || return 96
+      return 0
+      ;;
+    systemctl)
+      [[ "$FAILURE_POINT" != daemon-reload ]] || return 97
+      [[ "$1" == daemon-reload ]]
+      ;;
+    *) return 92 ;;
+  esac
+}}
+systemctl() {{
+  [[ "$1" == show ]] || return 93
+  case "$2" in
+    --property=DropInPaths)
+      return 0
+      ;;
+    --property=NeedDaemonReload)
+      if [[ "$FAILURE_POINT" == postcondition ]]; then
+        printf 'yes\n'
+      else
+        printf 'no\n'
+      fi
+      ;;
+    *) return 94 ;;
+  esac
+}}
+outcome=success
+if ! continuity_bootstrap_remove_fence; then
+  outcome=failure
+fi
+test "$outcome" = failure
+test "$CONTINUITY_BOOTSTRAP_FENCED" = 1
+"""
+        result = subprocess.run(
+            ["/bin/bash"],
+            input=script,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, (
+            failure_point,
+            result.stdout,
+            result.stderr,
+        )
+
+
+def test_fail_closed_propagates_failures_under_status_capture_call() -> None:
+    transaction = _transaction()
+    fail_closed = _bash_function_source(
+        transaction, "continuity_maintenance_fail_closed"
+    )
+
+    for failure_point in ("command", "handshake"):
+        script = f"""\
+set -Eeuo pipefail
+{fail_closed}
+FAILURE_POINT={failure_point}
+CONTINUITY_GUARD=/usr/local/sbin/palimpsest-continuity-guard
+RELEASE_RESUME_TOKEN={"a" * 32}
+EXPECTED_DEPLOY_SHA={"b" * 40}
+CONTINUITY_REASON_CODE=reviewed-release
+CONTINUITY_MAINTENANCE_ARMED=0
+sudo() {{
+  if [[ "$FAILURE_POINT" == command ]]; then
+    return 95
+  fi
+  printf 'injected noncanonical handshake\n'
+}}
+hold_status=0
+continuity_maintenance_fail_closed || hold_status=$?
+test "$hold_status" -ne 0
+test "$CONTINUITY_MAINTENANCE_ARMED" = 0
+"""
+        result = subprocess.run(
+            ["/bin/bash"],
+            input=script,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, (
+            failure_point,
+            result.stdout,
+            result.stderr,
+        )
+
+
+def test_continuity_effective_timer_profile_is_closed_and_target_derived() -> None:
+    transaction = _transaction()
+    profile_start = transaction.index("CONTINUITY_TIMER_UNITS=(")
+    profile_end = transaction.index("CONTINUITY_BOOTSTRAP_DIR=", profile_start)
+    profile = transaction[profile_start:profile_end]
+    maintenance_end = _bash_function_source(transaction, "continuity_maintenance_end")
+    candidate_start = transaction.index("CANDIDATE_UNIT_SOURCES=(")
+    candidate_end = transaction.index(
+        "candidate_backup_on_success=", candidate_start
+    )
+    candidate = transaction[candidate_start:candidate_end]
+    phase_three = transaction[transaction.index("### Phase 3:") :]
+
+    assert (
+        "CONTINUITY_EVIDENCE_DROPIN_SOURCE="
+        "'ops/systemd/palimpsest-evidence-wire.5-minute-live.conf'"
+    ) in profile
+    assert (
+        "CONTINUITY_EVIDENCE_DROPIN_PATH="
+        "'/etc/systemd/system/palimpsest-evidence-wire.timer.d/"
+        "90-five-minute-live.conf'"
+    ) in profile
+    assert (
+        'release_git show \\\n'
+        '  "${EXPECTED_DEPLOY_SHA}:${CONTINUITY_EVIDENCE_DROPIN_SOURCE}"'
+        in profile
+    )
+    assert '--expected-drop-in "$unit=absent"' in profile
+    assert profile.count("--expected-drop-in") == 2
+    assert 'test "${#CONTINUITY_EXPECTED_DROPIN_ARGUMENTS[@]}" = 8' in profile
+    for marker in (
+        "ops/systemd/palimpsest-evidence-wire.5-minute-live.conf",
+        "/etc/systemd/system/palimpsest-evidence-wire.timer.d/"
+        "90-five-minute-live.conf",
+        "verify_installed_unit_blob",
+        'test "$candidate_dropins" = "$CONTINUITY_EVIDENCE_DROPIN_PATH"',
+        '"$CONTINUITY_EVIDENCE_DROPIN_SHA256"',
+    ):
+        assert marker in candidate
+    for marker in (
+        "CONTINUITY_EXPECTED_DROPIN_ARGUMENTS",
+        "CONTINUITY_EVIDENCE_DROPIN_SOURCE",
+        "CONTINUITY_EVIDENCE_DROPIN_PATH",
+        "CONTINUITY_EVIDENCE_DROPIN_SHA256",
+    ):
+        assert marker in phase_three.split(">/dev/null 2>&1", 1)[0]
+    for marker in (
+        '--finalized-receipt "$FINALIZED_RECEIPT_PATH"',
+        '--finalized-sha256 "$FINALIZED_RECEIPT_SHA256"',
+        '"${CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS[@]}"',
+        '"${CONTINUITY_EXPECTED_DROPIN_ARGUMENTS[@]}"',
+    ):
+        assert marker in maintenance_end
 
 
 def test_common_crawl_mount_gate_records_nonsecret_failure_stages() -> None:
@@ -1790,6 +2122,9 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         "palimpsest-common-crawl-backup.timer",
         "palimpsest-node-offsite-backup.timer",
         "palimpsest-evidence-wire.timer",
+        "palimpsest-measurement-refresh.timer",
+        "palimpsest-railway-publish.timer",
+        "palimpsest-direct-watchdog.timer",
         "palimpsest-investigative-analysis.timer",
         "palimpsest-investigative-broker.socket",
         "palimpsest-common-crawl-import.path",
@@ -1806,6 +2141,9 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         "palimpsest-common-crawl-backup.service",
         "palimpsest-node-offsite-backup.service",
         "palimpsest-evidence-wire.service",
+        "palimpsest-measurement-refresh.service",
+        "palimpsest-railway-publish.service",
+        "palimpsest-direct-watchdog.service",
         "palimpsest-event-analysis-live.service",
         "palimpsest-investigative-analysis.service",
         "palimpsest-common-crawl-import.service",
@@ -1818,20 +2156,20 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         assert unit in services
 
     producer_hold = transaction.index(
-        "# Stop and persistently disable every systemd producer"
+        "# Persistently disable every systemd producer"
+    )
+    disable_activators = transaction.index(
+        'temporarily_disable_activator "$unit"', producer_hold
     )
     stop_activators = transaction.index(
-        'for unit in "${RELEASE_ACTIVATORS[@]}"', producer_hold
+        'stop_loaded_unit "$unit"', disable_activators
     )
     stop_services = transaction.index(
         'for unit in "${RELEASE_SERVICES[@]}"', stop_activators
     )
-    disable_activators = transaction.index(
-        'temporarily_disable_activator "$unit"', stop_services
-    )
     beat_stop = transaction.index(
         'release_compose "${COMPOSE_ALL_PROFILES[@]}" stop beat',
-        disable_activators,
+        stop_services,
     )
     celery_fence = transaction.index("CELERY_PRECHANGE_RECEIPT_PATH=", beat_stop)
     quiesce = transaction.index(
@@ -1864,12 +2202,20 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
     restore_activators = transaction.index(
         'restore_activator_enablement "$unit"', remove_quiesce
     )
+    restore_runtime = transaction.index(
+        'sudo systemctl start "$unit"', remove_quiesce
+    )
 
     assert "declare -A RELEASE_WAS_ACTIVE RELEASE_ENABLEMENT" in transaction
     assert 'RELEASE_ENABLEMENT["$unit"]="$(read_enablement "$unit")"' in transaction
     assert 'RELEASE_WAS_ACTIVE["$unit"]=1' in transaction
     assert "restore_activator_enablement() {" in transaction
     assert "quiesce_dynamic_release_instances" in transaction[producer_hold:beat_stop]
+    emergency_quiesce = _bash_function_source(transaction, "release_quiesce_all")
+    assert emergency_quiesce.index('sudo systemctl disable "$unit"') \
+        < emergency_quiesce.index('sudo systemctl stop "$unit"')
+    assert emergency_quiesce.rindex('sudo systemctl disable "$unit"') \
+        < emergency_quiesce.rindex('sudo systemctl stop "$unit"')
     dynamic_helper = _bash_function_source(
         transaction, "capture_release_instance_inventory"
     )
@@ -1885,9 +2231,9 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
     )
     assert (
         producer_hold
+        < disable_activators
         < stop_activators
         < stop_services
-        < disable_activators
         < beat_stop
         < celery_fence
         < quiesce
@@ -1899,6 +2245,7 @@ def test_every_release_unit_is_stopped_and_backup_trigger_is_quiesced() -> None:
         < proof_install
         < remove_quiesce
         < trigger_restored
+        < restore_runtime
         < restore_activators
     )
 
@@ -2744,7 +3091,7 @@ def test_every_release_service_has_an_exact_success_trigger_allowlist() -> None:
     helper = transaction.index("verify_release_service_success_triggers() {")
     first_stop = transaction.index(
         'for unit in "${RELEASE_SERVICES[@]}"; do',
-        transaction.index("# Stop and persistently disable every systemd producer"),
+        transaction.index("# Persistently disable every systemd producer"),
     )
     initial_call = transaction.index(
         "verify_release_service_success_triggers \\\n", helper
@@ -3744,7 +4091,7 @@ def test_finalized_receipt_records_and_validates_restored_runtime_identities() -
         '"backup_release_quiesce_present": False',
     ):
         assert marker in receipt
-    assert "len(activators) != 12" in receipt
+    assert "len(activators) != 15" in receipt
     assert '"beat", "worker", "worker-collectors"' in receipt
     assert (
         activator_capture
@@ -3818,6 +4165,11 @@ def test_durable_receipts_bracket_the_release_commit_and_writer_restore() -> Non
         fail_safe : transaction.index("trap 'phase3_fail_safe", fail_safe)
     ]
     assert "release_quiesce_all" in fail_safe_block
+    assert (
+        fail_safe_block.index("continuity_maintenance_fail_closed")
+        < fail_safe_block.index("remove_uncommitted_success_receipt")
+        < fail_safe_block.index("release_quiesce_all")
+    )
     publisher_block = _bash_function_source(transaction, "publish_finalized_receipt")
     for marker in (
         "os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW",
@@ -3830,6 +4182,7 @@ def test_durable_receipts_bracket_the_release_commit_and_writer_restore() -> Non
         finalized_install + 1 : trap_clear + len("trap - ERR EXIT HUP INT TERM")
     ].splitlines() == [
         "publish_finalized_receipt",
+        "continuity_maintenance_end",
         "release_finalized=1",
         "PHASE3_FAIL_SAFE_ARMED=0",
         "trap - ERR EXIT HUP INT TERM",
@@ -5466,7 +5819,7 @@ def test_finalized_receipt_readback_handles_recovery_and_rejects_ordinary_leakag
     activators_path.write_text(
         "".join(
             f"unit-{index}.timer\tdisabled\t0\tdisabled\tinactive\n"
-            for index in range(12)
+            for index in range(15)
         ),
         encoding="utf-8",
     )
@@ -5909,7 +6262,7 @@ def test_final_authority_reader_accepts_only_crash_safe_receipt_states(
         "release_proof_present": False,
         "writers_restored": True,
         "restored_celery": {},
-        "restored_activators": {f"unit-{index}.timer": {} for index in range(12)},
+        "restored_activators": {f"unit-{index}.timer": {} for index in range(15)},
         "restored_compose_writers": restored_compose,
         "restored_beat": restored_compose["beat"],
         "backup_on_success": "",

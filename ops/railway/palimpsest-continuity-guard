@@ -1,0 +1,2546 @@
+#!/usr/bin/env python3
+"""Repair accidentally stopped Palimpsest direct-publication timers.
+
+Only enabled-but-inactive timers are repaired. Disabled timers remain an
+explicit operator decision, and every release/data safety marker causes an
+abstention rather than an automatic publication mutation.
+"""
+
+from __future__ import annotations
+
+import argparse
+import fcntl
+import hashlib
+import json
+import math
+import os
+import re
+import stat
+import subprocess
+import sys
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from typing import Any
+
+
+SCHEMA_VERSION = "palimpsest.continuity-guard.v1"
+HOLD_SCHEMA = "palimpsest.continuity-maintenance-hold.v1"
+CAPABILITIES_SCHEMA = "palimpsest.continuity-guard-capabilities.v1"
+SYSTEMCTL = "/usr/bin/systemctl"
+STATUS_PATH = Path("/var/lib/palimpsest-continuity/status.json")
+HOLD_PATH = Path("/var/lib/palimpsest-continuity/maintenance-hold.json")
+MAINTENANCE_LOCK_PATH = Path("/var/lib/palimpsest-continuity/maintenance.lock")
+RECEIPT_DIR = Path("/var/lib/palimpsest-release/receipts")
+RECOVERY_RECEIPT_DIR = Path("/var/lib/palimpsest-release/recovery")
+SYSTEMD_UNIT_DIR = Path("/etc/systemd/system")
+MAX_HOLD_SECONDS = 2 * 60 * 60
+MAX_UNIT_BYTES = 1024 * 1024
+MAX_FINALIZED_RECEIPT_BYTES = 512 * 1024
+MAX_PROOF_RECEIPT_BYTES = 512 * 1024
+MAX_COMPLETION_RECEIPT_BYTES = 128 * 1024
+_DROP_IN_UNSPECIFIED = object()
+SHA40 = re.compile(r"^[0-9a-f]{40}$")
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
+TRANSACTION_ID = re.compile(r"^[0-9a-f]{32}$")
+INCIDENT_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+CAPABILITY_COMMANDS = (
+    "capabilities",
+    "check",
+    "maintenance-assert",
+    "maintenance-begin",
+    "maintenance-end",
+    "maintenance-fail-closed",
+    "maintenance-inspect",
+    "maintenance-reconcile-finalized",
+)
+
+TIMERS = (
+    "palimpsest-evidence-wire.timer",
+    "palimpsest-measurement-refresh.timer",
+    "palimpsest-railway-publish.timer",
+    "palimpsest-direct-watchdog.timer",
+)
+RELEASE_ACTIVATORS = frozenset(
+    {
+        "palimpsest-backup.timer",
+        "palimpsest-bleedthrough.timer",
+        "palimpsest-common-crawl-backup.timer",
+        "palimpsest-common-crawl-context.timer",
+        "palimpsest-common-crawl-import.path",
+        "palimpsest-evidence-wire.timer",
+        "palimpsest-measurement-refresh.timer",
+        "palimpsest-railway-publish.timer",
+        "palimpsest-direct-watchdog.timer",
+        "palimpsest-freshness-watchdog.timer",
+        "palimpsest-investigative-analysis.timer",
+        "palimpsest-investigative-broker.socket",
+        "palimpsest-node-offsite-backup.timer",
+        "palimpsest-public-osint-sync.timer",
+        "palimpsest-witness.timer",
+    }
+)
+COMPOSE_WRITERS = frozenset(
+    {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"}
+)
+BROKER_QUEUES = frozenset({"celery", "censorwatch", "collectors", "warehouse"})
+PROOF_UNIT_PATHS = frozenset(
+    {
+        "/etc/systemd/system/palimpsest-backup.service",
+        "/etc/systemd/system/palimpsest-backup.timer",
+        "/etc/systemd/system/palimpsest-backup.service.d/override.conf",
+        "/etc/systemd/system/palimpsest-evidence-wire.service",
+        "/etc/systemd/system/palimpsest-evidence-wire.timer",
+        "/etc/systemd/system/palimpsest-event-analysis-live.service",
+        "/etc/systemd/system/palimpsest-freshness-watchdog.service",
+        "/etc/systemd/system/palimpsest-freshness-watchdog.timer",
+        "/etc/systemd/system/palimpsest-witness.service",
+        "/etc/systemd/system/palimpsest-witness.timer",
+    }
+)
+RECOVERY_LANE_OUTPUTS = {
+    "wayback": "readings/wayback-latest.json",
+    "public-deletion-ledgers": "readings/public-deletion-ledgers-latest.json",
+    "news-wire-live": "readings/news-wire-live-latest.json",
+    "silence-index": "readings/silence-index-latest.json",
+    "archive-news-context": "readings/archive-news-context-latest.json",
+    "social-spread": "readings/social-spread-latest.json",
+}
+INTERRUPTED_RECOVERY_AUTHORITIES = {
+    "2026-08-26-interrupted-phase1-hybrid-recovery": {
+        "manifest_sha256": "8ebbec1471a60f6112c521a2783efd3fda1d5c5fea352c087f31f62dd9d153af",
+        "manifest_canonical_sha256": "695b63e6f4f79017d80d51e9521d2050cda0de7cfcbc17338d24b6c624faea16",
+    }
+}
+SAFETY_MARKERS = (
+    Path("/etc/palimpsest/railway-publication-data-hold.json"),
+    Path("/var/lib/palimpsest/railway-publication/pending-candidate.json"),
+    Path("/var/lib/palimpsest/railway-publication/pending-preparation.json"),
+    Path("/var/lib/palimpsest-public-osint-sync/release-proof.json"),
+    Path(
+        "/etc/systemd/system/palimpsest-backup.service.d/"
+        "zz-release-quiesce.conf"
+    ),
+)
+PUBLICATION_LOCKS = (
+    Path("/var/lib/palimpsest/railway-publication/publish.lock"),
+    Path("/var/lib/palimpsest/railway-publication/data.lock"),
+)
+
+
+class GuardError(RuntimeError):
+    """A continuity input or systemd result is unsafe or ambiguous."""
+
+
+@dataclass(frozen=True)
+class TimerState:
+    unit: str
+    load_state: str
+    unit_file_state: str
+    active_state: str
+
+
+def _utc(value: Any, *, field: str) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise GuardError(f"{field} is not an RFC 3339 UTC clock")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError as exc:
+        raise GuardError(f"{field} is not an RFC 3339 UTC clock") from exc
+    if parsed.utcoffset() != UTC.utcoffset(parsed):
+        raise GuardError(f"{field} is not an RFC 3339 UTC clock")
+    return parsed
+
+
+def _clock(value: datetime) -> str:
+    return value.astimezone(UTC).replace(microsecond=0).isoformat().replace(
+        "+00:00", "Z"
+    )
+
+
+def _strict_json(raw: bytes, *, label: str) -> dict[str, Any]:
+    def pairs(rows: list[tuple[str, Any]]) -> dict[str, Any]:
+        document: dict[str, Any] = {}
+        for key, value in rows:
+            if key in document:
+                raise GuardError(f"{label} contains a duplicate key")
+            document[key] = value
+        return document
+
+    try:
+        document = json.loads(
+            raw,
+            object_pairs_hook=pairs,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                GuardError(f"{label} contains {value}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise GuardError(f"{label} is not strict JSON") from exc
+    if not isinstance(document, dict):
+        raise GuardError(f"{label} must be one object")
+    return document
+
+
+def _canonical(document: dict[str, Any]) -> bytes:
+    try:
+        return (
+            json.dumps(
+                document,
+                allow_nan=False,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n"
+        ).encode()
+    except (TypeError, ValueError) as exc:
+        raise GuardError("document is not canonical JSON data") from exc
+
+
+def validate_maintenance_hold(
+    raw: bytes,
+    *,
+    now: datetime,
+    owner_uid: int,
+    owner_gid: int,
+    mode: int,
+    require_effective: bool = True,
+) -> dict[str, Any]:
+    if owner_uid != 0 or owner_gid != 0 or stat.S_IMODE(mode) != 0o600:
+        raise GuardError("maintenance hold ownership or mode is invalid")
+    document = _strict_json(raw, label="maintenance hold")
+    if raw != _canonical(document):
+        raise GuardError("maintenance hold is not canonical JSON")
+    if set(document) != {
+        "schema_version",
+        "status",
+        "transaction_id",
+        "reason_code",
+        "created_at",
+        "expires_at",
+        "controller_commit",
+        "pre_state",
+        "restore_profile_sha256",
+    }:
+        raise GuardError("maintenance hold does not match its closed schema")
+    if (
+        document["schema_version"] != HOLD_SCHEMA
+        or document["status"] not in {"active", "fail_closed"}
+        or not isinstance(document["transaction_id"], str)
+        or not TRANSACTION_ID.fullmatch(document["transaction_id"])
+        or not isinstance(document["reason_code"], str)
+        or not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", document["reason_code"])
+        or not isinstance(document["controller_commit"], str)
+        or not SHA40.fullmatch(document["controller_commit"])
+        or not isinstance(document["restore_profile_sha256"], str)
+        or not SHA256.fullmatch(document["restore_profile_sha256"])
+    ):
+        raise GuardError("maintenance hold identity is invalid")
+    created = _utc(document["created_at"], field="maintenance hold created_at")
+    expires = _utc(document["expires_at"], field="maintenance hold expires_at")
+    if expires <= created or (expires - created).total_seconds() > MAX_HOLD_SECONDS:
+        raise GuardError("maintenance hold exceeds its bounded lease")
+    if require_effective and (now < created or now >= expires):
+        raise GuardError("maintenance hold is not currently effective")
+    pre_state = document.get("pre_state")
+    if not isinstance(pre_state, dict) or set(pre_state) != set(TIMERS):
+        raise GuardError("maintenance hold timer inventory is invalid")
+    for unit, row in pre_state.items():
+        if not isinstance(row, dict) or set(row) != {
+            "load_state",
+            "unit_file_state",
+            "active_state",
+            "fragment_sha256",
+        }:
+            raise GuardError(f"maintenance hold state is invalid for {unit}")
+        if (
+            row["load_state"] not in {"loaded", "not-found"}
+            or row["unit_file_state"]
+            not in {"enabled", "enabled-runtime", "disabled", "not-found"}
+            or row["active_state"] not in {"active", "inactive", "failed", "unknown"}
+            or not isinstance(row["fragment_sha256"], str)
+            or not SHA256.fullmatch(row["fragment_sha256"])
+        ):
+            raise GuardError(f"maintenance hold state identity is invalid for {unit}")
+    if document["restore_profile_sha256"] != _restore_profile_sha256(pre_state):
+        raise GuardError("maintenance hold restore profile is invalid")
+    return document
+
+
+def repair_candidates(states: list[TimerState], *, blockers: list[str]) -> list[str]:
+    if blockers:
+        return []
+    repairs = []
+    for item in states:
+        if (
+            item.load_state == "loaded"
+            and item.unit_file_state in {"enabled", "enabled-runtime"}
+            and item.active_state in {"inactive", "failed"}
+        ):
+            repairs.append(item.unit)
+    return repairs
+
+
+def _systemctl(*arguments: str) -> subprocess.CompletedProcess[str]:
+    try:
+        return subprocess.run(
+            [SYSTEMCTL, *arguments],
+            check=False,
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+            env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"},
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GuardError("systemd control plane is unavailable") from exc
+
+
+def _property(unit: str, name: str) -> str:
+    result = _systemctl("show", unit, f"--property={name}", "--value")
+    if result.returncode != 0:
+        raise GuardError(f"cannot inspect {name} for {unit}")
+    value = result.stdout.strip()
+    if not value or "\n" in value:
+        raise GuardError(f"ambiguous {name} for {unit}")
+    return value
+
+
+def _optional_property(unit: str, name: str) -> str:
+    result = _systemctl("show", unit, f"--property={name}", "--value")
+    if result.returncode != 0:
+        raise GuardError(f"cannot inspect {name} for {unit}")
+    value = result.stdout.rstrip("\n")
+    if "\n" in value or "\r" in value:
+        raise GuardError(f"ambiguous {name} for {unit}")
+    return value
+
+
+def _timer_states() -> list[TimerState]:
+    return [
+        TimerState(
+            unit=unit,
+            load_state=_property(unit, "LoadState"),
+            unit_file_state=_property(unit, "UnitFileState"),
+            active_state=_property(unit, "ActiveState"),
+        )
+        for unit in TIMERS
+    ]
+
+
+def _drop_in_sha256(path: Path, *, unit: str) -> str:
+    expected_parent = SYSTEMD_UNIT_DIR / f"{unit}.d"
+    if (
+        not path.is_absolute()
+        or path.parent != expected_parent
+        or path.suffix != ".conf"
+        or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*\.conf", path.name) is None
+    ):
+        raise GuardError(f"reviewed drop-in path is not canonical: {unit}")
+    try:
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0),
+        )
+    except OSError as exc:
+        raise GuardError(f"cannot read reviewed drop-in: {unit}") from exc
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or before.st_gid != os.getegid()
+            or stat.S_IMODE(before.st_mode) != 0o644
+            or before.st_nlink != 1
+            or not 0 < before.st_size <= MAX_UNIT_BYTES
+        ):
+            raise GuardError(f"reviewed drop-in metadata is unsafe: {unit}")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            raw = handle.read(MAX_UNIT_BYTES + 1)
+        after = os.fstat(descriptor)
+        stable_fields = (
+            "st_dev",
+            "st_ino",
+            "st_mode",
+            "st_uid",
+            "st_gid",
+            "st_nlink",
+            "st_size",
+            "st_mtime_ns",
+            "st_ctime_ns",
+        )
+        if (
+            any(getattr(before, field) != getattr(after, field) for field in stable_fields)
+            or len(raw) != before.st_size
+            or len(raw) > MAX_UNIT_BYTES
+        ):
+            raise GuardError(f"reviewed drop-in changed while reading: {unit}")
+        return hashlib.sha256(raw).hexdigest()
+    finally:
+        os.close(descriptor)
+
+
+def _fragment_sha256(
+    unit: str,
+    *,
+    load_state: str,
+    expected_drop_in: tuple[Path, str] | None | object = _DROP_IN_UNSPECIFIED,
+) -> str:
+    if load_state == "not-found":
+        return hashlib.sha256(b"").hexdigest()
+    if load_state != "loaded":
+        raise GuardError(f"cannot bind an ambiguous unit fragment: {unit}")
+    before_profile = {
+        "fragment_path": _property(unit, "FragmentPath"),
+        "need_daemon_reload": _property(unit, "NeedDaemonReload"),
+        "drop_in_paths": _optional_property(unit, "DropInPaths"),
+    }
+    raw_path = before_profile["fragment_path"]
+    path = Path(raw_path)
+    expected_path = SYSTEMD_UNIT_DIR / unit
+    if not path.is_absolute() or path != expected_path:
+        raise GuardError(f"unit fragment path is not canonical: {unit}")
+    if before_profile["need_daemon_reload"] != "no":
+        raise GuardError(f"unit has an unapplied daemon reload: {unit}")
+    if expected_drop_in is not _DROP_IN_UNSPECIFIED:
+        if expected_drop_in is None:
+            if before_profile["drop_in_paths"]:
+                raise GuardError(f"unit has unreviewed drop-ins: {unit}")
+        else:
+            drop_in_path, drop_in_sha256 = expected_drop_in
+            if (
+                SHA256.fullmatch(drop_in_sha256) is None
+                or before_profile["drop_in_paths"] != str(drop_in_path)
+                or _drop_in_sha256(drop_in_path, unit=unit) != drop_in_sha256
+            ):
+                raise GuardError(f"unit reviewed drop-in profile is invalid: {unit}")
+    try:
+        descriptor = os.open(
+            path,
+            os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0),
+        )
+    except OSError as exc:
+        raise GuardError(f"cannot read unit fragment: {unit}") from exc
+    try:
+        before = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or before.st_gid != os.getegid()
+            or stat.S_IMODE(before.st_mode) != 0o644
+            or before.st_nlink != 1
+            or not 0 < before.st_size <= MAX_UNIT_BYTES
+        ):
+            raise GuardError(f"unit fragment is not a bounded regular file: {unit}")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            raw = handle.read(MAX_UNIT_BYTES + 1)
+        after = os.fstat(descriptor)
+        stable_fields = (
+            "st_dev",
+            "st_ino",
+            "st_mode",
+            "st_uid",
+            "st_gid",
+            "st_nlink",
+            "st_size",
+            "st_mtime_ns",
+            "st_ctime_ns",
+        )
+        if (
+            any(getattr(before, field) != getattr(after, field) for field in stable_fields)
+            or len(raw) != before.st_size
+            or len(raw) > MAX_UNIT_BYTES
+        ):
+            raise GuardError(f"unit fragment changed while reading: {unit}")
+        after_profile = {
+            "fragment_path": _property(unit, "FragmentPath"),
+            "need_daemon_reload": _property(unit, "NeedDaemonReload"),
+            "drop_in_paths": _optional_property(unit, "DropInPaths"),
+        }
+        if after_profile != before_profile:
+            raise GuardError(f"effective unit profile changed while reading: {unit}")
+        return hashlib.sha256(raw).hexdigest()
+    finally:
+        os.close(descriptor)
+
+
+def _restore_profile_sha256(pre_state: dict[str, Any]) -> str:
+    return hashlib.sha256(_canonical({"pre_state": pre_state})).hexdigest()
+
+
+def _snapshot_pre_state() -> dict[str, Any]:
+    states = _timer_states()
+    if {item.unit for item in states} != set(TIMERS):
+        raise GuardError("cannot snapshot an incomplete timer inventory")
+    pre_state: dict[str, Any] = {}
+    for item in states:
+        if (
+            item.load_state not in {"loaded", "not-found"}
+            or item.unit_file_state
+            not in {"enabled", "enabled-runtime", "disabled", "not-found"}
+            or item.active_state not in {"active", "inactive", "failed", "unknown"}
+        ):
+            raise GuardError(f"cannot snapshot ambiguous timer state: {item.unit}")
+        pre_state[item.unit] = {
+            "load_state": item.load_state,
+            "unit_file_state": item.unit_file_state,
+            "active_state": item.active_state,
+            "fragment_sha256": _fragment_sha256(
+                item.unit, load_state=item.load_state
+            ),
+        }
+    return pre_state
+
+
+def _state_directory() -> Path:
+    directory = HOLD_PATH.parent
+    try:
+        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        metadata = directory.lstat()
+    except OSError as exc:
+        raise GuardError("cannot prepare continuity state directory") from exc
+    if (
+        not stat.S_ISDIR(metadata.st_mode)
+        or directory.is_symlink()
+        or metadata.st_uid != 0
+        or metadata.st_gid != 0
+        or stat.S_IMODE(metadata.st_mode) != 0o700
+    ):
+        raise GuardError("continuity state directory ownership or mode is invalid")
+    return directory
+
+
+@contextmanager
+def _maintenance_lock() -> Iterator[None]:
+    directory = _state_directory()
+    if MAINTENANCE_LOCK_PATH.parent != directory:
+        raise GuardError("maintenance lock escapes its state directory")
+    try:
+        descriptor = os.open(
+            MAINTENANCE_LOCK_PATH,
+            os.O_RDWR
+            | os.O_CREAT
+            | os.O_CLOEXEC
+            | getattr(os, "O_NOFOLLOW", 0),
+            0o600,
+        )
+    except OSError as exc:
+        raise GuardError("cannot open maintenance lock") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_uid != os.geteuid()
+            or metadata.st_gid != os.getegid()
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+            or metadata.st_nlink != 1
+        ):
+            raise GuardError("maintenance lock ownership or mode is invalid")
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX)
+        except OSError as exc:
+            raise GuardError("cannot acquire maintenance lock") from exc
+        yield
+    finally:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
+
+
+def _atomic_write(path: Path, raw: bytes, *, mode: int) -> None:
+    directory = _state_directory()
+    if path.parent != directory:
+        raise GuardError("continuity destination escapes its state directory")
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=directory)
+    try:
+        os.fchmod(descriptor, mode)
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+    except OSError as exc:
+        raise GuardError(f"cannot atomically write {path.name}") from exc
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def _read_maintenance_hold(
+    *, now: datetime, require_effective: bool
+) -> dict[str, Any]:
+    try:
+        path_metadata = HOLD_PATH.lstat()
+    except FileNotFoundError:
+        raise
+    except OSError as exc:
+        raise GuardError("cannot inspect maintenance hold") from exc
+    if not stat.S_ISREG(path_metadata.st_mode) or HOLD_PATH.is_symlink():
+        raise GuardError("maintenance hold is not a regular file")
+    if not 0 < path_metadata.st_size <= 64 * 1024:
+        raise GuardError("maintenance hold is empty or too large")
+    try:
+        descriptor = os.open(
+            HOLD_PATH,
+            os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0),
+        )
+    except OSError as exc:
+        raise GuardError("cannot open maintenance hold") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            metadata.st_dev != path_metadata.st_dev
+            or metadata.st_ino != path_metadata.st_ino
+            or not stat.S_ISREG(metadata.st_mode)
+        ):
+            raise GuardError("maintenance hold changed while opening")
+        with os.fdopen(descriptor, "rb", closefd=False) as handle:
+            raw = handle.read(64 * 1024 + 1)
+        if len(raw) != metadata.st_size or len(raw) > 64 * 1024:
+            raise GuardError("maintenance hold changed while reading")
+    finally:
+        os.close(descriptor)
+    return validate_maintenance_hold(
+        raw,
+        now=now,
+        owner_uid=metadata.st_uid,
+        owner_gid=metadata.st_gid,
+        mode=metadata.st_mode,
+        require_effective=require_effective,
+    )
+
+
+@contextmanager
+def _secure_receipt_directory(directory: Path) -> Iterator[int]:
+    if not directory.is_absolute():
+        raise GuardError("receipt directory is not absolute")
+    try:
+        descriptor = os.open(
+            directory,
+            os.O_RDONLY
+            | os.O_DIRECTORY
+            | os.O_CLOEXEC
+            | getattr(os, "O_NOFOLLOW", 0),
+        )
+    except OSError as exc:
+        raise GuardError(f"cannot open receipt directory: {directory}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if (
+            not stat.S_ISDIR(metadata.st_mode)
+            or metadata.st_uid != os.geteuid()
+            or metadata.st_gid != os.getegid()
+            or stat.S_IMODE(metadata.st_mode) != 0o700
+        ):
+            raise GuardError(f"receipt directory metadata is unsafe: {directory}")
+        yield descriptor
+    finally:
+        os.close(descriptor)
+
+
+def _read_canonical_receipt(
+    path: Path,
+    *,
+    directory: Path,
+    mode: int,
+    maximum_bytes: int,
+    label: str,
+    expected_sha256: str | None = None,
+) -> tuple[bytes, dict[str, Any], str]:
+    if (
+        not path.is_absolute()
+        or path.parent != directory
+        or path.name in {"", ".", ".."}
+    ):
+        raise GuardError(f"{label} path escapes its authority directory")
+    if expected_sha256 is not None and SHA256.fullmatch(expected_sha256) is None:
+        raise GuardError(f"{label} digest is invalid")
+    with _secure_receipt_directory(directory) as directory_fd:
+        try:
+            descriptor = os.open(
+                path.name,
+                os.O_RDONLY | os.O_CLOEXEC | getattr(os, "O_NOFOLLOW", 0),
+                dir_fd=directory_fd,
+            )
+        except OSError as exc:
+            raise GuardError(f"cannot open {label}") from exc
+        try:
+            before = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(before.st_mode)
+                or before.st_uid != os.geteuid()
+                or before.st_gid != os.getegid()
+                or stat.S_IMODE(before.st_mode) != mode
+                or before.st_nlink != 1
+                or not 0 < before.st_size <= maximum_bytes
+            ):
+                raise GuardError(f"{label} metadata is unsafe")
+            payload = bytearray()
+            while True:
+                chunk = os.read(
+                    descriptor,
+                    min(64 * 1024, maximum_bytes + 1 - len(payload)),
+                )
+                if not chunk:
+                    break
+                payload.extend(chunk)
+                if len(payload) > maximum_bytes:
+                    raise GuardError(f"{label} exceeds its byte ceiling")
+            after = os.fstat(descriptor)
+            stable_fields = (
+                "st_dev",
+                "st_ino",
+                "st_mode",
+                "st_uid",
+                "st_gid",
+                "st_nlink",
+                "st_size",
+                "st_mtime_ns",
+                "st_ctime_ns",
+            )
+            if (
+                any(
+                    getattr(before, field) != getattr(after, field)
+                    for field in stable_fields
+                )
+                or len(payload) != before.st_size
+            ):
+                raise GuardError(f"{label} changed while reading")
+        finally:
+            os.close(descriptor)
+    raw = bytes(payload)
+    document = _strict_json(raw, label=label)
+    if raw != _canonical(document):
+        raise GuardError(f"{label} is not canonical JSON")
+    digest = hashlib.sha256(raw).hexdigest()
+    if expected_sha256 is not None and digest != expected_sha256:
+        raise GuardError(f"{label} digest does not match its authority")
+    return raw, document, digest
+
+
+def _matching_finalized_receipts(
+    *, transaction_id: str, controller_commit: str
+) -> list[Path]:
+    pattern = re.compile(
+        rf"^[0-9]{{8}}T[0-9]{{6}}Z-{controller_commit[:12]}-"
+        rf"{transaction_id}\.finalized\.json$"
+    )
+    with _secure_receipt_directory(RECEIPT_DIR) as directory_fd:
+        try:
+            names = os.listdir(directory_fd)
+        except OSError as exc:
+            raise GuardError("cannot enumerate finalized receipt authorities") from exc
+    return sorted(RECEIPT_DIR / name for name in names if pattern.fullmatch(name))
+
+
+def _require_sha256(value: Any, *, label: str) -> str:
+    if not isinstance(value, str) or SHA256.fullmatch(value) is None:
+        raise GuardError(f"{label} is not a SHA-256 digest")
+    return value
+
+
+def _require_sha40(value: Any, *, label: str) -> str:
+    if not isinstance(value, str) or SHA40.fullmatch(value) is None:
+        raise GuardError(f"{label} is not a commit identity")
+    return value
+
+
+def _closed_object(
+    value: Any, fields: set[str] | frozenset[str], *, label: str
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != set(fields):
+        raise GuardError(f"{label} does not match its closed schema")
+    return value
+
+
+def _positive_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
+def _image_id(value: Any) -> bool:
+    return isinstance(value, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", value) is not None
+
+
+def _container_id(value: Any) -> bool:
+    return isinstance(value, str) and SHA256.fullmatch(value) is not None
+
+
+def _validate_restored_celery(value: Any) -> None:
+    receipt = _closed_object(
+        value,
+        {
+            "cancellations",
+            "consumer_state",
+            "drain_samples",
+            "final",
+            "generated_at",
+            "required_zero_samples",
+            "samples_observed",
+            "schema_version",
+            "status",
+            "topology",
+            "topology_sha256",
+        },
+        label="restored Celery receipt",
+    )
+    topology = receipt["topology"]
+    if not isinstance(topology, list) or len(topology) not in {3, 4}:
+        raise GuardError("restored Celery topology is invalid")
+    nodes: dict[str, str] = {}
+    role_queues = {
+        "default": "celery",
+        "collectors": "collectors",
+        "warehouse": "warehouse",
+        "velocity": "censorwatch",
+    }
+    roles: set[str] = set()
+    for raw in topology:
+        pair = _closed_object(raw, {"node", "queue"}, label="Celery topology pair")
+        if (
+            not isinstance(pair["node"], str)
+            or not isinstance(pair["queue"], str)
+            or pair["node"] in nodes
+            or pair["queue"] in nodes.values()
+        ):
+            raise GuardError("restored Celery topology pair is invalid")
+        if re.fullmatch(
+            r"(?:default|collectors|warehouse|velocity)@"
+            r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}",
+            pair["node"],
+        ) is None:
+            raise GuardError("restored Celery worker node is invalid")
+        role = pair["node"].split("@", 1)[0]
+        if role_queues[role] != pair["queue"]:
+            raise GuardError("restored Celery worker queue is invalid")
+        roles.add(role)
+        nodes[pair["node"]] = pair["queue"]
+    if (
+        not {"default", "collectors", "warehouse"} <= roles
+        or topology != sorted(topology, key=lambda item: (item["node"], item["queue"]))
+    ):
+        raise GuardError("restored Celery topology roles are invalid")
+    topology_payload = json.dumps(
+        {
+            "schema_version": "palimpsest-celery-release-topology.v1",
+            "nodes": topology,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    final = _closed_object(
+        receipt["final"],
+        {"active_queues", "broker_depth", "task_counts", "unacknowledged"},
+        label="restored Celery final sample",
+    )
+    if (
+        receipt["schema_version"] != "palimpsest-celery-release-gate.v1"
+        or receipt["status"] != "quiet"
+        or receipt["consumer_state"] != "consuming"
+        or receipt["required_zero_samples"] != 2
+        or not _positive_int(receipt["samples_observed"])
+        or receipt["samples_observed"] < receipt["required_zero_samples"]
+        or receipt["drain_samples"] != 0
+        or receipt["cancellations"] != []
+        or receipt["topology_sha256"]
+        != hashlib.sha256(topology_payload).hexdigest()
+    ):
+        raise GuardError("restored Celery semantics are invalid")
+    _require_sha256(receipt["topology_sha256"], label="Celery topology")
+    _utc(receipt["generated_at"], field="Celery generated_at")
+    task_counts = final["task_counts"]
+    active_queues = final["active_queues"]
+    if (
+        not isinstance(task_counts, dict)
+        or set(task_counts) != set(nodes)
+        or not isinstance(active_queues, dict)
+        or set(active_queues) != set(nodes)
+    ):
+        raise GuardError("restored Celery worker inventory is invalid")
+    for node, queue in nodes.items():
+        counts = _closed_object(
+            task_counts[node],
+            {"active", "reserved", "scheduled"},
+            label="Celery task counts",
+        )
+        if counts != {"active": 0, "reserved": 0, "scheduled": 0}:
+            raise GuardError("restored Celery has pending tasks")
+        if active_queues[node] != [queue]:
+            raise GuardError("restored Celery queue binding is invalid")
+    broker = final["broker_depth"]
+    if (
+        not isinstance(broker, dict)
+        or set(broker) != BROKER_QUEUES
+        or any(depth != 0 for depth in broker.values())
+        or final["unacknowledged"] != {"hash": 0, "index": 0}
+    ):
+        raise GuardError("restored Celery broker is not exactly empty")
+
+
+def _validate_finalized_runtime(finalized: dict[str, Any]) -> None:
+    if not isinstance(finalized["backup_on_success"], str):
+        raise GuardError("finalized backup trigger is invalid")
+    activators = finalized["restored_activators"]
+    if not isinstance(activators, dict) or set(activators) != RELEASE_ACTIVATORS:
+        raise GuardError("restored activator inventory is invalid")
+    for unit, raw in activators.items():
+        item = _closed_object(
+            raw,
+            {"active_state", "before_enablement", "enablement", "was_active"},
+            label=f"restored activator {unit}",
+        )
+        allowed_enablement = {
+            "disabled",
+            "enabled",
+            "enabled-runtime",
+            "indirect",
+            "not-found",
+            "static",
+        }
+        if (
+            not isinstance(item["was_active"], bool)
+            or not isinstance(item["before_enablement"], str)
+            or not isinstance(item["enablement"], str)
+            or not isinstance(item["active_state"], str)
+        ):
+            raise GuardError(f"restored activator is malformed: {unit}")
+        first_install_enabled = unit in {
+            "palimpsest-public-osint-sync.timer",
+            "palimpsest-freshness-watchdog.timer",
+            "palimpsest-witness.timer",
+        }
+        expected_active = item["was_active"] or (
+            item["before_enablement"] == "not-found" and first_install_enabled
+        )
+        if item["before_enablement"] == "not-found":
+            enablement_restored = (
+                item["enablement"] == "enabled"
+                if first_install_enabled
+                else item["enablement"] in {"disabled", "not-found"}
+            )
+        else:
+            enablement_restored = item["enablement"] == item["before_enablement"]
+        if (
+            item["before_enablement"] not in allowed_enablement
+            or item["enablement"] not in allowed_enablement
+            or item["active_state"]
+            not in {"active", "failed", "inactive", "unknown", ""}
+            or not enablement_restored
+            or (expected_active and item["active_state"] != "active")
+            or (not expected_active and item["active_state"] == "active")
+        ):
+            raise GuardError(f"restored activator is malformed: {unit}")
+    compose = finalized["restored_compose_writers"]
+    if not isinstance(compose, dict) or set(compose) != COMPOSE_WRITERS:
+        raise GuardError("restored Compose inventory is invalid")
+    for service, raw in compose.items():
+        item = _closed_object(
+            raw,
+            {"container_id", "hostname", "image_id", "state", "was_running"},
+            label=f"restored Compose writer {service}",
+        )
+        if (
+            not isinstance(item["was_running"], bool)
+            or item["state"] not in {"absent", "exited", "running"}
+            or (
+                item["container_id"] is not None
+                and not _container_id(item["container_id"])
+            )
+            or (item["image_id"] is not None and not _image_id(item["image_id"]))
+            or (item["hostname"] is not None and not isinstance(item["hostname"], str))
+            or (item["was_running"] and item["state"] != "running")
+            or (not item["was_running"] and item["state"] == "running")
+            or (
+                item["was_running"]
+                and (item["container_id"] is None or item["image_id"] is None)
+            )
+            or (
+                item["state"] == "absent"
+                and any(
+                    item[field] is not None
+                    for field in ("container_id", "image_id", "hostname")
+                )
+            )
+            or (
+                item["state"] == "exited"
+                and any(
+                    item[field] is None
+                    for field in ("container_id", "image_id", "hostname")
+                )
+            )
+        ):
+            raise GuardError(f"restored Compose writer is malformed: {service}")
+    if finalized["restored_beat"] != compose["beat"]:
+        raise GuardError("restored Beat binding is invalid")
+    _validate_restored_celery(finalized["restored_celery"])
+
+
+def _validate_collector_recovery(value: Any) -> None:
+    receipt = _closed_object(
+        value,
+        {
+            "failed_stage",
+            "failure_code",
+            "generated_at",
+            "lanes",
+            "node_status",
+            "schema_version",
+            "status",
+        },
+        label="collector recovery receipt",
+    )
+    lanes = receipt["lanes"]
+    node_status = _closed_object(
+        receipt["node_status"],
+        {"generated_at", "status"},
+        label="collector recovery node status",
+    )
+    if (
+        receipt["schema_version"]
+        != "palimpsest-deployment-snapshot-recovery.v1"
+        or receipt["status"] != "ok"
+        or receipt["failed_stage"] is not None
+        or receipt["failure_code"] is not None
+        or not isinstance(lanes, list)
+        or len(lanes) != len(RECOVERY_LANE_OUTPUTS)
+        or node_status["status"] not in {"healthy", "degraded", "disabled"}
+    ):
+        raise GuardError("collector recovery semantics are invalid")
+    _utc(receipt["generated_at"], field="collector recovery generated_at")
+    _utc(node_status["generated_at"], field="collector node generated_at")
+    for expected_name, raw in zip(RECOVERY_LANE_OUTPUTS, lanes, strict=True):
+        lane = _closed_object(
+            raw,
+            {
+                "collector",
+                "duration_seconds",
+                "generated_at",
+                "output",
+                "records_collected",
+                "status",
+            },
+            label=f"collector recovery lane {expected_name}",
+        )
+        duration = lane["duration_seconds"]
+        records = lane["records_collected"]
+        duration_is_valid = (
+            isinstance(duration, int)
+            and not isinstance(duration, bool)
+            and 0 <= duration <= 24 * 60 * 60
+        ) or (
+            isinstance(duration, float)
+            and math.isfinite(duration)
+            and 0 <= duration <= 24 * 60 * 60
+        )
+        if (
+            lane["collector"] != expected_name
+            or lane["status"] not in {"success", "abstained"}
+            or not duration_is_valid
+            or not isinstance(records, int)
+            or isinstance(records, bool)
+            or not 0 <= records <= 1_000_000_000
+            or (lane["status"] == "abstained" and records != 0)
+        ):
+            raise GuardError(f"collector recovery lane is invalid: {expected_name}")
+        if lane["generated_at"] is not None:
+            _utc(lane["generated_at"], field=f"{expected_name} generated_at")
+        elif lane["status"] == "success":
+            raise GuardError(f"collector recovery lane lacks a clock: {expected_name}")
+        output = lane["output"]
+        if output is None:
+            if lane["status"] == "success":
+                raise GuardError(f"collector recovery lane lacks output: {expected_name}")
+            continue
+        proof = _closed_object(
+            output, {"bytes", "path", "sha256"}, label=f"{expected_name} output"
+        )
+        if (
+            proof["path"] != RECOVERY_LANE_OUTPUTS[expected_name]
+            or not isinstance(proof["bytes"], int)
+            or isinstance(proof["bytes"], bool)
+            or not 0 <= proof["bytes"] <= 64 * 1024 * 1024
+        ):
+            raise GuardError(f"collector recovery output is invalid: {expected_name}")
+        _require_sha256(proof["sha256"], label=f"{expected_name} output")
+
+
+def _validate_proof_nested(
+    proof: dict[str, Any], *, controller_commit: str, transaction_id: str
+) -> None:
+    publication = _closed_object(
+        proof["publication"],
+        {
+            "bleedthrough_normalized_sha256",
+            "handoff",
+            "ledger_sha256",
+            "osint_sha256",
+            "sync_receipt",
+        },
+        label="proof publication",
+    )
+    handoff = _closed_object(
+        publication["handoff"],
+        {
+            "artifact_sha256",
+            "expected_deploy_sha",
+            "fetched_main",
+            "ledger_sha256",
+            "public_ledger_sha256",
+            "public_manifest_sha256",
+            "public_osint_stub_sha256",
+            "public_release_commit",
+            "public_rights_status_sha256",
+            "publication_commit",
+            "railway_canary_run_id",
+            "resume_token",
+            "schema",
+            "workflow_head_sha",
+            "workflow_receipt_sha256",
+            "workflow_run_attempt",
+            "workflow_run_id",
+        },
+        label="proof publication handoff",
+    )
+    handoff_digests = {
+        "artifact_sha256",
+        "ledger_sha256",
+        "public_ledger_sha256",
+        "public_manifest_sha256",
+        "public_osint_stub_sha256",
+        "public_rights_status_sha256",
+        "workflow_receipt_sha256",
+    }
+    if (
+        handoff["schema"] != "palimpsest-public-osint-release-proof.v2"
+        or handoff["expected_deploy_sha"] != controller_commit
+        or handoff["workflow_head_sha"] != controller_commit
+        or handoff["resume_token"] != transaction_id
+        or any(
+            not isinstance(handoff[field], str)
+            or SHA256.fullmatch(handoff[field]) is None
+            for field in handoff_digests
+        )
+        or handoff["public_osint_stub_sha256"] == handoff["artifact_sha256"]
+        or any(
+            not _positive_int(handoff[field])
+            for field in (
+                "railway_canary_run_id",
+                "workflow_run_attempt",
+                "workflow_run_id",
+            )
+        )
+    ):
+        raise GuardError("proof publication handoff semantics are invalid")
+    _require_sha40(handoff["fetched_main"], label="handoff fetched main")
+    _require_sha40(
+        handoff["public_release_commit"], label="handoff public release"
+    )
+    _require_sha40(handoff["publication_commit"], label="handoff publication")
+    if (
+        handoff["fetched_main"] != handoff["public_release_commit"]
+        or publication["osint_sha256"] != handoff["artifact_sha256"]
+        or publication["ledger_sha256"] != handoff["ledger_sha256"]
+    ):
+        raise GuardError("proof publication linkage is invalid")
+    _require_sha256(
+        publication["bleedthrough_normalized_sha256"],
+        label="bleedthrough normalization",
+    )
+    sync = _closed_object(
+        publication["sync_receipt"],
+        {
+            "artifact_canonical_sha256",
+            "artifact_sha256",
+            "deployed_commit",
+            "fetched_main",
+            "generated_at",
+            "input_commit",
+            "installed_at",
+            "ledger_entries",
+            "ledger_head",
+            "ledger_sha256",
+            "public_ledger_sha256",
+            "public_manifest_sha256",
+            "public_osint_stub_sha256",
+            "public_release_commit",
+            "public_rights_status_sha256",
+            "publication_commit",
+            "release_proof_sha256",
+            "schema",
+            "status",
+            "sync_mode",
+        },
+        label="proof publication sync receipt",
+    )
+    if (
+        sync["schema"] != "palimpsest-public-osint-sync.v3"
+        or sync["status"] != "installed"
+        or sync["sync_mode"] != "release-pinned"
+        or sync["deployed_commit"] != controller_commit
+        or sync["fetched_main"] != handoff["fetched_main"]
+        or sync["publication_commit"] != handoff["publication_commit"]
+        or sync["public_release_commit"] != handoff["public_release_commit"]
+        or any(
+            sync[field] != handoff[field]
+            for field in (
+                "artifact_sha256",
+                "ledger_sha256",
+                "public_ledger_sha256",
+                "public_manifest_sha256",
+                "public_osint_stub_sha256",
+                "public_rights_status_sha256",
+            )
+        )
+        or sync["release_proof_sha256"]
+        != hashlib.sha256(_canonical(handoff)).hexdigest()
+        or not _positive_int(sync["ledger_entries"])
+    ):
+        raise GuardError("proof publication sync semantics are invalid")
+    _require_sha40(sync["input_commit"], label="sync input commit")
+    _require_sha256(sync["artifact_canonical_sha256"], label="canonical artifact")
+    _require_sha256(sync["ledger_head"], label="sync ledger head")
+    _utc(sync["generated_at"], field="sync generated_at")
+    _utc(sync["installed_at"], field="sync installed_at")
+
+    backup = _closed_object(
+        proof["backup"],
+        {
+            "core_snapshot",
+            "legacy_witness_status",
+            "pre_change_v4_snapshot",
+            "verification",
+        },
+        label="proof backup",
+    )
+    legacy = _closed_object(
+        backup["legacy_witness_status"],
+        {"path", "preserved", "sha256"},
+        label="legacy witness status",
+    )
+    if (
+        not isinstance(backup["core_snapshot"], str)
+        or not isinstance(backup["pre_change_v4_snapshot"], str)
+        or not isinstance(backup["verification"], dict)
+        or not backup["verification"]
+        or not isinstance(legacy["preserved"], bool)
+        or (
+            legacy["preserved"]
+            and (
+                not isinstance(legacy["path"], str)
+                or not isinstance(legacy["sha256"], str)
+                or SHA256.fullmatch(legacy["sha256"]) is None
+            )
+        )
+        or (
+            not legacy["preserved"]
+            and (legacy["path"] is not None or legacy["sha256"] is not None)
+        )
+    ):
+        raise GuardError("proof backup semantics are invalid")
+    observers = _closed_object(
+        proof["observers"],
+        {"policy_sha256", "watchdog", "witness"},
+        label="proof observers",
+    )
+    _require_sha256(observers["policy_sha256"], label="observer policy")
+    for name in ("watchdog", "witness"):
+        observer = _closed_object(
+            observers[name],
+            {"baseline_token_sha256", "exit_pair", "proof"},
+            label=f"proof observer {name}",
+        )
+        _require_sha256(
+            observer["baseline_token_sha256"], label=f"{name} baseline"
+        )
+        if (
+            not isinstance(observer["exit_pair"], str)
+            or not isinstance(observer["proof"], dict)
+            or not observer["proof"]
+        ):
+            raise GuardError(f"proof observer evidence is invalid: {name}")
+    celery = _closed_object(
+        proof["celery"],
+        {"candidate_consuming", "candidate_fenced", "pre_change", "v4_backup_fenced"},
+        label="proof Celery evidence",
+    )
+    if any(not isinstance(value, dict) or not value for value in celery.values()):
+        raise GuardError("proof Celery evidence is invalid")
+    compose = proof["compose_before"]
+    if not isinstance(compose, dict) or set(compose) != COMPOSE_WRITERS:
+        raise GuardError("proof Compose inventory is invalid")
+    for service, raw in compose.items():
+        item = _closed_object(
+            raw,
+            {"container_id", "image_id", "was_running"},
+            label=f"proof Compose writer {service}",
+        )
+        if (
+            not isinstance(item["was_running"], bool)
+            or (item["container_id"] is not None and not _container_id(item["container_id"]))
+            or (item["image_id"] is not None and not _image_id(item["image_id"]))
+        ):
+            raise GuardError(f"proof Compose state is invalid: {service}")
+    units = proof["installed_unit_sha256"]
+    if not isinstance(units, dict) or set(units) != PROOF_UNIT_PATHS:
+        raise GuardError("proof installed unit inventory is invalid")
+    for name, digest in units.items():
+        _require_sha256(digest, label=f"installed unit {name}")
+    _validate_collector_recovery(proof["recovery"])
+
+
+def _validate_recovery_binding_children(
+    binding: dict[str, Any],
+    *,
+    finalized: dict[str, Any],
+    proof: dict[str, Any],
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    transaction_id = finalized["transaction_id"]
+    controller_commit = finalized["deployed_sha"]
+    incident = binding["incident_id"]
+    reviewed_manifest = INTERRUPTED_RECOVERY_AUTHORITIES.get(incident)
+    if reviewed_manifest is None:
+        raise GuardError("recovery incident has no reviewed manifest authority")
+    manifest = _closed_object(
+        binding["manifest"],
+        {
+            "authority",
+            "continuation",
+            "failed_attempt",
+            "incident_date",
+            "incident_id",
+            "observed_safe_boundary",
+            "pre_failure_state",
+            "recovery_target_constraints",
+            "schema_version",
+        },
+        label="recovery manifest",
+    )
+    authority = _closed_object(
+        manifest["authority"],
+        {"failed_target_commit", "prior_checkout_commit", "prior_deployed_commit"},
+        label="recovery manifest authority",
+    )
+    if (
+        binding["manifest_sha256"] != reviewed_manifest["manifest_sha256"]
+        or hashlib.sha256(_canonical(manifest)).hexdigest()
+        != reviewed_manifest["manifest_canonical_sha256"]
+        or manifest["schema_version"]
+        != "palimpsest-interrupted-phase1-recovery.v2"
+        or manifest["incident_id"] != incident
+        or authority["failed_target_commit"] != binding["failed_target_commit"]
+        or authority["prior_checkout_commit"] != finalized["previous_checkout_sha"]
+        or authority["prior_deployed_commit"]
+        != finalized["previous_deployment_receipt_sha"]
+        or any(
+            not isinstance(manifest[field], dict) or not manifest[field]
+            for field in (
+                "continuation",
+                "failed_attempt",
+                "observed_safe_boundary",
+                "pre_failure_state",
+                "recovery_target_constraints",
+            )
+        )
+        or not isinstance(manifest["incident_date"], str)
+    ):
+        raise GuardError("recovery manifest semantics are invalid")
+
+    prepared = _closed_object(
+        binding["prepared_receipt"],
+        {
+            "schema_version",
+            "status",
+            "prepared_at",
+            "transaction_id",
+            "incident_id",
+            "manifest_sha256",
+            "hybrid_fingerprint_sha256",
+            "restore_profile_sha256",
+            "compose_environment_sha256",
+            "broker_queue_sha256",
+            "prior_checkout_commit",
+            "prior_deployed_commit",
+            "failed_target_commit",
+            "recovery_controller_commit",
+            "minimum_recovery_ancestor",
+            "target_commit",
+        },
+        label="recovery prepared receipt",
+    )
+    if (
+        prepared["schema_version"] != "palimpsest-interrupted-phase1-prepared.v2"
+        or prepared["status"] != "prepared"
+        or prepared["transaction_id"] != transaction_id
+        or prepared["incident_id"] != incident
+        or prepared["manifest_sha256"] != binding["manifest_sha256"]
+        or prepared["hybrid_fingerprint_sha256"]
+        != binding["hybrid_fingerprint_sha256"]
+        or prepared["restore_profile_sha256"] != binding["restore_profile_sha256"]
+        or prepared["compose_environment_sha256"]
+        != binding["compose_environment_sha256"]
+        or prepared["broker_queue_sha256"] != binding["broker_queue_sha256"]
+        or prepared["prior_checkout_commit"] != authority["prior_checkout_commit"]
+        or prepared["prior_deployed_commit"] != authority["prior_deployed_commit"]
+        or prepared["failed_target_commit"] != binding["failed_target_commit"]
+        or prepared["recovery_controller_commit"] != controller_commit
+        or prepared["minimum_recovery_ancestor"]
+        != binding["minimum_recovery_ancestor"]
+        or prepared["target_commit"] != controller_commit
+        or hashlib.sha256(_canonical(prepared)).hexdigest()
+        != binding["prepared_receipt_sha256"]
+    ):
+        raise GuardError("recovery prepared receipt semantics are invalid")
+    prepared_at = _utc(prepared["prepared_at"], field="prepared_at")
+
+    broker = _closed_object(
+        binding["broker_empty_receipt"],
+        {
+            "schema_version",
+            "generated_at",
+            "status",
+            "closed_queues_sha256",
+            "closed_queues",
+            "required_zero_samples",
+            "samples_observed",
+            "final",
+        },
+        label="recovery broker receipt",
+    )
+    broker_final = _closed_object(
+        broker["final"],
+        {"broker_depth", "unacknowledged"},
+        label="recovery broker final sample",
+    )
+    if (
+        broker["schema_version"]
+        != "palimpsest-celery-broker-release-gate.v1"
+        or broker["status"] != "empty"
+        or broker["closed_queues_sha256"] != binding["broker_queue_sha256"]
+        or broker["closed_queues"]
+        != ["celery", "collectors", "warehouse", "censorwatch"]
+        or broker["required_zero_samples"] != 2
+        or not _positive_int(broker["samples_observed"])
+        or broker["samples_observed"] < 2
+        or broker_final["broker_depth"]
+        != {"celery": 0, "collectors": 0, "warehouse": 0, "censorwatch": 0}
+        or broker_final["unacknowledged"] != {"hash": 0, "index": 0}
+        or hashlib.sha256(_canonical(broker)).hexdigest()
+        != binding["broker_empty_receipt_sha256"]
+    ):
+        raise GuardError("recovery broker receipt semantics are invalid")
+    broker_at = _utc(broker["generated_at"], field="recovery broker generated_at")
+
+    migration = _closed_object(
+        binding["migration_receipt"],
+        {
+            "schema_version",
+            "status",
+            "container_id",
+            "image_id",
+            "revision",
+            "backup_verified_at",
+            "started_at",
+            "exit_code",
+        },
+        label="recovery migration receipt",
+    )
+    if (
+        migration["schema_version"]
+        != "palimpsest-interrupted-phase1-migration.v1"
+        or migration["status"] != "succeeded"
+        or not _container_id(migration["container_id"])
+        or not _image_id(migration["image_id"])
+        or migration["image_id"] != proof["deployment"]["candidate_image_id"]
+        or migration["revision"] != controller_commit
+        or migration["exit_code"] != 0
+        or isinstance(migration["exit_code"], bool)
+    ):
+        raise GuardError("recovery migration receipt semantics are invalid")
+    backup_at = _utc(migration["backup_verified_at"], field="backup verified_at")
+    migration_at = _utc(migration["started_at"], field="migration started_at")
+
+    backup = _closed_object(
+        binding["backup"],
+        {"reason", "core_snapshot", "current_snapshot", "verification"},
+        label="recovery backup binding",
+    )
+    verification = _closed_object(
+        backup["verification"],
+        {"counts", "digests", "schema", "snapshot", "status"},
+        label="recovery backup verification",
+    )
+    counts = _closed_object(
+        verification["counts"],
+        {
+            "artifact_directories",
+            "artifact_files",
+            "artifact_members",
+            "checksum_entries",
+            "snapshot_files",
+            "witness_history_records",
+        },
+        label="recovery backup counts",
+    )
+    digests = _closed_object(
+        verification["digests"],
+        {
+            "MANIFEST.txt",
+            "artifacts.list",
+            "artifacts.tar.gz",
+            "postgres.dump",
+            "postgres.list",
+        },
+        label="recovery backup digests",
+    )
+    if (
+        backup["reason"]
+        != "interrupted-phase1-hybrid-recovery-fresh-target-backup"
+        or backup["core_snapshot"] != backup["current_snapshot"]
+        or not isinstance(backup["current_snapshot"], str)
+        or re.fullmatch(r"20[0-9]{6}T[0-9]{6}Z", backup["current_snapshot"])
+        is None
+        or verification["schema"] != "palimpsest-node-backup-verification.v1"
+        or verification["status"] != "verified"
+        or verification["snapshot"] != backup["current_snapshot"]
+        or counts["snapshot_files"] != 6
+        or counts["checksum_entries"] != 5
+        or not _positive_int(counts["artifact_members"])
+        or not _positive_int(counts["witness_history_records"])
+        or any(
+            not isinstance(name, str)
+            or not isinstance(digest, str)
+            or SHA256.fullmatch(digest) is None
+            for name, digest in digests.items()
+        )
+        or not prepared_at <= broker_at <= backup_at < migration_at
+    ):
+        raise GuardError("recovery backup or temporal authority is invalid")
+    return hashlib.sha256(_canonical(binding)).hexdigest(), migration, backup
+
+
+def _validate_completion_runtime(
+    runtime: dict[str, Any],
+    *,
+    controller_commit: str,
+    migration_receipt: dict[str, Any],
+) -> None:
+    infrastructure = _closed_object(
+        runtime["infrastructure"],
+        {"postgres", "redis"},
+        label="completion infrastructure",
+    )
+    for name, raw in infrastructure.items():
+        item = _closed_object(
+            raw,
+            {"container_id", "image_id", "state"},
+            label=f"completion infrastructure {name}",
+        )
+        if (
+            not _container_id(item["container_id"])
+            or not _image_id(item["image_id"])
+            or item["state"] != "running"
+        ):
+            raise GuardError(f"completion infrastructure is invalid: {name}")
+    workers = _closed_object(
+        runtime["workers"],
+        {"worker", "worker-collectors", "worker-warehouse"},
+        label="completion workers",
+    )
+    application_entries = [runtime["api"], runtime["migration"], runtime["beat"]]
+    application_entries.extend(workers.values())
+    application_image: str | None = None
+    for index, raw in enumerate(application_entries):
+        fields = {"container_id", "image_id", "revision", "state"}
+        expected_state = "running"
+        if index == 1:
+            fields.add("exit_code")
+            expected_state = "exited"
+        item = _closed_object(raw, fields, label="completion application runtime")
+        if (
+            not _container_id(item["container_id"])
+            or not _image_id(item["image_id"])
+            or item["revision"] != controller_commit
+            or item["state"] != expected_state
+            or (index == 1 and item["exit_code"] != 0)
+        ):
+            raise GuardError("completion application runtime is invalid")
+        if application_image is None:
+            application_image = item["image_id"]
+        elif item["image_id"] != application_image:
+            raise GuardError("completion application images diverge")
+    expected_migration = {
+        "container_id": migration_receipt["container_id"],
+        "image_id": migration_receipt["image_id"],
+        "revision": migration_receipt["revision"],
+        "state": "exited",
+        "exit_code": migration_receipt["exit_code"],
+    }
+    if runtime["migration"] != expected_migration or application_image != migration_receipt[
+        "image_id"
+    ]:
+        raise GuardError("completion migration does not match its binding")
+
+
+def _validate_finalized_authority(
+    path: Path,
+    *,
+    expected_sha256: str | None,
+    transaction_id: str,
+    controller_commit: str,
+) -> str:
+    expected_name = re.compile(
+        rf"^(?P<stem>[0-9]{{8}}T[0-9]{{6}}Z-{controller_commit[:12]}-"
+        rf"{transaction_id})\.finalized\.json$"
+    ).fullmatch(path.name)
+    if expected_name is None:
+        raise GuardError("finalized receipt name is not bound to this transaction")
+    _finalized_raw, finalized, finalized_sha256 = _read_canonical_receipt(
+        path,
+        directory=RECEIPT_DIR,
+        mode=0o600,
+        maximum_bytes=MAX_FINALIZED_RECEIPT_BYTES,
+        label="finalized receipt",
+        expected_sha256=expected_sha256,
+    )
+    base_finalized_fields = {
+        "schema_version",
+        "status",
+        "finalized_at",
+        "transaction_id",
+        "previous_checkout_sha",
+        "previous_deployment_receipt_sha",
+        "deployed_sha",
+        "proof_complete_receipt",
+        "proof_complete_receipt_sha256",
+        "release_proof_present",
+        "writers_restored",
+        "restored_celery",
+        "restored_activators",
+        "restored_compose_writers",
+        "restored_beat",
+        "backup_on_success",
+        "backup_release_quiesce_present",
+    }
+    recovery_fields = {
+        "interrupted_phase1_resume",
+        "interrupted_phase1_completion_required",
+        "interrupted_phase1_completion_receipt",
+    }
+    has_recovery = bool(set(finalized) & recovery_fields)
+    expected_finalized_fields = base_finalized_fields | (
+        recovery_fields if has_recovery else set()
+    )
+    activators = finalized.get("restored_activators")
+    compose = finalized.get("restored_compose_writers")
+    finalized_at = _utc(finalized.get("finalized_at"), field="finalized_at")
+    if (
+        set(finalized) != expected_finalized_fields
+        or finalized.get("schema_version")
+        != "palimpsest-host-release-finalization.v1"
+        or finalized.get("status") != "finalized"
+        or finalized.get("transaction_id") != transaction_id
+        or finalized.get("deployed_sha") != controller_commit
+        or finalized.get("release_proof_present") is not False
+        or finalized.get("writers_restored") is not True
+        or finalized.get("backup_release_quiesce_present") is not False
+        or not isinstance(finalized.get("restored_celery"), dict)
+        or not isinstance(activators, dict)
+        or len(activators) != 15
+        or not isinstance(compose, dict)
+        or set(compose)
+        != {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"}
+        or finalized.get("restored_beat") != compose.get("beat")
+    ):
+        raise GuardError("finalized receipt semantics are invalid")
+    _require_sha40(
+        finalized.get("previous_checkout_sha"), label="previous checkout"
+    )
+    _require_sha40(
+        finalized.get("previous_deployment_receipt_sha"),
+        label="previous deployment receipt",
+    )
+    _validate_finalized_runtime(finalized)
+
+    proof_path_value = finalized.get("proof_complete_receipt")
+    if not isinstance(proof_path_value, str):
+        raise GuardError("finalized receipt lacks its proof-complete path")
+    proof_path = Path(proof_path_value)
+    expected_proof_path = RECEIPT_DIR / (
+        f"{expected_name.group('stem')}.proof-complete.json"
+    )
+    if proof_path_value != str(expected_proof_path):
+        raise GuardError("proof-complete path does not share the finalized identity")
+    proof_raw, proof, proof_sha256 = _read_canonical_receipt(
+        proof_path,
+        directory=RECEIPT_DIR,
+        mode=0o600,
+        maximum_bytes=MAX_PROOF_RECEIPT_BYTES,
+        label="proof-complete receipt",
+        expected_sha256=_require_sha256(
+            finalized.get("proof_complete_receipt_sha256"),
+            label="proof-complete receipt binding",
+        ),
+    )
+    del proof_raw
+    base_proof_fields = {
+        "schema_version",
+        "status",
+        "generated_at",
+        "transaction_id",
+        "deployment",
+        "backup",
+        "publication",
+        "observers",
+        "celery",
+        "recovery",
+        "compose_before",
+        "controller_manifest_sha256",
+        "installed_unit_sha256",
+        "release_proof_present",
+        "writers_restored",
+    }
+    expected_proof_fields = base_proof_fields | (
+        {"interrupted_phase1_resume"} if has_recovery else set()
+    )
+    deployment = proof.get("deployment")
+    deployment_fields = {
+        "direction",
+        "previous_checkout_sha",
+        "previous_deployment_receipt_sha",
+        "deployed_sha",
+        "controller_sha",
+        "controller_tree_sha256",
+        "candidate_image_id",
+        "candidate_render_gateway_image_id",
+    }
+    generated_at = _utc(proof.get("generated_at"), field="proof generated_at")
+    if (
+        set(proof) != expected_proof_fields
+        or proof.get("schema_version") != "palimpsest-host-release.v1"
+        or proof.get("status") != "proof-complete"
+        or proof.get("transaction_id") != transaction_id
+        or proof.get("release_proof_present") is not True
+        or proof.get("writers_restored") is not False
+        or generated_at > finalized_at
+        or not isinstance(deployment, dict)
+        or set(deployment) != deployment_fields
+        or deployment.get("direction") != "forward"
+        or deployment.get("deployed_sha") != controller_commit
+        or deployment.get("controller_sha") != controller_commit
+        or not _image_id(deployment.get("candidate_image_id"))
+        or (
+            deployment.get("candidate_render_gateway_image_id") is not None
+            and not _image_id(deployment.get("candidate_render_gateway_image_id"))
+        )
+        or deployment.get("previous_checkout_sha")
+        != finalized.get("previous_checkout_sha")
+        or deployment.get("previous_deployment_receipt_sha")
+        != finalized.get("previous_deployment_receipt_sha")
+        or any(
+            not isinstance(proof.get(field), dict)
+            for field in (
+                "backup",
+                "publication",
+                "observers",
+                "celery",
+                "recovery",
+                "compose_before",
+                "installed_unit_sha256",
+            )
+        )
+    ):
+        raise GuardError("proof-complete receipt semantics are invalid")
+    _require_sha256(
+        deployment.get("controller_tree_sha256"), label="controller tree binding"
+    )
+    _require_sha256(
+        proof.get("controller_manifest_sha256"), label="controller manifest binding"
+    )
+    installed_units = proof["installed_unit_sha256"]
+    if not installed_units or any(
+        not isinstance(name, str)
+        or not isinstance(value, str)
+        or SHA256.fullmatch(value) is None
+        for name, value in installed_units.items()
+    ):
+        raise GuardError("proof-complete installed unit inventory is invalid")
+    if proof_sha256 != finalized["proof_complete_receipt_sha256"]:
+        raise GuardError("proof-complete receipt digest binding changed")
+    _validate_proof_nested(
+        proof,
+        controller_commit=controller_commit,
+        transaction_id=transaction_id,
+    )
+
+    if not has_recovery:
+        return finalized_sha256
+
+    binding = finalized.get("interrupted_phase1_resume")
+    binding_fields = {
+        "schema_version",
+        "incident_id",
+        "transaction_id",
+        "target_commit",
+        "failed_target_commit",
+        "recovery_controller_commit",
+        "minimum_recovery_ancestor",
+        "manifest_sha256",
+        "manifest",
+        "hybrid_fingerprint_sha256",
+        "restore_profile_sha256",
+        "compose_environment_sha256",
+        "broker_queue_sha256",
+        "prepared_receipt_path",
+        "prepared_receipt_sha256",
+        "prepared_receipt",
+        "broker_empty_receipt_sha256",
+        "broker_empty_receipt",
+        "migration_receipt",
+        "backup",
+    }
+    if (
+        not isinstance(binding, dict)
+        or set(binding) != binding_fields
+        or binding.get("schema_version")
+        != "palimpsest-interrupted-phase1-binding.v2"
+        or binding.get("transaction_id") != transaction_id
+        or binding.get("target_commit") != controller_commit
+        or binding.get("recovery_controller_commit") != controller_commit
+        or proof.get("interrupted_phase1_resume") != binding
+        or finalized.get("interrupted_phase1_completion_required") is not True
+    ):
+        raise GuardError("recovery finalized binding is invalid")
+    incident = binding.get("incident_id")
+    if not isinstance(incident, str) or INCIDENT_ID.fullmatch(incident) is None:
+        raise GuardError("recovery incident identity is invalid")
+    for field in (
+        "manifest_sha256",
+        "hybrid_fingerprint_sha256",
+        "restore_profile_sha256",
+        "compose_environment_sha256",
+        "broker_queue_sha256",
+        "prepared_receipt_sha256",
+        "broker_empty_receipt_sha256",
+    ):
+        _require_sha256(binding.get(field), label=f"recovery {field}")
+    _require_sha40(binding.get("failed_target_commit"), label="failed target")
+    _require_sha40(
+        binding.get("minimum_recovery_ancestor"), label="minimum recovery ancestor"
+    )
+    for field in (
+        "manifest",
+        "prepared_receipt",
+        "broker_empty_receipt",
+        "migration_receipt",
+        "backup",
+    ):
+        if not isinstance(binding.get(field), dict):
+            raise GuardError(f"recovery {field} binding is invalid")
+    binding_sha256, migration_receipt, backup = _validate_recovery_binding_children(
+        binding,
+        finalized=finalized,
+        proof=proof,
+    )
+
+    completion_path_value = finalized.get("interrupted_phase1_completion_receipt")
+    expected_completion_path = RECOVERY_RECEIPT_DIR / f"{incident}.complete.json"
+    if (
+        not isinstance(completion_path_value, str)
+        or completion_path_value != str(expected_completion_path)
+    ):
+        raise GuardError("recovery finalized receipt lacks its exact completion")
+    completion_raw, completion, _completion_sha256 = _read_canonical_receipt(
+        expected_completion_path,
+        directory=RECOVERY_RECEIPT_DIR,
+        mode=0o400,
+        maximum_bytes=MAX_COMPLETION_RECEIPT_BYTES,
+        label="recovery completion receipt",
+    )
+    del completion_raw, _completion_sha256
+    completion_fields = {
+        "schema_version",
+        "status",
+        "completed_at",
+        "incident_id",
+        "transaction_id",
+        "target_commit",
+        "failed_target_commit",
+        "recovery_controller_commit",
+        "minimum_recovery_ancestor",
+        "manifest_sha256",
+        "compose_environment_sha256",
+        "broker_queue_sha256",
+        "prepared_receipt_path",
+        "prepared_receipt_sha256",
+        "phase3_binding_sha256",
+        "finalized_receipt_path",
+        "finalized_receipt_sha256",
+        "backup_reason",
+        "recovery_snapshot",
+        "final_runtime_sha256",
+        "final_runtime",
+    }
+    runtime = completion.get("final_runtime")
+    runtime_fields = {
+        "schema_version",
+        "verified_at",
+        "infrastructure",
+        "api",
+        "migration",
+        "beat",
+        "workers",
+        "node_offsite",
+        "velocity",
+    }
+    completed_at = _utc(
+        completion.get("completed_at"), field="completion completed_at"
+    )
+    runtime_verified_at = (
+        _utc(runtime.get("verified_at"), field="runtime verified_at")
+        if isinstance(runtime, dict)
+        else completed_at
+    )
+    if not isinstance(runtime, dict) or set(runtime) != runtime_fields:
+        raise GuardError("recovery completion runtime schema is invalid")
+    _validate_completion_runtime(
+        runtime,
+        controller_commit=controller_commit,
+        migration_receipt=migration_receipt,
+    )
+    if (
+        set(completion) != completion_fields
+        or completion.get("schema_version")
+        != "palimpsest-interrupted-phase1-completion.v2"
+        or completion.get("status") != "completed"
+        or completion.get("incident_id") != incident
+        or completion.get("transaction_id") != transaction_id
+        or completion.get("target_commit") != controller_commit
+        or completion.get("recovery_controller_commit") != controller_commit
+        or completion.get("failed_target_commit")
+        != binding.get("failed_target_commit")
+        or completion.get("minimum_recovery_ancestor")
+        != binding.get("minimum_recovery_ancestor")
+        or completion.get("manifest_sha256") != binding.get("manifest_sha256")
+        or completion.get("compose_environment_sha256")
+        != binding.get("compose_environment_sha256")
+        or completion.get("broker_queue_sha256")
+        != binding.get("broker_queue_sha256")
+        or completion.get("prepared_receipt_path")
+        != binding.get("prepared_receipt_path")
+        or completion.get("prepared_receipt_sha256")
+        != binding.get("prepared_receipt_sha256")
+        or completion.get("phase3_binding_sha256") != binding_sha256
+        or completion.get("finalized_receipt_path") != str(path)
+        or completion.get("finalized_receipt_sha256") != finalized_sha256
+        or completion.get("backup_reason") != backup.get("reason")
+        or completion.get("recovery_snapshot") != backup.get("current_snapshot")
+        or runtime.get("schema_version")
+        != "palimpsest-interrupted-phase1-final-runtime.v1"
+        or runtime.get("node_offsite")
+        != {"enablement": "disabled", "active_state": "inactive"}
+        or runtime.get("velocity") != {"presence": "absent"}
+        or completed_at < runtime_verified_at
+        or completion.get("final_runtime_sha256")
+        != hashlib.sha256(_canonical(runtime)).hexdigest()
+    ):
+        raise GuardError("recovery completion authority is invalid")
+    return finalized_sha256
+
+
+def _hold_document(
+    *,
+    status: str,
+    transaction_id: str,
+    reason_code: str,
+    controller_commit: str,
+    now: datetime,
+    pre_state: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "schema_version": HOLD_SCHEMA,
+        "status": status,
+        "transaction_id": transaction_id,
+        "reason_code": reason_code,
+        "created_at": _clock(now),
+        "expires_at": _clock(now + timedelta(seconds=MAX_HOLD_SECONDS)),
+        "controller_commit": controller_commit,
+        "pre_state": pre_state,
+        "restore_profile_sha256": _restore_profile_sha256(pre_state),
+    }
+
+
+def _validate_cli_identity(
+    transaction_id: str, controller_commit: str, reason_code: str
+) -> None:
+    if not TRANSACTION_ID.fullmatch(transaction_id):
+        raise GuardError("maintenance transaction id is invalid")
+    if not SHA40.fullmatch(controller_commit):
+        raise GuardError("maintenance controller commit is invalid")
+    if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", reason_code) is None:
+        raise GuardError("maintenance reason code is invalid")
+
+
+def _maintenance_begin_unlocked(
+    *, transaction_id: str, controller_commit: str, reason_code: str
+) -> dict[str, Any]:
+    _validate_cli_identity(transaction_id, controller_commit, reason_code)
+    now = datetime.now(UTC)
+    try:
+        existing = _read_maintenance_hold(now=now, require_effective=False)
+    except FileNotFoundError:
+        existing = None
+    if existing is not None:
+        if (
+            existing["transaction_id"] != transaction_id
+            or existing["controller_commit"] != controller_commit
+            or existing["reason_code"] != reason_code
+        ):
+            raise GuardError("another maintenance transaction already owns the hold")
+        pre_state = existing["pre_state"]
+        status = existing["status"]
+    else:
+        pre_state = _snapshot_pre_state()
+        status = "active"
+    document = _hold_document(
+        status=status,
+        transaction_id=transaction_id,
+        reason_code=reason_code,
+        controller_commit=controller_commit,
+        now=now,
+        pre_state=pre_state,
+    )
+    _atomic_write(HOLD_PATH, _canonical(document), mode=0o600)
+    return document
+
+
+def _maintenance_fail_closed_unlocked(
+    *, transaction_id: str, controller_commit: str, reason_code: str
+) -> dict[str, Any]:
+    _validate_cli_identity(transaction_id, controller_commit, reason_code)
+    now = datetime.now(UTC)
+    try:
+        existing = _read_maintenance_hold(now=now, require_effective=False)
+    except FileNotFoundError:
+        existing = None
+    if existing is not None:
+        if (
+            existing["transaction_id"] != transaction_id
+            or existing["controller_commit"] != controller_commit
+            or existing["reason_code"] != reason_code
+        ):
+            raise GuardError("another maintenance transaction already owns the hold")
+        pre_state = existing["pre_state"]
+    else:
+        pre_state = _snapshot_pre_state()
+    document = _hold_document(
+        status="fail_closed",
+        transaction_id=transaction_id,
+        reason_code=reason_code,
+        controller_commit=controller_commit,
+        now=now,
+        pre_state=pre_state,
+    )
+    _atomic_write(HOLD_PATH, _canonical(document), mode=0o600)
+    return document
+
+
+def _maintenance_assert_unlocked(
+    *, transaction_id: str, controller_commit: str
+) -> dict[str, Any]:
+    now = datetime.now(UTC)
+    document = _read_maintenance_hold(now=now, require_effective=False)
+    if (
+        document["transaction_id"] != transaction_id
+        or document["controller_commit"] != controller_commit
+    ):
+        raise GuardError("maintenance hold does not belong to this transaction")
+    return document
+
+
+def _maintenance_end_unlocked(
+    *,
+    transaction_id: str,
+    controller_commit: str,
+    expected_fragments: dict[str, str],
+    expected_drop_ins: dict[str, tuple[Path, str] | None],
+    finalized_receipt: Path,
+    finalized_sha256: str | None,
+) -> str:
+    if TRANSACTION_ID.fullmatch(transaction_id) is None:
+        raise GuardError("maintenance transaction id is invalid")
+    if SHA40.fullmatch(controller_commit) is None:
+        raise GuardError("maintenance controller commit is invalid")
+    if (
+        set(expected_fragments) != set(TIMERS)
+        or any(SHA256.fullmatch(value) is None for value in expected_fragments.values())
+    ):
+        raise GuardError("reviewed timer fragment profile is invalid")
+    if set(expected_drop_ins) != set(TIMERS):
+        raise GuardError("reviewed timer drop-in profile is invalid")
+    document = _maintenance_assert_unlocked(
+        transaction_id=transaction_id, controller_commit=controller_commit
+    )
+    candidates = _matching_finalized_receipts(
+        transaction_id=transaction_id, controller_commit=controller_commit
+    )
+    if len(candidates) != 1 or candidates[0] != finalized_receipt:
+        raise GuardError("finalized receipt authority is absent or ambiguous")
+    authority_sha256 = _validate_finalized_authority(
+        finalized_receipt,
+        expected_sha256=finalized_sha256,
+        transaction_id=transaction_id,
+        controller_commit=controller_commit,
+    )
+    current = {item.unit: item for item in _timer_states()}
+    if set(current) != set(TIMERS):
+        raise GuardError("cannot prove the restored timer inventory")
+    for unit, expected in document["pre_state"].items():
+        item = current[unit]
+        observed = {
+            "load_state": item.load_state,
+            "unit_file_state": item.unit_file_state,
+            "active_state": item.active_state,
+        }
+        if observed != {
+            "load_state": expected["load_state"],
+            "unit_file_state": expected["unit_file_state"],
+            "active_state": expected["active_state"],
+        }:
+            raise GuardError(f"timer state was not exactly restored: {unit}")
+        current_fragment = _fragment_sha256(
+            unit,
+            load_state=item.load_state,
+            expected_drop_in=expected_drop_ins[unit],
+        )
+        if current_fragment != expected_fragments[unit]:
+            raise GuardError(f"timer fragment is not the reviewed target: {unit}")
+    try:
+        directory = os.open(HOLD_PATH.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.unlink(HOLD_PATH.name, dir_fd=directory)
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    except OSError as exc:
+        raise GuardError("cannot durably remove maintenance hold") from exc
+    return authority_sha256
+
+
+def maintenance_begin(
+    *, transaction_id: str, controller_commit: str, reason_code: str
+) -> dict[str, Any]:
+    with _maintenance_lock():
+        return _maintenance_begin_unlocked(
+            transaction_id=transaction_id,
+            controller_commit=controller_commit,
+            reason_code=reason_code,
+        )
+
+
+def maintenance_fail_closed(
+    *, transaction_id: str, controller_commit: str, reason_code: str
+) -> dict[str, Any]:
+    with _maintenance_lock():
+        return _maintenance_fail_closed_unlocked(
+            transaction_id=transaction_id,
+            controller_commit=controller_commit,
+            reason_code=reason_code,
+        )
+
+
+def maintenance_assert(*, transaction_id: str, controller_commit: str) -> dict[str, Any]:
+    with _maintenance_lock():
+        return _maintenance_assert_unlocked(
+            transaction_id=transaction_id,
+            controller_commit=controller_commit,
+        )
+
+
+def maintenance_inspect() -> dict[str, Any]:
+    with _maintenance_lock():
+        return _read_maintenance_hold(
+            now=datetime.now(UTC), require_effective=False
+        )
+
+
+def maintenance_end(
+    *,
+    transaction_id: str,
+    controller_commit: str,
+    expected_fragments: dict[str, str],
+    expected_drop_ins: dict[str, tuple[Path, str] | None],
+    finalized_receipt: Path,
+    finalized_sha256: str,
+) -> str:
+    if SHA256.fullmatch(finalized_sha256) is None:
+        raise GuardError("finalized receipt digest is invalid")
+    with _maintenance_lock():
+        return _maintenance_end_unlocked(
+            transaction_id=transaction_id,
+            controller_commit=controller_commit,
+            expected_fragments=expected_fragments,
+            expected_drop_ins=expected_drop_ins,
+            finalized_receipt=finalized_receipt,
+            finalized_sha256=finalized_sha256,
+        )
+
+
+def maintenance_reconcile_finalized(
+    *,
+    transaction_id: str,
+    controller_commit: str,
+    expected_fragments: dict[str, str],
+    expected_drop_ins: dict[str, tuple[Path, str] | None],
+) -> tuple[Path, str]:
+    with _maintenance_lock():
+        if TRANSACTION_ID.fullmatch(transaction_id) is None:
+            raise GuardError("maintenance transaction id is invalid")
+        if SHA40.fullmatch(controller_commit) is None:
+            raise GuardError("maintenance controller commit is invalid")
+        _maintenance_assert_unlocked(
+            transaction_id=transaction_id,
+            controller_commit=controller_commit,
+        )
+        candidates = _matching_finalized_receipts(
+            transaction_id=transaction_id, controller_commit=controller_commit
+        )
+        if len(candidates) != 1:
+            raise GuardError("finalized receipt authority is absent or ambiguous")
+        digest = _maintenance_end_unlocked(
+            transaction_id=transaction_id,
+            controller_commit=controller_commit,
+            expected_fragments=expected_fragments,
+            expected_drop_ins=expected_drop_ins,
+            finalized_receipt=candidates[0],
+            finalized_sha256=None,
+        )
+        return candidates[0], digest
+
+
+def _expected_fragment_arguments(values: list[str]) -> dict[str, str]:
+    profile: dict[str, str] = {}
+    for value in values:
+        unit, separator, digest = value.partition("=")
+        if not separator or unit in profile:
+            raise GuardError("reviewed timer fragment argument is invalid")
+        profile[unit] = digest
+    if set(profile) != set(TIMERS):
+        raise GuardError("reviewed timer fragment argument inventory is invalid")
+    return profile
+
+
+def _expected_drop_in_arguments(
+    values: list[str],
+) -> dict[str, tuple[Path, str] | None]:
+    profile: dict[str, tuple[Path, str] | None] = {}
+    for value in values:
+        unit, separator, authority = value.partition("=")
+        if not separator or unit in profile:
+            raise GuardError("reviewed timer drop-in argument is invalid")
+        if authority == "absent":
+            profile[unit] = None
+            continue
+        raw_path, digest_separator, digest = authority.rpartition("=")
+        path = Path(raw_path)
+        if (
+            not digest_separator
+            or not path.is_absolute()
+            or SHA256.fullmatch(digest) is None
+        ):
+            raise GuardError("reviewed timer drop-in argument is invalid")
+        profile[unit] = (path, digest)
+    if set(profile) != set(TIMERS):
+        raise GuardError("reviewed timer drop-in argument inventory is invalid")
+    return profile
+
+
+def _safety_marker_present(path: Path) -> bool:
+    try:
+        metadata = path.lstat()
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise GuardError(f"cannot inspect safety marker: {path}") from exc
+    if not stat.S_ISREG(metadata.st_mode) or path.is_symlink():
+        raise GuardError(f"safety marker is not a regular file: {path}")
+    return True
+
+
+def _lock_is_held(path: Path) -> bool:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise GuardError(f"cannot inspect publication lock: {path}") from exc
+    try:
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(descriptor, fcntl.LOCK_UN)
+        return False
+    finally:
+        os.close(descriptor)
+
+
+def _blockers(now: datetime) -> list[str]:
+    blockers = [str(path) for path in SAFETY_MARKERS if _safety_marker_present(path)]
+    for path in PUBLICATION_LOCKS:
+        if _lock_is_held(path):
+            blockers.append(f"held-lock:{path}")
+    proof_units = _systemctl(
+        "list-units",
+        "--type=service",
+        "--state=activating,active",
+        "--plain",
+        "--no-legend",
+        "palimpsest-release-proof-*.service",
+    )
+    if proof_units.returncode != 0:
+        raise GuardError("cannot inspect active release-proof services")
+    if proof_units.stdout.strip():
+        blockers.append("active-release-proof-service")
+    try:
+        hold = _read_maintenance_hold(now=now, require_effective=True)
+    except FileNotFoundError:
+        return blockers
+    blockers.append(f"maintenance-hold:{hold['status']}")
+    return blockers
+
+
+def _write_status(document: dict[str, Any]) -> None:
+    STATUS_PATH.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=".status.", dir=STATUS_PATH.parent
+    )
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "wb", closefd=True) as handle:
+            handle.write(_canonical(document))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, STATUS_PATH)
+        directory = os.open(STATUS_PATH.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+
+
+def _run_guard() -> int:
+    now = datetime.now(UTC)
+    exit_code = 0
+    repairs: list[str] = []
+    problems: list[str] = []
+    blockers: list[str] = []
+    states: list[TimerState] = []
+    try:
+        with _maintenance_lock():
+            states = _timer_states()
+            blockers = _blockers(now)
+            for unit in repair_candidates(states, blockers=blockers):
+                if _systemctl("reset-failed", unit).returncode not in {0, 1}:
+                    problems.append(f"cannot reset failed state for {unit}")
+                    continue
+                start = _systemctl("start", unit)
+                if (
+                    start.returncode != 0
+                    or _property(unit, "ActiveState") != "active"
+                ):
+                    problems.append(f"cannot restore {unit}")
+                else:
+                    repairs.append(unit)
+            if repairs:
+                states = _timer_states()
+            unsafe_states = [
+                item.unit
+                for item in states
+                if item.load_state != "loaded"
+                or item.unit_file_state
+                not in {"enabled", "enabled-runtime", "disabled"}
+                or item.active_state not in {"active", "inactive", "failed"}
+            ]
+            problems.extend(
+                f"ambiguous timer state: {unit}" for unit in unsafe_states
+            )
+            if not blockers:
+                problems.extend(
+                    f"steady-state timer is disabled: {item.unit}"
+                    for item in states
+                    if item.unit_file_state == "disabled"
+                )
+    except GuardError as exc:
+        problems.append(str(exc))
+    if problems:
+        status = "degraded"
+        exit_code = 1
+    elif blockers:
+        status = "abstained"
+    elif repairs:
+        status = "repaired"
+    else:
+        status = "healthy"
+    document = {
+        "schema_version": SCHEMA_VERSION,
+        "status": status,
+        "checked_at": _clock(now),
+        "timers": [asdict(item) for item in states],
+        "repairs": repairs,
+        "blockers": blockers,
+        "problems": problems,
+    }
+    try:
+        _write_status(document)
+    except OSError as exc:
+        print(f"palimpsest-continuity-guard cannot write status: {exc}")
+        return 1
+    print(
+        "palimpsest-continuity-guard "
+        f"status={status} repairs={len(repairs)} blockers={len(blockers)} "
+        f"problems={len(problems)}"
+    )
+    return exit_code
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Guard Palimpsest publication continuity and release maintenance"
+    )
+    subcommands = parser.add_subparsers(dest="command")
+    subcommands.add_parser("capabilities", help="print the exact CLI contract")
+    subcommands.add_parser("check", help="check and repair steady-state timers")
+    subcommands.add_parser(
+        "maintenance-inspect", help="validate and print the current maintenance hold"
+    )
+    for name in ("maintenance-begin", "maintenance-fail-closed"):
+        command = subcommands.add_parser(name)
+        command.add_argument("--transaction-id", required=True)
+        command.add_argument("--controller-commit", required=True)
+        command.add_argument("--reason-code", required=True)
+    for name in (
+        "maintenance-assert",
+        "maintenance-end",
+        "maintenance-reconcile-finalized",
+    ):
+        command = subcommands.add_parser(name)
+        command.add_argument("--transaction-id", required=True)
+        command.add_argument("--controller-commit", required=True)
+        if name in {"maintenance-end", "maintenance-reconcile-finalized"}:
+            command.add_argument(
+                "--expected-fragment", action="append", required=True
+            )
+            command.add_argument(
+                "--expected-drop-in", action="append", required=True
+            )
+        if name == "maintenance-end":
+            command.add_argument("--finalized-receipt", required=True)
+            command.add_argument("--finalized-sha256", required=True)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    arguments = _parser().parse_args([] if argv is None else argv)
+    if arguments.command in {None, "check"}:
+        return _run_guard()
+    if arguments.command == "capabilities":
+        document = {
+            "schema_version": CAPABILITIES_SCHEMA,
+            "hold_schema": HOLD_SCHEMA,
+            "commands": list(CAPABILITY_COMMANDS),
+        }
+        print(_canonical(document).decode("utf-8"), end="")
+        return 0
+    if os.geteuid() != 0:
+        print("palimpsest-continuity-guard maintenance commands require root", file=sys.stderr)
+        return 1
+    try:
+        if arguments.command == "maintenance-begin":
+            document = maintenance_begin(
+                transaction_id=arguments.transaction_id,
+                controller_commit=arguments.controller_commit,
+                reason_code=arguments.reason_code,
+            )
+        elif arguments.command == "maintenance-fail-closed":
+            document = maintenance_fail_closed(
+                transaction_id=arguments.transaction_id,
+                controller_commit=arguments.controller_commit,
+                reason_code=arguments.reason_code,
+            )
+        elif arguments.command == "maintenance-assert":
+            document = maintenance_assert(
+                transaction_id=arguments.transaction_id,
+                controller_commit=arguments.controller_commit,
+            )
+        elif arguments.command == "maintenance-inspect":
+            document = maintenance_inspect()
+            print(_canonical(document).decode("utf-8"), end="")
+            return 0
+        elif arguments.command == "maintenance-end":
+            maintenance_end(
+                transaction_id=arguments.transaction_id,
+                controller_commit=arguments.controller_commit,
+                expected_fragments=_expected_fragment_arguments(
+                    arguments.expected_fragment
+                ),
+                expected_drop_ins=_expected_drop_in_arguments(
+                    arguments.expected_drop_in
+                ),
+                finalized_receipt=Path(arguments.finalized_receipt),
+                finalized_sha256=arguments.finalized_sha256,
+            )
+            print(
+                "palimpsest-continuity-guard maintenance-end "
+                f"transaction={arguments.transaction_id} status=restored"
+            )
+            return 0
+        elif arguments.command == "maintenance-reconcile-finalized":
+            finalized_path, finalized_sha256 = maintenance_reconcile_finalized(
+                transaction_id=arguments.transaction_id,
+                controller_commit=arguments.controller_commit,
+                expected_fragments=_expected_fragment_arguments(
+                    arguments.expected_fragment
+                ),
+                expected_drop_ins=_expected_drop_in_arguments(
+                    arguments.expected_drop_in
+                ),
+            )
+            print(
+                "palimpsest-continuity-guard maintenance-reconcile-finalized "
+                f"transaction={arguments.transaction_id} status=restored "
+                f"finalized_receipt={finalized_path} "
+                f"finalized_sha256={finalized_sha256}"
+            )
+            return 0
+        else:  # pragma: no cover - argparse owns command validation.
+            raise GuardError("unsupported maintenance command")
+    except (GuardError, OSError) as exc:
+        print(f"palimpsest-continuity-guard {arguments.command} failed: {exc}", file=sys.stderr)
+        return 1
+    print(
+        f"palimpsest-continuity-guard {arguments.command} "
+        f"transaction={document['transaction_id']} status={document['status']}"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

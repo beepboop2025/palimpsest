@@ -11,7 +11,7 @@ import tarfile
 import threading
 import urllib.error
 import urllib.request
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
 
@@ -97,15 +97,19 @@ CONTINUOUS_RELEASE_CRITICAL_PATHS = {
     "ops/railway/build_release_manifest.py",
     "ops/railway/deploy-continuous-release.sh",
     "ops/railway/enable-hourly-publication",
+    "ops/railway/palimpsest-continuity-guard",
     "ops/railway/run-activation-canary",
     "ops/railway/run-newswire-prerequisite.sh",
     "ops/railway/run-producer-restore",
     "ops/railway/static_server.py",
     "ops/railway/verify_continuous_release.py",
     "ops/railway/verify_rights_clean.py",
+    "ops/systemd/palimpsest-continuity-guard.service",
+    "ops/systemd/palimpsest-continuity-guard.timer",
     "ops/watchdog/palimpsest_freshness_watchdog.py",
     "protocol/collector-health-watchdog-receipt-v1.schema.json",
     "protocol/railway-continuous-release-receipt-v1.schema.json",
+    "protocol/publication-freshness-v1.schema.json",
     "scripts/build_pages_wire_archive.py",
     "scripts/stage_pages_rights.py",
     "tests/test_collector_health_watchdog.py",
@@ -183,6 +187,67 @@ def _publication_root(tmp_path: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(f"fixture:{relative}\n", encoding="utf-8")
     return tmp_path
+
+
+def _write_freshness_attestation(
+    root: Path,
+    *,
+    source_commit: str,
+    wire_generated_at: str,
+    attested_at: str,
+) -> Path:
+    digest = "d" * 64
+    rights_status = root / "readings/china-publication-rights-latest.json"
+    rights_raw = rights_status.read_bytes()
+    payload = {
+        "schema_version": "palimpsest.publication-freshness-attestation.v1",
+        "publication_sha": source_commit,
+        "attested_at": attested_at,
+        "mode": "rights-suppressed",
+        "publication_allowed": False,
+        "artifacts": {
+            "newswire": {
+                "path": "readings/newswire-latest.json",
+                "schema_version": "palimpsest-newswire.v1",
+                "generated_at": wire_generated_at,
+                "canonical_sha256": digest,
+            },
+            "china_situation": {
+                "path": "readings/china-situation-latest.json",
+                "schema_version": "palimpsest-china-situation.v1",
+                "generated_at": wire_generated_at,
+                "canonical_sha256": digest,
+                "inputs": {
+                    "newswire_generated_at": wire_generated_at,
+                    "newswire_canonical_sha256": digest,
+                },
+            },
+        },
+        "rights_status": {
+            "path": "readings/china-publication-rights-latest.json",
+            "sha256": hashlib.sha256(rights_raw).hexdigest(),
+            "bytes": len(rights_raw),
+        },
+        "limitations": [
+            "Metadata only; quarantined source artifacts are not republished here.",
+            "No source values, observations, or per-record identifiers are included.",
+            "This attestation conveys no observation or publication authority.",
+            "Unavailable or restricted evidence is not a directional signal.",
+        ],
+    }
+    destination = root / "readings/publication-freshness-attestation-latest.json"
+    destination.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return destination
 
 
 def test_manifest_is_canonical_local_release_evidence(tmp_path: Path) -> None:
@@ -367,6 +432,337 @@ def test_server_fails_health_closed_without_manifest(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_server_reports_semantic_freshness_separately_from_readiness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime(2026, 8, 31, 7, 30, tzinfo=UTC)
+    root = _publication_root(tmp_path)
+    source_commit = "7" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    manifest = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+    monkeypatch.setattr(server_module, "_utc_now", lambda: now)
+    server = server_module.create_server(root, "127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        base = f"http://127.0.0.1:{server.server_port}"
+        with urllib.request.urlopen(base + "/healthz", timeout=5) as response:
+            assert response.status == 200
+            assert json.loads(response.read())["status"] == "ready"
+        with urllib.request.urlopen(base + "/freshness", timeout=5) as response:
+            assert response.status == 200
+            assert response.headers["Cache-Control"] == "no-store"
+            freshness = json.loads(response.read())
+        assert freshness == {
+            "schema_version": "palimpsest.publication-freshness.v1",
+            "status": "fresh",
+            "service": "palimpsest-publication",
+            "checked_at": "2026-08-31T07:30:00Z",
+            "source_commit": source_commit,
+            "tree_sha256": manifest["tree_sha256"],
+            "rights": {
+                "mode": "rights-suppressed",
+                "publication_allowed": False,
+            },
+            "clocks": {
+                "wire": {
+                    "generated_at": "2026-08-31T07:20:00Z",
+                    "age_seconds": 600,
+                    "freshness_budget_seconds": 1800,
+                    "status": "fresh",
+                },
+                "publication": {
+                    "generated_at": "2026-08-31T07:25:00Z",
+                    "age_seconds": 300,
+                    "freshness_budget_seconds": 3600,
+                    "status": "fresh",
+                },
+            },
+        }
+        freshness_schema = json.loads(
+            (ROOT / "protocol/publication-freshness-v1.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        assert freshness_schema["$schema"] == (
+            "https://json-schema.org/draft/2020-12/schema"
+        )
+        assert freshness_schema["$id"] == (
+            "https://palimpsest.info/protocol/"
+            "publication-freshness-v1.schema.json"
+        )
+        assert freshness_schema["properties"]["schema_version"]["const"] == (
+            freshness["schema_version"]
+        )
+        assert freshness["status"] in freshness_schema["properties"]["status"][
+            "enum"
+        ]
+        request = urllib.request.Request(base + "/freshnessz", method="HEAD")
+        with urllib.request.urlopen(request, timeout=5) as response:
+            assert response.status == 200
+            assert response.headers["Cache-Control"] == "no-store"
+            assert response.read() == b""
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_server_fails_freshness_closed_when_wire_clock_is_stale(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    now = datetime(2026, 8, 31, 7, 30, tzinfo=UTC)
+    root = _publication_root(tmp_path)
+    source_commit = "8" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at=(now - timedelta(seconds=1801)).isoformat().replace(
+            "+00:00", "Z"
+        ),
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    manifest_module.write_manifest(root, source_commit, "2026-08-31T07:25:00Z")
+    monkeypatch.setattr(server_module, "_utc_now", lambda: now)
+    server = server_module.create_server(root, "127.0.0.1", 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}/freshness"
+        with pytest.raises(urllib.error.HTTPError) as stale:
+            urllib.request.urlopen(url, timeout=5)
+        assert stale.value.code == 503
+        assert stale.value.headers["Cache-Control"] == "no-store"
+        payload = json.loads(stale.value.read())
+        assert payload["status"] == "stale"
+        assert payload["clocks"]["wire"]["status"] == "stale"
+        assert payload["clocks"]["publication"]["status"] == "fresh"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+def test_freshness_attestation_must_match_manifest_bytes(tmp_path: Path) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "4" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+    attestation = root / "readings/publication-freshness-attestation-latest.json"
+    attestation.write_bytes(attestation.read_bytes() + b"\n")
+
+    with pytest.raises(ValueError, match="not bound to the release manifest"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "missing-limitations",
+        "missing-rights-status",
+        "extra-top-level-field",
+        "extra-artifact-field",
+    ),
+)
+def test_freshness_attestation_rejects_closed_schema_drift_after_remanifest(
+    tmp_path: Path, mutation: str
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "9" * 40
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    if mutation == "missing-limitations":
+        payload.pop("limitations")
+    elif mutation == "missing-rights-status":
+        payload.pop("rights_status")
+    elif mutation == "extra-top-level-field":
+        payload["unreviewed_extension"] = True
+    else:
+        payload["artifacts"]["newswire"]["unreviewed_extension"] = True
+    attestation_path.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="changed its exact schema"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_noncanonical_json_after_remanifest(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "c" * 40
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    attestation_path.write_text(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="not canonical JSON"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_remanifested_rights_identity_drift(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "a" * 40
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    payload["rights_status"]["sha256"] = "e" * 64
+    attestation_path.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="exact publication rights status"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_boolean_rights_byte_count(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "d" * 40
+    (root / "readings/china-publication-rights-latest.json").write_bytes(b"x")
+    attestation_path = _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    payload = json.loads(attestation_path.read_text(encoding="utf-8"))
+    payload["rights_status"]["bytes"] = True
+    attestation_path.write_text(
+        json.dumps(
+            payload,
+            allow_nan=False,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="invalid rights identity"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_rights_file_changed_after_manifest(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "b" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+    rights_status = root / "readings/china-publication-rights-latest.json"
+    rights_status.write_bytes(rights_status.read_bytes() + b"changed-after-release\n")
+
+    with pytest.raises(ValueError, match="rights status is not bound"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_rejects_fractional_release_clock(
+    tmp_path: Path,
+) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "e" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:25:00Z",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00.500000Z"
+    )
+
+    with pytest.raises(ValueError, match="not a strict RFC 3339 UTC clock"):
+        server_module._load_freshness_attestation(root, release=release)
+
+
+def test_freshness_attestation_clock_lineage_fails_closed(tmp_path: Path) -> None:
+    root = _publication_root(tmp_path)
+    source_commit = "5" * 40
+    _write_freshness_attestation(
+        root,
+        source_commit=source_commit,
+        wire_generated_at="2026-08-31T07:20:00Z",
+        attested_at="2026-08-31T07:19:59Z",
+    )
+    release = manifest_module.write_manifest(
+        root, source_commit, "2026-08-31T07:25:00Z"
+    )
+
+    with pytest.raises(ValueError, match="clocks violate publication causality"):
+        server_module._load_freshness_attestation(root, release=release)
 
 
 def test_access_request_logs_use_stdout(capsys) -> None:

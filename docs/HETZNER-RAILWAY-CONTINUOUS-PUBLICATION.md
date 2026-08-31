@@ -119,17 +119,88 @@ subsequently captures and proves the active Railway topology before mutation.
 The helper cannot rewrite an existing pin and is not a general base-selection
 bypass.
 
-Operational ordering for this transition is fixed: stop the publisher and
-watchdog timers; fetch the reviewed target without switching the canonical host
-checkout; install the exact target versions of the publisher, transition
+Operational ordering for this transition is fixed: create the canonical
+continuity maintenance hold before the first disable or stop; disable the
+publisher and watchdog timers while they are still active, then stop them; fetch the reviewed
+target without switching the canonical host checkout; install the exact target
+versions of the publisher, transition
 helper, reconciler, watchdog, publisher service, watchdog service, and watchdog
 timer; reload systemd; run the
 transition helper with acknowledgement
 `advance-palimpsest-direct-lineage-2026-08-30`; start one
 publisher service; verify the v2 receipt, private bundle, both live manifest
-byte streams, and contextual share-card route; then restore the timers. If a
-candidate journal remains, reconcile it before restoring the publisher timer.
-Do not delete the journal to make the lane look healthy.
+byte streams, and contextual share-card route; then start the workload timers
+while they are still disabled and re-enable them only after they report active.
+That maintenance-hold/disable-before-stop/start-before-enable sequence is the
+interlock with the independent continuity guard. Convert the hold to
+`fail_closed` before any emergency quiescence, and remove it only after the
+captured timer states have been exactly restored. If a candidate journal remains, reconcile it
+before starting the publisher timer. Do not delete the journal to make the lane
+look healthy.
+
+The independent continuity guard closes the separate enabled-but-inactive
+timer failure mode. Install it from one reviewed commit and keep its timer
+outside every release-quiesce inventory:
+
+```bash
+sudo install -o root -g root -m 0755 \
+  ops/railway/palimpsest-continuity-guard \
+  /usr/local/sbin/palimpsest-continuity-guard
+sudo install -o root -g root -m 0644 \
+  ops/systemd/palimpsest-continuity-guard.service \
+  /etc/systemd/system/palimpsest-continuity-guard.service
+sudo install -o root -g root -m 0644 \
+  ops/systemd/palimpsest-continuity-guard.timer \
+  /etc/systemd/system/palimpsest-continuity-guard.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now palimpsest-continuity-guard.timer
+sudo systemctl start palimpsest-continuity-guard.service
+sudo systemctl cat palimpsest-continuity-guard.service \
+  palimpsest-continuity-guard.timer
+sudo cat /var/lib/palimpsest-continuity/status.json
+```
+
+Every two minutes it checks the evidence-wire, measurement-refresh,
+Railway-publish and direct-watchdog timers. It repairs only a timer whose unit
+file is still enabled but whose active state became inactive or failed. A
+disabled timer is reported as degraded and is never restarted automatically.
+DATA HOLD, pending publication journals, release-proof state, held publication
+locks and the backup release-quiesce marker make the guard abstain. The
+root-owned mode-0600 maintenance hold is canonical, transaction- and
+commit-bound, and expires in at most two hours. An invalid or expired hold fails
+closed. The release transaction invokes `maintenance-begin` before arming its
+fail-safe, `maintenance-fail-closed` before emergency quiescence, and
+`maintenance-end` only after exact timer-state restoration. These subcommands
+share one root-owned, no-follow lock with ordinary guard repair. Before trusting
+them, the runbook atomically installs the exact target Git blob and verifies its
+closed capability handshake. `maintenance-end` additionally requires all four
+installed timer fragments to match digests derived from that reviewed target,
+with canonical root-owned fragments, no unapplied daemon reload, and no
+unreviewed drop-ins. It also authenticates the exact canonical finalized
+receipt and its proof-complete chain before removing the hold. Hold and status
+writes, replacement, and removal are atomic and directory fsynced. The finalized
+receipt is published before hold removal, so a hard crash always leaves
+conservative hold state or authoritative completion evidence.
+
+A failed transaction retains an `active` or `fail_closed` hold. Do not delete it.
+Fresh-shell recovery is a hold-only reconciliation: it validates the exact
+transaction ID, controller commit, reason, restore-profile digest, exactly one
+finalized receipt, the proof-complete chain, and the restored effective timer
+profiles, removes the hold, and exits without replaying Phase 1. Interrupted
+incident releases additionally require their bound completion receipt. If only
+a prepared or completion receipt exists, final authority is missing or
+ambiguous, or any nested evidence is malformed, reconciliation fails and the
+hold remains until a new reviewed recovery boundary is supplied. An ordinary
+transaction refuses any existing file or symlink. Never stop the guard timer
+for ordinary maintenance; use the receipted release transaction so a partial
+`systemctl disable` cannot be mistaken for an accidental outage.
+
+Serving readiness and evidence freshness are separate public contracts.
+`/healthz` proves that Railway can serve the immutable bundle. `/freshness`
+checks the manifest-bound pre-quarantine wire clock against a 30-minute budget
+and the publication clock against a 60-minute budget; it returns HTTP 503 when
+either clock is stale or its lineage cannot be proved. Rights-suppressed values
+remain unavailable even when their aggregate clock identity is fresh.
 
 ## Trust and data flow
 

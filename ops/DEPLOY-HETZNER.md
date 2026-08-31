@@ -1369,16 +1369,83 @@ continuation in the same shell because it uses the captured unit state. If the
 connection is lost, leave the timers stopped and restart the transaction from a
 known state. Do not reconstruct state from guesses.
 
+The continuity hold survives an abort as `active` or `fail_closed`. A fresh
+shell may set `CONTINUITY_HOLD_RECOVERY=1` only to reconcile an exact finalized
+receipt already bound to that hold. The reviewed target commit, reason code,
+closed hold schema, restore-profile digest, proof chain, and restored effective
+timer profiles must all validate. This path exits after removing the hold and
+never replays Phase 1. If final authority is absent, prepared-only,
+completion-only, malformed, or ambiguous, the hold remains and a new reviewed
+recovery manifest is required. Ordinary runs refuse an existing file or symlink
+rather than overwriting another transaction.
+
 ```bash
 set -Eeuo pipefail
+continuity_bootstrap_remove_fence() {
+  local marker="${CONTINUITY_FENCE_MARKER:-}"
+  local drop_in="${CONTINUITY_FENCE_DROPIN:-}"
+  local marker_dir='/run/palimpsest-continuity-bootstrap'
+  local drop_in_dir='/run/systemd/system/palimpsest-continuity-guard.service.d'
+  local expected_drop_in_sha="${CONTINUITY_FENCE_DROPIN_SHA256:-}"
+  local marker_dir_metadata drop_in_dir_metadata drop_in_metadata drop_in_sha
+  local marker_metadata effective_drop_ins need_daemon_reload
+  [[ "${CONTINUITY_BOOTSTRAP_FENCED:-0}" == 1 ]] || return 0
+  [[ "$marker" =~ ^/run/palimpsest-continuity-bootstrap/[0-9a-f]{32}\.block$ ]] \
+    || return 1
+  [[ "$drop_in" =~ ^/run/systemd/system/palimpsest-continuity-guard\.service\.d/99-bootstrap-[0-9a-f]{32}\.conf$ ]] \
+    || return 1
+  [[ "$expected_drop_in_sha" =~ ^[0-9a-f]{64}$ ]] || return 1
+  marker_dir_metadata="$(sudo stat -c '%U:%G:%a' "$marker_dir")" \
+    || return 1
+  test "$marker_dir_metadata" = root:root:700 || return 1
+  drop_in_dir_metadata="$(sudo stat -c '%U:%G:%a' "$drop_in_dir")" \
+    || return 1
+  test "$drop_in_dir_metadata" = root:root:755 || return 1
+  if sudo test -e "$drop_in" || sudo test -L "$drop_in"; then
+    sudo test -f "$drop_in" || return 1
+    sudo test ! -L "$drop_in" || return 1
+    drop_in_metadata="$(sudo stat -c '%U:%G:%a:%h' "$drop_in")" \
+      || return 1
+    test "$drop_in_metadata" = root:root:644:1 || return 1
+    drop_in_sha="$(sudo sha256sum "$drop_in" | awk '{print $1}')" \
+      || return 1
+    test "$drop_in_sha" = "$expected_drop_in_sha" || return 1
+    sudo rm -- "$drop_in" || return 1
+  fi
+  sudo test ! -e "$drop_in" || return 1
+  sudo test ! -L "$drop_in" || return 1
+  if sudo test -e "$marker" || sudo test -L "$marker"; then
+    sudo test -f "$marker" || return 1
+    sudo test ! -L "$marker" || return 1
+    marker_metadata="$(sudo stat -c '%U:%G:%a:%h:%s' "$marker")" \
+      || return 1
+    test "$marker_metadata" = root:root:600:1:0 || return 1
+    sudo rm -- "$marker" || return 1
+  fi
+  sudo test ! -e "$marker" || return 1
+  sudo test ! -L "$marker" || return 1
+  sudo sync -f "$drop_in_dir" "$marker_dir" || return 1
+  sudo systemctl daemon-reload || return 1
+  effective_drop_ins="$(systemctl show --property=DropInPaths --value \
+    palimpsest-continuity-guard.service)" || return 1
+  test -z "$effective_drop_ins" || return 1
+  need_daemon_reload="$(systemctl show --property=NeedDaemonReload --value \
+    palimpsest-continuity-guard.service)" || return 1
+  test "$need_daemon_reload" = no || return 1
+  CONTINUITY_BOOTSTRAP_FENCED=0
+  return 0
+}
 cleanup_release_private_state() {
   local cleanup_rc=0 current_uid current_gid snapshot_dir snapshot_file
-  local docker_config
+  local docker_config continuity_dir continuity_file continuity_guard_fenced
   current_uid="$(id -u)" || return 1
   current_gid="$(id -g)" || return 1
   snapshot_dir="${RELEASE_ENV_SNAPSHOT_DIR:-}"
   snapshot_file="${RELEASE_ENV_SNAPSHOT_FILE:-}"
   docker_config="${RELEASE_DOCKER_CONFIG:-}"
+  continuity_dir="${CONTINUITY_BOOTSTRAP_DIR:-}"
+  continuity_file="${CONTINUITY_GUARD_STAGED:-}"
+  continuity_guard_fenced="${CONTINUITY_BOOTSTRAP_FENCED:-0}"
   unset PALIMPSEST_ENV_FILE
   if [[ -n "$snapshot_dir" ]]; then
     if ! [[ "$snapshot_dir" =~ ^/tmp/palimpsest-release-env\.[A-Za-z0-9]{6}$ ]] \
@@ -1429,6 +1496,56 @@ cleanup_release_private_state() {
         printf 'failed to remove private release Docker directory\n' >&2
         cleanup_rc=1
       fi
+    fi
+  fi
+  if [[ -n "$continuity_dir" ]]; then
+    if ! [[ "$continuity_dir" \
+        =~ ^/tmp/palimpsest-continuity-bootstrap\.[A-Za-z0-9]{6}$ ]] \
+        || [[ "$continuity_file" != "$continuity_dir/target-guard" ]]; then
+      printf 'refusing unsafe continuity bootstrap cleanup target\n' >&2
+      cleanup_rc=1
+    elif [[ -e "$continuity_dir" || -L "$continuity_dir" ]]; then
+      if [[ -L "$continuity_dir" || ! -d "$continuity_dir" ]] \
+          || [[ "$(stat -c '%u:%g:%a' "$continuity_dir" 2>/dev/null)" \
+            != "${current_uid}:${current_gid}:700" ]]; then
+        printf 'continuity bootstrap directory failed cleanup authentication\n' >&2
+        cleanup_rc=1
+      else
+        if [[ -e "$continuity_file" || -L "$continuity_file" ]]; then
+          if [[ -L "$continuity_file" || ! -f "$continuity_file" ]] \
+              || [[ "$(stat -c '%u:%g:%a:%h' "$continuity_file" 2>/dev/null)" \
+                != "${current_uid}:${current_gid}:500:1" ]] \
+              || { [[ -n "${CONTINUITY_GUARD_SHA256:-}" ]] \
+                && [[ "$(sha256sum "$continuity_file" 2>/dev/null \
+                  | awk '{print $1}')" != "$CONTINUITY_GUARD_SHA256" ]]; }; then
+            printf 'continuity bootstrap file failed cleanup authentication\n' >&2
+            cleanup_rc=1
+          elif ! rm -f -- "$continuity_file"; then
+            printf 'failed to remove continuity bootstrap file\n' >&2
+            cleanup_rc=1
+          fi
+        fi
+        if [[ ! -e "$continuity_file" && ! -L "$continuity_file" ]] \
+            && ! rmdir -- "$continuity_dir"; then
+          printf 'failed to remove continuity bootstrap directory\n' >&2
+          cleanup_rc=1
+        fi
+      fi
+    fi
+  fi
+  if [[ "$continuity_guard_fenced" == 1 ]]; then
+    if ! continuity_bootstrap_remove_fence; then
+      printf 'failed to remove continuity guard bootstrap fence\n' >&2
+      cleanup_rc=1
+    elif [[ "$(systemctl is-enabled \
+        palimpsest-continuity-guard.timer)" != enabled ]] \
+        || [[ "$(systemctl is-active \
+          palimpsest-continuity-guard.timer)" != active ]]; then
+      printf 'continuity guard timer changed during bootstrap abort\n' >&2
+      cleanup_rc=1
+    elif ! sudo systemctl start palimpsest-continuity-guard.service; then
+      printf 'failed to restart continuity guard after bootstrap abort\n' >&2
+      cleanup_rc=1
     fi
   fi
   unset DOCKER_CONFIG
@@ -1691,8 +1808,437 @@ test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
 PREVIOUS_CHECKOUT_SHA="$(release_git rev-parse HEAD)"
 [[ "$PREVIOUS_CHECKOUT_SHA" =~ ^[0-9a-f]{40}$ ]]
 test "$PREVIOUS_CHECKOUT_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
-RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"
+CONTINUITY_HOLD_RECOVERY="${CONTINUITY_HOLD_RECOVERY:-0}"
+[[ "$CONTINUITY_HOLD_RECOVERY" == 0 || "$CONTINUITY_HOLD_RECOVERY" == 1 ]]
+CONTINUITY_GUARD='/usr/local/sbin/palimpsest-continuity-guard'
+CONTINUITY_GUARD_SOURCE='ops/railway/palimpsest-continuity-guard'
+CONTINUITY_REASON_CODE='reviewed-release'
+CONTINUITY_MAINTENANCE_ARMED=0
+CONTINUITY_BOOTSTRAP_FENCED=0
+CONTINUITY_HOLD_PATH='/var/lib/palimpsest-continuity/maintenance-hold.json'
+CONTINUITY_GUARD_SERVICE='palimpsest-continuity-guard.service'
+CONTINUITY_GUARD_TIMER='palimpsest-continuity-guard.timer'
+CONTINUITY_EXPECTED_CAPABILITIES='{"commands":["capabilities","check","maintenance-assert","maintenance-begin","maintenance-end","maintenance-fail-closed","maintenance-inspect","maintenance-reconcile-finalized"],"hold_schema":"palimpsest.continuity-maintenance-hold.v1","schema_version":"palimpsest.continuity-guard-capabilities.v1"}'
+
+# Fetch and install the exact reviewed maintenance CLI before trusting any
+# maintenance subcommand. The predecessor guard treated unknown arguments as a
+# normal check, so file mode or exit status alone is not a capability proof.
+release_git -c fetch.fsckObjects=true -c transfer.fsckObjects=true fetch \
+  --force --prune --no-tags https://github.com/beepboop2025/palimpsest.git \
+  '+refs/heads/main:refs/remotes/origin/main'
+release_git cat-file -e "${EXPECTED_DEPLOY_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$EXPECTED_DEPLOY_SHA" refs/remotes/origin/main
+release_git cat-file -e "${COMPATIBLE_ROLLBACK_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$COMPATIBLE_ROLLBACK_SHA" refs/remotes/origin/main
+release_git cat-file -e "${EXPECTED_PREVIOUS_DEPLOY_SHA}^{commit}"
+release_git merge-base --is-ancestor \
+  "$EXPECTED_PREVIOUS_DEPLOY_SHA" refs/remotes/origin/main
+release_git merge-base --is-ancestor \
+  "$COMPATIBLE_ROLLBACK_SHA" "$EXPECTED_DEPLOY_SHA"
+release_git merge-base --is-ancestor \
+  "$EXPECTED_PREVIOUS_DEPLOY_SHA" "$EXPECTED_DEPLOY_SHA"
+release_git cat-file -e "${EXPECTED_DEPLOY_SHA}:${CONTINUITY_GUARD_SOURCE}"
+CONTINUITY_TIMER_UNITS=(
+  palimpsest-evidence-wire.timer
+  palimpsest-measurement-refresh.timer
+  palimpsest-railway-publish.timer
+  palimpsest-direct-watchdog.timer
+)
+CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS=()
+CONTINUITY_EXPECTED_DROPIN_ARGUMENTS=()
+CONTINUITY_EVIDENCE_DROPIN_SOURCE='ops/systemd/palimpsest-evidence-wire.5-minute-live.conf'
+CONTINUITY_EVIDENCE_DROPIN_PATH='/etc/systemd/system/palimpsest-evidence-wire.timer.d/90-five-minute-live.conf'
+release_git cat-file -e \
+  "${EXPECTED_DEPLOY_SHA}:${CONTINUITY_EVIDENCE_DROPIN_SOURCE}"
+CONTINUITY_EVIDENCE_DROPIN_SHA256="$(release_git show \
+  "${EXPECTED_DEPLOY_SHA}:${CONTINUITY_EVIDENCE_DROPIN_SOURCE}" \
+  | sha256sum | awk '{print $1}')"
+[[ "$CONTINUITY_EVIDENCE_DROPIN_SHA256" =~ ^[0-9a-f]{64}$ ]]
+for unit in "${CONTINUITY_TIMER_UNITS[@]}"; do
+  fragment_source="ops/systemd/$unit"
+  release_git cat-file -e "${EXPECTED_DEPLOY_SHA}:${fragment_source}"
+  fragment_sha256="$(release_git show \
+    "${EXPECTED_DEPLOY_SHA}:${fragment_source}" \
+    | sha256sum | awk '{print $1}')"
+  [[ "$fragment_sha256" =~ ^[0-9a-f]{64}$ ]]
+  CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS+=(
+    --expected-fragment "$unit=$fragment_sha256"
+  )
+  if [[ "$unit" == palimpsest-evidence-wire.timer ]]; then
+    CONTINUITY_EXPECTED_DROPIN_ARGUMENTS+=(
+      --expected-drop-in \
+      "$unit=$CONTINUITY_EVIDENCE_DROPIN_PATH=$CONTINUITY_EVIDENCE_DROPIN_SHA256"
+    )
+  else
+    CONTINUITY_EXPECTED_DROPIN_ARGUMENTS+=(
+      --expected-drop-in "$unit=absent"
+    )
+  fi
+done
+test "${#CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS[@]}" = 8
+test "${#CONTINUITY_EXPECTED_DROPIN_ARGUMENTS[@]}" = 8
+CONTINUITY_BOOTSTRAP_DIR="$(mktemp -d \
+  /tmp/palimpsest-continuity-bootstrap.XXXXXX)"
+chmod 0700 "$CONTINUITY_BOOTSTRAP_DIR"
+CONTINUITY_GUARD_STAGED="$CONTINUITY_BOOTSTRAP_DIR/target-guard"
+release_git show "${EXPECTED_DEPLOY_SHA}:${CONTINUITY_GUARD_SOURCE}" \
+  >"$CONTINUITY_GUARD_STAGED"
+chmod 0500 "$CONTINUITY_GUARD_STAGED"
+CONTINUITY_GUARD_SHA256="$(sha256sum "$CONTINUITY_GUARD_STAGED" \
+  | awk '{print $1}')"
+[[ "$CONTINUITY_GUARD_SHA256" =~ ^[0-9a-f]{64}$ ]]
+test "$CONTINUITY_GUARD_SHA256" = "$(release_git show \
+  "${EXPECTED_DEPLOY_SHA}:${CONTINUITY_GUARD_SOURCE}" \
+  | sha256sum | awk '{print $1}')"
+test "$("$CONTINUITY_GUARD_STAGED" capabilities)" \
+  = "$CONTINUITY_EXPECTED_CAPABILITIES"
+
+# Authenticate the exact pre-existing hold with the reviewed target binary
+# before changing the installed controller. Recovery is hold-only: an active
+# or fail-closed hold may be reconciled later, but no transaction step is
+# replayed under an adopted token.
+if (( CONTINUITY_HOLD_RECOVERY == 1 )); then
+  CONTINUITY_EXISTING_HOLD="$(sudo "$CONTINUITY_GUARD_STAGED" \
+    maintenance-inspect)"
+  CONTINUITY_RECOVERY_IDENTITY="$(printf '%s' "$CONTINUITY_EXISTING_HOLD" \
+    | python3 -c 'import json, re, sys
+value = json.load(sys.stdin)
+fields = (
+    value.get("transaction_id"), value.get("status"),
+    value.get("controller_commit"), value.get("reason_code"),
+    value.get("restore_profile_sha256"),
+)
+if (
+    not all(isinstance(item, str) for item in fields)
+    or re.fullmatch(r"[0-9a-f]{32}", fields[0]) is None
+    or fields[1] not in {"active", "fail_closed"}
+    or re.fullmatch(r"[0-9a-f]{40}", fields[2]) is None
+    or fields[3] != "reviewed-release"
+    or re.fullmatch(r"[0-9a-f]{64}", fields[4]) is None
+):
+    raise SystemExit("existing continuity hold is not recoverable")
+print("\t".join(fields))')"
+  IFS=$'\t' read -r RELEASE_RESUME_TOKEN CONTINUITY_RECOVERY_STATUS \
+    CONTINUITY_RECOVERY_COMMIT CONTINUITY_RECOVERY_REASON \
+    CONTINUITY_RECOVERY_RESTORE_PROFILE \
+    <<<"$CONTINUITY_RECOVERY_IDENTITY"
+  case "$CONTINUITY_RECOVERY_STATUS" in active|fail_closed) ;; *) exit 1 ;; esac
+  test "$CONTINUITY_RECOVERY_COMMIT" = "$EXPECTED_DEPLOY_SHA"
+  test "$CONTINUITY_RECOVERY_REASON" = "$CONTINUITY_REASON_CODE"
+  [[ "$CONTINUITY_RECOVERY_RESTORE_PROFILE" =~ ^[0-9a-f]{64}$ ]]
+else
+  sudo test ! -e "$CONTINUITY_HOLD_PATH"
+  sudo test ! -L "$CONTINUITY_HOLD_PATH"
+  RELEASE_RESUME_TOKEN="$(openssl rand -hex 16)"
+fi
 [[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]]
+
+# Keep the timer enabled and active while a reviewed runtime condition prevents
+# it from racing a predecessor process through the executable replacement. The
+# preflight cleanup trap removes this fence and restarts the service on abort.
+test "$(systemctl is-enabled "$CONTINUITY_GUARD_TIMER")" = enabled
+test "$(systemctl is-active "$CONTINUITY_GUARD_TIMER")" = active
+CONTINUITY_PREVIOUS_INVOCATION_ID="$(systemctl show \
+  --property=InvocationID --value "$CONTINUITY_GUARD_SERVICE")"
+CONTINUITY_PREVIOUS_START_MONOTONIC="$(systemctl show \
+  --property=ExecMainStartTimestampMonotonic --value \
+  "$CONTINUITY_GUARD_SERVICE")"
+[[ "$CONTINUITY_PREVIOUS_START_MONOTONIC" =~ ^[0-9]+$ ]]
+CONTINUITY_FENCE_TOKEN="$(openssl rand -hex 16)"
+[[ "$CONTINUITY_FENCE_TOKEN" =~ ^[0-9a-f]{32}$ ]]
+CONTINUITY_FENCE_MARKER_DIR='/run/palimpsest-continuity-bootstrap'
+CONTINUITY_FENCE_DROPIN_DIR="/run/systemd/system/${CONTINUITY_GUARD_SERVICE}.d"
+CONTINUITY_FENCE_MARKER="$CONTINUITY_FENCE_MARKER_DIR/${CONTINUITY_FENCE_TOKEN}.block"
+CONTINUITY_FENCE_DROPIN="$CONTINUITY_FENCE_DROPIN_DIR/99-bootstrap-${CONTINUITY_FENCE_TOKEN}.conf"
+CONTINUITY_FENCE_PAYLOAD="[Unit]
+ConditionPathExists=!${CONTINUITY_FENCE_MARKER}
+"
+CONTINUITY_FENCE_DROPIN_SHA256="$(printf '%s' "$CONTINUITY_FENCE_PAYLOAD" \
+  | sha256sum | awk '{print $1}')"
+[[ "$CONTINUITY_FENCE_DROPIN_SHA256" =~ ^[0-9a-f]{64}$ ]]
+sudo install -d -o root -g root -m 0700 "$CONTINUITY_FENCE_MARKER_DIR"
+sudo install -d -o root -g root -m 0755 "$CONTINUITY_FENCE_DROPIN_DIR"
+sudo test ! -e "$CONTINUITY_FENCE_MARKER"
+sudo test ! -L "$CONTINUITY_FENCE_MARKER"
+sudo test ! -e "$CONTINUITY_FENCE_DROPIN"
+sudo test ! -L "$CONTINUITY_FENCE_DROPIN"
+CONTINUITY_BOOTSTRAP_FENCED=1
+sudo install -o root -g root -m 0600 /dev/null "$CONTINUITY_FENCE_MARKER"
+printf '%s' "$CONTINUITY_FENCE_PAYLOAD" \
+  | sudo tee "$CONTINUITY_FENCE_DROPIN" >/dev/null
+sudo chown root:root "$CONTINUITY_FENCE_DROPIN"
+sudo chmod 0644 "$CONTINUITY_FENCE_DROPIN"
+test "$(sudo stat -c '%U:%G:%a:%h:%s' "$CONTINUITY_FENCE_MARKER")" \
+  = root:root:600:1:0
+test "$(sudo stat -c '%U:%G:%a:%h' "$CONTINUITY_FENCE_DROPIN")" \
+  = root:root:644:1
+test "$(sudo sha256sum "$CONTINUITY_FENCE_DROPIN" | awk '{print $1}')" \
+  = "$CONTINUITY_FENCE_DROPIN_SHA256"
+sudo sync -f "$CONTINUITY_FENCE_MARKER" "$CONTINUITY_FENCE_DROPIN" \
+  "$CONTINUITY_FENCE_MARKER_DIR" "$CONTINUITY_FENCE_DROPIN_DIR"
+sudo systemctl daemon-reload
+test "$(systemctl show --property=NeedDaemonReload --value \
+  "$CONTINUITY_GUARD_SERVICE")" = no
+test "$(systemctl show --property=DropInPaths --value \
+  "$CONTINUITY_GUARD_SERVICE")" = "$CONTINUITY_FENCE_DROPIN"
+sudo systemctl stop "$CONTINUITY_GUARD_SERVICE"
+sudo systemctl start "$CONTINUITY_GUARD_SERVICE"
+test "$(systemctl show --property=ConditionResult --value \
+  "$CONTINUITY_GUARD_SERVICE")" = no
+test "$(systemctl show --property=MainPID --value \
+  "$CONTINUITY_GUARD_SERVICE")" = 0
+test "$(systemctl show --property=ControlPID --value \
+  "$CONTINUITY_GUARD_SERVICE")" = 0
+test "$(systemctl show --property=ActiveState --value \
+  "$CONTINUITY_GUARD_SERVICE")" = inactive
+test "$(systemctl show --property=SubState --value \
+  "$CONTINUITY_GUARD_SERVICE")" = dead
+test "$(systemctl show --property=ExecMainStartTimestampMonotonic --value \
+  "$CONTINUITY_GUARD_SERVICE")" = "$CONTINUITY_PREVIOUS_START_MONOTONIC"
+test "$(systemctl is-enabled "$CONTINUITY_GUARD_TIMER")" = enabled
+test "$(systemctl is-active "$CONTINUITY_GUARD_TIMER")" = active
+CONTINUITY_BOOTSTRAP_TOKEN="$(openssl rand -hex 16)"
+[[ "$CONTINUITY_BOOTSTRAP_TOKEN" =~ ^[0-9a-f]{32}$ ]]
+sudo python3 - "$CONTINUITY_GUARD_STAGED" "$CONTINUITY_GUARD" \
+  "$CONTINUITY_GUARD_SHA256" "$(id -u)" "$(id -g)" \
+  "$CONTINUITY_BOOTSTRAP_TOKEN" <<'PY'
+import hashlib
+import os
+import stat
+import sys
+
+source, destination, expected_sha, uid_text, gid_text, token = sys.argv[1:]
+expected_uid = int(uid_text)
+expected_gid = int(gid_text)
+maximum = 2 * 1024 * 1024
+source_fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW)
+try:
+    before = os.fstat(source_fd)
+    if (
+        not stat.S_ISREG(before.st_mode)
+        or before.st_uid != expected_uid
+        or before.st_gid != expected_gid
+        or stat.S_IMODE(before.st_mode) != 0o500
+        or before.st_nlink != 1
+        or not 0 < before.st_size <= maximum
+    ):
+        raise SystemExit("continuity guard source is unsafe")
+    payload = bytearray()
+    while True:
+        chunk = os.read(source_fd, min(65536, maximum + 1 - len(payload)))
+        if not chunk:
+            break
+        payload.extend(chunk)
+        if len(payload) > maximum:
+            raise SystemExit("continuity guard source exceeds byte ceiling")
+    after = os.fstat(source_fd)
+    if (
+        (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns,
+         before.st_ctime_ns, before.st_nlink)
+        != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns,
+            after.st_ctime_ns, after.st_nlink)
+        or len(payload) != before.st_size
+        or hashlib.sha256(payload).hexdigest() != expected_sha
+    ):
+        raise SystemExit("continuity guard source changed or has wrong digest")
+finally:
+    os.close(source_fd)
+
+directory_path = os.path.dirname(destination)
+if directory_path != "/usr/local/sbin" or os.path.basename(destination) \
+        != "palimpsest-continuity-guard":
+    raise SystemExit("continuity guard destination is invalid")
+directory = os.open(directory_path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+temporary = f".palimpsest-continuity-guard.{token}"
+created = False
+try:
+    details = os.fstat(directory)
+    if (
+        not stat.S_ISDIR(details.st_mode)
+        or details.st_uid != 0
+        or details.st_gid != 0
+        or stat.S_IMODE(details.st_mode) != 0o755
+    ):
+        raise SystemExit("continuity guard destination directory is unsafe")
+    descriptor = os.open(
+        temporary,
+        os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        0o755,
+        dir_fd=directory,
+    )
+    created = True
+    try:
+        os.fchmod(descriptor, 0o755)
+        os.fchown(descriptor, 0, 0)
+        written = 0
+        while written < len(payload):
+            written += os.write(descriptor, payload[written:])
+        os.fsync(descriptor)
+        installed = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(installed.st_mode)
+            or installed.st_uid != 0
+            or installed.st_gid != 0
+            or stat.S_IMODE(installed.st_mode) != 0o755
+            or installed.st_nlink != 1
+            or installed.st_size != len(payload)
+        ):
+            raise SystemExit("staged continuity guard is unsafe")
+    finally:
+        os.close(descriptor)
+    os.replace(temporary, os.path.basename(destination),
+               src_dir_fd=directory, dst_dir_fd=directory)
+    created = False
+    os.fsync(directory)
+finally:
+    if created:
+        try:
+            os.unlink(temporary, dir_fd=directory)
+            os.fsync(directory)
+        except FileNotFoundError:
+            pass
+    os.close(directory)
+PY
+sudo test -f "$CONTINUITY_GUARD"
+sudo test ! -L "$CONTINUITY_GUARD"
+test "$(sudo stat -c '%U:%G:%a:%h' "$CONTINUITY_GUARD")" \
+  = 'root:root:755:1'
+test "$(sudo sha256sum "$CONTINUITY_GUARD" | awk '{print $1}')" \
+  = "$CONTINUITY_GUARD_SHA256"
+test "$(sudo "$CONTINUITY_GUARD" capabilities)" \
+  = "$CONTINUITY_EXPECTED_CAPABILITIES"
+if (( CONTINUITY_HOLD_RECOVERY == 1 )); then
+  test "$(sudo "$CONTINUITY_GUARD" maintenance-inspect)" \
+    = "$CONTINUITY_EXISTING_HOLD"
+fi
+CONTINUITY_FENCED_INVOCATION_ID="$(systemctl show \
+  --property=InvocationID --value "$CONTINUITY_GUARD_SERVICE")"
+continuity_bootstrap_remove_fence
+test "$(systemctl is-enabled "$CONTINUITY_GUARD_TIMER")" = enabled
+test "$(systemctl is-active "$CONTINUITY_GUARD_TIMER")" = active
+sudo systemctl start "$CONTINUITY_GUARD_SERVICE"
+test "$(systemctl show --property=ConditionResult --value \
+  "$CONTINUITY_GUARD_SERVICE")" = yes
+test "$(systemctl show --property=MainPID --value \
+  "$CONTINUITY_GUARD_SERVICE")" = 0
+test "$(systemctl show --property=ControlPID --value \
+  "$CONTINUITY_GUARD_SERVICE")" = 0
+test "$(systemctl show --property=ActiveState --value \
+  "$CONTINUITY_GUARD_SERVICE")" = inactive
+test "$(systemctl show --property=SubState --value \
+  "$CONTINUITY_GUARD_SERVICE")" = dead
+test "$(systemctl show --property=Result --value \
+  "$CONTINUITY_GUARD_SERVICE")" = success
+test "$(systemctl show --property=ExecMainCode --value \
+  "$CONTINUITY_GUARD_SERVICE")" = exited
+test "$(systemctl show --property=ExecMainStatus --value \
+  "$CONTINUITY_GUARD_SERVICE")" = 0
+CONTINUITY_FRESH_INVOCATION_ID="$(systemctl show \
+  --property=InvocationID --value "$CONTINUITY_GUARD_SERVICE")"
+[[ "$CONTINUITY_FRESH_INVOCATION_ID" =~ ^[0-9a-f]{32}$ ]]
+test "$CONTINUITY_FRESH_INVOCATION_ID" != \
+  "$CONTINUITY_PREVIOUS_INVOCATION_ID"
+test "$CONTINUITY_FRESH_INVOCATION_ID" != \
+  "$CONTINUITY_FENCED_INVOCATION_ID"
+CONTINUITY_FRESH_START_MONOTONIC="$(systemctl show \
+  --property=ExecMainStartTimestampMonotonic --value \
+  "$CONTINUITY_GUARD_SERVICE")"
+[[ "$CONTINUITY_FRESH_START_MONOTONIC" =~ ^[1-9][0-9]*$ ]]
+(( CONTINUITY_FRESH_START_MONOTONIC > CONTINUITY_PREVIOUS_START_MONOTONIC ))
+rm -f -- "$CONTINUITY_GUARD_STAGED"
+rmdir -- "$CONTINUITY_BOOTSTRAP_DIR"
+CONTINUITY_BOOTSTRAP_DIR=''
+CONTINUITY_GUARD_STAGED=''
+
+continuity_maintenance_begin() {
+  local output
+  output="$(sudo "$CONTINUITY_GUARD" maintenance-begin \
+    --transaction-id "$RELEASE_RESUME_TOKEN" \
+    --controller-commit "$EXPECTED_DEPLOY_SHA" \
+    --reason-code "$CONTINUITY_REASON_CODE")"
+  case "$output" in
+    "palimpsest-continuity-guard maintenance-begin transaction=$RELEASE_RESUME_TOKEN status=active"|\
+    "palimpsest-continuity-guard maintenance-begin transaction=$RELEASE_RESUME_TOKEN status=fail_closed") ;;
+    *) printf 'continuity maintenance begin handshake failed\n' >&2; return 1 ;;
+  esac
+  CONTINUITY_MAINTENANCE_ARMED=1
+}
+
+continuity_maintenance_fail_closed() {
+  local output
+  output="$(sudo "$CONTINUITY_GUARD" maintenance-fail-closed \
+    --transaction-id "$RELEASE_RESUME_TOKEN" \
+    --controller-commit "$EXPECTED_DEPLOY_SHA" \
+    --reason-code "$CONTINUITY_REASON_CODE")" || {
+      printf 'continuity maintenance fail-closed command failed\n' >&2
+      return 1
+    }
+  test "$output" = "palimpsest-continuity-guard maintenance-fail-closed transaction=$RELEASE_RESUME_TOKEN status=fail_closed" \
+    || {
+      printf 'continuity maintenance fail-closed handshake failed\n' >&2
+      return 1
+    }
+  CONTINUITY_MAINTENANCE_ARMED=1
+  return 0
+}
+
+continuity_maintenance_assert() {
+  local output hold
+  output="$(sudo "$CONTINUITY_GUARD" maintenance-assert \
+    --transaction-id "$RELEASE_RESUME_TOKEN" \
+    --controller-commit "$EXPECTED_DEPLOY_SHA")"
+  case "$output" in
+    "palimpsest-continuity-guard maintenance-assert transaction=$RELEASE_RESUME_TOKEN status=active"|\
+    "palimpsest-continuity-guard maintenance-assert transaction=$RELEASE_RESUME_TOKEN status=fail_closed") ;;
+    *) printf 'continuity maintenance assertion handshake failed\n' >&2; return 1 ;;
+  esac
+  hold="$(sudo "$CONTINUITY_GUARD" maintenance-inspect)"
+  printf '%s' "$hold" | python3 -c 'import json, sys
+value = json.load(sys.stdin)
+transaction, controller, reason = sys.argv[1:]
+if (
+    value.get("transaction_id") != transaction
+    or value.get("controller_commit") != controller
+    or value.get("reason_code") != reason
+    or value.get("status") not in {"active", "fail_closed"}
+):
+    raise SystemExit("continuity maintenance hold identity changed")
+' "$RELEASE_RESUME_TOKEN" "$EXPECTED_DEPLOY_SHA" "$CONTINUITY_REASON_CODE"
+}
+
+continuity_maintenance_end() {
+  local output
+  output="$(sudo "$CONTINUITY_GUARD" maintenance-end \
+    --transaction-id "$RELEASE_RESUME_TOKEN" \
+    --controller-commit "$EXPECTED_DEPLOY_SHA" \
+    --finalized-receipt "$FINALIZED_RECEIPT_PATH" \
+    --finalized-sha256 "$FINALIZED_RECEIPT_SHA256" \
+    "${CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS[@]}" \
+    "${CONTINUITY_EXPECTED_DROPIN_ARGUMENTS[@]}")"
+  test "$output" = "palimpsest-continuity-guard maintenance-end transaction=$RELEASE_RESUME_TOKEN status=restored"
+  CONTINUITY_MAINTENANCE_ARMED=0
+}
+
+if (( CONTINUITY_HOLD_RECOVERY == 1 )); then
+  # No publication or release step may be replayed under an adopted token.
+  # The guard itself discovers and authenticates exactly one finalized receipt,
+  # its proof chain, the restored timers, and their closed effective profiles.
+  cleanup_release_private_state
+  CONTINUITY_RECONCILE_OUTPUT="$(sudo "$CONTINUITY_GUARD" \
+    maintenance-reconcile-finalized \
+    --transaction-id "$RELEASE_RESUME_TOKEN" \
+    --controller-commit "$EXPECTED_DEPLOY_SHA" \
+    "${CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS[@]}" \
+    "${CONTINUITY_EXPECTED_DROPIN_ARGUMENTS[@]}")"
+  CONTINUITY_RECONCILE_PATTERN="^palimpsest-continuity-guard maintenance-reconcile-finalized transaction=${RELEASE_RESUME_TOKEN} status=restored finalized_receipt=/var/lib/palimpsest-release/receipts/[0-9]{8}T[0-9]{6}Z-${EXPECTED_DEPLOY_SHA:0:12}-${RELEASE_RESUME_TOKEN}\\.finalized\\.json finalized_sha256=[0-9a-f]{64}$"
+  [[ "$CONTINUITY_RECONCILE_OUTPUT" =~ $CONTINUITY_RECONCILE_PATTERN ]]
+  CONTINUITY_MAINTENANCE_ARMED=0
+  trap - ERR EXIT HUP INT TERM
+  printf '%s\n' "$CONTINUITY_RECONCILE_OUTPUT"
+  exit 0
+fi
 
 read_enablement() {
   local state enablement_status=0
@@ -2033,6 +2579,9 @@ RELEASE_ACTIVATORS=(
   palimpsest-common-crawl-backup.timer
   palimpsest-node-offsite-backup.timer
   palimpsest-evidence-wire.timer
+  palimpsest-measurement-refresh.timer
+  palimpsest-railway-publish.timer
+  palimpsest-direct-watchdog.timer
   palimpsest-investigative-analysis.timer
   palimpsest-investigative-broker.socket
   palimpsest-common-crawl-import.path
@@ -2047,6 +2596,9 @@ RELEASE_SERVICES=(
   palimpsest-common-crawl-backup.service
   palimpsest-node-offsite-backup.service
   palimpsest-evidence-wire.service
+  palimpsest-measurement-refresh.service
+  palimpsest-railway-publish.service
+  palimpsest-direct-watchdog.service
   palimpsest-event-analysis-live.service
   palimpsest-investigative-analysis.service
   palimpsest-common-crawl-import.service
@@ -2527,10 +3079,6 @@ release_quiesce_all() {
     fi
     case "$load_state" in
       loaded|masked)
-        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
-          printf 'failed to stop release activator: %s\n' "$unit" >&2
-          quiesce_rc=1
-        fi
         enablement="$(read_enablement "$unit")"
         if (( $? != 0 )); then
           quiesce_rc=1
@@ -2550,6 +3098,10 @@ release_quiesce_all() {
             quiesce_rc=1
             ;;
         esac
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to stop release activator: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
         ;;
       not-found) ;;
       *)
@@ -2792,10 +3344,6 @@ release_quiesce_all() {
     fi
     case "$load_state" in
       loaded|masked)
-        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
-          printf 'failed to restop release activator: %s\n' "$unit" >&2
-          quiesce_rc=1
-        fi
         if ! enablement="$(read_enablement "$unit")"; then
           quiesce_rc=1
           continue
@@ -2815,6 +3363,10 @@ release_quiesce_all() {
             quiesce_rc=1
             ;;
         esac
+        if ! sudo systemctl stop "$unit" >/dev/null 2>&1; then
+          printf 'failed to restop release activator: %s\n' "$unit" >&2
+          quiesce_rc=1
+        fi
         ;;
       not-found) ;;
       *)
@@ -2932,6 +3484,12 @@ release_quiesce_all() {
   return 0
 }
 
+# Durably block continuity repair before the fail-safe is armed. From this
+# point onward any ordinary or emergency quiescence is protected even if a
+# systemctl disable command fails before the corresponding stop.
+continuity_maintenance_begin
+continuity_maintenance_assert
+
 PHASE1_SHELL_PID="$$"
 [[ "$PHASE1_SHELL_PID" =~ ^[1-9][0-9]*$ ]]
 PHASE1_FAIL_SAFE_ARMED=1
@@ -2939,7 +3497,7 @@ PHASE1_STAGE='fail-safe-armed'
 RELEASE_FAIL_SAFE_RUNNING=0
 phase1_fail_safe() {
   local original_status="${1:-1}"
-  local quiesce_status=0 cleanup_status=0
+  local hold_status=0 quiesce_status=0 cleanup_status=0
   (( PHASE1_FAIL_SAFE_ARMED == 1 )) || return 0
   (( RELEASE_FAIL_SAFE_RUNNING == 0 )) || return 0
   RELEASE_FAIL_SAFE_RUNNING=1
@@ -2947,9 +3505,10 @@ phase1_fail_safe() {
   trap '' HUP INT TERM
   printf 'Phase 1 interrupted (%s) at stage %s; quiescing every release writer and activator\n' \
     "$original_status" "${PHASE1_STAGE:-unknown}" >&2
+  continuity_maintenance_fail_closed || hold_status=$?
   release_quiesce_all || quiesce_status=$?
   cleanup_release_private_state || cleanup_status=$?
-  if (( quiesce_status != 0 || cleanup_status != 0 )); then
+  if (( hold_status != 0 || quiesce_status != 0 || cleanup_status != 0 )); then
     printf 'Phase 1 fail-safe could not complete every safety action\n' >&2
     return 1
   fi
@@ -4566,9 +5125,13 @@ uptime
 ps -eo pid,comm,%cpu,%mem,etime --sort=-%cpu | sed -n '1,15p'
 # Stop here until any unexplained high-load process has been cleared.
 
-# Stop and persistently disable every systemd producer before touching Beat or
-# asking a worker to drain. This closes the race where a timer, path, socket, or
-# OnCalendar invocation could enqueue new Celery work during the drain window.
+# Persistently disable every systemd producer before stopping it, then stop all
+# controlled services before touching Beat or asking a worker to drain. The
+# disable-before-stop order prevents the independent continuity guard from
+# observing an enabled-but-inactive timer and restarting it during the release.
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  temporarily_disable_activator "$unit"
+done
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   stop_loaded_unit "$unit"
 done
@@ -4576,9 +5139,6 @@ for unit in "${RELEASE_SERVICES[@]}"; do
   stop_loaded_unit "$unit"
 done
 quiesce_dynamic_release_instances
-for unit in "${RELEASE_ACTIVATORS[@]}"; do
-  temporarily_disable_activator "$unit"
-done
 
 # With every systemd producer held, stop Beat and let each already-running
 # worker drain its local reservations and all four broker queues. The reviewed
@@ -4874,6 +5434,7 @@ CANDIDATE_UNIT_SOURCES=(
   ops/systemd/palimpsest-backup.override.example.conf
   ops/systemd/palimpsest-evidence-wire.service
   ops/systemd/palimpsest-evidence-wire.timer
+  ops/systemd/palimpsest-evidence-wire.5-minute-live.conf
   ops/systemd/palimpsest-event-analysis-live.service
 )
 CANDIDATE_UNIT_TARGETS=(
@@ -4882,8 +5443,11 @@ CANDIDATE_UNIT_TARGETS=(
   /etc/systemd/system/palimpsest-backup.service.d/override.conf
   /etc/systemd/system/palimpsest-evidence-wire.service
   /etc/systemd/system/palimpsest-evidence-wire.timer
+  /etc/systemd/system/palimpsest-evidence-wire.timer.d/90-five-minute-live.conf
   /etc/systemd/system/palimpsest-event-analysis-live.service
 )
+sudo install -d -o root -g root -m 0755 \
+  /etc/systemd/system/palimpsest-evidence-wire.timer.d
 for unit_index in "${!CANDIDATE_UNIT_SOURCES[@]}"; do
   candidate_unit_source="${CANDIDATE_UNIT_SOURCES[$unit_index]}"
   candidate_unit_target="${CANDIDATE_UNIT_TARGETS[$unit_index]}"
@@ -4938,7 +5502,15 @@ for candidate_unit in \
       "$candidate_unit" >&2
     exit 1
   fi
-  test -z "$candidate_dropins"
+  if [[ "$candidate_unit" == palimpsest-evidence-wire.timer ]]; then
+    test "$candidate_dropins" = "$CONTINUITY_EVIDENCE_DROPIN_PATH"
+    test "$(sudo stat -c '%u:%g:%a:%h' "$candidate_dropins")" \
+      = 0:0:644:1
+    test "$(sudo sha256sum "$candidate_dropins" | awk '{print $1}')" \
+      = "$CONTINUITY_EVIDENCE_DROPIN_SHA256"
+  else
+    test -z "$candidate_dropins"
+  fi
   test "$(systemctl show --property=NeedDaemonReload --value "$candidate_unit")" \
     = no
 done
@@ -7194,6 +7766,14 @@ if ! declare -p \
     OSINT_LEDGER_BEFORE_SHA256 OSINT_GENERATED_AT_BEFORE \
     SYNC_PRE_RELEASE_INVOCATION_ID WATCHDOG_PRE_RELEASE_INVOCATION_ID \
     WITNESS_PRE_RELEASE_INVOCATION_ID RELEASE_RESUME_TOKEN \
+    CONTINUITY_GUARD CONTINUITY_GUARD_SOURCE CONTINUITY_GUARD_SHA256 \
+    CONTINUITY_REASON_CODE CONTINUITY_MAINTENANCE_ARMED \
+    CONTINUITY_HOLD_PATH CONTINUITY_HOLD_RECOVERY \
+    CONTINUITY_EXPECTED_CAPABILITIES \
+    CONTINUITY_TIMER_UNITS CONTINUITY_EXPECTED_FRAGMENT_ARGUMENTS \
+    CONTINUITY_EXPECTED_DROPIN_ARGUMENTS \
+    CONTINUITY_EVIDENCE_DROPIN_SOURCE CONTINUITY_EVIDENCE_DROPIN_PATH \
+    CONTINUITY_EVIDENCE_DROPIN_SHA256 \
     >/dev/null 2>&1 \
     || ! [[ "$RELEASE_RESUME_TOKEN" =~ ^[0-9a-f]{32}$ ]] \
     || ! [[ "$BLEED_ARTIFACT_AFTER_SHA256" =~ ^[0-9a-f]{64}$ ]] \
@@ -7222,6 +7802,8 @@ if ! declare -p \
       quiesce_controlled_writer_inventory \
       verify_controlled_writer_inventory_quiescent release_quiesce_all \
       cleanup_release_private_state phase1_fail_safe \
+      continuity_maintenance_begin continuity_maintenance_fail_closed \
+      continuity_maintenance_assert continuity_maintenance_end \
       fsync_installed_paths git_blob_sha256 verify_installed_unit_blob \
       verify_backup_dropins \
       verify_release_service_success_triggers \
@@ -7235,6 +7817,14 @@ fi
 
 test "$PHASE1_SHELL_PID" = "$$"
 test "$PHASE1_FAIL_SAFE_ARMED" = 1
+test "$CONTINUITY_MAINTENANCE_ARMED" = 1
+test "$(sudo stat -c '%U:%G:%a:%h' "$CONTINUITY_GUARD")" \
+  = 'root:root:755:1'
+test "$(sudo sha256sum "$CONTINUITY_GUARD" | awk '{print $1}')" \
+  = "$CONTINUITY_GUARD_SHA256"
+test "$(sudo "$CONTINUITY_GUARD" capabilities)" \
+  = "$CONTINUITY_EXPECTED_CAPABILITIES"
+continuity_maintenance_assert
 test "$TRANSACTION_DIRECTION" = forward
 test "$PREVIOUS_CHECKOUT_SHA" = "$EXPECTED_PREVIOUS_CHECKOUT_SHA"
 test "$PREVIOUS_DEPLOY_SHA" = "$EXPECTED_PREVIOUS_DEPLOY_SHA"
@@ -7978,7 +8568,7 @@ PY
 }
 phase3_fail_safe() {
   local original_status="${1:-1}"
-  local quiesce_status=0 cleanup_status=0 receipt_cleanup_status=0
+  local hold_status=0 quiesce_status=0 cleanup_status=0 receipt_cleanup_status=0
   if (( release_finalized == 1 || PHASE3_FAIL_SAFE_ARMED == 0 )); then
     return 0
   fi
@@ -7988,6 +8578,7 @@ phase3_fail_safe() {
   trap '' HUP INT TERM
   printf 'Phase 3 interrupted (%s); quiescing every release writer and activator\n' \
     "$original_status" >&2
+  continuity_maintenance_fail_closed || hold_status=$?
   if [[ -n "${RECOVERY_COMPLETION_RECEIPT_SHA256:-}" \
       && -n "${RECOVERY_COMPLETION_RECEIPT_PATH:-}" ]]; then
     remove_uncommitted_success_receipt \
@@ -8002,7 +8593,7 @@ phase3_fail_safe() {
   fi
   release_quiesce_all || quiesce_status=$?
   cleanup_release_private_state || cleanup_status=$?
-  if (( receipt_cleanup_status != 0 \
+  if (( hold_status != 0 || receipt_cleanup_status != 0 \
       || quiesce_status != 0 || cleanup_status != 0 )); then
     printf 'Phase 3 fail-safe could not complete every safety action\n' >&2
     return 1
@@ -8989,19 +9580,10 @@ verify_backup_dropins "$EXPECTED_DEPLOY_SHA" 0
 verify_release_service_success_triggers \
   "$BACKUP_ON_SUCCESS" palimpsest-event-analysis-live.service
 
-# Restore every captured systemd activator. All three first-install safety
-# timers (sync, watchdog, and witness) become enabled. An unconfigured
-# node-offsite lane can never be restored active because Phase 1 rejected it.
-for unit in "${RELEASE_ACTIVATORS[@]}"; do
-  if [[ "$unit" == palimpsest-node-offsite-backup.timer ]] \
-      && (( NODE_OFFSITE_CONFIGURED == 0 )); then
-    test "${RELEASE_WAS_ACTIVE[$unit]}" = "0"
-    case "${RELEASE_ENABLEMENT[$unit]}" in
-      enabled|enabled-runtime) exit 1 ;;
-    esac
-  fi
-  restore_activator_enablement "$unit"
-done
+# Restore every captured systemd activator. Start the intended runtime set while
+# its timers are still disabled, then restore boot enablement. This is the
+# reverse of disable-before-stop and prevents the continuity guard from seeing
+# an enabled-but-inactive timer during restoration.
 for unit in "${RELEASE_ACTIVATORS[@]}"; do
   if [[ "${RELEASE_WAS_ACTIVE[$unit]}" == "1" ]] \
       || { [[ "${RELEASE_ENABLEMENT[$unit]}" == not-found ]] \
@@ -9012,6 +9594,16 @@ for unit in "${RELEASE_ACTIVATORS[@]}"; do
   else
     stop_loaded_unit "$unit"
   fi
+done
+for unit in "${RELEASE_ACTIVATORS[@]}"; do
+  if [[ "$unit" == palimpsest-node-offsite-backup.timer ]] \
+      && (( NODE_OFFSITE_CONFIGURED == 0 )); then
+    test "${RELEASE_WAS_ACTIVE[$unit]}" = "0"
+    case "${RELEASE_ENABLEMENT[$unit]}" in
+      enabled|enabled-runtime) exit 1 ;;
+    esac
+  fi
+  restore_activator_enablement "$unit"
 done
 
 ACTIVATOR_RESTORED_PATH="$OBSERVER_PREFLIGHT_DIR/activators-restored.tsv"
@@ -9297,7 +9889,7 @@ for line in pathlib.Path(compose_path).read_text(encoding="utf-8").splitlines():
 expected_compose = {
     "beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"
 }
-if set(compose) != expected_compose or len(activators) != 12:
+if set(compose) != expected_compose or len(activators) != 15:
     raise SystemExit("restored release inventory is incomplete")
 value = {
     "schema_version": "palimpsest-host-release-finalization.v1",
@@ -9426,7 +10018,7 @@ checks = (
     value.get("writers_restored") is True,
     value.get("backup_release_quiesce_present") is False,
     isinstance(value.get("restored_activators"), dict)
-        and len(value["restored_activators"]) == 12,
+        and len(value["restored_activators"]) == 15,
     isinstance(value.get("restored_compose_writers"), dict)
         and set(value["restored_compose_writers"])
         == {"beat", "worker", "worker-collectors", "worker-warehouse", "worker-velocity"},
@@ -9928,7 +10520,7 @@ finalized_checks = (
     finalized.get("writers_restored") is True,
     finalized.get("backup_release_quiesce_present") is False,
     isinstance(finalized.get("restored_activators"), dict)
-        and len(finalized["restored_activators"]) == 12,
+        and len(finalized["restored_activators"]) == 15,
     isinstance(finalized.get("restored_compose_writers"), dict)
         and set(finalized["restored_compose_writers"])
         == {"beat", "worker", "worker-collectors", "worker-warehouse",
@@ -10187,10 +10779,13 @@ for final_service in "${RELEASE_SERVICES[@]}"; do
   esac
 done
 
-# The exclusive, fsynced finalized receipt is the single authoritative commit
-# marker and therefore the final fallible action. A completion-only crash state
-# is intentionally non-authoritative; no command that can fail follows this.
+# The exclusive, fsynced finalized receipt is the authoritative commit marker.
+# Publish it while the continuity hold still blocks repair, then remove the hold
+# only after the exact restored activator inventory above has passed. A hard
+# crash between these steps leaves both final authority and the conservative
+# hold; an ordinary end failure removes the uncommitted receipt in the fail-safe.
 publish_finalized_receipt
+continuity_maintenance_end
 release_finalized=1
 PHASE3_FAIL_SAFE_ARMED=0
 trap - ERR EXIT HUP INT TERM
