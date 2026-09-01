@@ -69,6 +69,7 @@ TELEGRAM_WATCH_READING = ROOT / "readings" / "telegram-watch-latest.json"
 DRAGON_WHISPERS_READING = ROOT / "readings" / "dragon-whispers-latest.json"
 PEER_CONTEXT_READING = ROOT / "readings" / "peer-context-latest.json"
 PUBLIC_DATA_CATALOG = ROOT / "config" / "public_data_catalog.json"
+CHINA_ECON_SOURCE_POLICY = ROOT / "config" / "china_econ_source_policy.json"
 SITE = "https://palimpsest.info"
 PUBLISHER = "Palimpsest Observatory"
 DESCRIPTION = (
@@ -85,10 +86,27 @@ _PUBLIC_VALUE_WITHHELD_SHARE_CARDS = {
     "china-econ": (
         "Money-market benchmark values are withheld under public source policy"
     ),
-    "cny-fix-gap": (
-        "The yuan-fix comparison is withheld under public source policy"
-    ),
+    "cny-fix-gap": ("The yuan-fix comparison is withheld under public source policy"),
 }
+
+# These are the canonical newsroom surfaces whose claims can be derived from,
+# or summarize, the denied ChinaMoney/CFETS value families.  A public policy
+# denial therefore projects the complete set to availability-only records
+# before any downstream representation is built.
+_RIGHTS_SAFE_PROJECTION_LABELS = {
+    "board-alarm": "Board alarm",
+    "event-flags": "Event flags",
+    "coverage-guard": "Coverage guard",
+    "forecast-ledger": "Forecast ledger",
+    "cross-layer": "Cross-layer comparison",
+    "china-econ": "China money-market benchmarks",
+    "cny-fix-gap": "Yuan-fix comparison",
+    "data-darkness": "Official-data availability",
+}
+_RIGHTS_SAFE_PROJECTION_SIGNAL_IDS = frozenset(_RIGHTS_SAFE_PROJECTION_LABELS)
+_REQUIRED_PUBLIC_VALUE_SOURCE_IDS = frozenset({"cfets_benchmarks", "chinamoney"})
+_PUBLIC_RIGHTS_EVIDENCE_URL = f"{SITE}/readings/china-publication-rights-latest.json"
+_PUBLIC_RIGHTS_EVIDENCE_FILENAME = "china-publication-rights-latest.json"
 
 DRAGON_DEN_TELEGRAM_CHANNELS = (
     (
@@ -1080,6 +1098,198 @@ def _parse_time(value: str) -> datetime:
     if parsed.tzinfo is None:
         raise newsroom.NewsroomError(f"timestamp is timezone-free: {value!r}")
     return parsed.astimezone(timezone.utc)
+
+
+def _china_public_values_denied(
+    publication_at: str,
+    *,
+    policy_path: Path = CHINA_ECON_SOURCE_POLICY,
+) -> bool:
+    """Fail closed when either required public-value grant is not effective.
+
+    The feed clock is the decision clock. This keeps a replay of an old edition
+    deterministic instead of silently changing its rights outcome merely
+    because the renderer ran again later.
+    """
+
+    try:
+        decision_clock = _parse_time(publication_at)
+        policy = newswire_model.strict_json_loads(
+            policy_path.read_bytes(), label=str(policy_path)
+        )
+        if (
+            type(policy) is not dict
+            or policy.get("schema_version")
+            != "palimpsest.china-economic-source-policy.v1"
+            or type(policy.get("sources")) is not list
+        ):
+            return True
+        decisions: dict[str, Mapping[str, Any]] = {}
+        for row in policy["sources"]:
+            if type(row) is not dict or type(row.get("source_id")) is not str:
+                return True
+            source_id = row["source_id"]
+            if source_id in decisions:
+                return True
+            decisions[source_id] = row
+        for source_id in _REQUIRED_PUBLIC_VALUE_SOURCE_IDS:
+            row = decisions.get(source_id)
+            if (
+                row is None
+                or row.get("decision") != "allow"
+                or row.get("values_allowed") is not True
+                or type(row.get("reviewed_at")) is not str
+                or type(row.get("expires_at")) is not str
+            ):
+                return True
+            reviewed_at = _parse_time(row["reviewed_at"])
+            expires_at = _parse_time(row["expires_at"])
+            if not reviewed_at <= decision_clock < expires_at:
+                return True
+    except (KeyError, OSError, TypeError, ValueError, newsroom.NewsroomError):
+        return True
+    return False
+
+
+def _rights_safe_story(
+    story: Mapping[str, Any], *, publication_at: str
+) -> dict[str, Any]:
+    """Return an identity-preserving, availability-only public story."""
+
+    signal_id = story["signal_id"]
+    public_label = _RIGHTS_SAFE_PROJECTION_LABELS[signal_id]
+    statement = (
+        f"No current finding is published for {public_label} because public value "
+        "publication is restricted by the active source policy."
+    )
+    metric = {
+        "label": None,
+        "value": None,
+        "unit": None,
+        "denominator": {"label": None, "value": None},
+    }
+    claim_core = {
+        "claim_type": "availability",
+        "metric": metric,
+        "signal_id": signal_id,
+        "statement": statement,
+        "status": "degraded",
+    }
+    projected = copy.deepcopy(story)
+    projected.update(
+        {
+            "headline": f"{public_label}: public value unavailable",
+            "dek": (
+                "This route remains available, but its current result is withheld "
+                "until the source policy records an effective public-value grant."
+            ),
+            "status": "degraded",
+            "published_at": publication_at,
+            "modified_at": publication_at,
+            "claim_fingerprint": "sha256:"
+            + hashlib.sha256(newsroom.canonical_json_bytes(claim_core)).hexdigest(),
+            "metric": metric,
+            "claims": [{"type": "availability", "statement": statement}],
+            "evidence": {
+                "url": _PUBLIC_RIGHTS_EVIDENCE_URL,
+                "input": {
+                    # Keep the logical per-signal filename so its established
+                    # analysis sidecar route does not collapse into one shared
+                    # path. The URL, hash, bytes, and clock all bind only to the
+                    # rights-status projection.
+                    "filename": story["evidence"]["input"]["filename"],
+                    "sha256": None,
+                    "bytes": None,
+                },
+                "source_timestamp": None,
+            },
+            "method": {
+                "summary": (
+                    "Availability-only public projection under the active China "
+                    "economic source policy"
+                ),
+                "version": 1,
+            },
+            "limitations": [
+                "Current finding withheld: public value publication is restricted",
+                (
+                    "Availability is not a zero, a normal reading, or evidence of "
+                    "direction."
+                ),
+            ],
+        }
+    )
+    return projected
+
+
+def _rights_safe_newsroom_feed(feed: Mapping[str, Any]) -> dict[str, Any]:
+    """Project all policy-coupled stories before any public derivative exists."""
+
+    projected = copy.deepcopy(feed)
+    publication_at = projected["generated_at"]
+    observed_ids = {story["signal_id"] for story in projected["stories"]}
+    missing = sorted(_RIGHTS_SAFE_PROJECTION_SIGNAL_IDS - observed_ids)
+    if missing:
+        raise newsroom.NewsroomError(
+            "rights-safe newsroom projection is missing canonical signals: "
+            + ", ".join(missing)
+        )
+    projected["stories"] = [
+        (
+            _rights_safe_story(story, publication_at=publication_at)
+            if story["signal_id"] in _RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
+            else story
+        )
+        for story in projected["stories"]
+    ]
+    counts = {
+        status: sum(story["status"] == status for story in projected["stories"])
+        for status in ("live", "degraded", "stale", "missing", "corrupt")
+    }
+    projected["headline"] = (
+        "Public-value availability is restricted under source policy"
+    )
+    projected["coverage"].update(
+        {
+            "live": counts["live"],
+            "reporting": counts["live"] + counts["degraded"] + counts["stale"],
+            "status": "degraded",
+            "counts": counts,
+        }
+    )
+    return projected
+
+
+def _rights_safe_analysis_feed(feed: Mapping[str, Any]) -> dict[str, Any]:
+    """Remove unavailable placeholders from cross-record analytical context."""
+
+    safe = copy.deepcopy(feed)
+    safe["stories"] = [
+        story
+        for story in safe["stories"]
+        if story["signal_id"] not in _RIGHTS_SAFE_PROJECTION_SIGNAL_IDS
+    ]
+    safe["n_stories"] = len(safe["stories"])
+    counts = {
+        status: sum(story["status"] == status for story in safe["stories"])
+        for status in ("live", "degraded", "stale", "missing", "corrupt")
+    }
+    safe["coverage"].update(
+        {
+            "total": len(safe["stories"]),
+            "reporting": counts["live"] + counts["degraded"] + counts["stale"],
+            "live": counts["live"],
+            "status": "degraded",
+            "counts": counts,
+        }
+    )
+    return safe
+
+
+def _deduplicated_tags(values: Sequence[str]) -> list[str]:
+    """Keep first-seen JSON Feed tag order while emitting each tag once."""
+
+    return list(dict.fromkeys(values))
 
 
 def _human_time(value: str | None) -> str:
@@ -4564,16 +4774,18 @@ def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
                 "date_modified": entry["collected_at"],
                 "language": entry["language"],
                 "authors": [{"name": entry["publisher"]["name"]}],
-                "tags": [
-                    "source-report",
-                    (
-                        "multiple-independent-source-groups"
-                        if dossier["independent_groups"] > 1
-                        else "not-independently-verified"
-                    ),
-                    entry["desk"],
-                    *entry["topics"],
-                ],
+                "tags": _deduplicated_tags(
+                    [
+                        "source-report",
+                        (
+                            "multiple-independent-source-groups"
+                            if dossier["independent_groups"] > 1
+                            else "not-independently-verified"
+                        ),
+                        entry["desk"],
+                        *entry["topics"],
+                    ]
+                ),
                 "attachments": [
                     {
                         "url": dossier["url"],
@@ -4581,9 +4793,9 @@ def build_china_stream_json_feed(stream: Mapping[str, Any]) -> dict[str, Any]:
                         "title": "Palimpsest evidence dossier",
                     },
                     {
-                        "url": analysis["url"],
+                        "url": dossier["url"].rstrip("/") + "/story.json",
                         "mime_type": "application/json",
-                        "title": "Palimpsest structured analysis",
+                        "title": "Palimpsest structured publisher source record",
                     },
                 ],
                 "_palimpsest": {
@@ -5050,17 +5262,19 @@ def build_json_feed(
                 ),
                 "date_published": event["published_at"],
                 "date_modified": event["updated_at"],
-                "tags": [
-                    "source-report",
-                    (
-                        "multiple-independent-source-groups"
-                        if len(event["evidence_groups"]) > 1
-                        else "not-independently-verified"
-                    ),
-                    EVENT_DESKS[event["desk"]],
-                    event["evidence_strength"],
-                    *event["topics"],
-                ],
+                "tags": _deduplicated_tags(
+                    [
+                        "source-report",
+                        (
+                            "multiple-independent-source-groups"
+                            if len(event["evidence_groups"]) > 1
+                            else "not-independently-verified"
+                        ),
+                        EVENT_DESKS[event["desk"]],
+                        event["evidence_strength"],
+                        *event["topics"],
+                    ]
+                ),
                 "attachments": [
                     {
                         "url": ref["url"],
@@ -5100,17 +5314,23 @@ def build_json_feed(
             ),
             "date_published": story["published_at"],
             "date_modified": story["modified_at"],
-            "tags": [
-                "palimpsest-measurement",
-                sections[story["section"]],
-                story["signal_id"],
-                story["status"],
-            ],
+            "tags": _deduplicated_tags(
+                [
+                    "palimpsest-measurement",
+                    sections[story["section"]],
+                    story["signal_id"],
+                    story["status"],
+                ]
+            ),
             "attachments": [
                 {
                     "url": story["evidence"]["url"],
                     "mime_type": "application/json",
-                    "title": story["evidence"]["input"]["filename"],
+                    "title": (
+                        _PUBLIC_RIGHTS_EVIDENCE_FILENAME
+                        if story["evidence"]["url"] == _PUBLIC_RIGHTS_EVIDENCE_URL
+                        else story["evidence"]["input"]["filename"]
+                    ),
                     **(
                         {"size_in_bytes": story["evidence"]["input"]["bytes"]}
                         if story["evidence"]["input"]["bytes"] is not None
@@ -6183,9 +6403,14 @@ def build_outputs(
         telegram_watch_model.validate_telegram_watch(telegram_watch)
     if dragon_whispers is not None:
         dragon_whispers_model.validate_dragon_whispers(dragon_whispers)
+    public_values_denied = _china_public_values_denied(feed["generated_at"])
+    if public_values_denied:
+        feed = _rights_safe_newsroom_feed(feed)
+    analysis_feed = _rights_safe_analysis_feed(feed) if public_values_denied else feed
+    mixed_page_pulse = None if public_values_denied and wire is not None else pulse
     sections = {section["id"]: section for section in feed["sections"]}
     stories = {story["signal_id"]: story for story in feed["stories"]}
-    china_analysis = china_analysis_model.build(feed)
+    china_analysis = None if public_values_denied else china_analysis_model.build(feed)
     instrument_analyses = instrument_analysis_model.build_instrument_analyses(feed)
     event_analyses: dict[str, Mapping[str, Any]] = {}
     china_stream: Mapping[str, Any] | None = None
@@ -6199,7 +6424,7 @@ def build_outputs(
         )
         candidates = event_analysis_model.build_event_analyses(
             wire,
-            feed,
+            analysis_feed,
             live_families=event_analysis_model.load_optional_live_families(
                 readings_dir
             ),
@@ -6213,6 +6438,7 @@ def build_outputs(
                 readings_dir
             ),
             peer=peer,
+            allow_missing_collectors=public_values_denied,
             archive_refresh_status=load_archive_refresh_status(),
         )
         events_by_id = {event["event_id"]: event for event in wire["events"]}
@@ -6248,8 +6474,10 @@ def build_outputs(
         for event in (wire["events"] if wire is not None else [])
     }
     edition_share_card = share_cards.render_card(_edition_share_card_spec(feed))
-    china_analysis_share_card = share_cards.render_card(
-        _china_analysis_share_card_spec(china_analysis)
+    china_analysis_share_card = (
+        share_cards.render_card(_china_analysis_share_card_spec(china_analysis))
+        if china_analysis is not None
+        else None
     )
     economic_share_card = (
         share_cards.render_card(_economic_share_card_spec(pulse))
@@ -6273,7 +6501,7 @@ def build_outputs(
         )
     rendered_share_cards = [
         edition_share_card,
-        china_analysis_share_card,
+        *([china_analysis_share_card] if china_analysis_share_card is not None else []),
         *story_share_cards.values(),
         *event_share_cards.values(),
         *historical_event_cards.values(),
@@ -6292,7 +6520,7 @@ def build_outputs(
                 render_evidence_index(
                     feed,
                     wire,
-                    pulse,
+                    mixed_page_pulse,
                     investigations,
                     machine_analyses,
                     share_card=edition_share_card,
@@ -6311,24 +6539,29 @@ def build_outputs(
                 whispers_document,
                 china_analysis,
             ),
-            Path("readings/china-censorship-analysis-latest.json"): (
-                china_analysis_model.pretty_json_bytes(china_analysis)
-            ),
-            Path("news/china/analysis/index.html"): (
-                render_china_censorship_analysis(
-                    china_analysis,
-                    feed=feed,
-                    share_card=china_analysis_share_card,
-                ).encode("utf-8")
-            ),
-            Path("news/china/analysis/feed.json"): _pretty_json(
-                build_china_analysis_json_feed(china_analysis)
-            ),
-            Path("news/china/analysis/feed.xml"): build_china_analysis_rss(
-                china_analysis
-            ),
         }
     )
+    if china_analysis is not None:
+        outputs.update(
+            {
+                Path("readings/china-censorship-analysis-latest.json"): (
+                    china_analysis_model.pretty_json_bytes(china_analysis)
+                ),
+                Path("news/china/analysis/index.html"): (
+                    render_china_censorship_analysis(
+                        china_analysis,
+                        feed=feed,
+                        share_card=china_analysis_share_card,
+                    ).encode("utf-8")
+                ),
+                Path("news/china/analysis/feed.json"): _pretty_json(
+                    build_china_analysis_json_feed(china_analysis)
+                ),
+                Path("news/china/analysis/feed.xml"): build_china_analysis_rss(
+                    china_analysis
+                ),
+            }
+        )
     outputs.update(historical_event_html)
     if wire is not None:
         outputs[Path("news/instruments/feed.json")] = _pretty_json(
@@ -6579,7 +6812,11 @@ def build_outputs(
             outputs[base / "revisions" / f"{revision}.json"] = _pretty_json(story)
     contextual_paths = [
         Path("news/index.html"),
-        Path("news/china/analysis/index.html"),
+        *(
+            [Path("news/china/analysis/index.html")]
+            if china_analysis_share_card is not None
+            else []
+        ),
         *(Path("news") / story["slug"] / "index.html" for story in feed["stories"]),
         *(
             Path("news/wire") / event_id / "index.html"
@@ -6620,7 +6857,8 @@ def build_outputs(
             generated_times.append(machine_analyses["generated_at"])
         if whispers_document is not None:
             generated_times.append(whispers_document["generated_at"])
-        generated_times.append(china_analysis["generated_at"])
+        if china_analysis is not None:
+            generated_times.append(china_analysis["generated_at"])
         outputs[manifest_path] = _pretty_json(
             {
                 "schema_version": "palimpsest-news-manifest.v1",
