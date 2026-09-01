@@ -221,6 +221,12 @@ RSS_MEASUREMENT_MARKER = re.compile(
     r"(?:\[Palimpsest measurement\]|Item\s+type\s*:\s*Palimpsest\s+measurement)",
     re.IGNORECASE,
 )
+HTML_NEWSROOM_METRIC_BYTES = (
+    b"nw-card__metric",
+    b"nw-metric-block",
+    b"nw-metric-card__value",
+)
+RSS_MEASUREMENT_BYTES = (b"Palimpsest measurement", b"palimpsest measurement")
 TEXT_DIRECT_VALUE_SHAPE = re.compile(
     r"[\"'](?:fdr001|fdr007|fdr014|fr001|fr007|fr014|"
     r"shibor_(?:on|1w|2w|1m|3m|6m|9m|1y)|usdcny_parity)[\"']\s*"
@@ -1387,13 +1393,15 @@ def _contains_denied_payload(
         has_policy_lineage = lineage_pattern.search(semantic_raw) is not None
         has_derived_signal = DERIVED_INSTRUMENT_BYTES.search(semantic_raw) is not None
         has_known_lineage = has_policy_lineage or has_derived_signal
-        has_derived_representation = (
-            has_derived_signal or DERIVED_PUBLIC_ROUTE.search(text) is not None
+        has_newsroom_metric = any(
+            marker in semantic_raw for marker in HTML_NEWSROOM_METRIC_BYTES
         )
-        if has_derived_representation and (
-            _html_has_derived_newsroom_metric(text)
-            or _rss_has_derived_measurement(text)
-        ):
+        if has_newsroom_metric and _html_has_derived_newsroom_metric(text):
+            return True
+        has_rss_measurement = any(
+            marker in semantic_raw for marker in RSS_MEASUREMENT_BYTES
+        )
+        if has_rss_measurement and _rss_has_derived_measurement(text):
             return True
         has_value_field = (
             VALUE_FIELD_BYTES.search(semantic_raw) is not None
